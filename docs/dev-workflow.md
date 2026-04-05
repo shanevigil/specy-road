@@ -50,15 +50,37 @@ The brief gives you: ancestor chain, node fields, dependencies, and the list of 
 
 Full field reference if you need to interpret YAML directly: [roadmap-authoring.md — Node fields reference](roadmap-authoring.md#node-fields-reference).
 
-### 3. Register and implement
+### 3. Branch, register, and implement
 
-**Branch naming:** `feature/rm-<codename>` where `<codename>` matches the milestone's `codename` field exactly.
+#### Branch model
+
+One branch per roadmap milestone. All feature branches fork from the integration branch (typically `main` or `dev`) and merge back to the same branch when done.
+
+```text
+main ──────────────────────────────────────────────► main
+  └─ feature/rm-auth-middleware ──────────────────┘
+  └─ feature/rm-entry-api  ────────────────────┘
+  └─ feature/rm-export-pipeline  ─────────────────────┘
+```
+
+Multiple branches running in parallel is the normal state when touch zones and dependencies allow it. The registry makes this visible before file collisions occur.
+
+#### Branch naming
+
+`feature/rm-<codename>` — the `<codename>` must match the milestone's `codename` field in the roadmap YAML exactly (kebab-case). The `rm-` prefix marks it as roadmap-driven and keeps it distinct from ad-hoc fix branches.
 
 ```bash
+# branch from your integration branch
+git checkout main               # or dev — whatever your team uses
+git pull
 git checkout -b feature/rm-<codename>
 ```
 
-**First commit — registration (mandatory, no implementation before this):**
+Non-roadmap work uses `fix/<slug>` or `feature/<slug>` without the `rm-` prefix.
+
+#### First commit — registration (mandatory)
+
+No implementation before this commit. The registration commit is how parallel workers know this milestone is claimed.
 
 1. Add an entry to [`roadmap/registry.yaml`](../roadmap/registry.yaml):
 
@@ -73,23 +95,36 @@ entries:
     owner: "<your name or agent ID>"
 ```
 
-2. Commit: `chore(rm-<codename>): register as in-progress`
+2. Validate and commit:
 
-The pre-commit hook runs `specy-road validate` automatically — fix any errors before the commit lands.
+```bash
+specy-road validate
+git add roadmap/registry.yaml
+git commit -m "chore(rm-<codename>): register as in-progress"
+```
 
-**During implementation:**
-- Stay within declared `touch_zones`. If scope expands, update the registry entry and notify the PM.
-- The pre-commit hook validates on every commit. Fix validation errors immediately — do not accumulate them.
+The pre-commit hook re-runs `specy-road validate` on every commit — fix errors before they land.
+
+#### During implementation
+
+- Stay within declared `touch_zones`. If scope expands, update the registry entry.
 - CI runs the full suite on push: validate → export check → file limits → pytest.
+- Commit as often as is useful — no commit cadence requirement beyond the first registration commit.
 
 ### 4. Merge back
 
 1. **Update the milestone status** in the relevant chunk YAML file (`status: Complete`).
 2. **Remove your registry entry** from `roadmap/registry.yaml`.
-3. Run `specy-road validate` and `specy-road export` locally — confirm both pass cleanly.
-4. Open a PR/MR targeting your integration branch. CI must be green.
-5. Merge when CI passes — you own this branch end-to-end. No PM sign-off required.
-6. Delete the feature branch after merge.
+3. Validate and export locally:
+
+```bash
+specy-road validate
+specy-road export
+```
+
+1. Open a PR/MR targeting the same integration branch you forked from. CI must be green.
+2. Merge when CI passes — you own this branch end-to-end. No PM sign-off required.
+3. Delete the feature branch after merge.
 
 ---
 
