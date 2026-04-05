@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit a bounded context brief for a roadmap node: ancestors, deps, touch zones, shared pointers."""
+"""Emit a bounded brief for a roadmap node (ancestors, deps, touch zones)."""
 
 from __future__ import annotations
 
@@ -65,9 +65,10 @@ def main() -> None:
         "",
     ]
     for item in chain:
-        lines.append(
-            f"- **{item['id']}** ({item.get('type')}) — {item.get('title', '')}"
-        )
+        tid = item["id"]
+        typ = item.get("type")
+        ttl = item.get("title", "")
+        lines.append(f"- **{tid}** ({typ}) — {ttl}")
     lines.extend(
         [
             "",
@@ -77,7 +78,10 @@ def main() -> None:
             f"- **Execution (milestone):** {n.get('execution_milestone')}",
             f"- **Execution (sub-task):** {n.get('execution_subtask')}",
             f"- **Codename:** {n.get('codename')}",
-            f"- **Touch zones:** {', '.join(n.get('touch_zones') or []) or '—'}",
+            (
+                "- **Touch zones:** "
+                f"{', '.join(n.get('touch_zones') or []) or '—'}"
+            ),
             "",
             "## Dependencies (must complete first)",
             "",
@@ -94,7 +98,7 @@ def main() -> None:
             "",
             "## Contracts (read selectively)",
             "",
-            "Load only the sections you need from `shared/` (see `shared/README.md`).",
+            "Load only what you need from `shared/` (see `shared/README.md`).",
             "",
         ]
     )

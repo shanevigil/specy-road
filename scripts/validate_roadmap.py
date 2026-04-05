@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate roadmap.yaml and registry.yaml: schema, DAG, unique ids/codenames."""
+"""Validate roadmap.yaml and registry.yaml (schema, DAG, ids, codenames)."""
 
 from __future__ import annotations
 
@@ -33,17 +33,14 @@ def validate_schema(instance: dict, schema: dict, label: str) -> None:
         raise SystemExit(1)
 
 
-def build_adjacency(nodes: list[dict]) -> dict[str, list[str]]:
-    by_id: dict[str, dict] = {n["id"]: n for n in nodes}
-    graph: dict[str, list[str]] = {nid: [] for nid in by_id}
+def validate_dependency_ids(nodes: list[dict]) -> None:
+    ids = {n["id"] for n in nodes}
     for n in nodes:
-        nid = n["id"]
         for dep in n.get("dependencies") or []:
-            if dep not in by_id:
-                print(f"roadmap: node {nid} depends on missing id {dep}", file=sys.stderr)
+            if dep not in ids:
+                msg = f"roadmap: node {n['id']} depends on missing id {dep}"
+                print(msg, file=sys.stderr)
                 raise SystemExit(1)
-            graph[nid].append(dep)
-    return graph
 
 
 def cycle_check(nodes: list[dict]) -> None:
@@ -54,7 +51,8 @@ def cycle_check(nodes: list[dict]) -> None:
 
     def visit(nid: str) -> None:
         if nid in stack:
-            print(f"roadmap: dependency cycle involving {nid}", file=sys.stderr)
+            msg = f"roadmap: dependency cycle involving {nid}"
+            print(msg, file=sys.stderr)
             raise SystemExit(1)
         if nid in visited:
             return
@@ -87,28 +85,36 @@ def validate_codenames(nodes: list[dict]) -> None:
         c = n.get("codename")
         if c:
             if c in seen:
-                print(
-                    f"roadmap: duplicate codename '{c}' on {seen[c]} and {n['id']}",
-                    file=sys.stderr,
+                dup_msg = (
+                    f"roadmap: duplicate codename '{c}' on {seen[c]} and {n['id']}"
                 )
+                print(dup_msg, file=sys.stderr)
                 raise SystemExit(1)
             seen[c] = n["id"]
 
 
 def touch_zone_overlap(entries: list[dict]) -> None:
-    """Warn if two active entries share a touch zone path prefix (heuristic)."""
+    """Warn if entries share a touch zone path (heuristic)."""
     for i, a in enumerate(entries):
         za = sorted(a.get("touch_zones") or [])
-        for b in entries[i + 1 :]:
+        for j in range(i + 1, len(entries)):
+            b = entries[j]
             zb = sorted(b.get("touch_zones") or [])
             for x in za:
                 for y in zb:
-                    if x == y or x.startswith(y.rstrip("/") + "/") or y.startswith(x.rstrip("/") + "/"):
-                        print(
-                            f"registry: warning — possible overlap '{x}' vs '{y}' "
-                            f"({a.get('codename')} vs {b.get('codename')})",
-                            file=sys.stderr,
+                    y_base = y.rstrip("/")
+                    x_base = x.rstrip("/")
+                    nested = x.startswith(y_base + "/") or y.startswith(
+                        x_base + "/"
+                    )
+                    if x == y or nested:
+                        ac = a.get("codename")
+                        bc = b.get("codename")
+                        warn = (
+                            f"registry: warning — possible overlap '{x}' vs "
+                            f"'{y}' ({ac} vs {bc})"
                         )
+                        print(warn, file=sys.stderr)
 
 
 def main() -> None:
@@ -145,16 +151,16 @@ def main() -> None:
         raise SystemExit(1)
 
     validate_parents(nodes)
+    validate_dependency_ids(nodes)
     cycle_check(nodes)
     validate_codenames(nodes)
 
     for e in registry.get("entries") or []:
         nid = e.get("node_id")
         if nid and nid not in set(ids):
-            print(
-                f"registry: entry {e.get('codename')} references unknown node_id {nid}",
-                file=sys.stderr,
-            )
+            cn = e.get("codename")
+            unk = f"registry: entry {cn} references unknown node_id {nid}"
+            print(unk, file=sys.stderr)
             raise SystemExit(1)
 
     if registry.get("entries") and not args.no_overlap_warn:
