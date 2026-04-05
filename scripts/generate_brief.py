@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Emit a bounded context brief for a roadmap node: ancestors, deps, touch zones, shared pointers."""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+ROADMAP = ROOT / "roadmap" / "roadmap.yaml"
+SHARED = ROOT / "shared"
+
+
+def load_nodes() -> list[dict]:
+    with ROADMAP.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    return data["nodes"]
+
+
+def index(nodes: list[dict]) -> dict[str, dict]:
+    return {n["id"]: n for n in nodes}
+
+
+def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
+    out: list[dict] = []
+    cur = by_id.get(nid)
+    if not cur:
+        return out
+    pid = cur.get("parent_id")
+    while pid:
+        p = by_id.get(pid)
+        if not p:
+            break
+        out.append(p)
+        pid = p.get("parent_id")
+    return list(reversed(out))
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("node_id", help="Roadmap node id, e.g. M1.1")
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Write markdown to this file (default: stdout)",
+    )
+    args = p.parse_args()
+
+    nodes = load_nodes()
+    by_id = index(nodes)
+    if args.node_id not in by_id:
+        raise SystemExit(f"unknown node id: {args.node_id}")
+
+    n = by_id[args.node_id]
+    chain = ancestors(args.node_id, by_id) + [n]
+    deps = n.get("dependencies") or []
+
+    lines = [
+        f"# Brief: `{args.node_id}` — {n.get('title', '')}",
+        "",
+        "## Ancestor chain",
+        "",
+    ]
+    for item in chain:
+        lines.append(
+            f"- **{item['id']}** ({item.get('type')}) — {item.get('title', '')}"
+        )
+    lines.extend(
+        [
+            "",
+            "## This node",
+            "",
+            f"- **Status:** {n.get('status')}",
+            f"- **Execution (milestone):** {n.get('execution_milestone')}",
+            f"- **Execution (sub-task):** {n.get('execution_subtask')}",
+            f"- **Codename:** {n.get('codename')}",
+            f"- **Touch zones:** {', '.join(n.get('touch_zones') or []) or '—'}",
+            "",
+            "## Dependencies (must complete first)",
+            "",
+        ]
+    )
+    if deps:
+        for d in deps:
+            dn = by_id.get(d, {})
+            lines.append(f"- **{d}** — {dn.get('title', '(missing node)')}")
+    else:
+        lines.append("- _none_")
+    lines.extend(
+        [
+            "",
+            "## Contracts (read selectively)",
+            "",
+            "Load only the sections you need from `shared/` (see `shared/README.md`).",
+            "",
+        ]
+    )
+    if SHARED.is_dir():
+        for f in sorted(SHARED.glob("*.md")):
+            lines.append(f"- `{f.relative_to(ROOT)}`")
+    else:
+        lines.append("- _(no shared/*.md yet)_")
+
+    text = "\n".join(lines) + "\n"
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(text, encoding="utf-8")
+        print(f"Wrote {args.output}")
+    else:
+        print(text, end="")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,68 @@
+# Canonical roadmap graph (versioned YAML). Edit this file or generate from phase markdown.
+# IDs are immutable; gaps allowed; never renumber.
+
+version: 1
+nodes:
+  - id: M0
+    parent_id: null
+    type: phase
+    title: "Foundation — architecture and contracts"
+    codename: null
+    execution_milestone: Human-led
+    status: Not Started
+    touch_zones: []
+    dependencies: []
+    parallel_tracks: 1
+    notes: "Human-led phase: specs and ADRs before heavy implementation."
+
+  - id: M0.1
+    parent_id: M0
+    type: milestone
+    title: "Establish shared contracts and ADR skeleton"
+    codename: contracts-bootstrap
+    execution_milestone: Mixed
+    status: Not Started
+    touch_zones:
+      - "shared/"
+      - "schemas/"
+    dependencies: []
+    parallel_tracks: 1
+
+  - id: M0.1.1
+    parent_id: M0.1
+    type: task
+    title: "Define API contract outline in shared/"
+    codename: null
+    execution_milestone: null
+    execution_subtask: agentic
+    status: Not Started
+    touch_zones:
+      - "shared/"
+    dependencies: []
+
+  - id: M1
+    parent_id: null
+    type: phase
+    title: "Implementation track"
+    codename: null
+    execution_milestone: Agentic-led
+    status: Not Started
+    touch_zones: []
+    dependencies:
+      - M0.1
+    parallel_tracks: 2
+    notes: "Example dependency: M1 work assumes M0.1 milestone exists."
+
+  - id: M1.1
+    parent_id: M1
+    type: milestone
+    title: "Roadmap validator in CI"
+    codename: roadmap-ci
+    execution_milestone: Agentic-led
+    status: Not Started
+    touch_zones:
+      - "scripts/"
+      - ".github/"
+    dependencies:
+      - M0.1
+    parallel_tracks: 1

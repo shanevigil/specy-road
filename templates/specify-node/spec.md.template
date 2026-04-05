@@ -1,0 +1,18 @@
+# Spec — node `{{NODE_ID}}` — {{TITLE}}
+
+## Intent
+
+What problem this slice solves; link to roadmap node `{{NODE_ID}}`.
+
+## User-visible behavior
+
+-
+
+## Out of scope
+
+-
+
+## References
+
+- Roadmap: `roadmap/roadmap.yaml` → `{{NODE_ID}}`
+- Contracts (read selectively): `shared/`

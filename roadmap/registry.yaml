@@ -1,0 +1,5 @@
+# In-progress registration (evolution of docs/roadmap-status.md).
+# Empty when no active claims. First commit on feature/rm-<codename> adds an entry.
+
+version: 1
+entries: []

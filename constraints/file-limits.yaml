@@ -1,0 +1,8 @@
+# Enforceable file size limits (example — tune per project).
+# Validators may read this in a future iteration.
+
+max_lines_per_file: 400
+max_lines_per_function: 50
+applies_to_globs:
+  - "scripts/**/*.py"
+  - "**/*.md"

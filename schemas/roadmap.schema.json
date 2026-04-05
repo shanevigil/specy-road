@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/roadmap.schema.json",
+  "title": "specy-road roadmap",
+  "type": "object",
+  "required": ["version", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "type", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^M[0-9]+(\\.[0-9]+)*$",
+          "description": "Immutable hierarchical id, e.g. M1.2 or M1.2.3"
+        },
+        "parent_id": {
+          "type": ["string", "null"],
+          "pattern": "^M[0-9]+(\\.[0-9]+)*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["vision", "phase", "milestone", "task"]
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "codename": {
+          "type": ["string", "null"],
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "execution_milestone": {
+          "type": ["string", "null"],
+          "enum": [null, "Human-led", "Agentic-led", "Mixed"]
+        },
+        "execution_subtask": {
+          "type": ["string", "null"],
+          "enum": [null, "human", "agentic", "human-gate"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Not Started", "In Progress", "Complete", "Blocked", "Cancelled"]
+        },
+        "touch_zones": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^M[0-9]+(\\.[0-9]+)*$" }
+        },
+        "parallel_tracks": { "type": ["integer", "null"], "minimum": 1 },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}
