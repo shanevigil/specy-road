@@ -27,6 +27,10 @@ AGENTIC_KEYS = (
     "dependency_note",
 )
 
+# Known documentation path prefixes — project-agnostic.
+# A spec_citation that starts with one of these is considered traceable.
+SPEC_PATH_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
+
 
 def load_schema(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
@@ -135,6 +139,22 @@ def validate_codenames(nodes: list[dict]) -> None:
             seen[c] = n["id"]
 
 
+def validate_spec_citations(nodes: list[dict]) -> None:
+    """Warn when an agentic node's spec_citation lacks a known doc-path prefix."""
+    for n in nodes:
+        if n.get("execution_subtask") != "agentic":
+            continue
+        ac = n.get("agentic_checklist") or {}
+        citation = ac.get("spec_citation", "")
+        if not any(citation.startswith(p) for p in SPEC_PATH_PREFIXES):
+            print(
+                f"roadmap: warning — node {n['id']} spec_citation does not "
+                f"reference a known doc path "
+                f"({', '.join(SPEC_PATH_PREFIXES)}): \"{citation}\"",
+                file=sys.stderr,
+            )
+
+
 def touch_zone_overlap(entries: list[dict]) -> None:
     """Warn if entries share a touch zone path (heuristic)."""
     for i, a in enumerate(entries):
@@ -176,6 +196,7 @@ def run_validation(roadmap: dict, registry: dict, no_overlap_warn: bool) -> None
     validate_dependency_ids(nodes)
     cycle_check(nodes)
     validate_agentic_checklists(nodes)
+    validate_spec_citations(nodes)
     validate_codenames(nodes)
 
     id_set = set(ids)

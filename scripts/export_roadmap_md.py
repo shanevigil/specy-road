@@ -87,6 +87,30 @@ def render_index(nodes: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _render_details(n: dict, lines: list[str]) -> None:
+    """Append goal, decision, and acceptance sections for a node."""
+    goal = n.get("goal")
+    if goal:
+        lines.append(f"**Goal:** {goal}")
+        lines.append("")
+    decision = n.get("decision")
+    if decision:
+        if decision.get("status") == "decided":
+            date = decision.get("decided_date", "")
+            adr = decision.get("adr_ref", "")
+            ref = f" — {adr}" if adr else ""
+            lines.append(f"> Decided ({date}){ref}")
+        else:
+            lines.append("> Decision pending")
+        lines.append("")
+    acceptance = n.get("acceptance")
+    if acceptance:
+        lines.append("**Acceptance criteria:**")
+        for item in acceptance:
+            lines.append(f"- {item}")
+        lines.append("")
+
+
 def render_phase_doc(phase_id: str, subtree: list[dict]) -> str:
     lines = [
         f"# Phase `{phase_id}`",
@@ -109,6 +133,16 @@ def render_phase_doc(phase_id: str, subtree: list[dict]) -> str:
         for n in notes:
             lines.append(f"- **{n['id']}:** {n['notes']}")
         lines.append("")
+    detailed = [
+        n for n in subtree
+        if n.get("goal") or n.get("acceptance") or n.get("decision")
+    ]
+    if detailed:
+        lines.extend(["## Details", ""])
+        for n in detailed:
+            lines.append(f"### `{n['id']}` — {n.get('title', '')}")
+            lines.append("")
+            _render_details(n, lines)
     return "\n".join(lines)
 
 

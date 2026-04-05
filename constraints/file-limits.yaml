@@ -7,3 +7,8 @@ applies_to_globs:
   - "**/*.md"
 # Paths relative to repo root; matched with fnmatch against each candidate.
 # exclude_globs: []  # add path patterns here to skip large generated docs, etc.
+
+# Separate threshold for roadmap YAML chunk files (phases/Mx.yaml, etc.).
+# Phase files commonly reach the mid-400s after milestone enrichment;
+# splitting at 400 causes unnecessary churn. Adjust per project.
+roadmap_yaml_max_lines: 500

@@ -21,7 +21,7 @@
         "id": {
           "type": "string",
           "pattern": "^M[0-9]+(\\.[0-9]+)*$",
-          "description": "Immutable hierarchical id, e.g. M1.2 or M1.2.3"
+          "description": "Immutable hierarchical id, e.g. M1.2 or M1.2.3.4 (fourth-level allowed)"
         },
         "parent_id": {
           "type": ["string", "null"],
@@ -58,16 +58,62 @@
         },
         "parallel_tracks": { "type": ["integer", "null"], "minimum": 1 },
         "notes": { "type": "string" },
+        "goal": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Concise statement of what this node achieves when complete."
+        },
+        "acceptance": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "description": "Observable acceptance criteria — what must be true for this node to be considered done."
+        },
+        "risks": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Known risks or blockers to surface for planning."
+        },
+        "decision": {
+          "type": "object",
+          "description": "Architecture or policy decision block for milestones with a pending or resolved fork.",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["pending", "decided"]
+            },
+            "decided_date": {
+              "type": "string",
+              "description": "ISO 8601 date when the decision was made."
+            },
+            "adr_ref": {
+              "type": "string",
+              "description": "Path or identifier of the ADR capturing the decision (e.g. docs/adr/ADR-001.md)."
+            }
+          }
+        },
         "agentic_checklist": {
           "type": ["object", "null"],
           "additionalProperties": false,
-          "description": "Required when execution_subtask is agentic; five required elements per templates/roadmap/agentic-task-checklist.md",
+          "description": "Required when execution_subtask is agentic. Five required elements (completeness standard) plus two optional signals.",
           "properties": {
             "artifact_action": { "type": "string", "minLength": 1 },
             "spec_citation": { "type": "string", "minLength": 1 },
             "interface_contract": { "type": "string", "minLength": 1 },
             "constraints_note": { "type": "string", "minLength": 1 },
-            "dependency_note": { "type": "string", "minLength": 1 }
+            "dependency_note": { "type": "string", "minLength": 1 },
+            "success_signal": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Observable test or behavior that confirms the task is done correctly."
+            },
+            "forbidden_patterns": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Patterns explicitly prohibited in this task (e.g. 'do not call live service — use stub')."
+            }
           },
           "required": [
             "artifact_action",

@@ -107,12 +107,33 @@ def _check_oversized_file(root: Path, path: Path, max_lines: int) -> bool:
     return False
 
 
-def validate_roadmap_yaml_line_limits(root: Path | None = None, max_lines: int = 400) -> None:
+def _roadmap_yaml_max_lines(root: Path) -> int:
+    """Read roadmap_yaml_max_lines from constraints/file-limits.yaml.
+
+    Returns 500 if the key is absent or the file does not exist.
+    """
+    config_path = root / "constraints" / "file-limits.yaml"
+    if config_path.is_file():
+        with config_path.open(encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+        val = cfg.get("roadmap_yaml_max_lines")
+        if isinstance(val, int) and val > 0:
+            return val
+    return 500
+
+
+def validate_roadmap_yaml_line_limits(
+    root: Path | None = None, max_lines: int | None = None
+) -> None:
     """
     No roadmap YAML exceeds ``max_lines`` unless it defines exactly one node.
-    Skips ``registry.yaml``.
+    Skips ``registry.yaml``. When ``max_lines`` is omitted, reads
+    ``roadmap_yaml_max_lines`` from ``constraints/file-limits.yaml``
+    (default 500).
     """
     root = root or ROOT
+    if max_lines is None:
+        max_lines = _roadmap_yaml_max_lines(root)
     base = root / "roadmap"
     failed = False
     for path in sorted(base.rglob("*.yaml")):
