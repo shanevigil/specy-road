@@ -4,6 +4,11 @@ Place **stable, referenceable** documents here: API tables, data model outlines,
 
 Roadmap items should **cite** these files (section or entity), not duplicate stack choices. Keep files small enough to load selectively; prefer one topic per file.
 
+## Contracts
+
+- **[API contract (outline)](api-contract.md)** — JSON request/response envelope, error model, and error-code vocabulary. Cite section headings (e.g. “Error model”, a table row) from roadmap tasks and agent briefs.
+- **ADRs** — Stack and integration decisions live in Architecture Decision Records under `docs/adr/` when that folder exists; link the relevant ADR from this README next to the contract it constrains.
+
 ## Spec crosswalk (examples)
 
 | Kind | Example filename |

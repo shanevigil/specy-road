@@ -38,55 +38,12 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
     return list(reversed(out))
 
 
-def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("node_id", help="Roadmap node id, e.g. M1.1")
-    p.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        help="Write markdown to this file (default: stdout)",
-    )
-    args = p.parse_args()
-
-    nodes = load_nodes()
-    by_id = index(nodes)
-    if args.node_id not in by_id:
-        raise SystemExit(f"unknown node id: {args.node_id}")
-
-    n = by_id[args.node_id]
-    chain = ancestors(args.node_id, by_id) + [n]
-    deps = n.get("dependencies") or []
-
-    lines = [
-        f"# Brief: `{args.node_id}` — {n.get('title', '')}",
+def _brief_deps_and_contracts(n: dict, deps: list, by_id: dict[str, dict]) -> list[str]:
+    lines: list[str] = [
         "",
-        "## Ancestor chain",
+        "## Dependencies (must complete first)",
         "",
     ]
-    for item in chain:
-        tid = item["id"]
-        typ = item.get("type")
-        ttl = item.get("title", "")
-        lines.append(f"- **{tid}** ({typ}) — {ttl}")
-    lines.extend(
-        [
-            "",
-            "## This node",
-            "",
-            f"- **Status:** {n.get('status')}",
-            f"- **Execution (milestone):** {n.get('execution_milestone')}",
-            f"- **Execution (sub-task):** {n.get('execution_subtask')}",
-            f"- **Codename:** {n.get('codename')}",
-            (
-                "- **Touch zones:** "
-                f"{', '.join(n.get('touch_zones') or []) or '—'}"
-            ),
-            "",
-            "## Dependencies (must complete first)",
-            "",
-        ]
-    )
     if deps:
         for d in deps:
             dn = by_id.get(d, {})
@@ -107,8 +64,72 @@ def main() -> None:
             lines.append(f"- `{f.relative_to(ROOT)}`")
     else:
         lines.append("- _(no shared/*.md yet)_")
+    return lines
 
-    text = "\n".join(lines) + "\n"
+
+def render_brief(node_id: str, by_id: dict[str, dict]) -> str:
+    n = by_id[node_id]
+    chain = ancestors(node_id, by_id) + [n]
+    deps = n.get("dependencies") or []
+
+    head = [
+        f"# Brief: `{node_id}` — {n.get('title', '')}",
+        "",
+        "## Ancestor chain",
+        "",
+    ]
+    for item in chain:
+        tid = item["id"]
+        typ = item.get("type")
+        ttl = item.get("title", "")
+        head.append(f"- **{tid}** ({typ}) — {ttl}")
+    head.extend(
+        [
+            "",
+            "## This node",
+            "",
+            f"- **Status:** {n.get('status')}",
+            f"- **Execution (milestone):** {n.get('execution_milestone')}",
+            f"- **Execution (sub-task):** {n.get('execution_subtask')}",
+            f"- **Codename:** {n.get('codename')}",
+            (
+                "- **Touch zones:** "
+                f"{', '.join(n.get('touch_zones') or []) or '—'}"
+            ),
+        ]
+    )
+    ac = n.get("agentic_checklist")
+    if isinstance(ac, dict):
+        head.extend(["", "## Agentic checklist", ""])
+        for key in (
+            "artifact_action",
+            "spec_citation",
+            "interface_contract",
+            "constraints_note",
+            "dependency_note",
+        ):
+            head.append(f"- **{key}:** {ac.get(key, '—')}")
+    tail = _brief_deps_and_contracts(n, deps, by_id)
+    return "\n".join(head + tail) + "\n"
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("node_id", help="Roadmap node id, e.g. M1.1")
+    p.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Write markdown to this file (default: stdout)",
+    )
+    args = p.parse_args()
+
+    nodes = load_nodes()
+    by_id = index(nodes)
+    if args.node_id not in by_id:
+        raise SystemExit(f"unknown node id: {args.node_id}")
+
+    text = render_brief(args.node_id, by_id)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")

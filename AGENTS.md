@@ -16,6 +16,10 @@ For a focused slice:
 python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
+## Bootstrap backlog (transient)
+
+[`docs/bootstrap-next-steps.md`](docs/bootstrap-next-steps.md) tracked tooling bootstrap tasks; it is **complete** for the current scope—delete or archive when you no longer need it. High-level flow: [`docs/architecture.md`](docs/architecture.md).
+
 ## Coordination
 
 Read [`docs/git-workflow.md`](docs/git-workflow.md) before starting roadmap-linked implementation: branch `feature/rm-<codename>`, register in [`roadmap/registry.yaml`](roadmap/registry.yaml) first commit.

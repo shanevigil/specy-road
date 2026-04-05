@@ -17,6 +17,14 @@ REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
 SCHEMA_ROADMAP = ROOT / "schemas" / "roadmap.schema.json"
 SCHEMA_REGISTRY = ROOT / "schemas" / "registry.schema.json"
 
+AGENTIC_KEYS = (
+    "artifact_action",
+    "spec_citation",
+    "interface_contract",
+    "constraints_note",
+    "dependency_note",
+)
+
 
 def load_schema(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
@@ -79,6 +87,38 @@ def validate_parents(nodes: list[dict]) -> None:
             raise SystemExit(1)
 
 
+def validate_agentic_checklists(nodes: list[dict]) -> None:
+    """Require full agentic_checklist when execution_subtask is agentic; forbid otherwise."""
+    for n in nodes:
+        nid = n["id"]
+        sub = n.get("execution_subtask")
+        ac = n.get("agentic_checklist")
+        if sub == "agentic":
+            if not isinstance(ac, dict):
+                msg = (
+                    f"roadmap: node {nid} has execution_subtask agentic "
+                    "but missing agentic_checklist object"
+                )
+                print(msg, file=sys.stderr)
+                raise SystemExit(1)
+            for key in AGENTIC_KEYS:
+                val = ac.get(key)
+                if not val or not str(val).strip():
+                    msg = (
+                        f"roadmap: node {nid} agentic_checklist.{key} "
+                        "must be a non-empty string"
+                    )
+                    print(msg, file=sys.stderr)
+                    raise SystemExit(1)
+        elif ac is not None:
+            msg = (
+                f"roadmap: node {nid} has agentic_checklist but "
+                "execution_subtask is not agentic"
+            )
+            print(msg, file=sys.stderr)
+            raise SystemExit(1)
+
+
 def validate_codenames(nodes: list[dict]) -> None:
     seen: dict[str, str] = {}
     for n in nodes:
@@ -117,6 +157,40 @@ def touch_zone_overlap(entries: list[dict]) -> None:
                         print(warn, file=sys.stderr)
 
 
+def run_validation(roadmap: dict, registry: dict, no_overlap_warn: bool) -> None:
+    validate_schema(roadmap, load_schema(SCHEMA_ROADMAP), "roadmap.schema")
+    validate_schema(registry, load_schema(SCHEMA_REGISTRY), "registry.schema")
+
+    nodes = roadmap["nodes"]
+    ids = [n["id"] for n in nodes]
+    if len(ids) != len(set(ids)):
+        from collections import Counter
+
+        dup = [k for k, v in Counter(ids).items() if v > 1]
+        print(f"roadmap: duplicate ids: {dup}", file=sys.stderr)
+        raise SystemExit(1)
+
+    validate_parents(nodes)
+    validate_dependency_ids(nodes)
+    cycle_check(nodes)
+    validate_agentic_checklists(nodes)
+    validate_codenames(nodes)
+
+    id_set = set(ids)
+    for e in registry.get("entries") or []:
+        nid = e.get("node_id")
+        if nid and nid not in id_set:
+            cn = e.get("codename")
+            unk = f"registry: entry {cn} references unknown node_id {nid}"
+            print(unk, file=sys.stderr)
+            raise SystemExit(1)
+
+    if registry.get("entries") and not no_overlap_warn:
+        touch_zone_overlap(registry["entries"])
+
+    print("OK: roadmap and registry validate.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -138,35 +212,7 @@ def main() -> None:
     with REGISTRY_PATH.open(encoding="utf-8") as f:
         registry = yaml.safe_load(f)
 
-    validate_schema(roadmap, load_schema(SCHEMA_ROADMAP), "roadmap.schema")
-    validate_schema(registry, load_schema(SCHEMA_REGISTRY), "registry.schema")
-
-    nodes = roadmap["nodes"]
-    ids = [n["id"] for n in nodes]
-    if len(ids) != len(set(ids)):
-        from collections import Counter
-
-        dup = [k for k, v in Counter(ids).items() if v > 1]
-        print(f"roadmap: duplicate ids: {dup}", file=sys.stderr)
-        raise SystemExit(1)
-
-    validate_parents(nodes)
-    validate_dependency_ids(nodes)
-    cycle_check(nodes)
-    validate_codenames(nodes)
-
-    for e in registry.get("entries") or []:
-        nid = e.get("node_id")
-        if nid and nid not in set(ids):
-            cn = e.get("codename")
-            unk = f"registry: entry {cn} references unknown node_id {nid}"
-            print(unk, file=sys.stderr)
-            raise SystemExit(1)
-
-    if registry.get("entries") and not args.no_overlap_warn:
-        touch_zone_overlap(registry["entries"])
-
-    print("OK: roadmap and registry validate.")
+    run_validation(roadmap, registry, args.no_overlap_warn)
 
 
 if __name__ == "__main__":

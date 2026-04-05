@@ -35,7 +35,13 @@ nodes:
     codename: null
     execution_milestone: null
     execution_subtask: agentic
-    status: Not Started
+    agentic_checklist:
+      artifact_action: "Add shared/api-contract.md with resource list and error shape"
+      spec_citation: "shared/README.md — Contracts section; link to ADR when added"
+      interface_contract: "HTTP JSON: request/response envelope; error codes enum"
+      constraints_note: "No secrets in repo; PII fields marked N/A in stub"
+      dependency_note: "After M0.1 milestone scaffolding exists"
+    status: Complete
     touch_zones:
       - "shared/"
     dependencies: []

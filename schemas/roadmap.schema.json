@@ -57,7 +57,26 @@
           "items": { "type": "string", "pattern": "^M[0-9]+(\\.[0-9]+)*$" }
         },
         "parallel_tracks": { "type": ["integer", "null"], "minimum": 1 },
-        "notes": { "type": "string" }
+        "notes": { "type": "string" },
+        "agentic_checklist": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "description": "Required when execution_subtask is agentic; five required elements per templates/roadmap/agentic-task-checklist.md",
+          "properties": {
+            "artifact_action": { "type": "string", "minLength": 1 },
+            "spec_citation": { "type": "string", "minLength": 1 },
+            "interface_contract": { "type": "string", "minLength": 1 },
+            "constraints_note": { "type": "string", "minLength": 1 },
+            "dependency_note": { "type": "string", "minLength": 1 }
+          },
+          "required": [
+            "artifact_action",
+            "spec_citation",
+            "interface_contract",
+            "constraints_note",
+            "dependency_note"
+          ]
+        }
       }
     }
   }
