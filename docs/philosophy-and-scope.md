@@ -18,6 +18,8 @@ This document is for **humans and coding agents** adopting or working on specy-r
 
 Optional patterns for teams that *want* IDE rules, `CLAUDE.md`, MCP servers, or similar are collected in [`optional-ai-tooling-patterns.md`](optional-ai-tooling-patterns.md). Those patterns are **not** part of specy-road’s contract.
 
+**Required vs optional glue:** Anything that defines roadmap truth, contracts, or enforceable limits lives under `constitution/`, `constraints/`, `roadmap/`, and `shared/` and is driven by the **specy-road** CLI and `scripts/` (validate, brief, export, etc.). The optional **`specyrd init`** helper only installs thin IDE/agent command stubs (for example under `.cursor/commands/`) that **point at** those commands; it does not replace them or duplicate kit rules in editor-only files.
+
 ## Relationship to Spec-Kit
 
 [Spec-Kit](https://github.com/github/spec-kit) is a useful reference for spec discipline and context hygiene. specy-road is **not** Spec-Kit; it emphasizes a **roadmap graph + registry** and leaves agent-side workflows flexible.

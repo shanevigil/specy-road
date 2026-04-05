@@ -21,10 +21,14 @@ dev = [
 
 [project.scripts]
 specy-road = "specy_road.cli:main"
+specyrd = "specy_road.specyrd_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["specy_road*"]
+
+[tool.setuptools.package-data]
+specy_road = ["templates/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

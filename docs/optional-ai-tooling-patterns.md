@@ -6,6 +6,19 @@ For coordination **inside** this kit, prefer [`roadmap/registry.yaml`](../roadma
 
 ---
 
+## Optional: `specyrd init` (install-time IDE commands)
+
+The **`specyrd`** CLI (installed with this package) can lay down **thin** markdown command files for Cursor (`.cursor/commands/`), Claude Code (`.claude/commands/`), or a **generic** directory you choose. Those files tell the agent to run **`specy-road`** or **`python scripts/…`** from the repo root — they are not a second source of truth.
+
+- **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits` and the matching scripts under `scripts/`.
+- **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. Optional per-milestone folders named `specify/<node-id>/` in specy-road are **this kit’s** spec/plan/tasks files, not that tool.
+- **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value; use `--force` to overwrite stubs from a previous run.
+- **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root.
+
+See `.specyrd/README.md` after init for a short pointer (and `manifest.json` for which packs were applied).
+
+---
+
 ## Core idea: documentation as source of truth
 
 Treat durable rules, architecture decisions, and conventions as **version-controlled artifacts** agents can read. Chat and comments are not substitutes for files when a rule must hold across sessions.

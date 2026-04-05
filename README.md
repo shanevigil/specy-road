@@ -21,8 +21,10 @@ Requires **Python 3.11+**.
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-pip install -e ".[dev]"     # optional: editable install, pytest, specy-road CLI
+pip install -e ".[dev]"     # optional: editable install, pytest, both CLIs below
 ```
+
+The package installs two commands: **`specy-road`** (validators, brief, export) and **`specyrd`** (optional IDE glue — see [specyrd](#specyrd-optional-ide-command-stubs)).
 
 Validate the repo and (optionally) run tests:
 
@@ -36,6 +38,61 @@ specy-road validate                              # same as validate_roadmap.py w
 
 Optional git hooks: `pip install pre-commit && pre-commit install` (runs the roadmap validator).
 
+## specyrd (optional IDE command stubs)
+
+**specyrd** is an optional installer for **slash-command-style markdown** (or equivalent) that points agents at the same workflows as **`specy-road`** and `python scripts/…`. It does **not** replace roadmap validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. Optional per-milestone folders named `specify/<node-id>/` in this kit are **this repo’s** spec/plan/tasks files — unrelated to that tool.
+
+- **Subcommand:** `init` only.
+- **Typical use:** Run once per repo (or per IDE); add a second agent pack by running `init` again with another `--ai`.
+
+### Command line
+
+```text
+specyrd init [PATH] --ai <ID> [--ide <ID>] [--here] [--dry-run] [--force] [--ai-commands-dir REL_PATH]
+```
+
+- **`PATH`** — Directory used to resolve the repository (default: `.`). The tool prefers the git worktree root (`git rev-parse --show-toplevel`) when `PATH` is inside a git repo.
+- **`--ai` / `--ide`** — Required. Same option under two names. Agent pack: `cursor`, `claude-code`, or `generic`.
+- **`--here`** — Use the current working directory as the target (equivalent to `PATH` being `.`).
+- **`--dry-run`** — Print paths that would be written; do not create or overwrite files.
+- **`--force`** — Overwrite existing specyrd command stubs and `.specyrd/README.md` if they already exist.
+- **`--ai-commands-dir REL_PATH`** — **Required** when `--ai generic`. Must be a **relative** path under the repo root (no `..`). Writes command `.md` files into that directory.
+
+### What gets installed
+
+| `--ai` value | Command stubs | Meta |
+| --- | --- | --- |
+| `cursor` | `.cursor/commands/specyrd-*.md` (validate, brief, export, file-limits) | `.specyrd/README.md`, `.specyrd/manifest.json` |
+| `claude-code` | `.claude/commands/specyrd-*.md` (same four) | same |
+| `generic` | `REL_PATH/specyrd-*.md` where `REL_PATH` is `--ai-commands-dir` | same |
+
+Stubs only contain instructions to run **`specy-road`** / **`scripts/`** from the repository root (for example `specy-road validate`, `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`). Canonical behavior stays in the CLI and scripts.
+
+### Examples
+
+```bash
+# Cursor: from repo root
+specyrd init --here --ai cursor
+
+# Claude Code: explicit path
+specyrd init /path/to/repo --ai claude-code
+
+# Preview writes only
+specyrd init . --ai cursor --dry-run
+
+# Generic: put stubs under docs/agent-commands/ (relative to repo root)
+specyrd init --here --ai generic --ai-commands-dir docs/agent-commands
+
+# Overwrite a previous run’s stubs
+specyrd init --here --ai cursor --force
+```
+
+### See also
+
+- [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md) — required kit surface vs optional IDE glue  
+- [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) — broader optional agent/IDE patterns  
+- [AGENTS.md](AGENTS.md) — agent load order (stubs defer to the same commands)
+
 ## How to work with it
 
 1. **Author** — Edit the YAML graph under [`roadmap/`](roadmap/) (manifest and chunks, or a legacy single file). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
@@ -44,6 +101,7 @@ Optional git hooks: `pip install pre-commit && pre-commit install` (runs the roa
 4. **Focus a task** — `python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md` and implement against [`shared/`](shared/README.md) contracts cited for that node.
 5. **Parallel or roadmap-driven branches** — Follow [docs/git-workflow.md](docs/git-workflow.md): branch `feature/rm-<codename>`, **first commit** registers in [`roadmap/registry.yaml`](roadmap/registry.yaml), then implement.
 6. **Heavy / risky milestones** — Optionally add [`specify/<node-id>/`](specify/README.md) (`spec.md`, `plan.md`, `tasks.md`) from templates; the roadmap remains canonical.
+7. **Optional IDE commands** — If you use Cursor, Claude Code, or another flow, run [`specyrd init`](#specyrd-optional-ide-command-stubs) to add thin command stubs; they call the same `specy-road` / `scripts/` commands as above.
 
 ## Where to read next
 
@@ -67,7 +125,7 @@ Optional git hooks: `pip install pre-commit && pre-commit install` (runs the roa
 | [`specify/`](specify/) | Optional per-node spec/plan/tasks |
 | [`templates/`](templates/) | Milestone stubs and checklists |
 | [`scripts/`](scripts/) | Validators, brief helper, markdown export |
-| [`specy_road/`](specy_road/) | Package and `specy-road` CLI |
+| [`specy_road/`](specy_road/) | Package; `specy-road` CLI (validators, brief, export) and optional `specyrd` (IDE command stubs) |
 | [`docs/`](docs/) | Architecture, workflows, philosophy |
 
 [`vision.md`](vision.md) states product vision; [`roadmap.md`](roadmap.md) is generated from YAML (Gate column, etc.).

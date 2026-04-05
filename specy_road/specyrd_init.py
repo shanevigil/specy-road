@@ -1,0 +1,201 @@
+"""Install IDE command stubs that delegate to specy-road CLI or scripts."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+from dataclasses import dataclass
+from importlib import resources
+from pathlib import Path
+from typing import Any
+
+from specy_road import __version__
+
+AGENT_CHOICES = frozenset({"cursor", "claude-code", "generic"})
+
+# Relative to repo root per agent (generic uses --ai-commands-dir).
+AGENT_REL_DEST: dict[str, Path | None] = {
+    "cursor": Path(".cursor/commands"),
+    "claude-code": Path(".claude/commands"),
+    "generic": None,
+}
+
+COMMAND_FILES = (
+    "specyrd-validate.md",
+    "specyrd-brief.md",
+    "specyrd-export.md",
+    "specyrd-file-limits.md",
+)
+
+
+def _package_templates_dir() -> Path:
+    """Package directory for templates/specyrd/..."""
+    return Path(__file__).resolve().parent / "templates" / "specyrd"
+
+
+def _commands_traversable():
+    """Traversable for packaged command templates (filesystem fallback)."""
+    return resources.files("specy_road").joinpath(
+        "templates", "specyrd", "commands"
+    )
+
+
+def resolve_repo_root(start: Path) -> Path:
+    """Prefer git worktree root; else the resolved start path."""
+    start = start.resolve()
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=start,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return Path(r.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return start
+
+
+def _read_template(name: str) -> str:
+    """Load a command template; substitute version placeholder."""
+    pkg_dir = _package_templates_dir()
+    path = pkg_dir / "commands" / name
+    if path.is_file():
+        text = path.read_text(encoding="utf-8")
+    else:
+        t = _commands_traversable() / name
+        text = t.read_text(encoding="utf-8")
+    return text.replace("{{SPECYRD_VERSION}}", __version__)
+
+
+def _read_dot_specyrd_readme() -> str:
+    pkg_dir = _package_templates_dir()
+    path = pkg_dir / "dot-specyrd" / "README.md"
+    if path.is_file():
+        text = path.read_text(encoding="utf-8")
+    else:
+        text = (
+            resources.files("specy_road")
+            .joinpath("templates", "specyrd", "dot-specyrd", "README.md")
+            .read_text(encoding="utf-8")
+        )
+    return text.replace("{{SPECYRD_VERSION}}", __version__)
+
+
+@dataclass
+class InitResult:
+    written: list[str]
+    skipped: list[str]
+    dry_run: bool
+
+
+def _normalize_manifest_dict(data: dict[str, Any]) -> dict[str, Any]:
+    if "specyr_version" in data and "specyrd_version" not in data:
+        data["specyrd_version"] = data.pop("specyr_version")
+    if "specyrd_version" not in data:
+        data["specyrd_version"] = __version__
+    return data
+
+
+def _load_manifest(repo_root: Path) -> dict[str, Any]:
+    primary = repo_root / ".specyrd" / "manifest.json"
+    legacy = repo_root / ".specyr" / "manifest.json"
+    path = primary if primary.is_file() else legacy
+    if not path.is_file():
+        return {"specyrd_version": __version__, "agents": {}}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"specyrd_version": __version__, "agents": {}}
+    data = _normalize_manifest_dict(data)
+    if "agents" not in data or not isinstance(data["agents"], dict):
+        data["agents"] = {}
+    return data
+
+
+def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:
+    path = repo_root / ".specyrd" / "manifest.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data["specyrd_version"] = __version__
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _validate_generic_commands_dir(repo_root: Path, rel: Path) -> Path:
+    if rel.is_absolute():
+        raise ValueError(
+            "--ai-commands-dir must be relative to the repository root"
+        )
+    if ".." in rel.parts:
+        raise ValueError("--ai-commands-dir must not contain '..'")
+    resolved = (repo_root / rel).resolve()
+    try:
+        resolved.relative_to(repo_root.resolve())
+    except ValueError as e:
+        raise ValueError(
+            "--ai-commands-dir must resolve inside the repository root"
+        ) from e
+    return rel
+
+
+def run_init(
+    *,
+    target: Path,
+    agent: str,
+    dry_run: bool,
+    force: bool,
+    ai_commands_dir: Path | None,
+) -> InitResult:
+    if agent not in AGENT_CHOICES:
+        raise ValueError(f"unknown agent: {agent}")
+    if agent == "generic":
+        if ai_commands_dir is None:
+            raise ValueError("--ai-commands-dir is required when --ai generic")
+        rel_dest = ai_commands_dir
+    else:
+        rel_dest = AGENT_REL_DEST[agent]
+        assert rel_dest is not None
+
+    repo_root = resolve_repo_root(target)
+    if agent == "generic":
+        rel_dest = _validate_generic_commands_dir(repo_root, rel_dest)
+
+    written: list[str] = []
+    skipped: list[str] = []
+
+    manifest = _load_manifest(repo_root)
+
+    for name in COMMAND_FILES:
+        rel_file = rel_dest / name
+        dest_file = repo_root / rel_file
+        if dest_file.is_file() and not force:
+            skipped.append(str(rel_file))
+            continue
+        content = _read_template(name)
+        if dry_run:
+            written.append(str(rel_file))
+            continue
+        dest_file.parent.mkdir(parents=True, exist_ok=True)
+        dest_file.write_text(content, encoding="utf-8")
+        written.append(str(rel_file))
+
+    readme_rel = Path(".specyrd/README.md")
+    readme_path = repo_root / readme_rel
+    if readme_path.is_file() and not force:
+        skipped.append(str(readme_rel))
+    else:
+        readme_content = _read_dot_specyrd_readme()
+        if dry_run:
+            written.append(str(readme_rel))
+        else:
+            readme_path.parent.mkdir(parents=True, exist_ok=True)
+            readme_path.write_text(readme_content, encoding="utf-8")
+            written.append(str(readme_rel))
+
+    if not dry_run:
+        agents: dict[str, list[str]] = manifest.setdefault("agents", {})
+        cmd_paths = [str(rel_dest / n) for n in COMMAND_FILES]
+        canonical = cmd_paths + [str(readme_rel)]
+        agents[agent] = canonical
+        _save_manifest(repo_root, manifest)
+
+    return InitResult(written=written, skipped=skipped, dry_run=dry_run)

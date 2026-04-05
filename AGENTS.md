@@ -18,6 +18,8 @@ For a focused slice:
 python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
+If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to the same `specy-road` / `scripts/` commands above; follow this load order first.
+
 ## Coordination
 
 Read [`docs/git-workflow.md`](docs/git-workflow.md) before starting roadmap-linked implementation: branch `feature/rm-<codename>`, register in [`roadmap/registry.yaml`](roadmap/registry.yaml) first commit.
