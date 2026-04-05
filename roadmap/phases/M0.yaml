@@ -1,0 +1,44 @@
+# Foundation phase subtree (included from roadmap.yaml).
+nodes:
+  - id: M0
+    parent_id: null
+    type: phase
+    title: "Foundation — architecture and contracts"
+    codename: null
+    execution_milestone: Human-led
+    status: Not Started
+    touch_zones: []
+    dependencies: []
+    parallel_tracks: 1
+    notes: "Human-led phase: specs and ADRs before heavy implementation."
+
+  - id: M0.1
+    parent_id: M0
+    type: milestone
+    title: "Establish shared contracts and ADR skeleton"
+    codename: contracts-bootstrap
+    execution_milestone: Mixed
+    status: Not Started
+    touch_zones:
+      - "shared/"
+      - "schemas/"
+    dependencies: []
+    parallel_tracks: 1
+
+  - id: M0.1.1
+    parent_id: M0.1
+    type: task
+    title: "Define API contract outline in shared/"
+    codename: null
+    execution_milestone: null
+    execution_subtask: agentic
+    agentic_checklist:
+      artifact_action: "Add shared/api-contract.md with resource list and error shape"
+      spec_citation: "shared/README.md — Contracts section; link to ADR when added"
+      interface_contract: "HTTP JSON: request/response envelope; error codes enum"
+      constraints_note: "No secrets in repo; PII fields marked N/A in stub"
+      dependency_note: "After M0.1 milestone scaffolding exists"
+    status: Complete
+    touch_zones:
+      - "shared/"
+    dependencies: []

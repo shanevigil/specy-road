@@ -4,7 +4,7 @@
 
 ## Why use it
 
-- **Single source of truth** — The roadmap (`roadmap/roadmap.yaml`) drives priorities, dependencies, and gates; contracts live in `shared/` and are cited from work items.
+- **Single source of truth** — The roadmap graph under `roadmap/` (manifest plus chunk YAML files) drives priorities, dependencies, and gates; contracts live in `shared/` and are cited from work items.
 - **Smaller context for agents** — Generate a focused brief for a node so assistants load only what that task needs, instead of the whole repo story.
 - **Safer parallel work** — Immutable milestone IDs, **touch zones**, and **registration** in `roadmap/registry.yaml` make active work visible before files collide.
 - **Your tools, your workflow** — The kit is opinionated about **roadmapping and specs**, not about which IDE, agent, or in-session planning style you use. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
@@ -38,7 +38,7 @@ Optional git hooks: `pip install pre-commit && pre-commit install` (runs the roa
 
 ## How to work with it
 
-1. **Author** — Edit [`roadmap/roadmap.yaml`](roadmap/roadmap.yaml) (immutable IDs, dependencies, codenames, touch zones). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
+1. **Author** — Edit the YAML graph under [`roadmap/`](roadmap/) (manifest and chunks, or a legacy single file). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
 2. **Validate** — Run `python scripts/validate_roadmap.py` (or `specy-road validate`).
 3. **Publish views** — Regenerate the index: `python scripts/export_roadmap_md.py` (root `roadmap.md` and phase files under `roadmap/phases/`).
 4. **Focus a task** — `python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md` and implement against [`shared/`](shared/README.md) contracts cited for that node.

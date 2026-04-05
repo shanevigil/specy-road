@@ -4,7 +4,7 @@ This document is for **humans and coding agents** adopting or working on specy-r
 
 ## What specy-road is opinionated about
 
-- **Roadmap-first evolution** — [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml) is the canonical graph: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
+- **Roadmap-first evolution** — The graph under [`roadmap/`](../roadmap/) (manifest + hierarchical YAML chunks, or a legacy single file) is canonical: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
 - **Separation of concerns** — [`constitution/`](../constitution/) holds purpose and principles (human judgment). [`constraints/`](../constraints/) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
 - **Contracts over tribal knowledge** — [`shared/`](../shared/) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
 - **Multi-agent safety** — [`roadmap/registry.yaml`](../roadmap/registry.yaml) plus touch zones and first-commit registration ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
@@ -29,7 +29,7 @@ Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md)
 1. [`constitution/purpose.md`](../constitution/purpose.md)
 2. [`constitution/principles.md`](../constitution/principles.md)
 3. [`constraints/README.md`](../constraints/README.md)
-4. [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml) — **your node** plus parents and `dependencies` only
+4. [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml) (merged graph) — **your node** plus parents and `dependencies` only
 5. [`shared/README.md`](../shared/README.md) — then open **only** contract files cited for the task
 
 For a focused slice:
@@ -43,7 +43,7 @@ python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
 ```mermaid
 flowchart LR
   subgraph kitContract [Kit contract]
-    R[roadmap.yaml]
+    R[roadmap graph]
     C[constitution constraints shared]
   end
   subgraph userChoice [Your product or workflow]
@@ -55,4 +55,4 @@ flowchart LR
   A -. optional .-> implement
 ```
 
-The kit supplies **roadmap.yaml**, constitution, constraints, and **shared** contracts. **Implementation** happens in your codebase; optional agent/IDE configuration is outside the kit’s required surface.
+The kit supplies the **roadmap graph** (YAML), constitution, constraints, and **shared** contracts. **Implementation** happens in your codebase; optional agent/IDE configuration is outside the kit’s required surface.

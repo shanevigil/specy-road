@@ -6,17 +6,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import yaml
+from roadmap_load import load_roadmap
 
 ROOT = Path(__file__).resolve().parent.parent
-ROADMAP = ROOT / "roadmap" / "roadmap.yaml"
 SHARED = ROOT / "shared"
 
 
 def load_nodes() -> list[dict]:
-    with ROADMAP.open(encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return data["nodes"]
+    return load_roadmap(ROOT)["nodes"]
 
 
 def index(nodes: list[dict]) -> dict[str, dict]:

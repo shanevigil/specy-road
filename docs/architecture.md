@@ -9,7 +9,7 @@ End-to-end flow for this repository:
 ```mermaid
 flowchart TD
   subgraph author [Authoring]
-    Y[roadmap/roadmap.yaml]
+    Y[roadmap manifest and YAML chunks]
     V[vision.md]
     Y --> E[scripts/export_roadmap_md.py]
     E --> I[roadmap.md index]
@@ -32,10 +32,10 @@ flowchart TD
 |-------|------|
 | `constitution/` | Purpose and principles (human norms, not machine-enforced) |
 | `constraints/` | Machine-readable limits; `file-limits.yaml` enforced by `validate_file_limits.py` |
-| `roadmap/` | Canonical `roadmap.yaml` + `registry.yaml` |
+| `roadmap/` | `roadmap.yaml` (manifest or inline graph), chunk YAML, `registry.yaml` |
 | `schemas/` | JSON Schema for roadmap and registry |
 | `shared/` | Contracts cited from tasks |
 | `scripts/` | Validators, brief helper, markdown export |
 | `specy_road/` | Package + `specy-road` CLI entrypoint |
 
-**Source of truth:** [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml). Markdown views are generated; see [`roadmap-authoring.md`](roadmap-authoring.md).
+**Source of truth:** the roadmap graph under [`roadmap/`](../roadmap/) (see [`roadmap-authoring.md`](roadmap-authoring.md)). Markdown views are generated.

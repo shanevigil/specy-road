@@ -8,11 +8,13 @@ import sys
 from pathlib import Path
 
 import json
+
 import yaml
 from jsonschema import Draft202012Validator
 
+from roadmap_load import load_roadmap, validate_roadmap_yaml_line_limits
+
 ROOT = Path(__file__).resolve().parent.parent
-ROADMAP_PATH = ROOT / "roadmap" / "roadmap.yaml"
 REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
 SCHEMA_ROADMAP = ROOT / "schemas" / "roadmap.schema.json"
 SCHEMA_REGISTRY = ROOT / "schemas" / "registry.schema.json"
@@ -200,15 +202,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if not ROADMAP_PATH.is_file():
-        print(f"missing {ROADMAP_PATH}", file=sys.stderr)
-        raise SystemExit(1)
     if not REGISTRY_PATH.is_file():
         print(f"missing {REGISTRY_PATH}", file=sys.stderr)
         raise SystemExit(1)
 
-    with ROADMAP_PATH.open(encoding="utf-8") as f:
-        roadmap = yaml.safe_load(f)
+    validate_roadmap_yaml_line_limits(ROOT)
+    roadmap = load_roadmap(ROOT)
     with REGISTRY_PATH.open(encoding="utf-8") as f:
         registry = yaml.safe_load(f)
 

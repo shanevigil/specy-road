@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Export roadmap/roadmap.yaml to roadmap.md (index) and roadmap/phases/*.md.
+"""Export the roadmap graph to roadmap.md (index) and roadmap/phases/*.md.
 
-Canonical source of truth is roadmap/roadmap.yaml. Markdown is a human-readable view.
+Canonical source is under roadmap/ (roadmap.yaml manifest and chunk files, or legacy inline nodes).
+Markdown is a human-readable view.
 """
 
 from __future__ import annotations
@@ -10,14 +11,17 @@ import argparse
 import sys
 from pathlib import Path
 
-import yaml
+from roadmap_load import load_roadmap
 
 ROOT = Path(__file__).resolve().parent.parent
 ROADMAP_YAML = ROOT / "roadmap" / "roadmap.yaml"
 OUT_INDEX = ROOT / "roadmap.md"
 OUT_PHASES = ROOT / "roadmap" / "phases"
 
-BANNER = "<!-- specy-road: generated from roadmap/roadmap.yaml — do not edit by hand -->\n"
+BANNER = (
+    "<!-- specy-road: generated from roadmap graph (roadmap.yaml + includes) "
+    "— do not edit by hand -->\n"
+)
 
 
 def sort_key(nid: str) -> tuple[int, ...]:
@@ -137,9 +141,7 @@ def main() -> None:
         print(f"missing {ROADMAP_YAML}", file=sys.stderr)
         raise SystemExit(1)
 
-    with ROADMAP_YAML.open(encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    nodes = data["nodes"]
+    nodes = load_roadmap(ROOT)["nodes"]
 
     index, phase_files = export_markdown(nodes)
 
@@ -160,7 +162,7 @@ def main() -> None:
             if path.read_text(encoding="utf-8") != content:
                 print(f"drift: {path}", file=sys.stderr)
                 raise SystemExit(1)
-        print("OK: markdown export matches roadmap.yaml.")
+        print("OK: markdown export matches roadmap graph.")
         return
 
     OUT_INDEX.write_text(index, encoding="utf-8")

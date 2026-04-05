@@ -9,7 +9,7 @@ The kit is **opinionated** about roadmapping, specs, and contracts; it does **no
 1. [`constitution/purpose.md`](constitution/purpose.md) — why this exists  
 2. [`constitution/principles.md`](constitution/principles.md) — how we decide  
 3. [`constraints/README.md`](constraints/README.md) — enforced rules  
-4. [`roadmap/roadmap.yaml`](roadmap/roadmap.yaml) — **your node only** + parents + `dependencies`  
+4. Merged roadmap graph ([`roadmap/roadmap.yaml`](roadmap/roadmap.yaml) + any `includes`) — **your node only** + parents + `dependencies`  
 5. [`shared/README.md`](shared/README.md) — then open **only** cited contract files  
 
 For a focused slice:

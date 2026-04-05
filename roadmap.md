@@ -1,6 +1,6 @@
 # Roadmap index
 
-<!-- specy-road: generated from roadmap/roadmap.yaml — do not edit by hand -->
+<!-- specy-road: generated from roadmap graph (roadmap.yaml + includes) — do not edit by hand -->
 
 Gate maps milestone/task execution: **Human-led** / **Agentic-led** / **Mixed**, or sub-task **Human** / **Agentic** / **Human gate** when `execution_subtask` is set.
 
