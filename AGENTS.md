@@ -2,6 +2,8 @@
 
 **Project:** specy-road — roadmap-first coordination kit (not [Spec-Kit](https://github.com/github/spec-kit); inspired by it only).
 
+The kit is **opinionated** about roadmapping, specs, and contracts; it does **not** prescribe which agent or IDE you use or how you plan work inside a session. Read [`docs/philosophy-and-scope.md`](docs/philosophy-and-scope.md) for scope. Optional tooling ideas (CLAUDE.md, Cursor rules, MCP, etc.) live in [`docs/optional-ai-tooling-patterns.md`](docs/optional-ai-tooling-patterns.md) and are **not** required here.
+
 ## Load order (keep context small)
 
 1. [`constitution/purpose.md`](constitution/purpose.md) — why this exists  
@@ -15,10 +17,6 @@ For a focused slice:
 ```bash
 python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
-
-## Bootstrap backlog (transient)
-
-[`docs/bootstrap-next-steps.md`](docs/bootstrap-next-steps.md) tracked tooling bootstrap tasks; it is **complete** for the current scope—delete or archive when you no longer need it. High-level flow: [`docs/architecture.md`](docs/architecture.md).
 
 ## Coordination
 

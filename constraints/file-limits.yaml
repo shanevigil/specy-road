@@ -6,5 +6,4 @@ applies_to_globs:
   - "scripts/**/*.py"
   - "**/*.md"
 # Paths relative to repo root; matched with fnmatch against each candidate.
-exclude_globs:
-  - "project-design-for-claudeandcursor.md"
+# exclude_globs: []  # add path patterns here to skip large generated docs, etc.

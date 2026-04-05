@@ -1,5 +1,9 @@
 # Architecture (specy-road)
 
+## Scope and non-goals
+
+This repository provides **roadmap-first coordination** (YAML graph, validation, briefs, registry) and separates **constitution / principles / constraints / shared contracts**. It does **not** mandate a particular coding agent, IDE, or in-session implementation workflow—see [`philosophy-and-scope.md`](philosophy-and-scope.md).
+
 End-to-end flow for this repository:
 
 ```mermaid
