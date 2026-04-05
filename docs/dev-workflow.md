@@ -9,11 +9,11 @@ The complementary guide for PMs is [pm-workflow.md](pm-workflow.md).
 ## Your role in the system
 
 | You own | You do not touch |
-|---------|-----------------|
-| Branch, implementation, tests | Roadmap YAML authoring (PM territory) |
+| --- | --- |
+| Branch, implementation, tests, merge | Roadmap YAML authoring (PM territory) |
 | Registry claim (first commit) | Human-led gate decisions |
 | Pre-commit validation passing | `shared/` contracts (read only; flag gaps to PM) |
-| Removing registry entry before merge | Merging to main without PM sign-off |
+| Removing registry entry before merge | Authoring new roadmap nodes |
 
 If you find an `agentic` task whose `agentic_checklist` is incomplete or whose `spec_citation` does not exist — **stop**. Flag it to the PM before starting implementation. A missing contract is a gap in planning, not a gap to fill during implementation.
 
@@ -34,7 +34,7 @@ Open [`roadmap.md`](../roadmap.md). Look for milestones where:
 
 Check [`roadmap/registry.yaml`](../roadmap/registry.yaml) — confirm no active entry claims overlapping `touch_zones` with your intended milestone.
 
-If two milestones look parallel-safe (no shared touch zones, no dependency edge), confirm with the PM or integration lead before running them concurrently.
+If two milestones look parallel-safe (no shared touch zones, no dependency edge), `specy-road validate` is your check — a clean run means it is safe to proceed concurrently.
 
 ### 2. Get context
 
@@ -88,7 +88,7 @@ The pre-commit hook runs `specy-road validate` automatically — fix any errors 
 2. **Remove your registry entry** from `roadmap/registry.yaml`.
 3. Run `specy-road validate` and `specy-road export` locally — confirm both pass cleanly.
 4. Open a PR/MR targeting your integration branch. CI must be green.
-5. The PM or integration lead reviews and merges — do not self-merge roadmap-driven branches.
+5. Merge when CI passes — you own this branch end-to-end. No PM sign-off required.
 6. Delete the feature branch after merge.
 
 ---

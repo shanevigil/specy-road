@@ -40,8 +40,7 @@ On a roadmap-driven branch, the **first commit** must register work—**no imple
 
 | Role | Responsibility |
 |------|------------------|
-| PM / Director | Specs, acceptance, roadmap edits, triage |
-| Developer (+ agent) | Implements against contracts; owns branch to acceptance |
-| Integration lead | Trunk merge when acceptance and CI pass — merge is a **human gate** |
+| PM / Director | Specs, contracts, roadmap authoring — stays far ahead of execution |
+| Developer (+ agent) | Implements against contracts; owns branch through merge |
 
-Parallelism across milestones is allowed only when **dependencies** and **touch zones** allow it; confirm with PM or integration lead when in doubt.
+Parallelism across milestones is allowed when **dependencies** and **touch zones** permit it — `specy-road validate` is the check, not a human approval.

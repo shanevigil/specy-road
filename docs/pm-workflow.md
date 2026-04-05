@@ -8,37 +8,50 @@ The complementary guide for developers is [dev-workflow.md](dev-workflow.md).
 
 ## Your role in the system
 
-| You own | You hand off |
-|---------|-------------|
-| Roadmap YAML authoring | Agentic-led milestones (once contracts exist) |
-| Human-led gate decisions | Execution — branch, implement, test |
-| Shared contracts under `shared/` | Merge-back review (spot-check, not line-review) |
-| Registry hygiene (active claims) | Day-to-day CI / validation failures |
-| Export cadence (stakeholder views) | — |
+Agentic development compresses execution timescales dramatically. A single developer with agents can execute dozens of tasks per day; a team can run hundreds. Your job is not to approve each task — it is to **stay far enough ahead** that devs and agents are never blocked waiting for a contract, decision, or node to exist.
 
-You are not the first person to touch `scripts/` or `tests/` — those are dev territory. You are the last person to approve a milestone before it closes.
+**Target horizon:** keep ready-to-execute `agentic` nodes available at a depth of roughly `(tasks per day per dev) × (number of devs)` ahead of current execution. If three devs each run ten tasks a day, the runway should be at least 30 nodes deep before the first one starts the morning.
+
+| You own | You hand off entirely |
+| --- | --- |
+| Roadmap YAML authoring | All implementation |
+| Human-led gate decisions (resolved in advance) | Branch, test, merge |
+| Shared contracts under `shared/` | CI and validation failures |
+| Maintaining the execution runway | Registry housekeeping during execution |
+| Stakeholder views via export | Code review |
+
+You do not review PRs. You do not approve merges. The contracts you write and the CI the team runs are the gates — not your sign-off on individual branches.
 
 ---
 
-## Day-in-the-life: three modes
+## Day-in-the-life: two modes
 
-### 1. Planning (authoring nodes)
+### 1. Runway maintenance (primary, ongoing)
 
-**When:** start of a phase, incoming requirement, new decision.
+Your main activity is keeping enough ready-to-execute nodes ahead of the team's execution pace.
 
-1. Read [`vision.md`](../vision.md) — ensure the change fits the project's invariants.
-2. Open the relevant chunk file under `roadmap/phases/`. If the phase is new, add a chunk and wire it into [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml) via `includes`.
-3. Add or update nodes. Full field reference: [roadmap-authoring.md — Node fields reference](roadmap-authoring.md#node-fields-reference).
-4. Tag every sub-task with `execution_subtask`: `human`, `agentic`, or `human-gate`. See [Execution type tagging](roadmap-authoring.md#execution-type-tagging).
-5. For `agentic` sub-tasks, fill in the five-field `agentic_checklist`. If you cannot fill all five fields — the spec is missing; write or stub it first.
-6. Validate: `specy-road validate`. Fix any errors before committing.
-7. Regenerate the markdown index: `specy-road export`.
+**Signs the runway is too short:**
+
+- Devs are waiting on a contract or decision before they can start a node
+- Nodes marked `Not Started` with `agentic` execution but missing `agentic_checklist` fields
+- `human-gate` tasks that haven't been resolved before devs reach them
+
+**Batch authoring cadence (suggested):**
+
+1. Check the current execution depth: open [`roadmap.md`](../roadmap.md) and count `Not Started` + `Agentic-led` nodes with no unresolved dependencies.
+2. If the depth is below your target horizon, open the next chunk file and add nodes.
+3. For each `agentic` sub-task, fill in all five `agentic_checklist` fields. If you cannot — the spec is missing; write or stub it first and add a `risks` note.
+4. Resolve any `human-gate` tasks in the new batch before you stop. Do not leave `human-gate` nodes pending — they become blockers the moment a dev reaches them.
+5. Validate: `specy-road validate`. Fix errors before committing.
+6. Regenerate: `specy-road export`.
 
 **Commit message convention:** `chore(roadmap): <short description of what changed>`
 
 ### 2. Decision-making (human-gate tasks)
 
-**When:** an `agentic` task has a blocking `human-gate` predecessor, or CI/review surfaces a judgment call.
+**When:** a `human-gate` node exists in the upcoming execution horizon that has not been resolved.
+
+Resolve these before devs reach them, not after:
 
 1. Open the node with `execution_subtask: human-gate`.
 2. Make the decision; record it in:
@@ -48,16 +61,29 @@ You are not the first person to touch `scripts/` or `tests/` — those are dev t
 3. Update the sub-task `status` to `Complete`.
 4. Validate and export.
 
-A `human-gate` task blocks all `agentic` descendants — do not leave it `In Progress` indefinitely. If you need more time, add a `risks` note so developers know the hold is intentional.
+A `human-gate` task left unresolved is a hold on every downstream `agentic` node. Treat resolving them as part of runway maintenance, not a reactive step.
 
-### 3. Review (merge-back and registry hygiene)
+---
 
-**When:** a developer signals a roadmap-driven branch is ready to merge.
+## Monitoring execution (not approving it)
 
-1. Check [`roadmap/registry.yaml`](../roadmap/registry.yaml) — the entry for that codename should be removed in the PR. If it is still present, request removal before merge.
-2. Verify the milestone `status` in the chunk YAML is updated to `Complete` (or the agreed terminal state).
-3. Confirm `specy-road validate` and `specy-road export --check` pass in CI.
-4. Approve the merge. You do not need to review every line — trust the contracts and checklist.
+You observe progress through `roadmap.md` and the registry — not through PRs.
+
+**Registry (`roadmap/registry.yaml`):**
+
+- Shows who has claimed what and which touch zones are active
+- A stale entry (claimed long ago, no recent commits) may indicate a blocked branch — follow up with the dev
+- `specy-road validate` warns on overlapping touch zones; surface this to the team if needed
+
+**Export:**
+
+```bash
+specy-road export
+```
+
+Check [`roadmap.md`](../roadmap.md) to see status across milestones. Share it with stakeholders as the canonical view — the phase files under [`roadmap/phases/`](../roadmap/phases/) have goal, acceptance, and decision detail.
+
+You do not need to check in on individual PRs. If CI is green and the contract was complete, the work is correct by construction.
 
 ---
 
@@ -66,11 +92,11 @@ A `human-gate` task blocks all `agentic` descendants — do not leave it `In Pro
 **Rule of thumb:** if a step requires judgment, policy, stakeholder input, or cannot be verified by a machine — it is `human` or `human-gate`. If it can be fully described by a contract and a checklist — it is `agentic`.
 
 | Situation | Tag |
-|-----------|-----|
+| --- | --- |
 | Write an ADR or feature spec | `human` |
-| Choose between two architecture options | `human-gate` (blocks downstream) |
+| Choose between two architecture options | `human-gate` (resolve before devs reach it) |
 | Implement per a complete spec | `agentic` |
-| Acceptance / spot-check review | `human` |
+| Acceptance spot-check (optional) | `human` |
 | CI-verified code generation | `agentic` |
 
 Set `execution_milestone` on the parent milestone to reflect the **dominant** work type (`Human-led`, `Agentic-led`, or `Mixed`).
@@ -81,41 +107,18 @@ See [Rules for authoring sub-tasks](roadmap-authoring.md#rules-for-authoring-sub
 
 ## Writing implementable contracts
 
-Agents and developers consume contracts from `shared/`. Before marking a milestone `agentic`, ensure the cited contract exists and is complete enough to implement from.
+Before marking a milestone ready, ensure the contract in `shared/` is complete enough to implement from without asking clarifying questions.
 
 A contract is implementable when it answers:
+
 - **What entity or operation** is being produced.
 - **What inputs and outputs** (schema, shape, fields).
 - **What constraints** (security, compliance, performance).
 - **What success looks like** (acceptance criteria or success signal).
 
-If it cannot answer all four — the contract is a stub. Stubs are fine early, but mark the `agentic` task `Not Started` and add a `risks` note until the stub is filled in.
+If it cannot answer all four — the contract is a stub. Mark the `agentic` task `Not Started` and add a `risks` note until the stub is filled in. An incomplete contract means the dev will stall or guess — both cost more than the time it takes you to finish the spec.
 
 See [Spec crosswalk](roadmap-authoring.md#spec-crosswalk) for the types of contracts (feature spec, data model, API contract, etc.).
-
----
-
-## Export cadence
-
-Generate the markdown index after any structural YAML change:
-
-```bash
-specy-road export
-```
-
-Share [`roadmap.md`](../roadmap.md) with stakeholders — it is the canonical status table. The phase files under [`roadmap/phases/`](../roadmap/phases/) have goal, acceptance, and decision detail per milestone.
-
-Do **not** hand-edit `roadmap.md` or phase markdown files — they are generated. Edit the YAML, then regenerate.
-
----
-
-## Registry hygiene
-
-[`roadmap/registry.yaml`](../roadmap/registry.yaml) tracks active work claims. As PM, you should:
-
-- **Review it before kickoff meetings** — it shows who has claimed what and which touch zones are active.
-- **Watch for stale entries** — an entry older than expected with no recent commits may indicate a blocked or abandoned branch. Follow up with the owner.
-- **Flag overlapping touch zones** — `specy-road validate` emits warnings when two registry entries share nested paths. Surface this to the team before it becomes a merge conflict.
 
 ---
 
@@ -124,7 +127,7 @@ Do **not** hand-edit `roadmap.md` or phase markdown files — they are generated
 ```bash
 specy-road validate          # validate roadmap YAML + registry
 specy-road export            # regenerate roadmap.md and phase files
-specy-road brief <NODE_ID>   # read what a dev/agent will receive for a node
+specy-road brief <NODE_ID>   # read exactly what a dev/agent will receive
 ```
 
 Read the [roadmap authoring guide](roadmap-authoring.md) for full YAML field details, hierarchical chunk patterns, and line-count policy.
