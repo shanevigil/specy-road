@@ -65,6 +65,16 @@ def _build_parser() -> argparse.ArgumentParser:
             "for command .md files."
         ),
     )
+    init.add_argument(
+        "--role",
+        choices=["pm", "dev"],
+        metavar="ROLE",
+        help=(
+            "Install only the stubs relevant to a role: "
+            "pm (author, export, validate) or dev (brief, claim, validate). "
+            "Omit to install all stubs."
+        ),
+    )
     return p
 
 
@@ -92,6 +102,7 @@ def main(argv: list[str] | None = None) -> None:
             dry_run=args.dry_run,
             force=args.force,
             ai_commands_dir=args.ai_commands_dir,
+            role=args.role,
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)

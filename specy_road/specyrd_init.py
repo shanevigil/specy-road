@@ -12,6 +12,7 @@ from typing import Any
 from specy_road import __version__
 
 AGENT_CHOICES = frozenset({"cursor", "claude-code", "generic"})
+ROLE_CHOICES = frozenset({"pm", "dev"})
 
 # Relative to repo root per agent (generic uses --ai-commands-dir).
 AGENT_REL_DEST: dict[str, Path | None] = {
@@ -20,12 +21,29 @@ AGENT_REL_DEST: dict[str, Path | None] = {
     "generic": None,
 }
 
+# All available command stubs.
 COMMAND_FILES = (
     "specyrd-validate.md",
     "specyrd-brief.md",
     "specyrd-export.md",
     "specyrd-file-limits.md",
+    "specyrd-author.md",
+    "specyrd-claim.md",
 )
+
+# Stubs installed per role; omit to install all.
+ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
+    "pm": (
+        "specyrd-validate.md",
+        "specyrd-export.md",
+        "specyrd-author.md",
+    ),
+    "dev": (
+        "specyrd-validate.md",
+        "specyrd-brief.md",
+        "specyrd-claim.md",
+    ),
+}
 
 
 def _package_templates_dir() -> Path:
@@ -144,9 +162,12 @@ def run_init(
     dry_run: bool,
     force: bool,
     ai_commands_dir: Path | None,
+    role: str | None = None,
 ) -> InitResult:
     if agent not in AGENT_CHOICES:
         raise ValueError(f"unknown agent: {agent}")
+    if role is not None and role not in ROLE_CHOICES:
+        raise ValueError(f"unknown role: {role!r}; choose pm or dev")
     if agent == "generic":
         if ai_commands_dir is None:
             raise ValueError("--ai-commands-dir is required when --ai generic")
@@ -164,7 +185,8 @@ def run_init(
 
     manifest = _load_manifest(repo_root)
 
-    for name in COMMAND_FILES:
+    files_to_install = ROLE_COMMAND_FILES[role] if role else COMMAND_FILES
+    for name in files_to_install:
         rel_file = rel_dest / name
         dest_file = repo_root / rel_file
         if dest_file.is_file() and not force:
@@ -193,9 +215,11 @@ def run_init(
 
     if not dry_run:
         agents: dict[str, list[str]] = manifest.setdefault("agents", {})
-        cmd_paths = [str(rel_dest / n) for n in COMMAND_FILES]
+        cmd_paths = [str(rel_dest / n) for n in files_to_install]
         canonical = cmd_paths + [str(readme_rel)]
         agents[agent] = canonical
+        if role is not None:
+            manifest["role"] = role
         _save_manifest(repo_root, manifest)
 
     return InitResult(written=written, skipped=skipped, dry_run=dry_run)
