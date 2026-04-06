@@ -1,8 +1,10 @@
-# Dev workflow: consuming and executing roadmap items
+# Dev workflow: executing roadmap items
 
-This document is for the person (or agent) **executing** roadmap work — a developer or coding agent who picks up an `Agentic-led` milestone, implements it against contracts, and merges back.
+This document is for the developer (or coding agent) who picks up `Agentic-led` work,
+implements it against contracts, and merges back.
 
-The complementary guide for PMs is [pm-workflow.md](pm-workflow.md).
+For setup (install, pre-commit hook, IDE stubs) see [setup.md](setup.md).
+For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 
 ---
 
@@ -11,163 +13,136 @@ The complementary guide for PMs is [pm-workflow.md](pm-workflow.md).
 | You own | You do not touch |
 | --- | --- |
 | Branch, implementation, tests, merge | Roadmap YAML authoring (PM territory) |
-| Registry claim (first commit) | Human-led gate decisions |
-| Pre-commit validation passing | `shared/` contracts (read only; flag gaps to PM) |
-| Removing registry entry before merge | Authoring new roadmap nodes |
+| Registry claim + deregistration | Human-led gate decisions |
+| Pre-commit validation passing | `shared/` contracts (read only — flag gaps to PM) |
 
-If you find an `agentic` task whose `agentic_checklist` is incomplete or whose `spec_citation` does not exist — **stop**. Flag it to the PM before starting implementation. A missing contract is a gap in planning, not a gap to fill during implementation.
+If you reach an `agentic` task whose `agentic_checklist` is incomplete or whose
+`spec_citation` does not resolve to a real file — **stop**. Flag it to the PM.
+A missing contract is a planning gap, not something to fill during implementation.
 
 ---
 
-## Day-in-the-life: four stages
+## The task loop
 
-### 1. Find work
+### Start: `specy-road do-next-available-task`
 
-```bash
-specy-road export            # regenerate index (or read roadmap.md if current)
-```
-
-Open [`roadmap.md`](../roadmap.md). Look for milestones where:
-- `execution_milestone` is `Agentic-led` or `Mixed`
-- `status` is `Not Started`
-- All `dependencies` nodes are `Complete`
-
-Check [`roadmap/registry.yaml`](../roadmap/registry.yaml) — confirm no active entry claims overlapping `touch_zones` with your intended milestone.
-
-If two milestones look parallel-safe (no shared touch zones, no dependency edge), `specy-road validate` is your check — a clean run means it is safe to proceed concurrently.
-
-### 2. Get context
-
-Generate a focused brief for your node:
+Run this from main (or your integration branch) when you are ready to pick up work:
 
 ```bash
-specy-road brief <NODE_ID>
-# save it for in-session reference:
-specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
+git checkout main && git pull
+specy-road do-next-available-task
 ```
 
-The brief gives you: ancestor chain, node fields, dependencies, and the list of contracts in `shared/` to read selectively. **Read the contracts your task cites** — do not implement from the roadmap prose alone.
+The command:
 
-Full field reference if you need to interpret YAML directly: [roadmap-authoring.md — Node fields reference](roadmap-authoring.md#node-fields-reference).
+1. Reads the roadmap and registry.
+2. Lists available tasks — `Agentic-led` or `agentic`, not started, dependencies met,
+   not already claimed.
+3. You pick a number.
+4. It creates the feature branch (`feature/rm-<codename>`), writes the registry entry,
+   and makes the first commit.
+5. It writes `work/brief-<NODE_ID>.md` and `work/prompt-<NODE_ID>.md`.
 
-### 3. Branch, register, and implement
+Open the prompt file in your agent. The prompt contains the contract fields and
+instructs the agent to commit incrementally and call `specy-road finish-this-task`
+when done.
 
-#### Branch model
+Multiple devs or agents can each run `do-next-available-task` concurrently — they
+will pick different items. The registry prevents double-claiming.
 
-One branch per roadmap milestone. All feature branches fork from the integration branch (typically `main` or `dev`) and merge back to the same branch when done.
+### Finish: `specy-road finish-this-task`
+
+Run from the feature branch when implementation is complete:
+
+```bash
+specy-road finish-this-task
+```
+
+The command:
+
+1. Reads the current branch name to find the codename and registry entry.
+2. Updates the node `status` to `Complete` in the roadmap YAML chunk.
+3. Removes the registry entry.
+4. Runs `specy-road validate` and `specy-road export`.
+5. Commits the bookkeeping changes.
+6. Prints the `git push` + `gh pr create` commands to open a PR.
+
+Merge when CI is green. No PM sign-off required.
+
+---
+
+## Branch model
+
+One branch per roadmap milestone. All feature branches fork from and merge back to the
+same integration branch.
 
 ```text
-main ──────────────────────────────────────────────► main
-  └─ feature/rm-auth-middleware ──────────────────┘
-  └─ feature/rm-entry-api  ────────────────────┘
+main ─────────────────────────────────────────────► main
+  └─ feature/rm-auth-middleware ─────────────────┘
+  └─ feature/rm-entry-api  ───────────────────┘
   └─ feature/rm-export-pipeline  ─────────────────────┘
 ```
 
-Multiple branches running in parallel is the normal state when touch zones and dependencies allow it. The registry makes this visible before file collisions occur.
+Multiple parallel branches is the normal operating state. The registry makes active
+claims visible so touch zone conflicts surface before file collisions.
 
-#### Branch naming
+**Naming:** `feature/rm-<codename>` where `<codename>` matches the roadmap node's
+`codename` field exactly (kebab-case). The `rm-` prefix distinguishes roadmap-driven
+branches from ad-hoc `fix/<slug>` or `feature/<slug>` branches.
 
-`feature/rm-<codename>` — the `<codename>` must match the milestone's `codename` field in the roadmap YAML exactly (kebab-case). The `rm-` prefix marks it as roadmap-driven and keeps it distinct from ad-hoc fix branches.
+Non-roadmap work (hotfixes, tooling) uses `fix/<slug>` without the `rm-` prefix and
+does not touch `registry.yaml`.
+
+---
+
+## Manual path (without `do-next-available-task`)
+
+If you prefer to start a task manually:
+
+1. Find a node in [`roadmap.md`](../roadmap.md) where `execution_milestone` is
+   `Agentic-led` or `Mixed`, `status` is `Not Started`, and all `dependencies` are
+   `Complete`.
+2. Confirm it is not claimed in [`roadmap/registry.yaml`](../roadmap/registry.yaml).
+3. Branch and register:
 
 ```bash
-# branch from your integration branch
-git checkout main               # or dev — whatever your team uses
-git pull
 git checkout -b feature/rm-<codename>
-```
-
-Non-roadmap work uses `fix/<slug>` or `feature/<slug>` without the `rm-` prefix.
-
-#### First commit — registration (mandatory)
-
-No implementation before this commit. The registration commit is how parallel workers know this milestone is claimed.
-
-1. Add an entry to [`roadmap/registry.yaml`](../roadmap/registry.yaml):
-
-```yaml
-entries:
-  - codename: <codename>
-    node_id: <NODE_ID>
-    branch: feature/rm-<codename>
-    touch_zones:
-      - path/to/affected/dir/
-    started: "<YYYY-MM-DD>"
-    owner: "<your name or agent ID>"
-```
-
-2. Validate and commit:
-
-```bash
+# add entry to roadmap/registry.yaml, then:
 specy-road validate
 git add roadmap/registry.yaml
 git commit -m "chore(rm-<codename>): register as in-progress"
 ```
 
-The pre-commit hook re-runs `specy-road validate` on every commit — fix errors before they land.
-
-#### During implementation
-
-- Stay within declared `touch_zones`. If scope expands, update the registry entry.
-- CI runs the full suite on push: validate → export check → file limits → pytest.
-- Commit as often as is useful — no commit cadence requirement beyond the first registration commit.
-
-### 4. Merge back
-
-1. **Update the milestone status** in the relevant chunk YAML file (`status: Complete`).
-2. **Remove your registry entry** from `roadmap/registry.yaml`.
-3. Validate and export locally:
-
-```bash
-specy-road validate
-specy-road export
-```
-
-1. Open a PR/MR targeting the same integration branch you forked from. CI must be green.
-2. Merge when CI passes — you own this branch end-to-end. No PM sign-off required.
-3. Delete the feature branch after merge.
-
----
-
-## Validation and CI
-
-| Command | When it runs | Owned by |
-|---------|--------------|---------|
-| `specy-road validate` | Every commit (pre-commit hook) | You |
-| `specy-road export --check` | CI on push/PR | CI |
-| `specy-road file-limits` | CI on push/PR | CI |
-| `pytest` | CI on push/PR | CI |
-
-Install the pre-commit hook once per repo clone:
-
-```bash
-pip install pre-commit
-pre-commit install
-```
-
-If validation fails, read the error output — it names the offending node ID, field, or file. Do not bypass the hook (`--no-verify`) to make the commit land.
+1. Generate a brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`
+2. Implement, commit incrementally.
+3. Run `specy-road finish-this-task` to close out, or do the steps manually:
+   - Update `status: Complete` in the chunk YAML.
+   - Remove the registry entry.
+   - `specy-road validate && specy-road export`
+   - Commit, push, open PR.
 
 ---
 
 ## Reading the agentic checklist
 
-Every `agentic` sub-task in the roadmap has an `agentic_checklist`. These five fields define the contract for your implementation:
+Every `agentic` sub-task carries an `agentic_checklist`. The prompt file generated by
+`do-next-available-task` includes these fields, but you can also read them directly in
+the brief or YAML.
 
 | Field | What it tells you |
-|-------|------------------|
+| --- | --- |
 | `artifact_action` | Exactly what to build or change |
 | `spec_citation` | Which doc/section to conform to — **read it** |
 | `interface_contract` | Inputs → outputs (API shape, file format, component props) |
 | `constraints_note` | Security, performance, or UX rules that bind you |
 | `dependency_note` | What must exist before you start |
 
-Optional fields:
+Optional:
 
 | Field | What it tells you |
-|-------|------------------|
-| `success_signal` | Observable behavior or test that confirms done |
-| `forbidden_patterns` | Explicit prohibitions — do not do these even if they seem simpler |
-
-If any of the five required fields is empty or vague, flag it to the PM before writing code.
+| --- | --- |
+| `success_signal` | Observable behavior or test confirming done |
+| `forbidden_patterns` | Explicit prohibitions |
 
 ---
 
@@ -175,22 +150,22 @@ If any of the five required fields is empty or vague, flag it to the PM before w
 
 When multiple developers or agents are running simultaneously:
 
-1. **Check the registry first** — `specy-road validate` emits warnings on nested touch zone overlaps.
-2. **Prefer git worktrees** for parallel agents on the same machine — they get isolated working directories on disjoint branches.
-3. **Never start implementation** on a branch whose touch zones overlap an active registry entry — coordinate first.
-4. **Milestone dependencies are hard stops** — a `dependencies: [M1.1]` means M1.1 must be `Complete` before you start M1.2, regardless of whether touch zones conflict.
-
-Full parallelism rules: [git-workflow.md — Parallelism rules](git-workflow.md#parallelism-rules).
+- `do-next-available-task` filters out already-claimed nodes — safe to run in parallel.
+- `specy-road validate` warns on overlapping touch zones between registry entries.
+- **Prefer git worktrees** for parallel agents on one machine — isolated working trees
+  on disjoint branches.
+- **Milestone dependencies are hard stops** — `dependencies: [M1.1]` means M1.1 must
+  be `Complete` before M1.2 can appear in the available list.
 
 ---
 
 ## Quick reference
 
 ```bash
-specy-road validate          # validate roadmap YAML + registry
-specy-road brief <NODE_ID>   # get focused brief for your node
-specy-road export            # regenerate roadmap.md
-specy-road file-limits       # check line-count constraints locally
-```
+specy-road do-next-available-task   # pick, branch, register, generate brief + prompt
+specy-road finish-this-task         # complete, validate, export, commit, PR hint
 
-Read the [git workflow guide](git-workflow.md) for branch conventions, first-commit registration details, and merge-back protocol.
+specy-road validate                 # validate roadmap YAML + registry
+specy-road brief <NODE_ID>          # generate brief for a specific node
+specy-road export                   # regenerate roadmap.md
+```
