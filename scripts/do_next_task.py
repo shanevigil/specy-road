@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import datetime
 import subprocess
 import sys
@@ -73,6 +74,53 @@ def _available(nodes: list[dict], reg: dict) -> list[dict]:
 
 def _git(*args: str) -> None:
     subprocess.check_call(["git", *args], cwd=ROOT)
+
+
+def _working_tree_clean() -> bool:
+    r = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return not r.stdout.strip()
+
+
+def _assert_working_tree_clean() -> None:
+    if not _working_tree_clean():
+        print(
+            "error: working tree is not clean (commit, stash, or discard changes first).",
+            file=sys.stderr,
+        )
+        print(
+            "  Integration-branch sync and creating a new feature branch need a clean tree.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
+def _sync_integration_branch(base: str, remote: str) -> None:
+    """
+    Fetch, check out the integration branch, and fast-forward to remote.
+    Requires a clean working tree.
+    """
+    _assert_working_tree_clean()
+    _git("fetch", remote)
+    _git("checkout", base)
+    try:
+        _git("merge", "--ff-only", f"{remote}/{base}")
+    except subprocess.CalledProcessError:
+        print(
+            f"error: could not fast-forward local '{base}' to {remote}/{base}.",
+            file=sys.stderr,
+        )
+        print(
+            "  Resolve your local integration branch (e.g. pull with rebase, or reset "
+            "after team agreement), then retry.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 def _checkout_new_branch(branch: str) -> None:
@@ -179,7 +227,32 @@ def _pick(available: list[dict]) -> dict:
     return available[idx]
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Pick the next agentic task, sync integration branch, branch, register.",
+    )
+    p.add_argument(
+        "--base",
+        default="main",
+        metavar="BRANCH",
+        help="Integration branch to sync before creating feature/rm-* (default: main).",
+    )
+    p.add_argument(
+        "--remote",
+        default="origin",
+        metavar="NAME",
+        help="Git remote to fetch and merge from (default: origin).",
+    )
+    p.add_argument(
+        "--no-sync",
+        action="store_true",
+        help="Skip fetch/checkout/ff-merge of the integration branch (offline/CI).",
+    )
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv if argv is not None else sys.argv[1:])
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
     available = _available(nodes, reg)
@@ -190,6 +263,9 @@ def main() -> None:
             "blocked, or have unmet dependencies."
         )
         raise SystemExit(0)
+
+    if not args.no_sync:
+        _sync_integration_branch(args.base, args.remote)
 
     node = _pick(available)
     node_id = node["id"]

@@ -36,6 +36,19 @@ On a roadmap-driven branch, the **first commit** must register work—**no imple
 2. Merge via PR/MR; green validation (e.g. `scripts/validate_roadmap.py`) should pass.
 3. Delete the feature branch after merge.
 
+## Correcting merged work: revert vs follow-up
+
+On a shared integration branch, **do not rewrite history** others may have pulled (avoid
+`git push --force` to “un-merge”).
+
+| Intent | Safer pattern |
+| --- | --- |
+| Remove the effect of a bad merge from `main` | Open a **revert** PR (revert the merge commit). History stays linear and auditable. |
+| Improve code that is already merged | Branch from current `main` and land a **follow-up** PR (`fix/...`, `feature/...`, or a new roadmap-driven branch if the PM tracks it). |
+
+Roadmap bookkeeping (registry, node status, follow-up tasks) lives in
+[dev-workflow.md](dev-workflow.md).
+
 ## Roles
 
 | Role | Responsibility |

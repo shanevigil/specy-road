@@ -26,14 +26,21 @@ A missing contract is a planning gap, not something to fill during implementatio
 
 ### Start: automated path
 
-The automated path picks a task, creates the branch, registers it, and writes the brief
-and prompt in one step.
+The automated path syncs the integration branch (default `main`), picks a task, creates
+the branch, registers it, and writes the brief and prompt in one step.
+
+With sync **on** (the default), your working tree must be **clean** — commit, stash, or
+discard local changes first. The tool runs `git fetch`, checks out the integration
+branch, and `git merge --ff-only` against the remote ref (e.g. `origin/main`). If your
+local integration branch has diverged, resolve that before retrying. Use `--no-sync`
+for offline use or CI. Repos that integrate on `dev` should pass `--base dev`.
 
 **Terminal:**
 
 ```bash
-git checkout main && git pull
 specy-road do-next-available-task
+# optional: specy-road do-next-available-task --base dev --remote origin
+# offline:  specy-road do-next-available-task --no-sync
 ```
 
 **IDE slash command** (after `specyrd init --ai <ide> --role dev`):
@@ -84,6 +91,8 @@ Run from the feature branch when implementation is complete.
 
 ```bash
 specy-road finish-this-task
+# optional: specy-road finish-this-task --push
+#          specy-road finish-this-task --push --remote origin
 ```
 
 **IDE slash command:**
@@ -94,12 +103,14 @@ specy-road finish-this-task
 
 This will:
 
-1. Read the current branch name to find the codename and registry entry.
+1. Read the current branch name to find the codename and registry entry (the registry
+   `branch` must match `HEAD`).
 2. Update the node `status` to `Complete` in the roadmap YAML chunk.
 3. Remove the registry entry.
 4. Run `specy-road validate` and `specy-road export`.
 5. Commit the bookkeeping changes.
-6. Print the `git push` + `gh pr create` commands to open a PR.
+6. Unless `--push` was passed, print the `git push` + `gh pr create` commands to open a PR.
+   With `--push`, run `git push -u` after the bookkeeping commit, then print the PR hint.
 
 Merge when CI is green. No PM sign-off required.
 
@@ -126,6 +137,95 @@ branches from ad-hoc `fix/<slug>` or `feature/<slug>` branches.
 
 Non-roadmap work (hotfixes, tooling) uses `fix/<slug>` without the `rm-` prefix and
 does not touch `registry.yaml`.
+
+---
+
+## After merge: fix, refactor, or hardening
+
+Merged work can still need correction (bugs), standards cleanup, or a maintainer-led
+refactor. That is normal; it does not require rewriting history on a shared integration
+branch.
+
+**Non-roadmap cleanup (default):** Branch from current `main` (or your team’s integration
+branch), use `fix/<slug>` or `feature/<slug>`. Do **not** add a `registry.yaml` entry
+unless your team explicitly tracks this work on the roadmap.
+
+**Roadmap-visible rework:** If stakeholders need the graph to show the effort (touch
+zones, dependencies, ordering), the PM adds a **new** node (or follows your team’s
+policy for reopening — see below). You then use `feature/rm-<codename>` with
+first-commit registration per [git-workflow.md](git-workflow.md).
+
+Git mechanics for “undoing” a merge on a shared branch are covered in
+[git-workflow.md](git-workflow.md#correcting-merged-work-revert-vs-follow-up) (revert PR
+vs follow-up branch — avoid `git reset --force` on shared history).
+
+---
+
+## Re-doing or re-opening a roadmap item
+
+**Registry:** A `feature/rm-<codename>` branch is **one active claim per codename**.
+After `finish-this-task` and merge, the registry entry is gone and the feature branch
+is usually deleted. You cannot register the **same** codename again while the old branch
+name is the workflow’s anchor — rework uses a **new** branch: typically `fix/...`, or
+`feature/rm-<codename>` where the PM has assigned a **new** codename / node for the
+follow-up.
+
+**Status:** `specy-road finish-this-task` only moves status **to** `Complete`. Moving a
+node back from `Complete` to `Not Started` or `In Progress` is a manual YAML edit by
+the PM (or delegate), with team agreement — it affects audit trail and anything that
+depended on that node being done. Prefer adding a **follow-up task** with a clear title
+over silently rolling status backward, unless your team explicitly uses rollback.
+
+---
+
+## Senior or maintainer review
+
+Code review, refactors, and hardening PRs are a normal **human** layer on top of
+contracts and CI. They are **not** a substitute for green CI or a second “PM sign-off”
+gate — see [pm-workflow.md](pm-workflow.md). A maintainer may open a `fix/` branch after
+merge to bring code up to standards without a new roadmap node; that stays lightweight
+and out of `registry.yaml` unless the PM tracks it.
+
+---
+
+## CI gates vs optional session review
+
+**CI (or equivalent automation)** should run **deterministic** checks — same commands
+every time — and block merge when that is team policy: lint, typecheck, tests, optional
+dependency or security scans, etc. Document those commands in `docs/` (or your app
+repo’s canonical place) so humans and agents run what CI runs.
+
+**Optional agent or senior sessions** (architecture audits, scoped review prompts,
+coverage-gap reports) are **judgment-heavy** and context-heavy. Use them **before** or
+**after** merge as needed; they complement CI rather than replacing it. Do not assume
+every repo will run LLM-style audits inside the pipeline — reserve CI for what can be
+enforced mechanically.
+
+```mermaid
+flowchart LR
+  subgraph ci [CI_pipeline]
+    lint[Lint_typecheck]
+    test[Tests]
+    sec[Security_or_dep_scan]
+  end
+  subgraph session [Human_or_agent_session]
+    arch[Architecture_audit_prompts]
+    cr[Scoped_code_review_prompts]
+    cov[Test_coverage_gap_report]
+  end
+  ci --> merge[Merge_when_green]
+  session --> followup[Optional_follow_up_PRs]
+```
+
+---
+
+## Optional: quality and compliance prompts
+
+For **copy-paste prompts** (architecture compliance, scoped code review, test coverage
+audit, dependency audit, security audit, pre-release checklist) that stay
+project-agnostic — with placeholders for your lint/test/scan commands — see
+[optional-agent-review-prompts.md](optional-agent-review-prompts.md). They are optional;
+this kit’s core workflow remains `specy-road` commands and contracts.
 
 ---
 
@@ -169,8 +269,8 @@ When multiple developers or agents are running simultaneously:
 
 ```bash
 # Terminal
-specy-road do-next-available-task   # automated: pick, branch, register, brief + prompt
-specy-road finish-this-task         # complete, validate, export, commit, PR hint
+specy-road do-next-available-task   # sync base, pick, branch, register, brief + prompt
+specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
 specy-road validate                 # validate roadmap YAML + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
 specy-road export                   # regenerate roadmap.md

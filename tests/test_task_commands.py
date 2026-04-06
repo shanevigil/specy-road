@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -140,6 +141,83 @@ def test_patch_status_unknown_id_returns_unchanged() -> None:
     result, updated = ft._patch_status(_CHUNK, "M9.9", "Complete")
     assert not updated
     assert result == _CHUNK
+
+
+def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_git(*args: str) -> None:
+        calls.append(list(args))
+
+    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "_git", fake_git)
+    dnt._sync_integration_branch("main", "origin")
+    assert calls == [
+        ["fetch", "origin"],
+        ["checkout", "main"],
+        ["merge", "--ff-only", "origin/main"],
+    ]
+
+
+def test_working_tree_clean_true() -> None:
+    with patch.object(dnt.subprocess, "run", return_value=__import__("types").SimpleNamespace(stdout="", returncode=0)):
+        assert dnt._working_tree_clean() is True
+
+
+def test_working_tree_clean_false() -> None:
+    with patch.object(
+        dnt.subprocess,
+        "run",
+        return_value=__import__("types").SimpleNamespace(stdout=" M foo\n", returncode=0),
+    ):
+        assert dnt._working_tree_clean() is False
+
+
+def test_resolve_context_rejects_registry_branch_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1.1",
+                "branch": "feature/rm-other",
+                "touch_zones": ["src/"],
+            }
+        ],
+    }
+    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
+    monkeypatch.setattr(
+        ft,
+        "load_roadmap",
+        lambda p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+    )
+    with pytest.raises(SystemExit):
+        ft._resolve_context("feature/rm-example")
+
+
+def test_resolve_context_rejects_missing_branch_field(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1.1",
+                "touch_zones": ["src/"],
+            }
+        ],
+    }
+    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
+    monkeypatch.setattr(
+        ft,
+        "load_roadmap",
+        lambda p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+    )
+    with pytest.raises(SystemExit):
+        ft._resolve_context("feature/rm-example")
 
 
 def test_patch_status_does_not_touch_nested_status() -> None:

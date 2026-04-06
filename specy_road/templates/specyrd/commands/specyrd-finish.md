@@ -16,14 +16,18 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road finish-this-task
 ```
 
+Optional: `specy-road finish-this-task --push` (and `--remote <name>`) to run `git push -u`
+after the bookkeeping commit.
+
 This will:
 
-1. Read the current branch name to find the codename and registry entry.
+1. Read the current branch name to find the codename and registry entry (registry
+   `branch` must match `HEAD`).
 2. Update `status: Complete` in the roadmap YAML chunk.
 3. Remove the registry entry.
 4. Run `specy-road validate` and `specy-road export`.
 5. Commit the bookkeeping changes.
-6. Print the `git push` + `gh pr create` commands to open a PR.
+6. Print the `git push` + `gh pr create` commands to open a PR (or push first if `--push`).
 
 Merge when CI is green. No PM sign-off required.
 

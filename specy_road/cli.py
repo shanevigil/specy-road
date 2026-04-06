@@ -27,8 +27,10 @@ def main(argv: list[str] | None = None) -> None:
             "  file-limits          — check line-count constraints\n"
             "\n"
             "Dev task loop:\n"
-            "  do-next-available-task  — pick a task, branch, register\n"
-            "  finish-this-task        — complete task, validate, commit\n",
+            "  do-next-available-task  — pick a task, sync base, branch, register\n"
+            "    (optional: --base BRANCH --remote NAME | --no-sync)\n"
+            "  finish-this-task        — complete task, validate, commit\n"
+            "    (optional: --push [--remote NAME])\n",
         )
         raise SystemExit(0 if not argv else 2)
     cmd, *rest = argv

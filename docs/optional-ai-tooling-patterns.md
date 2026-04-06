@@ -99,6 +99,7 @@ Separate worktrees give isolated working trees while sharing history. Pair with 
 - **Atomic tasks** — One clear scope per request; mirrors roadmap discipline.
 - **Curated context** — Prefer briefs and cited docs over pasting entire trees.
 - **Tests as guardrails** — Test or contract sketches before large implementations often reduce rework (especially for generated code).
+- **Optional review prompts** — For copy-paste architecture, review, coverage, dependency, security, and pre-release prompts (placeholders for your commands), see [optional-agent-review-prompts.md](optional-agent-review-prompts.md).
 
 ---
 
@@ -122,3 +123,4 @@ Separate worktrees give isolated working trees while sharing history. Pair with 
 - [`philosophy-and-scope.md`](philosophy-and-scope.md) — what specy-road requires vs leaves open
 - [`architecture.md`](architecture.md) — validation and brief generation in this repository
 - [`git-workflow.md`](git-workflow.md) — branches, registry, merge-back
+- [`optional-agent-review-prompts.md`](optional-agent-review-prompts.md) — optional copy-paste audits and review prompts

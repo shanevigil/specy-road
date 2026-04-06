@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -133,6 +134,23 @@ def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
     if not any(n["id"] == node_id for n in nodes):
         print(f"error: node '{node_id}' not found in roadmap.", file=sys.stderr)
         raise SystemExit(1)
+    reg_branch = entry.get("branch")
+    if not reg_branch:
+        print(
+            "error: registry entry is missing 'branch' — fix roadmap/registry.yaml.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if reg_branch != branch:
+        print(
+            f"error: registry says branch {reg_branch!r} but HEAD is {branch!r}.",
+            file=sys.stderr,
+        )
+        print(
+            "  Check out the feature branch that matches the registry, or fix the entry.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     return codename, reg, entry, nodes
 
 
@@ -162,7 +180,26 @@ def _validate_and_export() -> None:
     )
 
 
-def main() -> None:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Mark the current roadmap task complete, validate, export, commit.",
+    )
+    p.add_argument(
+        "--push",
+        action="store_true",
+        help="After bookkeeping commit, run git push -u <remote> <branch>.",
+    )
+    p.add_argument(
+        "--remote",
+        default="origin",
+        metavar="NAME",
+        help="Remote for --push (default: origin).",
+    )
+    return p.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv if argv is not None else sys.argv[1:])
     branch = _current_branch()
     if not branch.startswith("feature/rm-"):
         print(
@@ -195,11 +232,18 @@ def main() -> None:
     _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")
 
+    if args.push:
+        print(f"-> git push -u {args.remote} {branch}")
+        _git("push", "-u", args.remote, branch)
+
     title = f"[{node_id}] {node.get('title', '')}"
     print()
     print("-" * 60)
-    print("Branch ready. Push and open a PR:")
-    print(f"  git push -u origin {branch}")
+    if not args.push:
+        print("Branch ready. Push and open a PR:")
+        print(f"  git push -u {args.remote} {branch}")
+    else:
+        print("Branch pushed. Open a PR:")
     print(f'  gh pr create --base main --head {branch} --title "{title}"')
     print("-" * 60)
 
