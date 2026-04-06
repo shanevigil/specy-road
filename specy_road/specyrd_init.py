@@ -29,6 +29,8 @@ COMMAND_FILES = (
     "specyrd-file-limits.md",
     "specyrd-author.md",
     "specyrd-claim.md",
+    "specyrd-finish.md",
+    "specyrd-do-next-task.md",
 )
 
 # Stubs installed per role; omit to install all.
@@ -42,6 +44,8 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-validate.md",
         "specyrd-brief.md",
         "specyrd-claim.md",
+        "specyrd-finish.md",
+        "specyrd-do-next-task.md",
     ),
 }
 

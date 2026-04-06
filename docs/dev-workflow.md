@@ -24,48 +24,82 @@ A missing contract is a planning gap, not something to fill during implementatio
 
 ## The task loop
 
-### Start: `specy-road do-next-available-task`
+### Start: automated path
 
-Run this from main (or your integration branch) when you are ready to pick up work:
+The automated path picks a task, creates the branch, registers it, and writes the brief
+and prompt in one step.
+
+**Terminal:**
 
 ```bash
 git checkout main && git pull
 specy-road do-next-available-task
 ```
 
-The command:
+**IDE slash command** (after `specyrd init --ai <ide> --role dev`):
 
-1. Reads the roadmap and registry.
-2. Lists available tasks — `Agentic-led` or `agentic`, not started, dependencies met,
-   not already claimed.
-3. You pick a number.
-4. It creates the feature branch (`feature/rm-<codename>`), writes the registry entry,
-   and makes the first commit.
-5. It writes `work/brief-<NODE_ID>.md` and `work/prompt-<NODE_ID>.md`.
+```text
+/specyrd-do-next-task
+```
 
-Open the prompt file in your agent. The prompt contains the contract fields and
-instructs the agent to commit incrementally and call `specy-road finish-this-task`
-when done.
+Open the generated `work/prompt-<NODE_ID>.md` in your agent. Implement, commit
+incrementally.
 
-Multiple devs or agents can each run `do-next-available-task` concurrently — they
-will pick different items. The registry prevents double-claiming.
+### Start: manual path
 
-### Finish: `specy-road finish-this-task`
+Use the manual path when you want to pick a specific node rather than taking the next
+available one, or when you need finer control over the registry entry.
 
-Run from the feature branch when implementation is complete:
+1. Find a node in [`roadmap.md`](../roadmap.md) where `execution_milestone` is
+   `Agentic-led` or `Mixed`, `status` is `Not Started`, and all `dependencies` are
+   `Complete`.
+2. Confirm it is not claimed in [`roadmap/registry.yaml`](../roadmap/registry.yaml).
+3. Branch and register:
+
+**Terminal / IDE (`/specyrd-claim`):**
+
+```bash
+git checkout -b feature/rm-<codename>
+# add entry to roadmap/registry.yaml, then:
+specy-road validate
+git add roadmap/registry.yaml
+git commit -m "chore(rm-<codename>): register as in-progress"
+```
+
+1. Generate a brief:
+
+**Terminal / IDE (`/specyrd-brief`):**
+
+```bash
+specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
+```
+
+1. Implement, commit incrementally.
+
+### Finish (both paths)
+
+Run from the feature branch when implementation is complete.
+
+**Terminal:**
 
 ```bash
 specy-road finish-this-task
 ```
 
-The command:
+**IDE slash command:**
 
-1. Reads the current branch name to find the codename and registry entry.
-2. Updates the node `status` to `Complete` in the roadmap YAML chunk.
-3. Removes the registry entry.
-4. Runs `specy-road validate` and `specy-road export`.
-5. Commits the bookkeeping changes.
-6. Prints the `git push` + `gh pr create` commands to open a PR.
+```text
+/specyrd-finish
+```
+
+This will:
+
+1. Read the current branch name to find the codename and registry entry.
+2. Update the node `status` to `Complete` in the roadmap YAML chunk.
+3. Remove the registry entry.
+4. Run `specy-road validate` and `specy-road export`.
+5. Commit the bookkeeping changes.
+6. Print the `git push` + `gh pr create` commands to open a PR.
 
 Merge when CI is green. No PM sign-off required.
 
@@ -92,34 +126,6 @@ branches from ad-hoc `fix/<slug>` or `feature/<slug>` branches.
 
 Non-roadmap work (hotfixes, tooling) uses `fix/<slug>` without the `rm-` prefix and
 does not touch `registry.yaml`.
-
----
-
-## Manual path (without `do-next-available-task`)
-
-If you prefer to start a task manually:
-
-1. Find a node in [`roadmap.md`](../roadmap.md) where `execution_milestone` is
-   `Agentic-led` or `Mixed`, `status` is `Not Started`, and all `dependencies` are
-   `Complete`.
-2. Confirm it is not claimed in [`roadmap/registry.yaml`](../roadmap/registry.yaml).
-3. Branch and register:
-
-```bash
-git checkout -b feature/rm-<codename>
-# add entry to roadmap/registry.yaml, then:
-specy-road validate
-git add roadmap/registry.yaml
-git commit -m "chore(rm-<codename>): register as in-progress"
-```
-
-1. Generate a brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`
-2. Implement, commit incrementally.
-3. Run `specy-road finish-this-task` to close out, or do the steps manually:
-   - Update `status: Complete` in the chunk YAML.
-   - Remove the registry entry.
-   - `specy-road validate && specy-road export`
-   - Commit, push, open PR.
 
 ---
 
@@ -162,10 +168,19 @@ When multiple developers or agents are running simultaneously:
 ## Quick reference
 
 ```bash
-specy-road do-next-available-task   # pick, branch, register, generate brief + prompt
+# Terminal
+specy-road do-next-available-task   # automated: pick, branch, register, brief + prompt
 specy-road finish-this-task         # complete, validate, export, commit, PR hint
-
 specy-road validate                 # validate roadmap YAML + registry
-specy-road brief <NODE_ID>          # generate brief for a specific node
+specy-road brief <NODE_ID>          # manual: generate brief for a specific node
 specy-road export                   # regenerate roadmap.md
+```
+
+```text
+# IDE slash commands (after specyrd init --role dev)
+/specyrd-do-next-task   — automated start
+/specyrd-claim          — manual start: branch + register
+/specyrd-brief          — manual start: generate brief
+/specyrd-finish         — finish (both paths)
+/specyrd-validate       — validate at any point
 ```
