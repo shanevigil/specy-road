@@ -9,3 +9,15 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: export-roadmap-md-check
+        name: check roadmap markdown export (drift)
+        entry: python scripts/export_roadmap_md.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: validate-file-limits
+        name: validate file line-count limits
+        entry: python scripts/validate_file_limits.py
+        language: system
+        pass_filenames: false
+        always_run: true

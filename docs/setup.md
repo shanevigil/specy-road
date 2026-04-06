@@ -36,7 +36,7 @@ specy-road --help
 
 ## Install the pre-commit hook
 
-The hook runs `specy-road validate` on every commit. Install it once per clone:
+Hooks mirror CI (without `pytest`): roadmap validation, markdown export drift check, and file line-count limits. Install once per clone:
 
 ```bash
 pip install pre-commit
@@ -60,12 +60,12 @@ specyrd init . --ai claude-code
 # For Cursor
 specyrd init . --ai cursor
 
-# Filter to role-relevant stubs only
-specyrd init . --ai claude-code --role dev   # brief, claim, validate
-specyrd init . --ai claude-code --role pm    # author, export, validate
+# Filter to role-relevant stubs only (omit --role for all eight commands)
+specyrd init . --ai claude-code --role dev   # validate, brief, claim, finish, do-next-task
+specyrd init . --ai claude-code --role pm    # validate, export, author
 ```
 
-Stubs are written to `.claude/commands/` or `.cursor/commands/`. They are thin
+Default install writes **eight** `specyrd-*.md` files (`validate`, `brief`, `export`, `file-limits`, `author`, `claim`, `finish`, `do-next-task`). Stubs are written to `.claude/commands/` or `.cursor/commands/` (or a custom path for `--ai generic`). They are thin
 wrappers — the canonical behaviour lives in `specy-road` and `scripts/`, not the stubs.
 
 Use `--dry-run` to preview what would be written, `--force` to overwrite existing stubs.

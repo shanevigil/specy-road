@@ -36,7 +36,7 @@ pytest                                           # if dev extras installed
 specy-road validate                              # same as validate_roadmap.py when CLI is installed
 ```
 
-Optional git hooks: `pip install pre-commit && pre-commit install` (runs the roadmap validator).
+Optional git hooks: `pip install pre-commit && pre-commit install` (roadmap validate, export drift check, file limits — same as CI except `pytest`).
 
 ## specyrd (optional IDE command stubs)
 
@@ -60,11 +60,15 @@ specyrd init [PATH] --ai <ID> [--ide <ID>] [--here] [--dry-run] [--force] [--ai-
 
 ### What gets installed
 
-| `--ai` value | Command stubs | Meta |
+By default (no `--role`), **eight** command files are written: `validate`, `brief`, `export`, `file-limits`, `author`, `claim`, `finish`, `do-next-task` (file names are `specyrd-<name>.md`).
+
+| Target | Path (under repo root) | Meta |
 | --- | --- | --- |
-| `cursor` | `.cursor/commands/specyrd-*.md` (validate, brief, export, file-limits) | `.specyrd/README.md`, `.specyrd/manifest.json` |
-| `claude-code` | `.claude/commands/specyrd-*.md` (same four) | same |
-| `generic` | `REL_PATH/specyrd-*.md` where `REL_PATH` is `--ai-commands-dir` | same |
+| `cursor` | `.cursor/commands/specyrd-*.md` | `.specyrd/README.md`, `.specyrd/manifest.json` |
+| `claude-code` | `.claude/commands/specyrd-*.md` | same |
+| `generic` | `<REL_PATH>/specyrd-*.md` (`REL_PATH` from `--ai-commands-dir`) | same |
+
+**`--role`** installs a subset: **`pm`** — `validate`, `export`, `author`; **`dev`** — `validate`, `brief`, `claim`, `finish`, `do-next-task`. Omit `--role` for the full set above.
 
 Stubs only contain instructions to run **`specy-road`** / **`scripts/`** from the repository root (for example `specy-road validate`, `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`). Canonical behavior stays in the CLI and scripts.
 

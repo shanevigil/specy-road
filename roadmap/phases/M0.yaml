@@ -6,7 +6,7 @@ nodes:
     title: "Foundation — architecture and contracts"
     codename: null
     execution_milestone: Human-led
-    status: Not Started
+    status: Complete
     touch_zones: []
     dependencies: []
     parallel_tracks: 1
@@ -18,7 +18,7 @@ nodes:
     title: "Establish shared contracts and ADR skeleton"
     codename: contracts-bootstrap
     execution_milestone: Mixed
-    status: Not Started
+    status: Complete
     touch_zones:
       - "shared/"
       - "schemas/"

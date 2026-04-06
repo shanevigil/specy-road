@@ -8,4 +8,4 @@ Suggested pattern:
 python scripts/generate_brief.py M1.1 -o work/brief-M1.1.md
 ```
 
-Add `work/*` to `.gitignore` if you prefer not to commit scratch files; this repo ignores everything under `work/` except this README and `.gitkeep`.
+**Git:** The repository `.gitignore` ignores everything under `work/` except this file and [`.gitkeep`](.gitkeep), so scratch files stay local by default. To track a specific file (for example a checked-in example brief), add an exception in `.gitignore` (e.g. `!work/example-brief.md`) and commit that path intentionally.

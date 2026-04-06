@@ -71,8 +71,8 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="ROLE",
         help=(
             "Install only the stubs relevant to a role: "
-            "pm (author, export, validate) or dev (brief, claim, validate). "
-            "Omit to install all stubs."
+            "pm (validate, export, author) or dev (validate, brief, claim, "
+            "finish, do-next-task). Omit to install all eight command stubs."
         ),
     )
     return p
