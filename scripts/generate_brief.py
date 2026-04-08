@@ -34,7 +34,9 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
     return list(reversed(out))
 
 
-def _brief_deps_and_contracts(n: dict, deps: list, root: Path) -> list[str]:
+def _brief_deps_and_contracts(
+    n: dict, deps: list, root: Path, by_id: dict[str, dict]
+) -> list[str]:
     lines: list[str] = [
         "",
         "## Dependencies (must complete first)",
@@ -109,7 +111,7 @@ def render_brief(
             "dependency_note",
         ):
             head.append(f"- **{key}:** {ac.get(key, '—')}")
-    tail = _brief_deps_and_contracts(n, deps, root)
+    tail = _brief_deps_and_contracts(n, deps, root, by_id)
     return "\n".join(head + tail) + "\n"
 
 

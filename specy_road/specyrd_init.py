@@ -12,7 +12,17 @@ from typing import Any
 from specy_road import __version__
 
 AGENT_CHOICES = frozenset({"cursor", "claude-code", "generic"})
-ROLE_CHOICES = frozenset({"pm", "dev"})
+ROLE_CHOICES = frozenset({"pm", "dev", "both"})
+
+DEFAULT_GUI_SETTINGS_JSON = (
+    '{\n  "llm": {\n    "backend": "openai",\n    "openai_api_key": "",\n'
+    '    "openai_model": "gpt-4o-mini",\n    "openai_base_url": "",\n'
+    '    "azure_endpoint": "",\n    "azure_api_key": "",\n'
+    '    "azure_deployment": "",\n    "azure_api_version": "2024-02-15-preview"\n'
+    "  },\n"
+    '  "git_remote": {\n    "provider": "github",\n    "repo": "",\n'
+    '    "token": "",\n    "base_url": ""\n  }\n}\n'
+)
 
 # Relative to repo root per agent (generic uses --ai-commands-dir).
 AGENT_REL_DEST: dict[str, Path | None] = {
@@ -100,6 +110,18 @@ def _read_template(name: str) -> str:
     return text.replace("{{SPECYRD_VERSION}}", __version__)
 
 
+def _read_claude_template() -> str:
+    pkg_dir = _package_templates_dir()
+    path = pkg_dir / "CLAUDE.md.template"
+    if path.is_file():
+        return path.read_text(encoding="utf-8")
+    return (
+        resources.files("specy_road")
+        .joinpath("templates", "specyrd", "CLAUDE.md.template")
+        .read_text(encoding="utf-8")
+    )
+
+
 def _read_dot_specyrd_readme() -> str:
     pkg_dir = _package_templates_dir()
     path = pkg_dir / "dot-specyrd" / "README.md"
@@ -177,11 +199,15 @@ def run_init(
     force: bool,
     ai_commands_dir: Path | None,
     role: str | None = None,
+    write_claude_md: bool = False,
+    gui_settings_stub: bool = False,
 ) -> InitResult:
     if agent not in AGENT_CHOICES:
         raise ValueError(f"unknown agent: {agent}")
     if role is not None and role not in ROLE_CHOICES:
-        raise ValueError(f"unknown role: {role!r}; choose pm or dev")
+        raise ValueError(
+            f"unknown role: {role!r}; choose pm, dev, or both",
+        )
     if agent == "generic":
         if ai_commands_dir is None:
             raise ValueError("--ai-commands-dir is required when --ai generic")
@@ -199,7 +225,10 @@ def run_init(
 
     manifest = _load_manifest(repo_root)
 
-    files_to_install = ROLE_COMMAND_FILES[role] if role else COMMAND_FILES
+    if role in ("pm", "dev"):
+        files_to_install = ROLE_COMMAND_FILES[role]
+    else:
+        files_to_install = COMMAND_FILES
     for name in files_to_install:
         rel_file = rel_dest / name
         dest_file = repo_root / rel_file
@@ -226,6 +255,29 @@ def run_init(
             readme_path.parent.mkdir(parents=True, exist_ok=True)
             readme_path.write_text(readme_content, encoding="utf-8")
             written.append(str(readme_rel))
+
+    claude_rel = Path("CLAUDE.md")
+    claude_path = repo_root / claude_rel
+    if write_claude_md and agent == "claude-code":
+        if claude_path.is_file() and not force:
+            skipped.append(str(claude_rel))
+        else:
+            body = _read_claude_template()
+            if dry_run:
+                written.append(str(claude_rel))
+            else:
+                claude_path.write_text(body, encoding="utf-8")
+                written.append(str(claude_rel))
+
+    gui_home = Path.home() / ".specy-road" / "gui-settings.json"
+    if gui_settings_stub:
+        gui_display = "~/.specy-road/gui-settings.json"
+        if dry_run:
+            written.append(gui_display)
+        elif not gui_home.is_file() or force:
+            gui_home.parent.mkdir(parents=True, exist_ok=True)
+            gui_home.write_text(DEFAULT_GUI_SETTINGS_JSON, encoding="utf-8")
+            written.append(gui_display)
 
     if not dry_run:
         agents: dict[str, list[str]] = manifest.setdefault("agents", {})

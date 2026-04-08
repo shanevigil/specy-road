@@ -114,3 +114,105 @@ def test_specyrd_cli_smoke() -> None:
         cwd=REPO,
         check=True,
     )
+
+
+def test_specyrd_init_role_both_matches_full_set(tmp_path: Path) -> None:
+    r_both = run_init(
+        target=tmp_path,
+        agent="cursor",
+        dry_run=True,
+        force=False,
+        ai_commands_dir=None,
+        role="both",
+    )
+    r_all = run_init(
+        target=tmp_path,
+        agent="cursor",
+        dry_run=True,
+        force=False,
+        ai_commands_dir=None,
+        role=None,
+    )
+    assert sorted(r_both.written) == sorted(r_all.written)
+
+
+def test_specyrd_init_writes_claude_md(tmp_path: Path) -> None:
+    run_init(
+        target=tmp_path,
+        agent="claude-code",
+        dry_run=False,
+        force=False,
+        ai_commands_dir=None,
+        write_claude_md=True,
+    )
+    p = tmp_path / "CLAUDE.md"
+    assert p.is_file()
+    assert "AGENTS.md" in p.read_text(encoding="utf-8")
+
+
+def test_specyrd_init_gui_settings_stub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "specy_road.specyrd_init.Path.home",
+        lambda: tmp_path,
+    )
+    run_init(
+        target=tmp_path,
+        agent="cursor",
+        dry_run=False,
+        force=False,
+        ai_commands_dir=None,
+        gui_settings_stub=True,
+    )
+    gui = tmp_path / ".specy-road" / "gui-settings.json"
+    assert gui.is_file()
+    data = json.loads(gui.read_text(encoding="utf-8"))
+    assert "llm" in data
+
+
+def test_specyrd_cli_no_prompt_requires_role(tmp_path: Path) -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.specyrd_cli",
+            "init",
+            str(tmp_path),
+            "--ai",
+            "cursor",
+            "--no-prompt",
+            "--dry-run",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 2
+    assert "--no-prompt requires --role" in r.stderr
+
+
+def test_specyrd_cli_extras_dry_run_skips_pip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    called: list[str] = []
+
+    def fake_check_call(cmd: list[str], **_: object) -> None:
+        called.append(" ".join(cmd))
+
+    monkeypatch.setattr("specy_road.specyrd_cli.subprocess.check_call", fake_check_call)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.specyrd_cli",
+            "init",
+            str(tmp_path),
+            "--ai",
+            "cursor",
+            "--role",
+            "pm",
+            "--extras",
+            "review",
+            "--dry-run",
+        ],
+        cwd=REPO,
+        check=True,
+    )
+    assert not called

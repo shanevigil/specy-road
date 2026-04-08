@@ -1,0 +1,45 @@
+# specy-road (local agent guide)
+
+This repo is a **roadmap-first coordination kit**. Follow the repo’s contracts; don’t invent new workflows.
+
+## Start here (required load order)
+
+Read `AGENTS.md` first. It defines the load order and coordination rules.
+
+For any roadmap-linked task, keep context small:
+- `constitution/purpose.md`
+- `constitution/principles.md`
+- `constraints/README.md`
+- **Roadmap graph** (`roadmap/roadmap.yaml` + includes): your node + parents + `dependencies`
+- `shared/README.md`, then open **only** cited contract files
+
+Generate a focused brief when possible:
+
+```bash
+python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
+```
+
+## Non-negotiables
+
+- **Docs win**: if instructions conflict, prefer tracked repo docs (not chat history).
+- **No scope creep**: don’t refactor or reorganize unrelated code “for cleanliness”.
+- **Search before adding**: prefer reusing existing scripts/validators over creating new ones.
+- **Roadmap-linked implementation**: follow `docs/git-workflow.md` and the registry protocol in `roadmap/registry.yaml` (first commit registers work).
+
+## Common commands (repo root)
+
+```bash
+# Roadmap + exports + limits
+python scripts/validate_roadmap.py
+python scripts/export_roadmap_md.py --check
+python scripts/validate_file_limits.py
+
+# Optional: tests (if dev extras installed)
+pytest
+```
+
+## Where to look (pointers)
+
+- Agent entrypoint: `AGENTS.md`
+- Optional AI tooling patterns: `docs/optional-ai-tooling-patterns.md`
+- Branching + registry workflow: `docs/git-workflow.md` and `roadmap/registry.yaml`

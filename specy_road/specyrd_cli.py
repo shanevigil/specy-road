@@ -3,10 +3,56 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
 from specy_road.specyrd_init import run_init
+
+
+def _parse_extras(s: str) -> list[str]:
+    return [x.strip().lower() for x in s.split(",") if x.strip()]
+
+
+def _install_extras(names: list[str], *, dry_run: bool) -> None:
+    want: list[str] = []
+    for n in names:
+        if n == "review":
+            if importlib.util.find_spec("openai") is None:
+                want.append("review")
+        elif n == "gui":
+            if importlib.util.find_spec("streamlit") is None:
+                want.append("gui")
+        else:
+            print(f"warning: unknown extra {n!r} (use review, gui)", file=sys.stderr)
+    if not want:
+        return
+    spec = ",".join(sorted(set(want)))
+    cmd = [sys.executable, "-m", "pip", "install", f"specy-road[{spec}]"]
+    if dry_run:
+        print(f"Would run: {' '.join(cmd)}")
+        return
+    subprocess.check_call(cmd)
+
+
+def _prompt_extras() -> list[str]:
+    out: list[str] = []
+    if input("Install [review] extra (LLM node review)? [y/N]: ").strip().lower() == "y":
+        out.append("review")
+    if input("Install [gui] extra (Streamlit roadmap dashboard)? [y/N]: ").strip().lower() == "y":
+        out.append("gui")
+    return out
+
+
+def _prompt_role() -> str | None:
+    print("Stub set: [1] all  [2] pm  [3] dev  (default: 1)")
+    ch = input("> ").strip() or "1"
+    if ch == "2":
+        return "pm"
+    if ch == "3":
+        return "dev"
+    return "both"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -67,14 +113,27 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     init.add_argument(
         "--role",
-        choices=["pm", "dev"],
+        choices=["pm", "dev", "both"],
         metavar="ROLE",
+        default=None,
         help=(
             "Install only the stubs relevant to a role: "
             "pm (validate, export, author, sync, list-nodes, show-node, "
-            "add-node, review-node) or dev (validate, brief, claim, finish, "
-            "do-next-task). Omit to install all command stubs."
+            "add-node, review-node), dev (validate, brief, claim, finish, "
+            "do-next-task), or both (same as omitting --role: all 13 stubs). "
+            "With --no-prompt this flag is required."
         ),
+    )
+    init.add_argument(
+        "--extras",
+        default="",
+        metavar="LIST",
+        help="Comma-separated optional installs: review, gui (pip install specy-road[...]).",
+    )
+    init.add_argument(
+        "--no-prompt",
+        action="store_true",
+        help="Non-interactive: do not prompt; requires --role; use --extras as given.",
     )
     return p
 
@@ -96,6 +155,21 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(2)
 
+    if args.no_prompt and args.role is None:
+        print(
+            "error: --no-prompt requires --role (pm, dev, or both)",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    extras = _parse_extras(args.extras or "")
+    role = args.role
+    if not args.no_prompt and sys.stdin.isatty():
+        if not extras:
+            extras = _prompt_extras()
+        if role is None:
+            role = _prompt_role()
+
     try:
         result = run_init(
             target=target,
@@ -103,11 +177,19 @@ def main(argv: list[str] | None = None) -> None:
             dry_run=args.dry_run,
             force=args.force,
             ai_commands_dir=args.ai_commands_dir,
-            role=args.role,
+            role=role,
+            write_claude_md=(args.agent == "claude-code"),
+            gui_settings_stub=("gui" in extras),
         )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(2) from e
+
+    try:
+        _install_extras(extras, dry_run=args.dry_run)
+    except subprocess.CalledProcessError as e:
+        print(f"error: pip install failed with exit code {e.returncode}", file=sys.stderr)
+        raise SystemExit(1) from e
 
     if result.dry_run:
         print("Dry run — would write:")

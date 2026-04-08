@@ -23,6 +23,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e ".[dev]"     # optional: editable install, pytest, both CLIs below
 # optional: pip install -e ".[review]" for specy-road review-node (OpenAI/Azure)
+# optional: pip install -e ".[gui]" for Streamlit roadmap dashboard (streamlit run scripts/roadmap_gui.py)
 ```
 
 The package installs two commands: `**specy-road**` (validators, brief, export) and `**specyrd**` (optional IDE glue — see [specyrd](#specyrd-optional-ide-command-stubs)).

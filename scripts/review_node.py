@@ -15,6 +15,10 @@ ROOT_DEFAULT = Path(__file__).resolve().parent.parent
 
 ALLOWED_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
 
+
+class ReviewError(Exception):
+    """LLM review failed (missing config, missing package, or API error)."""
+
 SYSTEM_PROMPT = """You are a senior reviewer for roadmap readiness. Output Markdown only.
 Assess: agentic checklist completeness, contract/spec clarity, alignment with project
 constraints, risks, and open questions for the PM. Do not claim the implementation exists;
@@ -67,12 +71,11 @@ def _cited_snippets(root: Path, node: dict) -> str:
 def _make_client():
     try:
         from openai import AzureOpenAI, OpenAI
-    except ImportError:
-        print(
-            "error: openai package not installed. Run: pip install 'specy-road[review]'",
-            file=sys.stderr,
-        )
-        raise SystemExit(2) from None
+    except ImportError as e:
+        raise ReviewError(
+            "openai package not installed. Run: pip install 'specy-road[review]' "
+            "or 'specy-road[gui]'",
+        ) from e
 
     ep = os.environ.get("SPECY_ROAD_AZURE_OPENAI_ENDPOINT", "").strip()
     if ep:
@@ -83,12 +86,10 @@ def _make_client():
             "2024-02-15-preview",
         ).strip()
         if not key or not dep:
-            print(
-                "error: Azure mode needs SPECY_ROAD_AZURE_OPENAI_API_KEY and "
+            raise ReviewError(
+                "Azure mode needs SPECY_ROAD_AZURE_OPENAI_API_KEY and "
                 "SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT",
-                file=sys.stderr,
             )
-            raise SystemExit(1)
         return AzureOpenAI(
             azure_endpoint=ep,
             api_key=key,
@@ -97,12 +98,9 @@ def _make_client():
 
     key = os.environ.get("SPECY_ROAD_OPENAI_API_KEY", "").strip()
     if not key:
-        print(
-            "error: set SPECY_ROAD_OPENAI_API_KEY or Azure variables "
-            "(see docs/pm-workflow.md)",
-            file=sys.stderr,
+        raise ReviewError(
+            "set SPECY_ROAD_OPENAI_API_KEY or Azure variables (see docs/pm-workflow.md)",
         )
-        raise SystemExit(1)
     base = os.environ.get("SPECY_ROAD_OPENAI_BASE_URL", "").strip() or None
     return OpenAI(api_key=key, base_url=base)
 
@@ -125,6 +123,33 @@ def _complete(client, user_content: str) -> str:
     return choice or ""
 
 
+def run_review(node_id: str, repo_root: Path | None = None) -> str:
+    """
+    Build the brief + constraints + cited-docs payload and return the Markdown report.
+
+    Raises ``ReviewError`` on configuration or API failure, ``ValueError`` if
+    ``node_id`` is unknown.
+    """
+    root = (repo_root or ROOT_DEFAULT).resolve()
+    nodes = load_roadmap(root)["nodes"]
+    by_id = make_index(nodes)
+    if node_id not in by_id:
+        raise ValueError(f"unknown node {node_id!r}")
+    node = by_id[node_id]
+    brief = render_brief(node_id, by_id, repo_root=root)
+    constraints = _constraints_text(root)
+    cited = _cited_snippets(root, node)
+    user_content = "\n\n".join(
+        [
+            "## Brief\n\n" + brief,
+            "## constraints/README.md\n\n" + constraints,
+            "## Cited documents (from spec_citation)\n\n" + cited,
+        ],
+    )
+    client = _make_client()
+    return _complete(client, user_content)
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("node_id", metavar="NODE_ID")
@@ -143,24 +168,15 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _repo_root(args)
-    nodes = load_roadmap(root)["nodes"]
-    by_id = make_index(nodes)
-    if args.node_id not in by_id:
-        print(f"error: unknown node {args.node_id!r}", file=sys.stderr)
-        raise SystemExit(1)
-    node = by_id[args.node_id]
-    brief = render_brief(args.node_id, by_id, repo_root=root)
-    constraints = _constraints_text(root)
-    cited = _cited_snippets(root, node)
-    user_content = "\n\n".join(
-        [
-            "## Brief\n\n" + brief,
-            "## constraints/README.md\n\n" + constraints,
-            "## Cited documents (from spec_citation)\n\n" + cited,
-        ],
-    )
-    client = _make_client()
-    report = _complete(client, user_content)
+    try:
+        report = run_review(args.node_id, root)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
+    except ReviewError as e:
+        print(f"error: {e}", file=sys.stderr)
+        code = 2 if "not installed" in str(e).lower() else 1
+        raise SystemExit(code) from e
     if args.output:
         args.output.write_text(report, encoding="utf-8")
         print(f"Wrote {args.output}", file=sys.stderr)

@@ -23,6 +23,13 @@ dev = [
 review = [
   "openai>=1.40",
 ]
+gui = [
+  "streamlit>=1.33",
+  "plotly>=5.18",
+  "watchdog>=4.0",
+  "requests>=2.31",
+  "openai>=1.40",
+]
 
 [project.scripts]
 specy-road = "specy_road.cli:main"

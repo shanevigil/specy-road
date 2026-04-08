@@ -78,3 +78,11 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "Brief" in captured[0]
     assert "constraints/README.md" in captured[0]
     assert "shared/README.md" in captured[0]
+
+
+def test_run_review_returns_markdown(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(review_node, "_make_client", lambda: object())
+    monkeypatch.setattr(review_node, "_complete", lambda _c, _u: "## OK\n")
+    out = review_node.run_review("M99.1", tiny_repo)
+    assert out.startswith("## OK")

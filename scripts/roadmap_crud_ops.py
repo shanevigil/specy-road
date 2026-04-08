@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import re
 import sys
@@ -45,9 +47,25 @@ def repo_root(ns: object) -> Path:
     return Path(r).resolve() if r else ROOT_DEFAULT
 
 
+def run_validate_raise(root: Path) -> None:
+    """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure."""
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        try:
+            validate_roadmap_yaml_line_limits(root)
+            validate_at(root, no_overlap_warn=False, require_registry=True)
+        except SystemExit as e:
+            if e.code not in (0, None):
+                msg = err.getvalue().strip()
+                raise ValueError(msg or "validation failed") from e
+
+
 def run_validate(root: Path) -> None:
-    validate_roadmap_yaml_line_limits(root)
-    validate_at(root, no_overlap_warn=False, require_registry=True)
+    try:
+        run_validate_raise(root)
+    except ValueError as e:
+        print(f"error: validation failed:\n{e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 def load_yaml_document(path: Path) -> tuple[object, YAML]:
@@ -251,13 +269,17 @@ def append_node_to_chunk(root: Path, chunk_arg: str, node: dict) -> Path:
 
 def apply_set(node: dict, dotted_key: str, raw_val: str) -> None:
     if dotted_key not in EDIT_WHITELIST:
-        print(f"error: key not allowed for --set: {dotted_key!r}", file=sys.stderr)
-        raise SystemExit(1)
+        raise ValueError(f"key not allowed for --set: {dotted_key!r}")
     parts = dotted_key.split(".")
     if len(parts) == 1:
         key = parts[0]
         if key == "parallel_tracks":
-            node[key] = int(raw_val)
+            try:
+                node[key] = int(raw_val)
+            except ValueError as e:
+                raise ValueError(
+                    f"parallel_tracks must be an integer, got {raw_val!r}",
+                ) from e
         elif key == "codename" and raw_val.lower() in ("null", "~", ""):
             node[key] = None
         elif key == "execution_milestone" and raw_val.lower() in ("null", "~", ""):
@@ -268,8 +290,7 @@ def apply_set(node: dict, dotted_key: str, raw_val: str) -> None:
             node[key] = raw_val
         return
     if parts[0] != "agentic_checklist" or len(parts) != 2:
-        print(f"error: unsupported nested key: {dotted_key!r}", file=sys.stderr)
-        raise SystemExit(1)
+        raise ValueError(f"unsupported nested key: {dotted_key!r}")
     sub = parts[1]
     ac = node.get("agentic_checklist")
     if not isinstance(ac, dict):
@@ -278,31 +299,46 @@ def apply_set(node: dict, dotted_key: str, raw_val: str) -> None:
     ac[sub] = raw_val
 
 
+def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) -> None:
+    """
+    Patch whitelisted fields on a node, save its chunk, and validate.
+
+    Raises ``ValueError`` on missing node, bad keys, or validation failure.
+    """
+    chunk = find_chunk_path(root, node_id)
+    if not chunk:
+        raise ValueError(f"no chunk contains node {node_id!r}")
+    data, y = load_yaml_document(chunk)
+    idx = node_index_in_chunk(data["nodes"], node_id)
+    if idx is None:
+        raise ValueError(f"node {node_id!r} not found")
+    node = data["nodes"][idx]
+    if not isinstance(node, dict):
+        raise ValueError("corrupt node entry")
+    for k, v in pairs:
+        apply_set(node, k, v)
+    save_yaml_document(chunk, data, y)
+    run_validate_raise(root)
+
+
 def cmd_edit(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
-    chunk = find_chunk_path(root, nid)
-    if not chunk:
-        print(f"error: no chunk contains node {nid!r}", file=sys.stderr)
-        raise SystemExit(1)
-    data, y = load_yaml_document(chunk)
-    idx = node_index_in_chunk(data["nodes"], nid)
-    if idx is None:
-        print(f"error: node {nid!r} not found", file=sys.stderr)
-        raise SystemExit(1)
-    node = data["nodes"][idx]
-    if not isinstance(node, dict):
-        print("error: corrupt node entry", file=sys.stderr)
-        raise SystemExit(1)
+    pairs: list[tuple[str, str]] = []
     for pair in args.set:
         if "=" not in pair:
             print(f"error: expected key=value, got {pair!r}", file=sys.stderr)
             raise SystemExit(1)
         k, _, v = pair.partition("=")
-        apply_set(node, k.strip(), v.strip())
-    save_yaml_document(chunk, data, y)
+        pairs.append((k.strip(), v.strip()))
+    try:
+        edit_node_set_pairs(root, nid, pairs)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
+    chunk = find_chunk_path(root, nid)
+    assert chunk is not None
     print(f"[ok] updated {nid} in {chunk.relative_to(root)}")
-    run_validate(root)
 
 
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
