@@ -162,34 +162,26 @@ def export_markdown(nodes: list[dict]) -> tuple[str, dict[str, str]]:
     return index, phase_files
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Exit 1 if generated files differ from disk (CI drift check)",
-    )
-    args = parser.parse_args()
-
-    if not ROADMAP_YAML.is_file():
-        print(f"missing {ROADMAP_YAML}", file=sys.stderr)
-        raise SystemExit(1)
-
-    nodes = load_roadmap(ROOT)["nodes"]
-
-    index, phase_files = export_markdown(nodes)
-
-    if args.check:
-        if OUT_INDEX.is_file():
-            existing = OUT_INDEX.read_text(encoding="utf-8")
+def _write_export(
+    root: Path,
+    index: str,
+    phase_files: dict[str, str],
+    *,
+    check: bool,
+) -> None:
+    out_index = root / "roadmap.md"
+    out_phases = root / "roadmap" / "phases"
+    if check:
+        if out_index.is_file():
+            existing = out_index.read_text(encoding="utf-8")
             if existing != index:
-                print(f"drift: {OUT_INDEX}", file=sys.stderr)
+                print(f"drift: {out_index}", file=sys.stderr)
                 raise SystemExit(1)
         else:
-            print(f"missing {OUT_INDEX}", file=sys.stderr)
+            print(f"missing {out_index}", file=sys.stderr)
             raise SystemExit(1)
         for name, content in sorted(phase_files.items()):
-            path = OUT_PHASES / name
+            path = out_phases / name
             if not path.is_file():
                 print(f"missing {path}", file=sys.stderr)
                 raise SystemExit(1)
@@ -198,12 +190,36 @@ def main() -> None:
                 raise SystemExit(1)
         print("OK: markdown export matches roadmap graph.")
         return
-
-    OUT_INDEX.write_text(index, encoding="utf-8")
-    OUT_PHASES.mkdir(parents=True, exist_ok=True)
+    out_index.write_text(index, encoding="utf-8")
+    out_phases.mkdir(parents=True, exist_ok=True)
     for name, content in phase_files.items():
-        (OUT_PHASES / name).write_text(content, encoding="utf-8")
-    print(f"Wrote {OUT_INDEX} and {len(phase_files)} file(s) under {OUT_PHASES}")
+        (out_phases / name).write_text(content, encoding="utf-8")
+    print(f"Wrote {out_index} and {len(phase_files)} file(s) under {out_phases}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit 1 if generated files differ from disk (CI drift check)",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Repository root (default: parent of scripts/).",
+    )
+    args = parser.parse_args()
+    root = (args.repo_root or ROOT).resolve()
+    roadmap_yaml = root / "roadmap" / "roadmap.yaml"
+    if not roadmap_yaml.is_file():
+        print(f"missing {roadmap_yaml}", file=sys.stderr)
+        raise SystemExit(1)
+    nodes = load_roadmap(root)["nodes"]
+    index, phase_files = export_markdown(nodes)
+    _write_export(root, index, phase_files, check=args.check)
 
 
 if __name__ == "__main__":

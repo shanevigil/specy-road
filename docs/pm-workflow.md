@@ -24,6 +24,68 @@ You do not review PRs. You do not approve merges. The contracts you write and th
 
 ---
 
+## Get the latest roadmap (import / sync)
+
+The graph lives in **git** under `roadmap/` (YAML). There is **no** Markdown → YAML importer; Markdown is generated for reading.
+
+**Typical flow before you author:**
+
+1. Ensure a clean working tree (commit, stash, or discard local changes).
+2. Run **`specy-road sync`** — fetches the integration branch (default `main` from `origin`), fast-forwards your local branch to match the remote, then runs **`specy-road validate`** and **`specy-road export`** so [`roadmap.md`](../roadmap.md) matches the graph.
+
+```bash
+specy-road sync
+# Offline / already on the right commit:
+specy-road sync --no-git
+```
+
+Flags: `--base <branch>`, `--remote <name>`, `--no-git` (validate + export only).
+
+---
+
+## CLI authoring (list / add / edit / archive)
+
+You can manage nodes from the CLI instead of hand-editing YAML for common changes. **YAML on disk remains canonical**; commands rewrite chunk files and then run validation.
+
+| Command | Purpose |
+| --- | --- |
+| `specy-road list-nodes` | All nodes with type, status, title, and **chunk file** path |
+| `specy-road show-node <NODE_ID>` | One node as YAML (and which chunk it lives in) |
+| `specy-road add-node` | Append a node to a chunk — run `specy-road add-node -h` for flags |
+| `specy-road edit-node <NODE_ID> --set key=value` | Whitelisted fields only (e.g. `status`, `title`, `agentic_checklist.spec_citation`) |
+| `specy-road archive-node <NODE_ID>` | Sets `status: Cancelled`; `--hard-remove` deletes the entry if nothing references it |
+
+Global option (must appear **before** the subcommand): `--repo-root DIR` for a non-default repo root.
+
+```bash
+specy-road list-nodes
+specy-road show-node M0.1.1
+specy-road add-node -h
+```
+
+---
+
+## Optional advisory LLM review
+
+Install the extra package, then run **`specy-road review-node <NODE_ID>`** to get a **Markdown report** (checklist gaps, contract ambiguity, constraint alignment). This is **advisory only** — it does not change YAML and is not a CI gate.
+
+```bash
+pip install "specy-road[review]"
+```
+
+**Configuration (environment variables only — never commit secrets):**
+
+- **Azure OpenAI:** `SPECY_ROAD_AZURE_OPENAI_ENDPOINT`, `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`, and optionally `SPECY_ROAD_OPENAI_API_VERSION` (default `2024-02-15-preview`).
+- **OpenAI or compatible API:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`).
+
+The command sends the generated brief, `constraints/README.md`, and **cited files** parsed from `spec_citation` (paths under `shared/`, `docs/`, `specs/`, `adr/` only). Review any data-handling policy before pointing this at production content.
+
+```bash
+specy-road review-node M0.1.1 -o work/review-M0.1.1.md
+```
+
+---
+
 ## Day-in-the-life: two modes
 
 ### 1. Runway maintenance (primary, ongoing)
@@ -127,7 +189,10 @@ See [Spec crosswalk](roadmap-authoring.md#spec-crosswalk) for the types of contr
 ```bash
 specy-road validate          # validate roadmap YAML + registry
 specy-road export            # regenerate roadmap.md and phase files
+specy-road sync              # git sync integration branch + validate + export
+specy-road list-nodes        # nodes and chunk paths
 specy-road brief <NODE_ID>   # read exactly what a dev/agent will receive
+specy-road review-node <NODE_ID>  # optional LLM advisory (needs [review] extra)
 ```
 
 Read the [roadmap authoring guide](roadmap-authoring.md) for full YAML field details, hierarchical chunk patterns, and line-count policy.

@@ -13,11 +13,15 @@ license = { text = "MIT" }
 dependencies = [
   "PyYAML>=6.0",
   "jsonschema>=4.20",
+  "ruamel.yaml>=0.18",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=7.0",
+]
+review = [
+  "openai>=1.40",
 ]
 
 [project.scripts]

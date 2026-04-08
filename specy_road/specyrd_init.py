@@ -31,6 +31,11 @@ COMMAND_FILES = (
     "specyrd-claim.md",
     "specyrd-finish.md",
     "specyrd-do-next-task.md",
+    "specyrd-sync.md",
+    "specyrd-list-nodes.md",
+    "specyrd-show-node.md",
+    "specyrd-add-node.md",
+    "specyrd-review-node.md",
 )
 
 # Stubs installed per role; omit to install all.
@@ -39,6 +44,11 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-validate.md",
         "specyrd-export.md",
         "specyrd-author.md",
+        "specyrd-sync.md",
+        "specyrd-list-nodes.md",
+        "specyrd-show-node.md",
+        "specyrd-add-node.md",
+        "specyrd-review-node.md",
     ),
     "dev": (
         "specyrd-validate.md",

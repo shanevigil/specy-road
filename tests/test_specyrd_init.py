@@ -24,6 +24,7 @@ def test_specyrd_init_dry_run_cursor(tmp_path: Path) -> None:
     )
     assert r.dry_run
     assert ".cursor/commands/specyrd-validate.md" in r.written
+    assert ".cursor/commands/specyrd-sync.md" in r.written
     assert ".specyrd/README.md" in r.written
     assert not (tmp_path / ".cursor").exists()
 

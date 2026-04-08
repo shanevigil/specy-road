@@ -277,6 +277,8 @@ python scripts/export_roadmap_md.py --check
 
 There is **no** automatic importer. Edits to the graph happen in YAML under `roadmap/`. Markdown exists for readability and review.
 
+PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The on-disk YAML graph remains the source of truth.
+
 ## Registry and brief
 
 Active work registration stays in [`roadmap/registry.yaml`](../roadmap/registry.yaml). Bounded context for a single node:

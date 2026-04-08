@@ -26,6 +26,16 @@ def main(argv: list[str] | None = None) -> None:
             "  export               — regenerate roadmap.md and phase files\n"
             "  file-limits          — check line-count constraints\n"
             "\n"
+            "PM workflow:\n"
+            "  sync                 — fetch/merge integration branch, validate, export\n"
+            "    (optional: --base BRANCH --remote NAME | --no-git)\n"
+            "  list-nodes           — list nodes and chunk paths (pass-through to roadmap CRUD)\n"
+            "  show-node <NODE_ID>\n"
+            "  add-node ...         — see: python scripts/roadmap_crud.py add-node -h\n"
+            "  edit-node ...\n"
+            "  archive-node ...\n"
+            "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
+            "\n"
             "Dev task loop:\n"
             "  do-next-available-task  — pick a task, sync base, branch, register\n"
             "    (optional: --base BRANCH --remote NAME | --no-sync)\n"
@@ -46,6 +56,18 @@ def main(argv: list[str] | None = None) -> None:
         _run("do_next_task.py", rest)
     elif cmd == "finish-this-task":
         _run("finish_task.py", rest)
+    elif cmd == "sync":
+        _run("pm_sync.py", rest)
+    elif cmd in (
+        "list-nodes",
+        "show-node",
+        "add-node",
+        "edit-node",
+        "archive-node",
+    ):
+        _run("roadmap_crud.py", [cmd, *rest])
+    elif cmd == "review-node":
+        _run("review_node.py", rest)
     else:
         print(f"unknown command: {cmd}", file=sys.stderr)
         raise SystemExit(2)

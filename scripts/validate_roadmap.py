@@ -16,8 +16,6 @@ from roadmap_load import load_roadmap, validate_roadmap_yaml_line_limits
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
-SCHEMA_ROADMAP = ROOT / "schemas" / "roadmap.schema.json"
-SCHEMA_REGISTRY = ROOT / "schemas" / "registry.schema.json"
 
 AGENTIC_KEYS = (
     "artifact_action",
@@ -179,9 +177,18 @@ def touch_zone_overlap(entries: list[dict]) -> None:
                         print(warn, file=sys.stderr)
 
 
-def run_validation(roadmap: dict, registry: dict, no_overlap_warn: bool) -> None:
-    validate_schema(roadmap, load_schema(SCHEMA_ROADMAP), "roadmap.schema")
-    validate_schema(registry, load_schema(SCHEMA_REGISTRY), "registry.schema")
+def run_validation(
+    roadmap: dict,
+    registry: dict,
+    no_overlap_warn: bool,
+    *,
+    repo_root: Path | None = None,
+) -> None:
+    r = repo_root or ROOT
+    roadmap_schema = r / "schemas" / "roadmap.schema.json"
+    registry_schema = r / "schemas" / "registry.schema.json"
+    validate_schema(roadmap, load_schema(roadmap_schema), "roadmap.schema")
+    validate_schema(registry, load_schema(registry_schema), "registry.schema")
 
     nodes = roadmap["nodes"]
     ids = [n["id"] for n in nodes]
@@ -214,6 +221,26 @@ def run_validation(roadmap: dict, registry: dict, no_overlap_warn: bool) -> None
     print("OK: roadmap and registry validate.")
 
 
+def validate_at(
+    root: Path, *, no_overlap_warn: bool = False, require_registry: bool = True
+) -> None:
+    """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``)."""
+    reg_path = root / "roadmap" / "registry.yaml"
+    if require_registry and not reg_path.is_file():
+        print(f"missing {reg_path}", file=sys.stderr)
+        raise SystemExit(1)
+
+    validate_roadmap_yaml_line_limits(root)
+    roadmap = load_roadmap(root)
+    if reg_path.is_file():
+        with reg_path.open(encoding="utf-8") as f:
+            registry = yaml.safe_load(f)
+    else:
+        registry = {"version": 1, "entries": []}
+
+    run_validation(roadmap, registry, no_overlap_warn, repo_root=root)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -221,18 +248,16 @@ def main() -> None:
         action="store_true",
         help="suppress touch-zone overlap warnings",
     )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Repository root (default: parent of scripts/).",
+    )
     args = parser.parse_args()
-
-    if not REGISTRY_PATH.is_file():
-        print(f"missing {REGISTRY_PATH}", file=sys.stderr)
-        raise SystemExit(1)
-
-    validate_roadmap_yaml_line_limits(ROOT)
-    roadmap = load_roadmap(ROOT)
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        registry = yaml.safe_load(f)
-
-    run_validation(roadmap, registry, args.no_overlap_warn)
+    root = (args.repo_root or ROOT).resolve()
+    validate_at(root, no_overlap_warn=args.no_overlap_warn, require_registry=True)
 
 
 if __name__ == "__main__":

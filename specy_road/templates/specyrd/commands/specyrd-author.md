@@ -10,9 +10,9 @@ From the **repository root**:
 cd "$(git rev-parse --show-toplevel)"
 ```
 
-1. Find the target chunk file under `roadmap/phases/` (or create a new one and add it to `roadmap/roadmap.yaml` under `includes`).
+1. Find the target chunk file under `roadmap/phases/` (or create a new one and add it to `roadmap/roadmap.yaml` under `includes`). Use `specy-road list-nodes` to see which chunk holds each id.
 
-2. Add a node following the field reference in `docs/roadmap-authoring.md`. Minimum required fields:
+2. Prefer **`specy-road add-node`** (see `specy-road add-node -h`) for append-only tasks, or edit YAML by hand following `docs/roadmap-authoring.md`. Minimum required fields when authoring by hand:
 
 ```yaml
 - id: Mx.y          # immutable; never renumber; gaps allowed

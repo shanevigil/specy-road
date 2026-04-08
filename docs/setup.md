@@ -60,12 +60,12 @@ specyrd init . --ai claude-code
 # For Cursor
 specyrd init . --ai cursor
 
-# Filter to role-relevant stubs only (omit --role for all eight commands)
+# Filter to role-relevant stubs only (omit --role for all command stubs)
 specyrd init . --ai claude-code --role dev   # validate, brief, claim, finish, do-next-task
-specyrd init . --ai claude-code --role pm    # validate, export, author
+specyrd init . --ai claude-code --role pm    # validate, export, author, sync, list-nodes, …
 ```
 
-Default install writes **eight** `specyrd-*.md` files (`validate`, `brief`, `export`, `file-limits`, `author`, `claim`, `finish`, `do-next-task`). Stubs are written to `.claude/commands/` or `.cursor/commands/` (or a custom path for `--ai generic`). They are thin
+Default install writes **thirteen** `specyrd-*.md` files (including `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`). Stubs are written to `.claude/commands/` or `.cursor/commands/` (or a custom path for `--ai generic`). They are thin
 wrappers — the canonical behaviour lives in `specy-road` and `scripts/`, not the stubs.
 
 Use `--dry-run` to preview what would be written, `--force` to overwrite existing stubs.

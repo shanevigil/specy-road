@@ -15,3 +15,33 @@ def test_specy_road_validate() -> None:
         cwd=REPO,
         check=True,
     )
+
+
+def test_specy_road_sync_no_git() -> None:
+    subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "sync", "--no-git"],
+        cwd=REPO,
+        check=True,
+    )
+
+
+def test_specy_road_list_nodes() -> None:
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "list-nodes"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "M0" in r.stdout
+
+
+def test_specy_road_show_node() -> None:
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "show-node", "M0.1.1"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "M0.1.1" in r.stdout

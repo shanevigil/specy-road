@@ -9,7 +9,6 @@ from pathlib import Path
 from roadmap_load import load_roadmap
 
 ROOT = Path(__file__).resolve().parent.parent
-SHARED = ROOT / "shared"
 
 
 def load_nodes() -> list[dict]:
@@ -35,7 +34,7 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
     return list(reversed(out))
 
 
-def _brief_deps_and_contracts(n: dict, deps: list, by_id: dict[str, dict]) -> list[str]:
+def _brief_deps_and_contracts(n: dict, deps: list, root: Path) -> list[str]:
     lines: list[str] = [
         "",
         "## Dependencies (must complete first)",
@@ -56,15 +55,19 @@ def _brief_deps_and_contracts(n: dict, deps: list, by_id: dict[str, dict]) -> li
             "",
         ]
     )
-    if SHARED.is_dir():
-        for f in sorted(SHARED.glob("*.md")):
-            lines.append(f"- `{f.relative_to(ROOT)}`")
+    shared = root / "shared"
+    if shared.is_dir():
+        for f in sorted(shared.glob("*.md")):
+            lines.append(f"- `{f.relative_to(root)}`")
     else:
         lines.append("- _(no shared/*.md yet)_")
     return lines
 
 
-def render_brief(node_id: str, by_id: dict[str, dict]) -> str:
+def render_brief(
+    node_id: str, by_id: dict[str, dict], *, repo_root: Path | None = None
+) -> str:
+    root = repo_root or ROOT
     n = by_id[node_id]
     chain = ancestors(node_id, by_id) + [n]
     deps = n.get("dependencies") or []
@@ -106,7 +109,7 @@ def render_brief(node_id: str, by_id: dict[str, dict]) -> str:
             "dependency_note",
         ):
             head.append(f"- **{key}:** {ac.get(key, '—')}")
-    tail = _brief_deps_and_contracts(n, deps, by_id)
+    tail = _brief_deps_and_contracts(n, deps, root)
     return "\n".join(head + tail) + "\n"
 
 

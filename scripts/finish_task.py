@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import yaml
+from roadmap_chunk_utils import find_chunk_path
 from roadmap_load import load_roadmap
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,24 +54,6 @@ def _save_registry(doc: dict) -> None:
 # ---------------------------------------------------------------------------
 # YAML chunk status update (in-place, preserves formatting)
 # ---------------------------------------------------------------------------
-
-
-def _find_chunk(node_id: str) -> Path | None:
-    """Return the chunk file (or roadmap.yaml) that contains node_id."""
-    manifest = ROOT / "roadmap" / "roadmap.yaml"
-    with manifest.open(encoding="utf-8") as f:
-        doc = yaml.safe_load(f)
-    includes = doc.get("includes")
-    if not includes:
-        return manifest
-    base = ROOT / "roadmap"
-    for rel in includes:
-        chunk = base / rel
-        with chunk.open(encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-        if any(n.get("id") == node_id for n in (data.get("nodes") or [])):
-            return chunk
-    return None
 
 
 def _patch_status(content: str, node_id: str, new_status: str) -> tuple[str, bool]:
@@ -156,7 +139,7 @@ def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
 
 def _update_chunk_status(node_id: str) -> list[str]:
     """Patch status in chunk file; return list of changed file paths."""
-    chunk = _find_chunk(node_id)
+    chunk = find_chunk_path(ROOT, node_id)
     if not chunk:
         print(f"[warn] chunk file not found for {node_id} — set status manually.")
         return []
