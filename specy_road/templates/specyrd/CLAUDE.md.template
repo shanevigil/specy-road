@@ -10,8 +10,13 @@ For any roadmap-linked task, keep context small:
 - `constitution/purpose.md`
 - `constitution/principles.md`
 - `constraints/README.md`
-- **Roadmap graph** (`roadmap/roadmap.yaml` + includes): your node + parents + `dependencies`
+- **Roadmap graph** (`roadmap/manifest.json` manifest + chunk files from `includes`): your node + parents + `dependencies`
 - `shared/README.md`, then open **only** cited contract files
+
+## Roadmap model (do not confuse with registry)
+
+- **Merged graph (source of truth):** `roadmap/manifest.json` lists ordered `includes` of **JSON** chunk files under `roadmap/` (e.g. `phases/M1.json`). That is the roadmap data model — not YAML.
+- **Registration overlay:** `roadmap/registry.yaml` records who claimed which node and touch zones; it is **not** a merge chunk and does not replace the graph. See `docs/roadmap-authoring.md` for authoring rules; `roadmap.md` at the repo root is a **generated** index (`scripts/export_roadmap_md.py`).
 
 Generate a focused brief when possible:
 

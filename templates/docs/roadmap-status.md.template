@@ -1,6 +1,6 @@
 # Roadmap status (in-app / product repo)
 
-Copy to your application repository as `docs/roadmap-status.md` (or similar). Tracks **in-flight** work; the canonical graph stays in `roadmap/roadmap.yaml`.
+Copy to your application repository as `docs/roadmap-status.md` (or similar). Tracks **in-flight** work; the canonical graph stays under `roadmap/` (manifest + chunk files).
 
 ## Active
 

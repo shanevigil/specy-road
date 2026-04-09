@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import yaml
-from roadmap_chunk_utils import find_chunk_path
+from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from roadmap_load import load_roadmap
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -49,52 +49,6 @@ def _load_registry() -> dict:
 def _save_registry(doc: dict) -> None:
     with REGISTRY_PATH.open("w", encoding="utf-8") as f:
         yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
-
-
-# ---------------------------------------------------------------------------
-# YAML chunk status update (in-place, preserves formatting)
-# ---------------------------------------------------------------------------
-
-
-def _patch_status(content: str, node_id: str, new_status: str) -> tuple[str, bool]:
-    """
-    Update the top-level ``status:`` field for node_id in YAML text without
-    reformatting the file.  Returns (new_content, was_updated).
-
-    Strategy: scan line-by-line tracking which node we are inside, then
-    replace the first ``status:`` key at exactly node_indent+2 spaces.
-    """
-    lines = content.splitlines(keepends=True)
-    in_target = False
-    node_indent = -1
-    updated = False
-
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        leading = len(line) - len(line.lstrip())
-
-        if stripped.startswith("- id:"):
-            raw_id = stripped[len("- id:"):].strip().strip("\"'")
-            if raw_id == node_id:
-                in_target = True
-                node_indent = leading
-            elif in_target and leading <= node_indent:
-                # Entered a different node at the same list depth — give up.
-                break
-            continue
-
-        if in_target:
-            # ``- foo:`` at the same list depth as the node marker means a new
-            # list item (different structure) — exit.
-            if stripped.startswith("- ") and leading <= node_indent:
-                break
-            # Match ``status:`` at exactly field depth (node_indent + 2).
-            if leading == node_indent + 2 and stripped.startswith("status:"):
-                lines[i] = " " * leading + f"status: {new_status}\n"
-                updated = True
-                break
-
-    return "".join(lines), updated
 
 
 # ---------------------------------------------------------------------------
@@ -138,19 +92,25 @@ def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
 
 
 def _update_chunk_status(node_id: str) -> list[str]:
-    """Patch status in chunk file; return list of changed file paths."""
+    """Patch status in JSON chunk file; return list of changed file paths."""
     chunk = find_chunk_path(ROOT, node_id)
     if not chunk:
         print(f"[warn] chunk file not found for {node_id} — set status manually.")
         return []
-    content = chunk.read_text(encoding="utf-8")
-    new_content, patched = _patch_status(content, node_id, "Complete")
-    if patched:
-        chunk.write_text(new_content, encoding="utf-8")
-        print(f"[ok] status -> Complete  ({chunk.relative_to(ROOT)})")
-        return [str(chunk.relative_to(ROOT))]
-    print(f"[warn] status field not found for {node_id} in {chunk.relative_to(ROOT)}")
-    print("       Set it manually:  status: Complete")
+    if chunk.suffix.lower() != ".json":
+        print(
+            f"[warn] chunk {chunk.relative_to(ROOT)} is not .json — set status manually.",
+            file=sys.stderr,
+        )
+        return []
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n.get("id") == node_id:
+            n["status"] = "Complete"
+            write_json_chunk(chunk, nodes)
+            print(f"[ok] status -> Complete  ({chunk.relative_to(ROOT)})")
+            return [str(chunk.relative_to(ROOT))]
+    print(f"[warn] node {node_id} not found in {chunk.relative_to(ROOT)}")
     return []
 
 

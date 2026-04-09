@@ -29,6 +29,48 @@ def test_specyrd_init_dry_run_cursor(tmp_path: Path) -> None:
     assert not (tmp_path / ".cursor").exists()
 
 
+def test_specyrd_migrates_legacy_dot_specyr_manifest(tmp_path: Path) -> None:
+    """``.specyr/manifest.json`` is copied to ``.specyrd/`` and the legacy file is removed."""
+    leg = tmp_path / ".specyr"
+    leg.mkdir()
+    (leg / "manifest.json").write_text(
+        json.dumps({"specyr_version": "0.0.1", "agents": {"cursor": ["old"]}}),
+        encoding="utf-8",
+    )
+    run_init(
+        target=tmp_path,
+        agent="cursor",
+        dry_run=False,
+        force=False,
+        ai_commands_dir=None,
+    )
+    primary = tmp_path / ".specyrd" / "manifest.json"
+    assert primary.is_file()
+    data = json.loads(primary.read_text(encoding="utf-8"))
+    assert "specyrd_version" in data
+    assert "cursor" in data["agents"]
+    assert not (leg / "manifest.json").is_file()
+
+
+def test_specyrd_init_removes_stale_legacy_when_primary_exists(tmp_path: Path) -> None:
+    (tmp_path / ".specyrd").mkdir(parents=True)
+    (tmp_path / ".specyrd" / "manifest.json").write_text(
+        json.dumps({"specyrd_version": "9.9.9", "agents": {}}),
+        encoding="utf-8",
+    )
+    leg = tmp_path / ".specyr"
+    leg.mkdir()
+    (leg / "manifest.json").write_text("{}", encoding="utf-8")
+    run_init(
+        target=tmp_path,
+        agent="cursor",
+        dry_run=False,
+        force=False,
+        ai_commands_dir=None,
+    )
+    assert not (leg / "manifest.json").is_file()
+
+
 def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
     run_init(
         target=tmp_path,
@@ -41,7 +83,7 @@ def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
     assert v.is_file()
     text = v.read_text(encoding="utf-8")
     assert "specy-road validate" in text
-    assert "specify/<node-id>" in text or "specify" in text
+    assert "planning/<node-id>" in text or "planning/" in text
     manifest = tmp_path / ".specyrd" / "manifest.json"
     assert manifest.is_file()
     data = json.loads(manifest.read_text(encoding="utf-8"))

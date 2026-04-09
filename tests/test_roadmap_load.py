@@ -2,34 +2,34 @@
 
 from __future__ import annotations
 
-import textwrap
+import json
 
 import pytest
 
 import roadmap_load as rl
 
 
-def test_load_roadmap_merges_includes(tmp_path) -> None:
-    r = tmp_path / "roadmap"
-    r.mkdir()
-    (r / "roadmap.yaml").write_text(
-        textwrap.dedent(
-            """\
-            version: 1
-            includes:
-              - a.yaml
-            """
-        ),
+def _write_manifest_json(r: object, includes: list[str]) -> None:
+    r.mkdir(parents=True, exist_ok=True)
+    (r / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": includes}),
         encoding="utf-8",
     )
-    (r / "a.yaml").write_text(
-        textwrap.dedent(
-            """\
-            nodes:
-              - id: M0
-                parent_id: null
-                type: phase
-            """
+
+
+def test_load_roadmap_merges_json_includes(tmp_path) -> None:
+    r = tmp_path / "roadmap"
+    _write_manifest_json(r, ["a.json"])
+    (r / "a.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "M0",
+                    "parent_id": None,
+                    "type": "phase",
+                    "title": "P",
+                },
+            ],
         ),
         encoding="utf-8",
     )
@@ -39,48 +39,98 @@ def test_load_roadmap_merges_includes(tmp_path) -> None:
     assert doc["nodes"][0]["id"] == "M0"
 
 
-def test_validate_roadmap_yaml_line_limits_reads_config(tmp_path) -> None:
-    """Threshold is read from constraints/file-limits.yaml; default is 500."""
+def test_load_roadmap_requires_manifest_json(tmp_path) -> None:
+    (tmp_path / "roadmap").mkdir(parents=True)
+    with pytest.raises(FileNotFoundError):
+        rl.load_roadmap(tmp_path)
+
+
+def test_validate_roadmap_line_limits_json_chunk(tmp_path) -> None:
+    """Oversized multi-node JSON chunk fails; limit is configurable."""
     r = tmp_path / "roadmap"
-    r.mkdir()
-    (r / "roadmap.yaml").write_text(
-        "version: 1\nincludes: [a.yaml]\n", encoding="utf-8"
+    _write_manifest_json(r, ["a.json"])
+    # Pretty-printed arrays yield many physical lines (embedded ``\\n`` in JSON strings does not).
+    pad = [f"pad{i}" for i in range(400)]
+    nodes = [
+        {"id": "M0", "parent_id": None, "type": "phase", "title": "a", "pad": pad},
+        {"id": "M1", "parent_id": None, "type": "phase", "title": "b", "pad": pad},
+    ]
+    (r / "a.json").write_text(
+        json.dumps({"nodes": nodes}, indent=2),
+        encoding="utf-8",
     )
-    # Two nodes so the single-node exception does not apply.
-    node_block = (
-        "nodes:\n"
-        "  - id: M0\n    type: phase\n    title: x\n"
-        "  - id: M1\n    parent_id: M0\n    type: milestone\n    title: y\n"
-    )
-    padding = "# pad\n" * 495  # 495 + 8 node lines = 503 > 500
-    (r / "a.yaml").write_text(padding + node_block, encoding="utf-8")
 
-    # Without a config the default is 500, so 501 lines should fail.
     with pytest.raises(SystemExit):
-        rl.validate_roadmap_yaml_line_limits(tmp_path)
+        rl.validate_roadmap_line_limits(tmp_path)
 
-    # Raise the limit via config — should now pass.
     constraints = tmp_path / "constraints"
     constraints.mkdir()
     (constraints / "file-limits.yaml").write_text(
-        "roadmap_yaml_max_lines: 600\n", encoding="utf-8"
-    )
-    rl.validate_roadmap_yaml_line_limits(tmp_path)  # must not raise
-
-
-def test_load_roadmap_rejects_mixing_nodes_and_includes(tmp_path) -> None:
-    r = tmp_path / "roadmap"
-    r.mkdir()
-    (r / "roadmap.yaml").write_text(
-        textwrap.dedent(
-            """\
-            version: 1
-            includes: [a.yaml]
-            nodes: []
-            """
-        ),
+        "roadmap_json_chunk_max_lines: 2000\n",
         encoding="utf-8",
     )
-    (r / "a.yaml").write_text("nodes: []\n", encoding="utf-8")
+    rl.validate_roadmap_line_limits(tmp_path)
+
+
+def test_validate_roadmap_line_limits_manifest_reads_config(tmp_path) -> None:
+    """Manifest line cap is read from constraints/file-limits.yaml."""
+    r = tmp_path / "roadmap"
+    r.mkdir(parents=True)
+    big = ["a.json"] * 700
+    (r / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": big}, indent=2),
+        encoding="utf-8",
+    )
+    (r / "a.json").write_text(
+        json.dumps([{"id": "M0", "parent_id": None, "type": "phase", "title": "p"}]),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit):
+        rl.validate_roadmap_line_limits(tmp_path)
+
+    constraints = tmp_path / "constraints"
+    constraints.mkdir()
+    (constraints / "file-limits.yaml").write_text(
+        "roadmap_manifest_max_lines: 2000\n",
+        encoding="utf-8",
+    )
+    rl.validate_roadmap_line_limits(tmp_path)
+
+
+def test_load_roadmap_rejects_top_level_nodes(tmp_path) -> None:
+    r = tmp_path / "roadmap"
+    r.mkdir()
+    (r / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": [], "nodes": []}) + "\n",
+        encoding="utf-8",
+    )
     with pytest.raises(SystemExit):
         rl.load_roadmap(tmp_path)
+
+
+def test_load_preserves_contract_citation_in_chunks(tmp_path) -> None:
+    r = tmp_path / "roadmap"
+    _write_manifest_json(r, ["a.json"])
+    nodes = [
+        {
+            "id": "M0",
+            "parent_id": None,
+            "type": "phase",
+            "title": "P",
+            "agentic_checklist": {
+                "artifact_action": "a",
+                "contract_citation": "shared/README.md",
+                "interface_contract": "i",
+                "constraints_note": "c",
+                "dependency_note": "d",
+            },
+        },
+    ]
+    (r / "a.json").write_text(
+        json.dumps({"nodes": nodes}, indent=2),
+        encoding="utf-8",
+    )
+    doc = rl.load_roadmap(tmp_path)
+    ac = doc["nodes"][0]["agentic_checklist"]
+    assert ac.get("contract_citation") == "shared/README.md"

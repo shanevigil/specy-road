@@ -1,16 +1,29 @@
-# Roadmap authoring: YAML and markdown views
+# Roadmap authoring: JSON manifest and chunk files
 
 ## Source of truth
 
-**Canonical:** the roadmap graph under [`roadmap/`](../roadmap/). The entry file is [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml): either the **full graph** (legacy) or a **manifest** that lists chunk files to merge in order.
+**Canonical:** the roadmap graph under [`roadmap/`](../roadmap/). The entry file is **required**: [`roadmap/manifest.json`](../roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
 
 All node IDs are **immutable**; gaps in numbering are allowed; **never renumber** existing IDs.
+
+### PM vocabulary vs schema `type`
+
+The schema uses small enums; this is how they usually map to product thinking:
+
+| Schema `type` | Typical PM meaning |
+|---------------|-------------------|
+| `phase` | A major arc or release train (often spans multiple deliverables). |
+| `milestone` | A shippable slice or **feature**-sized outcome (codename, touch zones, dependencies). |
+| `task` | **Sub-feature** or implementation slice (often `execution_subtask`-tagged). |
+| `vision` | Program-level narrative when you use that layer. |
+
+Dependencies and `parallel_tracks` express what can run in parallel vs what must wait — not the `includes` order alone.
 
 ---
 
 ## Roadmap layers
 
-The graph has a natural depth hierarchy. All layers live in YAML under `roadmap/`; the markdown files are generated views.
+The graph has a natural depth hierarchy. **Node definitions** live in chunk files under `roadmap/`; [`roadmap.md`](../roadmap.md) is a **generated index** for reading.
 
 ```mermaid
 flowchart TB
@@ -30,7 +43,7 @@ flowchart TB
   subtasks --> fourth
 ```
 
-| Layer | YAML `type` | Role |
+| Layer | Node `type` | Role |
 |-------|-------------|------|
 | **Vision** | `vision` | Why the project exists; principles and metrics. |
 | **Phase** | `phase` | Time-bounded arc; execution milestone gate. |
@@ -41,26 +54,50 @@ flowchart TB
 
 ---
 
-## Hierarchical YAML (preferred)
+## JSON chunks (`.json`)
 
-Keep the graph **logically split** across multiple files under `roadmap/` so each file stays reviewable:
+Keep the graph **logically split** across multiple files under `roadmap/` so each file stays small and **diff-friendly in git**.
 
-- **`roadmap.yaml`** — `version` and `includes` (paths relative to `roadmap/`), **without** a top-level `nodes` key.
-- **Chunk files** (e.g. `phases/M0.yaml`) — each file is a mapping with a single `nodes` list for that slice of the tree (typically a phase subtree).
+### Manifest (`manifest.json`)
 
-Order matters: nodes are concatenated from chunks in **include order**. Duplicate IDs across files are rejected by validation.
+- **`version`** — integer (schema expects `1`).
+- **`includes`** — ordered list of chunk paths relative to `roadmap/` (e.g. `phases/M0.json`, `phases/M1.json`).
 
-### Legacy single-file graph
+Validated by [`schemas/manifest.schema.json`](../schemas/manifest.schema.json). Do not add a top-level `nodes` key to the manifest — nodes live only in chunk files.
 
-If `roadmap.yaml` has **no** `includes` key, it may contain top-level `nodes` only. Do not use `includes` and `nodes` together.
+**PM ordering:** `includes` order controls **merge order** when building the graph (and narrative flow in tools). **Execution order** is still driven by each node’s `dependencies` and `status`, not by chunk order alone.
+
+### Chunk shape
+
+Recommended on-disk shape (stable key order when tools save):
+
+```json
+{
+  "nodes": [
+    {
+      "dependencies": [],
+      "id": "M0",
+      "parent_id": null,
+      "status": "Complete",
+      "title": "Foundation",
+      "type": "phase"
+    }
+  ]
+}
+```
+
+The loader also accepts a top-level JSON **array** of node objects, or a single object with an `id`. Validation uses [`schemas/roadmap.schema.json`](../schemas/roadmap.schema.json) on the **merged** graph.
+
+Use the `notes` field (markdown string) for longer narrative in the same file, or add optional [`planning/<node-id>/`](../planning/README.md) markdown for structured overview/plan/tasks.
 
 ### Line-count policy (~500)
 
-No YAML file under `roadmap/` (except [`registry.yaml`](../roadmap/registry.yaml)) may exceed **500 lines**, **unless** that file's `nodes` array contains **exactly one** node — the smallest work-unit grain (e.g. one task with a large `agentic_checklist`).
+- **Manifest** [`manifest.json`](../roadmap/manifest.json): keep small; limit from `roadmap_manifest_max_lines` in config.
+- **JSON chunks** under `roadmap/` (except `manifest.json`): may not exceed **`roadmap_json_chunk_max_lines`** (default **500**) unless the chunk contains **exactly one** node.
 
-Phase files commonly reach the mid-400s after milestone enrichment; splitting at a lower threshold creates unnecessary churn. **500 is the deliberate trigger for a split along milestone or theme boundaries.**
+[`registry.yaml`](../roadmap/registry.yaml) is separate from the graph and is not a merge chunk.
 
-Enforced by `scripts/validate_roadmap.py` (via [`scripts/roadmap_load.py`](../scripts/roadmap_load.py)). The threshold is configurable via `roadmap_yaml_max_lines` in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml).
+Enforced by `scripts/validate_roadmap.py` (via [`scripts/roadmap_load.py`](../scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml).
 
 ---
 
@@ -144,7 +181,7 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
 | Field | Answers |
 |-------|---------|
 | `artifact_action` | What exactly is built or changed (named component, route, record). |
-| `spec_citation` | Which doc, section, entity, or contract to conform to. |
+| `contract_citation` | Which doc, section, entity, or contract to conform to. |
 | `interface_contract` | Inputs → outputs (API body, DB fields, component props, files). |
 | `constraints_note` | Security, logging, performance, UX rules that bind the work. |
 | `dependency_note` | Prior sub-task, stub, or merged milestone required first. |
@@ -156,31 +193,27 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
 | `success_signal` | Observable test or behavior confirming the task is done correctly. |
 | `forbidden_patterns` | Patterns explicitly prohibited (e.g. "do not call live service — use stub"). |
 
-**Spec traceability:** Each `agentic` task should map to at least one spec doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the spec may be missing — flag before writing the task. Validation emits a warning when `spec_citation` does not reference a known path prefix.
+**Contract traceability:** Each `agentic` task should map to at least one contract doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the contract write-up may be missing — flag before writing the task. Validation emits a warning when `contract_citation` does not reference a known path prefix. Use `contract_citation` in `agentic_checklist` (not alternate keys).
 
-**Example:**
+**Example (JSON node excerpt):**
 
-```yaml
-- id: M1.2.3
-  parent_id: M1.2
-  type: task
-  title: "Auto-save for entry form"
-  execution_subtask: agentic
-  agentic_checklist:
-    artifact_action: >
-      Add PUT /entries/{id} partial-update handler
-      per API contract §entries.
-    spec_citation: "shared/api-contract.md §entries"
-    interface_contract: >
-      Body: {field_name: value} dirty fields only.
-      Response: {status, updated_at}.
-      First save sets status In Progress.
-    constraints_note: >
-      Do not log field values server-side.
-      Stubs only until staging permits live integration.
-    dependency_note: "After M1.1 auth middleware; Entry table migrated."
-    success_signal: "PUT returns 200 with updated_at; repeated save is idempotent."
-    forbidden_patterns: "Do not call live external service in tests."
+```json
+{
+  "id": "M1.2.3",
+  "parent_id": "M1.2",
+  "type": "task",
+  "title": "Auto-save for entry form",
+  "execution_subtask": "agentic",
+  "agentic_checklist": {
+    "artifact_action": "Add PUT /entries/{id} partial-update handler per API contract entries section.",
+    "contract_citation": "shared/api-contract.md — entries",
+    "interface_contract": "Body: {field_name: value} dirty fields only. Response: {status, updated_at}. First save sets status In Progress.",
+    "constraints_note": "Do not log field values server-side. Stubs only until staging permits live integration.",
+    "dependency_note": "After M1.1 auth middleware; Entry table migrated.",
+    "success_signal": "PUT returns 200 with updated_at; repeated save is idempotent.",
+    "forbidden_patterns": "Do not call live external service in tests."
+  }
+}
 ```
 
 ---
@@ -244,20 +277,21 @@ Multiple developers and multiple agents per developer are assumed.
 ## PM editing workflow
 
 1. Read [`vision.md`](../vision.md) for invariants before editing.
-2. Edit the **chunk file** for the relevant phase; update status fields and `Last updated` in the index when scope or status changes.
+2. Edit the **JSON chunk** for the relevant phase; reorder **`includes`** in [`manifest.json`](../roadmap/manifest.json) when you want a different chunk merge order.
 3. **Never renumber** sub-task or fourth-level IDs — gaps are allowed.
-4. Split oversized chunk files at ~500 lines, along milestone or theme boundaries; wire links from the manifest.
+4. Split oversized chunk files at ~500 lines, along milestone or theme boundaries; add new paths to the manifest.
 5. Use `decision` blocks for architectural forks; link ADRs in `adr_ref` when they exist.
 6. Tag sub-tasks; split mixed types; align milestone `execution_milestone` with the dominant work type.
 
 ---
 
-## Generated markdown (do not edit by hand)
+## Generated index (`roadmap.md`)
 
-- [`roadmap.md`](../roadmap.md) — index table with **Gate** column.
-- [`roadmap/phases/`](../roadmap/phases/) — one file per top-level phase, listing the subtree. Includes **Notes**, **Details** (goal, acceptance, decision) when present.
+- [`roadmap.md`](../roadmap.md) — **generated** index table with **Gate** column. Do not edit by hand.
 
-Regenerate after editing YAML:
+Chunk files under [`roadmap/phases/`](../roadmap/phases/) are **source** (`.json` graph chunks).
+
+Regenerate the index after editing chunks:
 
 ```bash
 specy-road export
@@ -265,7 +299,7 @@ specy-road export
 python scripts/export_roadmap_md.py
 ```
 
-Check that committed markdown matches the graph (e.g. in CI):
+Check that the committed index matches the merged graph (e.g. in CI):
 
 ```bash
 python scripts/export_roadmap_md.py --check
@@ -273,11 +307,9 @@ python scripts/export_roadmap_md.py --check
 
 ---
 
-## Markdown → YAML
+## Tooling
 
-There is **no** automatic importer. Edits to the graph happen in YAML under `roadmap/`. Markdown exists for readability and review.
-
-PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The on-disk YAML graph remains the source of truth.
+PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
 
 ## Registry and brief
 

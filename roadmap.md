@@ -1,6 +1,6 @@
 # Roadmap index
 
-<!-- specy-road: generated from roadmap graph (roadmap.yaml + includes) — do not edit by hand -->
+<!-- specy-road: generated index from merged roadmap (manifest.json + chunk files) — do not edit by hand -->
 
 Gate maps milestone/task execution: **Human-led** / **Agentic-led** / **Mixed**, or sub-task **Human** / **Agentic** / **Human gate** when `execution_subtask` is set.
 
@@ -12,4 +12,4 @@ Gate maps milestone/task execution: **Human-led** / **Agentic-led** / **Mixed**,
 | `M1` | Implementation track | phase | Agentic-led | Not Started |
 | `M1.1` | Roadmap validator in CI | milestone | Agentic-led | Not Started |
 
-Phase detail: [`roadmap/phases/`](roadmap/phases/).
+Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

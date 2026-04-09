@@ -14,7 +14,7 @@ def _p_list(sub: argparse._SubParsersAction) -> None:
 
 
 def _p_show(sub: argparse._SubParsersAction) -> None:
-    sp = sub.add_parser("show-node", help="Print one node as YAML")
+    sp = sub.add_parser("show-node", help="Print one node as JSON")
     sp.add_argument("node_id", metavar="NODE_ID")
     sp.set_defaults(func=cmd_show)
 
@@ -24,7 +24,7 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     sp.add_argument(
         "--chunk",
         required=True,
-        help="Chunk path under roadmap/ (e.g. phases/M1.yaml)",
+        help="Chunk path under roadmap/ (e.g. phases/M1.json)",
     )
     sp.add_argument("--id", required=True, help="Node id, e.g. M1.2.1")
     sp.add_argument(
@@ -59,13 +59,17 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     )
     sp.add_argument("--touch-zone", action="append", default=[])
     sp.add_argument("--dependency", action="append", default=[])
+    _add_agentic_cli_flags(sp)
+    sp.set_defaults(func=cmd_add)
+
+
+def _add_agentic_cli_flags(sp: argparse.ArgumentParser) -> None:
     sp.add_argument("--checklist-json", default=None)
     sp.add_argument("--artifact-action", dest="artifact_action", default=None)
-    sp.add_argument("--spec-citation", dest="spec_citation", default=None)
+    sp.add_argument("--contract-citation", dest="contract_citation", default=None)
     sp.add_argument("--interface-contract", dest="interface_contract", default=None)
     sp.add_argument("--constraints-note", dest="constraints_note", default=None)
     sp.add_argument("--dependency-note", dest="dependency_note", default=None)
-    sp.set_defaults(func=cmd_add)
 
 
 def _p_edit(sub: argparse._SubParsersAction) -> None:

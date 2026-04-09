@@ -49,7 +49,7 @@ def test_validate_agentic_rejects_checklist_when_not_agentic() -> None:
             "execution_subtask": None,
             "agentic_checklist": {
                 "artifact_action": "x",
-                "spec_citation": "x",
+                "contract_citation": "x",
                 "interface_contract": "x",
                 "constraints_note": "x",
                 "dependency_note": "x",
@@ -60,27 +60,28 @@ def test_validate_agentic_rejects_checklist_when_not_agentic() -> None:
         vr.validate_agentic_checklists(nodes)
 
 
-def test_validate_spec_citations_warns_on_unknown_prefix(capsys) -> None:
+def test_validate_contract_citations_warns_on_unknown_prefix(capsys) -> None:
     nodes = [
         {
             "id": "M1.1.1",
             "execution_subtask": "agentic",
             "agentic_checklist": {
                 "artifact_action": "x",
-                "spec_citation": "internal note without path",
+                "contract_citation": "internal note without path",
                 "interface_contract": "x",
                 "constraints_note": "x",
                 "dependency_note": "x",
             },
         },
     ]
-    vr.validate_spec_citations(nodes)
+    vr.validate_contract_citations(nodes)
     captured = capsys.readouterr()
     assert "warning" in captured.err
     assert "M1.1.1" in captured.err
+    assert "contract_citation" in captured.err
 
 
-def test_validate_spec_citations_silent_on_known_prefix(capsys) -> None:
+def test_validate_contract_citations_silent_on_known_prefix(capsys) -> None:
     known = ("shared/api.md", "docs/adr/ADR-001.md", "specs/x.md", "adr/y.md")
     for prefix in known:
         nodes = [
@@ -89,14 +90,14 @@ def test_validate_spec_citations_silent_on_known_prefix(capsys) -> None:
                 "execution_subtask": "agentic",
                 "agentic_checklist": {
                     "artifact_action": "x",
-                    "spec_citation": prefix,
+                    "contract_citation": prefix,
                     "interface_contract": "x",
                     "constraints_note": "x",
                     "dependency_note": "x",
                 },
             },
         ]
-        vr.validate_spec_citations(nodes)
+        vr.validate_contract_citations(nodes)
         captured = capsys.readouterr()
         assert "warning" not in captured.err, (
             f"unexpected warning for prefix {prefix}"

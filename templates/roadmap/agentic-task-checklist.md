@@ -5,7 +5,7 @@ Use for authoring and review. Every `[agentic]` item should satisfy all items be
 ## Required (five elements)
 
 - [ ] **Artifact + action** — Named entity (handler, component, record), not “implement X”.
-- [ ] **Spec / ADR citation** — Document + section or entity; traceable to a contract in `shared/`.
+- [ ] **Contract / ADR citation** — Document + section or entity; traceable to a path under `shared/`, `docs/`, `specs/`, or `adr/`.
 - [ ] **Interface contract** — Inputs → outputs (API, DB shape, props).
 - [ ] **Constraints** — Security, logging, performance, UX bindings.
 - [ ] **Dependency** — Prior sub-task id, merged milestone, or stub flag.

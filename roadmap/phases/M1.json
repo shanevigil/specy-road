@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    {
+      "codename": null,
+      "dependencies": [
+        "M0.1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M1",
+      "notes": "Example dependency: M1 work assumes M0.1 milestone exists.",
+      "parallel_tracks": 2,
+      "parent_id": null,
+      "status": "Not Started",
+      "title": "Implementation track",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "codename": "roadmap-ci",
+      "dependencies": [
+        "M0.1"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M1.1",
+      "parallel_tracks": 1,
+      "parent_id": "M1",
+      "status": "Not Started",
+      "title": "Roadmap validator in CI",
+      "touch_zones": [
+        "scripts/",
+        ".github/"
+      ],
+      "type": "milestone"
+    }
+  ]
+}

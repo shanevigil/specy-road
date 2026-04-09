@@ -38,7 +38,7 @@ def _constraints_text(root: Path) -> str:
 
 def _cited_snippets(root: Path, node: dict) -> str:
     ac = node.get("agentic_checklist") or {}
-    citation = ac.get("spec_citation", "") or ""
+    citation = ac.get("contract_citation", "") or ""
     parts: list[str] = []
     root_res = root.resolve()
     for raw in citation.split(";"):
@@ -64,7 +64,7 @@ def _cited_snippets(root: Path, node: dict) -> str:
                 text = text[:cap] + "\n\n…(truncated)…"
             parts.append(f"### `{path_part}`\n\n{text}\n")
     if not parts:
-        return "_(no readable cited files parsed from spec_citation)_"
+        return "_(no readable cited files parsed from contract_citation)_"
     return "\n".join(parts)
 
 
@@ -143,7 +143,7 @@ def run_review(node_id: str, repo_root: Path | None = None) -> str:
         [
             "## Brief\n\n" + brief,
             "## constraints/README.md\n\n" + constraints,
-            "## Cited documents (from spec_citation)\n\n" + cited,
+            "## Cited documents (from contract_citation)\n\n" + cited,
         ],
     )
     client = _make_client()

@@ -17,9 +17,7 @@ if str(_LIB_DIR) not in sys.path:
     sys.path.insert(0, str(_LIB_DIR))
 
 import yaml
-from plotly.graph_objects import Figure
-import plotly.graph_objects as go
-from roadmap_chunk_utils import iter_roadmap_yaml_files
+from roadmap_chunk_utils import iter_roadmap_fingerprint_files
 
 try:
     from watchdog.events import FileSystemEventHandler
@@ -34,14 +32,6 @@ _WATCH_OBS_HOLD: list[Any] = []
 
 SETTINGS_DIR = Path.home() / ".specy-road"
 SETTINGS_PATH = SETTINGS_DIR / "gui-settings.json"
-
-STATUS_COLORS = {
-    "not started": "#9e9e9e",
-    "in progress": "#1976d2",
-    "complete": "#2e7d32",
-    "blocked": "#c62828",
-    "cancelled": "#757575",
-}
 
 
 def resolve_repo_root(fallback: Path) -> Path:
@@ -190,63 +180,9 @@ def registry_by_node_id(reg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def compute_depths(nodes: list[dict]) -> dict[str, int]:
-    by_id = {n["id"]: n for n in nodes}
-    memo: dict[str, int] = {}
-
-    def depth(nid: str) -> int:
-        if nid in memo:
-            return memo[nid]
-        deps = by_id[nid].get("dependencies") or []
-        if not deps:
-            memo[nid] = 0
-            return 0
-        d = 1 + max(depth(x) for x in deps)
-        memo[nid] = d
-        return d
-
-    for n in nodes:
-        depth(n["id"])
-    return memo
-
-
-def layout_nodes(
-    nodes: list[dict],
-) -> tuple[dict[str, tuple[float, float]], list[tuple[str, str]]]:
-    depths = compute_depths(nodes)
-    by_depth: dict[int, list[dict]] = {}
-    for n in nodes:
-        d = depths[n["id"]]
-        by_depth.setdefault(d, []).append(n)
-    for d in by_depth:
-        by_depth[d].sort(
-            key=lambda x: (
-                x.get("parallel_tracks") is None,
-                x.get("parallel_tracks") or 0,
-                x["id"],
-            ),
-        )
-    pos: dict[str, tuple[float, float]] = {}
-    x_scale, y_scale = 4.0, 1.2
-    for depth, group in sorted(by_depth.items()):
-        for i, n in enumerate(group):
-            pos[n["id"]] = (float(depth * x_scale), float(i * y_scale))
-    edges: list[tuple[str, str]] = []
-    for n in nodes:
-        for dep in n.get("dependencies") or []:
-            if dep in pos and n["id"] in pos:
-                edges.append((dep, n["id"]))
-    return pos, edges
-
-
-def node_color(node: dict) -> str:
-    s = (node.get("status") or "Not Started").strip().lower()
-    return STATUS_COLORS.get(s, "#616161")
-
-
 def roadmap_fingerprint(root: Path) -> int:
     h = 0
-    for p in iter_roadmap_yaml_files(root):
+    for p in iter_roadmap_fingerprint_files(root):
         try:
             h += p.stat().st_mtime_ns
         except OSError:
@@ -258,81 +194,6 @@ def roadmap_fingerprint(root: Path) -> int:
         except OSError:
             pass
     return h
-
-
-def add_dependency_arrows(
-    fig: Figure,
-    pos: dict[str, tuple[float, float]],
-    edges: list[tuple[str, str]],
-) -> None:
-    for a, b in edges:
-        if a not in pos or b not in pos:
-            continue
-        x0, y0 = pos[a]
-        x1, y1 = pos[b]
-        fig.add_annotation(
-            x=x1,
-            y=y1,
-            ax=x0,
-            ay=y0,
-            xref="x",
-            yref="y",
-            axref="x",
-            ayref="y",
-            showarrow=True,
-            arrowhead=2,
-            arrowsize=1,
-            arrowwidth=1,
-            arrowcolor="rgba(80,80,80,0.5)",
-        )
-
-
-def build_figure(
-    nodes: list[dict],
-    pos: dict[str, tuple[float, float]],
-    edges: list[tuple[str, str]],
-    pr_hints: dict[str, str],
-) -> Figure:
-    xs, ys, text, colors, custom, labels = [], [], [], [], [], []
-    for n in sorted(nodes, key=lambda x: x["id"]):
-        nid = n["id"]
-        x, y = pos[nid]
-        xs.append(x)
-        ys.append(y)
-        title = str(n.get("title", ""))[:40]
-        label = f"{nid}<br>{title}"
-        reg_hint = pr_hints.get(nid, "")
-        if reg_hint:
-            label += f"<br>{reg_hint}"
-        text.append(label)
-        colors.append(node_color(n))
-        custom.append([nid])
-        labels.append(nid)
-    fig = go.Figure()
-    add_dependency_arrows(fig, pos, edges)
-    fig.add_trace(
-        go.Scatter(
-            x=xs,
-            y=ys,
-            mode="markers+text",
-            text=labels,
-            textposition="top center",
-            marker=dict(size=22, color=colors, line=dict(width=1, color="#333")),
-            hovertext=text,
-            hoverinfo="text",
-            customdata=custom,
-            name="nodes",
-        ),
-    )
-    fig.update_layout(
-        showlegend=False,
-        xaxis=dict(showgrid=True, title="Dependency depth"),
-        yaxis=dict(showgrid=True, title="Parallel track (row)"),
-        margin=dict(l=40, r=40, t=40, b=40),
-        height=max(420, len(nodes) * 28),
-        dragmode="pan",
-    )
-    return fig
 
 
 def _run_watchdog_observer(root: Path, bump: list[float]) -> None:
@@ -347,7 +208,7 @@ def _run_watchdog_observer(root: Path, bump: list[float]) -> None:
             if event.is_directory:
                 return
             p = getattr(event, "src_path", "")
-            if p.endswith((".yaml", ".yml")):
+            if p.endswith((".yaml", ".yml", ".json", ".md")):
                 bump[0] = time.time()
 
     try:

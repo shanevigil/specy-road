@@ -1,0 +1,65 @@
+# Milestone + task stubs (JSON nodes)
+
+Copy the objects below into the `nodes` array of the relevant **`roadmap/phases/*.json`** chunk (see `docs/roadmap-authoring.md`).
+Replace all `<...>` placeholders. Fields marked **required** must be present;
+others are optional but strongly recommended for milestone-level nodes.
+
+> **Chunk files are canonical.** Hand-edit `roadmap/phases/*.json`. Regenerate root `roadmap.md` with `specy-road export` — do not hand-edit `roadmap.md`.
+
+---
+
+```json
+[
+  {
+    "id": "M<X.Y>",
+    "parent_id": "M<X>",
+    "type": "milestone",
+    "title": "Short imperative title",
+    "status": "Not Started",
+    "codename": "your-kebab-name",
+    "execution_milestone": "Agentic-led",
+    "touch_zones": ["area/", "other/"],
+    "dependencies": ["M<prev>"],
+    "goal": "One or two sentences: what is delivered when this milestone is complete.",
+    "acceptance": [
+      "Observable condition 1 (e.g. specy-road validate exits 0)",
+      "Observable condition 2"
+    ],
+    "risks": ["Known risk or blocker to flag during planning."],
+    "decision": { "status": "pending" },
+    "notes": "Free-form prose for context not captured elsewhere."
+  },
+  {
+    "id": "M<X.Y.1>",
+    "parent_id": "M<X.Y>",
+    "type": "task",
+    "title": "Human-gate: decide <topic>",
+    "execution_subtask": "human-gate",
+    "status": "Not Started"
+  },
+  {
+    "id": "M<X.Y.2>",
+    "parent_id": "M<X.Y>",
+    "type": "task",
+    "title": "Implement <artifact>",
+    "execution_subtask": "agentic",
+    "dependencies": ["M<X.Y.1>"],
+    "status": "Not Started",
+    "agentic_checklist": {
+      "artifact_action": "Build or change <named component / route / record>.",
+      "contract_citation": "shared/<contract-file>.md — <section>",
+      "interface_contract": "Inputs → outputs: <API body / DB fields / props / files>.",
+      "constraints_note": "Security, logging, performance, or UX rules that apply.",
+      "dependency_note": "Prior sub-task, stub, or merged milestone required first."
+    }
+  }
+]
+```
+
+---
+
+## After adding the stub
+
+1. Run `specy-road validate` — confirm no schema or graph errors.
+2. Run `specy-road export` — regenerate `roadmap.md`.
+3. Sync `codename` in `roadmap/registry.yaml` when work begins (first commit).

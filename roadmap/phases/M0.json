@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M0",
+      "notes": "Human-led phase: specs and ADRs before heavy implementation.",
+      "parallel_tracks": 1,
+      "parent_id": null,
+      "status": "Complete",
+      "title": "Foundation \u2014 architecture and contracts",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "codename": "contracts-bootstrap",
+      "dependencies": [],
+      "execution_milestone": "Mixed",
+      "id": "M0.1",
+      "parallel_tracks": 1,
+      "parent_id": "M0",
+      "status": "Complete",
+      "title": "Establish shared contracts and ADR skeleton",
+      "touch_zones": [
+        "shared/",
+        "schemas/"
+      ],
+      "type": "milestone"
+    },
+    {
+      "agentic_checklist": {
+        "artifact_action": "Add shared/api-contract.md with resource list and error shape",
+        "constraints_note": "No secrets in repo; PII fields marked N/A in stub",
+        "contract_citation": "shared/README.md \u2014 Contracts section; link to ADR when added",
+        "dependency_note": "After M0.1 milestone scaffolding exists",
+        "interface_contract": "HTTP JSON: request/response envelope; error codes enum"
+      },
+      "dependencies": [],
+      "execution_subtask": "agentic",
+      "id": "M0.1.1",
+      "parent_id": "M0.1",
+      "status": "Complete",
+      "title": "Define API contract outline in shared/",
+      "touch_zones": [
+        "shared/"
+      ],
+      "type": "task"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# Spec — node `{{NODE_ID}}` — {{TITLE}}
+# Overview — node `{{NODE_ID}}` — {{TITLE}}
 
 ## Intent
 
@@ -14,5 +14,5 @@ What problem this slice solves; link to roadmap node `{{NODE_ID}}`.
 
 ## References
 
-- Roadmap: `roadmap/roadmap.yaml` → `{{NODE_ID}}`
+- Roadmap: `roadmap/manifest.json` (`includes`) → chunk file for `{{NODE_ID}}`
 - Contracts (read selectively): `shared/`

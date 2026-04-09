@@ -1,56 +1,120 @@
-"""Locate roadmap YAML chunks and load node lists (shared by finish_task, CRUD, list)."""
+"""Roadmap manifest discovery and JSON chunk loading."""
 
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
-import yaml
-
-MANIFEST_NAME = "roadmap.yaml"
+MANIFEST_JSON = "manifest.json"
 
 
 def roadmap_dir(root: Path) -> Path:
     return (root / "roadmap").resolve()
 
 
-def manifest_path(root: Path) -> Path:
-    return roadmap_dir(root) / MANIFEST_NAME
-
-
-def iter_roadmap_yaml_files(root: Path) -> list[Path]:
-    """All ``roadmap/**/*.yaml`` except ``registry.yaml``."""
+def discover_manifest_path(root: Path) -> Path:
+    """Return ``roadmap/manifest.json`` if present."""
     base = roadmap_dir(root)
-    if not base.is_dir():
-        return []
-    out: list[Path] = []
-    for p in sorted(base.rglob("*.yaml")):
-        if p.name == "registry.yaml":
-            continue
-        out.append(p)
-    return out
+    j = base / MANIFEST_JSON
+    if j.is_file():
+        return j
+    raise FileNotFoundError(f"no roadmap manifest: expected {j}")
+
+
+def manifest_path(root: Path) -> Path:
+    """Resolved manifest path (same as ``discover_manifest_path``)."""
+    return discover_manifest_path(root)
+
+
+def _fail_manifest(msg: str) -> None:
+    print(msg, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def load_manifest_mapping(root: Path) -> dict:
+    """Load ``manifest.json`` as a mapping (``version``, ``includes``)."""
+    path = discover_manifest_path(root)
+    with path.open(encoding="utf-8") as f:
+        doc = json.load(f)
+    if not isinstance(doc, dict):
+        _fail_manifest(f"{path.relative_to(root)}: must be a JSON object")
+    return doc
+
+
+def write_json_chunk(path: Path, nodes: list[dict]) -> None:
+    """Write roadmap nodes as canonical ``{"nodes": [...]}`` (stable key order for diffs)."""
+    body = json.dumps(
+        {"nodes": nodes},
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    )
+    if not body.endswith("\n"):
+        body += "\n"
+    path.write_text(body, encoding="utf-8")
+
+
+def load_json_chunk(path: Path) -> list[dict]:
+    """Load nodes from a ``.json`` chunk (single node object, ``nodes`` array, or array)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        _fail_manifest(f"roadmap: JSON parse error in {path}: {e}")
+    if isinstance(data, list):
+        out = [n for n in data if isinstance(n, dict)]
+        if not out and data:
+            _fail_manifest(f"roadmap: JSON chunk must contain objects: {path}")
+        return out
+    if isinstance(data, dict):
+        nodes = data.get("nodes")
+        if isinstance(nodes, list):
+            return [n for n in nodes if isinstance(n, dict)]
+        if "id" in data:
+            return [data]
+    _fail_manifest(f"roadmap: invalid JSON chunk structure: {path}")
 
 
 def load_chunk_nodes(path: Path) -> list[dict]:
-    """Return ``nodes`` list from a chunk or legacy manifest (empty if missing)."""
-    with path.open(encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    if not isinstance(data, dict):
-        return []
-    nodes = data.get("nodes")
-    if not isinstance(nodes, list):
-        return []
-    return [n for n in nodes if isinstance(n, dict)]
+    """Return node dicts from a ``.json`` chunk file."""
+    if path.suffix.lower() == ".json":
+        return load_json_chunk(path)
+    _fail_manifest(f"roadmap: unsupported chunk type (use .json): {path}")
+
+
+def iter_roadmap_fingerprint_files(root: Path) -> list[Path]:
+    """Paths that should invalidate roadmap GUI cache when modified."""
+    base = roadmap_dir(root)
+    out: list[Path] = []
+    try:
+        mp = manifest_path(root)
+    except FileNotFoundError:
+        return out
+    out.append(mp)
+    doc = load_manifest_mapping(root)
+    for rel in doc.get("includes") or []:
+        if not isinstance(rel, str) or not rel.strip():
+            continue
+        chunk = (base / rel).resolve()
+        try:
+            chunk.relative_to(base)
+        except ValueError:
+            continue
+        if chunk.is_file():
+            out.append(chunk)
+    reg = base / "registry.yaml"
+    if reg.is_file():
+        out.append(reg)
+    return sorted(set(out), key=lambda p: str(p))
 
 
 def find_chunk_path(root: Path, node_id: str) -> Path | None:
-    """Return the YAML file under ``roadmap/`` that contains ``node_id``, or None."""
-    path = manifest_path(root)
-    if not path.is_file():
+    """Chunk file under ``roadmap/`` containing ``node_id``, or None."""
+    try:
+        path = manifest_path(root)
+    except FileNotFoundError:
         return None
-    with path.open(encoding="utf-8") as f:
-        doc = yaml.safe_load(f)
-    if not isinstance(doc, dict):
-        return None
+    doc = load_manifest_mapping(root)
     includes = doc.get("includes")
     if not includes:
         if any(n.get("id") == node_id for n in load_chunk_nodes(path)):
@@ -58,6 +122,8 @@ def find_chunk_path(root: Path, node_id: str) -> Path | None:
         return None
     base = roadmap_dir(root)
     for rel in includes:
+        if not isinstance(rel, str):
+            continue
         chunk = (base / rel).resolve()
         try:
             chunk.relative_to(base)
@@ -71,15 +137,13 @@ def find_chunk_path(root: Path, node_id: str) -> Path | None:
 
 
 def build_node_chunk_map(root: Path) -> dict[str, Path]:
-    """Map node id -> chunk file path (last wins if duplicate; validator catches dupes)."""
-    path = manifest_path(root)
+    """Map node id to chunk path (last wins; validator rejects duplicate ids)."""
+    try:
+        path = manifest_path(root)
+    except FileNotFoundError:
+        return {}
     by_id: dict[str, Path] = {}
-    if not path.is_file():
-        return by_id
-    with path.open(encoding="utf-8") as f:
-        doc = yaml.safe_load(f)
-    if not isinstance(doc, dict):
-        return by_id
+    doc = load_manifest_mapping(root)
     includes = doc.get("includes")
     if not includes:
         for n in load_chunk_nodes(path):
@@ -89,6 +153,8 @@ def build_node_chunk_map(root: Path) -> dict[str, Path]:
         return by_id
     base = roadmap_dir(root)
     for rel in includes:
+        if not isinstance(rel, str):
+            continue
         chunk = (base / rel).resolve()
         try:
             chunk.relative_to(base)
@@ -106,12 +172,12 @@ def build_node_chunk_map(root: Path) -> dict[str, Path]:
 def resolve_chunk_file(root: Path, chunk_arg: str) -> Path:
     """
     Resolve ``chunk_arg`` to an existing file under ``roadmap/``.
-    Accepts ``phases/M0.yaml`` or ``roadmap/phases/M0.yaml``.
+    Accepts ``phases/M0.json`` or ``roadmap/phases/M0.json``.
     """
     base = roadmap_dir(root)
     raw = chunk_arg.strip().replace("\\", "/")
     if raw.startswith("roadmap/"):
-        raw = raw[len("roadmap/") :]
+        raw = raw.removeprefix("roadmap/")
     candidate = (base / raw).resolve()
     try:
         candidate.relative_to(base)

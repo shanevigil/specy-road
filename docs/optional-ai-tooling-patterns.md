@@ -11,7 +11,7 @@ For coordination **inside** this kit, prefer [`roadmap/registry.yaml`](../roadma
 The **`specyrd`** CLI (installed with this package) can lay down **thin** markdown command files for Cursor (`.cursor/commands/`), Claude Code (`.claude/commands/`), or a **generic** directory you choose. Those files tell the agent to run **`specy-road`** or **`python scripts/…`** from the repo root — they are not a second source of truth.
 
 - **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits` and the matching scripts under `scripts/`.
-- **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. Optional per-milestone folders named `specify/<node-id>/` in specy-road are **this kit’s** spec/plan/tasks files, not that tool.
+- **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. Optional per-milestone folders named `planning/<node-id>/` in specy-road are **this kit’s** overview/plan/tasks files, not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value; use `--force` to overwrite stubs from a previous run.
 - **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root.
 
@@ -72,7 +72,7 @@ Typical high-value docs for app repos:
 - **Commands** — Exact dev, test, and lint commands (including PATH quirks).
 - **Git workflow** — Branch naming, merge policy, **registration** and touch zones.
 
-specy-road already separates **roadmap graph** (`roadmap.yaml`) from **active claims** (`registry.yaml`). Markdown roadmaps or `docs/roadmap-status.md` are optional patterns for repos that do not use this kit’s YAML registry.
+specy-road already separates **merged roadmap graph** (manifest + chunk files under `roadmap/`) from **active claims** (`registry.yaml`). Extra markdown tables or `docs/roadmap-status.md` are optional patterns for repos that want a human status board in addition to the registry.
 
 ---
 

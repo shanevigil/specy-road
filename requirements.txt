@@ -1,4 +1,3 @@
 # Validator and brief helper (Python 3.11+)
 PyYAML>=6.0
 jsonschema>=4.20
-ruamel.yaml>=0.18

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
 import pytest
 
 import review_node
+from roadmap_chunk_utils import write_json_chunk
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -23,43 +25,45 @@ def tiny_repo(tmp_path: Path) -> Path:
         "version: 1\nentries: []\n",
         encoding="utf-8",
     )
-    (tmp_path / "roadmap" / "roadmap.yaml").write_text(
-        "version: 1\nincludes:\n  - phases/T.yaml\n",
+    (tmp_path / "roadmap" / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/T.json"]}) + "\n",
         encoding="utf-8",
     )
-    (tmp_path / "roadmap" / "phases" / "T.yaml").write_text(
-        """
-nodes:
-  - id: M99
-    parent_id: null
-    type: phase
-    title: P
-    codename: null
-    execution_milestone: Human-led
-    status: Complete
-    touch_zones: []
-    dependencies: []
-    parallel_tracks: 1
-  - id: M99.1
-    parent_id: M99
-    type: task
-    title: One
-    codename: one
-    execution_milestone: Agentic-led
-    execution_subtask: agentic
-    agentic_checklist:
-      artifact_action: a
-      spec_citation: shared/README.md
-      interface_contract: i
-      constraints_note: c
-      dependency_note: d
-    status: Not Started
-    touch_zones: []
-    dependencies: []
-    parallel_tracks: 1
-""".lstrip(),
-        encoding="utf-8",
-    )
+    nodes = [
+        {
+            "id": "M99",
+            "parent_id": None,
+            "type": "phase",
+            "title": "P",
+            "codename": None,
+            "execution_milestone": "Human-led",
+            "status": "Complete",
+            "touch_zones": [],
+            "dependencies": [],
+            "parallel_tracks": 1,
+        },
+        {
+            "id": "M99.1",
+            "parent_id": "M99",
+            "type": "task",
+            "title": "One",
+            "codename": "one",
+            "execution_milestone": "Agentic-led",
+            "execution_subtask": "agentic",
+            "agentic_checklist": {
+                "artifact_action": "a",
+                "contract_citation": "shared/README.md",
+                "interface_contract": "i",
+                "constraints_note": "c",
+                "dependency_note": "d",
+            },
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [],
+            "parallel_tracks": 1,
+        },
+    ]
+    write_json_chunk(tmp_path / "roadmap" / "phases" / "T.json", nodes)
     return tmp_path
 
 

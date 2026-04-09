@@ -10,7 +10,7 @@ This document is product-agnostic. Adapt branch names (`main` / `dev`) to your o
 | Non-roadmap fix | `fix/<slug>` | `fix/validator-path` |
 | Non-roadmap feature | `feature/<slug>` | `feature/docs-index` |
 
-`<codename>` must match the milestone codename in [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml) (kebab-case, globally unique).
+`<codename>` must match the milestone codename in the roadmap graph (chunk files under [`roadmap/`](../roadmap/); see [`manifest.json`](../roadmap/manifest.json)) — kebab-case, globally unique.
 
 ## Before implementation
 

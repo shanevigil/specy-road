@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Export the roadmap graph to roadmap.md (index) and roadmap/phases/*.md.
+"""Export the merged roadmap graph to ``roadmap.md`` (read-only index).
 
-Canonical source is under roadmap/ (roadmap.yaml manifest and chunk files, or legacy inline nodes).
-Markdown is a human-readable view.
+Canonical nodes live in **JSON** chunk files listed by ``roadmap/manifest.json``.
+This script writes only the generated root ``roadmap.md`` index — it does not overwrite chunk files.
 """
 
 from __future__ import annotations
@@ -11,15 +11,14 @@ import argparse
 import sys
 from pathlib import Path
 
+from roadmap_chunk_utils import discover_manifest_path
 from roadmap_load import load_roadmap
 
 ROOT = Path(__file__).resolve().parent.parent
-ROADMAP_YAML = ROOT / "roadmap" / "roadmap.yaml"
 OUT_INDEX = ROOT / "roadmap.md"
-OUT_PHASES = ROOT / "roadmap" / "phases"
 
 BANNER = (
-    "<!-- specy-road: generated from roadmap graph (roadmap.yaml + includes) "
+    "<!-- specy-road: generated index from merged roadmap (manifest.json + chunk files) "
     "— do not edit by hand -->\n"
 )
 
@@ -82,7 +81,10 @@ def render_index(nodes: list[dict]) -> str:
         st = n.get("status", "")
         lines.append(f"| `{tid}` | {title} | {typ} | {gate} | {st} |")
     lines.append("")
-    lines.append("Phase detail: [`roadmap/phases/`](roadmap/phases/).")
+    lines.append(
+        "Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) "
+        "`includes` (e.g. [`roadmap/phases/`](roadmap/phases/))."
+    )
     lines.append("")
     return "\n".join(lines)
 
@@ -109,13 +111,18 @@ def _render_details(n: dict, lines: list[str]) -> None:
         for item in acceptance:
             lines.append(f"- {item}")
         lines.append("")
+    planning_dir = n.get("planning_dir")
+    if planning_dir:
+        lines.append(
+            f"**Planning directory:** `{planning_dir}` (overview.md, plan.md, tasks/)",
+        )
+        lines.append("")
 
 
 def render_phase_doc(phase_id: str, subtree: list[dict]) -> str:
+    """Render a phase subtree as a human-readable doc (used by tests / optional tooling)."""
     lines = [
         f"# Phase `{phase_id}`",
-        "",
-        BANNER.rstrip(),
         "",
         "| ID | Title | Type | Gate | Status |",
         "|----|-------|------|------|--------|",
@@ -134,8 +141,12 @@ def render_phase_doc(phase_id: str, subtree: list[dict]) -> str:
             lines.append(f"- **{n['id']}:** {n['notes']}")
         lines.append("")
     detailed = [
-        n for n in subtree
-        if n.get("goal") or n.get("acceptance") or n.get("decision")
+        n
+        for n in subtree
+        if n.get("goal")
+        or n.get("acceptance")
+        or n.get("decision")
+        or n.get("planning_dir")
     ]
     if detailed:
         lines.extend(["## Details", ""])
@@ -146,31 +157,18 @@ def render_phase_doc(phase_id: str, subtree: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def export_markdown(nodes: list[dict]) -> tuple[str, dict[str, str]]:
-    by_id = {n["id"]: n for n in nodes}
-    phase_roots = [
-        n for n in nodes if n.get("type") == "phase" and n.get("parent_id") is None
-    ]
-    phase_roots = sorted(phase_roots, key=lambda n: sort_key(n["id"]))
-
-    index = render_index(nodes)
-    phase_files: dict[str, str] = {}
-    for pr in phase_roots:
-        pid = pr["id"]
-        subtree = collect_subtree(pid, by_id)
-        phase_files[f"{pid}.md"] = render_phase_doc(pid, subtree)
-    return index, phase_files
+def export_markdown(nodes: list[dict]) -> str:
+    """Return ``roadmap.md`` body (merged graph index only)."""
+    return render_index(nodes)
 
 
 def _write_export(
     root: Path,
     index: str,
-    phase_files: dict[str, str],
     *,
     check: bool,
 ) -> None:
     out_index = root / "roadmap.md"
-    out_phases = root / "roadmap" / "phases"
     if check:
         if out_index.is_file():
             existing = out_index.read_text(encoding="utf-8")
@@ -180,21 +178,10 @@ def _write_export(
         else:
             print(f"missing {out_index}", file=sys.stderr)
             raise SystemExit(1)
-        for name, content in sorted(phase_files.items()):
-            path = out_phases / name
-            if not path.is_file():
-                print(f"missing {path}", file=sys.stderr)
-                raise SystemExit(1)
-            if path.read_text(encoding="utf-8") != content:
-                print(f"drift: {path}", file=sys.stderr)
-                raise SystemExit(1)
-        print("OK: markdown export matches roadmap graph.")
+        print("OK: roadmap.md matches merged roadmap graph.")
         return
     out_index.write_text(index, encoding="utf-8")
-    out_phases.mkdir(parents=True, exist_ok=True)
-    for name, content in phase_files.items():
-        (out_phases / name).write_text(content, encoding="utf-8")
-    print(f"Wrote {out_index} and {len(phase_files)} file(s) under {out_phases}")
+    print(f"Wrote {out_index}")
 
 
 def main() -> None:
@@ -213,13 +200,14 @@ def main() -> None:
     )
     args = parser.parse_args()
     root = (args.repo_root or ROOT).resolve()
-    roadmap_yaml = root / "roadmap" / "roadmap.yaml"
-    if not roadmap_yaml.is_file():
-        print(f"missing {roadmap_yaml}", file=sys.stderr)
-        raise SystemExit(1)
+    try:
+        discover_manifest_path(root)
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
+        raise SystemExit(1) from e
     nodes = load_roadmap(root)["nodes"]
-    index, phase_files = export_markdown(nodes)
-    _write_export(root, index, phase_files, check=args.check)
+    index = export_markdown(nodes)
+    _write_export(root, index, check=args.check)
 
 
 if __name__ == "__main__":

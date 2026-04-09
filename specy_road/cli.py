@@ -21,9 +21,9 @@ def main(argv: list[str] | None = None) -> None:
             "Usage: specy-road <command> [args...]\n"
             "\n"
             "Authoring / validation:\n"
-            "  validate             — validate roadmap YAML and registry\n"
+            "  validate             — validate merged roadmap graph and registry\n"
             "  brief <NODE_ID>      — generate focused brief for a node\n"
-            "  export               — regenerate roadmap.md and phase files\n"
+            "  export               — regenerate roadmap.md index from merged graph\n"
             "  file-limits          — check line-count constraints\n"
             "\n"
             "PM workflow:\n"
@@ -35,6 +35,8 @@ def main(argv: list[str] | None = None) -> None:
             "  edit-node ...\n"
             "  archive-node ...\n"
             "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
+            "  scaffold-planning <NODE_ID> — create planning/<id>/ overview.md, plan.md, tasks.md; set planning_dir\n"
+            "    (optional: --planning-dir PATH --task-id SUB_ID --force; see scripts/scaffold_planning.py -h)\n"
             "\n"
             "Dev task loop:\n"
             "  do-next-available-task  — pick a task, sync base, branch, register\n"
@@ -68,6 +70,8 @@ def main(argv: list[str] | None = None) -> None:
         _run("roadmap_crud.py", [cmd, *rest])
     elif cmd == "review-node":
         _run("review_node.py", rest)
+    elif cmd == "scaffold-planning":
+        _run("scaffold_planning.py", rest)
     else:
         print(f"unknown command: {cmd}", file=sys.stderr)
         raise SystemExit(2)

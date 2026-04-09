@@ -4,11 +4,11 @@ This document is for **humans and coding agents** adopting or working on specy-r
 
 ## What specy-road is opinionated about
 
-- **Roadmap-first evolution** — The graph under [`roadmap/`](../roadmap/) (manifest + hierarchical YAML chunks, or a legacy single file) is canonical: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
+- **Roadmap-first evolution** — The graph under [`roadmap/`](../roadmap/) (`manifest.json` + ordered **JSON** chunk files) is canonical: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
 - **Separation of concerns** — [`constitution/`](../constitution/) holds purpose and principles (human judgment). [`constraints/`](../constraints/) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
 - **Contracts over tribal knowledge** — [`shared/`](../shared/) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
 - **Multi-agent safety** — [`roadmap/registry.yaml`](../roadmap/registry.yaml) plus touch zones and first-commit registration ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
-- **Adaptive depth** — Default to lightweight planning (node + contracts + notes in [`work/`](../work/)). Use optional [`specify/<node-id>/`](../specify/README.md) when risk or complexity demands structured spec → plan → tasks **as files in the repo**, not as a mandated agent ceremony.
+- **Adaptive depth** — Default to lightweight planning (node + contracts + notes in [`work/`](../work/)). Use optional [`planning/<node-id>/`](../planning/README.md) when risk or complexity demands structured overview → plan → tasks **as files in the repo**, not as a mandated agent ceremony.
 
 ## What specy-road does not prescribe
 
@@ -31,7 +31,7 @@ Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md)
 1. [`constitution/purpose.md`](../constitution/purpose.md)
 2. [`constitution/principles.md`](../constitution/principles.md)
 3. [`constraints/README.md`](../constraints/README.md)
-4. [`roadmap/roadmap.yaml`](../roadmap/roadmap.yaml) (merged graph) — **your node** plus parents and `dependencies` only
+4. Merged roadmap graph ([`roadmap/manifest.json`](../roadmap/manifest.json) + `includes` chunk files) — **your node** plus parents and `dependencies` only
 5. [`shared/README.md`](../shared/README.md) — then open **only** contract files cited for the task
 
 For a focused slice:
@@ -57,4 +57,4 @@ flowchart LR
   A -. optional .-> implement
 ```
 
-The kit supplies the **roadmap graph** (YAML), constitution, constraints, and **shared** contracts. **Implementation** happens in your codebase; optional agent/IDE configuration is outside the kit’s required surface.
+The kit supplies the **roadmap graph** (JSON manifest + chunk files under `roadmap/`), constitution, constraints, and **shared** contracts. **Implementation** happens in your codebase; optional agent/IDE configuration is outside the kit’s required surface.

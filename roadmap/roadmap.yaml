@@ -1,7 +1,0 @@
-# Canonical roadmap manifest: ordered chunk files under roadmap/ (immutable IDs; gaps allowed).
-# Do not mix top-level `nodes` with `includes` — see docs/roadmap-authoring.md.
-
-version: 1
-includes:
-  - phases/M0.yaml
-  - phases/M1.yaml

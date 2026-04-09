@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate roadmap.yaml and registry.yaml (schema, DAG, ids, codenames)."""
+"""Validate merged roadmap graph (manifest + chunks) and registry.yaml."""
 
 from __future__ import annotations
 
@@ -12,22 +12,23 @@ import json
 import yaml
 from jsonschema import Draft202012Validator
 
-from roadmap_load import load_roadmap, validate_roadmap_yaml_line_limits
+from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
+from roadmap_load import load_roadmap, validate_roadmap_line_limits
+from planning_artifacts import collect_planning_artifact_errors
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
 
 AGENTIC_KEYS = (
     "artifact_action",
-    "spec_citation",
+    "contract_citation",
     "interface_contract",
     "constraints_note",
     "dependency_note",
 )
 
 # Known documentation path prefixes — project-agnostic.
-# A spec_citation that starts with one of these is considered traceable.
-SPEC_PATH_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
+CONTRACT_PATH_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
 
 
 def load_schema(path: Path) -> dict:
@@ -137,18 +138,18 @@ def validate_codenames(nodes: list[dict]) -> None:
             seen[c] = n["id"]
 
 
-def validate_spec_citations(nodes: list[dict]) -> None:
-    """Warn when an agentic node's spec_citation lacks a known doc-path prefix."""
+def validate_contract_citations(nodes: list[dict]) -> None:
+    """Warn when an agentic node's contract_citation lacks a known doc-path prefix."""
     for n in nodes:
         if n.get("execution_subtask") != "agentic":
             continue
         ac = n.get("agentic_checklist") or {}
-        citation = ac.get("spec_citation", "")
-        if not any(citation.startswith(p) for p in SPEC_PATH_PREFIXES):
+        citation = ac.get("contract_citation", "")
+        if not any(citation.startswith(p) for p in CONTRACT_PATH_PREFIXES):
             print(
-                f"roadmap: warning — node {n['id']} spec_citation does not "
+                f"roadmap: warning — node {n['id']} contract_citation does not "
                 f"reference a known doc path "
-                f"({', '.join(SPEC_PATH_PREFIXES)}): \"{citation}\"",
+                f"({', '.join(CONTRACT_PATH_PREFIXES)}): \"{citation}\"",
                 file=sys.stderr,
             )
 
@@ -203,8 +204,14 @@ def run_validation(
     validate_dependency_ids(nodes)
     cycle_check(nodes)
     validate_agentic_checklists(nodes)
-    validate_spec_citations(nodes)
+    validate_contract_citations(nodes)
     validate_codenames(nodes)
+
+    plan_errs = collect_planning_artifact_errors(r, nodes)
+    if plan_errs:
+        for msg in plan_errs:
+            print(msg, file=sys.stderr)
+        raise SystemExit(1)
 
     id_set = set(ids)
     for e in registry.get("entries") or []:
@@ -230,7 +237,11 @@ def validate_at(
         print(f"missing {reg_path}", file=sys.stderr)
         raise SystemExit(1)
 
-    validate_roadmap_yaml_line_limits(root)
+    validate_roadmap_line_limits(root)
+    discover_manifest_path(root)
+    mdoc = load_manifest_mapping(root)
+    mschema = root / "schemas" / "manifest.schema.json"
+    validate_schema(mdoc, load_schema(mschema), "manifest.schema")
     roadmap = load_roadmap(root)
     if reg_path.is_file():
         with reg_path.open(encoding="utf-8") as f:

@@ -173,7 +173,7 @@ def _write_prompt(node: dict, brief_path: Path) -> Path:
     if ac:
         for key in (
             "artifact_action",
-            "spec_citation",
+            "contract_citation",
             "interface_contract",
             "constraints_note",
             "dependency_note",
@@ -186,7 +186,7 @@ def _write_prompt(node: dict, brief_path: Path) -> Path:
         "",
         "## Instructions",
         "",
-        "1. Read the brief and the contracts cited in `spec_citation` before writing code.",
+        "1. Read the brief and the contracts cited in `contract_citation` before writing code.",
         "2. Stay within the declared touch zones.",
         "3. Commit incrementally — the pre-commit hook validates on every commit.",
         "4. When complete: run `specy-road finish-this-task` to close out the branch.",

@@ -151,20 +151,53 @@ def _normalize_manifest_dict(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
+def _remove_legacy_specyr_manifest(repo_root: Path) -> None:
+    """Drop pre-rename ``.specyr/manifest.json`` once ``.specyrd/`` is canonical."""
+    legacy = repo_root / ".specyr" / "manifest.json"
+    if not legacy.is_file():
+        return
+    try:
+        legacy.unlink()
+    except OSError:
+        return
+    try:
+        legacy.parent.rmdir()
+    except OSError:
+        pass
+
+
 def _load_manifest(repo_root: Path) -> dict[str, Any]:
+    """Load ``.specyrd/manifest.json``; migrate from ``.specyr/manifest.json`` if needed."""
     primary = repo_root / ".specyrd" / "manifest.json"
     legacy = repo_root / ".specyr" / "manifest.json"
-    path = primary if primary.is_file() else legacy
-    if not path.is_file():
-        return {"specyrd_version": __version__, "agents": {}}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"specyrd_version": __version__, "agents": {}}
-    data = _normalize_manifest_dict(data)
-    if "agents" not in data or not isinstance(data["agents"], dict):
-        data["agents"] = {}
-    return data
+    empty: dict[str, Any] = {"specyrd_version": __version__, "agents": {}}
+
+    def _parse(path: Path) -> dict[str, Any] | None:
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        if not isinstance(raw, dict):
+            return None
+        data = _normalize_manifest_dict(raw)
+        if "agents" not in data or not isinstance(data["agents"], dict):
+            data["agents"] = {}
+        return data
+
+    if primary.is_file():
+        data = _parse(primary) or empty
+        _remove_legacy_specyr_manifest(repo_root)
+        return data
+
+    if legacy.is_file():
+        data = _parse(legacy) or empty
+        primary.parent.mkdir(parents=True, exist_ok=True)
+        data["specyrd_version"] = __version__
+        primary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        _remove_legacy_specyr_manifest(repo_root)
+        return data
+
+    return empty
 
 
 def _save_manifest(repo_root: Path, data: dict[str, Any]) -> None:

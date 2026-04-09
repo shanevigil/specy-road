@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -9,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from roadmap_chunk_utils import find_chunk_path
+from roadmap_chunk_utils import find_chunk_path, write_json_chunk
 from roadmap_crud_ops import append_node_to_chunk
 
 REPO = Path(__file__).resolve().parent.parent
@@ -25,61 +26,65 @@ def _fixture_repo(dest: Path) -> None:
         "version: 1\nentries: []\n",
         encoding="utf-8",
     )
-    (dest / "roadmap" / "roadmap.yaml").write_text(
-        "version: 1\nincludes:\n  - phases/T.yaml\n",
+    (dest / "roadmap" / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/T.json"]}) + "\n",
         encoding="utf-8",
     )
-    (dest / "roadmap" / "phases" / "T.yaml").write_text(
-        """
-nodes:
-  - id: M99
-    parent_id: null
-    type: phase
-    title: P
-    codename: null
-    execution_milestone: Human-led
-    status: Complete
-    touch_zones: []
-    dependencies: []
-    parallel_tracks: 1
-  - id: M99.1
-    parent_id: M99
-    type: task
-    title: One
-    codename: one
-    execution_milestone: Agentic-led
-    execution_subtask: agentic
-    agentic_checklist:
-      artifact_action: a
-      spec_citation: shared/README.md
-      interface_contract: i
-      constraints_note: c
-      dependency_note: d
-    status: Not Started
-    touch_zones: []
-    dependencies: []
-    parallel_tracks: 1
-  - id: M99.2
-    parent_id: M99
-    type: task
-    title: Two
-    codename: two
-    execution_milestone: Agentic-led
-    execution_subtask: agentic
-    agentic_checklist:
-      artifact_action: a
-      spec_citation: shared/README.md
-      interface_contract: i
-      constraints_note: c
-      dependency_note: d
-    status: Not Started
-    touch_zones: []
-    dependencies:
-      - M99.1
-    parallel_tracks: 1
-""".lstrip(),
-        encoding="utf-8",
-    )
+    nodes = [
+        {
+            "id": "M99",
+            "parent_id": None,
+            "type": "phase",
+            "title": "P",
+            "codename": None,
+            "execution_milestone": "Human-led",
+            "status": "Complete",
+            "touch_zones": [],
+            "dependencies": [],
+            "parallel_tracks": 1,
+        },
+        {
+            "id": "M99.1",
+            "parent_id": "M99",
+            "type": "task",
+            "title": "One",
+            "codename": "one",
+            "execution_milestone": "Agentic-led",
+            "execution_subtask": "agentic",
+            "agentic_checklist": {
+                "artifact_action": "a",
+                "contract_citation": "shared/README.md",
+                "interface_contract": "i",
+                "constraints_note": "c",
+                "dependency_note": "d",
+            },
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [],
+            "parallel_tracks": 1,
+        },
+        {
+            "id": "M99.2",
+            "parent_id": "M99",
+            "type": "task",
+            "title": "Two",
+            "codename": "two",
+            "execution_milestone": "Agentic-led",
+            "execution_subtask": "agentic",
+            "agentic_checklist": {
+                "artifact_action": "a",
+                "contract_citation": "shared/README.md",
+                "interface_contract": "i",
+                "constraints_note": "c",
+                "dependency_note": "d",
+            },
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": ["M99.1"],
+            "parallel_tracks": 1,
+        },
+    ]
+    write_json_chunk(dest / "roadmap" / "phases" / "T.json", nodes)
 
 
 def _run_crud(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -93,7 +98,7 @@ def _run_crud(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 def test_find_chunk_path(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
-    assert find_chunk_path(tmp_path, "M99.1") == tmp_path / "roadmap" / "phases" / "T.yaml"
+    assert find_chunk_path(tmp_path, "M99.1") == tmp_path / "roadmap" / "phases" / "T.json"
 
 
 def test_append_node_validate(tmp_path: Path) -> None:
@@ -108,7 +113,7 @@ def test_append_node_validate(tmp_path: Path) -> None:
         "execution_subtask": "agentic",
         "agentic_checklist": {
             "artifact_action": "x",
-            "spec_citation": "shared/README.md",
+            "contract_citation": "shared/README.md",
             "interface_contract": "x",
             "constraints_note": "x",
             "dependency_note": "x",
@@ -118,7 +123,7 @@ def test_append_node_validate(tmp_path: Path) -> None:
         "dependencies": [],
         "parallel_tracks": 1,
     }
-    append_node_to_chunk(tmp_path, "phases/T.yaml", node)
+    append_node_to_chunk(tmp_path, "phases/T.json", node)
     v = subprocess.run(
         [
             sys.executable,

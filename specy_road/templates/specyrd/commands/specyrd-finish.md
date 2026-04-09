@@ -23,7 +23,7 @@ This will:
 
 1. Read the current branch name to find the codename and registry entry (registry
    `branch` must match `HEAD`).
-2. Update `status: Complete` in the roadmap YAML chunk.
+2. Set `status` to `Complete` on the node in the roadmap **JSON** chunk file.
 3. Remove the registry entry.
 4. Run `specy-road validate` and `specy-road export`.
 5. Commit the bookkeeping changes.

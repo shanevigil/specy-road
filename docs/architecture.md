@@ -2,18 +2,17 @@
 
 ## Scope and non-goals
 
-This repository provides **roadmap-first coordination** (YAML graph, validation, briefs, registry) and separates **constitution / principles / constraints / shared contracts**. It does **not** mandate a particular coding agent, IDE, or in-session implementation workflow—see [`philosophy-and-scope.md`](philosophy-and-scope.md).
+This repository provides **roadmap-first coordination** (merged graph from `roadmap/manifest.json` + JSON chunk files, validation, briefs, registry) and separates **constitution / principles / constraints / shared contracts**. It does **not** mandate a particular coding agent, IDE, or in-session implementation workflow—see [`philosophy-and-scope.md`](philosophy-and-scope.md).
 
 End-to-end flow for this repository:
 
 ```mermaid
 flowchart TD
   subgraph author [Authoring]
-    Y[roadmap manifest and YAML chunks]
+    Y[manifest.json and chunk files]
     V[vision.md]
     Y --> E[scripts/export_roadmap_md.py]
     E --> I[roadmap.md index]
-    E --> P[roadmap/phases/*.md]
   end
   subgraph validate [Validation]
     Y --> VR[scripts/validate_roadmap.py]
@@ -32,10 +31,10 @@ flowchart TD
 |-------|------|
 | `constitution/` | Purpose and principles (human norms, not machine-enforced) |
 | `constraints/` | Machine-readable limits; `file-limits.yaml` enforced by `validate_file_limits.py` |
-| `roadmap/` | `roadmap.yaml` (manifest or inline graph), chunk YAML, `registry.yaml` |
+| `roadmap/` | `manifest.json`, JSON chunk files (e.g. `phases/*.json`), `registry.yaml` |
 | `schemas/` | JSON Schema for roadmap and registry |
 | `shared/` | Contracts cited from tasks |
 | `scripts/` | Validators, brief helper, markdown export |
 | `specy_road/` | Package + `specy-road` CLI entrypoint |
 
-**Source of truth:** the roadmap graph under [`roadmap/`](../roadmap/) (see [`roadmap-authoring.md`](roadmap-authoring.md)). Markdown views are generated.
+**Source of truth:** node definitions in chunk files under [`roadmap/`](../roadmap/) (see [`roadmap-authoring.md`](roadmap-authoring.md)). Root [`roadmap.md`](../roadmap.md) is a generated index.

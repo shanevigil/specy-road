@@ -1,198 +1,270 @@
-# PM workflow: producing and codifying roadmap decisions
+# PM workflow: roadmap, dashboard, and day-to-day use
 
-This document is for the person **shaping** the roadmap — a product manager, director, or technical lead who decides what gets built and in what order. You produce the artifacts that developers and agents consume.
+This guide is for **product managers, program leads, and tech leads** who shape what gets built and in what order. You do not need to be a developer; you need a copy of the project on your machine and a way to run a few commands (or use the visual dashboard).
 
-The complementary guide for developers is [dev-workflow.md](dev-workflow.md).
+Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [setup.md](setup.md).
+
+---
+
+## What you are working with
+
+- The **roadmap** is a set of structured files in the repo under `roadmap/`. They describe milestones, tasks, dependencies, and status (**JSON chunk files** listed in `manifest.json`, plus `registry.yaml` for active claims).
+- **Git** is how the team shares changes. You pull updates before you edit, and you commit when you save roadmap changes.
+- You can work in two ways: a **visual dashboard** in the browser (recommended if you prefer clicking to typing), or the **command line** (`specy-road` …) for quick edits and scripts.
+
+There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `[roadmap.md](../roadmap.md)` is a **generated index** — refresh it with `specy-road export` or `specy-road sync`.
+
+### PM glossary (graph `type` values)
+
+Roadmap nodes keep stable machine `type` values for validation. In everyday terms:
+
+| `type` in files | Typical PM meaning |
+|-----------------|--------------------|
+| `vision` | Program narrative or north star |
+| `phase` | Time-bounded arc or release train |
+| `milestone` | Shippable slice or feature milestone |
+| `task` | Sub-feature or work item under a milestone |
+
+---
+
+## Before you start
+
+1. **Python 3.11+** installed ([python.org](https://www.python.org/downloads/) or your IT-provided install).
+2. A **clone of the repository** on your computer (same folder the developers use).
+3. A **terminal** open **in that folder** (the repo “root” — where you see `roadmap/`, `scripts/`, and `README.md`).
+
+**Windows users:** If you use **WSL**, open a Linux terminal, `cd` to the project there, and run all commands below inside WSL. Then open the dashboard in your normal browser at `http://localhost:8501`.
+
+---
+
+## Install the PM dashboard (one-time)
+
+The dashboard is a small web app. Install it once per machine (from the repo root):
+
+```bash
+pip install "specy-road[gui]"
+```
+
+If your team uses a virtual environment, activate it first, then run the same command.
+
+To confirm the main CLI is available:
+
+```bash
+specy-road --help
+```
+
+For a full dev install (tests, editable package), see [setup.md](setup.md).
+
+---
+
+## Open and use the roadmap dashboard
+
+### Start the app
+
+From the **repository root**:
+
+```bash
+streamlit run scripts/roadmap_gui.py
+```
+
+Your terminal will show a local address (usually **[http://localhost:8501](http://localhost:8501)**). Open that link in **Chrome, Edge, or Safari**. Keep the terminal window open while you use the app; closing it stops the dashboard.
+
+To stop the app: in the terminal, press **Ctrl+C**.
+
+### What you see
+
+- **Dependency view** — A picture of roadmap items as boxes arranged by **dependency depth** (what must finish before what). Lines show dependencies.
+- **Colors** — Roughly: not started (gray), in progress (blue), complete (green), blocked (red), cancelled (muted). Exact shades may vary.
+- **Registry** — When a developer has claimed work, you may see **branch names** or **timestamps** on the relevant item (from `roadmap/registry.yaml`). When they finish their task, that overlay usually clears after the next refresh.
+
+### Pick an item
+
+- **Click** a box on the chart, or use the **“Select node”** dropdown below it.  
+- A **detail panel** shows title, status, dependencies, touch zones, checklist fields (when present), acceptance criteria, and risks.
+
+### When the picture updates
+
+- Use the sidebar **“Auto-refresh seconds”** slider. Set it above zero so the app checks for file changes on a timer (for example every 30 seconds).
+- Saving roadmap files on disk (by you or by tooling) updates what the app reads on the next load or refresh.
+
+### Change status from the dashboard
+
+In the detail panel, choose a **status** from the dropdown and click **Save status**. The tool writes the roadmap **JSON** chunk file and runs validation — if something is invalid, you will see an error message instead of a silent failure.
+
+### Optional: AI review of one item
+
+**Run LLM review** asks an AI (OpenAI or Azure OpenAI) to comment on readiness — checklist gaps, unclear specs, risks. It is **advisory only**; it does not change files by itself.
+
+Configure credentials in **Settings** (gear area in the sidebar) under the **LLM** tab, or set the same **environment variables** your team documents (see below). Use **Test LLM** before relying on it.
+
+---
+
+## Optional dashboard settings (sidebar → Settings)
+
+Settings are stored on **your** computer only, not in the repo:
+
+`~/.specy-road/gui-settings.json`  
+(On Windows, that is under your user profile; the tool creates the folder if needed.)
+
+
+| Tab            | What it is for                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **LLM**        | API keys and model for the optional reviewer (OpenAI, Azure OpenAI, or a compatible API). **Test LLM** checks the connection. **Save** stores values locally.                                                                  |
+| **Git remote** | Optional. If you add a **GitHub** or **GitLab** token and repository name, the dashboard can try to show open **pull/merge requests** for branches that appear in the registry. If you skip this, you still see registry info. |
+
+
+If your company already set **environment variables** for the CLI reviewer, those still work and usually override empty fields in the saved file.
+
+**LLM environment variables (CLI and GUI):**
+
+- **Azure OpenAI:** `SPECY_ROAD_AZURE_OPENAI_ENDPOINT`, `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`, and optionally `SPECY_ROAD_OPENAI_API_VERSION` (default `2024-02-15-preview`).
+- **OpenAI or compatible:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`).
+
+Do not commit API keys into the repository. Review any data-handling policy before sending content to an external model.
+
+---
+
+## Command line: when and what to run
+
+Use the terminal in the **repo root**. The main program is `**specy-road`** followed by a **command**.
+
+### Commands you will use most
+
+
+| Command                                            | In plain English                                                                                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `specy-road sync`                                  | Download the latest from the team’s main branch (default), then validate and refresh the Markdown export. Use before a big editing session. |
+| `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check.                                   |
+| `specy-road export`                                | Regenerate `[roadmap.md](../roadmap.md)` from the merged graph — shareable index for stakeholders.                                            |
+| `specy-road list-nodes`                            | Table of all items with type, status, title, and which file they live in.                                                                   |
+| `specy-road show-node M0.1.1`                      | Print one item as JSON (replace `M0.1.1` with a real id).                                                                                   |
+| `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
+| `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
+| `specy-road archive-node M0.1.1`                   | Mark cancelled; add `--hard-remove` only when your team agrees to delete the row.                                                           |
+| `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks).                                                                |
+
+
+**Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.
+
+Examples:
+
+```bash
+specy-road sync
+specy-road list-nodes
+specy-road show-node M0.1.1
+specy-road edit-node M0.1.1 --set status=Complete
+```
+
+### Sync flags (detail)
+
+```bash
+specy-road sync
+specy-road sync --no-git    # validate + export only, no git fetch/merge
+```
+
+Also: `--base <branch>`, `--remote <name>` if your integration branch or remote name is non-default.
+
+### Optional: LLM review from the terminal
+
+```bash
+pip install "specy-road[review]"   # if you did not already install [gui]
+specy-road review-node M0.1.1 -o work/review-M0.1.1.md
+```
+
+Same environment variables as in the dashboard LLM section.
 
 ---
 
 ## Your role in the system
 
-Agentic development compresses execution timescales dramatically. A single developer with agents can execute dozens of tasks per day; a team can run hundreds. Your job is not to approve each task — it is to **stay far enough ahead** that devs and agents are never blocked waiting for a contract, decision, or node to exist.
+Agentic development moves fast. Your job is **not** to approve every pull request — it is to **stay ahead** so developers and agents are never blocked waiting for a contract, decision, or node.
 
-**Target horizon:** keep ready-to-execute `agentic` nodes available at a depth of roughly `(tasks per day per dev) × (number of devs)` ahead of current execution. If three devs each run ten tasks a day, the runway should be at least 30 nodes deep before the first one starts the morning.
+**Target horizon:** keep enough ready-to-execute `agentic` nodes ahead of the team. Rough rule: `(tasks per day per developer) × (number of developers)` nodes deep.
 
-| You own | You hand off entirely |
-| --- | --- |
-| Roadmap YAML authoring | All implementation |
-| Human-led gate decisions (resolved in advance) | Branch, test, merge |
-| Shared contracts under `shared/` | CI and validation failures |
-| Maintaining the execution runway | Registry housekeeping during execution |
-| Stakeholder views via export | Code review |
 
-You do not review PRs. You do not approve merges. The contracts you write and the CI the team runs are the gates — not your sign-off on individual branches.
+| You own                                        | You hand off entirely                  |
+| ---------------------------------------------- | -------------------------------------- |
+| Roadmap chunk authoring                        | Implementation                         |
+| Human-led gate decisions (resolved in advance) | Branch, test, merge                    |
+| Shared contracts under `shared/`               | CI failures                            |
+| Maintaining the execution runway               | Registry housekeeping during execution |
+| Stakeholder views via export                   | Code review                            |
 
----
-
-## Get the latest roadmap (import / sync)
-
-The graph lives in **git** under `roadmap/` (YAML). There is **no** Markdown → YAML importer; Markdown is generated for reading.
-
-**Typical flow before you author:**
-
-1. Ensure a clean working tree (commit, stash, or discard local changes).
-2. Run **`specy-road sync`** — fetches the integration branch (default `main` from `origin`), fast-forwards your local branch to match the remote, then runs **`specy-road validate`** and **`specy-road export`** so [`roadmap.md`](../roadmap.md) matches the graph.
-
-```bash
-specy-road sync
-# Offline / already on the right commit:
-specy-road sync --no-git
-```
-
-Flags: `--base <branch>`, `--remote <name>`, `--no-git` (validate + export only).
 
 ---
 
-## CLI authoring (list / add / edit / archive)
-
-You can manage nodes from the CLI instead of hand-editing YAML for common changes. **YAML on disk remains canonical**; commands rewrite chunk files and then run validation.
-
-| Command | Purpose |
-| --- | --- |
-| `specy-road list-nodes` | All nodes with type, status, title, and **chunk file** path |
-| `specy-road show-node <NODE_ID>` | One node as YAML (and which chunk it lives in) |
-| `specy-road add-node` | Append a node to a chunk — run `specy-road add-node -h` for flags |
-| `specy-road edit-node <NODE_ID> --set key=value` | Whitelisted fields only (e.g. `status`, `title`, `agentic_checklist.spec_citation`) |
-| `specy-road archive-node <NODE_ID>` | Sets `status: Cancelled`; `--hard-remove` deletes the entry if nothing references it |
-
-Global option (must appear **before** the subcommand): `--repo-root DIR` for a non-default repo root.
-
-```bash
-specy-road list-nodes
-specy-road show-node M0.1.1
-specy-road add-node -h
-```
-
----
-
-## Optional advisory LLM review
-
-Install the extra package, then run **`specy-road review-node <NODE_ID>`** to get a **Markdown report** (checklist gaps, contract ambiguity, constraint alignment). This is **advisory only** — it does not change YAML and is not a CI gate.
-
-```bash
-pip install "specy-road[review]"
-```
-
-**Configuration (environment variables only — never commit secrets):**
-
-- **Azure OpenAI:** `SPECY_ROAD_AZURE_OPENAI_ENDPOINT`, `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`, and optionally `SPECY_ROAD_OPENAI_API_VERSION` (default `2024-02-15-preview`).
-- **OpenAI or compatible API:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`).
-
-The command sends the generated brief, `constraints/README.md`, and **cited files** parsed from `spec_citation` (paths under `shared/`, `docs/`, `specs/`, `adr/` only). Review any data-handling policy before pointing this at production content.
-
-```bash
-specy-road review-node M0.1.1 -o work/review-M0.1.1.md
-```
-
----
-
-## Day-in-the-life: two modes
-
-### 1. Runway maintenance (primary, ongoing)
-
-Your main activity is keeping enough ready-to-execute nodes ahead of the team's execution pace.
+## Runway maintenance (ongoing)
 
 **Signs the runway is too short:**
 
-- Devs are waiting on a contract or decision before they can start a node
-- Nodes marked `Not Started` with `agentic` execution but missing `agentic_checklist` fields
-- `human-gate` tasks that haven't been resolved before devs reach them
+- People wait on a contract or decision before starting a node
+- `agentic` nodes missing `agentic_checklist` fields
+- `human-gate` tasks not resolved before execution reaches them
 
-**Batch authoring cadence (suggested):**
+**Suggested batch cadence:**
 
-1. Check the current execution depth: open [`roadmap.md`](../roadmap.md) and count `Not Started` + `Agentic-led` nodes with no unresolved dependencies.
-2. If the depth is below your target horizon, open the next chunk file and add nodes.
-3. For each `agentic` sub-task, fill in all five `agentic_checklist` fields. If you cannot — the spec is missing; write or stub it first and add a `risks` note.
-4. Resolve any `human-gate` tasks in the new batch before you stop. Do not leave `human-gate` nodes pending — they become blockers the moment a dev reaches them.
-5. Validate: `specy-road validate`. Fix errors before committing.
-6. Regenerate: `specy-road export`.
+1. Check depth via `[roadmap.md](../roadmap.md)` or the dashboard.
+2. Add or refine nodes in chunk files; fill all five `agentic_checklist` fields for agentic tasks.
+3. Resolve `human-gate` items before you stop for the day.
+4. `specy-road validate`, then `specy-road export`.
+5. Commit with something like: `chore(roadmap): short description of change`
 
-**Commit message convention:** `chore(roadmap): <short description of what changed>`
+---
 
-### 2. Decision-making (human-gate tasks)
+## Human-gate decisions
 
-**When:** a `human-gate` node exists in the upcoming execution horizon that has not been resolved.
-
-Resolve these before devs reach them, not after:
+Resolve these **before** developers reach them:
 
 1. Open the node with `execution_subtask: human-gate`.
-2. Make the decision; record it in:
-   - The `decision` block in the roadmap node (status, `decided_date`, `adr_ref`).
-   - An ADR file under `docs/adr/` if the decision is architectural.
-   - The relevant `shared/` contract if the decision changes an interface.
-3. Update the sub-task `status` to `Complete`.
-4. Validate and export.
-
-A `human-gate` task left unresolved is a hold on every downstream `agentic` node. Treat resolving them as part of runway maintenance, not a reactive step.
+2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
+3. Set the task status to `Complete`, then validate and export.
 
 ---
 
-## Monitoring execution (not approving it)
+## Monitoring execution (not approving PRs)
 
-You observe progress through `roadmap.md` and the registry — not through PRs.
-
-**Registry (`roadmap/registry.yaml`):**
-
-- Shows who has claimed what and which touch zones are active
-- A stale entry (claimed long ago, no recent commits) may indicate a blocked branch — follow up with the dev
-- `specy-road validate` warns on overlapping touch zones; surface this to the team if needed
-
-**Export:**
-
-```bash
-specy-road export
-```
-
-Check [`roadmap.md`](../roadmap.md) to see status across milestones. Share it with stakeholders as the canonical view — the phase files under [`roadmap/phases/`](../roadmap/phases/) have goal, acceptance, and decision detail.
-
-You do not need to check in on individual PRs. If CI is green and the contract was complete, the work is correct by construction.
+- `**roadmap/registry.yaml`** — Who claimed what and which areas of the repo are “in use.” Stale entries may mean a blocked branch; check with the developer.
+- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths.
+- `**specy-road export**` and `**roadmap.md**` — Stakeholder-friendly snapshot of status.
 
 ---
 
-## Authoring decisions: Human-led vs Agentic-led
+## Human-led vs agentic (short guide)
 
-**Rule of thumb:** if a step requires judgment, policy, stakeholder input, or cannot be verified by a machine — it is `human` or `human-gate`. If it can be fully described by a contract and a checklist — it is `agentic`.
 
-| Situation | Tag |
-| --- | --- |
-| Write an ADR or feature spec | `human` |
-| Choose between two architecture options | `human-gate` (resolve before devs reach it) |
-| Implement per a complete spec | `agentic` |
-| Acceptance spot-check (optional) | `human` |
-| CI-verified code generation | `agentic` |
+| Situation                           | Tag                          |
+| ----------------------------------- | ---------------------------- |
+| Write an ADR or feature spec        | `human`                      |
+| Choose between architecture options | `human-gate` (resolve early) |
+| Implement from a complete spec      | `agentic`                    |
+| CI-verifiable generation            | `agentic`                    |
 
-Set `execution_milestone` on the parent milestone to reflect the **dominant** work type (`Human-led`, `Agentic-led`, or `Mixed`).
 
-See [Rules for authoring sub-tasks](roadmap-authoring.md#rules-for-authoring-sub-tasks) for the complete ruleset.
+Set `execution_milestone` on the parent to the dominant mode (`Human-led`, `Agentic-led`, or `Mixed`). Full rules: [roadmap-authoring.md](roadmap-authoring.md#rules-for-authoring-sub-tasks).
 
 ---
 
 ## Writing implementable contracts
 
-Before marking a milestone ready, ensure the contract in `shared/` is complete enough to implement from without asking clarifying questions.
-
-A contract is implementable when it answers:
-
-- **What entity or operation** is being produced.
-- **What inputs and outputs** (schema, shape, fields).
-- **What constraints** (security, compliance, performance).
-- **What success looks like** (acceptance criteria or success signal).
-
-If it cannot answer all four — the contract is a stub. Mark the `agentic` task `Not Started` and add a `risks` note until the stub is filled in. An incomplete contract means the dev will stall or guess — both cost more than the time it takes you to finish the spec.
-
-See [Spec crosswalk](roadmap-authoring.md#spec-crosswalk) for the types of contracts (feature spec, data model, API contract, etc.).
+Before marking work ready, the `shared/` contract should answer: **what** is produced, **inputs/outputs**, **constraints**, and **success criteria**. If not, keep the task `Not Started` and note the gap under `risks`. See [Spec crosswalk](roadmap-authoring.md#spec-crosswalk).
 
 ---
 
-## Quick reference
+## Quick reference (copy-paste)
 
 ```bash
-specy-road validate          # validate roadmap YAML + registry
-specy-road export            # regenerate roadmap.md and phase files
-specy-road sync              # git sync integration branch + validate + export
-specy-road list-nodes        # nodes and chunk paths
-specy-road brief <NODE_ID>   # read exactly what a dev/agent will receive
-specy-road review-node <NODE_ID>  # optional LLM advisory (needs [review] extra)
+specy-road sync
+specy-road validate
+specy-road export
+specy-road list-nodes
+specy-road show-node <NODE_ID>
+specy-road edit-node <NODE_ID> --set status=Complete
+specy-road brief <NODE_ID>
+specy-road review-node <NODE_ID>   # needs LLM configured
 ```
 
-Read the [roadmap authoring guide](roadmap-authoring.md) for full YAML field details, hierarchical chunk patterns, and line-count policy.
+```bash
+streamlit run scripts/roadmap_gui.py
+```
+
+Deeper manifest and chunk rules: [roadmap-authoring.md](roadmap-authoring.md).

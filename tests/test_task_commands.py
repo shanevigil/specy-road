@@ -97,52 +97,6 @@ def test_available_excludes_no_codename() -> None:
     assert dnt._available([node], _reg()) == []
 
 
-# ---------------------------------------------------------------------------
-# finish_task: _patch_status
-# ---------------------------------------------------------------------------
-
-_CHUNK = """\
-nodes:
-  - id: M1.1
-    parent_id: M1
-    type: milestone
-    title: "Example"
-    codename: example
-    execution_milestone: Agentic-led
-    status: Not Started
-    touch_zones: []
-    dependencies: []
-
-  - id: M1.2
-    parent_id: M1
-    type: milestone
-    title: "Other"
-    codename: other
-    status: Not Started
-"""
-
-
-def test_patch_status_updates_correct_node() -> None:
-    result, updated = ft._patch_status(_CHUNK, "M1.1", "Complete")
-    assert updated
-    assert "    status: Complete\n" in result
-    # M1.2 must be untouched
-    lines = result.splitlines()
-    in_m12 = False
-    for line in lines:
-        if "- id: M1.2" in line:
-            in_m12 = True
-        if in_m12 and line.strip().startswith("status:"):
-            assert "Not Started" in line
-            break
-
-
-def test_patch_status_unknown_id_returns_unchanged() -> None:
-    result, updated = ft._patch_status(_CHUNK, "M9.9", "Complete")
-    assert not updated
-    assert result == _CHUNK
-
-
 def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[list[str]] = []
 
@@ -220,17 +174,32 @@ def test_resolve_context_rejects_missing_branch_field(
         ft._resolve_context("feature/rm-example")
 
 
-def test_patch_status_does_not_touch_nested_status() -> None:
-    chunk = """\
-nodes:
-  - id: M1.1
-    decision:
-      status: pending
-    status: Not Started
-"""
-    result, updated = ft._patch_status(chunk, "M1.1", "Complete")
-    assert updated
-    # decision.status untouched
-    assert "      status: pending" in result
-    # top-level status updated
-    assert "    status: Complete" in result
+def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:
+    import json
+
+    from roadmap_chunk_utils import load_json_chunk
+
+    (tmp_path / "roadmap" / "phases").mkdir(parents=True)
+    (tmp_path / "roadmap" / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/x.json"]}) + "\n",
+        encoding="utf-8",
+    )
+    nodes = [
+        {
+            "id": "M1.1",
+            "parent_id": None,
+            "type": "milestone",
+            "title": "Example",
+            "codename": "example",
+            "status": "Not Started",
+        },
+    ]
+    (tmp_path / "roadmap" / "phases" / "x.json").write_text(
+        json.dumps({"nodes": nodes}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
+    changed = ft._update_chunk_status("M1.1")
+    assert changed == ["roadmap/phases/x.json"]
+    out = load_json_chunk(tmp_path / "roadmap" / "phases" / "x.json")
+    assert out[0]["status"] == "Complete"

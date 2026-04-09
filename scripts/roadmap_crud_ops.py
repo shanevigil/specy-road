@@ -5,41 +5,21 @@ from __future__ import annotations
 import contextlib
 import io
 import json
-import re
 import sys
 from pathlib import Path
-
-from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedSeq
 
 from roadmap_chunk_utils import (
     build_node_chunk_map,
     find_chunk_path,
+    load_json_chunk,
     resolve_chunk_file,
+    write_json_chunk,
 )
-from roadmap_load import load_roadmap, validate_roadmap_yaml_line_limits
+from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
+from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
 
 ROOT_DEFAULT = Path(__file__).resolve().parent.parent
-
-ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
-CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
-
-EDIT_WHITELIST = frozenset({
-    "status",
-    "title",
-    "codename",
-    "execution_milestone",
-    "execution_subtask",
-    "parallel_tracks",
-    "notes",
-    "goal",
-    "agentic_checklist.artifact_action",
-    "agentic_checklist.spec_citation",
-    "agentic_checklist.interface_contract",
-    "agentic_checklist.constraints_note",
-    "agentic_checklist.dependency_note",
-})
 
 
 def repo_root(ns: object) -> Path:
@@ -52,7 +32,7 @@ def run_validate_raise(root: Path) -> None:
     err = io.StringIO()
     with contextlib.redirect_stderr(err):
         try:
-            validate_roadmap_yaml_line_limits(root)
+            validate_roadmap_line_limits(root)
             validate_at(root, no_overlap_warn=False, require_registry=True)
         except SystemExit as e:
             if e.code not in (0, None):
@@ -68,22 +48,7 @@ def run_validate(root: Path) -> None:
         raise SystemExit(1) from e
 
 
-def load_yaml_document(path: Path) -> tuple[object, YAML]:
-    text = path.read_text(encoding="utf-8")
-    y = YAML()
-    y.preserve_quotes = True
-    y.indent(mapping=2, sequence=4, offset=2)
-    return y.load(text), y
-
-
-def save_yaml_document(path: Path, data: object, y: YAML) -> None:
-    with path.open("w", encoding="utf-8") as f:
-        y.dump(data, f)
-
-
-def node_index_in_chunk(nodes_seq: object, node_id: str) -> int | None:
-    if not isinstance(nodes_seq, (list, CommentedSeq)):
-        return None
+def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
     for i, item in enumerate(nodes_seq):
         if isinstance(item, dict) and item.get("id") == node_id:
             return i
@@ -112,27 +77,36 @@ def cmd_show(args: object) -> None:
     if not chunk:
         print(f"error: no chunk contains node {nid!r}", file=sys.stderr)
         raise SystemExit(1)
-    data, y = load_yaml_document(chunk)
-    if not isinstance(data, dict) or "nodes" not in data:
-        print(f"error: invalid chunk structure in {chunk}", file=sys.stderr)
-        raise SystemExit(1)
-    idx = node_index_in_chunk(data["nodes"], nid)
-    if idx is None:
-        print(f"error: node {nid!r} not in chunk list", file=sys.stderr)
-        raise SystemExit(1)
-    node = data["nodes"][idx]
     print(f"# chunk: {chunk.relative_to(root)}\n")
-    y.dump(node, sys.stdout)
+    if chunk.suffix.lower() == ".json":
+        nodes = load_json_chunk(chunk)
+        idx = node_index_in_chunk(nodes, nid)
+        if idx is None:
+            print(f"error: node {nid!r} not in chunk list", file=sys.stderr)
+            raise SystemExit(1)
+        json.dump(nodes[idx], sys.stdout, indent=2, sort_keys=True, ensure_ascii=False)
+        print()
+        return
+    print(f"error: unsupported chunk type {chunk.suffix} (expected .json)", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def merged_ids(root: Path) -> set[str]:
     return {n["id"] for n in load_roadmap(root)["nodes"]}
 
 
+def _checklist_citation(ns: object) -> str | None:
+    cc = getattr(ns, "contract_citation", None)
+    if cc is not None and str(cc).strip():
+        return str(cc).strip()
+    return None
+
+
 def parse_checklist_flags(ns: object) -> dict | None:
+    cite = _checklist_citation(ns)
     fields = (
         ns.artifact_action,
-        ns.spec_citation,
+        cite,
         ns.interface_contract,
         ns.constraints_note,
         ns.dependency_note,
@@ -142,14 +116,14 @@ def parse_checklist_flags(ns: object) -> dict | None:
     if any(x is None or not str(x).strip() for x in fields):
         print(
             "error: agentic checklist requires all five of: "
-            "--artifact-action, --spec-citation, --interface-contract, "
-            "--constraints-note, --dependency-note",
+            "--artifact-action, --contract-citation, "
+            "--interface-contract, --constraints-note, --dependency-note",
             file=sys.stderr,
         )
         raise SystemExit(1)
     return {
         "artifact_action": ns.artifact_action.strip(),
-        "spec_citation": ns.spec_citation.strip(),
+        "contract_citation": cite or "",
         "interface_contract": ns.interface_contract.strip(),
         "constraints_note": ns.constraints_note.strip(),
         "dependency_note": ns.dependency_note.strip(),
@@ -162,17 +136,19 @@ def _checklist_from_json(raw: str) -> dict:
     except json.JSONDecodeError as e:
         print(f"error: invalid --checklist-json: {e}", file=sys.stderr)
         raise SystemExit(1) from e
-    for k in (
-        "artifact_action",
-        "spec_citation",
-        "interface_contract",
-        "constraints_note",
-        "dependency_note",
-    ):
-        if not checklist.get(k) or not str(checklist[k]).strip():
+    cite = checklist.get("contract_citation")
+    merged = {
+        "artifact_action": checklist.get("artifact_action"),
+        "contract_citation": cite,
+        "interface_contract": checklist.get("interface_contract"),
+        "constraints_note": checklist.get("constraints_note"),
+        "dependency_note": checklist.get("dependency_note"),
+    }
+    for k, v in merged.items():
+        if not v or not str(v).strip():
             print(f"error: checklist missing or empty {k!r}", file=sys.stderr)
             raise SystemExit(1)
-    return checklist
+    return merged
 
 
 def _resolve_parent(args: object, root: Path) -> object:
@@ -254,49 +230,13 @@ def cmd_add(args: object) -> None:
 
 def append_node_to_chunk(root: Path, chunk_arg: str, node: dict) -> Path:
     chunk_path = resolve_chunk_file(root, chunk_arg)
-    data, y = load_yaml_document(chunk_path)
-    if not isinstance(data, dict) or "nodes" not in data:
-        print("error: chunk must contain top-level `nodes` list", file=sys.stderr)
-        raise SystemExit(1)
-    nodes_seq = data["nodes"]
-    if not isinstance(nodes_seq, (list, CommentedSeq)):
-        print("error: `nodes` must be a list", file=sys.stderr)
-        raise SystemExit(1)
-    nodes_seq.append(node)
-    save_yaml_document(chunk_path, data, y)
-    return chunk_path
-
-
-def apply_set(node: dict, dotted_key: str, raw_val: str) -> None:
-    if dotted_key not in EDIT_WHITELIST:
-        raise ValueError(f"key not allowed for --set: {dotted_key!r}")
-    parts = dotted_key.split(".")
-    if len(parts) == 1:
-        key = parts[0]
-        if key == "parallel_tracks":
-            try:
-                node[key] = int(raw_val)
-            except ValueError as e:
-                raise ValueError(
-                    f"parallel_tracks must be an integer, got {raw_val!r}",
-                ) from e
-        elif key == "codename" and raw_val.lower() in ("null", "~", ""):
-            node[key] = None
-        elif key == "execution_milestone" and raw_val.lower() in ("null", "~", ""):
-            node[key] = None
-        elif key == "execution_subtask" and raw_val.lower() in ("null", "~", ""):
-            node[key] = None
-        else:
-            node[key] = raw_val
-        return
-    if parts[0] != "agentic_checklist" or len(parts) != 2:
-        raise ValueError(f"unsupported nested key: {dotted_key!r}")
-    sub = parts[1]
-    ac = node.get("agentic_checklist")
-    if not isinstance(ac, dict):
-        ac = {}
-        node["agentic_checklist"] = ac
-    ac[sub] = raw_val
+    if chunk_path.suffix.lower() == ".json":
+        nodes = load_json_chunk(chunk_path)
+        nodes.append(node)
+        write_json_chunk(chunk_path, nodes)
+        return chunk_path
+    print("error: chunk must be a .json file", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) -> None:
@@ -308,17 +248,21 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
     chunk = find_chunk_path(root, node_id)
     if not chunk:
         raise ValueError(f"no chunk contains node {node_id!r}")
-    data, y = load_yaml_document(chunk)
-    idx = node_index_in_chunk(data["nodes"], node_id)
-    if idx is None:
-        raise ValueError(f"node {node_id!r} not found")
-    node = data["nodes"][idx]
-    if not isinstance(node, dict):
-        raise ValueError("corrupt node entry")
-    for k, v in pairs:
-        apply_set(node, k, v)
-    save_yaml_document(chunk, data, y)
-    run_validate_raise(root)
+    if chunk.suffix.lower() == ".json":
+        nodes = load_json_chunk(chunk)
+        idx = node_index_in_chunk(nodes, node_id)
+        if idx is None:
+            raise ValueError(f"node {node_id!r} not found")
+        node = nodes[idx]
+        if not isinstance(node, dict):
+            raise ValueError("corrupt node entry")
+        ids = merged_ids(root)
+        for k, v in pairs:
+            apply_set(node, k, v, all_ids=ids, self_id=node_id)
+        write_json_chunk(chunk, nodes)
+        run_validate_raise(root)
+        return
+    raise ValueError(f"unsupported chunk type {chunk.suffix} (expected .json)")
 
 
 def cmd_edit(args: object) -> None:
@@ -350,6 +294,29 @@ def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
     return True, ""
 
 
+def _archive_apply(
+    nodes: list,
+    idx: int,
+    nid: str,
+    chunk: Path,
+    root: Path,
+    *,
+    hard_remove: bool,
+) -> None:
+    if hard_remove:
+        ok, msg = can_hard_remove(root, nid)
+        if not ok:
+            print(f"error: cannot hard-remove: {msg}", file=sys.stderr)
+            raise SystemExit(1)
+        del nodes[idx]
+        print(f"[ok] removed {nid} from {chunk.relative_to(root)}")
+    else:
+        node = nodes[idx]
+        if isinstance(node, dict):
+            node["status"] = "Cancelled"
+        print(f"[ok] status -> Cancelled for {nid}")
+
+
 def cmd_archive(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
@@ -357,24 +324,15 @@ def cmd_archive(args: object) -> None:
     if not chunk:
         print(f"error: no chunk contains node {nid!r}", file=sys.stderr)
         raise SystemExit(1)
-    data, y = load_yaml_document(chunk)
-    nodes_seq = data.get("nodes")
-    idx = node_index_in_chunk(nodes_seq, nid)
-    if idx is None:
-        print(f"error: node {nid!r} not found", file=sys.stderr)
-        raise SystemExit(1)
-
-    if args.hard_remove:
-        ok, msg = can_hard_remove(root, nid)
-        if not ok:
-            print(f"error: cannot hard-remove: {msg}", file=sys.stderr)
+    if chunk.suffix.lower() == ".json":
+        nodes = load_json_chunk(chunk)
+        idx = node_index_in_chunk(nodes, nid)
+        if idx is None:
+            print(f"error: node {nid!r} not found", file=sys.stderr)
             raise SystemExit(1)
-        del nodes_seq[idx]
-        print(f"[ok] removed {nid} from {chunk.relative_to(root)}")
-    else:
-        node = nodes_seq[idx]
-        if isinstance(node, dict):
-            node["status"] = "Cancelled"
-        print(f"[ok] status -> Cancelled for {nid}")
-    save_yaml_document(chunk, data, y)
-    run_validate(root)
+        _archive_apply(nodes, idx, nid, chunk, root, hard_remove=args.hard_remove)
+        write_json_chunk(chunk, nodes)
+        run_validate(root)
+        return
+    print(f"error: unsupported chunk type {chunk.suffix}", file=sys.stderr)
+    raise SystemExit(1)

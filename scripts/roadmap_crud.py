@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PM-oriented roadmap CRUD: list/show/add/edit/archive nodes in chunk YAML."""
+"""PM-oriented roadmap CRUD: list/show/add/edit/archive nodes in JSON chunk files."""
 
 from __future__ import annotations
 
