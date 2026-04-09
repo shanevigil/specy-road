@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M0",
+      "notes": "Human-led phase: specs and ADRs before heavy implementation.",
+      "parallel_tracks": 1,
+      "parent_id": null,
+      "status": "Complete",
+      "title": "Foundation — architecture and contracts",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "codename": "contracts-bootstrap",
+      "dependencies": [],
+      "execution_milestone": "Mixed",
+      "id": "M0.1",
+      "parallel_tracks": 1,
+      "parent_id": "M0",
+      "status": "Complete",
+      "title": "Establish shared contracts and ADR skeleton",
+      "touch_zones": ["shared/", "schemas/"],
+      "type": "milestone"
+    },
+    {
+      "agentic_checklist": {
+        "artifact_action": "Add shared/api-contract.md with resource list and error shape",
+        "constraints_note": "No secrets in repo; PII fields marked N/A in stub",
+        "contract_citation": "shared/README.md — Contracts section; link to ADR when added",
+        "dependency_note": "After M0.1 milestone scaffolding exists",
+        "interface_contract": "HTTP JSON: request/response envelope; error codes enum"
+      },
+      "dependencies": [],
+      "execution_subtask": "agentic",
+      "id": "M0.1.1",
+      "parent_id": "M0.1",
+      "status": "Complete",
+      "title": "Define API contract outline in shared/",
+      "touch_zones": ["shared/"],
+      "type": "task"
+    },
+    {
+      "codename": null,
+      "dependencies": ["M0.1"],
+      "execution_milestone": "Agentic-led",
+      "id": "M1",
+      "notes": "Example dependency: M1 work assumes M0.1 milestone exists.",
+      "parallel_tracks": 2,
+      "parent_id": null,
+      "status": "Not Started",
+      "title": "Implementation track",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "codename": "roadmap-ci",
+      "dependencies": ["M0.1"],
+      "execution_milestone": "Agentic-led",
+      "id": "M1.1",
+      "parallel_tracks": 1,
+      "parent_id": "M1",
+      "status": "Not Started",
+      "title": "Roadmap validator in CI",
+      "touch_zones": ["scripts/", ".github/"],
+      "type": "milestone"
+    }
+  ]
+}
