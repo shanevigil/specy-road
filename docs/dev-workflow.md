@@ -26,8 +26,9 @@ A missing contract is a planning gap, not something to fill during implementatio
 
 ### Start: automated path
 
-The automated path syncs the integration branch (default `main`), picks a task, creates
-the branch, registers it, and writes the brief and prompt in one step.
+The automated path syncs the integration branch (default `main`), **lists** eligible
+agentic tasks, you **choose one by number** at the prompt, then it creates the branch,
+registers it, and writes the brief and prompt in one step.
 
 With sync **on** (the default), your working tree must be **clean** — commit, stash, or
 discard local changes first. The tool runs `git fetch`, checks out the integration
@@ -73,7 +74,7 @@ git add roadmap/registry.yaml
 git commit -m "chore(rm-<codename>): register as in-progress"
 ```
 
-1. Generate a brief:
+4. Generate a brief:
 
 **Terminal / IDE (`/specyrd-brief`):**
 
@@ -81,7 +82,7 @@ git commit -m "chore(rm-<codename>): register as in-progress"
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
-1. Implement, commit incrementally.
+5. Implement, commit incrementally.
 
 ### Finish (both paths)
 
@@ -269,7 +270,7 @@ When multiple developers or agents are running simultaneously:
 
 ```bash
 # Terminal
-specy-road do-next-available-task   # sync base, pick, branch, register, brief + prompt
+specy-road do-next-available-task   # sync base, list+choose, branch, register, brief + prompt
 specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
