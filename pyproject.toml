@@ -29,6 +29,11 @@ gui = [
   "requests>=2.31",
   "openai>=1.40",
 ]
+gui-next = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "requests>=2.31",
+]
 
 [project.scripts]
 specy-road = "specy_road.cli:main"
@@ -39,7 +44,7 @@ where = ["."]
 include = ["specy_road*"]
 
 [tool.setuptools.package-data]
-specy_road = ["templates/**/*"]
+specy_road = ["templates/**/*", "pm_gantt_static/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

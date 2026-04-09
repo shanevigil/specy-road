@@ -32,6 +32,7 @@ EDIT_WHITELIST = frozenset({
     "execution_milestone",
     "execution_subtask",
     "parallel_tracks",
+    "sibling_order",
     "notes",
     "goal",
     "dependencies",
@@ -170,6 +171,13 @@ def _apply_scalar_top_level(
         except ValueError as e:
             raise ValueError(
                 f"parallel_tracks must be an integer, got {raw_val!r}",
+            ) from e
+    elif key == "sibling_order":
+        try:
+            node["sibling_order"] = int(raw_val.strip())
+        except ValueError as e:
+            raise ValueError(
+                f"sibling_order must be an integer, got {raw_val!r}",
             ) from e
     elif key == "planning_dir":
         _set_planning_dir(node, raw_val)

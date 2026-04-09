@@ -147,3 +147,120 @@ def build_pr_hints(
         elif line and nid in pr_hints:
             pr_hints[nid] = pr_hints[nid] + "<br>" + line
     return pr_hints
+
+
+def _github_pr_detail(repo: str, branch_name: str, token: str) -> dict[str, Any] | None:
+    owner, _, proj = repo.partition("/")
+    if not proj:
+        return None
+    head = f"{owner}:{branch_name}"
+    url = f"https://api.github.com/repos/{repo}/pulls"
+    hdrs = {"Authorization": f"Bearer {token}"}
+    r = requests.get(
+        url,
+        params={"head": head, "state": "open"},
+        headers=hdrs,
+        timeout=15,
+    )
+    if r.status_code != 200 or not r.json():
+        return None
+    pr = r.json()[0]
+    assignees = [a.get("login", "") for a in (pr.get("assignees") or []) if a.get("login")]
+    user = pr.get("user") or {}
+    author = str(user.get("login") or "")
+    return {
+        "kind": "github_pr",
+        "title": str(pr.get("title") or ""),
+        "url": str(pr.get("html_url") or ""),
+        "author": author,
+        "assignees": assignees,
+        "updated_at": pr.get("updated_at"),
+        "hint_line": fetch_pr_hint(
+            {"provider": "github", "repo": repo, "token": token},
+            branch_name,
+        ),
+    }
+
+
+def _gitlab_mr_detail(gr: dict[str, Any], repo: str, branch_name: str, token: str) -> dict[str, Any] | None:
+    raw_base = (gr.get("base_url") or "").strip().rstrip("/")
+    host = raw_base or "https://gitlab.com"
+    enc = quote(repo, safe="")
+    url = f"{host}/api/v4/projects/{enc}/merge_requests"
+    r = requests.get(
+        url,
+        params={"source_branch": branch_name, "state": "opened"},
+        headers={"PRIVATE-TOKEN": token},
+        timeout=15,
+    )
+    if r.status_code != 200 or not r.json():
+        return None
+    mr = r.json()[0]
+    assignees = [
+        str(a.get("username") or a.get("name") or "")
+        for a in (mr.get("assignees") or [])
+        if a
+    ]
+    author_o = mr.get("author") or {}
+    author = str(author_o.get("username") or author_o.get("name") or "")
+    return {
+        "kind": "gitlab_mr",
+        "title": str(mr.get("title") or ""),
+        "url": str(mr.get("web_url") or ""),
+        "author": author,
+        "assignees": [x for x in assignees if x],
+        "updated_at": mr.get("updated_at"),
+        "hint_line": fetch_pr_hint(
+            {"provider": "gitlab", "repo": repo, "token": token, "base_url": gr.get("base_url")},
+            branch_name,
+        ),
+    }
+
+
+def fetch_branch_enrichment(gr: dict[str, Any], branch_name: str) -> dict[str, Any] | None:
+    """Open PR/MR metadata for a branch (assignees, author, links)."""
+    provider = (gr.get("provider") or "github").strip().lower()
+    repo = (gr.get("repo") or "").strip()
+    token = (gr.get("token") or "").strip()
+    if not repo or not token or not branch_name:
+        return None
+    try:
+        if provider == "github":
+            return _github_pr_detail(repo, branch_name, token)
+        if provider in ("gitlab", "custom"):
+            return _gitlab_mr_detail(gr, repo, branch_name, token)
+    except (
+        requests.RequestException,
+        KeyError,
+        IndexError,
+        ValueError,
+        TypeError,
+    ):
+        return None
+    return None
+
+
+def build_registry_enrichment(
+    by_reg: dict[str, dict[str, Any]],
+    gr: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    """Per node_id: PR/MR detail plus registry branch/started when no open PR."""
+    out: dict[str, dict[str, Any]] = {}
+    for nid, entry in by_reg.items():
+        br = entry.get("branch") or ""
+        detail = fetch_branch_enrichment(gr, br) if br else None
+        if detail:
+            out[nid] = detail
+            continue
+        line = br
+        started = entry.get("started")
+        if started:
+            line = f"{line} · {started}" if line else str(started)
+        if line:
+            out[nid] = {
+                "kind": "registry",
+                "branch": br,
+                "started": entry.get("started"),
+                "hint_line": line,
+            }
+    return out

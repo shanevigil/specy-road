@@ -92,6 +92,10 @@ streamlit run scripts/roadmap_gui.py
 
 The app shows a dependency-depth view of the roadmap, reads `roadmap/registry.yaml`, and can save LLM / git-remote settings under `~/.specy-road/gui-settings.json`. See `docs/pm-workflow.md` for LLM review environment variables (the GUI can inject the same names from saved settings).
 
+## Optional: Gantt PM GUI (FastAPI + React)
+
+For the split-pane outline and Gantt timeline, install **`gui-next`**, build the Vite app once, then run **`specy-road gui`** from the repository root (see [pm-workflow.md](pm-workflow.md)).
+
 ---
 
 ## CI

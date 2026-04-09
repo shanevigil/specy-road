@@ -57,6 +57,10 @@
           "items": { "type": "string", "pattern": "^M[0-9]+(\\.[0-9]+)*$" }
         },
         "parallel_tracks": { "type": ["integer", "null"], "minimum": 1 },
+        "sibling_order": {
+          "type": "integer",
+          "description": "Sort order among nodes with the same parent_id (lower first). Defaults to 0 when omitted."
+        },
         "notes": { "type": "string" },
         "planning_dir": {
           "type": ["string", "null"],

@@ -59,11 +59,33 @@ For a full dev install (tests, editable package), see [setup.md](setup.md).
 
 ## Open and use the roadmap dashboard
 
-### Start the app
+You can use either the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click planning editor) or the **Streamlit** dashboard.
+
+### Gantt PM UI (FastAPI + React)
+
+**Use the repository root** as your working directory (the folder that contains `roadmap/`, `scripts/`, and `gui/pm-gantt`). If you run `cd gui/pm-gantt` from somewhere else (for example `gui-spike/react-flow-spike`), that path will not exist.
+
+**One-time:** install server extras from this checkout, build the frontend from the repo root, then start the app:
+
+```bash
+cd /path/to/specy-road
+pip install -e ".[gui-next]"
+cd gui/pm-gantt && npm install && npm run build && cd ../..
+specy-road gui
+```
+
+If `pip` reports that the extra `gui-next` is not provided, you are not installing from this repository’s `pyproject.toml` (for example an older `pip install specy-road` only). Use **`pip install -e ".[gui-next]"`** from the clone root, or upgrade/reinstall so the optional dependency group is available.
+
+Open **[http://127.0.0.1:8765](http://127.0.0.1:8765)** (default). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If you see **address already in use** on port 8765, another server is still running—stop it or run `specy-road gui --port 8766` (and open that port in the browser).
+
+**UI development** (hot reload): in one terminal, `PYTHONPATH=scripts python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
+
+### Streamlit dashboard
 
 From the **repository root**:
 
 ```bash
+pip install "specy-road[gui]"
 streamlit run scripts/roadmap_gui.py
 ```
 
