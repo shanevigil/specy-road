@@ -39,21 +39,32 @@ Roadmap nodes keep stable machine `type` values for validation. In everyday term
 
 ## Install the PM dashboard (one-time)
 
-The dashboard is a small web app. Install it once per machine (from the repo root):
+Install the `specy-road` CLI once per machine (use a virtual environment if your team uses one):
 
 ```bash
-pip install "specy-road[gui]"
+pip install specy-road
 ```
 
-If your team uses a virtual environment, activate it first, then run the same command.
-
-To confirm the main CLI is available:
+Confirm the CLI is available:
 
 ```bash
 specy-road --help
 ```
 
-For a full dev install (tests, editable package), see [setup.md](setup.md).
+**Gantt PM UI (recommended for most PMs):** you do not run `npm` or build the frontend. After `pip install specy-road`, run:
+
+```bash
+specy-road init --install-gui
+specy-road gui
+```
+
+**Streamlit dashboard (optional):** install the Streamlit extra and run the script from the repository root:
+
+```bash
+pip install "specy-road[gui]"
+```
+
+For a full developer install (tests, editable package), see [setup.md](setup.md).
 
 ---
 
@@ -63,22 +74,25 @@ You can use either the **Gantt PM UI** (split outline + dependency timeline, dra
 
 ### Gantt PM UI (FastAPI + React)
 
-**Use the repository root** as your working directory (the folder that contains `roadmap/`, `scripts/`, and `gui/pm-gantt`). If you run `cd gui/pm-gantt` from somewhere else (for example `gui-spike/react-flow-spike`), that path will not exist.
+**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/` and `scripts/`), or pass `--repo-root /path/to/repo` so the server loads the correct roadmap.
 
-**One-time:** install server extras from this checkout, build the frontend from the repo root, then start the app:
+**One-time (PM path — no Node.js):** the built UI ships inside the `specy-road` package. After `pip install specy-road`:
 
 ```bash
-cd /path/to/specy-road
-pip install -e ".[gui-next]"
-cd gui/pm-gantt && npm install && npm run build && cd ../..
+specy-road init --install-gui
+```
+
+Equivalent manual install: `pip install 'specy-road[gui-next]'`.
+
+**Every session:**
+
+```bash
 specy-road gui
 ```
 
-If `pip` reports that the extra `gui-next` is not provided, you are not installing from this repository’s `pyproject.toml` (for example an older `pip install specy-road` only). Use **`pip install -e ".[gui-next]"`** from the clone root, or upgrade/reinstall so the optional dependency group is available.
+The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:8765)**). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If **address already in use** on port 8765, stop the other process or run `specy-road gui --port 8766` and open that port in the browser.
 
-Open **[http://127.0.0.1:8765](http://127.0.0.1:8765)** (default). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If you see **address already in use** on port 8765, another server is still running—stop it or run `specy-road gui --port 8766` (and open that port in the browser).
-
-**UI development** (hot reload): in one terminal, `PYTHONPATH=scripts python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
+**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `PYTHONPATH=scripts python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
 
 ### Streamlit dashboard
 

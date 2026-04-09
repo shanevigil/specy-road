@@ -65,6 +65,37 @@ def test_specy_road_do_next_available_task_help() -> None:
     assert "--base" in r.stdout
 
 
+def test_specy_road_init_requires_install_gui() -> None:
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "init"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 2
+    assert "requires" in (r.stderr or "").lower() or "requires" in (r.stdout or "").lower()
+
+
+def test_specy_road_init_install_gui_dry_run() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "init",
+            "--install-gui",
+            "--dry-run",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "Would run:" in r.stdout
+    assert "pip" in r.stdout
+    assert "gui-next" in r.stdout
+
+
 def test_specy_road_finish_this_task_help() -> None:
     r = subprocess.run(
         [

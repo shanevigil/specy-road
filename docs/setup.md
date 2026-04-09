@@ -94,7 +94,9 @@ The app shows a dependency-depth view of the roadmap, reads `roadmap/registry.ya
 
 ## Optional: Gantt PM GUI (FastAPI + React)
 
-For the split-pane outline and Gantt timeline, install **`gui-next`**, build the Vite app once, then run **`specy-road gui`** from the repository root (see [pm-workflow.md](pm-workflow.md)).
+For the split-pane outline and Gantt timeline, PMs install dependencies with **`specy-road init --install-gui`** (or `pip install 'specy-road[gui-next]'`), then **`specy-road gui`** from the project repo root — no `npm` required. See [pm-workflow.md](pm-workflow.md).
+
+Contributors who edit the React app rebuild from `gui/pm-gantt` so `specy_road/pm_gantt_static/` stays current.
 
 ---
 

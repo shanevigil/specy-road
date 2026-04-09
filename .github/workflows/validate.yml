@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Assert packaged Gantt UI static assets exist
+        run: test -f specy_road/pm_gantt_static/index.html
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

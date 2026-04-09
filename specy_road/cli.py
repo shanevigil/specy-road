@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import argparse
+import importlib.util
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+_PKG_DIR = Path(__file__).resolve().parent
+_PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
+
+
+def _gui_static_ok() -> bool:
+    return _PM_GANTT_INDEX.is_file()
 
 
 def _run(script: str, args: list[str]) -> None:
@@ -38,7 +47,8 @@ def main(argv: list[str] | None = None) -> None:
             "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
             "  scaffold-planning <NODE_ID> — create planning/<id>/ overview.md, plan.md, tasks.md; set planning_dir\n"
             "    (optional: --planning-dir PATH --task-id SUB_ID --force; see scripts/scaffold_planning.py -h)\n"
-            "  gui — FastAPI + Gantt PM UI (requires pip install 'specy-road[gui-next]'; run npm build in gui/pm-gantt first)\n"
+            "  init --install-gui — install FastAPI Gantt PM UI deps (pip install specy-road[gui-next])\n"
+            "  gui — FastAPI + Gantt PM UI (after: init --install-gui or pip install 'specy-road[gui-next]')\n"
             "\n"
             "Dev task loop:\n"
             "  do-next-available-task  — pick a task, sync base, branch, register\n"
@@ -74,10 +84,38 @@ def main(argv: list[str] | None = None) -> None:
         _run("review_node.py", rest)
     elif cmd == "scaffold-planning":
         _run("scaffold_planning.py", rest)
-    elif cmd == "gui":
-        import argparse
-        import importlib.util
+    elif cmd == "init":
+        from specy_road.cli_init import run_install_gui
 
+        p = argparse.ArgumentParser(
+            prog="specy-road init",
+            description="Optional one-time setup for specy-road (e.g. PM Gantt UI dependencies).",
+        )
+        p.add_argument(
+            "--install-gui",
+            action="store_true",
+            help="Install FastAPI + uvicorn for the Gantt PM UI (specy-road[gui-next]).",
+        )
+        p.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Print the pip command that would be run; do not install.",
+        )
+        ns = p.parse_args(rest)
+        if not ns.install_gui:
+            p.print_help()
+            print(
+                "\nerror: specy-road init currently requires --install-gui "
+                "(see above).",
+                file=sys.stderr,
+            )
+            raise SystemExit(2)
+        try:
+            run_install_gui(dry_run=ns.dry_run)
+        except subprocess.CalledProcessError as e:
+            print(f"error: pip install failed with exit code {e.returncode}", file=sys.stderr)
+            raise SystemExit(1) from e
+    elif cmd == "gui":
         p = argparse.ArgumentParser(prog="specy-road gui")
         p.add_argument("--host", default="127.0.0.1")
         p.add_argument("--port", type=int, default=8765)
@@ -91,19 +129,37 @@ def main(argv: list[str] | None = None) -> None:
         uvicorn_spec = importlib.util.find_spec("uvicorn")
         if uvicorn_spec is None:
             print(
-                "error: FastAPI GUI needs uvicorn. From the **specy-road repository root**, run:\n"
-                '  pip install -e ".[gui-next]"\n'
-                "Then build the SPA once:\n"
-                "  cd gui/pm-gantt && npm install && npm run build && cd ../..\n"
-                "If `pip` still says the extra `gui-next` is missing, your install is stale — "
-                "use editable install from the clone that contains `pyproject.toml`, not only `pip install specy-road`.\n"
-                "Use `cd` to the repo root before `cd gui/pm-gantt` (not from gui-spike/react-flow-spike).",
+                "error: FastAPI Gantt UI needs uvicorn (included in specy-road[gui-next]). Run:\n"
+                "  specy-road init --install-gui\n"
+                "or:\n"
+                "  pip install 'specy-road[gui-next]'\n"
+                "Use the same Python environment as this `specy-road` command.",
+                file=sys.stderr,
+            )
+            raise SystemExit(2) from None
+        if not _gui_static_ok():
+            print(
+                "error: packaged Gantt UI assets are missing "
+                f"({_PM_GANTT_INDEX}).\n"
+                "Reinstall or upgrade: pip install --upgrade 'specy-road[gui-next]'\n"
+                "If you develop the UI from git, rebuild once from the repo root:\n"
+                "  cd gui/pm-gantt && npm install && npm run build",
                 file=sys.stderr,
             )
             raise SystemExit(2) from None
         env = os.environ.copy()
         if ns.repo_root is not None:
             env["SPECY_ROAD_REPO_ROOT"] = str(ns.repo_root.resolve())
+        host, port_s = ns.host, str(ns.port)
+        if ns.host == "0.0.0.0":
+            display_host = "127.0.0.1"
+        else:
+            display_host = ns.host
+        print(
+            f"Gantt PM UI — open http://{display_host}:{ns.port}/ "
+            f"(listening on {host}:{port_s}; Ctrl+C to stop)\n",
+            flush=True,
+        )
         proc = subprocess.run(
             [
                 sys.executable,
@@ -111,27 +167,14 @@ def main(argv: list[str] | None = None) -> None:
                 "uvicorn",
                 "specy_road.gui_app:app",
                 "--host",
-                ns.host,
+                host,
                 "--port",
-                str(ns.port),
+                port_s,
             ],
             cwd=Path.cwd(),
             env=env,
-            capture_output=True,
-            text=True,
         )
         if proc.returncode != 0:
-            err = (proc.stderr or "") + (proc.stdout or "")
-            if "address already in use" in err or "Errno 48" in err:
-                alt = ns.port + 1
-                print(
-                    f"error: port {ns.port} is already in use (another `specy-road gui` or app?).\n"
-                    f"Try: specy-road gui --port {alt}\n"
-                    "Or stop the process using that port, then run again.",
-                    file=sys.stderr,
-                )
-                raise SystemExit(1) from None
-            print(proc.stderr or proc.stdout or "uvicorn failed", file=sys.stderr)
             raise SystemExit(proc.returncode) from None
     else:
         print(f"unknown command: {cmd}", file=sys.stderr)
