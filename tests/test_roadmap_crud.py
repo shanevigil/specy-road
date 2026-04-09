@@ -30,9 +30,13 @@ def _fixture_repo(dest: Path) -> None:
         json.dumps({"version": 1, "includes": ["phases/T.json"]}) + "\n",
         encoding="utf-8",
     )
+    nk99 = "10000000-0000-4000-8000-000000009901"
+    nk991 = "10000000-0000-4000-8000-000000009902"
+    nk992 = "10000000-0000-4000-8000-000000009903"
     nodes = [
         {
             "id": "M99",
+            "node_key": nk99,
             "parent_id": None,
             "type": "phase",
             "title": "P",
@@ -45,6 +49,7 @@ def _fixture_repo(dest: Path) -> None:
         },
         {
             "id": "M99.1",
+            "node_key": nk991,
             "parent_id": "M99",
             "type": "task",
             "title": "One",
@@ -65,6 +70,7 @@ def _fixture_repo(dest: Path) -> None:
         },
         {
             "id": "M99.2",
+            "node_key": nk992,
             "parent_id": "M99",
             "type": "task",
             "title": "Two",
@@ -80,7 +86,7 @@ def _fixture_repo(dest: Path) -> None:
             },
             "status": "Not Started",
             "touch_zones": [],
-            "dependencies": ["M99.1"],
+            "dependencies": [nk991],
             "parallel_tracks": 1,
         },
     ]
@@ -105,6 +111,7 @@ def test_append_node_validate(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     node = {
         "id": "M99.3",
+        "node_key": "10000000-0000-4000-8000-000000009904",
         "parent_id": "M99",
         "type": "task",
         "title": "Three",

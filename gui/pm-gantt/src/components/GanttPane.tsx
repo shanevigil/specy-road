@@ -19,7 +19,7 @@ type Props = {
   orderedIds: string[];
   nodesById: Record<string, RoadmapNode>;
   depths: Record<string, number>;
-  edges: { from: string; to: string }[];
+  edges: { from: string; to: string; kind?: "explicit" | "inherited" }[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 };
@@ -62,6 +62,9 @@ export function GanttPane({
       >
         <text x={PAD_L} y={18} className="axis-title">
           Dependency step (not calendar time)
+        </text>
+        <text x={PAD_L + 280} y={18} className="gantt-legend" fontSize={10} fill="var(--muted)">
+          Solid = explicit dep · Dashed = inherited
         </text>
         {/* Decorative column grid */}
         {Array.from({ length: colCount }, (_, c) => (
@@ -128,7 +131,7 @@ export function GanttPane({
           );
         })}
         {/* Arrows */}
-        {edges.map(({ from: dep, to: tgt }) => {
+        {edges.map(({ from: dep, to: tgt, kind }) => {
           const yi = rowOf[dep];
           const yj = rowOf[tgt];
           if (yi === undefined || yj === undefined) return null;
@@ -139,14 +142,16 @@ export function GanttPane({
           const cy0 = 36 + yi * ROW_H + ROW_H / 2;
           const cy1 = 36 + yj * ROW_H + ROW_H / 2;
           const midX = (x0 + x1) / 2;
+          const inherited = kind === "inherited";
           return (
             <path
-              key={`${dep}->${tgt}`}
+              key={`${dep}->${tgt}-${kind ?? "x"}`}
               d={`M ${x0} ${cy0} C ${midX} ${cy0}, ${midX} ${cy1}, ${x1} ${cy1}`}
               fill="none"
               stroke="var(--accent)"
-              strokeWidth={1.25}
-              strokeOpacity={0.75}
+              strokeWidth={inherited ? 1 : 1.25}
+              strokeOpacity={inherited ? 0.55 : 0.75}
+              strokeDasharray={inherited ? "5 4" : undefined}
               pointerEvents="none"
             />
           );

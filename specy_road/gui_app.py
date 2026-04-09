@@ -45,9 +45,11 @@ from roadmap_crud_ops import (  # noqa: E402
     merged_ids,
     run_validate_raise,
 )
+from roadmap_gui_tree import can_indent_outline, can_outdent_outline  # noqa: E402
 from roadmap_layout import (  # noqa: E402
     compute_depths,
-    dependency_edges,
+    dependency_edges_detailed,
+    dependency_inheritance_display,
     ordered_tree_rows,
     sibling_sort_key,
 )
@@ -59,8 +61,14 @@ from roadmap_gui_lib import (  # noqa: E402
     save_settings,
 )
 from roadmap_gui_remote import build_pr_hints, build_registry_enrichment  # noqa: E402
-from roadmap_gui_tree import indent_parent_id, outdent_parent_id  # noqa: E402
 from roadmap_load import load_roadmap  # noqa: E402
+from roadmap_node_keys import new_node_key  # noqa: E402
+from roadmap_outline_ops import (  # noqa: E402
+    apply_indent,
+    apply_outdent,
+    move_node_outline,
+    reorder_siblings,
+)
 from planning_artifacts import normalize_planning_dir, planning_artifact_paths  # noqa: E402
 
 _PKG_DIR = Path(__file__).resolve().parent
@@ -109,22 +117,6 @@ def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
     return f"{parent_id}.{n}"
 
 
-def _reindex_sibling_orders(
-    root: Path,
-    nodes: list[dict],
-    parent_id: str | None,
-    ordered_ids: list[str],
-) -> None:
-    by_id = {n["id"]: n for n in nodes}
-    for nid in ordered_ids:
-        if nid not in by_id:
-            raise ValueError(f"unknown node id {nid!r}")
-        if by_id[nid].get("parent_id") != parent_id:
-            raise ValueError(f"node {nid} has wrong parent for reorder")
-    for i, nid in enumerate(ordered_ids):
-        edit_node_set_pairs(root, nid, [("sibling_order", str(i))])
-
-
 class PatchPair(BaseModel):
     key: str
     value: str
@@ -137,6 +129,12 @@ class PatchBody(BaseModel):
 class ReorderBody(BaseModel):
     parent_id: str | None = None
     ordered_child_ids: list[str]
+
+
+class MoveOutlineBody(BaseModel):
+    node_key: str
+    new_parent_id: str | None = None
+    new_index: int = Field(0, ge=0)
 
 
 class AddNodeBody(BaseModel):
@@ -191,7 +189,16 @@ def create_app() -> FastAPI:
         ordered = [t[0] for t in tree_rows]
         row_depths = [d for _, d in tree_rows]
         depths = compute_depths(nodes)
-        edges = dependency_edges(nodes)
+        edges = dependency_edges_detailed(nodes)
+        by_id = {n["id"]: n for n in nodes}
+        dep_inheritance = dependency_inheritance_display(nodes)
+        outline_actions: dict[str, dict[str, bool]] = {}
+        for n in nodes:
+            nid = n["id"]
+            outline_actions[nid] = {
+                "can_indent": can_indent_outline(nodes, by_id, nid),
+                "can_outdent": can_outdent_outline(by_id, nid),
+            }
         return {
             "version": doc.get("version"),
             "nodes": nodes,
@@ -202,11 +209,13 @@ def create_app() -> FastAPI:
                 for i, (n, d) in enumerate(tree_rows)
             ],
             "dependency_depths": depths,
-            "edges": [{"from": a, "to": b} for a, b in edges],
+            "edges": edges,
             "ordered_ids": [n["id"] for n in ordered],
             "row_depths": row_depths,
             "pr_hints": pr_hints,
             "git_enrichment": git_enrichment,
+            "dependency_inheritance": dep_inheritance,
+            "outline_actions": outline_actions,
         }
 
     @app.patch("/api/nodes/{node_id}")
@@ -222,47 +231,44 @@ def create_app() -> FastAPI:
     @app.post("/api/outline/reorder")
     def api_reorder(body: ReorderBody) -> dict[str, str]:
         root = _get_repo_root()
-        nodes = load_roadmap(root)["nodes"]
         pid: str | None = body.parent_id
         try:
-            _reindex_sibling_orders(root, nodes, pid, body.ordered_child_ids)
+            reorder_siblings(root, pid, body.ordered_child_ids)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true"}
+
+    @app.post("/api/outline/move")
+    def api_outline_move(body: MoveOutlineBody) -> dict[str, str]:
+        root = _get_repo_root()
+        try:
+            move_node_outline(
+                root,
+                body.node_key,
+                body.new_parent_id,
+                body.new_index,
+            )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         return {"ok": "true"}
 
     @app.post("/api/nodes/{node_id}/indent")
-    def api_indent(node_id: str) -> dict[str, str]:
+    def api_indent(node_id: str) -> dict[str, Any]:
         root = _get_repo_root()
-        nodes = load_roadmap(root)["nodes"]
-        by_id = {n["id"]: n for n in nodes}
-        tree_rows = ordered_tree_rows(nodes)
-        new_parent = indent_parent_id(tree_rows, by_id, node_id)
-        if new_parent is None:
-            raise HTTPException(status_code=400, detail="cannot indent")
         try:
-            edit_node_set_pairs(
-                root,
-                node_id,
-                [("parent_id", new_parent)],
-            )
+            changed = apply_indent(root, node_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true", "parent_id": new_parent}
+        return {"ok": True, "changed": changed}
 
     @app.post("/api/nodes/{node_id}/outdent")
-    def api_outdent(node_id: str) -> dict[str, str]:
+    def api_outdent(node_id: str) -> dict[str, Any]:
         root = _get_repo_root()
-        nodes = load_roadmap(root)["nodes"]
-        by_id = {n["id"]: n for n in nodes}
-        target = outdent_parent_id(by_id, node_id)
-        if target is None:
-            raise HTTPException(status_code=400, detail="cannot outdent")
-        val = "" if target == "" else target
         try:
-            edit_node_set_pairs(root, node_id, [("parent_id", val)])
+            changed = apply_outdent(root, node_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true", "parent_id": val or None}
+        return {"ok": True, "changed": changed}
 
     @app.post("/api/nodes/add")
     def api_add_node(body: AddNodeBody) -> dict[str, Any]:
@@ -293,6 +299,7 @@ def create_app() -> FastAPI:
 
         new_node: dict[str, Any] = {
             "id": new_id,
+            "node_key": new_node_key(),
             "parent_id": parent_id,
             "type": body.type,
             "title": body.title,

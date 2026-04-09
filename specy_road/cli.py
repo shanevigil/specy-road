@@ -47,7 +47,9 @@ def main(argv: list[str] | None = None) -> None:
             "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
             "  scaffold-planning <NODE_ID> — create planning/<id>/ overview.md, plan.md, tasks.md; set planning_dir\n"
             "    (optional: --planning-dir PATH --task-id SUB_ID --force; see scripts/scaffold_planning.py -h)\n"
-            "  init --install-gui — install FastAPI Gantt PM UI deps (pip install specy-road[gui-next])\n"
+            "  init --install-gui — pip gui-next + local npm build when gui/pm-gantt exists (one-time setup for specy-road gui)\n"
+            "  init --reinstall-gui — same as install-gui but pip --force-reinstall\n"
+            "  init --build-gui — npm only (rebuild SPA without touching pip)\n"
             "  gui — FastAPI + Gantt PM UI (after: init --install-gui or pip install 'specy-road[gui-next]')\n"
             "\n"
             "Dev task loop:\n"
@@ -89,31 +91,57 @@ def main(argv: list[str] | None = None) -> None:
 
         p = argparse.ArgumentParser(
             prog="specy-road init",
-            description="Optional one-time setup for specy-road (e.g. PM Gantt UI dependencies).",
+            description="Set up the Gantt PM UI: Python deps (FastAPI/uvicorn) and, in a source tree, the bundled SPA build.",
         )
-        p.add_argument(
+        mode = p.add_mutually_exclusive_group(required=False)
+        mode.add_argument(
             "--install-gui",
             action="store_true",
-            help="Install FastAPI + uvicorn for the Gantt PM UI (specy-road[gui-next]).",
+            help="pip install --upgrade …[gui-next], then npm build in gui/pm-gantt when that folder exists (so specy-road gui works).",
+        )
+        mode.add_argument(
+            "--reinstall-gui",
+            action="store_true",
+            help="Like --install-gui but pip uses --force-reinstall (repair a broken Python env).",
+        )
+        p.add_argument(
+            "--build-gui",
+            action="store_true",
+            help="Only rebuild the SPA (npm ci/install + npm run build). Use without --install-gui to skip pip.",
+        )
+        p.add_argument(
+            "--skip-npm-build",
+            action="store_true",
+            help="With --install-gui or --reinstall-gui only: install Python deps but do not run npm (faster repeat upgrades).",
         )
         p.add_argument(
             "--dry-run",
             action="store_true",
-            help="Print the pip command that would be run; do not install.",
+            help="Print the commands that would be run; do not install or build.",
         )
         ns = p.parse_args(rest)
-        if not ns.install_gui:
+        if not ns.install_gui and not ns.reinstall_gui and not ns.build_gui:
             p.print_help()
             print(
-                "\nerror: specy-road init currently requires --install-gui "
-                "(see above).",
+                "\nerror: specify at least one of --install-gui, --reinstall-gui, or --build-gui.",
                 file=sys.stderr,
             )
             raise SystemExit(2)
+        do_pip = ns.install_gui or ns.reinstall_gui
+        npm_only = ns.build_gui and not do_pip
         try:
-            run_install_gui(dry_run=ns.dry_run)
+            run_install_gui(
+                dry_run=ns.dry_run,
+                reinstall=ns.reinstall_gui,
+                do_pip=do_pip,
+                npm_only=npm_only,
+                skip_npm_after_pip=do_pip and ns.skip_npm_build,
+            )
         except subprocess.CalledProcessError as e:
-            print(f"error: pip install failed with exit code {e.returncode}", file=sys.stderr)
+            print(
+                f"error: command failed with exit code {e.returncode}",
+                file=sys.stderr,
+            )
             raise SystemExit(1) from e
     elif cmd == "gui":
         p = argparse.ArgumentParser(prog="specy-road gui")
@@ -131,6 +159,7 @@ def main(argv: list[str] | None = None) -> None:
             print(
                 "error: FastAPI Gantt UI needs uvicorn (included in specy-road[gui-next]). Run:\n"
                 "  specy-road init --install-gui\n"
+                "  specy-road init --reinstall-gui   # if deps are corrupted or stuck\n"
                 "or:\n"
                 "  pip install 'specy-road[gui-next]'\n"
                 "Use the same Python environment as this `specy-road` command.",

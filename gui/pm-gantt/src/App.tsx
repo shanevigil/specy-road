@@ -64,18 +64,29 @@ export default function App() {
   const byId = data ? nodesByIdFrom(data.nodes) : {};
   const sel = selectedId ? byId[selectedId] : null;
 
+  const indentDisabled =
+    !selectedId ||
+    (data?.outline_actions != null &&
+      selectedId != null &&
+      data.outline_actions[selectedId]?.can_indent === false);
+  const outdentDisabled =
+    !selectedId ||
+    (data?.outline_actions != null &&
+      selectedId != null &&
+      data.outline_actions[selectedId]?.can_outdent === false);
+
   const toolbar = (
     <div className="toolbar">
       <button
         type="button"
-        disabled={!selectedId}
+        disabled={indentDisabled}
         onClick={() => selectedId && void indentNode(selectedId).then(load)}
       >
         Indent
       </button>
       <button
         type="button"
-        disabled={!selectedId}
+        disabled={outdentDisabled}
         onClick={() => selectedId && void outdentNode(selectedId).then(load)}
       >
         Outdent
@@ -139,6 +150,7 @@ export default function App() {
               selectedId={selectedId}
               prHints={data.pr_hints}
               gitEnrichment={data.git_enrichment}
+              dependencyInheritance={data.dependency_inheritance}
               onSelect={setSelectedId}
               onDoubleClick={(id) => {
                 setSelectedId(id);
@@ -168,6 +180,7 @@ export default function App() {
       {modalOpen && sel ? (
         <EditModal
           node={sel}
+          dependencyInheritance={data?.dependency_inheritance?.[sel.id]}
           onClose={() => setModalOpen(false)}
           onSaved={() => {
             void load();

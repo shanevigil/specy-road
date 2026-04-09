@@ -51,12 +51,16 @@ Confirm the CLI is available:
 specy-road --help
 ```
 
-**Gantt PM UI (recommended for most PMs):** you do not run `npm` or build the frontend. After `pip install specy-road`, run:
+**Gantt PM UI (recommended for most PMs):** after `pip install specy-road`, run once from the **repository root**:
 
 ```bash
 specy-road init --install-gui
 specy-road gui
 ```
+
+`--install-gui` sets up the FastAPI/uvicorn dependencies **and**, when `gui/pm-gantt/` is present (typical git clone), builds the SPA so the UI matches the tree. You do not need a second `--build-gui` flag. Safe to repeat when you pull updates.
+
+If the Python stack is corrupted, use **`specy-road init --reinstall-gui`**. To upgrade Python deps **without** running npm (faster), use **`specy-road init --install-gui --skip-npm-build`**. To **only** rebuild the frontend, **`specy-road init --build-gui`** (requires Node.js).
 
 **Streamlit dashboard (optional):** install the Streamlit extra and run the script from the repository root:
 
@@ -76,13 +80,13 @@ You can use either the **Gantt PM UI** (split outline + dependency timeline, dra
 
 **Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/` and `scripts/`), or pass `--repo-root /path/to/repo` so the server loads the correct roadmap.
 
-**One-time (PM path — no Node.js):** the built UI ships inside the `specy-road` package. After `pip install specy-road`:
+**One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init --install-gui` also compiles that tree. After `pip install specy-road`:
 
 ```bash
 specy-road init --install-gui
 ```
 
-Equivalent manual install: `pip install 'specy-road[gui-next]'`.
+Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui-next]'`.
 
 **Every session:**
 

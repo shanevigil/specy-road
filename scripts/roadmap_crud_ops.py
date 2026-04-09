@@ -16,6 +16,7 @@ from roadmap_chunk_utils import (
     write_json_chunk,
 )
 from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
+from roadmap_node_keys import new_node_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
 
@@ -204,6 +205,7 @@ def cmd_add(args: object) -> None:
 
     node: dict = {
         "id": nid,
+        "node_key": new_node_key(),
         "parent_id": parent_val,
         "type": args.type,
         "title": args.title,
@@ -257,8 +259,20 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
         if not isinstance(node, dict):
             raise ValueError("corrupt node entry")
         ids = merged_ids(root)
+        nkeys = {
+            n["node_key"]
+            for n in load_roadmap(root)["nodes"]
+            if isinstance(n.get("node_key"), str) and n["node_key"]
+        }
         for k, v in pairs:
-            apply_set(node, k, v, all_ids=ids, self_id=node_id)
+            apply_set(
+                node,
+                k,
+                v,
+                all_ids=ids,
+                all_node_keys=nkeys,
+                self_id=node_id,
+            )
         write_json_chunk(chunk, nodes)
         run_validate_raise(root)
         return
@@ -286,11 +300,17 @@ def cmd_edit(args: object) -> None:
 
 
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
-    for n in load_roadmap(root)["nodes"]:
+    nodes = load_roadmap(root)["nodes"]
+    target_key: str | None = None
+    for n in nodes:
+        if n.get("id") == node_id:
+            target_key = n.get("node_key")
+            break
+    for n in nodes:
         if n.get("parent_id") == node_id:
             return False, f"child node {n['id']} has parent_id {node_id!r}"
-        if node_id in (n.get("dependencies") or []):
-            return False, f"node {n['id']} depends on {node_id!r}"
+        if target_key and target_key in (n.get("dependencies") or []):
+            return False, f"node {n['id']} depends on node_key of {node_id!r}"
     return True, ""
 
 

@@ -35,6 +35,23 @@ export async function reorderOutline(
   if (!r.ok) throw new Error(await r.text());
 }
 
+export async function moveOutline(
+  nodeKey: string,
+  newParentId: string | null,
+  newIndex: number,
+): Promise<void> {
+  const r = await fetch(`${API}/outline/move`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      node_key: nodeKey,
+      new_parent_id: newParentId,
+      new_index: newIndex,
+    }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
+
 export async function indentNode(nodeId: string): Promise<void> {
   const r = await fetch(`${API}/nodes/${encodeURIComponent(nodeId)}/indent`, {
     method: "POST",

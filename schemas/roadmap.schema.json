@@ -15,13 +15,18 @@
   "$defs": {
     "node": {
       "type": "object",
-      "required": ["id", "type", "title"],
+      "required": ["id", "node_key", "type", "title"],
       "additionalProperties": false,
       "properties": {
+        "node_key": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "Stable UUID for dependencies and registry; display id may be renumbered."
+        },
         "id": {
           "type": "string",
           "pattern": "^M[0-9]+(\\.[0-9]+)*$",
-          "description": "Immutable hierarchical id, e.g. M1.2 or M1.2.3.4 (fourth-level allowed)"
+          "description": "Hierarchical display id (e.g. M1.2); may change when outline is reorganized."
         },
         "parent_id": {
           "type": ["string", "null"],
@@ -54,7 +59,11 @@
         },
         "dependencies": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^M[0-9]+(\\.[0-9]+)*$" }
+          "items": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "description": "Depends-on node_key values (stable UUIDs)."
         },
         "parallel_tracks": { "type": ["integer", "null"], "minimum": 1 },
         "sibling_order": {

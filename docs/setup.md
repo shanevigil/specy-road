@@ -94,9 +94,19 @@ The app shows a dependency-depth view of the roadmap, reads `roadmap/registry.ya
 
 ## Optional: Gantt PM GUI (FastAPI + React)
 
-For the split-pane outline and Gantt timeline, PMs install dependencies with **`specy-road init --install-gui`** (or `pip install 'specy-road[gui-next]'`), then **`specy-road gui`** from the project repo root — no `npm` required. See [pm-workflow.md](pm-workflow.md).
+For the split-pane outline and Gantt timeline, use one command from the repo root:
 
-Contributors who edit the React app rebuild from `gui/pm-gantt` so `specy_road/pm_gantt_static/` stays current.
+```bash
+specy-road init --install-gui
+```
+
+That **installs or upgrades** the Python stack (`pip install --upgrade …[gui-next]`). If this tree contains **`gui/pm-gantt/`** (a git checkout), it **also** runs `npm ci` / `npm install` and `npm run build` so the bundled static UI matches the repo — then **`specy-road gui`** works without extra steps. If you only have a PyPI install (no `gui/pm-gantt/`), pip is enough; the wheel already includes built assets.
+
+Use **`specy-road init --reinstall-gui`** when the Python env looks broken (adds `pip --force-reinstall`). Use **`specy-road init --install-gui --skip-npm-build`** when you only want faster pip upgrades and will not change the frontend. Use **`specy-road init --build-gui`** alone to rebuild the SPA without touching pip.
+
+Equivalent manual installs: `pip install --upgrade 'specy-road[gui-next]'` and, from `gui/pm-gantt`, `npm install && npm run build`. See [pm-workflow.md](pm-workflow.md).
+
+The init npm step does **not** start the Vite dev server (port 5173). A first `npm install` can take several minutes. The CLI skips npm’s automatic audit and runs non-interactively.
 
 ---
 

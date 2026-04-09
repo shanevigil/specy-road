@@ -14,9 +14,11 @@ import validate_roadmap as vr
 
 
 def test_cycle_check_detects_cycle() -> None:
+    k1 = "10000000-0000-4000-8000-000000000001"
+    k2 = "20000000-0000-4000-8000-000000000002"
     nodes = [
-        {"id": "M1", "dependencies": ["M2"]},
-        {"id": "M2", "dependencies": ["M1"]},
+        {"id": "M1", "node_key": k1, "dependencies": [k2]},
+        {"id": "M2", "node_key": k2, "dependencies": [k1]},
     ]
     with pytest.raises(SystemExit):
         vr.cycle_check(nodes)

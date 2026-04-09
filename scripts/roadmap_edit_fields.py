@@ -7,6 +7,8 @@ from typing import Any
 
 from planning_artifacts import normalize_planning_dir
 
+from roadmap_node_keys import NODE_KEY_PATTERN
+
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
@@ -58,16 +60,16 @@ EXEC_SUBTASKS = frozenset({"human", "agentic", "human-gate"})
 DECISION_STATUS = frozenset({"pending", "decided"})
 
 
-def _parse_dependency_tokens(raw: str, all_ids: set[str]) -> list[str]:
+def _parse_dependency_keys(raw: str, all_node_keys: set[str]) -> list[str]:
     parts = re.split(r"[\s,;]+", raw.strip())
     out: list[str] = []
     for p in parts:
         if not p:
             continue
-        if not ID_PATTERN.match(p):
-            raise ValueError(f"invalid dependency id {p!r}")
-        if p not in all_ids:
-            raise ValueError(f"dependency {p!r} is not an existing node id")
+        if not NODE_KEY_PATTERN.match(p):
+            raise ValueError(f"invalid dependency node_key {p!r}")
+        if p not in all_node_keys:
+            raise ValueError(f"dependency {p!r} is not an existing node_key")
         out.append(p)
     return out
 
@@ -128,6 +130,13 @@ def _set_exec_milestone(node: dict, raw_val: str) -> None:
         node["execution_milestone"] = raw_val
 
 
+def _set_optional_line_list(node: dict, key: str, raw_val: str) -> None:
+    if not raw_val.strip():
+        node.pop(key, None)
+    else:
+        node[key] = _nonempty_lines(raw_val)
+
+
 def _set_exec_subtask(node: dict, raw_val: str) -> None:
     if raw_val.lower() in ("null", "~", ""):
         node["execution_subtask"] = None
@@ -145,6 +154,7 @@ def _apply_scalar_top_level(
     raw_val: str,
     *,
     all_ids: set[str],
+    all_node_keys: set[str],
     self_id: str,
 ) -> None:
     if key == "type":
@@ -152,19 +162,13 @@ def _apply_scalar_top_level(
     elif key == "parent_id":
         _set_parent_id(node, raw_val, all_ids=all_ids, self_id=self_id)
     elif key == "dependencies":
-        node["dependencies"] = _parse_dependency_tokens(raw_val, all_ids)
+        node["dependencies"] = _parse_dependency_keys(raw_val, all_node_keys)
     elif key == "touch_zones":
         node["touch_zones"] = _parse_touch_zone_lines(raw_val)
     elif key == "acceptance":
-        if not raw_val.strip():
-            node.pop("acceptance", None)
-        else:
-            node["acceptance"] = _nonempty_lines(raw_val)
+        _set_optional_line_list(node, "acceptance", raw_val)
     elif key == "risks":
-        if not raw_val.strip():
-            node.pop("risks", None)
-        else:
-            node["risks"] = _nonempty_lines(raw_val)
+        _set_optional_line_list(node, "risks", raw_val)
     elif key == "parallel_tracks":
         try:
             node["parallel_tracks"] = int(raw_val)
@@ -223,6 +227,7 @@ def apply_set(
     raw_val: str,
     *,
     all_ids: set[str],
+    all_node_keys: set[str],
     self_id: str,
 ) -> None:
     if dotted_key not in EDIT_WHITELIST:
@@ -230,7 +235,12 @@ def apply_set(
     parts = dotted_key.split(".")
     if len(parts) == 1:
         _apply_scalar_top_level(
-            node, parts[0], raw_val, all_ids=all_ids, self_id=self_id,
+            node,
+            parts[0],
+            raw_val,
+            all_ids=all_ids,
+            all_node_keys=all_node_keys,
+            self_id=self_id,
         )
         return
     if parts[0] == "decision" and len(parts) == 2:

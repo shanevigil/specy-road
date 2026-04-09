@@ -11,55 +11,46 @@ if str(_TB_DIR) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from roadmap_crud_ops import edit_node_set_pairs  # noqa: E402
-from roadmap_gui_tree import indent_parent_id, outdent_parent_id  # noqa: E402
+from roadmap_gui_tree import (  # noqa: E402
+    can_indent_outline,
+    can_outdent_outline,
+)
+from roadmap_outline_ops import apply_indent, apply_outdent  # noqa: E402
 
 
 def _pm_outdent(repo_root: Path, by_id: dict, sel: str) -> None:
-    o_target = outdent_parent_id(by_id, sel) if sel in by_id else None
+    can_do = sel in by_id and can_outdent_outline(by_id, sel)
     if st.button(
         "← Outdent",
         key="pm_outdent",
-        disabled=sel not in by_id or o_target is None,
+        disabled=not can_do,
         help="Move to parent of current parent",
     ):
-        try:
-            edit_node_set_pairs(
-                repo_root,
-                sel,
-                [("parent_id", o_target if o_target else "")],
-            )
+        if apply_outdent(repo_root, sel):
             st.rerun()
-        except ValueError as e:
-            st.error(str(e))
 
 
 def _pm_indent(
     repo_root: Path,
+    nodes: list[dict],
     by_id: dict,
-    tree_rows: list[tuple[dict, int]],
     sel: str,
 ) -> None:
-    in_target = indent_parent_id(tree_rows, by_id, sel) if sel in by_id else None
+    can_do = sel in by_id and can_indent_outline(nodes, by_id, sel)
     if st.button(
         "Indent →",
         key="pm_indent",
-        disabled=in_target is None,
-        help="Make child of the row above in the outline",
+        disabled=not can_do,
+        help="Nest under the sibling directly above (same parent)",
     ):
-        try:
-            edit_node_set_pairs(
-                repo_root,
-                sel,
-                [("parent_id", in_target or "")],
-            )
+        if apply_indent(repo_root, sel):
             st.rerun()
-        except ValueError as e:
-            st.error(str(e))
 
 
 def _toolbar_dep_highlight(by_id: dict, sel: str) -> None:
-    deps = list(by_id[sel].get("dependencies") or []) if sel in by_id else []
+    dep_keys = list(by_id[sel].get("dependencies") or []) if sel in by_id else []
+    key_to_id = {n["node_key"]: n["id"] for n in by_id.values() if n.get("node_key")}
+    deps = [key_to_id.get(k, k) for k in dep_keys]
     hi_opts = ["— None —"] + deps
     cur_hi = st.session_state.get("gantt_highlight_nid")
     hi_ix = 1 + deps.index(cur_hi) if cur_hi in deps else 0
@@ -78,14 +69,14 @@ def _toolbar_dep_highlight(by_id: dict, sel: str) -> None:
 def render_pm_toolbar(
     repo_root: Path,
     by_id: dict,
-    tree_rows: list[tuple[dict, int]],
+    nodes: list[dict],
     sel: str,
 ) -> None:
     c1, c2, c3, c4 = st.columns([1.1, 1.1, 2.2, 2.2])
     with c1:
         _pm_outdent(repo_root, by_id, sel)
     with c2:
-        _pm_indent(repo_root, by_id, tree_rows, sel)
+        _pm_indent(repo_root, nodes, by_id, sel)
     with c3:
         _toolbar_dep_highlight(by_id, sel)
     with c4:

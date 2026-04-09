@@ -46,38 +46,58 @@ def validate_schema(instance: dict, schema: dict, label: str) -> None:
         raise SystemExit(1)
 
 
+def validate_node_keys(nodes: list[dict]) -> None:
+    keys = [n.get("node_key") for n in nodes]
+    if any(k is None or k == "" for k in keys):
+        print("roadmap: every node must have a non-empty node_key", file=sys.stderr)
+        raise SystemExit(1)
+    if len(keys) != len(set(keys)):
+        from collections import Counter
+
+        dup = [k for k, v in Counter(keys).items() if v > 1]
+        print(f"roadmap: duplicate node_key values: {dup}", file=sys.stderr)
+        raise SystemExit(1)
+
+
 def validate_dependency_ids(nodes: list[dict]) -> None:
-    ids = {n["id"] for n in nodes}
+    keys = {n["node_key"] for n in nodes}
     for n in nodes:
         for dep in n.get("dependencies") or []:
-            if dep not in ids:
-                msg = f"roadmap: node {n['id']} depends on missing id {dep}"
+            if dep not in keys:
+                msg = (
+                    f"roadmap: node {n['id']} depends on missing node_key {dep}"
+                )
                 print(msg, file=sys.stderr)
                 raise SystemExit(1)
 
 
 def cycle_check(nodes: list[dict]) -> None:
-    """DFS cycle detection on dependency edges (dep must precede node)."""
-    by_id = {n["id"]: n for n in nodes}
+    """DFS cycle detection on dependency edges (dep node_key must precede node)."""
+    by_key = {n["node_key"]: n for n in nodes}
     visited: set[str] = set()
     stack: set[str] = set()
 
-    def visit(nid: str) -> None:
-        if nid in stack:
-            msg = f"roadmap: dependency cycle involving {nid}"
+    def visit(nk: str) -> None:
+        if nk in stack:
+            n = by_key.get(nk, {})
+            msg = (
+                f"roadmap: dependency cycle involving "
+                f"{n.get('id', nk)}"
+            )
             print(msg, file=sys.stderr)
             raise SystemExit(1)
-        if nid in visited:
+        if nk in visited:
             return
-        stack.add(nid)
-        for dep in by_id[nid].get("dependencies") or []:
-            visit(dep)
-        stack.remove(nid)
-        visited.add(nid)
+        stack.add(nk)
+        for dep in by_key[nk].get("dependencies") or []:
+            if dep in by_key:
+                visit(dep)
+        stack.remove(nk)
+        visited.add(nk)
 
-    for nid in by_id:
-        if nid not in visited:
-            visit(nid)
+    for nk in by_key:
+        if nk not in visited:
+            visit(nk)
 
 
 def validate_parents(nodes: list[dict]) -> None:
@@ -200,6 +220,7 @@ def run_validation(
         print(f"roadmap: duplicate ids: {dup}", file=sys.stderr)
         raise SystemExit(1)
 
+    validate_node_keys(nodes)
     validate_parents(nodes)
     validate_dependency_ids(nodes)
     cycle_check(nodes)

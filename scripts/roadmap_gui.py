@@ -284,7 +284,7 @@ def _render_graph_and_detail(repo_root: Path, settings: dict) -> None:
         st.session_state.selected_node_id = ordered_ids[0]
 
     sel = st.session_state.selected_node_id
-    render_pm_toolbar(repo_root, by_id, tree_rows, sel)
+    render_pm_toolbar(repo_root, by_id, nodes, sel)
     render_planning_lens(repo_root, by_id[sel], nodes)
     _gantt_chart_instructions()
 

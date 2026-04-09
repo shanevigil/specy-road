@@ -15,7 +15,16 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "constraints" / "file-limits.yaml"
 
 SKIP_DIR_NAMES = frozenset(
-    {".git", ".venv", "venv", "node_modules", "__pycache__", ".pytest_cache", ".egg-info"}
+    {
+        ".git",
+        ".venv",
+        ".conda",
+        "venv",
+        "node_modules",
+        "__pycache__",
+        ".pytest_cache",
+        ".egg-info",
+    }
 )
 
 

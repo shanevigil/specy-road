@@ -97,8 +97,16 @@ def test_apply_set_planning_dir() -> None:
         "planning_dir",
         "planning/M1",
         all_ids={"M1"},
+        all_node_keys=set(),
         self_id="M1",
     )
     assert node["planning_dir"] == "planning/M1"
-    apply_set(node, "planning_dir", "", all_ids={"M1"}, self_id="M1")
+    apply_set(
+        node,
+        "planning_dir",
+        "",
+        all_ids={"M1"},
+        all_node_keys=set(),
+        self_id="M1",
+    )
     assert "planning_dir" not in node

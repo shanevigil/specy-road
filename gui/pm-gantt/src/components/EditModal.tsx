@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { RoadmapNode } from "../types";
+import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import {
   fetchPlanningArtifacts,
   fetchPlanningFile,
@@ -9,11 +9,18 @@ import {
 
 type Props = {
   node: RoadmapNode | null;
+  /** Explicit vs ancestor-inherited dependency display ids (from API). */
+  dependencyInheritance?: DependencyInheritanceEntry;
   onClose: () => void;
   onSaved: () => void;
 };
 
-export function EditModal({ node, onClose, onSaved }: Props) {
+export function EditModal({
+  node,
+  dependencyInheritance,
+  onClose,
+  onSaved,
+}: Props) {
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState("Not Started");
   const [files, setFiles] = useState<{ role: string; path: string }[]>([]);
@@ -112,6 +119,34 @@ export function EditModal({ node, onClose, onSaved }: Props) {
             ))}
           </select>
         </label>
+        {dependencyInheritance != null ? (
+          <div className="modal-deps">
+            <div className="modal-deps-label">Dependencies (display ids)</div>
+            {dependencyInheritance.explicit.length > 0 ? (
+              <p className="modal-deps-explicit">
+                <strong>Explicit:</strong>{" "}
+                {dependencyInheritance.explicit.join(", ")}
+              </p>
+            ) : null}
+            {dependencyInheritance.inherited.length > 0 ? (
+              <p className="modal-deps-inherited">
+                <strong>Inherited from ancestors:</strong>{" "}
+                {dependencyInheritance.inherited.join(", ")}
+              </p>
+            ) : null}
+            {dependencyInheritance.explicit.length === 0 &&
+            dependencyInheritance.inherited.length === 0 ? (
+              <p className="outline-meta">
+                No dependencies (none explicit, none inherited); eligible for parallel
+                execution with respect to deps.
+              </p>
+            ) : null}
+            <p className="outline-meta">
+              Stored dependencies use stable node keys; edit the roadmap JSON or use
+              CLI tools to change explicit deps.
+            </p>
+          </div>
+        ) : null}
         {files.length > 0 ? (
           <>
             <label>Planning file</label>
