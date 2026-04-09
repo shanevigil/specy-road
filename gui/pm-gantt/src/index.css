@@ -6,6 +6,10 @@
   --muted: #616161;
   --accent: #1976d2;
   --row-h: 38px;
+  /* Align outline text with Gantt chart content (matches GanttPane PAD_L). */
+  --gantt-pad-x: 8px;
+  /* Drop zone between outline rows; data row height is row-h minus this. */
+  --outline-gap-h: 1px;
   --sel-bg: rgba(25, 118, 210, 0.12);
   --bar-not-started: #b0b0b0;
   --bar-progress: #1976d2;
@@ -106,17 +110,90 @@ button {
   min-height: 0;
 }
 
+.split-resize-handle {
+  flex: 0 0 6px;
+  width: 6px;
+  cursor: col-resize;
+  background: var(--border);
+  align-self: stretch;
+  touch-action: none;
+}
+
+.split-resize-handle:hover,
+.split-resize-handle:active {
+  background: var(--accent);
+}
+
 .outline-wrap {
-  width: 42%;
   min-width: 220px;
-  border-right: 1px solid var(--border);
+  max-width: 85%;
+  border-right: none;
   overflow: auto;
+  padding-left: var(--gantt-pad-x);
+  box-sizing: border-box;
 }
 
 .gantt-wrap {
   flex: 1;
   overflow: auto;
   min-width: 0;
+  padding-left: 0;
+  box-sizing: border-box;
+}
+
+.toolbar-dep-mode {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding-left: 0.5rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--border);
+}
+
+.toolbar-dep-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.outline-table.dep-edit-mode tbody tr.dep-edit-row td {
+  outline: 1px dashed var(--accent);
+  outline-offset: -1px;
+}
+
+.outline-table tbody tr.dep-candidate-row td {
+  background: rgba(25, 118, 210, 0.07);
+}
+
+.outline-col-status,
+.outline-col-dev {
+  font-size: 0.75rem;
+  padding: 0 0.25rem;
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outline-col-dep {
+  font-size: 0.72rem;
+  padding: 0 0.25rem;
+  color: var(--muted);
+  max-width: 12rem;
+  min-width: 5rem;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.outline-col-dep:hover {
+  background: var(--sel-bg);
+}
+
+.outline-dep-cell-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .outline-table {
@@ -125,11 +202,11 @@ button {
   font-size: 0.875rem;
 }
 
-.outline-table tr:not(.outline-gap-tr) {
+.outline-table tbody tr:not(.outline-gap-tr) {
   cursor: grab;
 }
 
-.outline-table tr:not(.outline-gap-tr):active {
+.outline-table tbody tr:not(.outline-gap-tr):active {
   cursor: grabbing;
 }
 
@@ -137,30 +214,36 @@ button {
   height: 0;
 }
 
-.outline-gap-cell {
-  height: 6px;
+.outline-table tbody tr.outline-gap-tr td.outline-gap-cell {
+  height: var(--outline-gap-h);
+  max-height: var(--outline-gap-h);
   padding: 0 !important;
-  border-bottom: none;
+  border: none;
   line-height: 0;
   font-size: 0;
   cursor: default;
+  vertical-align: top;
 }
 
-.outline-gap-active {
-  background: linear-gradient(
-    to bottom,
-    transparent 0,
-    var(--accent) 35%,
-    var(--accent) 65%,
-    transparent 100%
-  );
-  opacity: 0.85;
+/* 1px insert line; solid accent on drag hover */
+.outline-table tbody tr.outline-gap-tr td.outline-gap-cell.outline-gap-active {
+  background-color: var(--accent);
 }
 
 .outline-table td {
   padding: 0;
+  vertical-align: middle;
+}
+
+.outline-table tbody tr:not(.outline-gap-tr) td {
   border-bottom: 1px solid var(--border);
-  height: var(--row-h);
+  height: calc(var(--row-h) - var(--outline-gap-h));
+  box-sizing: border-box;
+}
+
+.outline-table thead th {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
 
@@ -171,7 +254,7 @@ button {
 .outline-id {
   width: auto;
   min-width: 3.5rem;
-  padding-left: 0.35rem;
+  padding-left: 0;
   color: var(--muted);
   font-size: 0.75rem;
   white-space: nowrap;

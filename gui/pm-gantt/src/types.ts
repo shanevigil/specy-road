@@ -31,6 +31,8 @@ export type RoadmapResponse = {
   version: number;
   nodes: RoadmapNode[];
   registry: Record<string, unknown>;
+  /** Registry entry keyed by display node id (when present). */
+  registry_by_node?: Record<string, Record<string, unknown>>;
   tree: { id: string; outline_depth: number; row_index: number }[];
   dependency_depths: Record<string, number>;
   edges: DependencyEdge[];

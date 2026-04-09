@@ -1,4 +1,4 @@
-import { Fragment, useRef, type CSSProperties } from "react";
+import { Fragment, useMemo, useRef, type CSSProperties } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -16,6 +16,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, reorderOutline } from "../api";
+
+const TABLE_COLS = 5;
 
 function parentKey(n: RoadmapNode | undefined): string | null {
   const p = n?.parent_id;
@@ -36,7 +38,6 @@ function isDescendant(
   return false;
 }
 
-/** True if ``newParentId`` is ``aid`` or a descendant of ``aid`` (invalid reparent target). */
 function cannotReparentUnder(
   aid: string,
   newParentId: string | null,
@@ -47,7 +48,6 @@ function cannotReparentUnder(
   return isDescendant(nodesById, aid, newParentId);
 }
 
-/** Sibling order after moving ``aid`` to sit immediately before ``oid`` under ``parentId``. */
 function siblingOrderInsertBefore(
   parentId: string | null,
   aid: string,
@@ -63,6 +63,22 @@ function siblingOrderInsertBefore(
   const insertAt = without.indexOf(oid);
   if (insertAt < 0) return null;
   return [...without.slice(0, insertAt), aid, ...without.slice(insertAt)];
+}
+
+function devLabel(
+  nid: string,
+  registryByNode: Record<string, Record<string, unknown>> | undefined,
+  gitEnrichment: Record<string, Record<string, unknown>>,
+): string {
+  const e = registryByNode?.[nid];
+  const owner = e?.owner;
+  if (typeof owner === "string" && owner.trim()) return owner.trim();
+  const g = gitEnrichment[nid];
+  if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
+    const author = g.author as string | undefined;
+    if (author) return `@${author}`;
+  }
+  return "—";
 }
 
 function IntoDropBadge({ nodeId }: { nodeId: string }) {
@@ -85,7 +101,7 @@ function RootDropZone() {
   return (
     <th
       ref={setNodeRef}
-      colSpan={2}
+      colSpan={TABLE_COLS}
       className={isOver ? "into-root into-root-active" : "into-root"}
       title="Drop here to move to top level (append as last root)"
     >
@@ -102,7 +118,7 @@ function RowGapBefore({ targetId }: { targetId: string }) {
     <tr ref={setNodeRef} className="outline-gap-tr">
       <td
         className={isOver ? "outline-gap-cell outline-gap-active" : "outline-gap-cell"}
-        colSpan={2}
+        colSpan={TABLE_COLS}
         title="Drop here to insert before this row (same parent as this row)"
       />
     </tr>
@@ -115,8 +131,17 @@ type RowProps = {
   outlineDepth: number;
   selected: boolean;
   meta?: string;
+  statusText: string;
+  devText: string;
+  depCellText: string;
+  depEditId: string | null;
+  isDepCandidate: boolean;
   onSelectRow: () => void;
   onOpenModal: () => void;
+  /** Task / status / dev clicked while editing deps (passes row id). */
+  onDepRowBodyClick: () => void;
+  onDepCellClick: () => void;
+  dragDisabled: boolean;
 };
 
 function SortableRow({
@@ -125,8 +150,16 @@ function SortableRow({
   outlineDepth,
   selected,
   meta,
+  statusText,
+  devText,
+  depCellText,
+  depEditId,
+  isDepCandidate,
   onSelectRow,
   onOpenModal,
+  onDepRowBodyClick,
+  onDepCellClick,
+  dragDisabled,
 }: RowProps) {
   const {
     attributes,
@@ -135,7 +168,7 @@ function SortableRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ id, disabled: dragDisabled });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -145,7 +178,11 @@ function SortableRow({
 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleClick = () => {
+  const handleTitleClick = () => {
+    if (depEditId) {
+      onDepRowBodyClick();
+      return;
+    }
     if (clickTimer.current) clearTimeout(clickTimer.current);
     clickTimer.current = setTimeout(() => {
       clickTimer.current = null;
@@ -155,6 +192,7 @@ function SortableRow({
 
   const handleDoubleClick = (e: { preventDefault: () => void }) => {
     e.preventDefault();
+    if (depEditId) return;
     if (clickTimer.current) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
@@ -162,27 +200,65 @@ function SortableRow({
     onOpenModal();
   };
 
+  const handleIdClick = () => {
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = null;
+    onSelectRow();
+  };
+
+  const handleStatusDevClick = () => {
+    if (depEditId) {
+      onDepRowBodyClick();
+    } else {
+      onSelectRow();
+    }
+  };
+
+  const rowClass = [
+    selected ? "selected" : "",
+    depEditId === id ? "dep-edit-row" : "",
+    isDepCandidate ? "dep-candidate-row" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={selected ? "selected" : undefined}
-      {...attributes}
-    >
-      <td className="outline-id">
-        <span {...listeners} className="outline-drag-handle">
+    <tr ref={setNodeRef} style={style} className={rowClass || undefined}>
+      <td className="outline-id" onClick={handleIdClick}>
+        <span
+          {...listeners}
+          {...attributes}
+          className="outline-drag-handle"
+        >
           {node.id}
         </span>
         <IntoDropBadge nodeId={node.id} />
       </td>
       <td
         className="outline-title"
-        onClick={handleClick}
+        onClick={handleTitleClick}
         onDoubleClick={handleDoubleClick}
         style={{ paddingLeft: `${outlineDepth * 12}px` }}
       >
         <div>{node.title}</div>
         {meta ? <div className="outline-meta">{meta}</div> : null}
+      </td>
+      <td className="outline-col-status" onClick={handleStatusDevClick}>
+        {statusText}
+      </td>
+      <td className="outline-col-dev" onClick={handleStatusDevClick}>
+        {devText}
+      </td>
+      <td
+        className="outline-col-dep"
+        title="Click to choose which features this item depends on (explicit)"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onDepCellClick();
+        }}
+      >
+        <span className="outline-dep-cell-text">{depCellText}</span>
       </td>
     </tr>
   );
@@ -196,6 +272,11 @@ type Props = {
   prHints: Record<string, string>;
   gitEnrichment: Record<string, Record<string, unknown>>;
   dependencyInheritance?: Record<string, DependencyInheritanceEntry>;
+  registryByNode?: Record<string, Record<string, unknown>>;
+  depEditId: string | null;
+  depDraftKeys: Set<string>;
+  onToggleDepCandidate: (candidateNodeId: string) => void;
+  onDepCellActivate: (nodeId: string) => void;
   onSelect: (id: string) => void;
   onDoubleClick: (id: string) => void;
   onReordered: () => Promise<void>;
@@ -209,6 +290,11 @@ export function OutlineTable({
   prHints,
   gitEnrichment,
   dependencyInheritance,
+  registryByNode,
+  depEditId,
+  depDraftKeys,
+  onToggleDepCandidate,
+  onDepCellActivate,
   onSelect,
   onDoubleClick,
   onReordered,
@@ -217,9 +303,16 @@ export function OutlineTable({
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
+  const keyToId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of Object.values(nodesById)) {
+      if (n?.node_key) m.set(n.node_key, n.id);
+    }
+    return m;
+  }, [nodesById]);
+
   const metaLine = (nid: string) => {
     const g = gitEnrichment[nid];
-    let base = "";
     if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
       const assignees = g.assignees as string[] | undefined;
       const author = g.author as string | undefined;
@@ -227,23 +320,33 @@ export function OutlineTable({
         author ? `@${author}` : "",
         assignees?.length ? `A: ${assignees.join(", ")}` : "",
       ].filter(Boolean);
-      base = bits.join(" · ") || (g.hint_line as string) || "";
-    } else if (g?.hint_line) {
-      base = String(g.hint_line);
-    } else if (prHints[nid]) {
-      base = prHints[nid].replace(/<br>/g, " · ");
+      return bits.join(" · ") || (g.hint_line as string) || "";
     }
-    const di = dependencyInheritance?.[nid];
-    if (di && (di.explicit.length > 0 || di.inherited.length > 0)) {
-      const depBits: string[] = [];
-      if (di.explicit.length)
-        depBits.push(`deps: ${di.explicit.join(", ")}`);
-      if (di.inherited.length)
-        depBits.push(`inherited: ${di.inherited.join(", ")}`);
-      const depStr = depBits.join(" · ");
-      return base ? `${base} · ${depStr}` : depStr;
+    if (g?.hint_line) return String(g.hint_line);
+    if (prHints[nid]) return prHints[nid].replace(/<br>/g, " · ");
+    return "";
+  };
+
+  const idForNodeKey = (k: string): string | undefined => {
+    const fromMap = keyToId.get(k);
+    if (fromMap) return fromMap;
+    for (const n of Object.values(nodesById)) {
+      if (n?.node_key === k) return n.id;
     }
-    return base;
+    return undefined;
+  };
+
+  const depCellLabel = (nid: string) => {
+    const node = nodesById[nid];
+    if (!node) return "—";
+    if (depEditId === nid) {
+      const parts = [...depDraftKeys]
+        .map((k) => idForNodeKey(k))
+        .filter(Boolean) as string[];
+      return parts.length ? [...new Set(parts)].sort().join(", ") : "—";
+    }
+    const ex = dependencyInheritance?.[nid]?.explicit ?? [];
+    return ex.length ? ex.join(", ") : "—";
   };
 
   const applyInsertBefore = async (aid: string, oid: string) => {
@@ -285,6 +388,7 @@ export function OutlineTable({
   };
 
   const onDragEnd = async (e: DragEndEvent) => {
+    if (depEditId) return;
     const { active, over } = e;
     if (!over) return;
     const aid = String(active.id);
@@ -333,13 +437,17 @@ export function OutlineTable({
     await applyInsertBefore(aid, oid);
   };
 
+  const dragDisabled = Boolean(depEditId);
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragEnd={onDragEnd}
     >
-      <table className="outline-table">
+      <table
+        className={`outline-table${depEditId ? " dep-edit-mode" : ""}`}
+      >
         <thead>
           <tr>
             <RootDropZone />
@@ -347,6 +455,9 @@ export function OutlineTable({
           <tr>
             <th className="outline-id">ID</th>
             <th className="outline-title">Task</th>
+            <th className="outline-col-status">Status</th>
+            <th className="outline-col-dev">Dev</th>
+            <th className="outline-col-dep">Dependency</th>
           </tr>
         </thead>
         <tbody>
@@ -354,20 +465,44 @@ export function OutlineTable({
             items={orderedIds}
             strategy={verticalListSortingStrategy}
           >
-            {orderedIds.map((id, i) => (
-              <Fragment key={id}>
-                <RowGapBefore targetId={id} />
-                <SortableRow
-                  id={id}
-                  node={nodesById[id]}
-                  outlineDepth={rowDepths[i] ?? 0}
-                  selected={selectedId === id}
-                  meta={metaLine(id)}
-                  onSelectRow={() => onSelect(id)}
-                  onOpenModal={() => onDoubleClick(id)}
-                />
-              </Fragment>
-            ))}
+            {orderedIds.map((id, i) => {
+              const node = nodesById[id];
+              const nk = node?.node_key;
+              const isCandidate =
+                Boolean(depEditId) &&
+                Boolean(nk) &&
+                depDraftKeys.has(nk) &&
+                depEditId !== id;
+              return (
+                <Fragment key={id}>
+                  <RowGapBefore targetId={id} />
+                  <SortableRow
+                    id={id}
+                    node={node}
+                    outlineDepth={rowDepths[i] ?? 0}
+                    selected={selectedId === id}
+                    meta={metaLine(id)}
+                    statusText={(node?.status as string) || "—"}
+                    devText={devLabel(id, registryByNode, gitEnrichment)}
+                    depCellText={depCellLabel(id)}
+                    depEditId={depEditId}
+                    isDepCandidate={isCandidate}
+                    dragDisabled={dragDisabled}
+                    onSelectRow={() => onSelect(id)}
+                    onOpenModal={() => onDoubleClick(id)}
+                    onDepRowBodyClick={() => {
+                      if (!depEditId) return;
+                      if (id === depEditId) {
+                        onSelect(id);
+                        return;
+                      }
+                      onToggleDepCandidate(id);
+                    }}
+                    onDepCellClick={() => onDepCellActivate(id)}
+                  />
+                </Fragment>
+              );
+            })}
           </SortableContext>
         </tbody>
       </table>
