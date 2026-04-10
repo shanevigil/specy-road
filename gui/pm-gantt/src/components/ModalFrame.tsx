@@ -6,7 +6,12 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
-import { getDefaultModalRect, type ModalRect } from "../modalRect";
+import {
+  getDefaultModalRect,
+  loadStoredModalRect,
+  saveStoredModalRect,
+  type ModalRect,
+} from "../modalRect";
 import { isMacLike } from "../os";
 
 const MIN_W = 320;
@@ -32,7 +37,25 @@ type Props = {
   footer?: ReactNode;
   /** Extra class on the scrollable body (e.g. `modal-body--edit`). */
   bodyClassName?: string;
+  /** Persist size/position in localStorage under this key. */
+  storageKey?: string;
+  /** Initial rect when nothing is stored (default: full-viewport margin preset). */
+  getDefaultRect?: () => ModalRect;
 };
+
+function resolveInitialRect(
+  storageKey: string | undefined,
+  getDefaultRect: (() => ModalRect) | undefined,
+): ModalRect {
+  if (storageKey) {
+    const stored = loadStoredModalRect(storageKey);
+    if (stored) {
+      return clampRectToViewport(stored);
+    }
+  }
+  const base = getDefaultRect ? getDefaultRect() : getDefaultModalRect();
+  return clampRectToViewport(base);
+}
 
 export function ModalFrame({
   title,
@@ -41,13 +64,23 @@ export function ModalFrame({
   children,
   footer,
   bodyClassName,
+  storageKey,
+  getDefaultRect,
 }: Props) {
   const mac = isMacLike();
-  const [rect, setRect] = useState<ModalRect>(() => getDefaultModalRect());
+  const [rect, setRect] = useState<ModalRect>(() =>
+    resolveInitialRect(storageKey, getDefaultRect),
+  );
   const rectRef = useRef(rect);
   useEffect(() => {
     rectRef.current = rect;
   }, [rect]);
+
+  const persistRect = useCallback(() => {
+    if (!storageKey) return;
+    saveStoredModalRect(storageKey, rectRef.current);
+  }, [storageKey]);
+
   const dragRef = useRef<{
     x: number;
     y: number;
@@ -103,11 +136,14 @@ export function ModalFrame({
         dragRef.current = null;
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
+        requestAnimationFrame(() => {
+          persistRect();
+        });
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     },
-    [],
+    [persistRect],
   );
 
   const onResizePointerDown = useCallback(
@@ -137,11 +173,14 @@ export function ModalFrame({
         resizeRef.current = null;
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
+        requestAnimationFrame(() => {
+          persistRect();
+        });
       };
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     },
-    [],
+    [persistRect],
   );
 
   const closeBtn = (

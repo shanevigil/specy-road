@@ -156,6 +156,11 @@ button {
   color: var(--muted);
 }
 
+.toolbar-dep-hint {
+  font-weight: normal;
+  opacity: 0.92;
+}
+
 .outline-table.dep-edit-mode tbody tr.dep-edit-row td {
   outline: 1px dashed var(--accent);
   outline-offset: -1px;
@@ -304,6 +309,7 @@ button {
 }
 
 .modal-deps {
+  flex-shrink: 0;
   margin-top: 0.75rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--border);
@@ -403,8 +409,8 @@ button {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   cursor: nwse-resize;
   touch-action: none;
   background: linear-gradient(
@@ -449,6 +455,62 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-height: 0;
+}
+
+.modal-edit-fields {
+  flex-shrink: 0;
+}
+
+.modal-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 0.65rem;
+  margin-bottom: 0.2rem;
+}
+
+.modal-status-readonly .modal-field-label:first-child {
+  margin-top: 0;
+}
+
+.modal-status-value {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.modal-status-readonly .outline-meta {
+  margin: 0.35rem 0 0.5rem;
+}
+
+.modal-git-work-line {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.modal-edit-planning-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-edit-planning-section--empty {
+  min-height: 6rem;
+}
+
+.planning-missing-banner {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+
+.planning-missing-banner p {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
 }
 
 .modal-edit-planning {

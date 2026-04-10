@@ -8,8 +8,9 @@
       "notes": "Human-led phase: specs and ADRs before heavy implementation.",
       "parallel_tracks": 1,
       "parent_id": null,
+      "planning_dir": "planning/M0",
       "sibling_order": 0,
-      "status": "Complete",
+      "status": "Not Started",
       "title": "Foundation — architecture and contracts",
       "touch_zones": [],
       "type": "phase"

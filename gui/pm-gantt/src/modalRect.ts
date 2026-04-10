@@ -8,6 +8,8 @@ export type ModalRect = {
 /** Inset from each viewport edge (5%). */
 const MARGIN = 0.05;
 
+const STORAGE_PREFIX = "pm-modal-rect:";
+
 export function getDefaultModalRect(): ModalRect {
   const vw = typeof window !== "undefined" ? window.innerWidth : 800;
   const vh = typeof window !== "undefined" ? window.innerHeight : 600;
@@ -17,4 +19,53 @@ export function getDefaultModalRect(): ModalRect {
     width: vw * (1 - 2 * MARGIN),
     height: vh * (1 - 2 * MARGIN),
   };
+}
+
+/**
+ * Smaller, left-anchored preset so the Gantt chart on the right stays visible.
+ */
+export function getDefaultEditModalRect(): ModalRect {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 800;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+  return {
+    left: vw * 0.03,
+    top: vh * 0.06,
+    width: vw * 0.58,
+    height: vh * 0.62,
+  };
+}
+
+function isModalRect(x: unknown): x is ModalRect {
+  if (typeof x !== "object" || x === null) return false;
+  const o = x as Record<string, unknown>;
+  return (
+    typeof o.left === "number" &&
+    typeof o.top === "number" &&
+    typeof o.width === "number" &&
+    typeof o.height === "number" &&
+    Number.isFinite(o.left) &&
+    Number.isFinite(o.top) &&
+    Number.isFinite(o.width) &&
+    Number.isFinite(o.height)
+  );
+}
+
+export function loadStoredModalRect(storageKey: string): ModalRect | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + storageKey);
+    if (!raw) return null;
+    const j = JSON.parse(raw) as unknown;
+    if (!isModalRect(j)) return null;
+    return j;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStoredModalRect(storageKey: string, r: ModalRect): void {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(r));
+  } catch {
+    /* ignore quota / private mode */
+  }
 }

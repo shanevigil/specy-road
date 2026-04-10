@@ -19,12 +19,15 @@
     },
     {
       "codename": "roadmap-ci",
-      "dependencies": [],
+      "dependencies": [
+        "cd44fef1-715a-5b8d-b03f-1752a61a47cc"
+      ],
       "execution_milestone": "Agentic-led",
       "id": "M0.2",
       "node_key": "e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208",
       "parallel_tracks": 1,
       "parent_id": "M0",
+      "planning_dir": "planning/M0.2",
       "sibling_order": 1,
       "status": "Not Started",
       "title": "Roadmap validator in CI",

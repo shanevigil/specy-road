@@ -12,6 +12,7 @@ import { OutlineTable } from "./components/OutlineTable";
 import { EditModal } from "./components/EditModal";
 import { ConstitutionDrawer } from "./components/ConstitutionDrawer";
 import { SettingsDrawer } from "./components/SettingsDrawer";
+import { VisionDrawer } from "./components/VisionDrawer";
 
 const SPLIT_STORAGE_KEY = "pmGanttSplitPct";
 
@@ -27,6 +28,7 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
+  const [visionOpen, setVisionOpen] = useState(false);
 
   const [splitPct, setSplitPct] = useState(() => {
     try {
@@ -260,10 +262,24 @@ export default function App() {
         Add below
       </button>
       {depEditId ? (
-        <span className="toolbar-dep-mode">
+        <span
+          className="toolbar-dep-mode"
+          title="Click another task row to add or remove it as a prerequisite. Clear all removes every prerequisite from the draft; Save deps writes to the roadmap."
+        >
           <span className="toolbar-dep-label">
             Editing dependencies for <strong>{byId[depEditId]?.id}</strong>
+            <span className="toolbar-dep-hint">
+              {" "}
+              — Click rows to toggle ·{" "}
+            </span>
           </span>
+          <button
+            type="button"
+            disabled={depDraftKeys.size === 0}
+            onClick={() => setDepDraftKeys(new Set())}
+          >
+            Clear all
+          </button>
           <button type="button" onClick={() => void applyDepEdit()}>
             Save deps
           </button>
@@ -274,6 +290,9 @@ export default function App() {
       ) : null}
       <button type="button" onClick={() => setConstitutionOpen(true)}>
         Constitution
+      </button>
+      <button type="button" onClick={() => setVisionOpen(true)}>
+        Vision
       </button>
       <button type="button" onClick={() => setSettingsOpen(true)}>
         Settings
@@ -353,6 +372,9 @@ export default function App() {
         <EditModal
           node={sel}
           dependencyInheritance={data?.dependency_inheritance?.[sel.id]}
+          registryByNode={data?.registry_by_node}
+          gitEnrichment={data?.git_enrichment}
+          prHints={data?.pr_hints}
           onClose={() => setModalOpen(false)}
           onPersisted={() => void load()}
         />
@@ -360,6 +382,10 @@ export default function App() {
       <ConstitutionDrawer
         open={constitutionOpen}
         onClose={() => setConstitutionOpen(false)}
+      />
+      <VisionDrawer
+        open={visionOpen}
+        onClose={() => setVisionOpen(false)}
       />
       <SettingsDrawer
         open={settingsOpen}

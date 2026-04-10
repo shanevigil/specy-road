@@ -74,6 +74,7 @@ from roadmap_outline_ops import (  # noqa: E402
     reorder_siblings,
 )
 from planning_artifacts import normalize_planning_dir, planning_artifact_paths  # noqa: E402
+from scaffold_planning import scaffold_planning_for_node  # noqa: E402
 
 from specy_road.constitution_scaffold import (  # noqa: E402
     ConstitutionExistsError,
@@ -166,6 +167,11 @@ class PutFileBody(BaseModel):
 
 
 class ConstitutionScaffoldBody(BaseModel):
+    force: bool = False
+
+
+class PlanningScaffoldBody(BaseModel):
+    planning_dir: str | None = None
     force: bool = False
 
 
@@ -364,6 +370,22 @@ def create_app() -> FastAPI:
             "written": list(result.written),
             "skipped_existing": list(result.skipped_existing),
         }
+
+    @app.post("/api/planning/{node_id}/scaffold")
+    def api_planning_scaffold(
+        node_id: str,
+        body: PlanningScaffoldBody = Body(default_factory=PlanningScaffoldBody),
+    ) -> dict[str, Any]:
+        root = _get_repo_root()
+        try:
+            return scaffold_planning_for_node(
+                root,
+                node_id.strip(),
+                planning_dir=body.planning_dir,
+                force=body.force,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.get("/api/planning/{node_id}/artifacts")
     def api_planning_artifacts(node_id: str) -> dict[str, Any]:

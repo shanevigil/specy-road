@@ -9,9 +9,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     pass
 
-# UUID v4 lowercase hex
+# RFC 4122 UUID lowercase hex (versions 1–8). Repo uses uuid4 for new keys and
+# uuid5 for deterministic migrated keys; dependency patches must accept both.
 NODE_KEY_PATTERN = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
 )
 
 

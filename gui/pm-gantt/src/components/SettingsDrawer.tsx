@@ -123,6 +123,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
       title="Settings"
       titleId="settings-title"
       onClose={onClose}
+      storageKey="settings"
       footer={footer}
     >
       <p className="outline-meta">

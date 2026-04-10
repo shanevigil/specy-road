@@ -137,6 +137,7 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
       title="Constitution"
       titleId="constitution-title"
       onClose={onClose}
+      storageKey="constitution"
       footer={msg || persistMsg ? footer : null}
       bodyClassName="modal-body--constitution"
     >

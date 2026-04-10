@@ -95,6 +95,28 @@ export async function fetchPlanningArtifacts(nodeId: string) {
   return r.json() as Promise<{ planning_dir: string | null; files: { role: string; path: string; exists: boolean }[] }>;
 }
 
+export async function scaffoldPlanning(
+  nodeId: string,
+  opts?: { planning_dir?: string | null; force?: boolean },
+) {
+  const r = await fetch(
+    `${API}/planning/${encodeURIComponent(nodeId)}/scaffold`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        planning_dir: opts?.planning_dir ?? null,
+        force: opts?.force ?? false,
+      }),
+    },
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<{
+    planning_dir: string;
+    written: string[];
+  }>;
+}
+
 export async function fetchPlanningFile(path: string) {
   const r = await fetch(
     `${API}/planning/file?${new URLSearchParams({ path })}`,

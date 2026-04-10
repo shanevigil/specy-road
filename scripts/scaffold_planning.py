@@ -7,8 +7,9 @@ import argparse
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
-from roadmap_crud_ops import edit_node_set_pairs, merged_ids
+from roadmap_crud_ops import edit_node_set_pairs, merged_ids, run_validate_raise
 from roadmap_load import load_roadmap
 from planning_artifacts import normalize_planning_dir, resolve_planning_dir
 
@@ -84,35 +85,102 @@ def _run_task_subcommand(
     validate_at(root, no_overlap_warn=False, require_registry=True)
 
 
-def _run_scaffold_folder(
+def _resolve_scaffold_planning_path(
+    nid: str,
+    node: dict,
+    planning_dir: str | None,
+) -> str:
+    node_pd = (
+        str(node.get("planning_dir") or "").strip()
+        if isinstance(node.get("planning_dir"), str)
+        else ""
+    )
+    if planning_dir and str(planning_dir).strip():
+        return str(planning_dir).strip()
+    if node_pd:
+        return node_pd
+    return f"planning/{nid}"
+
+
+def _write_scaffold_template_files(
     root: Path,
+    dest: Path,
     nid: str,
     title: str,
-    planning_dir_override: str | None,
     force: bool,
-) -> None:
-    default_pd = f"planning/{nid}"
-    pd_s = (planning_dir_override or default_pd).strip()
-    norm = normalize_planning_dir(pd_s)
-    dest = resolve_planning_dir(root, norm)
-    if dest.exists() and not dest.is_dir():
-        print(f"error: {norm} exists and is not a directory", file=sys.stderr)
-        raise SystemExit(1)
-    dest.mkdir(parents=True, exist_ok=True)
+    *,
+    _echo: bool,
+) -> list[str]:
     files = {
         "overview.md": _render_template("overview.md.template", nid, title),
         "plan.md": _render_template("plan.md.template", nid, title),
         "tasks.md": _tasks_md_with_frontmatter(nid, title),
     }
+    written: list[str] = []
     for fname, content in files.items():
         path = dest / fname
         if path.is_file() and not force:
-            print(f"skip existing {path.relative_to(root)}", file=sys.stderr)
+            if _echo:
+                print(f"skip existing {path.relative_to(root)}", file=sys.stderr)
             continue
         path.write_text(content, encoding="utf-8")
-        print(f"[ok] wrote {path.relative_to(root)}")
+        rel = str(path.relative_to(root)).replace("\\", "/")
+        written.append(rel)
+        if _echo:
+            print(f"[ok] wrote {rel}")
+    return written
+
+
+def _run_scaffold_folder(
+    root: Path,
+    nid: str,
+    planning_dir_override: str | None,
+    force: bool,
+) -> None:
+    result = scaffold_planning_for_node(
+        root,
+        nid,
+        planning_dir=planning_dir_override,
+        force=force,
+        _echo=True,
+    )
+    print(f"[ok] set planning_dir={result['planning_dir']!r} on {nid}")
+
+
+def scaffold_planning_for_node(
+    root: Path,
+    node_id: str,
+    *,
+    planning_dir: str | None = None,
+    force: bool = False,
+    _echo: bool = False,
+) -> dict[str, Any]:
+    """Create planning markdown under ``planning/<node-id>/`` (or ``planning_dir``), set ``planning_dir`` on the node, validate.
+
+    If the node already has ``planning_dir`` set, that path is used when ``planning_dir`` is omitted (same as CLI defaulting).
+
+    :param _echo: when True (CLI), print progress to stderr like legacy behavior.
+    :returns: ``planning_dir`` (normalized) and ``written`` (repo-relative paths).
+    """
+    root = root.resolve()
+    nid = node_id.strip()
+    by_id = {n["id"]: n for n in load_roadmap(root)["nodes"]}
+    if nid not in by_id:
+        raise ValueError(f"unknown node id {nid!r}")
+    node = by_id[nid]
+    title = str(node.get("title", ""))
+    pd_s = _resolve_scaffold_planning_path(nid, node, planning_dir)
+    norm = normalize_planning_dir(pd_s)
+    dest = resolve_planning_dir(root, norm)
+    if dest.exists() and not dest.is_dir():
+        raise ValueError(f"{norm} exists and is not a directory")
+    dest.mkdir(parents=True, exist_ok=True)
+    written = _write_scaffold_template_files(
+        root, dest, nid, title, force, _echo=_echo
+    )
     edit_node_set_pairs(root, nid, [("planning_dir", norm)])
-    print(f"[ok] set planning_dir={norm!r} on {nid}")
+    run_validate_raise(root)
+    return {"planning_dir": norm, "written": written}
 
 
 def main() -> None:
@@ -147,7 +215,6 @@ def main() -> None:
     if nid not in by_id:
         print(f"error: unknown node id {nid!r}", file=sys.stderr)
         raise SystemExit(1)
-    title = str(by_id[nid].get("title", ""))
     if args.task_id:
         _run_task_subcommand(
             root,
@@ -158,7 +225,11 @@ def main() -> None:
             args.force,
         )
     else:
-        _run_scaffold_folder(root, nid, title, args.planning_dir, args.force)
+        try:
+            _run_scaffold_folder(root, nid, args.planning_dir, args.force)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
 
 
 if __name__ == "__main__":
