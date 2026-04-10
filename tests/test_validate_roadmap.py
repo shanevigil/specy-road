@@ -33,6 +33,30 @@ def test_validate_codenames_duplicate() -> None:
         vr.validate_codenames(nodes)
 
 
+def test_validate_required_planning_dirs_phase() -> None:
+    nodes = [
+        {
+            "id": "M1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "type": "phase",
+        },
+    ]
+    with pytest.raises(SystemExit):
+        vr.validate_required_planning_dirs(nodes)
+
+
+def test_validate_required_planning_dirs_ok_when_set() -> None:
+    nodes = [
+        {
+            "id": "M1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "type": "phase",
+            "planning_dir": "planning/M1",
+        },
+    ]
+    vr.validate_required_planning_dirs(nodes)
+
+
 def test_validate_agentic_requires_checklist() -> None:
     nodes = [
         {

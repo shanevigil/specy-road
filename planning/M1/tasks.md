@@ -1,8 +1,8 @@
 ---
-node_id: M0.2
+node_id: M1
 ---
 
-# Tasks — node `M0.2` — Roadmap validator in CI
+# Tasks — node `M1` — Implementation track
 
 Ordered checklist. Mark `[ ]` / `[x]` as you go.
 

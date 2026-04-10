@@ -11,6 +11,7 @@
       "notes": "Example dependency: M1 work assumes M0.1 milestone exists.",
       "parallel_tracks": 2,
       "parent_id": null,
+      "planning_dir": "planning/M1",
       "sibling_order": 1,
       "status": "Not Started",
       "title": "Implementation track",

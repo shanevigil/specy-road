@@ -22,6 +22,8 @@ type Props = {
   depths: Record<string, number>;
   edges: { from: string; to: string; kind?: "explicit" | "inherited" }[];
   selectedId: string | null;
+  /** Optional row to emphasize (e.g. explicit dependency of the selection). */
+  highlightRowId?: string | null;
   onSelect: (id: string) => void;
   /** Clicks on empty chart area (not bars) save dependency edit when active. */
   onChartBackgroundMouseDown?: () => void;
@@ -33,6 +35,7 @@ export function GanttPane({
   depths,
   edges,
   selectedId,
+  highlightRowId = null,
   onSelect,
   onChartBackgroundMouseDown,
 }: Props) {
@@ -138,12 +141,31 @@ export function GanttPane({
           pointerEvents="none"
         />
       ))}
+      {highlightRowId
+        ? orderedIds.map((id, i) => {
+            if (id !== highlightRowId) return null;
+            const y = 36 + i * ROW_H;
+            return (
+              <rect
+                key={`dep-hi-${id}`}
+                x={0}
+                y={y}
+                width={chartW}
+                height={ROW_H}
+                fill="var(--gantt-dep-highlight-bg)"
+                opacity={0.35}
+                pointerEvents="none"
+              />
+            );
+          })
+        : null}
       {orderedIds.map((id, i) => {
         const node = nodesById[id];
         const d = depths[id] ?? 0;
         const y = 36 + i * ROW_H;
         const x = PAD_L + d * UNIT;
         const sel = selectedId === id;
+        const hi = highlightRowId === id && !sel;
         return (
           <rect
             key={`bar-${id}`}
@@ -152,7 +174,13 @@ export function GanttPane({
             width={barW}
             height={ROW_H - 12}
             rx={3}
-            fill={sel ? "var(--accent)" : statusColor(node?.status)}
+            fill={
+              sel
+                ? "var(--accent)"
+                : hi
+                  ? "var(--gantt-dep-highlight)"
+                  : statusColor(node?.status)
+            }
             stroke="rgba(0,0,0,0.15)"
             strokeWidth={1}
             style={{ cursor: "pointer", pointerEvents: "all" }}

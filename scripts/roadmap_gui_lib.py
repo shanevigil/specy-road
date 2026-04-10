@@ -1,4 +1,4 @@
-"""Helpers for scripts/roadmap_gui.py (keeps the Streamlit entry file under size limits)."""
+"""PM GUI helpers: settings paths, registry resolution, LLM env (FastAPI + scripts)."""
 
 from __future__ import annotations
 

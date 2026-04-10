@@ -16,6 +16,8 @@
   --bar-blocked: #d32f2f;
   --bar-complete: #424242;
   --bar-cancelled: #757575;
+  --gantt-dep-highlight: #e65100;
+  --gantt-dep-highlight-bg: rgba(230, 81, 0, 0.18);
   font-family:
     system-ui,
     -apple-system,
@@ -33,6 +35,8 @@
     --muted: #9e9e9e;
     --accent: #64b5f6;
     --sel-bg: rgba(100, 181, 246, 0.15);
+    --gantt-dep-highlight: #ffb74d;
+    --gantt-dep-highlight-bg: rgba(255, 183, 77, 0.12);
   }
 }
 
@@ -102,6 +106,24 @@ button {
 .toolbar button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.toolbar-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.toolbar-inline select {
+  font: inherit;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  max-width: 9rem;
 }
 
 .split {
@@ -460,6 +482,52 @@ button {
 
 .modal-edit-fields {
   flex-shrink: 0;
+}
+
+.modal-codename-preview {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.modal-codename-value {
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+
+.modal-llm-review {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.modal-llm-review button {
+  margin-top: 0.35rem;
+}
+
+.modal-review-error {
+  color: crimson;
+  font-size: 0.85rem;
+  margin: 0.35rem 0 0;
+}
+
+.modal-review-report-wrap {
+  max-height: 240px;
+  overflow: auto;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.modal-review-report {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 .modal-field-label {

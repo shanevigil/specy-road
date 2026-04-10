@@ -8,7 +8,7 @@ This document is for **humans and coding agents** adopting or working on specy-r
 - **Separation of concerns** — [`constitution/`](../constitution/) holds purpose and principles (human judgment). [`constraints/`](../constraints/) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
 - **Contracts over tribal knowledge** — [`shared/`](../shared/) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
 - **Multi-agent safety** — [`roadmap/registry.yaml`](../roadmap/registry.yaml) plus touch zones and first-commit registration ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
-- **Adaptive depth** — Default to lightweight planning (node + contracts + notes in [`work/`](../work/)). Use optional [`planning/<node-id>/`](../planning/README.md) when risk or complexity demands structured overview → plan → tasks **as files in the repo**, not as a mandated agent ceremony.
+- **Planning as narrative spine** — **Phase and milestone** nodes must set [`planning_dir`](../planning/README.md) so [`planning/<node-id>/`](../planning/README.md) holds overview → plan → tasks **as files in the repo** (the “meat” of feature stories). Session scratch and generated briefs may still live under [`work/`](../work/).
 
 ## What specy-road does not prescribe
 
@@ -32,7 +32,8 @@ Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md)
 2. [`constitution/principles.md`](../constitution/principles.md)
 3. [`constraints/README.md`](../constraints/README.md)
 4. Merged roadmap graph ([`roadmap/manifest.json`](../roadmap/manifest.json) + `includes` chunk files) — **your node** plus parents and `dependencies` only
-5. [`shared/README.md`](../shared/README.md) — then open **only** contract files cited for the task
+5. **[`planning/<node-id>/`](../planning/README.md)** for that node when it is a phase or milestone (`planning_dir`) — **overview.md**, **plan.md**, and optional **tasks** files
+6. [`shared/README.md`](../shared/README.md) — then open **only** contract files cited for the task
 
 For a focused slice:
 
@@ -46,6 +47,7 @@ python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
 flowchart LR
   subgraph kitContract [Kit contract]
     R[roadmap graph]
+    P[planning narrative]
     C[constitution constraints shared]
   end
   subgraph userChoice [Your product or workflow]
@@ -53,8 +55,9 @@ flowchart LR
   end
   R --> brief[generate_brief]
   C --> brief
-  brief --> implement[Implementation]
+  P --> implement[Implementation]
+  brief --> implement
   A -. optional .-> implement
 ```
 
-The kit supplies the **roadmap graph** (JSON manifest + chunk files under `roadmap/`), constitution, constraints, and **shared** contracts. **Implementation** happens in your codebase; optional agent/IDE configuration is outside the kit’s required surface.
+The kit supplies the **roadmap graph** (JSON manifest + chunk files under `roadmap/`), **planning/** narrative for phases and milestones, constitution, constraints, and **shared** contracts. **Implementation** happens in your codebase; optional agent/IDE configuration is outside the kit’s required surface.

@@ -1,10 +1,10 @@
 # specy-road
 
-**Roadmap-first coordination** for human teams and coding agents: one canonical graph for how the system evolves, clear separation between **purpose**, **principles**, and **enforceable constraints**, and optional deeper specs when a milestone needs them.
+**Roadmap-first coordination** for human teams and coding agents: one canonical graph under `roadmap/`, **planning/** Markdown for phase and milestone narratives, clear separation between **purpose**, **principles**, and **enforceable constraints**, and **shared/** contracts cited from work items.
 
 ## Why use it
 
-- **Single source of truth** — The roadmap graph under `roadmap/` (`manifest.json` + ordered **JSON** chunk files) drives priorities, dependencies, and gates; contracts live in `shared/` and are cited from work items.
+- **Single source of truth** — The roadmap graph under `roadmap/` (`manifest.json` + ordered **JSON** chunk files) drives priorities, dependencies, and gates; **phase and milestone** nodes point at **`planning/<node-id>/`** for narrative; contracts live in `shared/` and are cited from work items.
 - **Smaller context for agents** — Generate a focused brief for a node so assistants load only what that task needs, instead of the whole repo story.
 - **Safer parallel work** — Immutable milestone IDs, **touch zones**, and **registration** in `roadmap/registry.yaml` make active work visible before files collide.
 - **Your tools, your workflow** — The kit is opinionated about **roadmapping and specs**, not about which IDE, agent, or in-session planning style you use. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
@@ -23,7 +23,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e ".[dev]"     # optional: editable install, pytest, both CLIs below
 # optional: pip install -e ".[review]" for specy-road review-node (OpenAI/Azure)
-# optional: pip install -e ".[gui]" for Streamlit roadmap dashboard (streamlit run scripts/roadmap_gui.py)
+# optional: pip install -e ".[gui]" or ".[gui-next]" for PM Gantt (specy-road gui — FastAPI + React)
 # optional: PM GUI stack notes + React Flow spike — docs/pm-gui-redesign.md, gui-spike/react-flow-spike/
 ```
 
@@ -37,14 +37,14 @@ python scripts/export_roadmap_md.py --check   # optional: roadmap.md matches mer
 python scripts/validate_file_limits.py
 pytest                                           # if dev extras installed
 specy-road validate                              # same as validate_roadmap.py when CLI is installed
-specy-road scaffold-planning <NODE_ID>           # optional: planning/<id>/ markdown + set roadmap planning_dir
+specy-road scaffold-planning <NODE_ID>           # planning/<id>/ markdown + set roadmap planning_dir (required for phase/milestone)
 ```
 
 Optional git hooks: `pip install pre-commit && pre-commit install` (roadmap validate, export drift check, file limits — same as CI except `pytest`).
 
 ## specyrd (optional IDE command stubs)
 
-**specyrd** is an optional installer for **slash-command-style markdown** (or equivalent) that points agents at the same workflows as `**specy-road`** and `python scripts/…`. It does **not** replace roadmap validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. Optional per-milestone folders named `planning/<node-id>/` in this kit are **this repo’s** overview/plan/tasks files — unrelated to that tool.
+**specyrd** is an optional installer for **slash-command-style markdown** (or equivalent) that points agents at the same workflows as `**specy-road`** and `python scripts/…`. It does **not** replace roadmap validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. Per–phase/milestone folders named `planning/<node-id>/` in this kit hold **overview/plan/tasks** narrative (required for those node types) — unrelated to that tool.
 
 - **Subcommand:** `init` only.
 - **Typical use:** Run once per repo (or per IDE); add a second agent pack by running `init` again with another `--ai`.

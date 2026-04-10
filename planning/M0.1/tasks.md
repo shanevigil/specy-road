@@ -1,8 +1,8 @@
 ---
-node_id: M0.2
+node_id: M0.1
 ---
 
-# Tasks — node `M0.2` — Roadmap validator in CI
+# Tasks — node `M0.1` — Establish shared contracts and ADR skeleton
 
 Ordered checklist. Mark `[ ]` / `[x]` as you go.
 

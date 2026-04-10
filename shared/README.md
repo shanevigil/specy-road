@@ -2,7 +2,7 @@
 
 Place **stable, referenceable** documents here: API tables, data model outlines, RBAC matrix, policy summaries.
 
-Roadmap items should **cite** these files (section or entity), not duplicate stack choices. Keep files small enough to load selectively; prefer one topic per file.
+Roadmap items should **cite** these files (section or entity), not duplicate stack choices. Phase/milestone **intent and plans** belong in [`planning/`](../planning/README.md); keep contracts here focused and referenceable. Prefer one topic per file and load selectively.
 
 ## Contracts
 

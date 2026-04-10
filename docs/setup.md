@@ -81,17 +81,6 @@ When `gui` is included in `--extras`, a starter `~/.specy-road/gui-settings.json
 
 ---
 
-## Optional: PM roadmap GUI (Streamlit)
-
-Install the GUI extra, then run from the repository root:
-
-```bash
-pip install "specy-road[gui]"
-streamlit run scripts/roadmap_gui.py
-```
-
-The app shows a dependency-depth view of the roadmap, reads `roadmap/registry.yaml`, and can save LLM / git-remote settings under `~/.specy-road/gui-settings.json`. See `docs/pm-workflow.md` for LLM review environment variables (the GUI can inject the same names from saved settings) and a short **security note** on how those saved secrets are stored.
-
 ## Optional: Gantt PM GUI (FastAPI + React)
 
 For the split-pane outline and Gantt timeline, use one command from the repo root:

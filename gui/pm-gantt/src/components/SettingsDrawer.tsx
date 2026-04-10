@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getSettings, putSettings, testLlmSettings } from "../api";
+import { getSettings, postGitTest, putSettings, testLlmSettings } from "../api";
 import { ModalFrame } from "./ModalFrame";
 
 type Props = {
@@ -107,10 +107,28 @@ export function SettingsDrawer({ open, onClose }: Props) {
     }
   };
 
+  const testGit = async () => {
+    setMsg(null);
+    try {
+      const out = await postGitTest({
+        provider: git.provider || "github",
+        repo: git.repo || "",
+        token: git.token || "",
+        base_url: git.base_url || "",
+      });
+      setMsg(out.message || "Git remote responded.");
+    } catch (e: unknown) {
+      setMsg(String(e));
+    }
+  };
+
   const footer = (
     <>
       <span>{persistMsg || msg}</span>
       <div className="modal-footer-actions">
+        <button type="button" onClick={() => void testGit()}>
+          Test Git
+        </button>
         <button type="button" onClick={() => void testLlm()}>
           Test LLM
         </button>
@@ -127,9 +145,8 @@ export function SettingsDrawer({ open, onClose }: Props) {
       footer={footer}
     >
       <p className="outline-meta">
-        Stored in ~/.specy-road/gui-settings.json (same as Streamlit PM GUI).
-        API keys are stored with simple obfuscation on disk, not plain text.
-        Changes save automatically.
+        Stored in ~/.specy-road/gui-settings.json. API keys use simple
+        obfuscation on disk, not plain text. Changes save automatically.
       </p>
       <h3>Git remote</h3>
       <label>

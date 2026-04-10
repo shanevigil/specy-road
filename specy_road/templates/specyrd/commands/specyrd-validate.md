@@ -20,4 +20,4 @@ Equivalent:
 python scripts/validate_roadmap.py
 ```
 
-Agent load order: `AGENTS.md` at the repository root. Optional `planning/<node-id>/` folders (see `planning/README.md`) are **this kit’s** structured planning — not the [Spec Kit](https://github.com/github/spec-kit) `specify` CLI.
+Agent load order: `AGENTS.md` at the repository root. Phase and milestone nodes use `planning/<node-id>/` (see `planning/README.md`) for feature narrative — not the [Spec Kit](https://github.com/github/spec-kit) `specify` CLI.

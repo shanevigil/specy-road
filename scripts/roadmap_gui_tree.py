@@ -1,4 +1,4 @@
-"""Outline parent helpers for scripts/roadmap_gui.py (indent / outdent)."""
+"""Outline parent helpers for the PM GUI and roadmap outline ops (indent / outdent)."""
 
 from __future__ import annotations
 

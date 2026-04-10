@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addNode,
   fetchRoadmap,
+  fetchRoadmapFingerprint,
   indentNode,
   outdentNode,
   patchNode,
@@ -15,6 +16,7 @@ import { SettingsDrawer } from "./components/SettingsDrawer";
 import { VisionDrawer } from "./components/VisionDrawer";
 
 const SPLIT_STORAGE_KEY = "pmGanttSplitPct";
+const REFRESH_STORAGE_KEY = "pmGanttRefreshSec";
 
 function nodesByIdFrom(nodes: RoadmapNode[]): Record<string, RoadmapNode> {
   return Object.fromEntries(nodes.map((n) => [n.id, n]));
@@ -29,6 +31,24 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
+
+  const [highlightDepRowId, setHighlightDepRowId] = useState<string | null>(
+    null,
+  );
+  const [refreshSec, setRefreshSec] = useState(() => {
+    try {
+      const s = localStorage.getItem(REFRESH_STORAGE_KEY);
+      if (s !== null) {
+        const n = parseInt(s, 10);
+        if (!Number.isNaN(n) && n >= 0 && n <= 120) return n;
+      }
+    } catch {
+      /* ignore */
+    }
+    return 0;
+  });
+
+  const lastFingerprintRef = useRef<number | null>(null);
 
   const [splitPct, setSplitPct] = useState(() => {
     try {
@@ -76,6 +96,12 @@ export default function App() {
         if (cur && r.ordered_ids.includes(cur)) return cur;
         return r.ordered_ids[0] ?? null;
       });
+      try {
+        const fp = await fetchRoadmapFingerprint();
+        lastFingerprintRef.current = fp;
+      } catch {
+        /* fingerprint is optional for sync */
+      }
     } catch (e: unknown) {
       setErr(String(e));
     }
@@ -93,6 +119,38 @@ export default function App() {
       /* ignore */
     }
   }, [splitPct]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(REFRESH_STORAGE_KEY, String(refreshSec));
+    } catch {
+      /* ignore */
+    }
+  }, [refreshSec]);
+
+  useEffect(() => {
+    if (refreshSec <= 0) return;
+    const id = window.setInterval(() => {
+      void (async () => {
+        try {
+          const fp = await fetchRoadmapFingerprint();
+          const prev = lastFingerprintRef.current;
+          if (prev !== null && fp !== prev) {
+            await load();
+          } else {
+            lastFingerprintRef.current = fp;
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, refreshSec * 1000);
+    return () => window.clearInterval(id);
+  }, [refreshSec, load]);
+
+  useEffect(() => {
+    setHighlightDepRowId(null);
+  }, [selectedId]);
 
   const cancelDepEdit = useCallback(() => {
     setDepEditId(null);
@@ -129,6 +187,21 @@ export default function App() {
     () => (data ? nodesByIdFrom(data.nodes) : {}),
     [data],
   );
+
+  const keyToDisplayId = useMemo(() => {
+    if (!data?.nodes) return {} as Record<string, string>;
+    return Object.fromEntries(
+      data.nodes.map((n) => [n.node_key, n.id] as const),
+    );
+  }, [data?.nodes]);
+
+  const explicitDepRowIds = useMemo(() => {
+    if (!selectedId) return [] as string[];
+    const node = byId[selectedId];
+    if (!node) return [];
+    const keys = (node.dependencies ?? []) as string[];
+    return keys.map((k) => keyToDisplayId[k] ?? k).filter(Boolean);
+  }, [selectedId, byId, keyToDisplayId]);
 
   const startDepEdit = useCallback(
     (nodeId: string) => {
@@ -297,6 +370,40 @@ export default function App() {
       <button type="button" onClick={() => setSettingsOpen(true)}>
         Settings
       </button>
+      <label className="toolbar-inline">
+        Highlight dep row
+        <select
+          value={highlightDepRowId ?? ""}
+          onChange={(e) =>
+            setHighlightDepRowId(e.target.value || null)
+          }
+          disabled={!selectedId || explicitDepRowIds.length === 0}
+          title="Emphasize a row that is an explicit prerequisite of the selection"
+        >
+          <option value="">— None —</option>
+          {explicitDepRowIds.map((id) => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="toolbar-inline">
+        Auto-refresh
+        <select
+          value={refreshSec}
+          onChange={(e) => setRefreshSec(Number(e.target.value))}
+          title="Poll roadmap files; reload when the fingerprint changes"
+        >
+          <option value={0}>Off</option>
+          <option value={5}>5 s</option>
+          <option value={10}>10 s</option>
+          <option value={15}>15 s</option>
+          <option value={30}>30 s</option>
+          <option value={60}>60 s</option>
+          <option value={120}>120 s</option>
+        </select>
+      </label>
       <button type="button" onClick={() => void load()}>
         Refresh
       </button>
@@ -358,6 +465,7 @@ export default function App() {
               depths={data.dependency_depths}
               edges={data.edges}
               selectedId={selectedId}
+              highlightRowId={highlightDepRowId}
               onSelect={setSelectedId}
               onChartBackgroundMouseDown={
                 depEditId ? () => void applyDepEdit() : undefined

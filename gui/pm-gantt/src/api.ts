@@ -209,3 +209,74 @@ export async function testLlmSettings(
     message: typeof raw.message === "string" ? raw.message : "",
   };
 }
+
+export async function fetchRoadmapFingerprint(): Promise<number> {
+  const r = await fetch(`${API}/roadmap/fingerprint`);
+  const raw = (await r.json()) as { fingerprint?: number; detail?: unknown };
+  if (!r.ok) {
+    const d = raw.detail;
+    throw new Error(
+      typeof d === "string" ? d : JSON.stringify(raw),
+    );
+  }
+  if (typeof raw.fingerprint !== "number") {
+    throw new Error("invalid fingerprint response");
+  }
+  return raw.fingerprint;
+}
+
+/** LLM settings object as stored in gui-settings / API (values may be strings). */
+export async function postLlmReview(
+  nodeId: string,
+  llm: Record<string, unknown>,
+): Promise<string> {
+  const r = await fetch(`${API}/llm/review`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ node_id: nodeId, llm }),
+  });
+  const raw = (await r.json()) as { report?: string; detail?: unknown };
+  if (!r.ok) {
+    const d = raw.detail;
+    const msg =
+      typeof d === "string"
+        ? d
+        : d != null
+          ? JSON.stringify(d)
+          : JSON.stringify(raw);
+    throw new Error(msg);
+  }
+  if (typeof raw.report !== "string") {
+    throw new Error("invalid review response");
+  }
+  return raw.report;
+}
+
+export async function postGitTest(
+  gitRemote: Record<string, string>,
+): Promise<{ ok: boolean; message: string }> {
+  const r = await fetch(`${API}/git/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ git_remote: gitRemote }),
+  });
+  const raw = (await r.json()) as {
+    ok?: boolean;
+    message?: string;
+    detail?: unknown;
+  };
+  if (!r.ok) {
+    const d = raw.detail;
+    const msg =
+      typeof d === "string"
+        ? d
+        : d != null
+          ? JSON.stringify(d)
+          : JSON.stringify(raw);
+    throw new Error(msg);
+  }
+  return {
+    ok: Boolean(raw.ok),
+    message: typeof raw.message === "string" ? raw.message : "",
+  };
+}

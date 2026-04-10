@@ -16,7 +16,7 @@ There is no “import from Word” flow: the source of truth is the **chunk file
 
 ### Establish the constitution (purpose and principles)
 
-[Spec-Kit](https://github.com/github/spec-kit) popularized an early **constitution** step for spec discipline. In specy-road, that maps to **two Markdown files** in the repo (not the roadmap graph): [`constitution/purpose.md`](../constitution/purpose.md) (**why** the effort exists) and [`constitution/principles.md`](../constitution/principles.md) (**how** you decide). They are **human judgment** — not machine-validated like the merged roadmap. Enforceable caps live under `constraints/`; execution planning lives under `roadmap/`. See [philosophy-and-scope.md](philosophy-and-scope.md) and the agent load order in [`AGENTS.md`](../AGENTS.md).
+[Spec-Kit](https://github.com/github/spec-kit) popularized an early **constitution** step for spec discipline. In specy-road, that maps to **two Markdown files** in the repo (not the roadmap graph): [`constitution/purpose.md`](../constitution/purpose.md) (**why** the effort exists) and [`constitution/principles.md`](../constitution/principles.md) (**how** you decide). They are **human judgment** — not machine-validated like the merged roadmap. Enforceable caps live under `constraints/`; the execution **graph** lives under `roadmap/` JSON, and **feature narrative** for phases and milestones lives under [`planning/`](../planning/README.md). See [philosophy-and-scope.md](philosophy-and-scope.md) and the agent load order in [`AGENTS.md`](../AGENTS.md).
 
 **When:** Early when adopting the kit (before or alongside first roadmap authoring) so people and agents share the same north star.
 
@@ -80,19 +80,13 @@ specy-road gui
 
 If the Python stack is corrupted, use **`specy-road init --reinstall-gui`**. To upgrade Python deps **without** running npm (faster), use **`specy-road init --install-gui --skip-npm-build`**. To **only** rebuild the frontend, **`specy-road init --build-gui`** (requires Node.js).
 
-**Streamlit dashboard (optional):** install the Streamlit extra and run the script from the repository root:
-
-```bash
-pip install "specy-road[gui]"
-```
-
 For a full developer install (tests, editable package), see [setup.md](setup.md).
 
 ---
 
 ## Open and use the roadmap dashboard
 
-You can use either the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click planning editor) or the **Streamlit** dashboard.
+Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click planning editor and markdown workspace).
 
 ### Gantt PM UI (FastAPI + React)
 
@@ -115,19 +109,6 @@ specy-road gui
 The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:8765)**). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If **address already in use** on port 8765, stop the other process or run `specy-road gui --port 8766` and open that port in the browser.
 
 **Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `PYTHONPATH=scripts python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
-
-### Streamlit dashboard
-
-From the **repository root**:
-
-```bash
-pip install "specy-road[gui]"
-streamlit run scripts/roadmap_gui.py
-```
-
-Your terminal will show a local address (usually **[http://localhost:8501](http://localhost:8501)**). Open that link in **Chrome, Edge, or Safari**. Keep the terminal window open while you use the app; closing it stops the dashboard.
-
-To stop the app: in the terminal, press **Ctrl+C**.
 
 ### What you see
 
@@ -323,10 +304,7 @@ specy-road show-node <NODE_ID>
 specy-road edit-node <NODE_ID> --set status=Complete
 specy-road brief <NODE_ID>
 specy-road review-node <NODE_ID>   # needs LLM configured
-```
-
-```bash
-streamlit run scripts/roadmap_gui.py
+specy-road gui                       # PM Gantt (FastAPI + React)
 ```
 
 Deeper manifest and chunk rules: [roadmap-authoring.md](roadmap-authoring.md).

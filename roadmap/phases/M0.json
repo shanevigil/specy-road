@@ -22,6 +22,7 @@
       "id": "M0.1",
       "node_key": "44ef4a9d-923f-545c-8187-eaabc7ca86ba",
       "parallel_tracks": 1,
+      "planning_dir": "planning/M0.1",
       "parent_id": "M0",
       "sibling_order": 0,
       "status": "Complete",

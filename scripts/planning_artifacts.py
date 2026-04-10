@@ -1,7 +1,7 @@
-"""Optional planning markdown under per-node ``planning_dir`` (hybrid roadmap).
+"""Planning markdown under per-node ``planning_dir`` (alongside the roadmap graph).
 
-Validates ``overview.md`` / ``plan.md``, optional ``tasks.md``, and ``tasks/**/*.md``
-frontmatter. See ``planning/README.md``.
+Phase and milestone nodes must set ``planning_dir``; validation requires ``overview.md``
+and ``plan.md``. Optional ``tasks.md`` and ``tasks/**/*.md`` frontmatter. See ``planning/README.md``.
 """
 
 from __future__ import annotations

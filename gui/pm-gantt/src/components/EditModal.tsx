@@ -3,11 +3,14 @@ import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import {
   fetchPlanningArtifacts,
   fetchPlanningFile,
+  getSettings,
   patchNode,
+  postLlmReview,
   savePlanningFile,
   scaffoldPlanning,
 } from "../api";
 import { getDefaultEditModalRect } from "../modalRect";
+import { titleToCodename } from "../titleCodename";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 
@@ -78,6 +81,9 @@ export function EditModal({
   const [hydrated, setHydrated] = useState(false);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
   const [scaffolding, setScaffolding] = useState(false);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewReport, setReviewReport] = useState<string | null>(null);
+  const [reviewErr, setReviewErr] = useState<string | null>(null);
 
   const lastSaved = useRef<SavedSnap>({
     title: "",
@@ -90,6 +96,8 @@ export function EditModal({
     setTitle(node.title || "");
     setErr(null);
     setPersistMsg(null);
+    setReviewReport(null);
+    setReviewErr(null);
     setHydrated(false);
     fetchPlanningArtifacts(node.id)
       .then((a) => {
@@ -209,6 +217,25 @@ export function EditModal({
     prHints,
   );
 
+  const runLlmReview = () => {
+    if (!node) return;
+    setReviewBusy(true);
+    setReviewErr(null);
+    void getSettings()
+      .then((s) => {
+        const llm = (s.llm as Record<string, unknown>) || {};
+        return postLlmReview(node.id, llm);
+      })
+      .then((report) => {
+        setReviewReport(report);
+      })
+      .catch((e: unknown) => {
+        setReviewErr(String(e));
+        setReviewReport(null);
+      })
+      .finally(() => setReviewBusy(false));
+  };
+
   const onScaffoldPlanning = () => {
     if (!node) return;
     setScaffolding(true);
@@ -275,6 +302,12 @@ export function EditModal({
             autoComplete="off"
           />
         </label>
+        <p className="modal-codename-preview">
+          <span className="modal-field-label">Codename (from title)</span>{" "}
+          <code className="modal-codename-value">
+            {titleToCodename(title) || "—"}
+          </code>
+        </p>
         <div className="modal-status-readonly">
           <div className="modal-field-label">Status (roadmap)</div>
           <p className="modal-status-value">{roadmapStatus}</p>
@@ -320,6 +353,29 @@ export function EditModal({
           </p>
         </div>
       ) : null}
+      <section className="modal-llm-review">
+        <div className="modal-field-label">LLM review (optional)</div>
+        <p className="outline-meta">
+          Uses LLM settings from Settings. Requires{" "}
+          <code>pip install &apos;specy-road[review]&apos;</code> or{" "}
+          <code>[gui-next]</code> with provider packages configured.
+        </p>
+        <button
+          type="button"
+          disabled={reviewBusy}
+          onClick={() => runLlmReview()}
+        >
+          {reviewBusy ? "Running…" : "Run LLM review"}
+        </button>
+        {reviewErr ? (
+          <p className="modal-review-error">{reviewErr}</p>
+        ) : null}
+        {reviewReport ? (
+          <div className="modal-review-report-wrap">
+            <pre className="modal-review-report">{reviewReport}</pre>
+          </div>
+        ) : null}
+      </section>
       {files.length > 0 ? (
         <section className="modal-edit-planning-section">
           <div className="modal-edit-planning">

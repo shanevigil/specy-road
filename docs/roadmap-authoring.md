@@ -88,7 +88,7 @@ Recommended on-disk shape (stable key order when tools save):
 
 The loader also accepts a top-level JSON **array** of node objects, or a single object with an `id`. Validation uses [`schemas/roadmap.schema.json`](../schemas/roadmap.schema.json) on the **merged** graph.
 
-Use the `notes` field (markdown string) for longer narrative in the same file, or add optional [`planning/<node-id>/`](../planning/README.md) markdown for structured overview/plan/tasks.
+Use the `notes` field (markdown string) for short context in the graph. **Phase and milestone** nodes must set **`planning_dir`**; the feature narrative (overview, plan, optional tasks) belongs in [`planning/<node-id>/`](../planning/README.md) Markdown — see [`planning/README.md`](../planning/README.md).
 
 ### Line-count policy (~500)
 
@@ -125,6 +125,12 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `id` | Hierarchical display id, e.g. `M1.2` or `M1.2.3.4` (fourth-level supported). |
 | `type` | `vision` / `phase` / `milestone` / `task` |
 | `title` | Human-readable label. |
+
+### Required for `phase` and `milestone` nodes
+
+| Field | Description |
+|-------|-------------|
+| `planning_dir` | Repo-relative directory (e.g. `planning/M1.1`) containing **overview.md** and **plan.md** — the feature narrative. Validated by `validate_roadmap.py`. See [`planning/README.md`](../planning/README.md). |
 
 ### Commonly used optional fields
 

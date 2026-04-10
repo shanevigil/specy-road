@@ -6,7 +6,7 @@ Gate maps milestone/task execution: **Human-led** / **Agentic-led** / **Mixed**,
 
 | ID | Title | Type | Gate | Status |
 |----|-------|------|------|--------|
-| `M0` | Foundation — architecture and contracts | phase | Human-led | Complete |
+| `M0` | Foundation — architecture and contracts | phase | Human-led | Not Started |
 | `M0.1` | Establish shared contracts and ADR skeleton | milestone | Mixed | Complete |
 | `M0.2` | Roadmap validator in CI | milestone | Agentic-led | Not Started |
 | `M0.3` | Define API contract outline in shared/ | task | Agentic | Complete |

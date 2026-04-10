@@ -158,6 +158,24 @@ def validate_codenames(nodes: list[dict]) -> None:
             seen[c] = n["id"]
 
 
+def validate_required_planning_dirs(nodes: list[dict]) -> None:
+    """Phase and milestone nodes must set planning_dir — feature narrative lives under planning/."""
+    for n in nodes:
+        t = n.get("type")
+        if t not in ("phase", "milestone"):
+            continue
+        pd = n.get("planning_dir")
+        if isinstance(pd, str) and pd.strip():
+            continue
+        nid = n.get("id", "?")
+        msg = (
+            f"roadmap: node {nid} (type {t}): must set planning_dir to a repo-relative "
+            "path such as planning/<node-id>/ — overview.md and plan.md hold the feature narrative"
+        )
+        print(msg, file=sys.stderr)
+        raise SystemExit(1)
+
+
 def validate_contract_citations(nodes: list[dict]) -> None:
     """Warn when an agentic node's contract_citation lacks a known doc-path prefix."""
     for n in nodes:
@@ -227,6 +245,7 @@ def run_validation(
     validate_agentic_checklists(nodes)
     validate_contract_citations(nodes)
     validate_codenames(nodes)
+    validate_required_planning_dirs(nodes)
 
     plan_errs = collect_planning_artifact_errors(r, nodes)
     if plan_errs:

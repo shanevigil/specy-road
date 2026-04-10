@@ -1,4 +1,4 @@
-"""Git remote and LLM connectivity helpers for roadmap_gui."""
+"""Git remote and LLM connectivity helpers for the PM GUI (FastAPI and scripts)."""
 
 from __future__ import annotations
 

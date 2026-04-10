@@ -22,7 +22,7 @@ def _install_extras(names: list[str], *, dry_run: bool) -> None:
             if importlib.util.find_spec("openai") is None:
                 want.append("review")
         elif n == "gui":
-            if importlib.util.find_spec("streamlit") is None:
+            if importlib.util.find_spec("fastapi") is None:
                 want.append("gui")
         else:
             print(f"warning: unknown extra {n!r} (use review, gui)", file=sys.stderr)
@@ -40,7 +40,7 @@ def _prompt_extras() -> list[str]:
     out: list[str] = []
     if input("Install [review] extra (LLM node review)? [y/N]: ").strip().lower() == "y":
         out.append("review")
-    if input("Install [gui] extra (Streamlit roadmap dashboard)? [y/N]: ").strip().lower() == "y":
+    if input("Install [gui] extra (PM Gantt: FastAPI + React)? [y/N]: ").strip().lower() == "y":
         out.append("gui")
     return out
 

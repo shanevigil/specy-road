@@ -1,4 +1,4 @@
-"""Whitelisted roadmap node field patches (shared by CRUD CLI and Streamlit GUI)."""
+"""Whitelisted roadmap node field patches (shared by CRUD CLI and PM GUI API)."""
 
 from __future__ import annotations
 

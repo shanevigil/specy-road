@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
@@ -54,15 +53,18 @@ from roadmap_layout import (  # noqa: E402
     sibling_sort_key,
 )
 from roadmap_gui_lib import (  # noqa: E402
+    apply_llm_env_from_settings,
     load_registry,
     load_settings,
     registry_by_node_id,
     resolve_repo_root,
+    roadmap_fingerprint,
     save_settings,
 )
 from roadmap_gui_remote import (  # noqa: E402
     build_pr_hints,
     build_registry_enrichment,
+    test_git_remote,
     test_llm_connection,
 )
 from roadmap_load import load_roadmap  # noqa: E402
@@ -75,6 +77,8 @@ from roadmap_outline_ops import (  # noqa: E402
 )
 from planning_artifacts import normalize_planning_dir, planning_artifact_paths  # noqa: E402
 from scaffold_planning import scaffold_planning_for_node  # noqa: E402
+
+from review_node import ReviewError, run_review  # noqa: E402
 
 from specy_road.constitution_scaffold import (  # noqa: E402
     ConstitutionExistsError,
@@ -162,6 +166,15 @@ class LlmTestBody(BaseModel):
     llm: dict[str, Any]
 
 
+class LlmReviewBody(BaseModel):
+    node_id: str
+    llm: dict[str, Any]
+
+
+class GitTestBody(BaseModel):
+    git_remote: dict[str, Any]
+
+
 class PutFileBody(BaseModel):
     content: str
 
@@ -240,6 +253,11 @@ def create_app() -> FastAPI:
             "dependency_inheritance": dep_inheritance,
             "outline_actions": outline_actions,
         }
+
+    @app.get("/api/roadmap/fingerprint")
+    def api_roadmap_fingerprint() -> dict[str, int]:
+        root = _get_repo_root()
+        return {"fingerprint": roadmap_fingerprint(root)}
 
     @app.patch("/api/nodes/{node_id}")
     def api_patch_node(node_id: str, body: PatchBody) -> dict[str, str]:
@@ -445,6 +463,25 @@ def create_app() -> FastAPI:
     @app.post("/api/llm/test")
     def api_llm_test(body: LlmTestBody) -> dict[str, Any]:
         ok, msg = test_llm_connection(body.llm)
+        if not ok:
+            raise HTTPException(status_code=400, detail=msg)
+        return {"ok": True, "message": msg}
+
+    @app.post("/api/llm/review")
+    def api_llm_review(body: LlmReviewBody) -> dict[str, str]:
+        root = _get_repo_root()
+        apply_llm_env_from_settings(body.llm)
+        try:
+            report = run_review(body.node_id.strip(), root)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except ReviewError as e:
+            raise HTTPException(status_code=502, detail=str(e)) from e
+        return {"report": report}
+
+    @app.post("/api/git/test")
+    def api_git_test(body: GitTestBody) -> dict[str, Any]:
+        ok, msg = test_git_remote(body.git_remote)
         if not ok:
             raise HTTPException(status_code=400, detail=msg)
         return {"ok": True, "message": msg}

@@ -27,9 +27,9 @@ If **two or more** of Tier A are must-haves, treat **Streamlit as a stopgap** an
 | Faster refresh, less flicker | WebSocket push (NiceGUI) or smaller reruns (Streamlit fragments). |
 | Secondary panels (planning markdown, PR hints) | Mostly layout; any stack can do it. |
 
-### Tier C — current Streamlit baseline
+### Tier C — historical note
 
-The existing app ([`scripts/roadmap_gui.py`](../scripts/roadmap_gui.py)) already provides: dependency-layer **Plotly** view, **click-to-select**, **dialog editor**, indent/outdent toolbar, settings, file-watch refresh. Documented limits: **no** drag dependency arrows or hover-insert rows in Plotly + Streamlit.
+The former Streamlit + Plotly dashboard has been **removed**. The supported PM surface is **FastAPI + React** under [`gui/pm-gantt/`](../gui/pm-gantt/) (see below).
 
 ---
 
@@ -54,7 +54,7 @@ The existing app ([`scripts/roadmap_gui.py`](../scripts/roadmap_gui.py)) already
 
 ### Legacy GUI
 
-`pip install "specy-road[gui]"` and `streamlit run scripts/roadmap_gui.py` remain available for the Plotly dashboard.
+The Streamlit entry point and Plotly Gantt helpers were removed; `specy-road[gui]` now matches the FastAPI + static React stack (same dependency set as `[gui-next]`).
 
 ---
 
@@ -62,7 +62,7 @@ The existing app ([`scripts/roadmap_gui.py`](../scripts/roadmap_gui.py)) already
 
 The **Gantt PM UI** lives under [`gui/pm-gantt/`](../gui/pm-gantt/). It uses the same merged roadmap model as `load_roadmap()`, a **dependency-depth** horizontal timeline (not calendar dates), outline **sibling reorder** (`sibling_order`), and GitHub/GitLab enrichment for registry branches.
 
-An older **React Flow** graph spike remains under [`gui-spike/react-flow-spike/`](../gui-spike/react-flow-spike/) for experiments; it is **not** the main PM surface. It loads a **merged** roadmap sample ([`public/sample-merged-roadmap.json`](../gui-spike/react-flow-spike/public/sample-merged-roadmap.json)) with the same shape as `load_roadmap()` output (`version` + `nodes`), lays nodes by **dependency depth** (same idea as [`scripts/roadmap_gui_gantt.py`](../scripts/roadmap_gui_gantt.py)), and draws **dependency edges** (`source` = dependency id, `target` = dependent id).
+An older **React Flow** graph spike remains under [`gui-spike/react-flow-spike/`](../gui-spike/react-flow-spike/) for experiments; it is **not** the main PM surface. It loads a **merged** roadmap sample ([`public/sample-merged-roadmap.json`](../gui-spike/react-flow-spike/public/sample-merged-roadmap.json)) with the same shape as `load_roadmap()` output (`version` + `nodes`), lays nodes by **dependency depth** (same idea as [`scripts/roadmap_layout.py`](../scripts/roadmap_layout.py) `compute_depths`), and draws **dependency edges** (`source` = dependency id, `target` = dependent id).
 
 **Run locally (requires Node 18+):**
 
@@ -86,9 +86,9 @@ Output: `gui-spike/react-flow-spike/dist/` (not committed; add to CI that builds
 
 ---
 
-## 4. Migration sequence (when you implement for real)
+## 4. Migration sequence (status)
 
-1. Extract or reuse pure functions: roadmap load, registry, `roadmap_edit_fields` / `roadmap_crud_ops`, LLM/git helpers (already largely outside Streamlit widgets).
-2. Add JSON HTTP API + optional WebSocket for file-change events.
-3. Implement SPA against the API; keep Streamlit until feature parity.
-4. Wire `specy-road gui` and optional `[gui-next]` extra; document in [setup.md](setup.md) and [pm-workflow.md](pm-workflow.md).
+1. Shared Python for roadmap load, registry, `roadmap_edit_fields` / `roadmap_crud_ops`, LLM/git helpers — done.
+2. JSON HTTP API in [`specy_road/gui_app.py`](../specy_road/gui_app.py) — done.
+3. SPA in [`gui/pm-gantt/`](../gui/pm-gantt/) — primary PM UI; Streamlit removed.
+4. `specy-road gui` with `[gui]` / `[gui-next]` extras — documented in [setup.md](setup.md) and [pm-workflow.md](pm-workflow.md).

@@ -2,8 +2,8 @@
 
 These are judgment heuristics—not automated pass/fail rules. Enforceable caps live in [`../constraints/`](../constraints/).
 
-- **Roadmap-first:** Agents derive work from roadmap items; optional structured planning (`planning/<node-id>/`) exists for complex work only.
-- **Adaptive planning:** Default is lightweight in-session planning; structured spec → plan → tasks when risk or compliance demands it.
+- **Roadmap-first:** Agents derive work from roadmap items; **phase and milestone** nodes must point to `planning/<node-id>/` via `planning_dir` — that is where feature **overview / plan / tasks** narrative lives (validated Markdown), while the graph stays in `roadmap/` JSON.
+- **Adaptive planning:** Sub-task (`task`) nodes may rely on parent milestone planning or add `tasks/*.md` under the owner’s `planning_dir`; keep narrative out of chat and in the repo.
 - **Separation of concerns:** Do not embed operational rules (file size, tool choice) in purpose or principles; put them in **constraints** and **shared** contracts.
 - **Multi-agent safety:** Use codenames, touch zones, and a registry so parallel work is visible before conflicts occur.
 - **Immutable roadmap IDs:** Never renumber; gaps are allowed when items are removed.

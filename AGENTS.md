@@ -10,7 +10,8 @@ The kit is **opinionated** about roadmapping, specs, and contracts; it does **no
 2. [`constitution/principles.md`](constitution/principles.md) — how we decide  
 3. [`constraints/README.md`](constraints/README.md) — enforced rules  
 4. Merged roadmap graph ([`roadmap/manifest.json`](roadmap/manifest.json) manifest + ordered **JSON** chunk files from `includes`) — **your node only** + parents + `dependencies` (this is not `registry.yaml`; the registry is separate coordination data)  
-5. [`shared/README.md`](shared/README.md) — then open **only** cited contract files  
+5. **[`planning/<node-id>/`](planning/README.md)** — for phase and milestone nodes, read **overview.md** and **plan.md** (and optional tasks) at the path given by **`planning_dir`** on the node  
+6. [`shared/README.md`](shared/README.md) — then open **only** cited contract files  
 
 For a focused slice:
 
