@@ -50,6 +50,8 @@ def main(argv: list[str] | None = None) -> None:
             "  init --install-gui — pip gui-next + local npm build when gui/pm-gantt exists (one-time setup for specy-road gui)\n"
             "  init --reinstall-gui — same as install-gui but pip --force-reinstall\n"
             "  init --build-gui — npm only (rebuild SPA without touching pip)\n"
+            "  update — fast-forward a git clone of specy-road from github.com/shanevigil/specy-road "
+            "(optional: --path DIR --remote NAME --branch BRANCH --dry-run)\n"
             "  gui — FastAPI + Gantt PM UI (after: init --install-gui or pip install 'specy-road[gui-next]')\n"
             "\n"
             "Dev task loop:\n"
@@ -66,6 +68,8 @@ def main(argv: list[str] | None = None) -> None:
         _run("generate_brief.py", rest)
     elif cmd == "export":
         _run("export_roadmap_md.py", rest)
+    elif cmd == "update":
+        _run("update_specy_road.py", rest)
     elif cmd == "file-limits":
         _run("validate_file_limits.py", rest)
     elif cmd == "do-next-available-task":
