@@ -2,7 +2,7 @@
 
 Session notes, scratchpads, and generated briefs can live here. **Not** the source of truth — the roadmap and `shared/` contracts are.
 
-Suggested pattern:
+Suggested pattern (`M1.1` is the node’s **display `id`**; the same id works for `specy-road brief`):
 
 ```bash
 python scripts/generate_brief.py M1.1 -o work/brief-M1.1.md

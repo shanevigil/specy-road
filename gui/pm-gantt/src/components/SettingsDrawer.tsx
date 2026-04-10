@@ -1,10 +1,32 @@
 import { useEffect, useState } from "react";
-import { getSettings, putSettings } from "../api";
+import { getSettings, putSettings, testLlmSettings } from "../api";
 
 type Props = {
   open: boolean;
   onClose: () => void;
 };
+
+const BACKENDS = ["openai", "azure", "compatible", "anthropic"] as const;
+
+function normalizeBackend(raw: string): string {
+  const l = raw.trim().toLowerCase();
+  return BACKENDS.includes(l as (typeof BACKENDS)[number]) ? l : "openai";
+}
+
+function buildLlmPayload(llm: Record<string, string>) {
+  return {
+    backend: normalizeBackend(llm.backend || "openai"),
+    openai_api_key: llm.openai_api_key || "",
+    openai_model: llm.openai_model || "",
+    openai_base_url: llm.openai_base_url || "",
+    azure_endpoint: llm.azure_endpoint || "",
+    azure_api_key: llm.azure_api_key || "",
+    azure_deployment: llm.azure_deployment || "",
+    azure_api_version: llm.azure_api_version || "2024-02-15-preview",
+    anthropic_api_key: llm.anthropic_api_key || "",
+    anthropic_model: llm.anthropic_model || "",
+  };
+}
 
 export function SettingsDrawer({ open, onClose }: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
@@ -33,19 +55,12 @@ export function SettingsDrawer({ open, onClose }: Props) {
 
   if (!open) return null;
 
+  const backend = normalizeBackend(llm.backend || "openai");
+
   const save = async () => {
     try {
       await putSettings({
-        llm: {
-          backend: llm.backend || "openai",
-          openai_api_key: llm.openai_api_key || "",
-          openai_model: llm.openai_model || "",
-          openai_base_url: llm.openai_base_url || "",
-          azure_endpoint: llm.azure_endpoint || "",
-          azure_api_key: llm.azure_api_key || "",
-          azure_deployment: llm.azure_deployment || "",
-          azure_api_version: llm.azure_api_version || "2024-02-15-preview",
-        },
+        llm: buildLlmPayload(llm),
         git_remote: {
           provider: git.provider || "github",
           repo: git.repo || "",
@@ -54,6 +69,16 @@ export function SettingsDrawer({ open, onClose }: Props) {
         },
       });
       setMsg("Saved.");
+    } catch (e: unknown) {
+      setMsg(String(e));
+    }
+  };
+
+  const testLlm = async () => {
+    setMsg(null);
+    try {
+      const out = await testLlmSettings(buildLlmPayload(llm));
+      setMsg(out.message || "LLM endpoint responded.");
     } catch (e: unknown) {
       setMsg(String(e));
     }
@@ -70,6 +95,7 @@ export function SettingsDrawer({ open, onClose }: Props) {
         <h2>Settings</h2>
         <p className="outline-meta">
           Stored in ~/.specy-road/gui-settings.json (same as Streamlit PM GUI).
+          API keys are stored with simple obfuscation on disk, not plain text.
         </p>
         {msg ? <p>{msg}</p> : null}
         <h3>Git remote</h3>
@@ -111,29 +137,129 @@ export function SettingsDrawer({ open, onClose }: Props) {
         <h3>LLM (optional)</h3>
         <label>
           Backend
-          <input
-            value={llm.backend || ""}
-            onChange={(e) => setLlm({ ...llm, backend: e.target.value })}
-          />
+          <select
+            value={backend}
+            onChange={(e) =>
+              setLlm({ ...llm, backend: e.target.value })
+            }
+          >
+            <option value="openai">openai</option>
+            <option value="azure">azure</option>
+            <option value="compatible">compatible (OpenAI-compatible API)</option>
+            <option value="anthropic">anthropic (Claude)</option>
+          </select>
         </label>
-        <label>
-          OpenAI API key
-          <input
-            type="password"
-            value={llm.openai_api_key || ""}
-            onChange={(e) => setLlm({ ...llm, openai_api_key: e.target.value })}
-          />
-        </label>
-        <label>
-          Model
-          <input
-            value={llm.openai_model || ""}
-            onChange={(e) => setLlm({ ...llm, openai_model: e.target.value })}
-          />
-        </label>
+        {backend === "azure" ? (
+          <>
+            <label>
+              Azure endpoint
+              <input
+                value={llm.azure_endpoint || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, azure_endpoint: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              Azure API key
+              <input
+                type="password"
+                value={llm.azure_api_key || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, azure_api_key: e.target.value })
+                }
+                autoComplete="off"
+              />
+            </label>
+            <label>
+              Deployment name
+              <input
+                value={llm.azure_deployment || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, azure_deployment: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              API version
+              <input
+                value={
+                  llm.azure_api_version || "2024-02-15-preview"
+                }
+                onChange={(e) =>
+                  setLlm({ ...llm, azure_api_version: e.target.value })
+                }
+              />
+            </label>
+          </>
+        ) : null}
+        {backend === "anthropic" ? (
+          <>
+            <label>
+              Anthropic API key
+              <input
+                type="password"
+                value={llm.anthropic_api_key || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, anthropic_api_key: e.target.value })
+                }
+                autoComplete="off"
+              />
+            </label>
+            <label>
+              Model
+              <input
+                value={llm.anthropic_model || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, anthropic_model: e.target.value })
+                }
+                placeholder="claude-sonnet-4-20250514"
+              />
+            </label>
+          </>
+        ) : null}
+        {(backend === "openai" || backend === "compatible") ? (
+          <>
+            <label>
+              API key
+              <input
+                type="password"
+                value={llm.openai_api_key || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, openai_api_key: e.target.value })
+                }
+                autoComplete="off"
+              />
+            </label>
+            <label>
+              Model
+              <input
+                value={llm.openai_model || ""}
+                onChange={(e) =>
+                  setLlm({ ...llm, openai_model: e.target.value })
+                }
+                placeholder="gpt-4o-mini"
+              />
+            </label>
+            {backend === "compatible" ? (
+              <label>
+                Base URL
+                <input
+                  value={llm.openai_base_url || ""}
+                  onChange={(e) =>
+                    setLlm({ ...llm, openai_base_url: e.target.value })
+                  }
+                />
+              </label>
+            ) : null}
+          </>
+        ) : null}
         <div className="modal-actions" style={{ marginTop: "1rem" }}>
           <button type="button" onClick={onClose}>
             Close
+          </button>
+          <button type="button" onClick={testLlm}>
+            Test LLM
           </button>
           <button type="button" onClick={save}>
             Save

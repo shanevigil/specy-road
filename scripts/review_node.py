@@ -19,10 +19,16 @@ ALLOWED_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
 class ReviewError(Exception):
     """LLM review failed (missing config, missing package, or API error)."""
 
-SYSTEM_PROMPT = """You are a senior reviewer for roadmap readiness. Output Markdown only.
-Assess: agentic checklist completeness, contract/spec clarity, alignment with project
-constraints, risks, and open questions for the PM. Do not claim the implementation exists;
-evaluate whether a developer could execute without blocking ambiguities. Be concise."""
+
+SYSTEM_PROMPT = (
+    "You are a senior reviewer for roadmap readiness. Output Markdown only.\n"
+    "Assess: agentic checklist completeness, contract/spec clarity, "
+    "alignment with project\n"
+    "constraints, risks, and open questions for the PM. Do not claim the "
+    "implementation exists;\n"
+    "evaluate whether a developer could execute without blocking ambiguities. "
+    "Be concise."
+)
 
 
 def _repo_root(ns: argparse.Namespace) -> Path:
@@ -73,8 +79,8 @@ def _make_client():
         from openai import AzureOpenAI, OpenAI
     except ImportError as e:
         raise ReviewError(
-            "openai package not installed. Run: pip install 'specy-road[review]' "
-            "or 'specy-road[gui]'",
+            "openai package not installed. Run: pip install "
+            "'specy-road[review]' or 'specy-road[gui]'",
         ) from e
 
     ep = os.environ.get("SPECY_ROAD_AZURE_OPENAI_ENDPOINT", "").strip()
@@ -96,16 +102,53 @@ def _make_client():
             api_version=ver,
         )
 
+    ak = os.environ.get("SPECY_ROAD_ANTHROPIC_API_KEY", "").strip()
+    if ak:
+        try:
+            from anthropic import Anthropic
+        except ImportError as e:
+            raise ReviewError(
+                "anthropic package not installed. Run: pip install "
+                "'specy-road[review]' or 'specy-road[gui-next]'",
+            ) from e
+        return Anthropic(api_key=ak)
+
     key = os.environ.get("SPECY_ROAD_OPENAI_API_KEY", "").strip()
     if not key:
         raise ReviewError(
-            "set SPECY_ROAD_OPENAI_API_KEY or Azure variables (see docs/pm-workflow.md)",
+            "set SPECY_ROAD_OPENAI_API_KEY, SPECY_ROAD_ANTHROPIC_API_KEY, "
+            "or Azure variables (see docs/pm-workflow.md)",
         )
     base = os.environ.get("SPECY_ROAD_OPENAI_BASE_URL", "").strip() or None
     return OpenAI(api_key=key, base_url=base)
 
 
+def _anthropic_text(resp: object) -> str:
+    parts: list[str] = []
+    for block in getattr(resp, "content", ()) or ():
+        btype = getattr(block, "type", None)
+        if btype == "text":
+            parts.append(getattr(block, "text", "") or "")
+    return "".join(parts)
+
+
+def _complete_anthropic(client: object, user_content: str) -> str:
+    default_m = "claude-sonnet-4-20250514"
+    model = os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL", default_m)
+    resp = client.messages.create(  # type: ignore[union-attr]
+        model=model,
+        max_tokens=4096,
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_content}],
+    )
+    return _anthropic_text(resp)
+
+
 def _complete(client, user_content: str) -> str:
+    cls_mod = type(client).__module__
+    if cls_mod.startswith("anthropic"):
+        return _complete_anthropic(client, user_content)
+
     from openai import AzureOpenAI
 
     if isinstance(client, AzureOpenAI):
@@ -123,9 +166,38 @@ def _complete(client, user_content: str) -> str:
     return choice or ""
 
 
+def ping_llm() -> None:
+    """Minimal request to verify credentials (used by Test LLM in GUIs)."""
+    client = _make_client()
+    cls_mod = type(client).__module__
+    if cls_mod.startswith("anthropic"):
+        default_m = "claude-sonnet-4-20250514"
+        model = os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL", default_m)
+        r = client.messages.create(  # type: ignore[union-attr]
+            model=model,
+            max_tokens=3,
+            messages=[{"role": "user", "content": "ping"}],
+        )
+        _ = _anthropic_text(r)
+        return
+    from openai import AzureOpenAI
+
+    if isinstance(client, AzureOpenAI):
+        model = os.environ["SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"]
+    else:
+        model = os.environ.get("SPECY_ROAD_OPENAI_MODEL", "gpt-4o-mini")
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": "ping"}],
+        max_tokens=3,
+    )
+    _ = resp.choices[0].message.content
+
+
 def run_review(node_id: str, repo_root: Path | None = None) -> str:
     """
-    Build the brief + constraints + cited-docs payload and return the Markdown report.
+    Build the brief + constraints + cited-docs payload and return the Markdown
+    report.
 
     Raises ``ReviewError`` on configuration or API failure, ``ValueError`` if
     ``node_id`` is unknown.

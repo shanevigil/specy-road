@@ -13,6 +13,8 @@ planning/<node-id>/
 
 Example: `planning/M1.1/` for milestone `M1.1`. This is **not** required by CI; it complements the roadmap, which remains canonical.
 
+**Ids:** Folder names and YAML `node_id` use the roadmap **display `id`** (e.g. `M1.1`). The graph’s `dependencies` field uses **`node_key` UUIDs** — see [Node fields reference](../docs/roadmap-authoring.md#display-id-vs-stable-node_key) in `docs/roadmap-authoring.md`.
+
 ## Linking from the roadmap graph
 
 Set optional **`planning_dir`** on a roadmap node to a repo-relative path (e.g. `planning/M1.1`). When `planning_dir` is set, `python scripts/validate_roadmap.py` requires **`overview.md`** and **`plan.md`** in that folder. Optional **`tasks.md`** must start with YAML frontmatter `node_id: <owner-node-id>`. Optional **`tasks/**/*.md`** per sub-task each need frontmatter `node_id: <that-task-id>` (must be the owner id or a descendant id). Orphan files under `planning/**/tasks/` without a matching `planning_dir` on any node fail validation.

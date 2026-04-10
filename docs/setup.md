@@ -62,11 +62,11 @@ specyrd init . --ai cursor
 
 # Filter to role-relevant stubs only (omit --role for all command stubs)
 specyrd init . --ai claude-code --role dev   # validate, brief, claim, finish, do-next-task
-specyrd init . --ai claude-code --role pm    # validate, export, author, sync, list-nodes, …
-specyrd init . --ai claude-code --role both  # same thirteen stubs as omitting --role
+specyrd init . --ai claude-code --role pm    # validate, export, author, constitution, sync, list-nodes, …
+specyrd init . --ai claude-code --role both  # same fourteen stubs as omitting --role
 ```
 
-Default install writes **thirteen** `specyrd-*.md` files (including `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`). Stubs are written to `.claude/commands/` or `.cursor/commands/` (or a custom path for `--ai generic`). They are thin
+Default install writes **fourteen** `specyrd-*.md` files (including `constitution`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`). Stubs are written to `.claude/commands/` or `.cursor/commands/` (or a custom path for `--ai generic`). They are thin
 wrappers — the canonical behaviour lives in `specy-road` and `scripts/`, not the stubs.
 
 Use `--dry-run` to preview what would be written, `--force` to overwrite existing stubs.
@@ -90,7 +90,7 @@ pip install "specy-road[gui]"
 streamlit run scripts/roadmap_gui.py
 ```
 
-The app shows a dependency-depth view of the roadmap, reads `roadmap/registry.yaml`, and can save LLM / git-remote settings under `~/.specy-road/gui-settings.json`. See `docs/pm-workflow.md` for LLM review environment variables (the GUI can inject the same names from saved settings).
+The app shows a dependency-depth view of the roadmap, reads `roadmap/registry.yaml`, and can save LLM / git-remote settings under `~/.specy-road/gui-settings.json`. See `docs/pm-workflow.md` for LLM review environment variables (the GUI can inject the same names from saved settings) and a short **security note** on how those saved secrets are stored.
 
 ## Optional: Gantt PM GUI (FastAPI + React)
 

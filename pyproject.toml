@@ -21,6 +21,7 @@ dev = [
 ]
 review = [
   "openai>=1.40",
+  "anthropic>=0.40",
 ]
 gui = [
   "streamlit>=1.33",
@@ -28,11 +29,14 @@ gui = [
   "watchdog>=4.0",
   "requests>=2.31",
   "openai>=1.40",
+  "anthropic>=0.40",
 ]
 gui-next = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.30",
   "requests>=2.31",
+  "openai>=1.40",
+  "anthropic>=0.40",
 ]
 
 [project.scripts]

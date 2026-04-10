@@ -14,8 +14,13 @@ import finish_task as ft
 # do_next_task: _available
 # ---------------------------------------------------------------------------
 
+# dependencies[] reference node_key UUIDs (not display ids)
+_NK_PREREQ = "11111111-1111-4111-8111-111111111111"
+_NK_EXAMPLE = "22222222-2222-4222-8222-222222222222"
+
 _BASE_NODE = {
     "id": "M1.1",
+    "node_key": _NK_EXAMPLE,
     "type": "milestone",
     "title": "Example",
     "codename": "example",
@@ -53,26 +58,28 @@ def test_available_excludes_complete() -> None:
 def test_available_excludes_unmet_deps() -> None:
     dep = {
         "id": "M1.0",
+        "node_key": _NK_PREREQ,
         "type": "milestone",
         "codename": "prereq",
         "execution_milestone": "Human-led",
         "status": "Not Started",
         "dependencies": [],
     }
-    node = {**_BASE_NODE, "dependencies": ["M1.0"]}
+    node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
     assert dnt._available([dep, node], _reg()) == []
 
 
 def test_available_includes_when_deps_complete() -> None:
     dep = {
         "id": "M1.0",
+        "node_key": _NK_PREREQ,
         "type": "milestone",
         "codename": "prereq",
         "execution_milestone": "Human-led",
         "status": "Complete",
         "dependencies": [],
     }
-    node = {**_BASE_NODE, "dependencies": ["M1.0"]}
+    node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
     result = dnt._available([dep, node], _reg())
     assert len(result) == 1
 

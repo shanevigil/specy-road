@@ -8,6 +8,7 @@ from pathlib import Path
 
 from roadmap_load import load_roadmap
 from planning_artifacts import normalize_planning_dir, planning_artifact_paths
+from roadmap_node_keys import build_key_to_node
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -38,6 +39,8 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
 def _brief_deps_and_contracts(
     n: dict, deps: list, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
+    # dependencies[] stores node_key UUIDs, not display ids — resolve via key map
+    by_key = build_key_to_node(list(by_id.values()))
     lines: list[str] = [
         "",
         "## Dependencies (must complete first)",
@@ -45,8 +48,15 @@ def _brief_deps_and_contracts(
     ]
     if deps:
         for d in deps:
-            dn = by_id.get(d, {})
-            lines.append(f"- **{d}** — {dn.get('title', '(missing node)')}")
+            if not isinstance(d, str):
+                continue
+            dep_node = by_key.get(d)
+            if dep_node:
+                did = dep_node.get("id", d)
+                ttl = dep_node.get("title", "(no title)")
+                lines.append(f"- **{did}** — {ttl}")
+            else:
+                lines.append(f"- **{d}** — (missing node for node_key)")
     else:
         lines.append("- _none_")
     lines.extend(

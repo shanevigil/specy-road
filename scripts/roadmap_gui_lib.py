@@ -67,6 +67,8 @@ def default_settings() -> dict[str, Any]:
             "azure_api_key": "",
             "azure_deployment": "",
             "azure_api_version": "2024-02-15-preview",
+            "anthropic_api_key": "",
+            "anthropic_model": "",
         },
         "git_remote": {
             "provider": "github",
@@ -78,7 +80,7 @@ def default_settings() -> dict[str, Any]:
 
 
 def _merge_token_fields(base: dict[str, Any]) -> None:
-    for key in ("openai_api_key", "azure_api_key"):
+    for key in ("openai_api_key", "azure_api_key", "anthropic_api_key"):
         v = base["llm"].get(key) or ""
         if isinstance(v, str) and v.startswith("__b64__:"):
             try:
@@ -113,7 +115,7 @@ def load_settings() -> dict[str, Any]:
 def save_settings(data: dict[str, Any]) -> None:
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     out = json.loads(json.dumps(data))
-    for key in ("openai_api_key", "azure_api_key"):
+    for key in ("openai_api_key", "azure_api_key", "anthropic_api_key"):
         v = out["llm"].get(key) or ""
         if v:
             out["llm"][key] = "__b64__:" + _b64_encode(str(v))
@@ -155,11 +157,24 @@ def _apply_openai_llm_env(llm: dict[str, Any], backend: str) -> None:
         os.environ["SPECY_ROAD_OPENAI_BASE_URL"] = base
 
 
+def _apply_anthropic_llm_env(llm: dict[str, Any]) -> None:
+    if not os.environ.get("SPECY_ROAD_ANTHROPIC_API_KEY"):
+        k = (llm.get("anthropic_api_key") or "").strip()
+        if k:
+            os.environ["SPECY_ROAD_ANTHROPIC_API_KEY"] = k
+    if not os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL"):
+        m = (llm.get("anthropic_model") or "").strip()
+        if m:
+            os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] = m
+
+
 def apply_llm_env_from_settings(llm: dict[str, Any]) -> None:
     """Inject saved LLM config into env for review_node (env vars still win if pre-set)."""
     backend = (llm.get("backend") or "openai").strip().lower()
     if backend == "azure":
         _apply_azure_llm_env(llm)
+    elif backend == "anthropic":
+        _apply_anthropic_llm_env(llm)
     else:
         _apply_openai_llm_env(llm, backend)
 

@@ -64,7 +64,7 @@ specyrd init [PATH] --ai <ID> [--ide <ID>] [--here] [--dry-run] [--force] [--ai-
 
 ### What gets installed
 
-By default (no `--role`), **thirteen** command files are written: `validate`, `brief`, `export`, `file-limits`, `author`, `claim`, `finish`, `do-next-task`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node` (file names are `specyrd-<name>.md`).
+By default (no `--role`), **fourteen** command files are written: `validate`, `brief`, `export`, `file-limits`, `author`, `constitution`, `claim`, `finish`, `do-next-task`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node` (file names are `specyrd-<name>.md`).
 
 
 | Target        | Path (under repo root)                                          | Meta                                           |
@@ -74,7 +74,7 @@ By default (no `--role`), **thirteen** command files are written: `validate`, `b
 | `generic`     | `<REL_PATH>/specyrd-*.md` (`REL_PATH` from `--ai-commands-dir`) | same                                           |
 
 
-`**--role`** installs a subset: `**pm**` — `validate`, `export`, `author`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`; `**dev**` — `validate`, `brief`, `claim`, `finish`, `do-next-task`. Omit `--role` for the full set above.
+`**--role`** installs a subset: `**pm**` — `validate`, `export`, `author`, `constitution`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`; `**dev**` — `validate`, `brief`, `claim`, `finish`, `do-next-task`. Omit `--role` for the full set above.
 
 Stubs only contain instructions to run `**specy-road**` / `**scripts/**` from the repository root (for example `specy-road validate`, `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`). Canonical behavior stays in the CLI and scripts.
 

@@ -103,11 +103,26 @@ Enforced by `scripts/validate_roadmap.py` (via [`scripts/roadmap_load.py`](../sc
 
 ## Node fields reference
 
+### Display `id` vs stable `node_key`
+
+Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../schemas/roadmap.schema.json)):
+
+| | `node_key` | `id` |
+|---|------------|------|
+| **Role** | Stable UUID — never changes when the outline is reorganized. | Hierarchical **display** id (`M`, `M0.1`, …) used for the tree, `parent_id`, CLI `NODE_ID`, and [`roadmap/registry.yaml`](../roadmap/registry.yaml) `node_id`. |
+| **Mutability** | Immutable for the lifetime of the node. | May be **renumbered** when running outline operations that rewrite display ids (dependencies stay keyed by `node_key`). |
+| **Used in** | `dependencies` (each entry is another node’s `node_key`). | `parent_id`, human-facing commands (`specy-road brief M0.2`), exported tables. |
+
+CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unless a command explicitly accepts a UUID.
+
+**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) treats each dependency as satisfied when that **`node_key`**’s node is `Complete`.
+
 ### Required on every node
 
 | Field | Description |
 |-------|-------------|
-| `id` | Immutable hierarchical ID, e.g. `M1.2` or `M1.2.3.4` (fourth-level supported). |
+| `node_key` | Stable UUID v4 (hex with hyphens). |
+| `id` | Hierarchical display id, e.g. `M1.2` or `M1.2.3.4` (fourth-level supported). |
 | `type` | `vision` / `phase` / `milestone` / `task` |
 | `title` | Human-readable label. |
 
@@ -120,7 +135,7 @@ Enforced by `scripts/validate_roadmap.py` (via [`scripts/roadmap_load.py`](../sc
 | `execution_milestone` | Milestone-level gate: `Human-led` / `Agentic-led` / `Mixed` |
 | `execution_subtask` | Sub-task tag: `human` / `agentic` / `human-gate` |
 | `touch_zones` | Paths or areas this node modifies (enables overlap detection). |
-| `dependencies` | IDs that must complete before this node starts. |
+| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). |
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
 | `acceptance` | List of observable acceptance criteria. |

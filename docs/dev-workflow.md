@@ -261,8 +261,11 @@ When multiple developers or agents are running simultaneously:
 - `specy-road validate` warns on overlapping touch zones between registry entries.
 - **Prefer git worktrees** for parallel agents on one machine — isolated working trees
   on disjoint branches.
-- **Milestone dependencies are hard stops** — `dependencies: [M1.1]` means M1.1 must
-  be `Complete` before M1.2 can appear in the available list.
+- **Milestone dependencies are hard stops** — In JSON, `dependencies` lists **`node_key` UUIDs**
+  (stable references to other nodes), not display ids like `M1.1`. Semantically, if milestone A must
+  finish before milestone B, A’s `node_key` appears in B’s `dependencies`; tools resolve those keys to
+  display ids in UIs and briefs. The dependent node cannot proceed until every listed dependency is
+  `Complete` (see `scripts/do_next_task.py`).
 
 ---
 

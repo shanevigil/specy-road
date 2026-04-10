@@ -65,6 +65,22 @@ def _llm_azure_fields(llm: dict) -> None:
     )
 
 
+def _llm_anthropic_fields(llm: dict) -> None:
+    import os
+
+    llm["anthropic_api_key"] = st.text_input(
+        "Anthropic API key",
+        value=llm.get("anthropic_api_key")
+        or os.environ.get("SPECY_ROAD_ANTHROPIC_API_KEY", ""),
+        type="password",
+    )
+    llm["anthropic_model"] = st.text_input(
+        "Model",
+        value=llm.get("anthropic_model") or "",
+        placeholder="claude-sonnet-4-20250514",
+    )
+
+
 def _llm_openai_fields(llm: dict) -> None:
     import os
 
@@ -87,13 +103,15 @@ def _llm_openai_fields(llm: dict) -> None:
 
 def _llm_tab(settings: dict) -> None:
     llm = settings["llm"]
-    opts = ["openai", "azure", "compatible"]
+    opts = ["openai", "azure", "compatible", "anthropic"]
     cur = (llm.get("backend") or "openai").lower()
     if cur not in opts:
         cur = "openai"
     llm["backend"] = st.selectbox("Backend", opts, index=opts.index(cur))
     if llm["backend"] == "azure":
         _llm_azure_fields(llm)
+    elif llm["backend"] == "anthropic":
+        _llm_anthropic_fields(llm)
     else:
         _llm_openai_fields(llm)
     c1, c2 = st.columns(2)

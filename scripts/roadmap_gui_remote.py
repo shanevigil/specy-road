@@ -20,21 +20,9 @@ from roadmap_gui_lib import apply_llm_env_from_settings  # noqa: E402
 def test_llm_connection(llm: dict[str, Any]) -> tuple[bool, str]:
     apply_llm_env_from_settings(llm)
     try:
-        from openai import AzureOpenAI
+        from review_node import ping_llm
 
-        from review_node import _make_client
-
-        client = _make_client()
-        if isinstance(client, AzureOpenAI):
-            model = os.environ["SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"]
-        else:
-            model = os.environ.get("SPECY_ROAD_OPENAI_MODEL", "gpt-4o-mini")
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": "ping"}],
-            max_tokens=3,
-        )
-        _ = resp.choices[0].message.content
+        ping_llm()
         return True, "LLM endpoint responded."
     except Exception as e:
         return False, str(e)

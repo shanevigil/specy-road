@@ -60,7 +60,11 @@ from roadmap_gui_lib import (  # noqa: E402
     resolve_repo_root,
     save_settings,
 )
-from roadmap_gui_remote import build_pr_hints, build_registry_enrichment  # noqa: E402
+from roadmap_gui_remote import (  # noqa: E402
+    build_pr_hints,
+    build_registry_enrichment,
+    test_llm_connection,
+)
 from roadmap_load import load_roadmap  # noqa: E402
 from roadmap_node_keys import new_node_key  # noqa: E402
 from roadmap_outline_ops import (  # noqa: E402
@@ -70,6 +74,11 @@ from roadmap_outline_ops import (  # noqa: E402
     reorder_siblings,
 )
 from planning_artifacts import normalize_planning_dir, planning_artifact_paths  # noqa: E402
+
+from specy_road.constitution_scaffold import (  # noqa: E402
+    ConstitutionExistsError,
+    write_constitution,
+)
 
 _PKG_DIR = Path(__file__).resolve().parent
 _STATIC_DIR = _PKG_DIR / "pm_gantt_static"
@@ -148,8 +157,16 @@ class SettingsBody(BaseModel):
     settings: dict[str, Any]
 
 
+class LlmTestBody(BaseModel):
+    llm: dict[str, Any]
+
+
 class PutFileBody(BaseModel):
     content: str
+
+
+class ConstitutionScaffoldBody(BaseModel):
+    force: bool = False
 
 
 def create_app() -> FastAPI:
@@ -330,6 +347,24 @@ def create_app() -> FastAPI:
 
         return {"ok": "true", "id": new_id}
 
+    @app.post("/api/constitution/scaffold")
+    def api_constitution_scaffold(
+        body: ConstitutionScaffoldBody = Body(default_factory=ConstitutionScaffoldBody),
+    ) -> dict[str, Any]:
+        root = _get_repo_root()
+        force = bool(body.force)
+        try:
+            result = write_constitution(root, force=force)
+        except ConstitutionExistsError as e:
+            raise HTTPException(
+                status_code=409,
+                detail={"message": str(e), "existing": list(e.existing)},
+            ) from e
+        return {
+            "written": list(result.written),
+            "skipped_existing": list(result.skipped_existing),
+        }
+
     @app.get("/api/planning/{node_id}/artifacts")
     def api_planning_artifacts(node_id: str) -> dict[str, Any]:
         root = _get_repo_root()
@@ -384,6 +419,13 @@ def create_app() -> FastAPI:
     def api_settings_put(body: SettingsBody) -> dict[str, str]:
         save_settings(body.settings)
         return {"ok": "true"}
+
+    @app.post("/api/llm/test")
+    def api_llm_test(body: LlmTestBody) -> dict[str, Any]:
+        ok, msg = test_llm_connection(body.llm)
+        if not ok:
+            raise HTTPException(status_code=400, detail=msg)
+        return {"ok": True, "message": msg}
 
     if _STATIC_DIR.is_dir():
         app.mount(

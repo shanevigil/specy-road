@@ -8,9 +8,9 @@ Gate maps milestone/task execution: **Human-led** / **Agentic-led** / **Mixed**,
 |----|-------|------|------|--------|
 | `M0` | Foundation — architecture and contracts | phase | Human-led | Complete |
 | `M0.1` | Establish shared contracts and ADR skeleton | milestone | Mixed | Complete |
-| `M0.1.1` | Define API contract outline in shared/ | task | Agentic | Complete |
-| `M0.2` | testing | task | — | Not Started |
+| `M0.2` | Roadmap validator in CI | milestone | Agentic-led | Not Started |
+| `M0.3` | Define API contract outline in shared/ | task | Agentic | Complete |
 | `M1` | Implementation track | phase | Agentic-led | Not Started |
-| `M1.1` | Roadmap validator in CI | milestone | Agentic-led | Not Started |
+| `M2` | testing | task | — | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

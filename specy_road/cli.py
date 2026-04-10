@@ -47,6 +47,8 @@ def main(argv: list[str] | None = None) -> None:
             "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
             "  scaffold-planning <NODE_ID> — create planning/<id>/ overview.md, plan.md, tasks.md; set planning_dir\n"
             "    (optional: --planning-dir PATH --task-id SUB_ID --force; see scripts/scaffold_planning.py -h)\n"
+            "  scaffold-constitution — create constitution/purpose.md and constitution/principles.md from templates\n"
+            "    (optional: --repo-root DIR --force)\n"
             "  init --install-gui — pip gui-next + local npm build when gui/pm-gantt exists (one-time setup for specy-road gui)\n"
             "  init --reinstall-gui — same as install-gui but pip --force-reinstall\n"
             "  init --build-gui — npm only (rebuild SPA without touching pip)\n"
@@ -90,6 +92,38 @@ def main(argv: list[str] | None = None) -> None:
         _run("review_node.py", rest)
     elif cmd == "scaffold-planning":
         _run("scaffold_planning.py", rest)
+    elif cmd == "scaffold-constitution":
+        from specy_road.constitution_scaffold import ConstitutionExistsError, write_constitution
+
+        p = argparse.ArgumentParser(
+            prog="specy-road scaffold-constitution",
+            description=(
+                "Create starter constitution/purpose.md and constitution/principles.md "
+                "(human judgment; not validated by specy-road). Skips files that already exist unless --force."
+            ),
+        )
+        p.add_argument(
+            "--repo-root",
+            type=Path,
+            default=None,
+            help="Repository root (default: current working directory)",
+        )
+        p.add_argument(
+            "--force",
+            action="store_true",
+            help="Overwrite existing purpose.md and/or principles.md.",
+        )
+        ns = p.parse_args(rest)
+        root = (ns.repo_root or Path.cwd()).resolve()
+        try:
+            result = write_constitution(root, force=ns.force)
+        except ConstitutionExistsError as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
+        for rel in result.written:
+            print(f"wrote {rel}")
+        for rel in result.skipped_existing:
+            print(f"skipped (exists, use --force to overwrite): {rel}")
     elif cmd == "init":
         from specy_road.cli_init import run_install_gui
 

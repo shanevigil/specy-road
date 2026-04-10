@@ -14,6 +14,24 @@ Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (
 
 There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `[roadmap.md](../roadmap.md)` is a **generated index** — refresh it with `specy-road export` or `specy-road sync`.
 
+### Establish the constitution (purpose and principles)
+
+[Spec-Kit](https://github.com/github/spec-kit) popularized an early **constitution** step for spec discipline. In specy-road, that maps to **two Markdown files** in the repo (not the roadmap graph): [`constitution/purpose.md`](../constitution/purpose.md) (**why** the effort exists) and [`constitution/principles.md`](../constitution/principles.md) (**how** you decide). They are **human judgment** — not machine-validated like the merged roadmap. Enforceable caps live under `constraints/`; execution planning lives under `roadmap/`. See [philosophy-and-scope.md](philosophy-and-scope.md) and the agent load order in [`AGENTS.md`](../AGENTS.md).
+
+**When:** Early when adopting the kit (before or alongside first roadmap authoring) so people and agents share the same north star.
+
+**Via CLI** (from the repository root):
+
+```bash
+specy-road scaffold-constitution
+```
+
+Creates starter files if they are missing. Existing files are left unchanged unless you pass **`--force`** (overwrites both). Use **`specy-road scaffold-constitution --repo-root /path/to/repo`** when the project is not the current directory. This does not replace `specy-road validate` for roadmap data; it only lays down prose templates.
+
+**Via Gantt PM UI:** After `specy-road gui`, open **Constitution** in the toolbar. You can edit both files and **Save both**, or use **Create starter files** if either file is missing (same behavior as the CLI scaffold).
+
+**Via IDE (optional):** Run `specyrd init …` so your editor gets slash-command stubs; the PM-oriented set includes **`specyrd-constitution`**, which points at `specy-road scaffold-constitution` and this doc. **specyrd** is not [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI — canonical artifacts remain these paths plus the roadmap/registry model ([README.md](../README.md)).
+
 ### PM glossary (graph `type` values)
 
 Roadmap nodes keep stable machine `type` values for validation. In everyday terms:
@@ -133,7 +151,7 @@ In the detail panel, choose a **status** from the dropdown and click **Save stat
 
 ### Optional: AI review of one item
 
-**Run LLM review** asks an AI (OpenAI or Azure OpenAI) to comment on readiness — checklist gaps, unclear specs, risks. It is **advisory only**; it does not change files by itself.
+**Run LLM review** asks an AI (OpenAI, Azure OpenAI, Anthropic Claude, or an OpenAI-compatible endpoint) to comment on readiness — checklist gaps, unclear specs, risks. It is **advisory only**; it does not change files by itself.
 
 Configure credentials in **Settings** (gear area in the sidebar) under the **LLM** tab, or set the same **environment variables** your team documents (see below). Use **Test LLM** before relying on it.
 
@@ -149,16 +167,18 @@ Settings are stored on **your** computer only, not in the repo:
 
 | Tab            | What it is for                                                                                                                                                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **LLM**        | API keys and model for the optional reviewer (OpenAI, Azure OpenAI, or a compatible API). **Test LLM** checks the connection. **Save** stores values locally.                                                                  |
+| **LLM**        | API keys and model for the optional reviewer (OpenAI, Azure OpenAI, Anthropic Claude, or a compatible OpenAI-style API). **Test LLM** checks the connection. **Save** stores values locally with simple obfuscation (not encryption).                                                                  |
 | **Git remote** | Optional. If you add a **GitHub** or **GitLab** token and repository name, the dashboard can try to show open **pull/merge requests** for branches that appear in the registry. If you skip this, you still see registry info. |
 
+**Security note (saved secrets):** Values you save for LLM keys and the Git remote token are written to `gui-settings.json` with Base64 encoding (a `__b64__:` prefix) so they are not stored as raw plaintext in the file. That is **obfuscation, not encryption**: anyone who can read the file—local users with access to your home directory, backups, folder sync, or compromised tooling on the same machine—can recover the secret. Treat the file like a credential; prefer **environment variables** or org-approved secret storage if your policy needs stronger guarantees (pre-set env vars still override empty saved fields).
 
 If your company already set **environment variables** for the CLI reviewer, those still work and usually override empty fields in the saved file.
 
 **LLM environment variables (CLI and GUI):**
 
 - **Azure OpenAI:** `SPECY_ROAD_AZURE_OPENAI_ENDPOINT`, `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`, and optionally `SPECY_ROAD_OPENAI_API_VERSION` (default `2024-02-15-preview`).
-- **OpenAI or compatible:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`).
+- **OpenAI or compatible:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`). Use a compatible **base URL** for OpenAI-shaped proxies (for example OpenRouter or a gateway); for Anthropic’s direct API, use the **Anthropic** backend below instead.
+- **Anthropic (Claude):** `SPECY_ROAD_ANTHROPIC_API_KEY`, optional `SPECY_ROAD_ANTHROPIC_MODEL` (default in the reviewer is `claude-sonnet-4-20250514` when unset).
 
 Do not commit API keys into the repository. Review any data-handling policy before sending content to an external model.
 
@@ -174,6 +194,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | Command                                            | In plain English                                                                                                                            |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `specy-road sync`                                  | Download the latest from the team’s main branch (default), then validate and refresh the Markdown export. Use before a big editing session. |
+| `specy-road scaffold-constitution`                 | Create starter `constitution/purpose.md` and `constitution/principles.md` if missing (`--force` overwrites).                               |
 | `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check.                                   |
 | `specy-road export`                                | Regenerate `[roadmap.md](../roadmap.md)` from the merged graph — shareable index for stakeholders.                                            |
 | `specy-road list-nodes`                            | Table of all items with type, status, title, and which file they live in.                                                                   |
@@ -296,6 +317,7 @@ Before marking work ready, the `shared/` contract should answer: **what** is pro
 specy-road sync
 specy-road validate
 specy-road export
+specy-road scaffold-constitution   # starter purpose.md + principles.md if missing
 specy-road list-nodes
 specy-road show-node <NODE_ID>
 specy-road edit-node <NODE_ID> --set status=Complete

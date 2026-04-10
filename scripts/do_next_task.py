@@ -34,19 +34,24 @@ def _claimed_node_ids(reg: dict) -> set[str]:
     return {e["node_id"] for e in reg.get("entries", []) if "node_id" in e}
 
 
-def _statuses(nodes: list[dict]) -> dict[str, str]:
-    return {n["id"]: (n.get("status") or "").lower() for n in nodes}
+def _statuses_by_node_key(nodes: list[dict]) -> dict[str, str]:
+    """Map node_key -> lowercased status (dependencies reference node_key UUIDs)."""
+    return {
+        n["node_key"]: (n.get("status") or "").lower()
+        for n in nodes
+        if isinstance(n.get("node_key"), str) and n["node_key"]
+    }
 
 
-def _deps_met(node: dict, statuses: dict[str, str]) -> bool:
+def _deps_met(node: dict, statuses_by_key: dict[str, str]) -> bool:
     return all(
-        statuses.get(dep, "") == "complete"
+        statuses_by_key.get(dep, "") == "complete"
         for dep in (node.get("dependencies") or [])
     )
 
 
 def _available(nodes: list[dict], reg: dict) -> list[dict]:
-    statuses = _statuses(nodes)
+    statuses_by_key = _statuses_by_node_key(nodes)
     claimed = _claimed_node_ids(reg)
     skip = {"complete", "in progress", "cancelled", "blocked"}
     result = []
@@ -59,7 +64,7 @@ def _available(nodes: list[dict], reg: dict) -> list[dict]:
         exec_s = n.get("execution_subtask", "")
         if exec_m not in ("Agentic-led", "Mixed") and exec_s != "agentic":
             continue
-        if not _deps_met(n, statuses):
+        if not _deps_met(n, statuses_by_key):
             continue
         if n["id"] in claimed:
             continue
@@ -202,11 +207,19 @@ def _write_prompt(node: dict, brief_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _pick(available: list[dict]) -> dict:
+def _pick(available: list[dict], all_nodes: list[dict]) -> dict:
+    key_to_id = {
+        x["node_key"]: x["id"]
+        for x in all_nodes
+        if isinstance(x.get("node_key"), str) and x.get("node_key")
+    }
     print(f"Available tasks ({len(available)}):\n")
     for i, n in enumerate(available, 1):
         gate = n.get("execution_milestone") or n.get("execution_subtask") or "—"
-        deps = ", ".join(n.get("dependencies") or []) or "none"
+        dep_labels = [
+            key_to_id.get(k, k) for k in (n.get("dependencies") or [])
+        ]
+        deps = ", ".join(dep_labels) or "none"
         print(f"  {i:2}. [{n['id']}] {n.get('title', '')}")
         print(f"       gate: {gate}  deps: {deps}  codename: {n['codename']}")
     print()
@@ -267,7 +280,7 @@ def main(argv: list[str] | None = None) -> None:
     if not args.no_sync:
         _sync_integration_branch(args.base, args.remote)
 
-    node = _pick(available)
+    node = _pick(available, nodes)
     node_id = node["id"]
     branch = f"feature/rm-{node['codename']}"
 

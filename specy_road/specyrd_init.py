@@ -18,7 +18,8 @@ DEFAULT_GUI_SETTINGS_JSON = (
     '{\n  "llm": {\n    "backend": "openai",\n    "openai_api_key": "",\n'
     '    "openai_model": "gpt-4o-mini",\n    "openai_base_url": "",\n'
     '    "azure_endpoint": "",\n    "azure_api_key": "",\n'
-    '    "azure_deployment": "",\n    "azure_api_version": "2024-02-15-preview"\n'
+    '    "azure_deployment": "",\n    "azure_api_version": "2024-02-15-preview",\n'
+    '    "anthropic_api_key": "",\n    "anthropic_model": ""\n'
     "  },\n"
     '  "git_remote": {\n    "provider": "github",\n    "repo": "",\n'
     '    "token": "",\n    "base_url": ""\n  }\n}\n'
@@ -38,6 +39,7 @@ COMMAND_FILES = (
     "specyrd-export.md",
     "specyrd-file-limits.md",
     "specyrd-author.md",
+    "specyrd-constitution.md",
     "specyrd-claim.md",
     "specyrd-finish.md",
     "specyrd-do-next-task.md",
@@ -54,6 +56,7 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-validate.md",
         "specyrd-export.md",
         "specyrd-author.md",
+        "specyrd-constitution.md",
         "specyrd-sync.md",
         "specyrd-list-nodes.md",
         "specyrd-show-node.md",

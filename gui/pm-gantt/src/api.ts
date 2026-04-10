@@ -115,6 +115,35 @@ export async function savePlanningFile(path: string, content: string) {
   if (!r.ok) throw new Error(await r.text());
 }
 
+export async function scaffoldConstitution(force = false): Promise<{
+  written: string[];
+  skipped_existing: string[];
+}> {
+  const r = await fetch(`${API}/constitution/scaffold`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ force }),
+  });
+  const raw = (await r.json().catch(() => ({}))) as {
+    detail?: unknown;
+    written?: string[];
+    skipped_existing?: string[];
+  };
+  if (!r.ok) {
+    const d = raw.detail;
+    let msg: string;
+    if (typeof d === "string") msg = d;
+    else if (d != null && typeof d === "object" && "message" in d)
+      msg = String((d as { message?: string }).message);
+    else msg = JSON.stringify(raw);
+    throw new Error(msg);
+  }
+  return {
+    written: raw.written ?? [],
+    skipped_existing: raw.skipped_existing ?? [],
+  };
+}
+
 export async function getSettings() {
   const r = await fetch(`${API}/settings`);
   if (!r.ok) throw new Error(await r.text());
@@ -128,4 +157,33 @@ export async function putSettings(settings: Record<string, unknown>) {
     body: JSON.stringify({ settings }),
   });
   if (!r.ok) throw new Error(await r.text());
+}
+
+export async function testLlmSettings(
+  llm: Record<string, string>,
+): Promise<{ ok: boolean; message: string }> {
+  const r = await fetch(`${API}/llm/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ llm }),
+  });
+  const raw = (await r.json()) as {
+    ok?: boolean;
+    message?: string;
+    detail?: unknown;
+  };
+  if (!r.ok) {
+    const d = raw.detail;
+    const msg =
+      typeof d === "string"
+        ? d
+        : d != null
+          ? JSON.stringify(d)
+          : JSON.stringify(raw);
+    throw new Error(msg);
+  }
+  return {
+    ok: Boolean(raw.ok),
+    message: typeof raw.message === "string" ? raw.message : "",
+  };
 }

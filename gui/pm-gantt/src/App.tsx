@@ -10,6 +10,7 @@ import type { RoadmapNode, RoadmapResponse } from "./types";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
 import { EditModal } from "./components/EditModal";
+import { ConstitutionDrawer } from "./components/ConstitutionDrawer";
 import { SettingsDrawer } from "./components/SettingsDrawer";
 
 const SPLIT_STORAGE_KEY = "pmGanttSplitPct";
@@ -25,6 +26,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [constitutionOpen, setConstitutionOpen] = useState(false);
 
   const [splitPct, setSplitPct] = useState(() => {
     try {
@@ -262,6 +264,9 @@ export default function App() {
           </button>
         </span>
       ) : null}
+      <button type="button" onClick={() => setConstitutionOpen(true)}>
+        Constitution
+      </button>
       <button type="button" onClick={() => setSettingsOpen(true)}>
         Settings
       </button>
@@ -347,6 +352,10 @@ export default function App() {
           }}
         />
       ) : null}
+      <ConstitutionDrawer
+        open={constitutionOpen}
+        onClose={() => setConstitutionOpen(false)}
+      />
       <SettingsDrawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
