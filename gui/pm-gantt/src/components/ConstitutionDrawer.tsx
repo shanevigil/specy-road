@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchPlanningFile,
   savePlanningFile,
   scaffoldConstitution,
 } from "../api";
+import { MarkdownWorkspace } from "./MarkdownWorkspace";
+import { ModalFrame } from "./ModalFrame";
 
 const PURPOSE_PATH = "constitution/purpose.md";
 const PRINCIPLES_PATH = "constitution/principles.md";
@@ -20,11 +22,19 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
   const [principlesMissing, setPrinciplesMissing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [persistMsg, setPersistMsg] = useState<string | null>(null);
+
+  const lastSnap = useRef({ purpose: "", principles: "" });
+  const canAutosave = useRef(false);
 
   useEffect(() => {
     if (!open) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- reset when dialog opens */
     setMsg(null);
+    setPersistMsg(null);
     setLoading(true);
+    canAutosave.current = false;
+    /* eslint-enable react-hooks/set-state-in-effect */
     const load = async () => {
       let p = "";
       let pr = "";
@@ -46,10 +56,46 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
       setPrinciples(pr);
       setPurposeMissing(pMiss);
       setPrinciplesMissing(prMiss);
+      lastSnap.current = { purpose: p, principles: pr };
       setLoading(false);
+      queueMicrotask(() => {
+        canAutosave.current = true;
+      });
     };
     void load();
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !canAutosave.current || loading) return;
+    if (
+      purpose === lastSnap.current.purpose &&
+      principles === lastSnap.current.principles
+    ) {
+      return;
+    }
+    if (purposeMissing || principlesMissing) return;
+
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- autosave status */
+    setPersistMsg("Saving…");
+    const t = window.setTimeout(() => {
+      Promise.all([
+        savePlanningFile(PURPOSE_PATH, purpose),
+        savePlanningFile(PRINCIPLES_PATH, principles),
+      ])
+        .then(() => {
+          lastSnap.current = { purpose, principles };
+          setPurposeMissing(false);
+          setPrinciplesMissing(false);
+          setPersistMsg("Saved.");
+          window.setTimeout(() => setPersistMsg(null), 2000);
+        })
+        .catch((e: unknown) => {
+          setMsg(String(e));
+          setPersistMsg(null);
+        });
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [open, purpose, principles, loading, purposeMissing, principlesMissing]);
 
   if (!open) return null;
 
@@ -67,90 +113,82 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
       ]);
       setPurpose(rp.content);
       setPrinciples(rpr.content);
-      setMsg("Starter files created. Edit and save as needed.");
+      lastSnap.current = {
+        purpose: rp.content,
+        principles: rpr.content,
+      };
+      canAutosave.current = true;
+      setMsg("Starter files created. Edits save automatically.");
+      window.setTimeout(() => setMsg(null), 4000);
     } catch (e: unknown) {
       setMsg(String(e));
     }
   };
 
-  const onSave = async () => {
-    setMsg(null);
-    try {
-      await savePlanningFile(PURPOSE_PATH, purpose);
-      await savePlanningFile(PRINCIPLES_PATH, principles);
-      setPurposeMissing(false);
-      setPrinciplesMissing(false);
-      setMsg("Saved to repository.");
-    } catch (e: unknown) {
-      setMsg(String(e));
-    }
-  };
+  const footer = (
+    <>
+      {msg ? <span>{msg}</span> : null}
+      {persistMsg ? <span>{persistMsg}</span> : null}
+    </>
+  );
 
   return (
-    <>
-      <div
-        className="drawer-backdrop"
-        role="presentation"
-        onMouseDown={onClose}
-      />
-      <aside
-        className="drawer constitution-drawer"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <h2>Constitution</h2>
-        <p className="outline-meta">
-          Human-authored files in the repo (not ~/.specy-road settings). Agents
-          read these before roadmap work — see <code>AGENTS.md</code> load
-          order.
-        </p>
-        {loading ? <p>Loading…</p> : null}
-        {msg ? <p>{msg}</p> : null}
-        {anyMissing ? (
-          <div className="constitution-missing-banner">
-            <p>
-              One or both files are missing: <code>{PURPOSE_PATH}</code>,{" "}
-              <code>{PRINCIPLES_PATH}</code>.
-            </p>
-            <button type="button" onClick={() => void onScaffold()}>
-              Create starter files
-            </button>
-          </div>
-        ) : null}
+    <ModalFrame
+      title="Constitution"
+      titleId="constitution-title"
+      onClose={onClose}
+      footer={msg || persistMsg ? footer : null}
+      bodyClassName="modal-body--constitution"
+    >
+      <p className="outline-meta">
+        Human-authored files in the repo (not ~/.specy-road settings). Agents
+        read these before roadmap work — see <code>AGENTS.md</code> load
+        order. Changes are saved automatically.
+      </p>
+      {loading ? <p>Loading…</p> : null}
+      {anyMissing ? (
+        <div className="constitution-missing-banner">
+          <p>
+            One or both files are missing: <code>{PURPOSE_PATH}</code>,{" "}
+            <code>{PRINCIPLES_PATH}</code>.
+          </p>
+          <button type="button" onClick={() => void onScaffold()}>
+            Create starter files
+          </button>
+        </div>
+      ) : null}
+      <section className="constitution-md-section">
         <h3>Purpose</h3>
         <label>
           {PURPOSE_PATH}
-          <textarea
-            className="constitution-editor"
+          <MarkdownWorkspace
+            className="constitution-md-workspace"
             value={purpose}
-            onChange={(e) => setPurpose(e.target.value)}
+            onChange={setPurpose}
             spellCheck
             disabled={loading}
+            defaultViewMode="split"
+            sourceLabel={`${PURPOSE_PATH} source`}
+            previewLabel={`${PURPOSE_PATH} preview`}
           />
         </label>
+      </section>
+      <section className="constitution-md-section">
         <h3>Principles</h3>
         <label>
           {PRINCIPLES_PATH}
-          <textarea
-            className="constitution-editor"
+          <MarkdownWorkspace
+            className="constitution-md-workspace"
             value={principles}
-            onChange={(e) => setPrinciples(e.target.value)}
+            onChange={setPrinciples}
             spellCheck
             disabled={loading}
+            defaultViewMode="split"
+            sourceLabel={`${PRINCIPLES_PATH} source`}
+            previewLabel={`${PRINCIPLES_PATH} preview`}
           />
         </label>
-        <div className="modal-actions" style={{ marginTop: "1rem" }}>
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={() => void onSave()}
-            disabled={loading}
-          >
-            Save both
-          </button>
-        </div>
-      </aside>
-    </>
+      </section>
+    </ModalFrame>
   );
 }

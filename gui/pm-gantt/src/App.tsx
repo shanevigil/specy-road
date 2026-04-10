@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addNode,
   fetchRoadmap,
@@ -52,10 +52,14 @@ export default function App() {
   const resizing = useRef(false);
 
   /** Latest draft keys for save — avoids stale closure when applying deps after toggles. */
-  const depDraftKeysRef = useRef(depDraftKeys);
-  depDraftKeysRef.current = depDraftKeys;
-  const depEditIdRef = useRef(depEditId);
-  depEditIdRef.current = depEditId;
+  const depDraftKeysRef = useRef<Set<string>>(new Set());
+  const depEditIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    depDraftKeysRef.current = depDraftKeys;
+  }, [depDraftKeys]);
+  useEffect(() => {
+    depEditIdRef.current = depEditId;
+  }, [depEditId]);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -76,6 +80,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    /* eslint-disable-next-line react-hooks/set-state-in-effect -- fetch roadmap on mount / when load changes */
     void load();
   }, [load]);
 
@@ -118,7 +123,10 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [depEditId, cancelDepEdit]);
 
-  const byId = data ? nodesByIdFrom(data.nodes) : {};
+  const byId = useMemo(
+    () => (data ? nodesByIdFrom(data.nodes) : {}),
+    [data],
+  );
 
   const startDepEdit = useCallback(
     (nodeId: string) => {
@@ -346,10 +354,7 @@ export default function App() {
           node={sel}
           dependencyInheritance={data?.dependency_inheritance?.[sel.id]}
           onClose={() => setModalOpen(false)}
-          onSaved={() => {
-            void load();
-            setModalOpen(false);
-          }}
+          onPersisted={() => void load()}
         />
       ) : null}
       <ConstitutionDrawer
