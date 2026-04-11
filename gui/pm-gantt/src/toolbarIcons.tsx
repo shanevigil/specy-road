@@ -1,5 +1,47 @@
 /** Inline SVGs for PM Gantt toolbar (16×16, currentColor). */
 
+export function IconSun() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5a1 1 0 0 1 1 1v2a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm0 18a1 1 0 0 1-1-1v-2a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1zm10-8a1 1 0 0 1-1 1h-2a1 1 0 1 1 0-2h2a1 1 0 0 1 1 1zM6 12a1 1 0 0 1-1-1V9a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1zm12.07 6.07a1 1 0 0 1-1.41 0l-1.42-1.41a1 1 0 0 1 1.41-1.41l1.42 1.41a1 1 0 0 1 0 1.41zM7.76 7.76a1 1 0 0 1-1.41 0L4.93 6.34a1 1 0 1 1 1.41-1.41l1.42 1.41a1 1 0 0 1 0 1.42zm0 8.48a1 1 0 0 1 0-1.41l1.41-1.42a1 1 0 1 1 1.42 1.41l-1.42 1.42a1 1 0 0 1-1.41 0zm8.48 0a1 1 0 0 1-1.41 0l-1.42-1.41a1 1 0 0 1 1.41-1.41l1.42 1.41a1 1 0 0 1 0 1.41zM19.07 4.93a1 1 0 0 1 0 1.41l-1.41 1.42a1 1 0 1 1-1.41-1.41l1.41-1.42a1 1 0 0 1 1.41 0z" />
+    </svg>
+  );
+}
+
+export function IconMoon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z" />
+    </svg>
+  );
+}
+
+export function IconMonitor() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M4 5h16v11H4V5zm2 2v7h12V7H6zm-2 12h16v2H4v-2z" />
+    </svg>
+  );
+}
+
 export function IconGear() {
   return (
     <svg

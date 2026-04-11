@@ -1,11 +1,23 @@
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { getSettings, postGitTest, putSettings, testLlmSettings } from "../api";
 import { getDefaultSettingsModalRect } from "../modalRect";
+import { IconMonitor, IconMoon, IconSun } from "../toolbarIcons";
 import { ModalFrame } from "./ModalFrame";
+
+export type ThemeMode = "light" | "dark" | "system";
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  themeMode: ThemeMode;
+  onThemeModeChange: (mode: ThemeMode) => void;
   /** Gantt / outline preferences (stored in localStorage by App). */
   highlightDepChain: boolean;
   onHighlightDepChainChange: (value: boolean) => void;
@@ -59,6 +71,87 @@ function SettingsToggleRow({
   );
 }
 
+const THEME_ORDER: ThemeMode[] = ["light", "dark", "system"];
+
+function ThemeModeSegmented({
+  value,
+  onChange,
+}: {
+  value: ThemeMode;
+  onChange: (mode: ThemeMode) => void;
+}) {
+  const groupLabelId = useId();
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      const i = THEME_ORDER.indexOf(value);
+      if (i < 0) return;
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        onChange(THEME_ORDER[(i + 1) % THEME_ORDER.length]!);
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        onChange(
+          THEME_ORDER[(i - 1 + THEME_ORDER.length) % THEME_ORDER.length]!,
+        );
+      }
+    },
+    [value, onChange],
+  );
+
+  return (
+    <div className="settings-theme-row">
+      <span id={groupLabelId} className="settings-theme-label">
+        Theme
+      </span>
+      <div
+        className="settings-theme-segmented"
+        role="radiogroup"
+        aria-labelledby={groupLabelId}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+      >
+        <button
+          type="button"
+          className="settings-theme-option"
+          role="radio"
+          aria-checked={value === "light"}
+          tabIndex={-1}
+          title="Light"
+          onClick={() => onChange("light")}
+        >
+          <IconSun />
+          <span className="settings-theme-option-text">Light</span>
+        </button>
+        <button
+          type="button"
+          className="settings-theme-option"
+          role="radio"
+          aria-checked={value === "dark"}
+          tabIndex={-1}
+          title="Dark"
+          onClick={() => onChange("dark")}
+        >
+          <IconMoon />
+          <span className="settings-theme-option-text">Dark</span>
+        </button>
+        <button
+          type="button"
+          className="settings-theme-option"
+          role="radio"
+          aria-checked={value === "system"}
+          tabIndex={-1}
+          title="Match system appearance"
+          onClick={() => onChange("system")}
+        >
+          <IconMonitor />
+          <span className="settings-theme-option-text">System</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function buildLlmPayload(llm: Record<string, string>) {
   return {
     backend: normalizeBackend(llm.backend || "openai"),
@@ -77,6 +170,8 @@ function buildLlmPayload(llm: Record<string, string>) {
 export function SettingsDrawer({
   open,
   onClose,
+  themeMode,
+  onThemeModeChange,
   highlightDepChain,
   onHighlightDepChainChange,
   showInheritedDeps,
@@ -192,6 +287,8 @@ export function SettingsDrawer({
         Stored in ~/.specy-road/gui-settings.json. API keys use simple
         obfuscation on disk, not plain text. Changes save automatically.
       </p>
+      <h3 className="settings-appearance-title">Appearance</h3>
+      <ThemeModeSegmented value={themeMode} onChange={onThemeModeChange} />
       <h3
         className="settings-pm-chart-title"
         title="Chart display and refresh options are saved in this browser only (localStorage)."

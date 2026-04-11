@@ -28,7 +28,7 @@ import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
 import { EditModal } from "./components/EditModal";
 import { ConstitutionDrawer } from "./components/ConstitutionDrawer";
-import { SettingsDrawer } from "./components/SettingsDrawer";
+import { SettingsDrawer, type ThemeMode } from "./components/SettingsDrawer";
 import { SharedDocsDrawer } from "./components/SharedDocsDrawer";
 import { VisionDrawer } from "./components/VisionDrawer";
 import { WorkNotesDrawer } from "./components/WorkNotesDrawer";
@@ -46,6 +46,17 @@ const SPLIT_STORAGE_KEY = "pmGanttSplitPct";
 const REFRESH_STORAGE_KEY = "pmGanttRefreshSec";
 const INHERITED_DEPS_STORAGE_KEY = "pmGanttShowInheritedDeps";
 const HIGHLIGHT_DEP_CHAIN_KEY = "pmGanttHighlightDepChain";
+const THEME_MODE_STORAGE_KEY = "pmGanttThemeMode";
+
+function readStoredThemeMode(): ThemeMode {
+  try {
+    const s = localStorage.getItem(THEME_MODE_STORAGE_KEY);
+    if (s === "light" || s === "dark" || s === "system") return s;
+  } catch {
+    /* ignore */
+  }
+  return "system";
+}
 
 function nodesByIdFrom(nodes: RoadmapNode[]): Record<string, RoadmapNode> {
   return Object.fromEntries(nodes.map((n) => [n.id, n]));
@@ -154,6 +165,8 @@ export default function App() {
     return true;
   });
 
+  const [themeMode, setThemeMode] = useState<ThemeMode>(readStoredThemeMode);
+
   /** Node id whose explicit dependencies are being edited; draft keys are node_key UUIDs. */
   const [depEditId, setDepEditId] = useState<string | null>(null);
   const [depDraftKeys, setDepDraftKeys] = useState<Set<string>>(new Set());
@@ -179,6 +192,18 @@ export default function App() {
   useEffect(() => {
     headerBottomRef.current = headerBottomPx;
   }, [headerBottomPx]);
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute("data-theme", themeMode);
+  }, [themeMode]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
+    } catch {
+      /* ignore */
+    }
+  }, [themeMode]);
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -958,6 +983,8 @@ export default function App() {
       <SettingsDrawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        themeMode={themeMode}
+        onThemeModeChange={setThemeMode}
         highlightDepChain={highlightDepChain}
         onHighlightDepChainChange={setHighlightDepChain}
         showInheritedDeps={showInheritedDeps}
