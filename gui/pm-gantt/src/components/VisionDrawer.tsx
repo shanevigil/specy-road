@@ -2,13 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { fetchPlanningFile, savePlanningFile } from "../api";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
+import { VISION_STARTER } from "../visionStarter";
 
 const VISION_PATH = "vision.md";
-
-const VISION_STARTER = `# Vision
-
-Describe the product vision for this repository. See README for how this relates to the roadmap.
-`;
 
 type Props = {
   open: boolean;

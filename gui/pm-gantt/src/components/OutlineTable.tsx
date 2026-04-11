@@ -1,8 +1,20 @@
-import { Fragment, useMemo, useRef, type CSSProperties } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import {
   DndContext,
   PointerSensor,
   closestCorners,
+  pointerWithin,
+  type CollisionDetection,
   type DragEndEvent,
   useSensor,
   useSensors,
@@ -15,7 +27,16 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
-import { moveOutline, reorderOutline } from "../api";
+import { moveOutline, patchNode, reorderOutline } from "../api";
+
+/** Prefer pointer-actual droppables (gap / into) over sortable row hitboxes. */
+const outlineCollisionDetection: CollisionDetection = (args) => {
+  const insidePointer = pointerWithin(args);
+  if (insidePointer.length > 0) {
+    return insidePointer;
+  }
+  return closestCorners(args);
+};
 
 const TABLE_COLS = 5;
 
@@ -65,6 +86,25 @@ function siblingOrderInsertBefore(
   return [...without.slice(0, insertAt), aid, ...without.slice(insertAt)];
 }
 
+/** Place ``aid`` immediately after sibling ``oid`` under the same parent. */
+function siblingOrderInsertAfter(
+  parentId: string | null,
+  aid: string,
+  oid: string,
+  orderedIds: string[],
+  nodesById: Record<string, RoadmapNode>,
+): string[] | null {
+  const full = orderedIds.filter(
+    (id) => parentKey(nodesById[id]) === parentId,
+  );
+  if (!full.includes(aid) || !full.includes(oid)) return null;
+  const without = full.filter((id) => id !== aid);
+  const pos = without.indexOf(oid);
+  if (pos < 0) return null;
+  const insertAt = pos + 1;
+  return [...without.slice(0, insertAt), aid, ...without.slice(insertAt)];
+}
+
 function devLabel(
   nid: string,
   registryByNode: Record<string, Record<string, unknown>> | undefined,
@@ -110,17 +150,41 @@ function RootDropZone() {
   );
 }
 
-function RowGapBefore({ targetId }: { targetId: string }) {
+function RowGapBefore({
+  targetId,
+  onInsertClick,
+  depEditActive,
+}: {
+  targetId: string;
+  onInsertClick: (targetId: string) => void;
+  depEditActive: boolean;
+}) {
   const { setNodeRef, isOver } = useDroppable({
     id: `before:${targetId}`,
   });
   return (
     <tr ref={setNodeRef} className="outline-gap-tr">
       <td
-        className={isOver ? "outline-gap-cell outline-gap-active" : "outline-gap-cell"}
+        className={
+          isOver ? "outline-gap-cell outline-gap-active" : "outline-gap-cell"
+        }
         colSpan={TABLE_COLS}
         title="Drop here to insert before this row (same parent as this row)"
-      />
+      >
+        <button
+          type="button"
+          className="outline-gap-insert-btn"
+          aria-label="Add task above"
+          disabled={depEditActive}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onInsertClick(targetId);
+          }}
+        >
+          +
+        </button>
+      </td>
     </tr>
   );
 }
@@ -136,11 +200,22 @@ type RowProps = {
   depCellText: string;
   depEditId: string | null;
   isDepCandidate: boolean;
+  titleEditing: boolean;
+  titleDraft: string;
+  onTitleDraftChange: (v: string) => void;
+  onTitleBlur: () => void;
+  onTitleKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
+  titleInputRef: RefObject<HTMLInputElement | null>;
+  onBeginTitleEdit: () => void;
   onSelectRow: () => void;
   onOpenModal: () => void;
   /** Task / status / dev clicked while editing deps (passes row id). */
   onDepRowBodyClick: () => void;
   onDepCellClick: () => void;
+  onApplyDepEdit: () => void;
+  onCancelDepEdit: () => void;
+  onClearDepDraft: () => void;
+  depDraftEmpty: boolean;
   dragDisabled: boolean;
 };
 
@@ -155,10 +230,21 @@ function SortableRow({
   depCellText,
   depEditId,
   isDepCandidate,
+  titleEditing,
+  titleDraft,
+  onTitleDraftChange,
+  onTitleBlur,
+  onTitleKeyDown,
+  titleInputRef,
+  onBeginTitleEdit,
   onSelectRow,
   onOpenModal,
   onDepRowBodyClick,
   onDepCellClick,
+  onApplyDepEdit,
+  onCancelDepEdit,
+  onClearDepDraft,
+  depDraftEmpty,
   dragDisabled,
 }: RowProps) {
   const {
@@ -183,6 +269,14 @@ function SortableRow({
       onDepRowBodyClick();
       return;
     }
+    if (selected) {
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+        clickTimer.current = null;
+      }
+      onBeginTitleEdit();
+      return;
+    }
     if (clickTimer.current) clearTimeout(clickTimer.current);
     clickTimer.current = setTimeout(() => {
       clickTimer.current = null;
@@ -193,6 +287,7 @@ function SortableRow({
   const handleDoubleClick = (e: { preventDefault: () => void }) => {
     e.preventDefault();
     if (depEditId) return;
+    if (titleEditing) return;
     if (clickTimer.current) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
@@ -222,16 +317,18 @@ function SortableRow({
     .filter(Boolean)
     .join(" ");
 
+  const depActive = depEditId === id;
+
   return (
-    <tr ref={setNodeRef} style={style} className={rowClass || undefined}>
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={rowClass || undefined}
+      {...listeners}
+      {...attributes}
+    >
       <td className="outline-id" onClick={handleIdClick}>
-        <span
-          {...listeners}
-          {...attributes}
-          className="outline-drag-handle"
-        >
-          {node.id}
-        </span>
+        <span className="outline-id-text">{node.id}</span>
         <IntoDropBadge nodeId={node.id} />
       </td>
       <td
@@ -240,7 +337,21 @@ function SortableRow({
         onDoubleClick={handleDoubleClick}
         style={{ paddingLeft: `${outlineDepth * 12}px` }}
       >
-        <div>{node.title}</div>
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            className="outline-title-input"
+            value={titleDraft}
+            onChange={(e) => onTitleDraftChange(e.target.value)}
+            onBlur={onTitleBlur}
+            onKeyDown={onTitleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDownCapture={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <div>{node.title}</div>
+        )}
         {meta ? <div className="outline-meta">{meta}</div> : null}
       </td>
       <td className="outline-col-status" onClick={handleStatusDevClick}>
@@ -250,7 +361,11 @@ function SortableRow({
         {devText}
       </td>
       <td
-        className="outline-col-dep"
+        className={
+          depActive
+            ? "outline-col-dep outline-col-dep-active"
+            : "outline-col-dep"
+        }
         title="Click to choose which features this item depends on (explicit)"
         onClick={(e) => {
           e.preventDefault();
@@ -259,6 +374,45 @@ function SortableRow({
         }}
       >
         <span className="outline-dep-cell-text">{depCellText}</span>
+        {depActive ? (
+          <div className="dep-edit-floating">
+            <button
+              type="button"
+              className="dep-edit-floating-btn dep-edit-floating-save"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onApplyDepEdit();
+              }}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="dep-edit-floating-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancelDepEdit();
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="dep-edit-floating-btn"
+              disabled={depDraftEmpty}
+              title="Remove all prerequisites from the draft"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClearDepDraft();
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        ) : null}
       </td>
     </tr>
   );
@@ -277,9 +431,13 @@ type Props = {
   depDraftKeys: Set<string>;
   onToggleDepCandidate: (candidateNodeId: string) => void;
   onDepCellActivate: (nodeId: string) => void;
+  onApplyDepEdit: () => void;
+  onCancelDepEdit: () => void;
+  onClearDepDraft: () => void;
   onSelect: (id: string) => void;
   onDoubleClick: (id: string) => void;
   onReordered: () => Promise<void>;
+  onGapInsert: (referenceNodeId: string) => void;
 };
 
 export function OutlineTable({
@@ -295,10 +453,18 @@ export function OutlineTable({
   depDraftKeys,
   onToggleDepCandidate,
   onDepCellActivate,
+  onApplyDepEdit,
+  onCancelDepEdit,
+  onClearDepDraft,
   onSelect,
   onDoubleClick,
   onReordered,
+  onGapInsert,
 }: Props) {
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
@@ -349,6 +515,88 @@ export function OutlineTable({
     return ex.length ? ex.join(", ") : "—";
   };
 
+  const flushTitleIfDirty = useCallback(async () => {
+    if (!editingTitleId) return;
+    const n = nodesById[editingTitleId];
+    if (!n) {
+      setEditingTitleId(null);
+      return;
+    }
+    const t = titleDraft.trim();
+    if (t && t !== n.title) {
+      try {
+        await patchNode(editingTitleId, [{ key: "title", value: t }]);
+        await onReordered();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setEditingTitleId(null);
+  }, [editingTitleId, titleDraft, nodesById, onReordered]);
+
+  const cancelTitleEdit = useCallback(() => {
+    setEditingTitleId(null);
+  }, []);
+
+  useEffect(() => {
+    if (!editingTitleId) return;
+    const el = titleInputRef.current;
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }, [editingTitleId]);
+
+  useEffect(() => {
+    if (!editingTitleId) return;
+    const id = editingTitleId;
+    const tid = window.setInterval(() => {
+      const n = nodesById[id];
+      if (!n) return;
+      const trimmed = titleDraft.trim();
+      if (trimmed && trimmed !== n.title) {
+        void patchNode(id, [{ key: "title", value: trimmed }]).then(() =>
+          onReordered(),
+        );
+      }
+    }, 2500);
+    return () => window.clearInterval(tid);
+  }, [editingTitleId, titleDraft, nodesById, onReordered]);
+
+  const depCellActivate = useCallback(
+    (nodeId: string) => {
+      if (editingTitleId) {
+        void (async () => {
+          await flushTitleIfDirty();
+          onDepCellActivate(nodeId);
+        })();
+        return;
+      }
+      onDepCellActivate(nodeId);
+    },
+    [editingTitleId, flushTitleIfDirty, onDepCellActivate],
+  );
+
+  const onTitleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancelTitleEdit();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      void flushTitleIfDirty();
+    }
+  };
+
+  const beginTitleEdit = (nid: string) => {
+    if (depEditId) return;
+    const n = nodesById[nid];
+    if (!n) return;
+    setEditingTitleId(nid);
+    setTitleDraft(n.title);
+  };
+
   const applyInsertBefore = async (aid: string, oid: string) => {
     if (aid === oid) return;
     const na = nodesById[aid];
@@ -387,6 +635,54 @@ export function OutlineTable({
     }
   };
 
+  const applyInsertAfter = async (aid: string, oid: string) => {
+    if (aid === oid) return;
+    const na = nodesById[aid];
+    const nb = nodesById[oid];
+    if (!na || !nb) return;
+
+    const P = parentKey(nb);
+    if (P !== null && cannotReparentUnder(aid, P, nodesById)) return;
+
+    const sibsEx = orderedIds.filter(
+      (id) => parentKey(nodesById[id]) === P && id !== aid,
+    );
+    const pos = sibsEx.indexOf(oid);
+    if (pos < 0) return;
+    const newIndex = pos + 1;
+
+    const pa = parentKey(na);
+    if (pa === P) {
+      const next = siblingOrderInsertAfter(P, aid, oid, orderedIds, nodesById);
+      if (!next?.length) return;
+      try {
+        await reorderOutline(P, next);
+        await onReordered();
+      } catch (err) {
+        console.error(err);
+        await onReordered();
+      }
+      return;
+    }
+
+    try {
+      await moveOutline(na.node_key, P, newIndex);
+      await onReordered();
+    } catch (err) {
+      console.error(err);
+      await onReordered();
+    }
+  };
+
+  const lastPointerY = useRef(0);
+  useEffect(() => {
+    const fn = (ev: PointerEvent) => {
+      lastPointerY.current = ev.clientY;
+    };
+    window.addEventListener("pointermove", fn, { passive: true });
+    return () => window.removeEventListener("pointermove", fn);
+  }, []);
+
   const onDragEnd = async (e: DragEndEvent) => {
     if (depEditId) return;
     const { active, over } = e;
@@ -400,17 +696,13 @@ export function OutlineTable({
       const raw = overStr.slice("into:".length);
       const parentDisplay = raw === "__root__" ? null : raw;
       if (parentDisplay === aid) return;
-      if (
-        parentDisplay &&
-        isDescendant(nodesById, aid, parentDisplay)
-      ) {
+      if (parentDisplay && isDescendant(nodesById, aid, parentDisplay)) {
         await onReordered();
         return;
       }
       if (cannotReparentUnder(aid, parentDisplay, nodesById)) return;
       const others = orderedIds.filter(
-        (id) =>
-          parentKey(nodesById[id]) === parentDisplay && id !== aid,
+        (id) => parentKey(nodesById[id]) === parentDisplay && id !== aid,
       );
       const newIndex = others.length;
       try {
@@ -434,7 +726,19 @@ export function OutlineTable({
     const nb = nodesById[oid];
     if (!nb) return;
 
-    await applyInsertBefore(aid, oid);
+    /** When collision is the sortable row (not `before:` gap), use Y vs row midline: lower half = insert after. */
+    let useInsertAfter = false;
+    if (!overStr.startsWith("before:") && over?.rect) {
+      const r = over.rect as { top: number; height: number };
+      const mid = r.top + r.height / 2;
+      useInsertAfter = lastPointerY.current > mid;
+    }
+
+    if (useInsertAfter) {
+      await applyInsertAfter(aid, oid);
+    } else {
+      await applyInsertBefore(aid, oid);
+    }
   };
 
   const dragDisabled = Boolean(depEditId);
@@ -442,7 +746,7 @@ export function OutlineTable({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={outlineCollisionDetection}
       onDragEnd={onDragEnd}
     >
       <table
@@ -475,7 +779,11 @@ export function OutlineTable({
                 depEditId !== id;
               return (
                 <Fragment key={id}>
-                  <RowGapBefore targetId={id} />
+                  <RowGapBefore
+                    targetId={id}
+                    depEditActive={Boolean(depEditId)}
+                    onInsertClick={onGapInsert}
+                  />
                   <SortableRow
                     id={id}
                     node={node}
@@ -487,7 +795,18 @@ export function OutlineTable({
                     depCellText={depCellLabel(id)}
                     depEditId={depEditId}
                     isDepCandidate={isCandidate}
+                    titleEditing={editingTitleId === id}
+                    titleDraft={titleDraft}
+                    onTitleDraftChange={setTitleDraft}
+                    onTitleBlur={() => void flushTitleIfDirty()}
+                    onTitleKeyDown={onTitleKeyDown}
+                    titleInputRef={titleInputRef}
+                    onBeginTitleEdit={() => beginTitleEdit(id)}
                     dragDisabled={dragDisabled}
+                    depDraftEmpty={depDraftKeys.size === 0}
+                    onApplyDepEdit={onApplyDepEdit}
+                    onCancelDepEdit={onCancelDepEdit}
+                    onClearDepDraft={onClearDepDraft}
                     onSelectRow={() => onSelect(id)}
                     onOpenModal={() => onDoubleClick(id)}
                     onDepRowBodyClick={() => {
@@ -498,7 +817,7 @@ export function OutlineTable({
                       }
                       onToggleDepCandidate(id);
                     }}
-                    onDepCellClick={() => onDepCellActivate(id)}
+                    onDepCellClick={() => depCellActivate(id)}
                   />
                 </Fragment>
               );

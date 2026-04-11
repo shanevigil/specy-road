@@ -8,6 +8,18 @@ export async function fetchRoadmap(): Promise<RoadmapResponse> {
   return r.json() as Promise<RoadmapResponse>;
 }
 
+export async function fetchGovernanceCompletion(): Promise<{
+  vision_needs_completion: boolean;
+  constitution_needs_completion: boolean;
+}> {
+  const r = await fetch(`${API}/governance-completion`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<{
+    vision_needs_completion: boolean;
+    constitution_needs_completion: boolean;
+  }>;
+}
+
 export async function patchNode(
   nodeId: string,
   pairs: { key: string; value: string }[],
@@ -16,6 +28,13 @@ export async function patchNode(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pairs }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+export async function deleteNode(nodeId: string): Promise<void> {
+  const r = await fetch(`${API}/nodes/${encodeURIComponent(nodeId)}`, {
+    method: "DELETE",
   });
   if (!r.ok) throw new Error(await r.text());
 }
@@ -135,6 +154,58 @@ export async function savePlanningFile(path: string, content: string) {
     },
   );
   if (!r.ok) throw new Error(await r.text());
+}
+
+export type WorkspaceFileEntry = {
+  path: string;
+  name: string;
+  bytes: number;
+};
+
+export async function fetchWorkspaceFiles(
+  prefix: "shared" | "work",
+): Promise<{ prefix: string; files: WorkspaceFileEntry[] }> {
+  const r = await fetch(
+    `${API}/workspace/files?${new URLSearchParams({ prefix })}`,
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<{
+    prefix: string;
+    files: WorkspaceFileEntry[];
+  }>;
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const data = r.result as string;
+      const i = data.indexOf(",");
+      resolve(i >= 0 ? data.slice(i + 1) : data);
+    };
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+/** Upload a file into ``shared/`` (optional subfolder under ``shared``, e.g. ``contracts``). */
+export async function uploadSharedFile(
+  file: File,
+  subpath?: string,
+): Promise<{ ok: string; path: string }> {
+  const safeName = file.name.replace(/^.*[/\\]/, "");
+  const sub = subpath?.trim().replace(/^[/\\]+|[/\\]+$/g, "").replace(/\\/g, "/");
+  const path = sub
+    ? `shared/${sub}/${safeName}`.replace(/\/+/g, "/")
+    : `shared/${safeName}`;
+  const content_base64 = await fileToBase64(file);
+  const r = await fetch(`${API}/workspace/upload`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, content_base64 }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<{ ok: string; path: string }>;
 }
 
 export async function scaffoldConstitution(force = false): Promise<{

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import sys
 from pathlib import Path
 from typing import Any
+
 
 def _scripts_dir() -> Path:
     """Locate bundled roadmap Python modules (``bundled_scripts/``)."""
@@ -43,13 +45,14 @@ from pydantic import BaseModel, Field  # noqa: E402
 from roadmap_chunk_utils import find_chunk_path, roadmap_dir  # noqa: E402
 from roadmap_crud_ops import (  # noqa: E402
     append_node_to_chunk,
+    delete_roadmap_node_hard,
     edit_node_set_pairs,
     merged_ids,
     run_validate_raise,
 )
 from roadmap_gui_tree import can_indent_outline, can_outdent_outline  # noqa: E402
 from roadmap_layout import (  # noqa: E402
-    compute_depths,
+    compute_dependency_steps,
     dependency_edges_detailed,
     dependency_inheritance_display,
     ordered_tree_rows,
@@ -87,6 +90,10 @@ from specy_road.constitution_scaffold import (  # noqa: E402
     ConstitutionExistsError,
     write_constitution,
 )
+from specy_road.governance_completion import (  # noqa: E402
+    constitution_needs_completion,
+    vision_needs_completion,
+)
 
 _PKG_DIR = Path(__file__).resolve().parent
 _STATIC_DIR = _PKG_DIR / "pm_gantt_static"
@@ -109,6 +116,17 @@ def _safe_rel_path(repo_root: Path, rel: str) -> Path:
     except ValueError as e:
         raise HTTPException(status_code=400, detail="path escapes repo") from e
     return p
+
+
+def _assert_under_allowed_root(repo_root: Path, path: Path, allowed_top: str) -> None:
+    allowed = (repo_root / allowed_top).resolve()
+    try:
+        path.resolve().relative_to(allowed)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"path must stay under {allowed_top}/",
+        ) from e
 
 
 def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
@@ -182,6 +200,16 @@ class PutFileBody(BaseModel):
     content: str
 
 
+class SharedUploadBody(BaseModel):
+    """Binary upload as base64 into ``shared/`` (repo-relative path)."""
+
+    path: str = Field(
+        ...,
+        description="Repo-relative path starting with shared/, e.g. shared/docs/x.png",
+    )
+    content_base64: str = Field(..., description="Raw file bytes, standard base64")
+
+
 class ConstitutionScaffoldBody(BaseModel):
     force: bool = False
 
@@ -227,7 +255,7 @@ def create_app() -> FastAPI:
         tree_rows = ordered_tree_rows(nodes)
         ordered = [t[0] for t in tree_rows]
         row_depths = [d for _, d in tree_rows]
-        depths = compute_depths(nodes)
+        dep_starts, dep_spans = compute_dependency_steps(nodes)
         edges = dependency_edges_detailed(nodes)
         by_id = {n["id"]: n for n in nodes}
         dep_inheritance = dependency_inheritance_display(nodes)
@@ -247,7 +275,8 @@ def create_app() -> FastAPI:
                 {"id": n["id"], "outline_depth": d, "row_index": i}
                 for i, (n, d) in enumerate(tree_rows)
             ],
-            "dependency_depths": depths,
+            "dependency_depths": dep_starts,
+            "dependency_spans": dep_spans,
             "edges": edges,
             "ordered_ids": [n["id"] for n in ordered],
             "row_depths": row_depths,
@@ -262,12 +291,29 @@ def create_app() -> FastAPI:
         root = _get_repo_root()
         return {"fingerprint": roadmap_fingerprint(root)}
 
+    @app.get("/api/governance-completion")
+    def api_governance_completion() -> dict[str, bool]:
+        root = _get_repo_root()
+        return {
+            "vision_needs_completion": vision_needs_completion(root),
+            "constitution_needs_completion": constitution_needs_completion(root),
+        }
+
     @app.patch("/api/nodes/{node_id}")
     def api_patch_node(node_id: str, body: PatchBody) -> dict[str, str]:
         root = _get_repo_root()
         pairs = [(p.key, p.value) for p in body.pairs]
         try:
             edit_node_set_pairs(root, node_id, pairs)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true", "node_id": node_id}
+
+    @app.delete("/api/nodes/{node_id}")
+    def api_delete_node(node_id: str) -> dict[str, str]:
+        root = _get_repo_root()
+        try:
+            delete_roadmap_node_hard(root, node_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         return {"ok": "true", "node_id": node_id}
@@ -453,6 +499,53 @@ def create_app() -> FastAPI:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(body.content, encoding="utf-8")
         return {"ok": "true", "path": path}
+
+    @app.get("/api/workspace/files")
+    def api_workspace_files(
+        prefix: str = Query(..., pattern="^(shared|work)$"),
+    ) -> dict[str, Any]:
+        """List files recursively under ``shared/`` or ``work/`` (repo-relative)."""
+        root = _get_repo_root()
+        base = root / prefix
+        if not base.exists():
+            base.mkdir(parents=True, exist_ok=True)
+        files_out: list[dict[str, Any]] = []
+        if base.is_dir():
+            for p in sorted(base.rglob("*")):
+                if not p.is_file():
+                    continue
+                if p.name.startswith("."):
+                    continue
+                rel = str(p.relative_to(root)).replace("\\", "/")
+                try:
+                    st = p.stat()
+                    files_out.append(
+                        {
+                            "path": rel,
+                            "name": p.name,
+                            "bytes": st.st_size,
+                        }
+                    )
+                except OSError:
+                    continue
+        return {"prefix": prefix, "files": files_out}
+
+    @app.post("/api/workspace/upload")
+    def api_workspace_upload(body: SharedUploadBody) -> dict[str, str]:
+        """Upload raw bytes (base64) into ``shared/`` at the given repo-relative path."""
+        root = _get_repo_root()
+        raw = body.path.strip().replace("\\", "/").lstrip("/")
+        if not raw.startswith("shared/"):
+            raise HTTPException(status_code=400, detail="path must start with shared/")
+        dest = _safe_rel_path(root, raw)
+        _assert_under_allowed_root(root, dest, "shared")
+        try:
+            data = base64.b64decode(body.content_base64, validate=True)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail="invalid base64") from e
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        return {"ok": "true", "path": raw}
 
     @app.get("/api/settings")
     def api_settings_get() -> dict[str, Any]:

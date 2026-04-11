@@ -5,6 +5,14 @@ import { ModalFrame } from "./ModalFrame";
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Gantt / outline preferences (stored in localStorage by App). */
+  highlightDepChain: boolean;
+  onHighlightDepChainChange: (value: boolean) => void;
+  showInheritedDeps: boolean;
+  onShowInheritedDepsChange: (value: boolean) => void;
+  refreshSec: number;
+  onRefreshSecChange: (sec: number) => void;
+  onRefreshRoadmap: () => void;
 };
 
 const BACKENDS = ["openai", "azure", "compatible", "anthropic"] as const;
@@ -29,7 +37,17 @@ function buildLlmPayload(llm: Record<string, string>) {
   };
 }
 
-export function SettingsDrawer({ open, onClose }: Props) {
+export function SettingsDrawer({
+  open,
+  onClose,
+  highlightDepChain,
+  onHighlightDepChainChange,
+  showInheritedDeps,
+  onShowInheritedDepsChange,
+  refreshSec,
+  onRefreshSecChange,
+  onRefreshRoadmap,
+}: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
@@ -148,6 +166,50 @@ export function SettingsDrawer({ open, onClose }: Props) {
         Stored in ~/.specy-road/gui-settings.json. API keys use simple
         obfuscation on disk, not plain text. Changes save automatically.
       </p>
+      <h3>PM chart</h3>
+      <p className="outline-meta">
+        Chart display and refresh options are saved in this browser only
+        (localStorage).
+      </p>
+      <label className="settings-checkbox-row">
+        <input
+          type="checkbox"
+          checked={highlightDepChain}
+          onChange={(e) => onHighlightDepChainChange(e.target.checked)}
+          title="Tint Gantt rows for every preceding dependency of the selection: transitive prerequisites using explicit deps and deps inherited from ancestor nodes (independent of dashed-line display)"
+        />
+        <span>Highlight full dependency chain on chart</span>
+      </label>
+      <label className="settings-checkbox-row">
+        <input
+          type="checkbox"
+          checked={showInheritedDeps}
+          onChange={(e) => onShowInheritedDepsChange(e.target.checked)}
+          title="Show dashed lines for dependencies inherited from ancestor nodes (group-level)"
+        />
+        <span>Show inherited dependencies (dashed lines)</span>
+      </label>
+      <label>
+        Auto-refresh
+        <select
+          value={refreshSec}
+          onChange={(e) => onRefreshSecChange(Number(e.target.value))}
+          title="Poll roadmap files; reload when the fingerprint changes"
+        >
+          <option value={0}>Off</option>
+          <option value={5}>5 s</option>
+          <option value={10}>10 s</option>
+          <option value={15}>15 s</option>
+          <option value={30}>30 s</option>
+          <option value={60}>60 s</option>
+          <option value={120}>120 s</option>
+        </select>
+      </label>
+      <div className="settings-actions-row">
+        <button type="button" onClick={() => void onRefreshRoadmap()}>
+          Refresh roadmap
+        </button>
+      </div>
       <h3>Git remote</h3>
       <label>
         Provider

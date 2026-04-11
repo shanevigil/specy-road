@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addNode,
+  deleteNode,
+  fetchGovernanceCompletion,
   fetchRoadmap,
   fetchRoadmapFingerprint,
   indentNode,
@@ -8,18 +10,44 @@ import {
   patchNode,
 } from "./api";
 import type { RoadmapNode, RoadmapResponse } from "./types";
+import { transitiveEffectivePrereqIds } from "./depChain";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
 import { EditModal } from "./components/EditModal";
 import { ConstitutionDrawer } from "./components/ConstitutionDrawer";
 import { SettingsDrawer } from "./components/SettingsDrawer";
+import { SharedDocsDrawer } from "./components/SharedDocsDrawer";
 import { VisionDrawer } from "./components/VisionDrawer";
+import { WorkNotesDrawer } from "./components/WorkNotesDrawer";
+import {
+  IconGear,
+  IconIndent,
+  IconOutdent,
+  IconRowAbove,
+  IconRowBelow,
+  IconTrash,
+} from "./toolbarIcons";
 
 const SPLIT_STORAGE_KEY = "pmGanttSplitPct";
 const REFRESH_STORAGE_KEY = "pmGanttRefreshSec";
+const INHERITED_DEPS_STORAGE_KEY = "pmGanttShowInheritedDeps";
+const HIGHLIGHT_DEP_CHAIN_KEY = "pmGanttHighlightDepChain";
 
 function nodesByIdFrom(nodes: RoadmapNode[]): Record<string, RoadmapNode> {
   return Object.fromEntries(nodes.map((n) => [n.id, n]));
+}
+
+function promptNewTaskTitle(): string | null {
+  const t = window.prompt("Title for new feature");
+  return t?.trim() || null;
+}
+
+/** Last path segment of repo root (e.g. `.../specy-road/playground` → `playground`). */
+function repoRootFolderDisplayName(repoRoot: string): string {
+  const t = repoRoot.trim().replace(/[/\\]+$/, "");
+  if (!t) return "";
+  const parts = t.split(/[/\\]/).filter(Boolean);
+  return parts[parts.length - 1] ?? t;
 }
 
 export default function App() {
@@ -31,10 +59,14 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
+  const [sharedDocsOpen, setSharedDocsOpen] = useState(false);
+  const [workNotesOpen, setWorkNotesOpen] = useState(false);
+  /** When set, Vision / Constitution need human content beyond blank or starter templates. */
+  const [govCompletion, setGovCompletion] = useState<{
+    vision: boolean;
+    constitution: boolean;
+  } | null>(null);
 
-  const [highlightDepRowId, setHighlightDepRowId] = useState<string | null>(
-    null,
-  );
   const [refreshSec, setRefreshSec] = useState(() => {
     try {
       const s = localStorage.getItem(REFRESH_STORAGE_KEY);
@@ -63,6 +95,29 @@ export default function App() {
     return 42;
   });
 
+  /** Dashed edges = deps inherited from ancestors; hidden by default to reduce clutter. */
+  const [showInheritedDeps, setShowInheritedDeps] = useState(() => {
+    try {
+      const s = localStorage.getItem(INHERITED_DEPS_STORAGE_KEY);
+      if (s === "1") return true;
+      if (s === "0") return false;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  });
+
+  /** Gantt: band + bar tint for every preceding (transitive effective) dependency of the selection. */
+  const [highlightDepChain, setHighlightDepChain] = useState(() => {
+    try {
+      const s = localStorage.getItem(HIGHLIGHT_DEP_CHAIN_KEY);
+      if (s === "0") return false;
+    } catch {
+      /* ignore */
+    }
+    return true;
+  });
+
   /** Node id whose explicit dependencies are being edited; draft keys are node_key UUIDs. */
   const [depEditId, setDepEditId] = useState<string | null>(null);
   const [depDraftKeys, setDepDraftKeys] = useState<Set<string>>(new Set());
@@ -83,6 +138,18 @@ export default function App() {
     depEditIdRef.current = depEditId;
   }, [depEditId]);
 
+  const refreshGovernanceCompletion = useCallback(async () => {
+    try {
+      const r = await fetchGovernanceCompletion();
+      setGovCompletion({
+        vision: r.vision_needs_completion,
+        constitution: r.constitution_needs_completion,
+      });
+    } catch {
+      setGovCompletion(null);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setErr(null);
     try {
@@ -102,10 +169,11 @@ export default function App() {
       } catch {
         /* fingerprint is optional for sync */
       }
+      void refreshGovernanceCompletion();
     } catch (e: unknown) {
       setErr(String(e));
     }
-  }, []);
+  }, [refreshGovernanceCompletion]);
 
   useEffect(() => {
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- fetch roadmap on mount / when load changes */
@@ -119,6 +187,28 @@ export default function App() {
       /* ignore */
     }
   }, [splitPct]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        INHERITED_DEPS_STORAGE_KEY,
+        showInheritedDeps ? "1" : "0",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [showInheritedDeps]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        HIGHLIGHT_DEP_CHAIN_KEY,
+        highlightDepChain ? "1" : "0",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [highlightDepChain]);
 
   useEffect(() => {
     try {
@@ -148,12 +238,12 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [refreshSec, load]);
 
-  useEffect(() => {
-    setHighlightDepRowId(null);
-  }, [selectedId]);
-
   const cancelDepEdit = useCallback(() => {
     setDepEditId(null);
+    setDepDraftKeys(new Set());
+  }, []);
+
+  const clearDepDraft = useCallback(() => {
     setDepDraftKeys(new Set());
   }, []);
 
@@ -171,17 +261,10 @@ export default function App() {
     }
   }, [load, cancelDepEdit]);
 
-  useEffect(() => {
-    if (!depEditId) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        cancelDepEdit();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [depEditId, cancelDepEdit]);
+  const repoFolderLabel = useMemo(
+    () => repoRootFolderDisplayName(repo),
+    [repo],
+  );
 
   const byId = useMemo(
     () => (data ? nodesByIdFrom(data.nodes) : {}),
@@ -195,13 +278,10 @@ export default function App() {
     );
   }, [data?.nodes]);
 
-  const explicitDepRowIds = useMemo(() => {
-    if (!selectedId) return [] as string[];
-    const node = byId[selectedId];
-    if (!node) return [];
-    const keys = (node.dependencies ?? []) as string[];
-    return keys.map((k) => keyToDisplayId[k] ?? k).filter(Boolean);
-  }, [selectedId, byId, keyToDisplayId]);
+  const highlightDepRowIds = useMemo(() => {
+    if (!highlightDepChain || !selectedId) return null;
+    return transitiveEffectivePrereqIds(selectedId, byId, keyToDisplayId);
+  }, [highlightDepChain, selectedId, byId, keyToDisplayId]);
 
   const startDepEdit = useCallback(
     (nodeId: string) => {
@@ -241,6 +321,77 @@ export default function App() {
     [depEditId, byId],
   );
 
+  const sel = selectedId ? byId[selectedId] : null;
+
+  const indentDisabled =
+    !selectedId ||
+    (data?.outline_actions != null &&
+      selectedId != null &&
+      data.outline_actions[selectedId]?.can_indent === false);
+  const outdentDisabled =
+    !selectedId ||
+    (data?.outline_actions != null &&
+      selectedId != null &&
+      data.outline_actions[selectedId]?.can_outdent === false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (modalOpen) return;
+      if (settingsOpen || constitutionOpen || visionOpen) return;
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        if (target.isContentEditable) return;
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+          return;
+        }
+      }
+      if (e.key === "Escape" && depEditId) {
+        e.preventDefault();
+        cancelDepEdit();
+        return;
+      }
+      if (e.key === "Enter" && depEditId) {
+        if (target instanceof HTMLElement) {
+          const tag = target.tagName;
+          if (tag === "BUTTON" || tag === "TEXTAREA" || tag === "A") {
+            return;
+          }
+        }
+        e.preventDefault();
+        void applyDepEdit();
+        return;
+      }
+      if (e.key === "Tab" && selectedId && !depEditId) {
+        if (target instanceof HTMLElement && target.closest(".app-header")) {
+          return;
+        }
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (!outdentDisabled) {
+            void outdentNode(selectedId).then(load);
+          }
+        } else if (!indentDisabled) {
+          void indentNode(selectedId).then(load);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [
+    modalOpen,
+    settingsOpen,
+    constitutionOpen,
+    visionOpen,
+    depEditId,
+    selectedId,
+    indentDisabled,
+    outdentDisabled,
+    load,
+    cancelDepEdit,
+    applyDepEdit,
+  ]);
+
   const syncScroll = (from: "left" | "right") => {
     const L = leftRef.current;
     const R = rightRef.current;
@@ -277,147 +428,237 @@ export default function App() {
     window.addEventListener("pointerup", onUp);
   };
 
-  const sel = selectedId ? byId[selectedId] : null;
+  const addAbove = () => {
+    if (!selectedId) return;
+    const t = promptNewTaskTitle();
+    if (!t) return;
+    void addNode(selectedId, "above", t, "task")
+      .then(load)
+      .catch((e) => setErr(String(e)));
+  };
 
-  const indentDisabled =
-    !selectedId ||
-    (data?.outline_actions != null &&
-      selectedId != null &&
-      data.outline_actions[selectedId]?.can_indent === false);
-  const outdentDisabled =
-    !selectedId ||
-    (data?.outline_actions != null &&
-      selectedId != null &&
-      data.outline_actions[selectedId]?.can_outdent === false);
+  const addBelow = () => {
+    if (!selectedId) return;
+    const t = promptNewTaskTitle();
+    if (!t) return;
+    void addNode(selectedId, "below", t, "task")
+      .then(load)
+      .catch((e) => setErr(String(e)));
+  };
 
-  const toolbar = (
-    <div className="toolbar">
-      <button
-        type="button"
-        disabled={indentDisabled}
-        onClick={() => selectedId && void indentNode(selectedId).then(load)}
-      >
-        Indent
-      </button>
-      <button
-        type="button"
-        disabled={outdentDisabled}
-        onClick={() => selectedId && void outdentNode(selectedId).then(load)}
-      >
-        Outdent
-      </button>
-      <button
-        type="button"
-        disabled={!selectedId}
-        onClick={() => {
-          if (!selectedId) return;
-          const t = window.prompt("Title for new feature");
-          if (!t?.trim()) return;
-          void addNode(selectedId, "above", t.trim(), "task")
-            .then(load)
-            .catch((e) => setErr(String(e)));
-        }}
-      >
-        Add above
-      </button>
-      <button
-        type="button"
-        disabled={!selectedId}
-        onClick={() => {
-          if (!selectedId) return;
-          const t = window.prompt("Title for new feature");
-          if (!t?.trim()) return;
-          void addNode(selectedId, "below", t.trim(), "task")
-            .then(load)
-            .catch((e) => setErr(String(e)));
-        }}
-      >
-        Add below
-      </button>
-      {depEditId ? (
-        <span
-          className="toolbar-dep-mode"
-          title="Click another task row to add or remove it as a prerequisite. Clear all removes every prerequisite from the draft; Save deps writes to the roadmap."
-        >
-          <span className="toolbar-dep-label">
-            Editing dependencies for <strong>{byId[depEditId]?.id}</strong>
-            <span className="toolbar-dep-hint">
-              {" "}
-              — Click rows to toggle ·{" "}
-            </span>
-          </span>
-          <button
-            type="button"
-            disabled={depDraftKeys.size === 0}
-            onClick={() => setDepDraftKeys(new Set())}
-          >
-            Clear all
-          </button>
-          <button type="button" onClick={() => void applyDepEdit()}>
-            Save deps
-          </button>
-          <button type="button" onClick={cancelDepEdit}>
-            Cancel
-          </button>
-        </span>
-      ) : null}
-      <button type="button" onClick={() => setConstitutionOpen(true)}>
-        Constitution
-      </button>
-      <button type="button" onClick={() => setVisionOpen(true)}>
-        Vision
-      </button>
-      <button type="button" onClick={() => setSettingsOpen(true)}>
-        Settings
-      </button>
-      <label className="toolbar-inline">
-        Highlight dep row
-        <select
-          value={highlightDepRowId ?? ""}
-          onChange={(e) =>
-            setHighlightDepRowId(e.target.value || null)
-          }
-          disabled={!selectedId || explicitDepRowIds.length === 0}
-          title="Emphasize a row that is an explicit prerequisite of the selection"
-        >
-          <option value="">— None —</option>
-          {explicitDepRowIds.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="toolbar-inline">
-        Auto-refresh
-        <select
-          value={refreshSec}
-          onChange={(e) => setRefreshSec(Number(e.target.value))}
-          title="Poll roadmap files; reload when the fingerprint changes"
-        >
-          <option value={0}>Off</option>
-          <option value={5}>5 s</option>
-          <option value={10}>10 s</option>
-          <option value={15}>15 s</option>
-          <option value={30}>30 s</option>
-          <option value={60}>60 s</option>
-          <option value={120}>120 s</option>
-        </select>
-      </label>
-      <button type="button" onClick={() => void load()}>
-        Refresh
-      </button>
-    </div>
-  );
+  const onGapInsert = (referenceNodeId: string) => {
+    const t = promptNewTaskTitle();
+    if (!t) return;
+    void addNode(referenceNodeId, "above", t, "task")
+      .then(load)
+      .catch((e) => setErr(String(e)));
+  };
+
+  const onDeleteSelected = () => {
+    if (!selectedId) return;
+    const label = byId[selectedId]?.id ?? selectedId;
+    if (
+      !window.confirm(
+        `Remove task "${label}" from the roadmap? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    void deleteNode(selectedId)
+      .then(() => load())
+      .catch((e) => setErr(String(e)));
+  };
 
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>specy-road — PM Gantt</h1>
-        {toolbar}
-        {repo ? <span className="repo-path">{repo}</span> : null}
+        <div className="app-header-row1">
+          <div className="app-header-row1-left">
+            <h1 className="app-title-line">
+              <span className="app-title-core">specy-road — PM Gantt</span>
+              {repoFolderLabel ? (
+                <>
+                  <span className="repo-root-sep" aria-hidden="true">
+                    {" "}
+                    -{" "}
+                  </span>
+                  <span
+                    className="repo-root-folder"
+                    title={repo}
+                    aria-label={`Repository root: ${repo}`}
+                  >
+                    {repoFolderLabel}
+                  </span>
+                </>
+              ) : null}
+            </h1>
+          </div>
+          <button
+            type="button"
+            className="app-header-icon-btn"
+            aria-label="Settings"
+            title="Settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <IconGear />
+          </button>
+        </div>
+        <div className="app-header-row2">
+          <div className="app-header-row2-inner">
+            <div className="app-header-toolbar">
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={indentDisabled}
+                title="Indent"
+                aria-label="Indent"
+                onClick={() =>
+                  selectedId && void indentNode(selectedId).then(load)
+                }
+              >
+                <IconIndent />
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={outdentDisabled}
+                title="Outdent"
+                aria-label="Outdent"
+                onClick={() =>
+                  selectedId && void outdentNode(selectedId).then(load)
+                }
+              >
+                <IconOutdent />
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={!selectedId}
+                title="Add task above selection"
+                aria-label="Add task above selection"
+                onClick={addAbove}
+              >
+                <IconRowAbove />
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={!selectedId}
+                title="Add task below selection"
+                aria-label="Add task below selection"
+                onClick={addBelow}
+              >
+                <IconRowBelow />
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn toolbar-icon-btn-danger"
+                disabled={!selectedId}
+                title="Delete selected row"
+                aria-label="Delete selected row"
+                onClick={onDeleteSelected}
+              >
+                <IconTrash />
+              </button>
+            </div>
+            <div className="app-header-docs-row">
+              <div className="app-header-doc-slot">
+                <div
+                  className={
+                    govCompletion?.vision
+                      ? "app-header-doc-tooltip app-header-doc-tooltip--incomplete"
+                      : "app-header-doc-tooltip"
+                  }
+                >
+                  <button
+                    type="button"
+                    className={
+                      govCompletion?.vision
+                        ? "app-header-doc-btn app-header-doc-btn--incomplete"
+                        : "app-header-doc-btn"
+                    }
+                    aria-describedby={
+                      govCompletion?.vision ? "gov-tip-vision" : undefined
+                    }
+                    onClick={() => setVisionOpen(true)}
+                  >
+                    Vision
+                  </button>
+                  {govCompletion?.vision ? (
+                    <div
+                      id="gov-tip-vision"
+                      role="tooltip"
+                      className="app-header-doc-tip"
+                    >
+                      Needs completion — replace the starter text in{" "}
+                      <code>vision.md</code> with your product vision.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="app-header-doc-slot">
+                <div
+                  className={
+                    govCompletion?.constitution
+                      ? "app-header-doc-tooltip app-header-doc-tooltip--incomplete"
+                      : "app-header-doc-tooltip"
+                  }
+                >
+                  <button
+                    type="button"
+                    className={
+                      govCompletion?.constitution
+                        ? "app-header-doc-btn app-header-doc-btn--incomplete"
+                        : "app-header-doc-btn"
+                    }
+                    aria-describedby={
+                      govCompletion?.constitution
+                        ? "gov-tip-constitution"
+                        : undefined
+                    }
+                    onClick={() => setConstitutionOpen(true)}
+                  >
+                    Constitution
+                  </button>
+                  {govCompletion?.constitution ? (
+                    <div
+                      id="gov-tip-constitution"
+                      role="tooltip"
+                      className="app-header-doc-tip"
+                    >
+                      Needs completion — customize{" "}
+                      <code>purpose.md</code> and <code>principles.md</code>{" "}
+                      beyond the scaffold templates.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
+                  onClick={() => setSharedDocsOpen(true)}
+                >
+                  Shared docs
+                </button>
+              </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
+                  onClick={() => setWorkNotesOpen(true)}
+                >
+                  Session notes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </header>
-      {err ? <p style={{ padding: "0 0.75rem", color: "crimson" }}>{err}</p> : null}
+      {err ? (
+        <p style={{ padding: "0 0.75rem", color: "crimson" }}>{err}</p>
+      ) : null}
       {data ? (
         <div className="split" ref={splitRef}>
           <div
@@ -439,12 +680,16 @@ export default function App() {
               depDraftKeys={depDraftKeys}
               onToggleDepCandidate={toggleDepCandidate}
               onDepCellActivate={onDepCellActivate}
+              onApplyDepEdit={() => void applyDepEdit()}
+              onCancelDepEdit={cancelDepEdit}
+              onClearDepDraft={clearDepDraft}
               onSelect={setSelectedId}
               onDoubleClick={(id) => {
                 setSelectedId(id);
                 setModalOpen(true);
               }}
               onReordered={load}
+              onGapInsert={onGapInsert}
             />
           </div>
           <div
@@ -463,9 +708,11 @@ export default function App() {
               orderedIds={data.ordered_ids}
               nodesById={byId}
               depths={data.dependency_depths}
+              spans={data.dependency_spans}
               edges={data.edges}
+              showInheritedEdges={showInheritedDeps}
               selectedId={selectedId}
-              highlightRowId={highlightDepRowId}
+              highlightRowIds={highlightDepRowIds}
               onSelect={setSelectedId}
               onChartBackgroundMouseDown={
                 depEditId ? () => void applyDepEdit() : undefined
@@ -489,15 +736,36 @@ export default function App() {
       ) : null}
       <ConstitutionDrawer
         open={constitutionOpen}
-        onClose={() => setConstitutionOpen(false)}
+        onClose={() => {
+          setConstitutionOpen(false);
+          void refreshGovernanceCompletion();
+        }}
       />
       <VisionDrawer
         open={visionOpen}
-        onClose={() => setVisionOpen(false)}
+        onClose={() => {
+          setVisionOpen(false);
+          void refreshGovernanceCompletion();
+        }}
+      />
+      <SharedDocsDrawer
+        open={sharedDocsOpen}
+        onClose={() => setSharedDocsOpen(false)}
+      />
+      <WorkNotesDrawer
+        open={workNotesOpen}
+        onClose={() => setWorkNotesOpen(false)}
       />
       <SettingsDrawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        highlightDepChain={highlightDepChain}
+        onHighlightDepChainChange={setHighlightDepChain}
+        showInheritedDeps={showInheritedDeps}
+        onShowInheritedDepsChange={setShowInheritedDeps}
+        refreshSec={refreshSec}
+        onRefreshSecChange={setRefreshSec}
+        onRefreshRoadmap={() => void load()}
       />
     </div>
   );

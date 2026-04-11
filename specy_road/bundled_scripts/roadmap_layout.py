@@ -29,28 +29,99 @@ def effective_dependency_keys(nodes: list[dict]) -> dict[str, set[str]]:
     return eff
 
 
-def compute_depths(nodes: list[dict]) -> dict[str, int]:
-    """Dependency step depth using effective (inherited) dependencies; keyed by display ``id``."""
-    eff = effective_dependency_keys(nodes)
-    memo: dict[str, int] = {}
+_MAX_DEP_STEP_ITERS = 1000
 
-    def depth(nk: str) -> int:
-        if nk in memo:
-            return memo[nk]
-        deps = eff.get(nk, set())
-        if not deps:
-            memo[nk] = 0
-            return 0
-        d = 1 + max(depth(x) for x in deps)
-        memo[nk] = d
-        return d
 
-    out: dict[str, int] = {}
+def _outline_children_map(nodes: list[dict]) -> dict[str | None, list[str]]:
+    by_id = {n["id"]: n for n in nodes}
+    children: dict[str | None, list[str]] = {}
     for n in nodes:
-        nk = n.get("node_key")
-        if nk:
-            out[n["id"]] = depth(nk)
-    return out
+        pid = n.get("parent_id")
+        if pid is not None and pid not in by_id:
+            pid = None
+        children.setdefault(pid, []).append(n["id"])
+    for lst in children.values():
+        lst.sort(key=lambda nid: sibling_sort_key(nid, by_id))
+    return children
+
+
+def _outline_post_order_ids(nodes: list[dict]) -> list[str]:
+    """Outline post-order (children before parent); orphans appended like ``ordered_tree_rows``."""
+    children = _outline_children_map(nodes)
+    by_id = {n["id"]: n for n in nodes}
+    post: list[str] = []
+
+    def dfs(nid: str) -> None:
+        for cid in children.get(nid, []):
+            dfs(cid)
+        post.append(nid)
+
+    for rid in children.get(None, []):
+        dfs(rid)
+    placed = set(post)
+    for n in sorted(nodes, key=lambda x: x["id"]):
+        if n["id"] not in placed:
+            post.append(n["id"])
+    return post
+
+
+def compute_dependency_steps(
+    nodes: list[dict],
+) -> tuple[dict[str, int], dict[str, int]]:
+    """
+    Dependency **start** step (0-based) and **span** (integer steps, ≥ 1) per display ``id``.
+
+    * **Finish-to-start:** a node starts at ``max(end(dependency))`` over effective deps
+      (same inheritance as ``effective_dependency_keys``).
+    * **Outline rollup:** ``end = max(start + 1, max(end(child)))`` for direct outline children,
+      post-order so children are finalized first.
+    * Values converge by fixed-point iteration (valid roadmaps are DAGs; cap for safety).
+    """
+    eff = effective_dependency_keys(nodes)
+    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
+    by_id = {n["id"]: n for n in nodes}
+    ids_with_key = {n["id"] for n in nodes if n.get("node_key")}
+    children = _outline_children_map(nodes)
+    post_order = [nid for nid in _outline_post_order_ids(nodes) if nid in ids_with_key]
+
+    start: dict[str, int] = {i: 0 for i in ids_with_key}
+    end: dict[str, int] = {i: 0 for i in ids_with_key}
+
+    for _ in range(_MAX_DEP_STEP_ITERS):
+        prev_s = start.copy()
+        prev_e = end.copy()
+        for nid in ids_with_key:
+            n = by_id[nid]
+            nk = n.get("node_key")
+            if not nk:
+                continue
+            dep_ids = [key_to_id[d] for d in eff.get(nk, set()) if d in key_to_id]
+            if not dep_ids:
+                start[nid] = 0
+            else:
+                start[nid] = max(prev_e.get(did, 0) for did in dep_ids)
+        for nid in post_order:
+            n = by_id[nid]
+            nk = n.get("node_key")
+            if not nk:
+                continue
+            chs = [c for c in children.get(nid, []) if c in ids_with_key]
+            base = start[nid] + 1
+            if chs:
+                end[nid] = max(base, max(end.get(c, 0) for c in chs))
+            else:
+                end[nid] = base
+        if start == prev_s and end == prev_e:
+            break
+
+    span = {nid: max(1, end[nid] - start[nid]) for nid in start}
+    return start, span
+
+
+def compute_depths(nodes: list[dict]) -> dict[str, int]:
+    """0-based dependency **start** step (finish-to-start + outline rollup); keyed by display ``id``."""
+    starts, _ = compute_dependency_steps(nodes)
+    return starts
 
 
 def sibling_sort_key(nid: str, by_id: dict[str, dict]) -> tuple[int, str]:

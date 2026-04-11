@@ -20,34 +20,52 @@ type Props = {
   orderedIds: string[];
   nodesById: Record<string, RoadmapNode>;
   depths: Record<string, number>;
+  /** Steps spanned per row (default 1 when missing). */
+  spans?: Record<string, number>;
   edges: { from: string; to: string; kind?: "explicit" | "inherited" }[];
+  /** When false, omit dashed edges (inherited-from-ancestor deps). Default true. */
+  showInheritedEdges?: boolean;
   selectedId: string | null;
-  /** Optional row to emphasize (e.g. explicit dependency of the selection). */
-  highlightRowId?: string | null;
+  /** Rows to emphasize: full transitive prerequisite closure (explicit + inherited-from-ancestor deps). */
+  highlightRowIds?: ReadonlySet<string> | null;
   onSelect: (id: string) => void;
   /** Clicks on empty chart area (not bars) save dependency edit when active. */
   onChartBackgroundMouseDown?: () => void;
 };
 
+/**
+ * Bar width: one step uses the guttered fraction. Multi-step rows span full
+ * columns between first and last step, then one leaf-width so the **right edge**
+ * lines up with the last child’s bar (same as a leaf at start + span − 1).
+ */
+function barWidthPx(span: number): number {
+  const s = Math.max(1, span);
+  if (s <= 1) return BAR_FR * UNIT;
+  return (s - 1) * UNIT + BAR_FR * UNIT;
+}
+
 export function GanttPane({
   orderedIds,
   nodesById,
   depths,
+  spans = {},
   edges,
+  showInheritedEdges = true,
   selectedId,
-  highlightRowId = null,
+  highlightRowIds = null,
   onSelect,
   onChartBackgroundMouseDown,
 }: Props) {
   const n = orderedIds.length;
   if (n === 0) return null;
 
-  let maxD = 0;
+  let maxExtent = 0;
   for (const id of orderedIds) {
-    const d = depths[id] ?? 0;
-    if (d > maxD) maxD = d;
+    const start = depths[id] ?? 0;
+    const span = spans[id] ?? 1;
+    maxExtent = Math.max(maxExtent, start + span);
   }
-  const colCount = maxD + 3;
+  const colCount = maxExtent + 2;
   const chartW = PAD_L + colCount * UNIT + 16;
   const svgH = n * ROW_H + 36;
 
@@ -56,7 +74,9 @@ export function GanttPane({
     rowOf[id] = i;
   });
 
-  const barW = BAR_FR * UNIT;
+  const visibleEdges = showInheritedEdges
+    ? edges
+    : edges.filter((e) => e.kind !== "inherited");
 
   return (
     <svg
@@ -97,7 +117,9 @@ export function GanttPane({
         fill="var(--muted)"
         pointerEvents="none"
       >
-        Solid = explicit dep · Dashed = inherited
+        {showInheritedEdges
+          ? "Solid = explicit dep · Dashed = inherited"
+          : "Solid = explicit dependency"}
       </text>
       {Array.from({ length: colCount }, (_, c) => (
         <g key={c} pointerEvents="none">
@@ -141,9 +163,9 @@ export function GanttPane({
           pointerEvents="none"
         />
       ))}
-      {highlightRowId
+      {highlightRowIds && highlightRowIds.size > 0
         ? orderedIds.map((id, i) => {
-            if (id !== highlightRowId) return null;
+            if (!highlightRowIds.has(id)) return null;
             const y = 36 + i * ROW_H;
             return (
               <rect
@@ -162,16 +184,19 @@ export function GanttPane({
       {orderedIds.map((id, i) => {
         const node = nodesById[id];
         const d = depths[id] ?? 0;
+        const span = spans[id] ?? 1;
+        const bw = barWidthPx(span);
         const y = 36 + i * ROW_H;
         const x = PAD_L + d * UNIT;
         const sel = selectedId === id;
-        const hi = highlightRowId === id && !sel;
+        const hi =
+          Boolean(highlightRowIds?.has(id)) && !sel;
         return (
           <rect
             key={`bar-${id}`}
             x={x}
             y={y + 6}
-            width={barW}
+            width={bw}
             height={ROW_H - 12}
             rx={3}
             fill={
@@ -189,13 +214,14 @@ export function GanttPane({
           />
         );
       })}
-      {edges.map(({ from: dep, to: tgt, kind }) => {
+      {visibleEdges.map(({ from: dep, to: tgt, kind }) => {
         const yi = rowOf[dep];
         const yj = rowOf[tgt];
         if (yi === undefined || yj === undefined) return null;
         const d0 = depths[dep] ?? 0;
         const d1 = depths[tgt] ?? 0;
-        const x0 = PAD_L + d0 * UNIT + barW;
+        const w0 = barWidthPx(spans[dep] ?? 1);
+        const x0 = PAD_L + d0 * UNIT + w0;
         const x1 = PAD_L + d1 * UNIT;
         const cy0 = 36 + yi * ROW_H + ROW_H / 2;
         const cy1 = 36 + yj * ROW_H + ROW_H / 2;

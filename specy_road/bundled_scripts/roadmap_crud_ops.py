@@ -314,6 +314,25 @@ def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
     return True, ""
 
 
+def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
+    """Remove a node from its JSON chunk. Raises ``ValueError`` if not found or not removable."""
+    chunk = find_chunk_path(root, node_id)
+    if not chunk:
+        raise ValueError(f"no chunk contains node {node_id!r}")
+    if chunk.suffix.lower() != ".json":
+        raise ValueError(f"unsupported chunk type {chunk.suffix}")
+    nodes = load_json_chunk(chunk)
+    idx = node_index_in_chunk(nodes, node_id)
+    if idx is None:
+        raise ValueError(f"node {node_id!r} not found")
+    ok, msg = can_hard_remove(root, node_id)
+    if not ok:
+        raise ValueError(msg)
+    del nodes[idx]
+    write_json_chunk(chunk, nodes)
+    run_validate_raise(root)
+
+
 def _archive_apply(
     nodes: list,
     idx: int,
@@ -340,6 +359,14 @@ def _archive_apply(
 def cmd_archive(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
+    if args.hard_remove:
+        try:
+            delete_roadmap_node_hard(root, nid)
+        except ValueError as e:
+            print(f"error: {e}", file=sys.stderr)
+            raise SystemExit(1) from e
+        print(f"[ok] removed {nid}")
+        return
     chunk = find_chunk_path(root, nid)
     if not chunk:
         print(f"error: no chunk contains node {nid!r}", file=sys.stderr)
@@ -350,7 +377,7 @@ def cmd_archive(args: object) -> None:
         if idx is None:
             print(f"error: node {nid!r} not found", file=sys.stderr)
             raise SystemExit(1)
-        _archive_apply(nodes, idx, nid, chunk, root, hard_remove=args.hard_remove)
+        _archive_apply(nodes, idx, nid, chunk, root, hard_remove=False)
         write_json_chunk(chunk, nodes)
         run_validate(root)
         return

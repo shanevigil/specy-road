@@ -34,7 +34,10 @@ export type RoadmapResponse = {
   /** Registry entry keyed by display node id (when present). */
   registry_by_node?: Record<string, Record<string, unknown>>;
   tree: { id: string; outline_depth: number; row_index: number }[];
+  /** 0-based dependency step index where the bar starts (finish-to-start + rollup). */
   dependency_depths: Record<string, number>;
+  /** Number of dependency steps spanned (≥ 1); parents extend over children. */
+  dependency_spans: Record<string, number>;
   edges: DependencyEdge[];
   ordered_ids: string[];
   row_depths: number[];
