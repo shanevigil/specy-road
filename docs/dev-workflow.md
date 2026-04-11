@@ -58,10 +58,10 @@ incrementally.
 Use the manual path when you want to pick a specific node rather than taking the next
 available one, or when you need finer control over the registry entry.
 
-1. Find a node in [`roadmap.md`](../roadmap.md) where `execution_milestone` is
+1. Find a node in the generated `roadmap.md` at your **application** project root where `execution_milestone` is
    `Agentic-led` or `Mixed`, `status` is `Not Started`, and all `dependencies` are
-   `Complete`.
-2. Confirm it is not claimed in [`roadmap/registry.yaml`](../roadmap/registry.yaml).
+   `Complete`. (Worked example in this repo: [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) under the dogfood fixture.)
+2. Confirm it is not claimed in `roadmap/registry.yaml`. (Example: [`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) in the dogfood fixture.)
 3. Branch and register:
 
 **Terminal / IDE (`/specyrd-claim`):**

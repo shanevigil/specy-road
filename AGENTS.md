@@ -2,6 +2,8 @@
 
 **This file is for contributors working on the `specy-road` package.** If you are building an **application** with specy-road, use the `AGENTS.md` created by `specy-road init project` in your repo instead.
 
+Root `constitution/` here describes the **toolkit**; consumer application repos get their own scaffold from `specy-road init project` (see [`specy_road/templates/project/`](specy_road/templates/project/)).
+
 ## Load order (keep context small)
 
 1. [`constitution/purpose.md`](constitution/purpose.md) — if present at repo root; else see template under [`specy_road/templates/project/`](specy_road/templates/project/)

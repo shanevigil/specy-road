@@ -10,12 +10,12 @@ This document is product-agnostic. Adapt branch names (`main` / `dev`) to your o
 | Non-roadmap fix | `fix/<slug>` | `fix/validator-path` |
 | Non-roadmap feature | `feature/<slug>` | `feature/docs-index` |
 
-`<codename>` must match the milestone codename in the roadmap graph (chunk files under [`roadmap/`](../roadmap/); see [`manifest.json`](../roadmap/manifest.json)) — kebab-case, globally unique.
+`<codename>` must match the milestone codename in the roadmap graph (JSON chunks under `roadmap/`; see [`roadmap/manifest.json`](../specy_road/templates/project/roadmap/manifest.json) in a scaffolded project) — kebab-case, globally unique.
 
 ## Before implementation
 
 1. Confirm **gates** and dependencies for your milestone (see root/index or generated tables).
-2. Read [`roadmap/registry.yaml`](../roadmap/registry.yaml) — no overlapping **touch zones** with active entries (coordinate with PM / integration lead if unsure).
+2. Read `roadmap/registry.yaml` in your application repository — no overlapping **touch zones** with active entries (coordinate with PM / integration lead if unsure). Example layout: [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml). Maintainers working on this toolkit use the dogfood copy: [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml).
 3. Create branch from your integration branch (e.g. `dev`): `git checkout -b feature/rm-<codename>`.
 
 ## First-commit registration (mandatory)

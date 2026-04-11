@@ -4,11 +4,11 @@ This document is for **humans and coding agents** adopting or working on specy-r
 
 ## What specy-road is opinionated about
 
-- **Roadmap-first evolution** — The graph under [`roadmap/`](../roadmap/) (`manifest.json` + ordered **JSON** chunk files) is canonical: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
-- **Separation of concerns** — [`constitution/`](../constitution/) holds purpose and principles (human judgment). [`constraints/`](../constraints/) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
-- **Contracts over tribal knowledge** — [`shared/`](../shared/) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
-- **Multi-agent safety** — [`roadmap/registry.yaml`](../roadmap/registry.yaml) plus touch zones and first-commit registration ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
-- **Planning as narrative spine** — **Phase and milestone** nodes must set [`planning_dir`](../planning/README.md) so [`planning/<node-id>/`](../planning/README.md) holds overview → plan → tasks **as files in the repo** (the “meat” of feature stories). Session scratch and generated briefs may still live under [`work/`](../work/).
+- **Roadmap-first evolution** — The graph under `roadmap/` ([`manifest.json`](../specy_road/templates/project/roadmap/manifest.json) + ordered **JSON** chunk files) is canonical: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
+- **Separation of concerns** — [`constitution/`](../specy_road/templates/project/constitution/purpose.md) holds purpose and principles (human judgment). [`constraints/`](../specy_road/templates/project/constraints/README.md) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
+- **Contracts over tribal knowledge** — [`shared/`](../specy_road/templates/project/shared/README.md) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
+- **Multi-agent safety** — [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml) plus touch zones and first-commit registration ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
+- **Planning as narrative spine** — **Phase and milestone** nodes must set `planning_dir` so [`planning/<node-id>/`](../specy_road/templates/project/planning/README.md) holds overview → plan → tasks **as files in the repo** (the “meat” of feature stories). Session scratch and generated briefs may still live under [`work/`](../specy_road/templates/project/work/README.md).
 
 ## What specy-road does not prescribe
 
@@ -26,14 +26,16 @@ Optional patterns for teams that *want* IDE rules, `CLAUDE.md`, MCP servers, or 
 
 ## Agent load order (keep context small)
 
-Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md)):
+Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md); consumer scaffold paths match [`specy-road init project`](../README.md#new-project-consumer)):
 
-1. [`constitution/purpose.md`](../constitution/purpose.md)
-2. [`constitution/principles.md`](../constitution/principles.md)
-3. [`constraints/README.md`](../constraints/README.md)
-4. Merged roadmap graph ([`roadmap/manifest.json`](../roadmap/manifest.json) + `includes` chunk files) — **your node** plus parents and `dependencies` only
-5. **[`planning/<node-id>/`](../planning/README.md)** for that node when it is a phase or milestone (`planning_dir`) — **overview.md**, **plan.md**, and optional **tasks** files
-6. [`shared/README.md`](../shared/README.md) — then open **only** contract files cited for the task
+1. [`constitution/purpose.md`](../specy_road/templates/project/constitution/purpose.md)
+2. [`constitution/principles.md`](../specy_road/templates/project/constitution/principles.md)
+3. [`constraints/README.md`](../specy_road/templates/project/constraints/README.md)
+4. Merged roadmap graph ([`roadmap/manifest.json`](../specy_road/templates/project/roadmap/manifest.json) + `includes` chunk files) — **your node** plus parents and `dependencies` only
+5. **[`planning/<node-id>/`](../specy_road/templates/project/planning/README.md)** for that node when it is a phase or milestone (`planning_dir`) — **overview.md**, **plan.md**, and optional **tasks** files
+6. [`shared/README.md`](../specy_road/templates/project/shared/README.md) — then open **only** contract files cited for the task
+
+Contributors working on the **specy-road toolkit** repository follow the load order in [`AGENTS.md`](../AGENTS.md) (root `constitution/` when present, toolkit [`constraints/`](../constraints/README.md), and the dogfood graph under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/)).
 
 For a focused slice:
 

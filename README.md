@@ -56,6 +56,8 @@ specy-road file-limits
 pytest
 ```
 
+**Trying `specy-road init project`:** With no path, the CLI resolves the git worktree root — in this repository that would write consumer layout files into the **toolkit** tree. Prefer an explicit target directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [`playground/`](playground/README.md) directory documented there.
+
 Optional git hooks: `pip install pre-commit && pre-commit install` (same checks as CI).
 
 ## specyrd (optional IDE command stubs)

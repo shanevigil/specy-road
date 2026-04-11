@@ -3,6 +3,11 @@
 !/work/.gitkeep
 !/work/README.md
 
+# Throwaway consumer scaffold trials (see playground/README.md)
+/playground/*
+!/playground/.gitkeep
+!/playground/README.md
+
 # Python
 __pycache__/
 *.py[cod]

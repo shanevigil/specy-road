@@ -63,7 +63,7 @@ Keep the graph **logically split** across multiple files under `roadmap/` so eac
 - **`version`** — integer (schema expects `1`).
 - **`includes`** — ordered list of chunk paths relative to `roadmap/` (e.g. `phases/M0.json`, `phases/M1.json`).
 
-Validated by [`schemas/manifest.schema.json`](../schemas/manifest.schema.json). Do not add a top-level `nodes` key to the manifest — nodes live only in chunk files.
+Validated by [`schemas/manifest.schema.json`](../tests/fixtures/specy_road_dogfood/schemas/manifest.schema.json). Do not add a top-level `nodes` key to the manifest — nodes live only in chunk files.
 
 **PM ordering:** `includes` order controls **merge order** when building the graph (and narrative flow in tools). **Execution order** is still driven by each node’s `dependencies` and `status`, not by chunk order alone.
 
@@ -86,9 +86,9 @@ Recommended on-disk shape (stable key order when tools save):
 }
 ```
 
-The loader also accepts a top-level JSON **array** of node objects, or a single object with an `id`. Validation uses [`schemas/roadmap.schema.json`](../schemas/roadmap.schema.json) on the **merged** graph.
+The loader also accepts a top-level JSON **array** of node objects, or a single object with an `id`. Validation uses [`schemas/roadmap.schema.json`](../tests/fixtures/specy_road_dogfood/schemas/roadmap.schema.json) on the **merged** graph.
 
-Use the `notes` field (markdown string) for short context in the graph. **Phase and milestone** nodes must set **`planning_dir`**; the feature narrative (overview, plan, optional tasks) belongs in [`planning/<node-id>/`](../planning/README.md) Markdown — see [`planning/README.md`](../planning/README.md).
+Use the `notes` field (markdown string) for short context in the graph. **Phase and milestone** nodes must set **`planning_dir`**; the feature narrative (overview, plan, optional tasks) belongs in `planning/<node-id>/` Markdown — see [`planning/README.md`](../tests/fixtures/specy_road_dogfood/planning/README.md).
 
 ### Line-count policy (~500)
 
@@ -105,7 +105,7 @@ Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load
 
 ### Display `id` vs stable `node_key`
 
-Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../schemas/roadmap.schema.json)):
+Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../tests/fixtures/specy_road_dogfood/schemas/roadmap.schema.json)):
 
 | | `node_key` | `id` |
 |---|------------|------|
@@ -130,7 +130,7 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 
 | Field | Description |
 |-------|-------------|
-| `planning_dir` | Repo-relative directory (e.g. `planning/M1.1`) containing **overview.md** and **plan.md** — the feature narrative. Validated by `validate_roadmap.py`. See [`planning/README.md`](../planning/README.md). |
+| `planning_dir` | Repo-relative directory (e.g. `planning/M1.1`) containing **overview.md** and **plan.md** — the feature narrative. Validated by `validate_roadmap.py`. See [`planning/README.md`](../tests/fixtures/specy_road_dogfood/planning/README.md). |
 
 ### Commonly used optional fields
 

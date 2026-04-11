@@ -13,7 +13,7 @@ planning/<node-id>/
 
 Example: `planning/M1.1/` for milestone `M1.1`. Validation (`specy-road validate`) requires **`overview.md`** and **`plan.md`** for every `planning_dir`. **`tasks.md`** is optional; if present it must start with YAML frontmatter `node_id: <owner-node-id>`. Optional **`tasks/**/*.md`** per sub-task each need frontmatter `node_id: <that-task-id>` (must be the owner id or a descendant id). Orphan files under `planning/**/tasks/` without a matching `planning_dir` on any node fail validation.
 
-**Ids:** Folder names and YAML `node_id` use the roadmap **display `id`** (e.g. `M1.1`). The graph’s `dependencies` field uses **`node_key` UUIDs** — see [Node fields reference](../docs/roadmap-authoring.md#display-id-vs-stable-node_key) in `docs/roadmap-authoring.md`.
+**Ids:** Folder names and YAML `node_id` use the roadmap **display `id`** (e.g. `M1.1`). The graph’s `dependencies` field uses **`node_key` UUIDs** — see [Node fields reference](../../../../docs/roadmap-authoring.md#display-id-vs-stable-node_key).
 
 ## Relationship to the roadmap graph
 

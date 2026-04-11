@@ -99,6 +99,17 @@ The init npm step does **not** start the Vite dev server (port 5173). A first `n
 
 ---
 
+## Trying `specy-road init project` safely
+
+`specy-road init project` with no path argument uses the current git worktree root. In **this** repository, that would drop consumer `roadmap/`, `AGENTS.md`, and related files next to `pyproject.toml`, which is usually wrong for day-to-day toolkit work.
+
+- Use an **explicit directory**: `specy-road init project /tmp/specy-consumer-sandbox` (then `specy-road validate --repo-root /tmp/specy-consumer-sandbox`).
+- Or run against the repo’s gitignored **[`playground/`](../playground/README.md)** after reading that folder’s README.
+
+Automated tests use temporary directories; interactive or GUI checks can use the options above.
+
+---
+
 ## CI
 
 GitHub Actions runs the full validation suite on every push and PR to `main`/`dev`:
