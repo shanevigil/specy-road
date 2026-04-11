@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   addNode,
   deleteNode,
@@ -9,6 +16,12 @@ import {
   outdentNode,
   patchNode,
 } from "./api";
+import {
+  computeSpawnRect,
+  computeTileRects,
+  sortOpenIdsByDependencyOrder,
+} from "./editModalLayout";
+import type { ModalRect } from "./modalRect";
 import type { RoadmapNode, RoadmapResponse } from "./types";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GanttPane } from "./components/GanttPane";
@@ -23,6 +36,7 @@ import {
   IconGear,
   IconIndent,
   IconOutdent,
+  IconPencil,
   IconRowAbove,
   IconRowBelow,
   IconTrash,
@@ -55,7 +69,29 @@ export default function App() {
   const [repo, setRepo] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  /** Node ids with an open edit dialog (order = stack; last is topmost). */
+  const [editOpenIds, setEditOpenIds] = useState<string[]>([]);
+  /** Which task dialog is focused (accent title bar, receives new-dialog offset anchor). */
+  const [focusedEditNodeId, setFocusedEditNodeId] = useState<string | null>(
+    null,
+  );
+  /** One-time initial rect for a newly opened dialog (stacked offset). */
+  const [spawnRects, setSpawnRects] = useState<Record<string, ModalRect>>({});
+  /** Tile open task dialogs left-to-right by dependency order. */
+  const [editTileMode, setEditTileMode] = useState(false);
+  const [tileRects, setTileRects] = useState<Record<string, ModalRect> | null>(
+    null,
+  );
+  const [resumeAfterUntile, setResumeAfterUntile] = useState<Record<
+    string,
+    ModalRect
+  > | null>(null);
+  const editRectsRef = useRef<Record<string, ModalRect>>({});
+  const focusedEditNodeIdRef = useRef<string | null>(null);
+  const headerBottomRef = useRef(0);
+  const preTileRectsRef = useRef<Record<string, ModalRect>>({});
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerBottomPx, setHeaderBottomPx] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
@@ -77,7 +113,7 @@ export default function App() {
     } catch {
       /* ignore */
     }
-    return 0;
+    return 5;
   });
 
   const lastFingerprintRef = useRef<number | null>(null);
@@ -137,6 +173,22 @@ export default function App() {
   useEffect(() => {
     depEditIdRef.current = depEditId;
   }, [depEditId]);
+  useEffect(() => {
+    focusedEditNodeIdRef.current = focusedEditNodeId;
+  }, [focusedEditNodeId]);
+  useEffect(() => {
+    headerBottomRef.current = headerBottomPx;
+  }, [headerBottomPx]);
+
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => setHeaderBottomPx(el.getBoundingClientRect().bottom);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const refreshGovernanceCompletion = useCallback(async () => {
     try {
@@ -321,7 +373,100 @@ export default function App() {
     [depEditId, byId],
   );
 
-  const sel = selectedId ? byId[selectedId] : null;
+  const handleEditRectCommit = useCallback((nodeId: string, r: ModalRect) => {
+    editRectsRef.current[nodeId] = r;
+    setSpawnRects((s) => {
+      if (!(nodeId in s)) return s;
+      const { [nodeId]: _removed, ...rest } = s;
+      return rest;
+    });
+  }, []);
+
+  const openEditNode = useCallback((id: string) => {
+    setEditOpenIds((prev) => {
+      const wasNew = !prev.includes(id);
+      const next = prev.includes(id)
+        ? [...prev.filter((x) => x !== id), id]
+        : [...prev, id];
+      if (wasNew) {
+        const anchorId =
+          focusedEditNodeIdRef.current ?? prev[prev.length - 1] ?? null;
+        const anchorRect = anchorId
+          ? editRectsRef.current[anchorId]
+          : undefined;
+        const spawn = computeSpawnRect(anchorRect, headerBottomRef.current);
+        setSpawnRects((s) => ({ ...s, [id]: spawn }));
+      }
+      return next;
+    });
+    setFocusedEditNodeId(id);
+  }, []);
+
+  const focusEditNode = useCallback((id: string) => {
+    setFocusedEditNodeId(id);
+    setEditOpenIds((prev) =>
+      prev.includes(id) ? [...prev.filter((x) => x !== id), id] : prev,
+    );
+  }, []);
+
+  const closeEditNode = useCallback((id: string) => {
+    setEditOpenIds((prev) => prev.filter((x) => x !== id));
+    delete editRectsRef.current[id];
+    setSpawnRects((s) => {
+      if (!(id in s)) return s;
+      const { [id]: _r, ...rest } = s;
+      return rest;
+    });
+  }, []);
+
+  const toggleTileLayout = useCallback(() => {
+    if (!data || editOpenIds.length === 0) return;
+    if (!editTileMode) {
+      preTileRectsRef.current = { ...editRectsRef.current };
+      const sorted = sortOpenIdsByDependencyOrder(
+        editOpenIds,
+        byId,
+        data.ordered_ids,
+      );
+      setTileRects(computeTileRects(sorted, headerBottomPx));
+      setEditTileMode(true);
+    } else {
+      setResumeAfterUntile({ ...preTileRectsRef.current });
+      setEditTileMode(false);
+      setTileRects(null);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setResumeAfterUntile(null));
+      });
+    }
+  }, [data, editOpenIds, byId, editTileMode, headerBottomPx]);
+
+  useEffect(() => {
+    if (
+      focusedEditNodeId != null &&
+      !editOpenIds.includes(focusedEditNodeId)
+    ) {
+      setFocusedEditNodeId(
+        editOpenIds.length ? editOpenIds[editOpenIds.length - 1]! : null,
+      );
+    }
+  }, [editOpenIds, focusedEditNodeId]);
+
+  useEffect(() => {
+    if (editOpenIds.length === 0 && editTileMode) {
+      setEditTileMode(false);
+      setTileRects(null);
+    }
+  }, [editOpenIds.length, editTileMode]);
+
+  useEffect(() => {
+    if (!editTileMode || !data || editOpenIds.length === 0) return;
+    const sorted = sortOpenIdsByDependencyOrder(
+      editOpenIds,
+      byId,
+      data.ordered_ids,
+    );
+    setTileRects(computeTileRects(sorted, headerBottomPx));
+  }, [editTileMode, data, editOpenIds, byId, headerBottomPx]);
 
   const indentDisabled =
     !selectedId ||
@@ -336,7 +481,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (modalOpen) return;
+      if (editOpenIds.length > 0) return;
       if (settingsOpen || constitutionOpen || visionOpen) return;
       const target = e.target;
       if (target instanceof HTMLElement) {
@@ -379,7 +524,7 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [
-    modalOpen,
+    editOpenIds.length,
     settingsOpen,
     constitutionOpen,
     visionOpen,
@@ -472,7 +617,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
+      <header ref={headerRef} className="app-header">
         <div className="app-header-row1">
           <div className="app-header-row1-left">
             <h1 className="app-title-line">
@@ -494,19 +639,52 @@ export default function App() {
               ) : null}
             </h1>
           </div>
-          <button
-            type="button"
-            className="app-header-icon-btn"
-            aria-label="Settings"
-            title="Settings"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <IconGear />
-          </button>
+          <div className="app-header-row1-actions">
+            {editOpenIds.length > 0 ? (
+              <button
+                type="button"
+                className="app-header-icon-btn app-header-tile-btn"
+                aria-pressed={editTileMode}
+                title={
+                  editTileMode
+                    ? "Restore task dialogs to their positions before tiling"
+                    : "Tile open task dialogs by dependency, left to right"
+                }
+                aria-label={
+                  editTileMode ? "Untile task dialogs" : "Tile task dialogs"
+                }
+                onClick={() => toggleTileLayout()}
+              >
+                Tile
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="app-header-icon-btn"
+              aria-label="Settings"
+              title="Settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <IconGear />
+            </button>
+          </div>
         </div>
         <div className="app-header-row2">
           <div className="app-header-row2-inner">
             <div className="app-header-toolbar">
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={!selectedId}
+                title="Edit selected task"
+                aria-label="Edit selected task"
+                onClick={() => {
+                  if (!selectedId) return;
+                  openEditNode(selectedId);
+                }}
+              >
+                <IconPencil />
+              </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
@@ -686,7 +864,7 @@ export default function App() {
               onSelect={setSelectedId}
               onDoubleClick={(id) => {
                 setSelectedId(id);
-                setModalOpen(true);
+                openEditNode(id);
               }}
               onReordered={load}
               onGapInsert={onGapInsert}
@@ -723,17 +901,38 @@ export default function App() {
       ) : (
         <p style={{ padding: "1rem" }}>Loading roadmap…</p>
       )}
-      {modalOpen && sel ? (
-        <EditModal
-          node={sel}
-          dependencyInheritance={data?.dependency_inheritance?.[sel.id]}
-          registryByNode={data?.registry_by_node}
-          gitEnrichment={data?.git_enrichment}
-          prHints={data?.pr_hints}
-          onClose={() => setModalOpen(false)}
-          onPersisted={() => void load()}
-        />
-      ) : null}
+      {data
+        ? editOpenIds.map((nodeId, index) => {
+            const emNode = byId[nodeId];
+            if (!emNode) return null;
+            const passThrough = editOpenIds.length > 1;
+            return (
+              <EditModal
+                key={nodeId}
+                node={emNode}
+                modalStorageKey={nodeId}
+                stackZIndex={50 + index}
+                backdropPassThrough={passThrough}
+                closeOnEscape={index === editOpenIds.length - 1}
+                headerMinTop={headerBottomPx}
+                spawnInitialRect={spawnRects[nodeId]}
+                editTileMode={editTileMode}
+                tileRect={tileRects?.[nodeId] ?? null}
+                resumeFreeRect={resumeAfterUntile?.[nodeId] ?? null}
+                titleBarActive={focusedEditNodeId === nodeId}
+                onActivate={() => focusEditNode(nodeId)}
+                onRectCommit={(r) => handleEditRectCommit(nodeId, r)}
+                dependencyInheritance={data.dependency_inheritance?.[nodeId]}
+                registryByNode={data.registry_by_node}
+                gitEnrichment={data.git_enrichment}
+                prHints={data.pr_hints}
+                onClose={() => closeEditNode(nodeId)}
+                onOpenNode={openEditNode}
+                onPersisted={() => void load()}
+              />
+            );
+          })
+        : null}
       <ConstitutionDrawer
         open={constitutionOpen}
         onClose={() => {
@@ -765,7 +964,6 @@ export default function App() {
         onShowInheritedDepsChange={setShowInheritedDeps}
         refreshSec={refreshSec}
         onRefreshSecChange={setRefreshSec}
-        onRefreshRoadmap={() => void load()}
       />
     </div>
   );

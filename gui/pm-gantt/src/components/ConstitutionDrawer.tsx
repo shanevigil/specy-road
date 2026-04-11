@@ -162,32 +162,32 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
         <h3>Purpose</h3>
         <label>
           {PURPOSE_PATH}
-          <MarkdownWorkspace
-            className="constitution-md-workspace"
-            value={purpose}
-            onChange={setPurpose}
-            spellCheck
-            disabled={loading}
-            defaultViewMode="split"
-            sourceLabel={`${PURPOSE_PATH} source`}
-            previewLabel={`${PURPOSE_PATH} preview`}
-          />
+          {!loading && !purposeMissing ? (
+            <MarkdownWorkspace
+              className="constitution-md-workspace"
+              value={purpose}
+              onChange={setPurpose}
+              spellCheck
+              disabled={false}
+              editorLabel={PURPOSE_PATH}
+            />
+          ) : null}
         </label>
       </section>
       <section className="constitution-md-section">
         <h3>Principles</h3>
         <label>
           {PRINCIPLES_PATH}
-          <MarkdownWorkspace
-            className="constitution-md-workspace"
-            value={principles}
-            onChange={setPrinciples}
-            spellCheck
-            disabled={loading}
-            defaultViewMode="split"
-            sourceLabel={`${PRINCIPLES_PATH} source`}
-            previewLabel={`${PRINCIPLES_PATH} preview`}
-          />
+          {!loading && !principlesMissing ? (
+            <MarkdownWorkspace
+              className="constitution-md-workspace"
+              value={principles}
+              onChange={setPrinciples}
+              spellCheck
+              disabled={false}
+              editorLabel={PRINCIPLES_PATH}
+            />
+          ) : null}
         </label>
       </section>
     </ModalFrame>

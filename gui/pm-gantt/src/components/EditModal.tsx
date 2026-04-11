@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import {
   fetchPlanningArtifacts,
@@ -9,7 +9,8 @@ import {
   savePlanningFile,
   scaffoldPlanning,
 } from "../api";
-import { getDefaultEditModalRect } from "../modalRect";
+import { hasLlmConfigured } from "../llmConfigured";
+import { getDefaultEditModalRect, type ModalRect } from "../modalRect";
 import { titleToCodename } from "../titleCodename";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
@@ -23,8 +24,33 @@ type Props = {
   gitEnrichment?: Record<string, Record<string, unknown>>;
   prHints?: Record<string, string>;
   onClose: () => void;
+  /** Open another task in a new dialog (dependency id). */
+  onOpenNode?: (nodeId: string) => void;
   /** Called after a successful autosave so the roadmap can refresh. */
   onPersisted?: () => void;
+  /** localStorage key suffix for size/position (one per open dialog). */
+  modalStorageKey: string;
+  /** Global stacking order for this dialog (higher = on top). */
+  stackZIndex?: number;
+  /** Multiple task dialogs: backdrop does not dim or block the rest of the UI. */
+  backdropPassThrough?: boolean;
+  /** Only the topmost stacked dialog should close on Escape. */
+  closeOnEscape?: boolean;
+  /** Keep the window below the app header (viewport Y of header bottom). */
+  headerMinTop: number;
+  /** First-open position (stacked offset); consumed after layout. */
+  spawnInitialRect?: ModalRect;
+  /** Tile layout: parent positions all task windows. */
+  editTileMode?: boolean;
+  tileRect?: ModalRect | null;
+  /** Positions to restore when leaving tile mode. */
+  resumeFreeRect?: ModalRect | null;
+  /** Focused task dialog (accent title bar). */
+  titleBarActive?: boolean;
+  /** User focused this dialog (bring to front). */
+  onActivate?: () => void;
+  /** Report position/size for stacking and tile restore. */
+  onRectCommit?: (r: ModalRect) => void;
 };
 
 type SavedSnap = {
@@ -32,6 +58,23 @@ type SavedSnap = {
   path: string;
   content: string;
 };
+
+/** Explicit first, then inherited-only ids (inherited list includes both). */
+function dependencyLineItems(
+  entry: DependencyInheritanceEntry,
+): { id: string; inheritedOnly: boolean }[] {
+  const explicit = new Set(entry.explicit);
+  const out: { id: string; inheritedOnly: boolean }[] = [];
+  for (const id of entry.explicit) {
+    out.push({ id, inheritedOnly: false });
+  }
+  for (const id of entry.inherited) {
+    if (!explicit.has(id)) {
+      out.push({ id, inheritedOnly: true });
+    }
+  }
+  return out;
+}
 
 /** One line for “active work” from registry + Git remote (same sources as the table Dev/meta columns). */
 function gitWorkSummary(
@@ -42,11 +85,11 @@ function gitWorkSummary(
 ): string | null {
   const g = gitEnrichment?.[nid];
   if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
-    const title = (g.title as string) || "";
+    const prTitle = (g.title as string) || "";
     const author = (g.author as string) || "";
     const url = (g.url as string) || "";
     const bits = [
-      title ? `Open PR/MR: ${title}` : "",
+      prTitle ? `Open PR/MR: ${prTitle}` : "",
       author ? `@${author}` : "",
       url ? url : "",
     ].filter(Boolean);
@@ -70,7 +113,20 @@ export function EditModal({
   gitEnrichment,
   prHints,
   onClose,
+  onOpenNode,
   onPersisted,
+  modalStorageKey,
+  stackZIndex = 50,
+  backdropPassThrough = false,
+  closeOnEscape = true,
+  headerMinTop,
+  spawnInitialRect,
+  editTileMode = false,
+  tileRect = null,
+  resumeFreeRect = null,
+  titleBarActive = false,
+  onActivate,
+  onRectCommit,
 }: Props) {
   const [title, setTitle] = useState("");
   const [files, setFiles] = useState<{ role: string; path: string }[]>([]);
@@ -84,6 +140,11 @@ export function EditModal({
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewReport, setReviewReport] = useState<string | null>(null);
   const [reviewErr, setReviewErr] = useState<string | null>(null);
+  const [llmConfigured, setLlmConfigured] = useState(false);
+  /** Bumps when the user changes selection in the review textarea (for Append selection). */
+  const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
+
+  const reviewTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const lastSaved = useRef<SavedSnap>({
     title: "",
@@ -126,8 +187,17 @@ export function EditModal({
         setErr(String(e));
         setHydrated(true);
       });
-    // Depend on node id only so parent roadmap refresh does not reset the form.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [node?.id]);
+
+  useEffect(() => {
+    if (!node) return;
+    void getSettings()
+      .then((s) => {
+        const llm = (s.llm as Record<string, unknown>) || {};
+        setLlmConfigured(hasLlmConfigured(llm));
+      })
+      .catch(() => setLlmConfigured(false));
   }, [node?.id]);
 
   useEffect(() => {
@@ -207,9 +277,27 @@ export function EditModal({
     return () => window.clearTimeout(t);
   }, [content, activePath, hydrated, node, loading, onPersisted]);
 
+  const depItems = useMemo(
+    () =>
+      dependencyInheritance != null
+        ? dependencyLineItems(dependencyInheritance)
+        : [],
+    [dependencyInheritance],
+  );
+
+  const titleIdAttr = `edit-title-${modalStorageKey.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+
+  const getDefaultRect = useCallback(
+    () => getDefaultEditModalRect({ minTop: headerMinTop }),
+    [headerMinTop],
+  );
+
   if (!node) return null;
 
   const roadmapStatus = (node.status as string) || "Not Started";
+  const codename = titleToCodename(title) || "—";
+  const titleBarText = `Edit ${node.id} - ${codename} - ${roadmapStatus}`;
+
   const workLine = gitWorkSummary(
     node.id,
     registryByNode,
@@ -234,6 +322,36 @@ export function EditModal({
         setReviewReport(null);
       })
       .finally(() => setReviewBusy(false));
+  };
+
+  const dismissReview = () => {
+    setReviewReport(null);
+    setReviewErr(null);
+  };
+
+  const appendToDocument = (chunk: string) => {
+    const t = chunk.trim();
+    if (!t) return;
+    setContent((prev) => {
+      const p = prev.replace(/\s+$/, "");
+      return p ? `${p}\n\n${t}\n` : `${t}\n`;
+    });
+  };
+
+  const appendSelectionFromReview = () => {
+    const el = reviewTextareaRef.current;
+    if (!el) return;
+    const a = el.selectionStart;
+    const b = el.selectionEnd;
+    const slice = reviewReport?.slice(
+      Math.min(a, b),
+      Math.max(a, b),
+    );
+    if (slice?.trim()) appendToDocument(slice);
+  };
+
+  const appendEntireReport = () => {
+    if (reviewReport) appendToDocument(reviewReport);
   };
 
   const onScaffoldPlanning = () => {
@@ -271,6 +389,18 @@ export function EditModal({
       .finally(() => setScaffolding(false));
   };
 
+  void reviewSelectionTick;
+  const hasReviewTextSelection = (() => {
+    const el = reviewTextareaRef.current;
+    if (!el || !reviewReport) return false;
+    const a = el.selectionStart;
+    const b = el.selectionEnd;
+    return (
+      a !== b &&
+      reviewReport.slice(Math.min(a, b), Math.max(a, b)).trim() !== ""
+    );
+  })();
+
   const footer =
     persistMsg || err ? (
       <>
@@ -282,18 +412,35 @@ export function EditModal({
       </>
     ) : null;
 
+  const llmReviewDisabled = !llmConfigured || reviewBusy;
+  const llmReviewTitle = llmConfigured
+    ? "Have an LLM provide a suggested clean up"
+    : "Configure an LLM in Settings to enable this";
+
   return (
     <ModalFrame
-      title={`Edit ${node.id}`}
-      titleId="edit-title"
+      title={titleBarText}
+      titleTooltip={titleBarText}
+      titleId={titleIdAttr}
       onClose={onClose}
-      storageKey="edit"
-      getDefaultRect={getDefaultEditModalRect}
+      storageKey={`edit-${modalStorageKey}`}
+      getDefaultRect={getDefaultRect}
+      initialRectOverride={spawnInitialRect}
+      minTop={headerMinTop}
+      forcedRect={editTileMode && tileRect ? tileRect : null}
+      resumeFreeRect={resumeFreeRect ?? null}
+      suppressPositionPersist={editTileMode}
+      titleBarActive={titleBarActive}
+      onActivate={onActivate}
+      onRectCommit={onRectCommit}
       footer={footer}
       bodyClassName="modal-body--edit"
+      zIndex={stackZIndex}
+      backdropPassThrough={backdropPassThrough}
+      closeOnEscape={closeOnEscape}
     >
       <div className="modal-edit-fields">
-        {loading ? <p>Loading…</p> : null}
+        {loading ? <p className="modal-edit-loading">Loading…</p> : null}
         <label>
           Title
           <input
@@ -302,104 +449,125 @@ export function EditModal({
             autoComplete="off"
           />
         </label>
-        <p className="modal-codename-preview">
-          <span className="modal-field-label">Codename (from title)</span>{" "}
-          <code className="modal-codename-value">
-            {titleToCodename(title) || "—"}
-          </code>
-        </p>
-        <div className="modal-status-readonly">
-          <div className="modal-field-label">Status (roadmap)</div>
-          <p className="modal-status-value">{roadmapStatus}</p>
-          <p className="outline-meta">
-            Not editable here — update the roadmap JSON (or your team’s
-            finish/merge workflow). Active work from the Git remote and{" "}
-            <code>roadmap/registry.yaml</code> is summarized in the table and
-            below when configured.
+        {workLine ? (
+          <p className="modal-edit-work-line" title={workLine}>
+            {workLine}
           </p>
-          <div className="modal-field-label">Work signal (Git / registry)</div>
-          {workLine ? (
-            <p className="modal-git-work-line">{workLine}</p>
-          ) : (
-            <p className="outline-meta">—</p>
-          )}
-        </div>
+        ) : null}
       </div>
       {dependencyInheritance != null ? (
-        <div className="modal-deps">
-          <div className="modal-deps-label">Dependencies (display ids)</div>
-          {dependencyInheritance.explicit.length > 0 ? (
-            <p className="modal-deps-explicit">
-              <strong>Explicit:</strong>{" "}
-              {dependencyInheritance.explicit.join(", ")}
-            </p>
-          ) : null}
-          {dependencyInheritance.inherited.length > 0 ? (
-            <p className="modal-deps-inherited">
-              <strong>Inherited from ancestors:</strong>{" "}
-              {dependencyInheritance.inherited.join(", ")}
-            </p>
-          ) : null}
-          {dependencyInheritance.explicit.length === 0 &&
-          dependencyInheritance.inherited.length === 0 ? (
-            <p className="outline-meta">
-              No dependencies (none explicit, none inherited); eligible for parallel
-              execution with respect to deps.
-            </p>
-          ) : null}
-          <p className="outline-meta">
-            Stored dependencies use stable node keys; edit the roadmap JSON or use
-            CLI tools to change explicit deps.
-          </p>
+        <div className="modal-deps-line">
+          <span className="modal-deps-line-label">Dependencies:</span>{" "}
+          {depItems.length > 0 ? (
+            <span className="modal-deps-line-ids">
+              {depItems.map(({ id, inheritedOnly }) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={
+                    inheritedOnly
+                      ? "modal-dep-id-link modal-dep-id-link--inherited"
+                      : "modal-dep-id-link"
+                  }
+                  title={
+                    inheritedOnly
+                      ? `Open task ${id} (inherited from ancestors)`
+                      : `Open task ${id}`
+                  }
+                  onClick={() => onOpenNode?.(id)}
+                >
+                  {id}
+                </button>
+              ))}
+            </span>
+          ) : (
+            <span className="modal-deps-none">None</span>
+          )}
         </div>
       ) : null}
-      <section className="modal-llm-review">
-        <div className="modal-field-label">LLM review (optional)</div>
-        <p className="outline-meta">
-          Uses LLM settings from Settings. Requires{" "}
-          <code>pip install &apos;specy-road[review]&apos;</code> or{" "}
-          <code>[gui-next]</code> with provider packages configured.
-        </p>
-        <button
-          type="button"
-          disabled={reviewBusy}
-          onClick={() => runLlmReview()}
-        >
-          {reviewBusy ? "Running…" : "Run LLM review"}
-        </button>
-        {reviewErr ? (
-          <p className="modal-review-error">{reviewErr}</p>
-        ) : null}
-        {reviewReport ? (
-          <div className="modal-review-report-wrap">
-            <pre className="modal-review-report">{reviewReport}</pre>
-          </div>
-        ) : null}
-      </section>
       {files.length > 0 ? (
         <section className="modal-edit-planning-section">
-          <div className="modal-edit-planning">
-            <label>Planning file</label>
-            <select
-              value={activePath || ""}
-              onChange={(e) => setActivePath(e.target.value || null)}
+          <div className="modal-edit-planning-toolbar">
+            <label className="modal-edit-planning-file-label">
+              <span className="modal-edit-planning-file-text">Planning file</span>
+              <select
+                className="modal-edit-planning-select"
+                value={activePath || ""}
+                onChange={(e) => setActivePath(e.target.value || null)}
+              >
+                {files.map((f) => (
+                  <option key={f.path} value={f.path}>
+                    {f.role}: {f.path}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="modal-edit-llm-review-btn"
+              disabled={llmReviewDisabled}
+              title={llmReviewTitle}
+              aria-label="LLM Review. Have an LLM provide a suggested clean up"
+              onClick={() => runLlmReview()}
             >
-              {files.map((f) => (
-                <option key={f.path} value={f.path}>
-                  {f.role}: {f.path}
-                </option>
-              ))}
-            </select>
-            <label>Markdown</label>
-            <MarkdownWorkspace
-              className="modal-markdown-fill constitution-md-workspace"
-              value={content}
-              onChange={setContent}
-              spellCheck
-              defaultViewMode="split"
-              sourceLabel="Planning markdown source"
-              previewLabel="Planning markdown preview"
-            />
+              {reviewBusy ? "Running…" : "LLM Review"}
+            </button>
+          </div>
+          {reviewErr ? (
+            <p className="modal-review-error modal-review-error--toolbar">
+              {reviewErr}
+            </p>
+          ) : null}
+          <div
+            className={
+              reviewReport != null
+                ? "modal-edit-review-split"
+                : "modal-edit-review-split modal-edit-review-split--single"
+            }
+          >
+            <div className="modal-edit-md-column">
+              <MarkdownWorkspace
+                className="modal-markdown-fill constitution-md-workspace"
+                value={content}
+                onChange={setContent}
+                spellCheck
+                editorLabel="Planning markdown"
+              />
+            </div>
+            {reviewReport != null ? (
+              <div className="modal-edit-review-pane">
+                <div className="modal-edit-review-actions">
+                  <button type="button" onClick={() => dismissReview()}>
+                    Dismiss
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => appendSelectionFromReview()}
+                    disabled={!hasReviewTextSelection}
+                    title="Append selected text from the report to the planning document"
+                  >
+                    Append selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => appendEntireReport()}
+                    title="Append the full report to the planning document"
+                  >
+                    Append entire report
+                  </button>
+                </div>
+                <textarea
+                  ref={reviewTextareaRef}
+                  className="modal-edit-review-textarea"
+                  readOnly
+                  value={reviewReport}
+                  aria-label="LLM review report"
+                  onSelect={() => setReviewSelectionTick((n) => n + 1)}
+                  onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
+                  onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
+                />
+              </div>
+            ) : null}
           </div>
         </section>
       ) : (

@@ -124,16 +124,17 @@ export function VisionDrawer({ open, onClose }: Props) {
         <h3>Vision</h3>
         <label>
           {VISION_PATH}
-          <MarkdownWorkspace
-            className="constitution-md-workspace"
-            value={content}
-            onChange={setContent}
-            spellCheck
-            disabled={loading || missing}
-            defaultViewMode="split"
-            sourceLabel={`${VISION_PATH} source`}
-            previewLabel={`${VISION_PATH} preview`}
-          />
+          {/* Mount only after load so Tiptap initializes with real markdown (avoids onUpdate clobbering state). */}
+          {!loading && !missing ? (
+            <MarkdownWorkspace
+              className="constitution-md-workspace"
+              value={content}
+              onChange={setContent}
+              spellCheck
+              disabled={false}
+              editorLabel={VISION_PATH}
+            />
+          ) : null}
         </label>
       </section>
     </ModalFrame>

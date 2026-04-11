@@ -2,13 +2,17 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   PointerSensor,
@@ -212,11 +216,9 @@ type RowProps = {
   /** Task / status / dev clicked while editing deps (passes row id). */
   onDepRowBodyClick: () => void;
   onDepCellClick: () => void;
-  onApplyDepEdit: () => void;
-  onCancelDepEdit: () => void;
-  onClearDepDraft: () => void;
-  depDraftEmpty: boolean;
   dragDisabled: boolean;
+  /** Set only for the row whose dependency cell is being edited; anchors the floating toolbar. */
+  depCellRef?: RefObject<HTMLTableCellElement | null>;
 };
 
 function SortableRow({
@@ -241,11 +243,8 @@ function SortableRow({
   onOpenModal,
   onDepRowBodyClick,
   onDepCellClick,
-  onApplyDepEdit,
-  onCancelDepEdit,
-  onClearDepDraft,
-  depDraftEmpty,
   dragDisabled,
+  depCellRef,
 }: RowProps) {
   const {
     attributes,
@@ -263,18 +262,59 @@ function SortableRow({
   };
 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressOrigin = useRef<{ x: number; y: number } | null>(null);
+  const skipNextTitleClick = useRef(false);
 
-  const handleTitleClick = () => {
-    if (depEditId) {
-      onDepRowBodyClick();
-      return;
+  const TITLE_LONG_PRESS_MS = 500;
+  const LONG_PRESS_MOVE_PX = 10;
+
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
     }
-    if (selected) {
+    longPressOrigin.current = null;
+  };
+
+  const handleTitlePointerDown = (e: ReactPointerEvent<HTMLTableCellElement>) => {
+    if (depEditId || titleEditing) return;
+    if (e.button !== 0) return;
+    clearLongPressTimer();
+    longPressOrigin.current = { x: e.clientX, y: e.clientY };
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      longPressOrigin.current = null;
+      skipNextTitleClick.current = true;
       if (clickTimer.current) {
         clearTimeout(clickTimer.current);
         clickTimer.current = null;
       }
+      if (!selected) onSelectRow();
       onBeginTitleEdit();
+    }, TITLE_LONG_PRESS_MS);
+  };
+
+  const handleTitlePointerMove = (e: ReactPointerEvent<HTMLTableCellElement>) => {
+    if (!longPressTimer.current || !longPressOrigin.current) return;
+    const dx = e.clientX - longPressOrigin.current.x;
+    const dy = e.clientY - longPressOrigin.current.y;
+    if (dx * dx + dy * dy > LONG_PRESS_MOVE_PX * LONG_PRESS_MOVE_PX) {
+      clearLongPressTimer();
+    }
+  };
+
+  const handleTitlePointerEnd = () => {
+    clearLongPressTimer();
+  };
+
+  const handleTitleClick = () => {
+    if (skipNextTitleClick.current) {
+      skipNextTitleClick.current = false;
+      return;
+    }
+    if (depEditId) {
+      onDepRowBodyClick();
       return;
     }
     if (clickTimer.current) clearTimeout(clickTimer.current);
@@ -284,10 +324,11 @@ function SortableRow({
     }, 220);
   };
 
-  const handleDoubleClick = (e: { preventDefault: () => void }) => {
+  const handleRowDoubleClick = (e: MouseEvent<HTMLTableRowElement>) => {
     e.preventDefault();
     if (depEditId) return;
     if (titleEditing) return;
+    clearLongPressTimer();
     if (clickTimer.current) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
@@ -326,6 +367,7 @@ function SortableRow({
       className={rowClass || undefined}
       {...listeners}
       {...attributes}
+      onDoubleClick={handleRowDoubleClick}
     >
       <td className="outline-id" onClick={handleIdClick}>
         <span className="outline-id-text">{node.id}</span>
@@ -334,7 +376,11 @@ function SortableRow({
       <td
         className="outline-title"
         onClick={handleTitleClick}
-        onDoubleClick={handleDoubleClick}
+        onPointerDown={handleTitlePointerDown}
+        onPointerMove={handleTitlePointerMove}
+        onPointerUp={handleTitlePointerEnd}
+        onPointerCancel={handleTitlePointerEnd}
+        onPointerLeave={handleTitlePointerEnd}
         style={{ paddingLeft: `${outlineDepth * 12}px` }}
       >
         {titleEditing ? (
@@ -361,6 +407,7 @@ function SortableRow({
         {devText}
       </td>
       <td
+        ref={depCellRef}
         className={
           depActive
             ? "outline-col-dep outline-col-dep-active"
@@ -374,45 +421,6 @@ function SortableRow({
         }}
       >
         <span className="outline-dep-cell-text">{depCellText}</span>
-        {depActive ? (
-          <div className="dep-edit-floating">
-            <button
-              type="button"
-              className="dep-edit-floating-btn dep-edit-floating-save"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onApplyDepEdit();
-              }}
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              className="dep-edit-floating-btn"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onCancelDepEdit();
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="dep-edit-floating-btn"
-              disabled={depDraftEmpty}
-              title="Remove all prerequisites from the draft"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onClearDepDraft();
-              }}
-            >
-              Clear
-            </button>
-          </div>
-        ) : null}
       </td>
     </tr>
   );
@@ -743,7 +751,127 @@ export function OutlineTable({
 
   const dragDisabled = Boolean(depEditId);
 
+  const depCellAnchorRef = useRef<HTMLTableCellElement | null>(null);
+  const depToolbarRef = useRef<HTMLDivElement | null>(null);
+  const [depToolbarStyle, setDepToolbarStyle] = useState<CSSProperties | null>(
+    null,
+  );
+
+  useLayoutEffect(() => {
+    if (!depEditId) {
+      setDepToolbarStyle(null);
+      return;
+    }
+    const cell = depCellAnchorRef.current;
+    if (!cell) {
+      setDepToolbarStyle(null);
+      return;
+    }
+
+    const update = () => {
+      const r = cell.getBoundingClientRect();
+      const tw = depToolbarRef.current?.offsetWidth ?? 0;
+      const gap = 8;
+      const margin = 8;
+      let left = r.right + gap;
+      if (tw > 0 && left + tw > window.innerWidth - margin) {
+        left = r.left - gap - tw;
+      }
+      if (left < margin) left = margin;
+      if (tw > 0 && left + tw > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - margin - tw);
+      }
+      setDepToolbarStyle({
+        position: "fixed",
+        top: r.top + r.height / 2,
+        left,
+        transform: "translateY(-50%)",
+        zIndex: 42,
+        visibility: "visible",
+        pointerEvents: "auto",
+      });
+    };
+
+    update();
+    const raf = requestAnimationFrame(() => update());
+
+    const wrap = cell.closest(".outline-wrap");
+    window.addEventListener("resize", update);
+    wrap?.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(cell);
+    if (wrap) ro.observe(wrap);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      wrap?.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [depEditId, orderedIds, depDraftKeys]);
+
+  const depToolbarFallbackStyle: CSSProperties = {
+    position: "fixed",
+    left: -9999,
+    top: 0,
+    visibility: "hidden",
+    pointerEvents: "none",
+    zIndex: 42,
+  };
+
+  const depEditToolbar =
+    depEditId != null
+      ? createPortal(
+          <div
+            ref={depToolbarRef}
+            className="dep-edit-toolbar-portal"
+            role="toolbar"
+            aria-label="Dependency edit actions"
+            style={depToolbarStyle ?? depToolbarFallbackStyle}
+          >
+            <button
+              type="button"
+              className="dep-edit-floating-btn dep-edit-floating-save"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onApplyDepEdit();
+              }}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="dep-edit-floating-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onCancelDepEdit();
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="dep-edit-floating-btn"
+              disabled={depDraftKeys.size === 0}
+              title="Remove all prerequisites from the draft"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClearDepDraft();
+              }}
+            >
+              Clear
+            </button>
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
+    <>
+      {depEditToolbar}
     <DndContext
       sensors={sensors}
       collisionDetection={outlineCollisionDetection}
@@ -803,10 +931,6 @@ export function OutlineTable({
                     titleInputRef={titleInputRef}
                     onBeginTitleEdit={() => beginTitleEdit(id)}
                     dragDisabled={dragDisabled}
-                    depDraftEmpty={depDraftKeys.size === 0}
-                    onApplyDepEdit={onApplyDepEdit}
-                    onCancelDepEdit={onCancelDepEdit}
-                    onClearDepDraft={onClearDepDraft}
                     onSelectRow={() => onSelect(id)}
                     onOpenModal={() => onDoubleClick(id)}
                     onDepRowBodyClick={() => {
@@ -818,6 +942,9 @@ export function OutlineTable({
                       onToggleDepCandidate(id);
                     }}
                     onDepCellClick={() => depCellActivate(id)}
+                    depCellRef={
+                      depEditId === id ? depCellAnchorRef : undefined
+                    }
                   />
                 </Fragment>
               );
@@ -826,5 +953,6 @@ export function OutlineTable({
         </tbody>
       </table>
     </DndContext>
+    </>
   );
 }

@@ -227,9 +227,7 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
                 onChange={setContent}
                 spellCheck
                 disabled={loadingFile}
-                defaultViewMode="split"
-                sourceLabel={`${selectedPath} source`}
-                previewLabel={`${selectedPath} preview`}
+                editorLabel={selectedPath}
               />
             </label>
           ) : (

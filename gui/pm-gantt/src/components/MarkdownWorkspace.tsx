@@ -1,13 +1,13 @@
-import { useId, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
-import remarkFrontmatter from "remark-frontmatter";
-import remarkGfm from "remark-gfm";
+import { Link } from "@tiptap/extension-link";
+import { Markdown } from "@tiptap/markdown";
+import { EditorContent, useEditor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
+import { MarkdownToolbar } from "./MarkdownToolbar";
 
-export type MarkdownViewMode = "source" | "split" | "preview";
-
-const REMARK_PLUGINS = [remarkFrontmatter, remarkGfm];
-const REHYPE_PLUGINS = [rehypeSanitize];
+function normalizeMd(s: string): string {
+  return s.replace(/\r\n/g, "\n");
+}
 
 /** True when the document starts with YAML frontmatter (--- … ---). */
 function hasLeadingYamlFrontmatter(text: string): boolean {
@@ -23,12 +23,9 @@ type Props = {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
-  defaultViewMode?: MarkdownViewMode;
   spellCheck?: boolean;
-  /** Label for the source editor (accessibility). */
-  sourceLabel?: string;
-  /** Label for the preview region (accessibility). */
-  previewLabel?: string;
+  /** Accessible label for the editor region (file path or role). */
+  editorLabel?: string;
   className?: string;
 };
 
@@ -36,91 +33,129 @@ export function MarkdownWorkspace({
   value,
   onChange,
   disabled = false,
-  defaultViewMode = "split",
   spellCheck = false,
-  sourceLabel = "Markdown source",
-  previewLabel = "Markdown preview",
+  editorLabel = "Markdown editor",
   className,
 }: Props) {
-  const baseId = useId();
-  const sourceId = `${baseId}-source`;
-  const previewId = `${baseId}-preview`;
-  const [mode, setMode] = useState<MarkdownViewMode>(defaultViewMode);
-
-  const showSource = mode === "source" || mode === "split";
-  const showPreview = mode === "preview" || mode === "split";
+  const regionId = useId();
   const frontmatterNote = hasLeadingYamlFrontmatter(value);
 
+  // Stable extension instances — new arrays each render made useEditor's setOptions
+  // treat options as changed every frame and broke hydration of loaded markdown.
+  const extensions = useMemo(
+    () => [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
+      Markdown.configure({
+        markedOptions: { gfm: true },
+      }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+      }),
+    ],
+    [],
+  );
+
+  const onChangeRef = useRef(onChange);
+  const valueRef = useRef(value);
+  /** After mount, ignore onUpdate until the editor has applied the first document (avoids wiping loaded markdown). */
+  const emitUpdatesRef = useRef(false);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+
+  useEffect(() => {
+    valueRef.current = value;
+  });
+
+  const editor = useEditor(
+    {
+      extensions,
+      content: value,
+      contentType: "markdown",
+      editable: !disabled,
+      shouldRerenderOnTransaction: true,
+      editorProps: {
+        attributes: {
+          class: "markdown-workspace-editor",
+          spellcheck: spellCheck ? "true" : "false",
+        },
+      },
+      onCreate: () => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            emitUpdatesRef.current = true;
+          });
+        });
+      },
+      onUpdate: ({ editor: ed, transaction }) => {
+        if (!emitUpdatesRef.current) return;
+        if (transaction && !transaction.docChanged) return;
+        const next = normalizeMd(ed.getMarkdown());
+        if (next === normalizeMd(valueRef.current)) return;
+        onChangeRef.current(next);
+      },
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
+
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.setOptions({
+      editorProps: {
+        attributes: {
+          class: "markdown-workspace-editor",
+          spellcheck: spellCheck ? "true" : "false",
+        },
+      },
+    });
+  }, [editor, spellCheck]);
+
+  useLayoutEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const v = normalizeMd(value);
+    const current = normalizeMd(editor.getMarkdown());
+    if (v === current) return;
+    editor.commands.setContent(value, {
+      contentType: "markdown",
+      emitUpdate: false,
+    });
+  }, [editor, value]);
+
+  const rootClass = className
+    ? `markdown-workspace ${className}`
+    : "markdown-workspace";
+
   return (
-    <div className={className ? `markdown-workspace ${className}` : "markdown-workspace"}>
-      <div
-        className="markdown-workspace-toolbar"
-        role="toolbar"
-        aria-label="Markdown view mode"
-      >
-        {(["source", "split", "preview"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={
-              mode === m
-                ? "markdown-workspace-mode is-active"
-                : "markdown-workspace-mode"
-            }
-            onClick={() => setMode(m)}
-            disabled={disabled}
-            aria-pressed={mode === m}
-          >
-            {m === "source" ? "Source" : m === "split" ? "Split" : "Preview"}
-          </button>
-        ))}
-      </div>
+    <div className={rootClass}>
+      <MarkdownToolbar editor={editor} disabled={disabled} />
       {frontmatterNote ? (
         <p className="markdown-workspace-frontmatter-note outline-meta">
-          YAML frontmatter at the top of this file is parsed and not shown in the
-          preview body.
+          YAML frontmatter at the top of this file may not round-trip exactly in
+          the editor; body content below should still save as markdown. (
+          <code>@tiptap/markdown</code> differs from the old{" "}
+          <code>remark-frontmatter</code> preview.)
         </p>
       ) : null}
       <div
-        className={
-          mode === "split"
-            ? "markdown-workspace-panes markdown-workspace-panes--split"
-            : "markdown-workspace-panes"
-        }
+        className="markdown-workspace-editor-wrap md-preview"
+        role="region"
+        id={regionId}
+        aria-label={editorLabel}
       >
-        {showSource ? (
-          <div className="markdown-workspace-pane markdown-workspace-pane--source">
-            <label className="sr-only" htmlFor={sourceId}>
-              {sourceLabel}
-            </label>
-            <textarea
-              id={sourceId}
-              className="markdown-workspace-source"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              spellCheck={spellCheck}
-              disabled={disabled}
-              aria-label={sourceLabel}
-            />
-          </div>
-        ) : null}
-        {showPreview ? (
-          <div className="markdown-workspace-pane markdown-workspace-pane--preview">
-            <div
-              id={previewId}
-              className="md-preview markdown-workspace-md"
-              aria-label={previewLabel}
-              role="region"
-            >
-              <ReactMarkdown
-                remarkPlugins={REMARK_PLUGINS}
-                rehypePlugins={REHYPE_PLUGINS}
-              >
-                {value}
-              </ReactMarkdown>
-            </div>
-          </div>
-        ) : null}
+        <EditorContent
+          editor={editor}
+          className="markdown-workspace-tiptap-root"
+        />
       </div>
     </div>
   );

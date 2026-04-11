@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { getSettings, postGitTest, putSettings, testLlmSettings } from "../api";
+import { getDefaultSettingsModalRect } from "../modalRect";
 import { ModalFrame } from "./ModalFrame";
 
 type Props = {
@@ -12,7 +13,6 @@ type Props = {
   onShowInheritedDepsChange: (value: boolean) => void;
   refreshSec: number;
   onRefreshSecChange: (sec: number) => void;
-  onRefreshRoadmap: () => void;
 };
 
 const BACKENDS = ["openai", "azure", "compatible", "anthropic"] as const;
@@ -20,6 +20,43 @@ const BACKENDS = ["openai", "azure", "compatible", "anthropic"] as const;
 function normalizeBackend(raw: string): string {
   const l = raw.trim().toLowerCase();
   return BACKENDS.includes(l as (typeof BACKENDS)[number]) ? l : "openai";
+}
+
+function SettingsToggleRow({
+  checked,
+  onChange,
+  label,
+  optionTitle,
+}: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  label: string;
+  /** Shown as native tooltip on the label and switch. */
+  optionTitle: string;
+}) {
+  const labelId = useId();
+  return (
+    <div className="settings-toggle-row">
+      <span
+        id={labelId}
+        className="settings-toggle-label"
+        title={optionTitle}
+      >
+        {label}
+      </span>
+      <button
+        type="button"
+        className="settings-toggle"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={labelId}
+        title={optionTitle}
+        onClick={() => onChange(!checked)}
+      >
+        <span className="settings-toggle-thumb" aria-hidden />
+      </button>
+    </div>
+  );
 }
 
 function buildLlmPayload(llm: Record<string, string>) {
@@ -46,7 +83,6 @@ export function SettingsDrawer({
   onShowInheritedDepsChange,
   refreshSec,
   onRefreshSecChange,
-  onRefreshRoadmap,
 }: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
@@ -140,55 +176,40 @@ export function SettingsDrawer({
     }
   };
 
-  const footer = (
-    <>
-      <span>{persistMsg || msg}</span>
-      <div className="modal-footer-actions">
-        <button type="button" onClick={() => void testGit()}>
-          Test Git
-        </button>
-        <button type="button" onClick={() => void testLlm()}>
-          Test LLM
-        </button>
-      </div>
-    </>
-  );
+  const footer = <span>{persistMsg || msg}</span>;
 
   return (
     <ModalFrame
       title="Settings"
       titleId="settings-title"
       onClose={onClose}
-      storageKey="settings"
+      getDefaultRect={getDefaultSettingsModalRect}
+      reanchorOnResize
+      resizable={false}
       footer={footer}
     >
       <p className="outline-meta">
         Stored in ~/.specy-road/gui-settings.json. API keys use simple
         obfuscation on disk, not plain text. Changes save automatically.
       </p>
-      <h3>PM chart</h3>
-      <p className="outline-meta">
-        Chart display and refresh options are saved in this browser only
-        (localStorage).
-      </p>
-      <label className="settings-checkbox-row">
-        <input
-          type="checkbox"
-          checked={highlightDepChain}
-          onChange={(e) => onHighlightDepChainChange(e.target.checked)}
-          title="Tint Gantt rows for every preceding dependency of the selection: transitive prerequisites using explicit deps and deps inherited from ancestor nodes (independent of dashed-line display)"
-        />
-        <span>Highlight full dependency chain on chart</span>
-      </label>
-      <label className="settings-checkbox-row">
-        <input
-          type="checkbox"
-          checked={showInheritedDeps}
-          onChange={(e) => onShowInheritedDepsChange(e.target.checked)}
-          title="Show dashed lines for dependencies inherited from ancestor nodes (group-level)"
-        />
-        <span>Show inherited dependencies (dashed lines)</span>
-      </label>
+      <h3
+        className="settings-pm-chart-title"
+        title="Chart display and refresh options are saved in this browser only (localStorage)."
+      >
+        PM Chart Settings
+      </h3>
+      <SettingsToggleRow
+        checked={highlightDepChain}
+        onChange={onHighlightDepChainChange}
+        label="Highlight full dependency chain on chart"
+        optionTitle="Tint Gantt rows for every preceding dependency of the selection: transitive prerequisites using explicit deps and deps inherited from ancestor nodes (independent of dashed-line display)"
+      />
+      <SettingsToggleRow
+        checked={showInheritedDeps}
+        onChange={onShowInheritedDepsChange}
+        label="Show inherited dependencies (dashed lines)"
+        optionTitle="Show dashed lines for dependencies inherited from ancestor nodes (group-level)"
+      />
       <label>
         Auto-refresh
         <select
@@ -205,12 +226,13 @@ export function SettingsDrawer({
           <option value={120}>120 s</option>
         </select>
       </label>
-      <div className="settings-actions-row">
-        <button type="button" onClick={() => void onRefreshRoadmap()}>
-          Refresh roadmap
+      <hr className="settings-section-rule" aria-hidden="true" />
+      <div className="settings-section-heading">
+        <h3>Git remote</h3>
+        <button type="button" onClick={() => void testGit()}>
+          Test Git
         </button>
       </div>
-      <h3>Git remote</h3>
       <label>
         Provider
         <select
@@ -246,7 +268,13 @@ export function SettingsDrawer({
           placeholder="https://gitlab.com"
         />
       </label>
-      <h3>LLM (optional)</h3>
+      <hr className="settings-section-rule" aria-hidden="true" />
+      <div className="settings-section-heading">
+        <h3>LLM (optional)</h3>
+        <button type="button" onClick={() => void testLlm()}>
+          Test LLM
+        </button>
+      </div>
       <label>
         Backend
         <select
