@@ -18,7 +18,7 @@ This document is for **humans and coding agents** adopting or working on specy-r
 
 Optional patterns for teams that *want* IDE rules, `CLAUDE.md`, MCP servers, or similar are collected in [`optional-ai-tooling-patterns.md`](optional-ai-tooling-patterns.md). Those patterns are **not** part of specy-road’s contract.
 
-**Required vs optional glue:** Anything that defines roadmap truth, contracts, or enforceable limits lives under `constitution/`, `constraints/`, `roadmap/`, and `shared/` and is driven by the **specy-road** CLI and `scripts/` (validate, brief, export, etc.). The optional **`specyrd init`** helper only installs thin IDE/agent command stubs (for example under `.cursor/commands/`) that **point at** those commands; it does not replace them or duplicate kit rules in editor-only files.
+**Required vs optional glue:** Anything that defines roadmap truth, contracts, or enforceable limits lives under `constitution/`, `constraints/`, `roadmap/`, and `shared/` in **your** project and is driven by the **specy-road** CLI (`validate`, `brief`, `export`, `file-limits`, …). The optional **`specyrd init`** helper only installs thin IDE/agent command stubs (for example under `.cursor/commands/`) that **point at** those commands; it does not replace them or duplicate kit rules in editor-only files.
 
 ## Relationship to Spec-Kit
 
@@ -38,7 +38,7 @@ Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md)
 For a focused slice:
 
 ```bash
-python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
+specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
 ## Flow (high level)

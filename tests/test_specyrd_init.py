@@ -113,7 +113,7 @@ def test_specyrd_init_generic_writes(tmp_path: Path) -> None:
     )
     p = tmp_path / "docs" / "agent-cmds" / "specyrd-brief.md"
     assert p.is_file()
-    assert "generate_brief.py" in p.read_text(encoding="utf-8")
+    assert "specy-road brief" in p.read_text(encoding="utf-8")
 
 
 def test_specyrd_init_rejects_parent_escape(tmp_path: Path) -> None:

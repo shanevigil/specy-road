@@ -21,7 +21,7 @@ For any roadmap-linked task, keep context small:
 Generate a focused brief when possible:
 
 ```bash
-python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
+specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
 ## Non-negotiables
@@ -35,9 +35,9 @@ python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
 
 ```bash
 # Roadmap + exports + limits
-python scripts/validate_roadmap.py
-python scripts/export_roadmap_md.py --check
-python scripts/validate_file_limits.py
+specy-road validate
+specy-road export --check
+specy-road file-limits
 
 # Optional: tests (if dev extras installed)
 pytest

@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "codename": null,
+      "dependencies": [
+        "44ef4a9d-923f-545c-8187-eaabc7ca86ba"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M1",
+      "node_key": "f23883de-899e-54fb-8843-9bde2493fc88",
+      "notes": "Example dependency: M1 work assumes M0.1 milestone exists.",
+      "parallel_tracks": 2,
+      "parent_id": null,
+      "planning_dir": "planning/M1",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Implementation track",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "codename": "roadmap-ci",
+      "dependencies": [
+        "cd44fef1-715a-5b8d-b03f-1752a61a47cc"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M0.2",
+      "node_key": "e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208",
+      "parallel_tracks": 1,
+      "parent_id": "M0",
+      "planning_dir": "planning/M0.2",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Roadmap validator in CI",
+      "touch_zones": [
+        "specy_road/bundled_scripts/",
+        ".github/"
+      ],
+      "type": "milestone"
+    }
+  ]
+}

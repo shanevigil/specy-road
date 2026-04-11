@@ -265,7 +265,7 @@ When multiple developers or agents are running simultaneously:
   (stable references to other nodes), not display ids like `M1.1`. Semantically, if milestone A must
   finish before milestone B, A’s `node_key` appears in B’s `dependencies`; tools resolve those keys to
   display ids in UIs and briefs. The dependent node cannot proceed until every listed dependency is
-  `Complete` (see `scripts/do_next_task.py`).
+  `Complete` (see `specy_road/bundled_scripts/do_next_task.py`).
 
 ---
 

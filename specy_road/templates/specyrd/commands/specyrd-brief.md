@@ -17,7 +17,7 @@ specy-road brief NODE_ID -o work/brief-NODE_ID.md
 Equivalent:
 
 ```bash
-python scripts/generate_brief.py NODE_ID -o work/brief-NODE_ID.md
+specy-road brief NODE_ID -o work/brief-NODE_ID.md
 ```
 
 See `AGENTS.md` and `docs/git-workflow.md` at the repository root for coordination.

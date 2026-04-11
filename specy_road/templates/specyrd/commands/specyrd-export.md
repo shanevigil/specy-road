@@ -17,11 +17,11 @@ specy-road export
 Equivalent:
 
 ```bash
-python scripts/export_roadmap_md.py
+specy-road export
 ```
 
 CI drift check (exit 1 if `roadmap.md` differs from the merged graph):
 
 ```bash
-python scripts/export_roadmap_md.py --check
+specy-road export --check
 ```

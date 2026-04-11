@@ -1,12 +1,10 @@
-# Constraints
+# Constraints (specy-road toolkit)
 
-Operational rules that are **enforced** (or enforceable by CI), not aspirational prose.
+This directory applies to **this repository** — the `specy-road` Python package and docs — not to consumer projects created with `specy-road init project`.
 
-## Checkable rules
+Consumer-style roadmap validation for maintainers uses the sample tree under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/).
 
 | Rule | Where | Check |
 |------|--------|--------|
-| Max source file length | [`file-limits.yaml`](file-limits.yaml) | `python scripts/validate_file_limits.py` (CI) |
-| Roadmap graph validity + chunk line policy (`manifest.json` + JSON chunks; oversized multi-node chunks fail unless split) | `scripts/validate_roadmap.py` | CI + local |
-
-Add machine-readable rules here as the project grows; keep **purpose** and **principles** free of duplicate enforcement text.
+| Max file / function length | [`file-limits.yaml`](file-limits.yaml) | `specy-road file-limits` |
+| Dogfood roadmap graph | `tests/fixtures/specy_road_dogfood/roadmap/` | `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` |

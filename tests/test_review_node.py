@@ -10,13 +10,12 @@ import pytest
 
 import review_node
 from roadmap_chunk_utils import write_json_chunk
-
-REPO = Path(__file__).resolve().parent.parent
+from tests.helpers import REPO, SCHEMAS
 
 
 @pytest.fixture()
 def tiny_repo(tmp_path: Path) -> Path:
-    shutil.copytree(REPO / "schemas", tmp_path / "schemas")
+    shutil.copytree(SCHEMAS, tmp_path / "schemas")
     shutil.copytree(REPO / "constraints", tmp_path / "constraints")
     (tmp_path / "roadmap" / "phases").mkdir(parents=True)
     (tmp_path / "shared").mkdir(parents=True)

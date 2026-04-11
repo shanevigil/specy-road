@@ -12,7 +12,7 @@ Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (
 - **Git** is how the team shares changes. You pull updates before you edit, and you commit when you save roadmap changes.
 - You can work in two ways: a **visual dashboard** in the browser (recommended if you prefer clicking to typing), or the **command line** (`specy-road` …) for quick edits and scripts.
 
-There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `[roadmap.md](../roadmap.md)` is a **generated index** — refresh it with `specy-road export` or `specy-road sync`.
+There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `roadmap.md` (in your project) is a **generated index** — refresh it with `specy-road export` or `specy-road sync`.
 
 ### Establish the constitution (purpose and principles)
 
@@ -49,7 +49,7 @@ Roadmap nodes keep stable machine `type` values for validation. In everyday term
 
 1. **Python 3.11+** installed ([python.org](https://www.python.org/downloads/) or your IT-provided install).
 2. A **clone of the repository** on your computer (same folder the developers use).
-3. A **terminal** open **in that folder** (the repo “root” — where you see `roadmap/`, `scripts/`, and `README.md`).
+3. A **terminal** open **in that folder** (the project root — where you see `roadmap/`, `AGENTS.md`, and your app sources).
 
 **Windows users:** If you use **WSL**, open a Linux terminal, `cd` to the project there, and run all commands below inside WSL. Then open the dashboard in your normal browser at `http://localhost:8501`.
 
@@ -72,13 +72,13 @@ specy-road --help
 **Gantt PM UI (recommended for most PMs):** after `pip install specy-road`, run once from the **repository root**:
 
 ```bash
-specy-road init --install-gui
+specy-road init gui --install-gui
 specy-road gui
 ```
 
 `--install-gui` sets up the FastAPI/uvicorn dependencies **and**, when `gui/pm-gantt/` is present (typical git clone), builds the SPA so the UI matches the tree. You do not need a second `--build-gui` flag. Safe to repeat when you pull updates.
 
-If the Python stack is corrupted, use **`specy-road init --reinstall-gui`**. To upgrade Python deps **without** running npm (faster), use **`specy-road init --install-gui --skip-npm-build`**. To **only** rebuild the frontend, **`specy-road init --build-gui`** (requires Node.js).
+If the Python stack is corrupted, use **`specy-road init gui --reinstall-gui`**. To upgrade Python deps **without** running npm (faster), use **`specy-road init gui --install-gui --skip-npm-build`**. To **only** rebuild the frontend, **`specy-road init gui --build-gui`** (requires Node.js).
 
 For a full developer install (tests, editable package), see [setup.md](setup.md).
 
@@ -90,15 +90,15 @@ Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling 
 
 ### Gantt PM UI (FastAPI + React)
 
-**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/` and `scripts/`), or pass `--repo-root /path/to/repo` so the server loads the correct roadmap.
+**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/`), or pass `--repo-root /path/to/repo` so the server loads the correct roadmap.
 
-**One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init --install-gui` also compiles that tree. After `pip install specy-road`:
+**One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init gui --install-gui` also compiles that tree. After `pip install specy-road`:
 
 ```bash
-specy-road init --install-gui
+specy-road init gui --install-gui
 ```
 
-Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui-next]'`.
+Run the same command later to **upgrade** the stack when you update the package. Without Node on `PATH`, npm is skipped and the packaged UI is still used. Use **`specy-road init gui --reinstall-gui`** if the environment looks corrupted. Equivalent manual install: `pip install --upgrade 'specy-road[gui-next]'`.
 
 **Every session:**
 
@@ -177,7 +177,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road sync`                                  | Download the latest from the team’s main branch (default), then validate and refresh the Markdown export. Use before a big editing session. |
 | `specy-road scaffold-constitution`                 | Create starter `constitution/purpose.md` and `constitution/principles.md` if missing (`--force` overwrites).                               |
 | `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check.                                   |
-| `specy-road export`                                | Regenerate `[roadmap.md](../roadmap.md)` from the merged graph — shareable index for stakeholders.                                            |
+| `specy-road export`                                | Regenerate `roadmap.md` from the merged graph — shareable index for stakeholders.                                            |
 | `specy-road list-nodes`                            | Table of all items with type, status, title, and which file they live in.                                                                   |
 | `specy-road show-node M0.1.1`                      | Print one item as JSON (replace `M0.1.1` with a real id).                                                                                   |
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
@@ -245,7 +245,7 @@ Agentic development moves fast. Your job is **not** to approve every pull reques
 
 **Suggested batch cadence:**
 
-1. Check depth via `[roadmap.md](../roadmap.md)` or the dashboard.
+1. Check depth via `roadmap.md` or the dashboard.
 2. Add or refine nodes in chunk files; fill all five `agentic_checklist` fields for agentic tasks.
 3. Resolve `human-gate` items before you stop for the day.
 4. `specy-road validate`, then `specy-road export`.

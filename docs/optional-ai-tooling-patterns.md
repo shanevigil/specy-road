@@ -8,9 +8,9 @@ For coordination **inside** this kit, prefer [`roadmap/registry.yaml`](../roadma
 
 ## Optional: `specyrd init` (install-time IDE commands)
 
-The **`specyrd`** CLI (installed with this package) can lay down **thin** markdown command files for Cursor (`.cursor/commands/`), Claude Code (`.claude/commands/`), or a **generic** directory you choose. Those files tell the agent to run **`specy-road`** or **`python scripts/…`** from the repo root — they are not a second source of truth.
+The **`specyrd`** CLI (installed with this package) can lay down **thin** markdown command files for Cursor (`.cursor/commands/`), Claude Code (`.claude/commands/`), or a **generic** directory you choose. Those files tell the agent to run **`specy-road`** from the repo root — they are not a second source of truth.
 
-- **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits` and the matching scripts under `scripts/`.
+- **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
 - **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. Per–phase/milestone `planning/<node-id>/` folders in specy-road are **this kit’s** overview/plan/tasks narrative (required for those node types), not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value; use `--force` to overwrite stubs from a previous run.
 - **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root.
@@ -78,7 +78,7 @@ specy-road already separates **merged roadmap graph** (manifest + chunk files un
 
 ## Optional: verification gates
 
-Many teams define a small set of **mandatory** checks before merge (e.g. typecheck + lint, tests, container build). Tune gates for speed and clarity; document them so agents and humans run the same commands. This kit validates the roadmap with `scripts/validate_roadmap.py`; your **application** may add language-specific gates.
+Many teams define a small set of **mandatory** checks before merge (e.g. typecheck + lint, tests, container build). Tune gates for speed and clarity; document them so agents and humans run the same commands. This kit validates the roadmap with `specy-road validate`; your **application** may add language-specific gates.
 
 ---
 

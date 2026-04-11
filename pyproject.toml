@@ -47,8 +47,13 @@ where = ["."]
 include = ["specy_road*"]
 
 [tool.setuptools.package-data]
-specy_road = ["templates/**/*", "pm_gantt_static/**/*"]
+specy_road = [
+  "templates/**/*",
+  "templates/project/**/*",
+  "pm_gantt_static/**/*",
+  "bundled_scripts/*.py",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["scripts"]
+pythonpath = ["specy_road/bundled_scripts"]

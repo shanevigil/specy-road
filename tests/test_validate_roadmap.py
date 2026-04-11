@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(__file__).resolve().parent.parent
+from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 import validate_roadmap as vr
 
@@ -132,7 +132,13 @@ def test_validate_contract_citations_silent_on_known_prefix(capsys) -> None:
 
 def test_validate_script_exits_zero_on_repo() -> None:
     subprocess.run(
-        [sys.executable, str(REPO / "scripts" / "validate_roadmap.py")],
+        [
+            sys.executable,
+            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
+            "--repo-root",
+            str(DOGFOOD),
+        ],
         cwd=REPO,
+        env=script_subprocess_env(),
         check=True,
     )

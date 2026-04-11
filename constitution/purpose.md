@@ -1,5 +1,5 @@
 # Purpose
 
-**specy-road** is an open, roadmap-first coordination system for AI-assisted and human teams. It treats the **roadmap** as the primary artifact of system evolution, separates **purpose**, **principles**, and **enforceable constraints**, and supports multi-agent work through **immutable IDs**, **touch zones**, and **registration**.
+**specy-road** is a roadmap-first coordination **kit** (Python package + validators + optional PM UI) so product teams can keep a canonical graph, contracts, and planning narrative alongside their code — without prescribing a specific IDE or agent workflow.
 
-Success looks like: teams can plan in depth, delegate agentic work with clear contracts, and avoid context bloat by loading only the slice of the roadmap and shared specs relevant to a task.
+This repository ships the **tool**; consumer projects own their own `roadmap/`, `constitution/`, and `shared/` (see `specy-road init project`).

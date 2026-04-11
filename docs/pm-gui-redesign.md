@@ -49,7 +49,7 @@ The former Streamlit + Plotly dashboard has been **removed**. The supported PM s
 
 1. Optional extra `specy-road[gui-next]` with `fastapi`, `uvicorn[standard]`.
 2. `npm run build` in [`gui/pm-gantt/`](../gui/pm-gantt/) writes static assets to [`specy_road/pm_gantt_static/`](../specy_road/pm_gantt_static/) (included in package data).
-3. CLI: **`specy-road gui`** starts Uvicorn with [`specy_road/gui_app.py`](../specy_road/gui_app.py) (JSON API + static). Run from the **repository root** (or set `SPECY_ROAD_SCRIPTS` to the `scripts/` directory) so Python can import roadmap modules.
+3. CLI: **`specy-road gui`** starts Uvicorn with [`specy_road/gui_app.py`](../specy_road/gui_app.py) (JSON API + static). Run from the **repository root** (or set `SPECY_ROAD_SCRIPTS` to the `specy_road/bundled_scripts` directory) so Python can import roadmap modules.
 4. **Contributors:** `npm install && npm run dev` under `gui/pm-gantt` for UI work; run the FastAPI app separately or rely on the Vite dev proxy to `/api`.
 
 ### Legacy GUI
@@ -62,7 +62,7 @@ The Streamlit entry point and Plotly Gantt helpers were removed; `specy-road[gui
 
 The **Gantt PM UI** lives under [`gui/pm-gantt/`](../gui/pm-gantt/). It uses the same merged roadmap model as `load_roadmap()`, a **dependency-depth** horizontal timeline (not calendar dates), outline **sibling reorder** (`sibling_order`), and GitHub/GitLab enrichment for registry branches.
 
-An older **React Flow** graph spike remains under [`gui-spike/react-flow-spike/`](../gui-spike/react-flow-spike/) for experiments; it is **not** the main PM surface. It loads a **merged** roadmap sample ([`public/sample-merged-roadmap.json`](../gui-spike/react-flow-spike/public/sample-merged-roadmap.json)) with the same shape as `load_roadmap()` output (`version` + `nodes`), lays nodes by **dependency depth** (same idea as [`scripts/roadmap_layout.py`](../scripts/roadmap_layout.py) `compute_depths`), and draws **dependency edges** (`source` = dependency id, `target` = dependent id).
+An older **React Flow** graph spike remains under [`gui-spike/react-flow-spike/`](../gui-spike/react-flow-spike/) for experiments; it is **not** the main PM surface. It loads a **merged** roadmap sample ([`public/sample-merged-roadmap.json`](../gui-spike/react-flow-spike/public/sample-merged-roadmap.json)) with the same shape as `load_roadmap()` output (`version` + `nodes`), lays nodes by **dependency depth** (same idea as [`specy_road/bundled_scripts/roadmap_layout.py`](../specy_road/bundled_scripts/roadmap_layout.py) `compute_depths`), and draws **dependency edges** (`source` = dependency id, `target` = dependent id).
 
 **Run locally (requires Node 18+):**
 

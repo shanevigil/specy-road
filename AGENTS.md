@@ -1,26 +1,24 @@
-# AGENTS — entry point for coding agents
+# AGENTS — specy-road toolkit repository
 
-**Project:** specy-road — roadmap-first coordination kit (not [Spec-Kit](https://github.com/github/spec-kit); inspired by it only).
-
-The kit is **opinionated** about roadmapping, specs, and contracts; it does **not** prescribe which agent or IDE you use or how you plan work inside a session. Read [`docs/philosophy-and-scope.md`](docs/philosophy-and-scope.md) for scope. Optional tooling ideas (CLAUDE.md, Cursor rules, MCP, etc.) live in [`docs/optional-ai-tooling-patterns.md`](docs/optional-ai-tooling-patterns.md) and are **not** required here.
+**This file is for contributors working on the `specy-road` package.** If you are building an **application** with specy-road, use the `AGENTS.md` created by `specy-road init project` in your repo instead.
 
 ## Load order (keep context small)
 
-1. [`constitution/purpose.md`](constitution/purpose.md) — why this exists  
-2. [`constitution/principles.md`](constitution/principles.md) — how we decide  
-3. [`constraints/README.md`](constraints/README.md) — enforced rules  
-4. Merged roadmap graph ([`roadmap/manifest.json`](roadmap/manifest.json) manifest + ordered **JSON** chunk files from `includes`) — **your node only** + parents + `dependencies` (this is not `registry.yaml`; the registry is separate coordination data)  
-5. **[`planning/<node-id>/`](planning/README.md)** — for phase and milestone nodes, read **overview.md** and **plan.md** (and optional tasks) at the path given by **`planning_dir`** on the node  
-6. [`shared/README.md`](shared/README.md) — then open **only** cited contract files  
+1. [`constitution/purpose.md`](constitution/purpose.md) — if present at repo root; else see template under [`specy_road/templates/project/`](specy_road/templates/project/)
+2. [`constitution/principles.md`](constitution/principles.md)
+3. [`constraints/README.md`](constraints/README.md) — limits for **this** repo (package + tests)
+4. Dogfood merged graph — [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) (`manifest.json` + chunk files) for maintainer validation only
+5. **[`planning/<node-id>/`](tests/fixtures/specy_road_dogfood/planning/README.md)** under the dogfood fixture when relevant
+6. [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) in the fixture, then only cited contracts
 
-For a focused slice:
+Focused brief (against the dogfood tree):
 
 ```bash
-python scripts/generate_brief.py <NODE_ID> -o work/brief-<NODE_ID>.md
+specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood
 ```
-
-If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to the same `specy-road` / `scripts/` commands above; follow this load order first.
 
 ## Coordination
 
-Read [`docs/git-workflow.md`](docs/git-workflow.md) before starting roadmap-linked implementation: branch `feature/rm-<codename>`, register in [`roadmap/registry.yaml`](roadmap/registry.yaml) first commit.
+For roadmap-linked implementation in this repo, read [`docs/git-workflow.md`](docs/git-workflow.md) and register in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) (first commit on `feature/rm-<codename>`).
+
+If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.

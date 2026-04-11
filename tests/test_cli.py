@@ -7,11 +7,19 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
 
 
 def test_specy_road_validate() -> None:
     subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "validate"],
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "validate",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
         cwd=REPO,
         check=True,
     )
@@ -19,7 +27,15 @@ def test_specy_road_validate() -> None:
 
 def test_specy_road_sync_no_git() -> None:
     subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "sync", "--no-git"],
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "sync",
+            "--no-git",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
         cwd=REPO,
         check=True,
     )
@@ -27,7 +43,14 @@ def test_specy_road_sync_no_git() -> None:
 
 def test_specy_road_list_nodes() -> None:
     r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "list-nodes"],
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "list-nodes",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
         cwd=REPO,
         capture_output=True,
         text=True,
@@ -38,7 +61,15 @@ def test_specy_road_list_nodes() -> None:
 
 def test_specy_road_show_node() -> None:
     r = subprocess.run(
-        [sys.executable, "-m", "specy_road.cli", "show-node", "M0.1"],
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "show-node",
+            "M0.1",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
         cwd=REPO,
         capture_output=True,
         text=True,
@@ -65,7 +96,7 @@ def test_specy_road_do_next_available_task_help() -> None:
     assert "--base" in r.stdout
 
 
-def test_specy_road_init_requires_some_action() -> None:
+def test_specy_road_init_requires_subcommand() -> None:
     r = subprocess.run(
         [sys.executable, "-m", "specy_road.cli", "init"],
         cwd=REPO,
@@ -74,8 +105,7 @@ def test_specy_road_init_requires_some_action() -> None:
     )
     assert r.returncode == 2
     err = (r.stderr or "") + (r.stdout or "")
-    assert "build-gui" in err
-    assert "install-gui" in err
+    assert "project" in err or "gui" in err
 
 
 def test_specy_road_init_install_gui_dry_run() -> None:
@@ -85,6 +115,7 @@ def test_specy_road_init_install_gui_dry_run() -> None:
             "-m",
             "specy_road.cli",
             "init",
+            "gui",
             "--install-gui",
             "--dry-run",
         ],
@@ -108,6 +139,7 @@ def test_specy_road_init_reinstall_gui_dry_run() -> None:
             "-m",
             "specy_road.cli",
             "init",
+            "gui",
             "--reinstall-gui",
             "--dry-run",
         ],
@@ -129,6 +161,7 @@ def test_specy_road_init_install_gui_skip_npm_dry_run() -> None:
             "-m",
             "specy_road.cli",
             "init",
+            "gui",
             "--install-gui",
             "--skip-npm-build",
             "--dry-run",
@@ -150,6 +183,7 @@ def test_specy_road_init_build_gui_only_dry_run() -> None:
             "-m",
             "specy_road.cli",
             "init",
+            "gui",
             "--build-gui",
             "--dry-run",
         ],

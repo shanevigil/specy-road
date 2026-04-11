@@ -8,22 +8,25 @@ from pathlib import Path
 from typing import Any
 
 def _scripts_dir() -> Path:
-    """Locate ``scripts/`` (roadmap Python modules)."""
+    """Locate bundled roadmap Python modules (``bundled_scripts/``)."""
     env = os.environ.get("SPECY_ROAD_SCRIPTS")
     if env:
         p = Path(env).resolve()
         if p.is_dir():
             return p
     pkg = Path(__file__).resolve().parent
-    here = pkg.parent / "scripts"
-    if here.is_dir():
-        return here
+    bundled = pkg / "bundled_scripts"
+    if bundled.is_dir():
+        return bundled
+    legacy = pkg.parent / "scripts"
+    if legacy.is_dir():
+        return legacy
     cwd = Path.cwd() / "scripts"
     if cwd.is_dir():
         return cwd
     raise RuntimeError(
-        "Cannot locate scripts/ (roadmap modules). Run specy-road gui from the "
-        "repository root, or set SPECY_ROAD_SCRIPTS to the scripts directory.",
+        "Cannot locate bundled_scripts/ (roadmap modules). Reinstall specy-road, "
+        "or set SPECY_ROAD_SCRIPTS to that directory.",
     )
 
 

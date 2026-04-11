@@ -2,7 +2,7 @@
 
 This directory is created by **`specyrd init`** from the **specy-road** kit. It records which agent packs were installed; it is **not** a second source of truth for roadmap rules.
 
-- **Canonical workflow** remains the **specy-road** CLI (`specy-road validate`, `brief`, `export`, …) and `python scripts/…` — see the repo [`README.md`](../README.md).
+- **Canonical workflow** remains the **specy-road** CLI (`specy-road validate`, `brief`, `export`, …) — see the repo [`README.md`](../README.md).
 - **Not Spec Kit:** `specyrd` is unrelated to the Spec Kit **`specify`** CLI. Phase/milestone `planning/<node-id>/` folders in this kit are **per-node planning files** (required for those node types), not that tool.
 
 ## Adding another IDE later

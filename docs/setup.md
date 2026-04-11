@@ -67,7 +67,7 @@ specyrd init . --ai claude-code --role both  # same fourteen stubs as omitting -
 ```
 
 Default install writes **fourteen** `specyrd-*.md` files (including `constitution`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`). Stubs are written to `.claude/commands/` or `.cursor/commands/` (or a custom path for `--ai generic`). They are thin
-wrappers — the canonical behaviour lives in `specy-road` and `scripts/`, not the stubs.
+wrappers — the canonical behaviour lives in `specy-road`, not the stubs.
 
 Use `--dry-run` to preview what would be written, `--force` to overwrite existing stubs.
 
@@ -86,12 +86,12 @@ When `gui` is included in `--extras`, a starter `~/.specy-road/gui-settings.json
 For the split-pane outline and Gantt timeline, use one command from the repo root:
 
 ```bash
-specy-road init --install-gui
+specy-road init gui --install-gui
 ```
 
 That **installs or upgrades** the Python stack (`pip install --upgrade …[gui-next]`). If this tree contains **`gui/pm-gantt/`** (a git checkout), it **also** runs `npm ci` / `npm install` and `npm run build` so the bundled static UI matches the repo — then **`specy-road gui`** works without extra steps. If you only have a PyPI install (no `gui/pm-gantt/`), pip is enough; the wheel already includes built assets.
 
-Use **`specy-road init --reinstall-gui`** when the Python env looks broken (adds `pip --force-reinstall`). Use **`specy-road init --install-gui --skip-npm-build`** when you only want faster pip upgrades and will not change the frontend. Use **`specy-road init --build-gui`** alone to rebuild the SPA without touching pip.
+Use **`specy-road init gui --reinstall-gui`** when the Python env looks broken (adds `pip --force-reinstall`). Use **`specy-road init gui --install-gui --skip-npm-build`** when you only want faster pip upgrades and will not change the frontend. Use **`specy-road init gui --build-gui`** alone to rebuild the SPA without touching pip.
 
 Equivalent manual installs: `pip install --upgrade 'specy-road[gui-next]'` and, from `gui/pm-gantt`, `npm install && npm run build`. See [pm-workflow.md](pm-workflow.md).
 

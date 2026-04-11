@@ -4,16 +4,26 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 import export_roadmap_md as em
 
 
 def test_export_check_matches_repo() -> None:
-    script = str(REPO / "scripts" / "export_roadmap_md.py")
-    subprocess.run([sys.executable, script, "--check"], cwd=REPO, check=True)
+    script = str(BUNDLED_SCRIPTS / "export_roadmap_md.py")
+    subprocess.run(
+        [
+            sys.executable,
+            script,
+            "--check",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
+        cwd=REPO,
+        env=script_subprocess_env(),
+        check=True,
+    )
 
 
 def _phase_subtree(**extra) -> list[dict]:

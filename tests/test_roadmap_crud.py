@@ -12,12 +12,11 @@ import pytest
 
 from roadmap_chunk_utils import find_chunk_path, write_json_chunk
 from roadmap_crud_ops import append_node_to_chunk
-
-REPO = Path(__file__).resolve().parent.parent
+from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 
 def _fixture_repo(dest: Path) -> None:
-    shutil.copytree(REPO / "schemas", dest / "schemas")
+    shutil.copytree(SCHEMAS, dest / "schemas")
     shutil.copytree(REPO / "constraints", dest / "constraints")
     (dest / "roadmap" / "phases").mkdir(parents=True)
     (dest / "shared").mkdir(parents=True)
@@ -41,6 +40,7 @@ def _fixture_repo(dest: Path) -> None:
             "type": "phase",
             "title": "P",
             "codename": None,
+            "planning_dir": "planning/M99",
             "execution_milestone": "Human-led",
             "status": "Complete",
             "touch_zones": [],
@@ -90,15 +90,20 @@ def _fixture_repo(dest: Path) -> None:
             "parallel_tracks": 1,
         },
     ]
+    pd = dest / "planning" / "M99"
+    pd.mkdir(parents=True)
+    (pd / "overview.md").write_text("# Overview\n", encoding="utf-8")
+    (pd / "plan.md").write_text("# Plan\n", encoding="utf-8")
     write_json_chunk(dest / "roadmap" / "phases" / "T.json", nodes)
 
 
 def _run_crud(tmp: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(REPO / "scripts" / "roadmap_crud.py"), *args],
+        [sys.executable, str(BUNDLED_SCRIPTS / "roadmap_crud.py"), *args],
         cwd=tmp,
         capture_output=True,
         text=True,
+        env=script_subprocess_env(),
     )
 
 
@@ -134,12 +139,13 @@ def test_append_node_validate(tmp_path: Path) -> None:
     v = subprocess.run(
         [
             sys.executable,
-            str(REPO / "scripts" / "validate_roadmap.py"),
+            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
             "--repo-root",
             str(tmp_path),
         ],
         capture_output=True,
         text=True,
+        env=script_subprocess_env(),
     )
     assert v.returncode == 0, v.stderr
 

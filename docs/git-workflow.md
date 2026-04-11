@@ -33,7 +33,7 @@ On a roadmap-driven branch, the **first commit** must register work—**no imple
 ## Merge back
 
 1. Remove your registry entry (or table row) before merge.
-2. Merge via PR/MR; green validation (e.g. `scripts/validate_roadmap.py`) should pass.
+2. Merge via PR/MR; green validation (e.g. `specy-road validate`) should pass.
 3. Delete the feature branch after merge.
 
 ## Correcting merged work: revert vs follow-up

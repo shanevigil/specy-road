@@ -20,11 +20,11 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -e ".[dev]"
-      - name: Validate roadmap and registry
-        run: python scripts/validate_roadmap.py
-      - name: Check roadmap markdown export
-        run: python scripts/export_roadmap_md.py --check
+      - name: Validate roadmap and registry (dogfood fixture)
+        run: python specy_road/bundled_scripts/validate_roadmap.py --repo-root tests/fixtures/specy_road_dogfood
+      - name: Check roadmap markdown export (dogfood fixture)
+        run: python specy_road/bundled_scripts/export_roadmap_md.py --check --repo-root tests/fixtures/specy_road_dogfood
       - name: File limits
-        run: python scripts/validate_file_limits.py
+        run: python specy_road/bundled_scripts/validate_file_limits.py
       - name: Tests
         run: pytest

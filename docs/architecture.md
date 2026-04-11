@@ -4,24 +4,24 @@
 
 This repository provides **roadmap-first coordination** (merged graph from `roadmap/manifest.json` + JSON chunk files, validation, briefs, registry) and separates **constitution / principles / constraints / shared contracts**. It does **not** mandate a particular coding agent, IDE, or in-session implementation workflow—see [`philosophy-and-scope.md`](philosophy-and-scope.md).
 
-End-to-end flow for this repository:
+End-to-end flow in a **consumer project** (after `specy-road init project`):
 
 ```mermaid
 flowchart TD
   subgraph author [Authoring]
     Y[manifest.json and chunk files]
     V[vision.md]
-    Y --> E[scripts/export_roadmap_md.py]
+    Y --> E[specy-road export]
     E --> I[roadmap.md index]
   end
   subgraph validate [Validation]
-    Y --> VR[scripts/validate_roadmap.py]
+    Y --> VR[specy-road validate]
     R[roadmap/registry.yaml] --> VR
-    FL[constraints/file-limits.yaml] --> VF[scripts/validate_file_limits.py]
+    FL[constraints/file-limits.yaml] --> VF[specy-road file-limits]
   end
   subgraph agent [Agent slice]
     VR --> OK[OK or exit 1]
-    GB[scripts/generate_brief.py NODE_ID]
+    GB[specy-road brief NODE_ID]
     Y --> GB
     GB --> B[work/brief-*.md]
   end
@@ -30,11 +30,12 @@ flowchart TD
 | Layer | Role |
 |-------|------|
 | `constitution/` | Purpose and principles (human norms, not machine-enforced) |
-| `constraints/` | Machine-readable limits; `file-limits.yaml` enforced by `validate_file_limits.py` |
+| `constraints/` | Machine-readable limits; `file-limits.yaml` enforced by `specy-road file-limits` |
 | `roadmap/` | `manifest.json`, JSON chunk files (e.g. `phases/*.json`), `registry.yaml` |
 | `schemas/` | JSON Schema for roadmap and registry |
 | `shared/` | Contracts cited from tasks |
-| `scripts/` | Validators, brief helper, markdown export |
-| `specy_road/` | Package + `specy-road` CLI entrypoint |
+| `specy_road/` (install) | Python package; `specy-road` CLI; `bundled_scripts/` implements validate/brief/export |
 
-**Source of truth:** node definitions in chunk files under [`roadmap/`](../roadmap/) (see [`roadmap-authoring.md`](roadmap-authoring.md)). Root [`roadmap.md`](../roadmap.md) is a generated index.
+**Source of truth:** node definitions in chunk files under `roadmap/` (see [`roadmap-authoring.md`](roadmap-authoring.md)). `roadmap.md` at the **project** root is a generated index.
+
+**This repository** additionally keeps a maintainer sample under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) for CI (`--repo-root tests/fixtures/specy_road_dogfood`).

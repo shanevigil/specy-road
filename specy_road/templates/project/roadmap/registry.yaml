@@ -1,0 +1,5 @@
+# Active roadmap claims (codename, branch, touch zones). Empty when nothing is in progress.
+# See your git workflow doc for first-commit registration on feature/rm-<codename> branches.
+
+version: 1
+entries: []

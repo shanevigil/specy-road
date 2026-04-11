@@ -5,19 +5,19 @@ repos:
     hooks:
       - id: validate-roadmap
         name: validate roadmap and registry
-        entry: python scripts/validate_roadmap.py
+        entry: python specy_road/bundled_scripts/validate_roadmap.py --repo-root tests/fixtures/specy_road_dogfood
         language: system
         pass_filenames: false
         always_run: true
       - id: export-roadmap-md-check
         name: check roadmap markdown export (drift)
-        entry: python scripts/export_roadmap_md.py --check
+        entry: python specy_road/bundled_scripts/export_roadmap_md.py --check --repo-root tests/fixtures/specy_road_dogfood
         language: system
         pass_filenames: false
         always_run: true
       - id: validate-file-limits
         name: validate file line-count limits
-        entry: python scripts/validate_file_limits.py
+        entry: python specy_road/bundled_scripts/validate_file_limits.py
         language: system
         pass_filenames: false
         always_run: true

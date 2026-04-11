@@ -15,5 +15,5 @@ specy-road file-limits
 Equivalent:
 
 ```bash
-python scripts/validate_file_limits.py
+specy-road file-limits
 ```

@@ -1,0 +1,11 @@
+# Tune globs to match your repository (examples below).
+
+max_lines_per_file: 400
+max_lines_per_function: 50
+applies_to_globs:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+  - "**/*.md"
+
+roadmap_manifest_max_lines: 500
+roadmap_json_chunk_max_lines: 500

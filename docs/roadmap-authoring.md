@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-**Canonical:** the roadmap graph under [`roadmap/`](../roadmap/). The entry file is **required**: [`roadmap/manifest.json`](../roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
+**Canonical:** the roadmap graph under [`roadmap/`](../tests/fixtures/specy_road_dogfood/roadmap/). The entry file is **required**: [`roadmap/manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
 
 All node IDs are **immutable**; gaps in numbering are allowed; **never renumber** existing IDs.
 
@@ -23,7 +23,7 @@ Dependencies and `parallel_tracks` express what can run in parallel vs what must
 
 ## Roadmap layers
 
-The graph has a natural depth hierarchy. **Node definitions** live in chunk files under `roadmap/`; [`roadmap.md`](../roadmap.md) is a **generated index** for reading.
+The graph has a natural depth hierarchy. **Node definitions** live in chunk files under `roadmap/`; [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) is a **generated index** for reading.
 
 ```mermaid
 flowchart TB
@@ -92,12 +92,12 @@ Use the `notes` field (markdown string) for short context in the graph. **Phase 
 
 ### Line-count policy (~500)
 
-- **Manifest** [`manifest.json`](../roadmap/manifest.json): keep small; limit from `roadmap_manifest_max_lines` in config.
+- **Manifest** [`manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json): keep small; limit from `roadmap_manifest_max_lines` in config.
 - **JSON chunks** under `roadmap/` (except `manifest.json`): may not exceed **`roadmap_json_chunk_max_lines`** (default **500**) unless the chunk contains **exactly one** node.
 
-[`registry.yaml`](../roadmap/registry.yaml) is separate from the graph and is not a merge chunk.
+[`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) is separate from the graph and is not a merge chunk.
 
-Enforced by `scripts/validate_roadmap.py` (via [`scripts/roadmap_load.py`](../scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml).
+Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load.py`](../specy_road/bundled_scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) in **your** project (or the toolkit’s [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) when working on this repository).
 
 ---
 
@@ -109,7 +109,7 @@ Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../s
 
 | | `node_key` | `id` |
 |---|------------|------|
-| **Role** | Stable UUID — never changes when the outline is reorganized. | Hierarchical **display** id (`M`, `M0.1`, …) used for the tree, `parent_id`, CLI `NODE_ID`, and [`roadmap/registry.yaml`](../roadmap/registry.yaml) `node_id`. |
+| **Role** | Stable UUID — never changes when the outline is reorganized. | Hierarchical **display** id (`M`, `M0.1`, …) used for the tree, `parent_id`, CLI `NODE_ID`, and [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) `node_id`. |
 | **Mutability** | Immutable for the lifetime of the node. | May be **renumbered** when running outline operations that rewrite display ids (dependencies stay keyed by `node_key`). |
 | **Used in** | `dependencies` (each entry is another node’s `node_key`). | `parent_id`, human-facing commands (`specy-road brief M0.2`), exported tables. |
 
@@ -282,7 +282,7 @@ Multiple developers and multiple agents per developer are assumed.
 ### Before starting implementation
 
 1. Confirm **gate** prerequisites (`dependencies`, `execution_milestone`) from the roadmap.
-2. Check [`roadmap/registry.yaml`](../roadmap/registry.yaml) — avoid overlapping touch zones with in-progress work.
+2. Check [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) — avoid overlapping touch zones with in-progress work.
 3. Branch from the integration branch: `feature/rm-<codename>` matching the milestone codename.
 4. **First commit** registers the work in `registry.yaml` (`chore(rm-<codename>): register as in-progress`) — no implementation before that commit.
 5. Remove the registration entry **before** merging back.
@@ -298,7 +298,7 @@ Multiple developers and multiple agents per developer are assumed.
 ## PM editing workflow
 
 1. Read [`vision.md`](../vision.md) for invariants before editing.
-2. Edit the **JSON chunk** for the relevant phase; reorder **`includes`** in [`manifest.json`](../roadmap/manifest.json) when you want a different chunk merge order.
+2. Edit the **JSON chunk** for the relevant phase; reorder **`includes`** in [`manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) when you want a different chunk merge order.
 3. **Never renumber** sub-task or fourth-level IDs — gaps are allowed.
 4. Split oversized chunk files at ~500 lines, along milestone or theme boundaries; add new paths to the manifest.
 5. Use `decision` blocks for architectural forks; link ADRs in `adr_ref` when they exist.
@@ -308,22 +308,22 @@ Multiple developers and multiple agents per developer are assumed.
 
 ## Generated index (`roadmap.md`)
 
-- [`roadmap.md`](../roadmap.md) — **generated** index table with **Gate** column. Do not edit by hand.
+- [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) — **generated** index table with **Gate** column. Do not edit by hand.
 
-Chunk files under [`roadmap/phases/`](../roadmap/phases/) are **source** (`.json` graph chunks).
+Chunk files under [`roadmap/phases/`](../tests/fixtures/specy_road_dogfood/roadmap/phases/) are **source** (`.json` graph chunks).
 
 Regenerate the index after editing chunks:
 
 ```bash
 specy-road export
 # or directly:
-python scripts/export_roadmap_md.py
+specy-road export
 ```
 
 Check that the committed index matches the merged graph (e.g. in CI):
 
 ```bash
-python scripts/export_roadmap_md.py --check
+specy-road export --check
 ```
 
 ---
@@ -334,7 +334,7 @@ PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node
 
 ## Registry and brief
 
-Active work registration stays in [`roadmap/registry.yaml`](../roadmap/registry.yaml). Bounded context for a single node:
+Active work registration stays in [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml). Bounded context for a single node:
 
 ```bash
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md

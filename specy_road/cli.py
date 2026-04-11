@@ -1,4 +1,4 @@
-"""Console entrypoint: thin wrappers around scripts/."""
+"""Console entrypoint: thin wrappers around bundled_scripts/."""
 
 from __future__ import annotations
 
@@ -9,19 +9,142 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+from specy_road.runtime_paths import bundled_scripts_dir
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
+
+
+def _run_init_cli(rest: list[str]) -> None:
+    from specy_road.cli_init import run_install_gui
+    from specy_road.init_project import run_init_project
+
+    p = argparse.ArgumentParser(
+        prog="specy-road init",
+        description="Initialize a consumer project layout or optional PM GUI tooling.",
+    )
+    sub = p.add_subparsers(dest="init_cmd", required=True)
+    pr = sub.add_parser(
+        "project",
+        help="Scaffold constitution/, roadmap/, shared/, constraints/, schemas/, planning/, work/, AGENTS.md",
+    )
+    pr.add_argument(
+        "path",
+        nargs="?",
+        type=Path,
+        default=None,
+        help="Target repository root (default: git toplevel or cwd)",
+    )
+    pr.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print paths that would be written; do not create files",
+    )
+    pr.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite template files; required if roadmap/manifest.json already exists",
+    )
+    pg = sub.add_parser(
+        "gui",
+        help="Install FastAPI/uvicorn (gui-next) and optionally build the Vite SPA",
+    )
+    mode = pg.add_mutually_exclusive_group(required=False)
+    mode.add_argument(
+        "--install-gui",
+        action="store_true",
+        help="pip install --upgrade …[gui-next], then npm build in gui/pm-gantt when present",
+    )
+    mode.add_argument(
+        "--reinstall-gui",
+        action="store_true",
+        help="Like --install-gui but pip uses --force-reinstall",
+    )
+    pg.add_argument(
+        "--build-gui",
+        action="store_true",
+        help="Only rebuild the SPA (npm). Use without --install-gui to skip pip",
+    )
+    pg.add_argument(
+        "--skip-npm-build",
+        action="store_true",
+        help="With --install-gui / --reinstall-gui: skip npm after pip",
+    )
+    pg.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print commands that would be run",
+    )
+    ns = p.parse_args(rest)
+    if ns.init_cmd == "project":
+        raise SystemExit(
+            run_init_project(ns.path, dry_run=ns.dry_run, force=ns.force)
+        )
+    assert ns.init_cmd == "gui"
+    if not ns.install_gui and not ns.reinstall_gui and not ns.build_gui:
+        pg.print_help()
+        print(
+            "\nerror: specify at least one of --install-gui, --reinstall-gui, or --build-gui.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    do_pip = ns.install_gui or ns.reinstall_gui
+    npm_only = ns.build_gui and not do_pip
+    try:
+        run_install_gui(
+            dry_run=ns.dry_run,
+            reinstall=ns.reinstall_gui,
+            do_pip=do_pip,
+            npm_only=npm_only,
+            skip_npm_after_pip=do_pip and ns.skip_npm_build,
+        )
+    except subprocess.CalledProcessError as e:
+        print(
+            f"error: command failed with exit code {e.returncode}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from e
 
 
 def _gui_static_ok() -> bool:
     return _PM_GANTT_INDEX.is_file()
 
 
+def _args_repo_root_first(args: list[str]) -> list[str]:
+    """``roadmap_crud`` expects ``--repo-root`` before the subcommand."""
+    out: list[str] = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--repo-root" and i + 1 < len(args):
+            out.extend(["--repo-root", args[i + 1]])
+            i += 2
+        else:
+            out.append(args[i])
+            i += 1
+    try:
+        idx = out.index("--repo-root")
+    except ValueError:
+        return out
+    pair = out[idx : idx + 2]
+    rest_ = out[:idx] + out[idx + 2 :]
+    return pair + rest_
+
+
 def _run(script: str, args: list[str]) -> None:
-    cmd = [sys.executable, str(ROOT / "scripts" / script), *args]
-    subprocess.check_call(cmd)
+    d = bundled_scripts_dir()
+    script_path = d / script
+    if not script_path.is_file():
+        print(
+            f"error: missing bundled script {script_path} (broken install).",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    env = os.environ.copy()
+    sep = os.pathsep
+    prev = env.get("PYTHONPATH", "")
+    env["PYTHONPATH"] = str(d) + (sep + prev if prev else "")
+    cmd = [sys.executable, str(script_path), *args]
+    subprocess.check_call(cmd, env=env)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -49,9 +172,9 @@ def main(argv: list[str] | None = None) -> None:
             "    (optional: --planning-dir PATH --task-id SUB_ID --force; see scripts/scaffold_planning.py -h)\n"
             "  scaffold-constitution — create constitution/purpose.md and constitution/principles.md from templates\n"
             "    (optional: --repo-root DIR --force)\n"
-            "  init --install-gui — pip gui-next + local npm build when gui/pm-gantt exists (one-time setup for specy-road gui)\n"
-            "  init --reinstall-gui — same as install-gui but pip --force-reinstall\n"
-            "  init --build-gui — npm only (rebuild SPA without touching pip)\n"
+            "  init project [PATH] — scaffold roadmap/constitution/shared/… into the repo root\n"
+            "    (optional: --dry-run --force)\n"
+            "  init gui — optional PM UI: --install-gui | --reinstall-gui | --build-gui [--skip-npm-build]\n"
             "  update — fast-forward a git clone of specy-road from github.com/shanevigil/specy-road "
             "(optional: --path DIR --remote NAME --branch BRANCH --dry-run)\n"
             "  gui — FastAPI + Gantt PM UI (after: init --install-gui or pip install 'specy-road[gui-next]')\n"
@@ -87,7 +210,7 @@ def main(argv: list[str] | None = None) -> None:
         "edit-node",
         "archive-node",
     ):
-        _run("roadmap_crud.py", [cmd, *rest])
+        _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
     elif cmd == "review-node":
         _run("review_node.py", rest)
     elif cmd == "scaffold-planning":
@@ -125,62 +248,7 @@ def main(argv: list[str] | None = None) -> None:
         for rel in result.skipped_existing:
             print(f"skipped (exists, use --force to overwrite): {rel}")
     elif cmd == "init":
-        from specy_road.cli_init import run_install_gui
-
-        p = argparse.ArgumentParser(
-            prog="specy-road init",
-            description="Set up the Gantt PM UI: Python deps (FastAPI/uvicorn) and, in a source tree, the bundled SPA build.",
-        )
-        mode = p.add_mutually_exclusive_group(required=False)
-        mode.add_argument(
-            "--install-gui",
-            action="store_true",
-            help="pip install --upgrade …[gui-next], then npm build in gui/pm-gantt when that folder exists (so specy-road gui works).",
-        )
-        mode.add_argument(
-            "--reinstall-gui",
-            action="store_true",
-            help="Like --install-gui but pip uses --force-reinstall (repair a broken Python env).",
-        )
-        p.add_argument(
-            "--build-gui",
-            action="store_true",
-            help="Only rebuild the SPA (npm ci/install + npm run build). Use without --install-gui to skip pip.",
-        )
-        p.add_argument(
-            "--skip-npm-build",
-            action="store_true",
-            help="With --install-gui or --reinstall-gui only: install Python deps but do not run npm (faster repeat upgrades).",
-        )
-        p.add_argument(
-            "--dry-run",
-            action="store_true",
-            help="Print the commands that would be run; do not install or build.",
-        )
-        ns = p.parse_args(rest)
-        if not ns.install_gui and not ns.reinstall_gui and not ns.build_gui:
-            p.print_help()
-            print(
-                "\nerror: specify at least one of --install-gui, --reinstall-gui, or --build-gui.",
-                file=sys.stderr,
-            )
-            raise SystemExit(2)
-        do_pip = ns.install_gui or ns.reinstall_gui
-        npm_only = ns.build_gui and not do_pip
-        try:
-            run_install_gui(
-                dry_run=ns.dry_run,
-                reinstall=ns.reinstall_gui,
-                do_pip=do_pip,
-                npm_only=npm_only,
-                skip_npm_after_pip=do_pip and ns.skip_npm_build,
-            )
-        except subprocess.CalledProcessError as e:
-            print(
-                f"error: command failed with exit code {e.returncode}",
-                file=sys.stderr,
-            )
-            raise SystemExit(1) from e
+        _run_init_cli(rest)
     elif cmd == "gui":
         p = argparse.ArgumentParser(prog="specy-road gui")
         p.add_argument("--host", default="127.0.0.1")
@@ -196,8 +264,8 @@ def main(argv: list[str] | None = None) -> None:
         if uvicorn_spec is None:
             print(
                 "error: FastAPI Gantt UI needs uvicorn (included in specy-road[gui-next]). Run:\n"
-                "  specy-road init --install-gui\n"
-                "  specy-road init --reinstall-gui   # if deps are corrupted or stuck\n"
+                "  specy-road init gui --install-gui\n"
+                "  specy-road init gui --reinstall-gui   # if deps are corrupted or stuck\n"
                 "or:\n"
                 "  pip install 'specy-road[gui-next]'\n"
                 "Use the same Python environment as this `specy-road` command.",

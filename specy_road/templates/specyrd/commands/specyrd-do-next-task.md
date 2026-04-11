@@ -17,7 +17,7 @@ specy-road do-next-available-task
 ```
 
 By default this **syncs** the integration branch (`main`), then continues. Flags:
-`--base <branch>`, `--remote <name>`, `--no-sync` (see `python scripts/do_next_task.py --help`).
+`--base <branch>`, `--remote <name>`, `--no-sync` (see `specy-road do-next-available-task --help`; implementation lives in the installed package).
 
 This will:
 
