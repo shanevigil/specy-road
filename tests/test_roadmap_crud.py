@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from roadmap_chunk_utils import find_chunk_path, write_json_chunk
+from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from roadmap_crud_ops import append_node_to_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
@@ -183,3 +183,142 @@ def test_list_nodes_cli(tmp_path: Path) -> None:
     r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes")
     assert r.returncode == 0
     assert "M99.1" in r.stdout
+
+
+def test_show_node_cli(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert r.returncode == 0
+    assert "# chunk: roadmap/phases/T.json" in r.stdout
+    assert '"id": "M99.1"' in r.stdout
+
+
+def test_archive_node_soft_sets_cancelled(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "archive-node", "M99.1")
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    node = next(n for n in nodes if n["id"] == "M99.1")
+    assert node["status"] == "Cancelled"
+
+
+def test_hard_remove_leaf_node_succeeds(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M99.2",
+        "--hard-remove",
+    )
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    ids = {n["id"] for n in nodes}
+    assert "M99.2" not in ids
+    assert "M99.1" in ids
+
+
+def test_edit_node_cli_rejects_non_key_value_set(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "edit-node",
+        "M99.1",
+        "--set",
+        "status",
+    )
+    assert r.returncode == 1
+    assert "expected key=value" in r.stderr
+
+
+def test_add_node_cli_rejects_unknown_parent(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--chunk",
+        "phases/T.json",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "Three",
+        "--parent-id",
+        "M404",
+        "--codename",
+        "three",
+    )
+    assert r.returncode == 1
+    assert "parent_id 'M404' not found in roadmap" in r.stderr
+
+
+def test_add_node_agentic_requires_checklist(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--chunk",
+        "phases/T.json",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "Three",
+        "--parent-id",
+        "M99",
+        "--codename",
+        "three",
+        "--execution-subtask",
+        "agentic",
+    )
+    assert r.returncode == 1
+    assert "execution_subtask agentic requires full checklist" in r.stderr
+
+
+def test_add_node_agentic_checklist_json_success(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    checklist = json.dumps(
+        {
+            "artifact_action": "a",
+            "contract_citation": "shared/README.md",
+            "interface_contract": "i",
+            "constraints_note": "c",
+            "dependency_note": "d",
+        }
+    )
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--chunk",
+        "phases/T.json",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "Three",
+        "--parent-id",
+        "M99",
+        "--codename",
+        "three",
+        "--execution-subtask",
+        "agentic",
+        "--checklist-json",
+        checklist,
+    )
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    node = next(n for n in nodes if n["id"] == "M99.3")
+    assert node["execution_subtask"] == "agentic"
+    assert node["agentic_checklist"]["contract_citation"] == "shared/README.md"
