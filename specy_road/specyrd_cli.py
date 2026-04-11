@@ -60,7 +60,7 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="specyrd",
         description=(
             "Optional installer for IDE slash-command stubs that delegate to "
-            "specy-road or python scripts/. "
+            "specy-road commands. "
             "Does not replace core validation or briefs."
         ),
     )

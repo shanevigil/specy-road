@@ -7,5 +7,5 @@ Ordered checklist. Mark `[ ]` / `[x]` as you go.
 
 ## Verification
 
-- [ ] `python scripts/validate_roadmap.py` (if roadmap changed)
+- [ ] `specy-road validate` (if roadmap changed)
 - [ ] Tests / CI per project conventions
