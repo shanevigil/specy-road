@@ -181,6 +181,9 @@ export function SettingsDrawer({
 }: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
+  const [inheritLlm, setInheritLlm] = useState(true);
+  const [inheritGitRemote, setInheritGitRemote] = useState(true);
+  const [repoLabel, setRepoLabel] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
 
@@ -197,6 +200,11 @@ export function SettingsDrawer({
       .then((s) => {
         const l = (s.llm as Record<string, unknown>) || {};
         const g = (s.git_remote as Record<string, unknown>) || {};
+        if (typeof s.inherit_llm === "boolean") setInheritLlm(s.inherit_llm);
+        if (typeof s.inherit_git_remote === "boolean")
+          setInheritGitRemote(s.inherit_git_remote);
+        const root = typeof s.repo_root === "string" ? s.repo_root : "";
+        setRepoLabel(root ? root : "");
         setLlm(
           Object.fromEntries(
             Object.entries(l).map(([k, v]) => [k, v == null ? "" : String(v)]),
@@ -222,6 +230,8 @@ export function SettingsDrawer({
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
       putSettings({
+        inherit_llm: inheritLlm,
+        inherit_git_remote: inheritGitRemote,
         llm: buildLlmPayload(llm),
         git_remote: {
           provider: git.provider || "github",
@@ -240,7 +250,7 @@ export function SettingsDrawer({
         });
     }, 800);
     return () => window.clearTimeout(t);
-  }, [llm, git, open]);
+  }, [llm, git, inheritLlm, inheritGitRemote, open]);
 
   if (!open) return null;
 
@@ -284,9 +294,31 @@ export function SettingsDrawer({
       footer={footer}
     >
       <p className="outline-meta">
-        Stored in ~/.specy-road/gui-settings.json. API keys use simple
-        obfuscation on disk, not plain text. Changes save automatically.
+        Credentials live in ~/.specy-road/gui-settings.json (versioned file with
+        global defaults and per-repository overrides). API keys use simple obfuscation
+        on disk, not encryption. Environment variables still override saved values
+        when set. Changes save automatically.
       </p>
+      {repoLabel ? (
+        <p className="outline-meta" title={repoLabel}>
+          Open repository: <code className="settings-repo-path">{repoLabel}</code>
+        </p>
+      ) : null}
+      <div className="settings-section-heading">
+        <h3>This repository</h3>
+      </div>
+      <SettingsToggleRow
+        checked={inheritLlm}
+        onChange={setInheritLlm}
+        label="Use global LLM settings for this repository"
+        optionTitle="When off, LLM fields below are stored only for this git worktree (overlays on global defaults)."
+      />
+      <SettingsToggleRow
+        checked={inheritGitRemote}
+        onChange={setInheritGitRemote}
+        label="Use global Git remote settings for this repository"
+        optionTitle="When off, Git remote fields below are stored only for this git worktree (e.g. different repo slug or token)."
+      />
       <h3 className="settings-appearance-title">Appearance</h3>
       <ThemeModeSegmented value={themeMode} onChange={onThemeModeChange} />
       <h3

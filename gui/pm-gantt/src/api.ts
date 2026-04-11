@@ -243,11 +243,16 @@ export async function getSettings() {
   return r.json() as Promise<Record<string, unknown>>;
 }
 
-export async function putSettings(settings: Record<string, unknown>) {
+export async function putSettings(payload: {
+  inherit_llm: boolean;
+  inherit_git_remote: boolean;
+  llm: Record<string, string>;
+  git_remote: Record<string, string>;
+}) {
   const r = await fetch(`${API}/settings`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ settings }),
+    body: JSON.stringify(payload),
   });
   if (!r.ok) throw new Error(await r.text());
 }

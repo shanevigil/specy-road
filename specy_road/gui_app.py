@@ -65,7 +65,8 @@ from roadmap_gui_lib import (  # noqa: E402
     registry_by_node_id,
     resolve_repo_root,
     roadmap_fingerprint,
-    save_settings,
+    save_settings_for_repo,
+    settings_api_payload,
 )
 from roadmap_gui_remote import (  # noqa: E402
     build_pr_hints,
@@ -179,8 +180,11 @@ class AddNodeBody(BaseModel):
     type: str = Field(default="task", pattern="^(vision|phase|milestone|task)$")
 
 
-class SettingsBody(BaseModel):
-    settings: dict[str, Any]
+class GuiSettingsPutBody(BaseModel):
+    inherit_llm: bool = True
+    inherit_git_remote: bool = True
+    llm: dict[str, Any] = Field(default_factory=dict)
+    git_remote: dict[str, Any] = Field(default_factory=dict)
 
 
 class LlmTestBody(BaseModel):
@@ -248,7 +252,7 @@ def create_app() -> FastAPI:
         nodes = doc.get("nodes") or []
         reg = load_registry(root)
         by_reg = registry_by_node_id(reg)
-        settings = load_settings()
+        settings = load_settings(root)
         gr = settings.get("git_remote") or {}
         pr_hints = build_pr_hints(by_reg, gr)
         git_enrichment = build_registry_enrichment(by_reg, gr)
@@ -549,11 +553,17 @@ def create_app() -> FastAPI:
 
     @app.get("/api/settings")
     def api_settings_get() -> dict[str, Any]:
-        return load_settings()
+        return settings_api_payload(_get_repo_root())
 
     @app.put("/api/settings")
-    def api_settings_put(body: SettingsBody) -> dict[str, str]:
-        save_settings(body.settings)
+    def api_settings_put(body: GuiSettingsPutBody) -> dict[str, str]:
+        save_settings_for_repo(
+            _get_repo_root(),
+            inherit_llm=body.inherit_llm,
+            inherit_git_remote=body.inherit_git_remote,
+            llm=body.llm,
+            git_remote=body.git_remote,
+        )
         return {"ok": "true"}
 
     @app.post("/api/llm/test")

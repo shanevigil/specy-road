@@ -145,10 +145,16 @@ Settings are stored on **your** computer only, not in the repo:
 `~/.specy-road/gui-settings.json`  
 (On Windows, that is under your user profile; the tool creates the folder if needed.)
 
+The file is a **versioned** JSON document: **global** defaults (shared across repositories unless you override) plus optional **per–git-worktree** overlays keyed by a hash of the repository root path. Older installs used a flat file with only top-level `llm` and `git_remote`; that shape is **migrated automatically** on first read into `version` 2 with a `global` section and an empty `projects` map.
+
+In **Settings**, use **This repository** toggles:
+
+- **Use global LLM settings for this repository** — when on, LLM fields you edit are saved as **global** defaults. When off, only fields that differ from those defaults are stored for **this** checkout (so you can use one API key everywhere, or a different key per project).
+- **Use global Git remote settings for this repository** — same idea for GitHub/GitLab **repo** name, token, and related fields (useful when each codebase has its own remote but you share one token).
 
 | Tab            | What it is for                                                                                                                                                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **LLM**        | API keys and model for the optional reviewer (OpenAI, Azure OpenAI, Anthropic Claude, or a compatible OpenAI-style API). **Test LLM** checks the connection. **Save** stores values locally with simple obfuscation (not encryption).                                                                  |
+| **LLM**        | API keys and model for the optional reviewer (OpenAI, Azure OpenAI, Anthropic Claude, or a compatible OpenAI-style API). **Test LLM** checks the connection. Changes save automatically with simple obfuscation (not encryption).                                                                  |
 | **Git remote** | Optional. If you add a **GitHub** or **GitLab** token and repository name, the dashboard can try to show open **pull/merge requests** for branches that appear in the registry. If you skip this, you still see registry info. |
 
 **Security note (saved secrets):** Values you save for LLM keys and the Git remote token are written to `gui-settings.json` with Base64 encoding (a `__b64__:` prefix) so they are not stored as raw plaintext in the file. That is **obfuscation, not encryption**: anyone who can read the file—local users with access to your home directory, backups, folder sync, or compromised tooling on the same machine—can recover the secret. Treat the file like a credential; prefer **environment variables** or org-approved secret storage if your policy needs stronger guarantees (pre-set env vars still override empty saved fields).
