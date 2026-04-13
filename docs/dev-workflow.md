@@ -82,6 +82,8 @@ git commit -m "chore(rm-<codename>): register as in-progress"
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
+The brief lists **ancestor** planning feature sheets (parent phase/milestone) and **this node’s** sheet under `planning/`. Read ancestors first for scope and constraints, then the leaf sheet, then cited `shared/` contracts.
+
 5. Implement, commit incrementally.
 
 ### Finish (both paths)

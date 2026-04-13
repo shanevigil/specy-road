@@ -173,6 +173,8 @@ def _write_prompt(node: dict, brief_path: Path) -> Path:
         f"You are implementing roadmap node **{node_id}** (`{codename}`).",
         f"Read the full brief at `{brief_path.relative_to(ROOT)}`.",
         "",
+        "The brief lists **ancestor** planning sheets (phase/milestone) and **this node's** sheet under `planning/`. Read ancestors first for scope and constraints, then the leaf sheet.",
+        "",
         "## Contract",
         "",
     ]

@@ -32,7 +32,7 @@ Create or update **`AGENTS.md`** at `[REPO_ROOT]` with this **required load orde
 2. `constitution/principles.md` — how we decide  
 3. `constraints/README.md` — enforced rules  
 4. **Merged roadmap:** `roadmap/manifest.json` + JSON chunk files listed in `includes` — your task’s node, parents, and `dependencies`  
-5. `planning/<node-id>/` for **phase** and **milestone** nodes (`overview.md`, `plan.md`, optional tasks)  
+5. `planning/<id>_<slug>_<node_key>.md` feature sheets for nodes with `planning_dir` (read ancestor sheets for context)  
 6. `shared/README.md`, then **only** contract files cited for the task  
 
 Include a **focused brief** example:

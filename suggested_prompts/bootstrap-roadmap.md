@@ -4,12 +4,12 @@ Copy everything below the line into your agentic coding tool. Replace `[REPO_ROO
 
 ---
 
-You are migrating **roadmap-like** information from an existing project into **specy-road’s** strict layout: a **merged JSON graph** under `roadmap/`, a **registry** for active claims, and **planning** Markdown per phase/milestone.
+You are migrating **roadmap-like** information from an existing project into **specy-road’s** strict layout: a **merged JSON graph** under `roadmap/`, a **registry** for active claims, and **planning** feature sheets (one `planning/*.md` per node with `planning_dir`).
 
 ## Authoritative references
 
 1. **`specy-road init project --dry-run`** — Lists every scaffold path; use as checklist.
-2. **`docs/roadmap-authoring.md`** — Manifest, chunks, immutability, line limits, planning folders.
+2. **`docs/roadmap-authoring.md`** — Manifest, chunks, immutability, line limits, planning feature sheets.
 3. **`docs/git-workflow.md`** — Branch `feature/rm-<codename>`, first-commit registration, touch zones.
 4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`.
 
@@ -58,10 +58,9 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 
 - **`dependencies`** — Array of **`node_key`** UUID strings (depends-on), **not** display `id` strings.
 
-### Phase and milestone nodes
+### Nodes with planning (vision, phase, milestone, task)
 
-- Set **`planning_dir`** — Repo-relative directory (e.g. `planning/M1`). **Required** for `phase` and `milestone` nodes per validation/narrative rules.
-- Under that directory, provide at least **`overview.md`** and **`plan.md`** (required). Optional: **`tasks.md`**, **`tasks/`** subtasks—see `planning/README.md` in the scaffold.
+- Set **`planning_dir`** — Repo-relative path to **one** Markdown file, e.g. `planning/M1.1_slug_<node_key>.md`. **Required** for `vision`, `phase`, `milestone`, and `task` per validation. Filename pattern and YAML frontmatter are described in `planning/README.md`.
 
 ### Common optional fields
 
@@ -77,12 +76,12 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 - Start from **`roadmap/registry.yaml`** with `version: 1` and `entries: []` unless migrating active work.
 - Each active entry: **`codename`**, **`node_id`**, **`branch`** (`feature/rm-<codename>`), **`touch_zones`** (non-empty array), optional **`node_key`**, **`started`**, **`owner`** — see `schemas/registry.schema.json` and `docs/git-workflow.md` (first commit on a roadmap branch registers work; remove entry before merge).
 
-## Phase 4 — Planning folders
+## Phase 4 — Planning feature sheets
 
 For every `planning_dir` you reference:
 
-1. Create `planning/<node-id>/overview.md` and `plan.md` with content derived from existing docs.
-2. Use **`specy-road scaffold-planning <NODE_ID>`** when extending or creating folders from templates (if CLI available).
+1. Create `planning/<id>_<slug>_<node_key>.md` with content derived from existing docs (or run **`specy-road scaffold-planning <NODE_ID>`** to create from the package template).
+2. Ensure YAML frontmatter sets `node_id` and `node_key` matching the roadmap node.
 
 ## Phase 5 — Export and limits
 

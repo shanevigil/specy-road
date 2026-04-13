@@ -111,7 +111,11 @@ export async function fetchPlanningArtifacts(nodeId: string) {
     `${API}/planning/${encodeURIComponent(nodeId)}/artifacts`,
   );
   if (!r.ok) throw new Error(await r.text());
-  return r.json() as Promise<{ planning_dir: string | null; files: { role: string; path: string; exists: boolean }[] }>;
+  return r.json() as Promise<{
+    planning_dir: string | null;
+    ancestor_planning_files?: { role?: string; path: string; exists: boolean }[];
+    files: { role: string; path: string; exists: boolean }[];
+  }>;
 }
 
 export async function scaffoldPlanning(

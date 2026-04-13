@@ -45,13 +45,27 @@ def test_validate_required_planning_dirs_phase() -> None:
         vr.validate_required_planning_dirs(nodes)
 
 
+def test_validate_required_planning_dirs_task() -> None:
+    nodes = [
+        {
+            "id": "M1.1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "type": "task",
+        },
+    ]
+    with pytest.raises(SystemExit):
+        vr.validate_required_planning_dirs(nodes)
+
+
 def test_validate_required_planning_dirs_ok_when_set() -> None:
     nodes = [
         {
             "id": "M1",
             "node_key": "10000000-0000-4000-8000-000000000001",
             "type": "phase",
-            "planning_dir": "planning/M1",
+            "planning_dir": (
+                "planning/M1_unnamed_10000000-0000-4000-8000-000000000001.md"
+            ),
         },
     ]
     vr.validate_required_planning_dirs(nodes)

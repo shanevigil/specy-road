@@ -8,7 +8,7 @@
       "notes": "Human-led phase: specs and ADRs before heavy implementation.",
       "parallel_tracks": 1,
       "parent_id": null,
-      "planning_dir": "planning/M0",
+      "planning_dir": "planning/M0_unnamed_81df7683-5e2f-5c97-b96c-fc9df4fac123.md",
       "sibling_order": 0,
       "status": "Not Started",
       "title": "Foundation — architecture and contracts",
@@ -22,7 +22,7 @@
       "id": "M0.1",
       "node_key": "44ef4a9d-923f-545c-8187-eaabc7ca86ba",
       "parallel_tracks": 1,
-      "planning_dir": "planning/M0.1",
+      "planning_dir": "planning/M0.1_contracts-bootstrap_44ef4a9d-923f-545c-8187-eaabc7ca86ba.md",
       "parent_id": "M0",
       "sibling_order": 0,
       "status": "Complete",
@@ -52,7 +52,8 @@
       "touch_zones": [
         "shared/"
       ],
-      "type": "task"
+      "type": "task",
+      "planning_dir": "planning/M0.3_unnamed_cd44fef1-715a-5b8d-b03f-1752a61a47cc.md"
     },
     {
       "dependencies": [],
@@ -63,7 +64,8 @@
       "status": "Not Started",
       "title": "testing",
       "touch_zones": [],
-      "type": "task"
+      "type": "task",
+      "planning_dir": "planning/M2_unnamed_4c1d98f2-2bdc-4a7d-81b9-c6f7e96e95f0.md"
     }
   ]
 }

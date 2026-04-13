@@ -1,10 +1,10 @@
 # specy-road
 
-**Roadmap-first coordination** for human teams and coding agents: one canonical graph under `roadmap/`, **planning/** Markdown for phase and milestone narratives, clear separation between **purpose**, **principles**, and **enforceable constraints**, and **shared/** contracts cited from work items.
+**Roadmap-first coordination** for human teams and coding agents: one canonical graph under `roadmap/`, **planning/** Markdown feature sheets (one `planning/<id>_<slug>_<node_key>.md` per node that has `planning_dir`), clear separation between **purpose**, **principles**, and **enforceable constraints**, and **shared/** contracts cited from work items.
 
 ## Why use it
 
-- **Single source of truth** — The roadmap graph under `roadmap/` (`manifest.json` + ordered **JSON** chunk files) drives priorities, dependencies, and gates; **phase and milestone** nodes point at **`planning/<node-id>/`** for narrative; contracts live in `shared/` and are cited from work items.
+- **Single source of truth** — The roadmap graph under `roadmap/` (`manifest.json` + ordered **JSON** chunk files) drives priorities, dependencies, and gates; nodes with **`planning_dir`** point at a **single feature sheet** under `planning/`; contracts live in `shared/` and are cited from work items.
 - **Smaller context for agents** — Generate a focused brief for a node so assistants load only what that task needs, instead of the whole repo story.
 - **Safer parallel work** — Immutable milestone IDs, **touch zones**, and **registration** in `roadmap/registry.yaml` make active work visible before files collide.
 - **Your tools, your workflow** — The kit is opinionated about **roadmapping and specs**, not about which IDE, agent, or in-session planning style you use. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
@@ -62,7 +62,7 @@ Optional git hooks: `pip install pre-commit && pre-commit install` (same checks 
 
 ## specyrd (optional IDE command stubs)
 
-**specyrd** is an optional installer for **slash-command-style markdown** (or equivalent) that points agents at the same workflows as `**specy-road`**. It does **not** replace roadmap validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. Per–phase/milestone folders named `planning/<node-id>/` hold **overview/plan/tasks** narrative (required for those node types) — unrelated to that tool.
+**specyrd** is an optional installer for **slash-command-style markdown** (or equivalent) that points agents at the same workflows as `**specy-road`**. It does **not** replace roadmap validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per roadmap node — unrelated to that tool.
 
 - **Subcommand:** `init` only.
 - **Typical use:** Run once per repo (or per IDE); add a second agent pack by running `init` again with another `--ai`.

@@ -88,7 +88,7 @@ Recommended on-disk shape (stable key order when tools save):
 
 The loader also accepts a top-level JSON **array** of node objects, or a single object with an `id`. Validation uses [`schemas/roadmap.schema.json`](../tests/fixtures/specy_road_dogfood/schemas/roadmap.schema.json) on the **merged** graph.
 
-Use the `notes` field (markdown string) for short context in the graph. **Phase and milestone** nodes must set **`planning_dir`**; the feature narrative (overview, plan, optional tasks) belongs in `planning/<node-id>/` Markdown — see [`planning/README.md`](../tests/fixtures/specy_road_dogfood/planning/README.md).
+Use the `notes` field (markdown string) for short context in the graph. **Vision, phase, milestone, and task** nodes must set **`planning_dir`** to a single feature sheet path: `planning/<id>_<slug>_<node_key>.md` — see [`planning/README.md`](../tests/fixtures/specy_road_dogfood/planning/README.md).
 
 ### Line-count policy (~500)
 
@@ -126,11 +126,11 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `type` | `vision` / `phase` / `milestone` / `task` |
 | `title` | Human-readable label. |
 
-### Required for `phase` and `milestone` nodes
+### Required when `type` is `vision`, `phase`, `milestone`, or `task`
 
 | Field | Description |
 |-------|-------------|
-| `planning_dir` | Repo-relative directory (e.g. `planning/M1.1`) containing **overview.md** and **plan.md** — the feature narrative. Validated by `validate_roadmap.py`. See [`planning/README.md`](../tests/fixtures/specy_road_dogfood/planning/README.md). |
+| `planning_dir` | Repo-relative path to one Markdown file, e.g. `planning/M1.1_my-milestone_<node_key>.md` — the feature sheet. Validated by `validate_roadmap.py`. See [`planning/README.md`](../tests/fixtures/specy_road_dogfood/planning/README.md). |
 
 ### Commonly used optional fields
 

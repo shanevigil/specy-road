@@ -7,7 +7,11 @@ import argparse
 from pathlib import Path
 
 from roadmap_load import load_roadmap
-from planning_artifacts import normalize_planning_dir, planning_artifact_paths
+from planning_artifacts import (
+    ancestor_planning_paths,
+    normalize_planning_dir,
+    planning_artifact_paths,
+)
 from roadmap_node_keys import build_key_to_node
 
 from specy_road.runtime_paths import default_user_repo_root
@@ -93,29 +97,31 @@ def _agentic_checklist_lines(n: dict) -> list[str]:
     return lines
 
 
-def _planning_dir_artifact_lines(n: dict, root: Path) -> list[str]:
+def _planning_dir_artifact_lines(
+    n: dict, root: Path, by_id: dict[str, dict]
+) -> list[str]:
+    nid = n["id"]
+    lines: list[str] = ["", "## Planning feature sheets", ""]
+    anc = ancestor_planning_paths(nid, by_id, root)
+    if anc:
+        lines.append("Read **ancestor** sheets first (program → phase → milestone), then this node.")
+        lines.append("")
+        for rel, p in anc:
+            state = "present" if p.is_file() else "missing"
+            lines.append(f"- **Ancestor:** `{rel}` ({state})")
+        lines.append("")
     pd = n.get("planning_dir")
     if not isinstance(pd, str) or not pd.strip():
-        return []
-    lines = ["", "## Planning artifacts (`planning_dir`)", ""]
+        if not anc:
+            lines.append("- _(no planning_dir on this node)_")
+        return lines
     try:
         norm = normalize_planning_dir(pd.strip())
         paths = planning_artifact_paths(root, norm)
-        for label, key in (
-            ("Overview", "overview"),
-            ("Plan", "plan"),
-            ("Tasks (aggregate)", "tasks_md"),
-        ):
-            p = paths[key]
-            rel = p.relative_to(root)
-            state = "present" if p.is_file() else "missing"
-            lines.append(f"- **{label}:** `{rel}` ({state})")
-        td = paths["tasks_dir"]
-        if td.is_dir():
-            n_md = len(list(td.rglob("*.md")))
-            lines.append(
-                f"- **tasks/:** `{td.relative_to(root)}` ({n_md} markdown file(s))",
-            )
+        p = paths["sheet"]
+        rel = p.relative_to(root)
+        state = "present" if p.is_file() else "missing"
+        lines.append(f"- **This node:** `{rel}` ({state})")
     except ValueError as e:
         lines.append(f"- _(invalid planning_dir: {e})_")
     return lines
@@ -156,7 +162,7 @@ def render_brief(
         ]
     )
     head.extend(_agentic_checklist_lines(n))
-    head.extend(_planning_dir_artifact_lines(n, root))
+    head.extend(_planning_dir_artifact_lines(n, root, by_id))
     tail = _brief_deps_and_contracts(n, deps, root, by_id)
     return "\n".join(head + tail) + "\n"
 

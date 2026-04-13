@@ -20,4 +20,4 @@ Equivalent:
 specy-road validate
 ```
 
-Agent load order: `AGENTS.md` at the repository root. Phase and milestone nodes use `planning/<node-id>/` (see `planning/README.md`) for feature narrative — not the [Spec Kit](https://github.com/github/spec-kit) `specify` CLI.
+Agent load order: `AGENTS.md` at the repository root. Feature sheets live as flat `planning/*.md` files (see `planning/README.md`) — not the [Spec Kit](https://github.com/github/spec-kit) `specify` CLI.

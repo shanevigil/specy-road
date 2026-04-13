@@ -1,0 +1,51 @@
+---
+node_id: {{NODE_ID}}
+node_key: {{NODE_KEY}}
+---
+
+# Feature sheet — `{{NODE_ID}}` — {{TITLE}}
+
+## Intent
+
+What problem this slice solves; link to roadmap node `{{NODE_ID}}`.
+
+## User-visible behavior
+
+-
+
+## Out of scope
+
+-
+
+## Approach
+
+-
+
+## Files / modules (expected)
+
+-
+
+## Risks
+
+-
+
+## Human gate (if any)
+
+Record decisions before implementation proceeds.
+
+## Tasks / checklist
+
+Ordered checklist. Mark `[ ]` / `[x]` as you go.
+
+- [ ] Task 1 …
+- [ ] Task 2 …
+
+### Verification
+
+- [ ] `specy-road validate` (if roadmap changed)
+- [ ] Tests / CI per project conventions
+
+## References
+
+- Roadmap: `roadmap/manifest.json` (`includes`) → chunk file for `{{NODE_ID}}`
+- Contracts (read selectively): `shared/`

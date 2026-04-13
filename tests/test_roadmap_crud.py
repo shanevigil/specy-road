@@ -15,6 +15,68 @@ from roadmap_crud_ops import append_node_to_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 
+def _sheet_stub(nid: str, nk: str) -> str:
+    return f"---\nnode_id: {nid}\nnode_key: {nk}\n---\n\n# {nid}\n"
+
+
+def _m99_crud_nodes(nk99: str, nk991: str, nk992: str) -> list[dict]:
+    ac = {
+        "artifact_action": "a",
+        "contract_citation": "shared/README.md",
+        "interface_contract": "i",
+        "constraints_note": "c",
+        "dependency_note": "d",
+    }
+    return [
+        {
+            "id": "M99",
+            "node_key": nk99,
+            "parent_id": None,
+            "type": "phase",
+            "title": "P",
+            "codename": None,
+            "planning_dir": f"planning/M99_unnamed_{nk99}.md",
+            "execution_milestone": "Human-led",
+            "status": "Complete",
+            "touch_zones": [],
+            "dependencies": [],
+            "parallel_tracks": 1,
+        },
+        {
+            "id": "M99.1",
+            "node_key": nk991,
+            "parent_id": "M99",
+            "type": "task",
+            "title": "One",
+            "codename": "one",
+            "planning_dir": f"planning/M99.1_one_{nk991}.md",
+            "execution_milestone": "Agentic-led",
+            "execution_subtask": "agentic",
+            "agentic_checklist": ac,
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [],
+            "parallel_tracks": 1,
+        },
+        {
+            "id": "M99.2",
+            "node_key": nk992,
+            "parent_id": "M99",
+            "type": "task",
+            "title": "Two",
+            "codename": "two",
+            "planning_dir": f"planning/M99.2_two_{nk992}.md",
+            "execution_milestone": "Agentic-led",
+            "execution_subtask": "agentic",
+            "agentic_checklist": ac,
+            "status": "Not Started",
+            "touch_zones": [],
+            "dependencies": [nk991],
+            "parallel_tracks": 1,
+        },
+    ]
+
+
 def _fixture_repo(dest: Path) -> None:
     shutil.copytree(SCHEMAS, dest / "schemas")
     shutil.copytree(REPO / "constraints", dest / "constraints")
@@ -32,68 +94,14 @@ def _fixture_repo(dest: Path) -> None:
     nk99 = "10000000-0000-4000-8000-000000009901"
     nk991 = "10000000-0000-4000-8000-000000009902"
     nk992 = "10000000-0000-4000-8000-000000009903"
-    nodes = [
-        {
-            "id": "M99",
-            "node_key": nk99,
-            "parent_id": None,
-            "type": "phase",
-            "title": "P",
-            "codename": None,
-            "planning_dir": "planning/M99",
-            "execution_milestone": "Human-led",
-            "status": "Complete",
-            "touch_zones": [],
-            "dependencies": [],
-            "parallel_tracks": 1,
-        },
-        {
-            "id": "M99.1",
-            "node_key": nk991,
-            "parent_id": "M99",
-            "type": "task",
-            "title": "One",
-            "codename": "one",
-            "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": {
-                "artifact_action": "a",
-                "contract_citation": "shared/README.md",
-                "interface_contract": "i",
-                "constraints_note": "c",
-                "dependency_note": "d",
-            },
-            "status": "Not Started",
-            "touch_zones": [],
-            "dependencies": [],
-            "parallel_tracks": 1,
-        },
-        {
-            "id": "M99.2",
-            "node_key": nk992,
-            "parent_id": "M99",
-            "type": "task",
-            "title": "Two",
-            "codename": "two",
-            "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": {
-                "artifact_action": "a",
-                "contract_citation": "shared/README.md",
-                "interface_contract": "i",
-                "constraints_note": "c",
-                "dependency_note": "d",
-            },
-            "status": "Not Started",
-            "touch_zones": [],
-            "dependencies": [nk991],
-            "parallel_tracks": 1,
-        },
-    ]
-    pd = dest / "planning" / "M99"
-    pd.mkdir(parents=True)
-    (pd / "overview.md").write_text("# Overview\n", encoding="utf-8")
-    (pd / "plan.md").write_text("# Plan\n", encoding="utf-8")
+    nodes = _m99_crud_nodes(nk99, nk991, nk992)
+    pl = dest / "planning"
+    pl.mkdir(parents=True)
+    (pl / f"M99_unnamed_{nk99}.md").write_text(_sheet_stub("M99", nk99), encoding="utf-8")
+    (pl / f"M99.1_one_{nk991}.md").write_text(
+        _sheet_stub("M99.1", nk991), encoding="utf-8"
+    )
+    (pl / f"M99.2_two_{nk992}.md").write_text(_sheet_stub("M99.2", nk992), encoding="utf-8")
     write_json_chunk(dest / "roadmap" / "phases" / "T.json", nodes)
 
 
@@ -114,13 +122,15 @@ def test_find_chunk_path(tmp_path: Path) -> None:
 
 def test_append_node_validate(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
+    nk = "10000000-0000-4000-8000-000000009904"
     node = {
         "id": "M99.3",
-        "node_key": "10000000-0000-4000-8000-000000009904",
+        "node_key": nk,
         "parent_id": "M99",
         "type": "task",
         "title": "Three",
         "codename": "three",
+        "planning_dir": f"planning/M99.3_three_{nk}.md",
         "execution_milestone": "Agentic-led",
         "execution_subtask": "agentic",
         "agentic_checklist": {
@@ -135,6 +145,11 @@ def test_append_node_validate(tmp_path: Path) -> None:
         "dependencies": [],
         "parallel_tracks": 1,
     }
+    p = tmp_path / "planning" / f"M99.3_three_{nk}.md"
+    p.write_text(
+        f"---\nnode_id: M99.3\nnode_key: {nk}\n---\n\n# M99.3\n",
+        encoding="utf-8",
+    )
     append_node_to_chunk(tmp_path, "phases/T.json", node)
     v = subprocess.run(
         [

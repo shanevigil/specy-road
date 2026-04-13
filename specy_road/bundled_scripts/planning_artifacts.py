@@ -1,7 +1,8 @@
-"""Planning markdown under per-node ``planning_dir`` (alongside the roadmap graph).
+"""Planning markdown: one feature sheet per roadmap node (flat ``planning/*.md``).
 
-Phase and milestone nodes must set ``planning_dir``; validation requires ``overview.md``
-and ``plan.md``. Optional ``tasks.md`` and ``tasks/**/*.md`` frontmatter. See ``planning/README.md``.
+``planning_dir`` on each node that requires planning is a repo-relative path to a single
+``.md`` file under ``planning/``. Filename pattern: ``<id>_<codename_slug>_<node_key>.md``.
+See ``planning/README.md`` in the project.
 """
 
 from __future__ import annotations
@@ -12,10 +13,21 @@ from typing import Any
 
 _UNSAFE_PLANNING_DIR = re.compile(r"\.\.|^/|\\\\|^\\")
 
+# planning/M1.1_my-feature_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.md
+PLANNING_FILENAME_RE = re.compile(
+    r"^(?P<id>M[0-9]+(?:\.[0-9]+)*)_"
+    r"(?P<slug>unnamed|[a-z0-9]+(?:-[a-z0-9]+)*)_"
+    r"(?P<uuid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+    r"\.md$",
+    re.IGNORECASE,
+)
+
 
 def normalize_planning_dir(raw: str) -> str:
     """
     Return a repo-relative POSIX path (no leading/trailing slashes, no ``..``).
+
+    Used for ``planning_dir`` (path to a single ``.md`` file under ``planning/``).
 
     Raises:
         ValueError: if empty, unsafe, or absolute-looking.
@@ -31,8 +43,8 @@ def normalize_planning_dir(raw: str) -> str:
     return s
 
 
-def resolve_planning_dir(repo_root: Path, planning_dir: str) -> Path:
-    """Resolve normalized planning_dir; must stay under repo_root."""
+def resolve_planning_path(repo_root: Path, planning_dir: str) -> Path:
+    """Resolve normalized planning_dir (file path); must stay under repo_root."""
     root = repo_root.resolve()
     rel = normalize_planning_dir(planning_dir)
     path = (root / rel).resolve()
@@ -41,6 +53,34 @@ def resolve_planning_dir(repo_root: Path, planning_dir: str) -> Path:
     except ValueError as e:
         raise ValueError(f"planning_dir {planning_dir!r} escapes repository root") from e
     return path
+
+
+def resolve_planning_dir(repo_root: Path, planning_dir: str) -> Path:
+    """Backward-compatible alias: ``planning_dir`` is now a file path."""
+    return resolve_planning_path(repo_root, planning_dir)
+
+
+def codename_to_slug(codename: str | None) -> str:
+    """Filesystem-friendly slug from milestone/phase codename; ``unnamed`` if missing."""
+    if not codename or not str(codename).strip():
+        return "unnamed"
+    s = str(codename).strip().lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s)
+    s = s.strip("-")
+    return s if s else "unnamed"
+
+
+def planning_filename_for_node(n: dict) -> str:
+    """Canonical filename: ``<id>_<slug>_<node_key>.md`` (node_key lowercased)."""
+    nid = n["id"]
+    slug = codename_to_slug(n.get("codename"))
+    nk = str(n["node_key"]).strip().lower()
+    return f"{nid}_{slug}_{nk}.md"
+
+
+def expected_planning_rel(n: dict) -> str:
+    """Repo-relative path ``planning/<filename>`` for a node."""
+    return f"planning/{planning_filename_for_node(n)}"
 
 
 def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -76,88 +116,117 @@ def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     return data, body
 
 
-def _owner_allows_node_id(owner_id: str, task_nid: str) -> bool:
-    return task_nid == owner_id or task_nid.startswith(owner_id + ".")
+def ancestor_chain_ids(node_id: str, by_id: dict[str, dict]) -> list[str]:
+    """Root-to-parent order of ids walking ``parent_id`` (excludes ``node_id``)."""
+    chain: list[str] = []
+    cur = by_id.get(node_id)
+    if not cur:
+        return chain
+    pid = cur.get("parent_id")
+    while pid is not None:
+        chain.append(pid)
+        cur = by_id.get(pid)
+        if not cur:
+            break
+        pid = cur.get("parent_id")
+    return list(reversed(chain))
 
 
-def _append_tasks_md_frontmatter_errors(
-    tasks_md: Path,
-    owner_id: str,
-    root: Path,
+def ancestor_planning_paths(
+    node_id: str,
     by_id: dict[str, dict],
-    errors: list[str],
-) -> None:
-    fm, _ = split_frontmatter(tasks_md.read_text(encoding="utf-8"))
-    fm_nid = fm.get("node_id")
-    if not fm_nid:
-        errors.append(
-            f"roadmap: {tasks_md.relative_to(root)}: "
-            "YAML frontmatter must set node_id (owner roadmap id)",
-        )
-        return
-    tid = str(fm_nid).strip()
-    if tid not in by_id:
-        errors.append(
-            f"roadmap: {tasks_md.relative_to(root)}: unknown node_id {tid!r}",
-        )
-    elif not _owner_allows_node_id(owner_id, tid):
-        errors.append(
-            f"roadmap: {tasks_md.relative_to(root)}: "
-            f"node_id {tid!r} must equal {owner_id!r} or be a descendant id",
-        )
-
-
-def _append_tasks_subdir_errors(
-    tasks_sub: Path,
-    owner_id: str,
-    root: Path,
-    by_id: dict[str, dict],
-    errors: list[str],
-) -> None:
-    for md in sorted(tasks_sub.rglob("*.md")):
-        fm, _ = split_frontmatter(md.read_text(encoding="utf-8"))
-        rel = md.relative_to(root)
-        tnid = fm.get("node_id")
-        if not tnid:
-            errors.append(f"roadmap: {rel}: YAML frontmatter must set node_id")
+    repo_root: Path,
+) -> list[tuple[str, Path]]:
+    """
+    Ordered list of (repo-relative path, absolute Path) for ancestors that have
+    ``planning_dir`` set. Vision → phase → … → immediate parent.
+    """
+    out: list[tuple[str, Path]] = []
+    for aid in ancestor_chain_ids(node_id, by_id):
+        an = by_id.get(aid)
+        if not an:
             continue
-        ts = str(tnid).strip()
-        if ts not in by_id:
-            errors.append(f"roadmap: {rel}: unknown node_id {ts!r}")
+        pd = an.get("planning_dir")
+        if not isinstance(pd, str) or not pd.strip():
             continue
-        if not _owner_allows_node_id(owner_id, ts):
-            errors.append(
-                f"roadmap: {rel}: node_id {ts!r} must be "
-                f"{owner_id!r} or a descendant (prefix {owner_id!r}.)",
-            )
+        try:
+            norm = normalize_planning_dir(pd.strip())
+            p = resolve_planning_path(repo_root, norm)
+        except ValueError:
+            continue
+        out.append((norm, p))
+    return out
 
 
-def _append_orphan_planning_task_errors(
+def _append_orphan_planning_files(
     root: Path,
-    planning_dirs: dict[str, str],
+    referenced_paths: set[str],
     errors: list[str],
 ) -> None:
     planning_root = root / "planning"
     if not planning_root.is_dir():
         return
+    for p in sorted(planning_root.iterdir()):
+        if p.name.startswith("."):
+            continue
+        if p.is_dir():
+            errors.append(
+                f"roadmap: planning subdirectory not allowed: "
+                f"{p.relative_to(root)} (use flat planning/*.md only)",
+            )
     for md in sorted(planning_root.rglob("*.md")):
+        if md.name.lower() == "readme.md":
+            continue
         try:
-            rel_sp = md.relative_to(planning_root)
+            rel = str(md.relative_to(root)).replace("\\", "/")
         except ValueError:
             continue
-        parts = rel_sp.parts
-        if "tasks" not in parts:
-            continue
-        t_idx = parts.index("tasks")
-        if t_idx >= len(parts) - 1:
-            continue
-        plan_parts = Path("planning").parts + rel_sp.parts[:t_idx]
-        plan_rel = "/".join(plan_parts)
-        if plan_rel not in planning_dirs:
+        if md.parent != planning_root:
             errors.append(
-                f"roadmap: orphan task markdown {md.relative_to(root)}: "
-                f"no node declares planning_dir {plan_rel!r}",
+                f"roadmap: nested planning markdown not allowed: {rel} "
+                f"(use only flat planning/*.md)",
             )
+            continue
+        if rel not in referenced_paths:
+            errors.append(
+                f"roadmap: orphan planning file {rel}: "
+                f"no node has planning_dir {rel!r}",
+            )
+
+
+def _append_filename_and_frontmatter_errors(
+    n: dict, norm: str, abs_path: Path, errors: list[str]
+) -> None:
+    fname = abs_path.name
+    if not PLANNING_FILENAME_RE.match(fname):
+        errors.append(
+            f"roadmap: node {n['id']}: planning file name must match "
+            f"<id>_<codename_slug>_<node_key>.md, got {fname!r}",
+        )
+    else:
+        exp = planning_filename_for_node(n)
+        if fname != exp:
+            errors.append(
+                f"roadmap: node {n['id']}: planning file should be named {exp!r}, got {fname!r}",
+            )
+    try:
+        text = abs_path.read_text(encoding="utf-8")
+    except OSError as e:
+        errors.append(f"roadmap: node {n['id']}: cannot read {norm}: {e}")
+        return
+    fm, _ = split_frontmatter(text)
+    if not fm.get("node_id") or str(fm.get("node_id")).strip() != n["id"]:
+        errors.append(
+            f"roadmap: node {n['id']}: {norm} YAML frontmatter must set "
+            f"node_id: {n['id']!r}",
+        )
+    exp_key = str(n["node_key"]).strip().lower()
+    fk = fm.get("node_key")
+    if not fk or str(fk).strip().lower() != exp_key:
+        errors.append(
+            f"roadmap: node {n['id']}: {norm} YAML frontmatter must set "
+            f"node_key: {exp_key!r}",
+        )
 
 
 def _process_node_planning_dir(
@@ -168,6 +237,7 @@ def _process_node_planning_dir(
     planning_dirs: dict[str, str],
     errors: list[str],
 ) -> None:
+    _ = (by_id,)  # reserved for future cross-node checks
     pd = n.get("planning_dir")
     if not pd:
         return
@@ -187,31 +257,37 @@ def _process_node_planning_dir(
         )
         return
     planning_dirs[norm] = n["id"]
+    if not norm.startswith("planning/"):
+        errors.append(
+            f"roadmap: node {n['id']}: planning_dir must be under planning/, got {norm!r}",
+        )
+        return
+    if not norm.endswith(".md"):
+        errors.append(
+            f"roadmap: node {n['id']}: planning_dir must end with .md, got {norm!r}",
+        )
+        return
     try:
-        abs_dir = resolve_planning_dir(repo_root, norm)
+        abs_path = resolve_planning_path(repo_root, norm)
     except ValueError as e:
         errors.append(f"roadmap: node {n['id']}: {e}")
         return
-    if not abs_dir.is_dir():
+    if abs_path.is_dir():
         errors.append(
-            f"roadmap: node {n['id']}: planning_dir is not a directory: {norm}",
+            f"roadmap: node {n['id']}: planning_dir must be a file, not a directory: {norm}",
         )
         return
-    for name in ("overview.md", "plan.md"):
-        p = abs_dir / name
-        if not p.is_file():
-            errors.append(f"roadmap: node {n['id']}: missing {name} under {norm}/")
-    tasks_md = abs_dir / "tasks.md"
-    if tasks_md.is_file():
-        _append_tasks_md_frontmatter_errors(tasks_md, n["id"], root, by_id, errors)
-    tasks_sub = abs_dir / "tasks"
-    if tasks_sub.is_dir():
-        _append_tasks_subdir_errors(tasks_sub, n["id"], root, by_id, errors)
+    if not abs_path.is_file():
+        errors.append(
+            f"roadmap: node {n['id']}: planning file missing: {norm}",
+        )
+        return
+    _append_filename_and_frontmatter_errors(n, norm, abs_path, errors)
 
 
 def collect_planning_artifact_errors(repo_root: Path, nodes: list[dict]) -> list[str]:
     """
-    Return fatal validation messages for ``planning_dir`` trees and global ``planning/`` hygiene.
+    Return fatal validation messages for ``planning_dir`` files and ``planning/`` hygiene.
     """
     errors: list[str] = []
     by_id = {n["id"]: n for n in nodes}
@@ -219,7 +295,8 @@ def collect_planning_artifact_errors(repo_root: Path, nodes: list[dict]) -> list
     planning_dirs: dict[str, str] = {}
     for n in nodes:
         _process_node_planning_dir(n, repo_root, root, by_id, planning_dirs, errors)
-    _append_orphan_planning_task_errors(root, planning_dirs, errors)
+    referenced = set(planning_dirs.keys())
+    _append_orphan_planning_files(root, referenced, errors)
     return errors
 
 
@@ -230,12 +307,13 @@ def collect_planning_artifact_warnings(repo_root: Path, nodes: list[dict]) -> li
 
 
 def planning_artifact_paths(repo_root: Path, planning_dir_norm: str) -> dict[str, Path]:
-    """Resolved paths for the standard artifact filenames under planning_dir."""
-    base = resolve_planning_dir(repo_root, planning_dir_norm)
+    """Resolved paths: single feature sheet file; ``dir`` is the parent ``planning/`` folder."""
+    p = resolve_planning_path(repo_root, planning_dir_norm)
     return {
-        "dir": base,
-        "overview": base / "overview.md",
-        "plan": base / "plan.md",
-        "tasks_md": base / "tasks.md",
-        "tasks_dir": base / "tasks",
+        "dir": p.parent,
+        "sheet": p,
+        "overview": p,
+        "plan": p,
+        "tasks_md": p,
+        "tasks_dir": p.parent,
     }

@@ -112,9 +112,7 @@ def _render_details(n: dict, lines: list[str]) -> None:
         lines.append("")
     planning_dir = n.get("planning_dir")
     if planning_dir:
-        lines.append(
-            f"**Planning directory:** `{planning_dir}` (overview.md, plan.md, tasks/)",
-        )
+        lines.append(f"**Planning feature sheet:** `{planning_dir}`")
         lines.append("")
 
 

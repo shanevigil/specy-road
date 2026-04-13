@@ -73,7 +73,7 @@
         "notes": { "type": "string" },
         "planning_dir": {
           "type": ["string", "null"],
-          "description": "Repo-relative directory for planning markdown (overview.md, plan.md, optional tasks/); required for type phase and milestone (enforced in validate_roadmap.py). See planning/README.md."
+          "description": "Repo-relative path to a single feature sheet under planning/, e.g. planning/M1.1_slug_<node_key>.md; required for types vision, phase, milestone, and task (enforced in validate_roadmap.py). See planning/README.md."
         },
         "goal": {
           "type": "string",

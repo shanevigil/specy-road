@@ -157,10 +157,10 @@ def validate_codenames(nodes: list[dict]) -> None:
 
 
 def validate_required_planning_dirs(nodes: list[dict]) -> None:
-    """Phase and milestone nodes must set planning_dir — feature narrative lives under planning/."""
+    """Vision, phase, milestone, and task nodes must set planning_dir (one .md file)."""
     for n in nodes:
         t = n.get("type")
-        if t not in ("phase", "milestone"):
+        if t not in ("vision", "phase", "milestone", "task"):
             continue
         pd = n.get("planning_dir")
         if isinstance(pd, str) and pd.strip():
@@ -168,7 +168,7 @@ def validate_required_planning_dirs(nodes: list[dict]) -> None:
         nid = n.get("id", "?")
         msg = (
             f"roadmap: node {nid} (type {t}): must set planning_dir to a repo-relative "
-            "path such as planning/<node-id>/ — overview.md and plan.md hold the feature narrative"
+            "path to a single feature sheet, e.g. planning/M1.1_slug_<node_key>.md"
         )
         print(msg, file=sys.stderr)
         raise SystemExit(1)

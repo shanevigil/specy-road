@@ -162,11 +162,17 @@ export function EditModal({
     setHydrated(false);
     fetchPlanningArtifacts(node.id)
       .then((a) => {
-        const fs = (a.files || []).map((f) => ({ role: f.role, path: f.path }));
+        const anc = (a.ancestor_planning_files || []).map((f) => ({
+          role: f.role || "ancestor",
+          path: f.path,
+        }));
+        const leaf = (a.files || []).map((f) => ({ role: f.role, path: f.path }));
+        const fs = [...anc, ...leaf];
         setFiles(fs);
         const nt = node.title || "";
         if (fs.length > 0) {
-          setActivePath(fs[0].path);
+          const sheet = leaf.find((x) => x.role === "sheet");
+          setActivePath(sheet ? sheet.path : fs[0].path);
           lastSaved.current = {
             title: nt,
             path: "",
@@ -364,11 +370,17 @@ export function EditModal({
         return fetchPlanningArtifacts(node.id);
       })
       .then((a) => {
-        const fs = (a.files || []).map((f) => ({ role: f.role, path: f.path }));
+        const anc = (a.ancestor_planning_files || []).map((f) => ({
+          role: f.role || "ancestor",
+          path: f.path,
+        }));
+        const leaf = (a.files || []).map((f) => ({ role: f.role, path: f.path }));
+        const fs = [...anc, ...leaf];
         setFiles(fs);
         const nt = node.title || "";
         if (fs.length > 0) {
-          setActivePath(fs[0].path);
+          const sheet = leaf.find((x) => x.role === "sheet");
+          setActivePath(sheet ? sheet.path : fs[0].path);
           lastSaved.current = {
             title: nt,
             path: "",
@@ -574,18 +586,17 @@ export function EditModal({
         <section className="modal-edit-planning-section modal-edit-planning-section--empty">
           <div className="planning-missing-banner">
             <p>
-              No planning folder yet for this node. Create{" "}
-              <code>overview.md</code>, <code>plan.md</code>, and{" "}
-              <code>tasks.md</code> under <code>planning/&lt;node-id&gt;/</code>{" "}
-              and set <code>planning_dir</code> on the node (same as{" "}
-              <code>specy-road scaffold-planning &lt;NODE_ID&gt;</code>).
+              No feature sheet yet for this node. Run{" "}
+              <code>specy-road scaffold-planning &lt;NODE_ID&gt;</code> to create{" "}
+              <code>planning/&lt;id&gt;_&lt;slug&gt;_&lt;node_key&gt;.md</code> and
+              set <code>planning_dir</code>.
             </p>
             <button
               type="button"
               disabled={scaffolding}
               onClick={onScaffoldPlanning}
             >
-              {scaffolding ? "Creating…" : "Create planning folder"}
+              {scaffolding ? "Creating…" : "Create planning file"}
             </button>
           </div>
         </section>

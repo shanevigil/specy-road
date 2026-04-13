@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from planning_artifacts import normalize_planning_dir
+from planning_artifacts import normalize_planning_dir, planning_filename_for_node
 
 from roadmap_node_keys import NODE_KEY_PATTERN
 
@@ -107,7 +107,33 @@ def _set_planning_dir(node: dict, raw_val: str) -> None:
     if raw_val.lower() in ("null", "~", ""):
         node.pop("planning_dir", None)
         return
-    node["planning_dir"] = normalize_planning_dir(raw_val.strip())
+    norm = normalize_planning_dir(raw_val.strip())
+    if not norm.startswith("planning/") or not norm.endswith(".md"):
+        raise ValueError(
+            "planning_dir must be a repo-relative path under planning/ ending in .md",
+        )
+    node["planning_dir"] = norm
+
+
+def sync_planning_dir_filename(node: dict) -> str | None:
+    """
+    Return the canonical ``planning_dir`` string for ``node`` (flat feature sheet path).
+    Does not mutate ``node``. Returns ``None`` if ``node_key`` or ``id`` is missing.
+    """
+    if node.get("node_key") is None or not node.get("id"):
+        return None
+    return f"planning/{planning_filename_for_node(node)}"
+
+
+def _maybe_resync_planning_dir_after_edit(node: dict, dotted_key: str) -> None:
+    """When codename changes, update ``planning_dir`` to the canonical flat filename."""
+    if dotted_key != "codename":
+        return
+    if node.get("planning_dir") is None:
+        return
+    new_path = sync_planning_dir_filename(node)
+    if new_path is not None:
+        node["planning_dir"] = new_path
 
 
 def _set_codename(node: dict, raw_val: str) -> None:
@@ -242,6 +268,7 @@ def apply_set(
             all_node_keys=all_node_keys,
             self_id=self_id,
         )
+        _maybe_resync_planning_dir_after_edit(node, parts[0])
         return
     if parts[0] == "decision" and len(parts) == 2:
         _apply_decision(node, parts[1], raw_val)

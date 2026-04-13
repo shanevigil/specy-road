@@ -14,8 +14,17 @@ from planning_artifacts import (
 from roadmap_edit_fields import apply_set
 
 
+def _minimal_sheet(node_id: str, node_key: str) -> str:
+    return (
+        f"---\nnode_id: {node_id}\nnode_key: {node_key}\n---\n\n# Sheet\n"
+    )
+
+
 def test_normalize_planning_dir() -> None:
-    assert normalize_planning_dir("planning/M1.2/") == "planning/M1.2"
+    assert (
+        normalize_planning_dir("planning/M1.2_x_10000000-0000-4000-8000-000000000001.md/")
+        == "planning/M1.2_x_10000000-0000-4000-8000-000000000001.md"
+    )
     assert normalize_planning_dir("foo/bar") == "foo/bar"
     with pytest.raises(ValueError):
         normalize_planning_dir("../escape")
@@ -32,75 +41,88 @@ def test_split_frontmatter() -> None:
     assert split_frontmatter("no front")[0] == {}
 
 
-def test_collect_planning_errors_missing_files(tmp_path: Path) -> None:
-    d = tmp_path / "planning" / "M1"
-    d.mkdir(parents=True)
-    nodes = [{"id": "M1", "planning_dir": "planning/M1"}]
+def test_collect_planning_errors_missing_file(tmp_path: Path) -> None:
+    nodes = [
+        {
+            "id": "M1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "planning_dir": "planning/M1_unnamed_10000000-0000-4000-8000-000000000001.md",
+        },
+    ]
     errs = collect_planning_artifact_errors(tmp_path, nodes)
-    assert len(errs) >= 2
-    assert any("missing overview.md" in e for e in errs)
-    assert any("missing plan.md" in e for e in errs)
+    assert any("planning file missing" in e for e in errs)
 
 
 def test_collect_planning_errors_ok_minimal(tmp_path: Path) -> None:
-    d = tmp_path / "planning" / "M1"
-    d.mkdir(parents=True)
-    (d / "overview.md").write_text("# s", encoding="utf-8")
-    (d / "plan.md").write_text("# p", encoding="utf-8")
-    nodes = [{"id": "M1", "planning_dir": "planning/M1"}]
+    p = tmp_path / "planning" / "M1_unnamed_10000000-0000-4000-8000-000000000001.md"
+    p.parent.mkdir(parents=True)
+    p.write_text(
+        _minimal_sheet("M1", "10000000-0000-4000-8000-000000000001"),
+        encoding="utf-8",
+    )
+    nodes = [
+        {
+            "id": "M1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "planning_dir": "planning/M1_unnamed_10000000-0000-4000-8000-000000000001.md",
+        },
+    ]
     assert collect_planning_artifact_errors(tmp_path, nodes) == []
 
 
 def test_collect_planning_duplicate_planning_dir(tmp_path: Path) -> None:
-    d = tmp_path / "planning" / "M1"
-    d.mkdir(parents=True)
-    (d / "overview.md").write_text("# s", encoding="utf-8")
-    (d / "plan.md").write_text("# p", encoding="utf-8")
+    k = "10000000-0000-4000-8000-000000000001"
+    k2 = "20000000-0000-4000-8000-000000000002"
+    for nid, nk in (("M1", k), ("M2", k2)):
+        p = tmp_path / "planning" / f"{nid}_unnamed_{nk}.md"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(_minimal_sheet(nid, nk), encoding="utf-8")
     nodes = [
-        {"id": "M1", "planning_dir": "planning/M1"},
-        {"id": "M2", "planning_dir": "planning/M1"},
+        {
+            "id": "M1",
+            "node_key": k,
+            "planning_dir": f"planning/M1_unnamed_{k}.md",
+        },
+        {
+            "id": "M2",
+            "node_key": k2,
+            "planning_dir": f"planning/M1_unnamed_{k}.md",
+        },
     ]
     errs = collect_planning_artifact_errors(tmp_path, nodes)
     assert any("duplicate planning_dir" in e for e in errs)
 
 
-def test_collect_planning_task_file_wrong_owner(tmp_path: Path) -> None:
-    d = tmp_path / "planning" / "M1"
-    (d / "tasks").mkdir(parents=True)
-    (d / "overview.md").write_text("# s", encoding="utf-8")
-    (d / "plan.md").write_text("# p", encoding="utf-8")
-    (d / "tasks" / "t.md").write_text(
-        "---\nnode_id: M9.9\n---\n\nx",
+def test_collect_planning_orphan_file(tmp_path: Path) -> None:
+    planning = tmp_path / "planning"
+    planning.mkdir(parents=True)
+    (planning / "M9_unnamed_10000000-0000-4000-8000-000000000099.md").write_text(
+        _minimal_sheet("M9", "10000000-0000-4000-8000-000000000099"),
         encoding="utf-8",
     )
-    nodes = [{"id": "M1", "planning_dir": "planning/M1"}, {"id": "M9.9", "parent_id": None}]
+    nodes: list[dict] = []
     errs = collect_planning_artifact_errors(tmp_path, nodes)
-    assert any("M9.9" in e and "descendant" in e for e in errs)
-
-
-def test_collect_planning_orphan_task_md(tmp_path: Path) -> None:
-    d = tmp_path / "planning" / "M2" / "tasks"
-    d.mkdir(parents=True)
-    (d / "orphan.md").write_text("---\nnode_id: M1\n---\n", encoding="utf-8")
-    nodes = [{"id": "M1", "planning_dir": "planning/M1"}]
-    (tmp_path / "planning" / "M1").mkdir(parents=True)
-    (tmp_path / "planning" / "M1" / "overview.md").write_text("# s", encoding="utf-8")
-    (tmp_path / "planning" / "M1" / "plan.md").write_text("# p", encoding="utf-8")
-    errs = collect_planning_artifact_errors(tmp_path, nodes)
-    assert any("orphan task markdown" in e for e in errs)
+    assert any("orphan planning file" in e for e in errs)
 
 
 def test_apply_set_planning_dir() -> None:
-    node: dict = {"id": "M1", "type": "milestone", "title": "t"}
+    node: dict = {
+        "id": "M1",
+        "type": "milestone",
+        "title": "t",
+        "node_key": "10000000-0000-4000-8000-000000000001",
+    }
     apply_set(
         node,
         "planning_dir",
-        "planning/M1",
+        "planning/M1_unnamed_10000000-0000-4000-8000-000000000001.md",
         all_ids={"M1"},
         all_node_keys=set(),
         self_id="M1",
     )
-    assert node["planning_dir"] == "planning/M1"
+    assert node["planning_dir"] == (
+        "planning/M1_unnamed_10000000-0000-4000-8000-000000000001.md"
+    )
     apply_set(
         node,
         "planning_dir",
@@ -110,3 +132,19 @@ def test_apply_set_planning_dir() -> None:
         self_id="M1",
     )
     assert "planning_dir" not in node
+
+
+def test_apply_set_planning_dir_rejects_non_md() -> None:
+    node: dict = {
+        "id": "M1",
+        "node_key": "10000000-0000-4000-8000-000000000001",
+    }
+    with pytest.raises(ValueError, match="planning_dir must"):
+        apply_set(
+            node,
+            "planning_dir",
+            "planning/M1",
+            all_ids={"M1"},
+            all_node_keys=set(),
+            self_id="M1",
+        )

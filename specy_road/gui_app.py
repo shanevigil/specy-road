@@ -82,7 +82,11 @@ from roadmap_outline_ops import (  # noqa: E402
     move_node_outline,
     reorder_siblings,
 )
-from planning_artifacts import normalize_planning_dir, planning_artifact_paths  # noqa: E402
+from planning_artifacts import (  # noqa: E402
+    ancestor_planning_paths,
+    normalize_planning_dir,
+    planning_artifact_paths,
+)
 from scaffold_planning import scaffold_planning_for_node  # noqa: E402
 
 from review_node import ReviewError, run_review  # noqa: E402
@@ -465,24 +469,40 @@ def create_app() -> FastAPI:
         by_id = {n["id"]: n for n in nodes}
         if node_id not in by_id:
             raise HTTPException(status_code=404, detail="node not found")
+        anc_out: list[dict[str, Any]] = []
+        for rel, p in ancestor_planning_paths(node_id, by_id, root):
+            anc_out.append(
+                {
+                    "role": "ancestor",
+                    "path": rel,
+                    "exists": p.is_file(),
+                },
+            )
         pd = by_id[node_id].get("planning_dir")
         if not isinstance(pd, str) or not pd.strip():
-            return {"planning_dir": None, "files": []}
+            return {
+                "planning_dir": None,
+                "ancestor_planning_files": anc_out,
+                "files": [],
+            }
         try:
             norm = normalize_planning_dir(pd.strip())
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         paths = planning_artifact_paths(root, norm)
-        out = []
-        for key, p in paths.items():
-            if p.is_file():
-                rel = str(p.relative_to(root)).replace("\\", "/")
-                out.append({"role": key, "path": rel, "exists": True})
-            elif p.is_dir():
-                for md in sorted(p.rglob("*.md")):
-                    rel = str(md.relative_to(root)).replace("\\", "/")
-                    out.append({"role": key, "path": rel, "exists": True})
-        return {"planning_dir": norm, "files": out}
+        p = paths["sheet"]
+        out: list[dict[str, Any]] = []
+        if p.is_file():
+            rel = str(p.relative_to(root)).replace("\\", "/")
+            out.append({"role": "sheet", "path": rel, "exists": True})
+        else:
+            rel = str(p.relative_to(root)).replace("\\", "/")
+            out.append({"role": "sheet", "path": rel, "exists": False})
+        return {
+            "planning_dir": norm,
+            "ancestor_planning_files": anc_out,
+            "files": out,
+        }
 
     @app.get("/api/planning/file")
     def api_planning_get(path: str = Query(..., description="Repo-relative path")) -> dict[str, str]:

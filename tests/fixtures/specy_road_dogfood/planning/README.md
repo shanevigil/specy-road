@@ -1,23 +1,30 @@
-# Structured planning (`planning/<node-id>/`)
+# Structured planning (`planning/*.md`)
 
-**Phase and milestone** roadmap nodes **must** set **`planning_dir`** to a repo-relative directory (for example `planning/M1.1`). That folder is where the **feature narrative** lives: intent, plan, and task checklists in Markdown, alongside the canonical graph in `roadmap/` JSON.
+**Vision, phase, milestone, and task** roadmap nodes **must** set **`planning_dir`** to a repo-relative path to **one Markdown file** under `planning/`, for example `planning/M1.1_my-milestone_a1b2c3d4-e5f6-4789-a012-3456789abcde.md`. That file is the **feature sheet** for the node, alongside the canonical graph in `roadmap/` JSON.
 
-Use `specy-road scaffold-planning <NODE_ID>` (templates ship inside the `specy-road` package) or copy from a project initialized with `specy-road init project`:
+Use `specy-road scaffold-planning <NODE_ID>` (templates ship inside the `specy-road` package) or copy from a project initialized with `specy-road init project`.
 
-```text
-planning/<node-id>/
-  overview.md
-  plan.md
-  tasks.md   # optional; if present, YAML frontmatter must set node_id
+## Filename
+
+`planning/<display_id>_<codename_slug>_<node_key>.md`
+
+- **`node_key`** — stable UUID from the roadmap node (lowercase in the filename).
+- **`codename_slug`** — kebab-case from `codename`, or `unnamed` if absent.
+
+The file **must** start with YAML frontmatter:
+
+```yaml
+---
+node_id: M1.1
+node_key: a1b2c3d4-e5f6-4789-a012-3456789abcde
+---
 ```
 
-Example: `planning/M1.1/` for milestone `M1.1`. Validation (`specy-road validate`) requires **`overview.md`** and **`plan.md`** for every `planning_dir`. **`tasks.md`** is optional; if present it must start with YAML frontmatter `node_id: <owner-node-id>`. Optional **`tasks/**/*.md`** per sub-task each need frontmatter `node_id: <that-task-id>` (must be the owner id or a descendant id). Orphan files under `planning/**/tasks/` without a matching `planning_dir` on any node fail validation.
-
-**Ids:** Folder names and YAML `node_id` use the roadmap **display `id`** (e.g. `M1.1`). The graph’s `dependencies` field uses **`node_key` UUIDs** — see [Node fields reference](../../../../docs/roadmap-authoring.md#display-id-vs-stable-node_key).
+Validation (`specy-road validate`) checks the file exists, the name matches the node, and frontmatter matches `node_id` / `node_key`. Orphan `planning/*.md` files not referenced by any node fail validation.
 
 ## Relationship to the roadmap graph
 
 - **`roadmap/`** — Canonical structure: IDs, status, dependencies, codenames, touch zones, and `planning_dir` pointer.
-- **`planning/`** — Human-readable **overview → plan → tasks** for each phase/milestone; this is what agents and developers load for implementation context together with cited `shared/` contracts.
+- **`planning/`** — Human-readable **feature sheets**; dev workflow should also read **ancestor** sheets (phase/milestone) for context together with cited `shared/` contracts.
 
-CLI: `specy-road scaffold-planning <NODE_ID>` creates the folder, templates, and sets `planning_dir`. Use `--task-id Mx.y.z` to add `tasks/Mx.y.z.md` under an existing `planning_dir`.
+CLI: `specy-road scaffold-planning <NODE_ID>` creates the file, templates, and sets `planning_dir`.

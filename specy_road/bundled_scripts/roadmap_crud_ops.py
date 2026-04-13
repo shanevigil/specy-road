@@ -15,6 +15,7 @@ from roadmap_chunk_utils import (
     resolve_chunk_file,
     write_json_chunk,
 )
+from planning_rename import rename_planning_file_if_path_changed
 from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
 from roadmap_node_keys import new_node_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
@@ -265,6 +266,9 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
             if isinstance(n.get("node_key"), str) and n["node_key"]
         }
         for k, v in pairs:
+            old_pd = node.get("planning_dir")
+            if isinstance(old_pd, str):
+                old_pd = old_pd.strip() or None
             apply_set(
                 node,
                 k,
@@ -273,6 +277,10 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
                 all_node_keys=nkeys,
                 self_id=node_id,
             )
+            new_pd = node.get("planning_dir")
+            if isinstance(new_pd, str):
+                new_pd = new_pd.strip() or None
+            rename_planning_file_if_path_changed(root, old_pd, new_pd)
         write_json_chunk(chunk, nodes)
         run_validate_raise(root)
         return

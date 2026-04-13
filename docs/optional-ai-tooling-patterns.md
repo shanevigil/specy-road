@@ -11,7 +11,7 @@ For coordination **inside** this kit, prefer [`roadmap/registry.yaml`](../tests/
 The **`specyrd`** CLI (installed with this package) can lay down **thin** markdown command files for Cursor (`.cursor/commands/`), Claude Code (`.claude/commands/`), or a **generic** directory you choose. Those files tell the agent to run **`specy-road`** from the repo root — they are not a second source of truth.
 
 - **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
-- **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. Per–phase/milestone `planning/<node-id>/` folders in specy-road are **this kit’s** overview/plan/tasks narrative (required for those node types), not that tool.
+- **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value; use `--force` to overwrite stubs from a previous run.
 - **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root.
 
