@@ -309,11 +309,17 @@ export async function fetchRoadmapFingerprint(): Promise<number> {
 export async function postLlmReview(
   nodeId: string,
   llm: Record<string, unknown>,
+  /** Live planning sheet from the editor (sent as planning_body). */
+  planningBody: string,
 ): Promise<string> {
   const r = await fetch(`${API}/llm/review`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ node_id: nodeId, llm }),
+    body: JSON.stringify({
+      node_id: nodeId,
+      llm,
+      planning_body: planningBody,
+    }),
   });
   const raw = (await r.json()) as { report?: string; detail?: unknown };
   if (!r.ok) {

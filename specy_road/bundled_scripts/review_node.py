@@ -20,14 +20,22 @@ class ReviewError(Exception):
     """LLM review failed (missing config, missing package, or API error)."""
 
 
-SYSTEM_PROMPT = (
-    "You are a senior reviewer for roadmap readiness. Output Markdown only.\n"
-    "Assess: agentic checklist completeness, contract/spec clarity, "
-    "alignment with project\n"
-    "constraints, risks, and open questions for the PM. Do not claim the "
-    "implementation exists;\n"
-    "evaluate whether a developer could execute without blocking ambiguities. "
-    "Be concise."
+# Concise: the model returns a replacement feature sheet, not a narrative review.
+SYSTEM_PROMPT = """You revise the Markdown feature sheet for one roadmap item.
+
+Output rules (strict):
+- Return ONLY the full revised feature sheet as Markdown. No preamble, title line, or closing commentary.
+- Do not wrap the document in a fenced code block.
+- Be concise: short paragraphs, tight bullets, minimal words per line.
+- Use ordinary feature-sheet shape: level-2 sections (## …). Prefer ## Intent, ## Approach, ## Tasks / checklist, ## References when structuring or rewriting. If the current sheet uses other ## headings (e.g. ## Source, ## Contracts), you may keep those names when they still fit.
+- Do not repeat the roadmap node id, display id, title, or node_key in the body—they belong in the roadmap JSON and filename.
+- Do not explain what you changed; the UI will diff against the previous sheet.
+
+Context below includes the roadmap brief, constraints, cited contracts, and the current feature sheet. Improve clarity, checklist completeness, and alignment with constraints and citations—not generic advice."""
+
+FEATURE_SHEET_SHAPE_HINT = (
+    "Typical sections (adapt to the node): ## Intent, ## Approach, "
+    "## Tasks / checklist (markdown `- [ ]` items), ## References."
 )
 
 
@@ -40,6 +48,40 @@ def _constraints_text(root: Path) -> str:
     if not p.is_file():
         return "_(no constraints/README.md)_"
     return p.read_text(encoding="utf-8", errors="replace")
+
+
+def _normalize_review_markdown_output(text: str) -> str:
+    """Strip accidental ```markdown fences some models wrap around the sheet."""
+    t = text.strip()
+    if not t.startswith("```"):
+        return t
+    lines = t.split("\n")
+    if not lines:
+        return t
+    first = lines[0].strip()
+    if not first.startswith("```"):
+        return t
+    rest = lines[1:]
+    while rest and rest[-1].strip() == "```":
+        rest = rest[:-1]
+    return "\n".join(rest).strip()
+
+
+def _feature_sheet_for_prompt(
+    root: Path,
+    node: dict,
+    planning_body: str | None,
+) -> str:
+    """Current sheet text: live editor wins, else on-disk planning_dir."""
+    if planning_body is not None:
+        return planning_body
+    pd = (node.get("planning_dir") or "").strip()
+    if not pd:
+        return "_(no planning_dir on this node — save a feature sheet first.)_"
+    path = root / pd
+    if path.is_file():
+        return path.read_text(encoding="utf-8", errors="replace")
+    return f"_(planning file not found on disk: `{pd}`)_"
 
 
 def _cited_snippets(root: Path, node: dict) -> str:
@@ -194,10 +236,19 @@ def ping_llm() -> None:
     _ = resp.choices[0].message.content
 
 
-def run_review(node_id: str, repo_root: Path | None = None) -> str:
+def run_review(
+    node_id: str,
+    repo_root: Path | None = None,
+    *,
+    planning_body: str | None = None,
+) -> str:
     """
-    Build the brief + constraints + cited-docs payload and return the Markdown
-    report.
+    Build context (brief, constraints, cited docs, current sheet) and return
+    the revised feature sheet Markdown from the LLM.
+
+    ``planning_body`` — when not ``None`` (including empty string), used as the
+    current feature sheet instead of reading ``planning_dir`` from disk (live
+    editor in the GUI).
 
     Raises ``ReviewError`` on configuration or API failure, ``ValueError`` if
     ``node_id`` is unknown.
@@ -211,15 +262,19 @@ def run_review(node_id: str, repo_root: Path | None = None) -> str:
     brief = render_brief(node_id, by_id, repo_root=root)
     constraints = _constraints_text(root)
     cited = _cited_snippets(root, node)
+    sheet = _feature_sheet_for_prompt(root, node, planning_body)
     user_content = "\n\n".join(
         [
             "## Brief\n\n" + brief,
             "## constraints/README.md\n\n" + constraints,
             "## Cited documents (from contract_citation)\n\n" + cited,
+            "## Current feature sheet\n\n" + sheet,
+            "## Expected shape\n\n" + FEATURE_SHEET_SHAPE_HINT,
         ],
     )
     client = _make_client()
-    return _complete(client, user_content)
+    raw = _complete(client, user_content)
+    return _normalize_review_markdown_output(raw)
 
 
 def main(argv: list[str] | None = None) -> None:

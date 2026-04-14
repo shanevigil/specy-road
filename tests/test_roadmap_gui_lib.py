@@ -38,6 +38,22 @@ def test_apply_llm_env_anthropic_env_wins(monkeypatch: pytest.MonkeyPatch) -> No
     assert os.environ["SPECY_ROAD_ANTHROPIC_API_KEY"] == "preset"
 
 
+def test_apply_llm_env_anthropic_model_refreshes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Switching models in the GUI must not leave the first model in os.environ."""
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("SPECY_ROAD_ANTHROPIC_MODEL", "first-model")
+    m.apply_llm_env_from_settings(
+        {
+            "backend": "anthropic",
+            "anthropic_api_key": "k",
+            "anthropic_model": "second-model",
+        },
+    )
+    assert os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] == "second-model"
+
+
 def test_save_settings_obfuscates_anthropic_key(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

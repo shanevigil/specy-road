@@ -1285,6 +1285,118 @@ button {
   color: var(--fg);
 }
 
+/* LLM review: side-by-side diff vs editor snapshot (rendered markdown per line) */
+.planning-md-diff-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.planning-md-diff-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.planning-md-diff-scroll {
+  flex: 1;
+  min-height: 10rem;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 0.5rem;
+  align-content: start;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.45rem;
+  background: var(--bg);
+}
+
+.planning-md-diff-cell {
+  border-radius: 2px;
+  padding: 0.1rem 0.25rem;
+  min-height: 1.15em;
+}
+
+.planning-md-diff-cell--ctx {
+  background: transparent;
+}
+
+.planning-md-diff-cell--del {
+  background: rgba(200, 45, 45, 0.14);
+}
+
+.planning-md-diff-cell--add {
+  background: rgba(25, 145, 65, 0.16);
+}
+
+.planning-md-diff-cell--empty {
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+}
+
+.planning-md-diff-line {
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.planning-md-diff-line--ctx {
+  color: var(--fg);
+}
+
+.planning-md-diff-line p {
+  margin: 0;
+}
+
+.planning-md-diff-line h1,
+.planning-md-diff-line h2,
+.planning-md-diff-line h3 {
+  margin: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.planning-md-diff-line ul,
+.planning-md-diff-line ol {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.planning-md-diff-line--pad {
+  min-height: 1em;
+}
+
+.planning-review-raw-details {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.planning-review-raw-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.planning-review-raw-textarea {
+  width: 100%;
+  min-height: 5rem;
+  max-height: 12rem;
+  box-sizing: border-box;
+  margin-top: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  resize: vertical;
+}
+
 .modal-markdown-fill.markdown-workspace {
   flex: 1;
   min-height: 0;

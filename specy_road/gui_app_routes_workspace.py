@@ -105,7 +105,11 @@ def register_settings_and_remote(api: APIRouter) -> None:
         root = get_repo_root()
         apply_llm_env_from_settings(body.llm)
         try:
-            report = run_review(body.node_id.strip(), root)
+            report = run_review(
+                body.node_id.strip(),
+                root,
+                planning_body=body.planning_body,
+            )
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
         except ReviewError as e:

@@ -52,10 +52,11 @@ def _apply_azure_llm_env(llm: dict[str, Any]) -> None:
         k = (llm.get("azure_api_key") or "").strip()
         if k:
             os.environ["SPECY_ROAD_AZURE_OPENAI_API_KEY"] = k
-    if not os.environ.get("SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"):
-        d = (llm.get("azure_deployment") or "").strip()
-        if d:
-            os.environ["SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"] = d
+    # Deployment name must refresh on every apply: the GUI sends the current value
+    # and the FastAPI process reuses os.environ, so "only if unset" would stick forever.
+    d = (llm.get("azure_deployment") or "").strip()
+    if d:
+        os.environ["SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"] = d
     ver = (llm.get("azure_api_version") or "").strip()
     if ver and not os.environ.get("SPECY_ROAD_OPENAI_API_VERSION"):
         os.environ["SPECY_ROAD_OPENAI_API_VERSION"] = ver
@@ -66,10 +67,9 @@ def _apply_openai_llm_env(llm: dict[str, Any], backend: str) -> None:
         k = (llm.get("openai_api_key") or "").strip()
         if k:
             os.environ["SPECY_ROAD_OPENAI_API_KEY"] = k
-    if not os.environ.get("SPECY_ROAD_OPENAI_MODEL"):
-        m = (llm.get("openai_model") or "").strip()
-        if m:
-            os.environ["SPECY_ROAD_OPENAI_MODEL"] = m
+    m = (llm.get("openai_model") or "").strip()
+    if m:
+        os.environ["SPECY_ROAD_OPENAI_MODEL"] = m
     base = (llm.get("openai_base_url") or "").strip()
     if base and backend == "compatible" and not os.environ.get("SPECY_ROAD_OPENAI_BASE_URL"):
         os.environ["SPECY_ROAD_OPENAI_BASE_URL"] = base
@@ -80,14 +80,20 @@ def _apply_anthropic_llm_env(llm: dict[str, Any]) -> None:
         k = (llm.get("anthropic_api_key") or "").strip()
         if k:
             os.environ["SPECY_ROAD_ANTHROPIC_API_KEY"] = k
-    if not os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL"):
-        m = (llm.get("anthropic_model") or "").strip()
-        if m:
-            os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] = m
+    # Model must refresh on every apply; see _apply_azure_llm_env deployment note.
+    m = (llm.get("anthropic_model") or "").strip()
+    if m:
+        os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] = m
 
 
 def apply_llm_env_from_settings(llm: dict[str, Any]) -> None:
-    """Inject saved LLM config into env for review_node (env vars still win if pre-set)."""
+    """Inject saved LLM config into env for review_node.
+
+    API keys and endpoints follow "existing env wins if already set" so a shell
+    export before starting the GUI still overrides file-backed defaults. Model
+    name (and Azure deployment) always update from ``llm`` when non-empty so
+    switching models in Settings works without restarting the server.
+    """
     backend = (llm.get("backend") or "openai").strip().lower()
     if backend == "azure":
         _apply_azure_llm_env(llm)

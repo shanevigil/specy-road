@@ -14,6 +14,7 @@ import { getDefaultEditModalRect, type ModalRect } from "../modalRect";
 import { titleToCodename } from "../titleCodename";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
+import { PlanningSheetDiffPane } from "./PlanningSheetDiffPane";
 
 type TitleConflict = {
   hasConflict: boolean;
@@ -372,12 +373,13 @@ export function EditModal({
 
   const runLlmReview = () => {
     if (!node) return;
+    const sheetSnapshot = content;
     setReviewBusy(true);
     setReviewErr(null);
     void getSettings()
       .then((s) => {
         const llm = (s.llm as Record<string, unknown>) || {};
-        return postLlmReview(node.id, llm);
+        return postLlmReview(node.id, llm, sheetSnapshot);
       })
       .then((report) => {
         setReviewReport(report);
@@ -653,28 +655,35 @@ export function EditModal({
                     type="button"
                     onClick={() => appendSelectionFromReview()}
                     disabled={!hasReviewTextSelection}
-                    title="Append selected text from the report to the planning document"
+                    title="Append selected text from raw proposed markdown"
                   >
                     Append selection
                   </button>
                   <button
                     type="button"
                     onClick={() => appendEntireReport()}
-                    title="Append the full report to the planning document"
+                    title="Append the full proposed sheet to the planning document"
                   >
-                    Append entire report
+                    Append proposed sheet
                   </button>
                 </div>
-                <textarea
-                  ref={reviewTextareaRef}
-                  className="modal-edit-review-textarea"
-                  readOnly
-                  value={reviewReport}
-                  aria-label="LLM review report"
-                  onSelect={() => setReviewSelectionTick((n) => n + 1)}
-                  onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
-                  onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
+                <PlanningSheetDiffPane
+                  originalMarkdown={content}
+                  proposedMarkdown={reviewReport}
                 />
+                <details className="planning-review-raw-details">
+                  <summary>Raw proposed markdown (for precise selection)</summary>
+                  <textarea
+                    ref={reviewTextareaRef}
+                    className="planning-review-raw-textarea"
+                    readOnly
+                    value={reviewReport}
+                    aria-label="Raw proposed markdown"
+                    onSelect={() => setReviewSelectionTick((n) => n + 1)}
+                    onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
+                    onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
+                  />
+                </details>
               </div>
             ) : null}
           </div>

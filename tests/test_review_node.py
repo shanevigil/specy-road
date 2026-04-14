@@ -81,6 +81,30 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "Brief" in captured[0]
     assert "constraints/README.md" in captured[0]
     assert "shared/README.md" in captured[0]
+    assert "Current feature sheet" in captured[0]
+    assert "Expected shape" in captured[0]
+
+
+def test_normalize_review_strips_markdown_fence() -> None:
+    raw = "```markdown\n## Intent\n\nx\n```"
+    assert review_node._normalize_review_markdown_output(raw) == "## Intent\n\nx"
+
+
+def test_run_review_planning_body_override(
+    tiny_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
+    captured: list[str] = []
+
+    def fake_complete(_client: object, user_content: str) -> str:
+        captured.append(user_content)
+        return "## OK\n"
+
+    monkeypatch.setattr(review_node, "_make_client", lambda: object())
+    monkeypatch.setattr(review_node, "_complete", fake_complete)
+    review_node.run_review("M99.1", tiny_repo, planning_body="EDITOR_ONLY")
+    assert "EDITOR_ONLY" in captured[0]
 
 
 def test_run_review_returns_markdown(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

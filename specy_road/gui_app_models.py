@@ -48,6 +48,10 @@ class LlmTestBody(BaseModel):
 class LlmReviewBody(BaseModel):
     node_id: str
     llm: dict[str, Any]
+    planning_body: str | None = Field(
+        default=None,
+        description="Live planning sheet markdown from the editor (overrides on-disk file).",
+    )
 
 
 class GitTestBody(BaseModel):
