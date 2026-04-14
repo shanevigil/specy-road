@@ -1,0 +1,159 @@
+"""Node CRUD and outline mutation API routes."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, HTTPException
+
+from roadmap_chunk_utils import find_chunk_path, roadmap_dir
+from roadmap_crud_ops import (
+    append_node_to_chunk,
+    delete_roadmap_node_hard,
+    edit_node_set_pairs,
+    merged_ids,
+    run_validate_raise,
+)
+from roadmap_load import load_roadmap
+from roadmap_node_keys import new_node_key
+from roadmap_layout import sibling_sort_key
+from roadmap_outline_ops import (
+    apply_indent,
+    apply_outdent,
+    move_node_outline,
+    reorder_siblings,
+)
+from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
+
+from specy_road.gui_app_helpers import get_repo_root, next_child_id
+from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
+
+_REPO_FALLBACK = Path(__file__).resolve().parent.parent
+
+
+def register_node_mutations(api: APIRouter) -> None:
+    @api.patch("/nodes/{node_id}")
+    def api_patch_node(node_id: str, body: PatchBody) -> dict[str, str]:
+        root = get_repo_root(_REPO_FALLBACK)
+        pairs = [(p.key, p.value) for p in body.pairs]
+        try:
+            edit_node_set_pairs(root, node_id, pairs)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true", "node_id": node_id}
+
+    @api.delete("/nodes/{node_id}")
+    def api_delete_node(node_id: str) -> dict[str, str]:
+        root = get_repo_root(_REPO_FALLBACK)
+        try:
+            delete_roadmap_node_hard(root, node_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true", "node_id": node_id}
+
+    @api.post("/outline/reorder")
+    def api_reorder(body: ReorderBody) -> dict[str, str]:
+        root = get_repo_root(_REPO_FALLBACK)
+        pid: str | None = body.parent_id
+        try:
+            reorder_siblings(root, pid, body.ordered_child_ids)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true"}
+
+    @api.post("/outline/move")
+    def api_outline_move(body: MoveOutlineBody) -> dict[str, str]:
+        root = get_repo_root(_REPO_FALLBACK)
+        try:
+            move_node_outline(
+                root,
+                body.node_key,
+                body.new_parent_id,
+                body.new_index,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true"}
+
+    @api.post("/nodes/{node_id}/indent")
+    def api_indent(node_id: str) -> dict[str, Any]:
+        root = get_repo_root(_REPO_FALLBACK)
+        try:
+            changed = apply_indent(root, node_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": True, "changed": changed}
+
+    @api.post("/nodes/{node_id}/outdent")
+    def api_outdent(node_id: str) -> dict[str, Any]:
+        root = get_repo_root(_REPO_FALLBACK)
+        try:
+            changed = apply_outdent(root, node_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": True, "changed": changed}
+
+
+def register_add_node(api: APIRouter) -> None:
+    @api.post("/nodes/add")
+    def api_add_node(body: AddNodeBody) -> dict[str, Any]:
+        root = get_repo_root(_REPO_FALLBACK)
+        nodes = load_roadmap(root)["nodes"]
+        by_id = {n["id"]: n for n in nodes}
+        ref = body.reference_node_id
+        if ref not in by_id:
+            raise HTTPException(status_code=404, detail="reference node not found")
+        ref_node = by_id[ref]
+        parent_id: str | None = ref_node.get("parent_id")
+        chunk_path = find_chunk_path(root, ref)
+        if not chunk_path:
+            raise HTTPException(status_code=500, detail="chunk for reference not found")
+        chunk_arg = str(chunk_path.relative_to(roadmap_dir(root)))
+
+        siblings = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
+        siblings.sort(key=lambda nid: sibling_sort_key(nid, by_id))
+        if ref not in siblings:
+            raise HTTPException(status_code=400, detail="reference not in sibling list")
+
+        ix = siblings.index(ref)
+        insert_at = ix if body.position == "above" else ix + 1
+
+        new_id = next_child_id(nodes, parent_id)
+        if new_id in merged_ids(root):
+            raise HTTPException(status_code=409, detail="generated id already exists")
+
+        new_node: dict[str, Any] = {
+            "id": new_id,
+            "node_key": new_node_key(),
+            "parent_id": parent_id,
+            "type": body.type,
+            "title": body.title,
+            "status": "Not Started",
+            "dependencies": [],
+            "touch_zones": [],
+        }
+
+        ensure_planning_sheet_for_new_node(root, new_node)
+
+        try:
+            append_node_to_chunk(root, chunk_arg, new_node)
+            run_validate_raise(root)
+        except (SystemExit, OSError, ValueError) as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+        nodes2 = load_roadmap(root)["nodes"]
+        by_id2 = {n["id"]: n for n in nodes2}
+        sib = [n["id"] for n in nodes2 if n.get("parent_id") == parent_id]
+        sib.sort(key=lambda nid: sibling_sort_key(nid, by_id2))
+        if new_id not in sib:
+            raise HTTPException(status_code=500, detail="new node missing after add")
+        sib.remove(new_id)
+        sib.insert(insert_at, new_id)
+        try:
+            for i, nid in enumerate(sib):
+                edit_node_set_pairs(root, nid, [("sibling_order", str(i))])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+        return {"ok": "true", "id": new_id}

@@ -4,6 +4,7 @@ max_lines_per_file: 400
 max_lines_per_function: 80
 applies_to_globs:
   - "specy_road/bundled_scripts/**/*.py"
+  - "specy_road/*.py"
   - "tests/**/*.py"
   - "docs/**/*.md"
 

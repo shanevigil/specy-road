@@ -55,16 +55,7 @@ def _prompt_role() -> str | None:
     return "both"
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="specyrd",
-        description=(
-            "Optional installer for IDE slash-command stubs that delegate to "
-            "specy-road or python scripts/. "
-            "Does not replace core validation or briefs."
-        ),
-    )
-    sub = p.add_subparsers(dest="command", required=True)
+def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
     init = sub.add_parser(
         "init",
         help=(
@@ -135,6 +126,19 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Non-interactive: do not prompt; requires --role; use --extras as given.",
     )
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="specyrd",
+        description=(
+            "Optional installer for IDE slash-command stubs that delegate to "
+            "specy-road or python scripts/. "
+            "Does not replace core validation or briefs."
+        ),
+    )
+    sub = p.add_subparsers(dest="command", required=True)
+    _add_specyrd_init_subparser(sub)
     return p
 
 

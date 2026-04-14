@@ -227,6 +227,78 @@ def _validate_generic_commands_dir(repo_root: Path, rel: Path) -> Path:
     return rel
 
 
+def _append_command_stub_installs(
+    repo_root: Path,
+    rel_dest: Path,
+    files_to_install: tuple[str, ...],
+    force: bool,
+    dry_run: bool,
+    written: list[str],
+    skipped: list[str],
+) -> None:
+    for name in files_to_install:
+        rel_file = rel_dest / name
+        dest_file = repo_root / rel_file
+        if dest_file.is_file() and not force:
+            skipped.append(str(rel_file))
+            continue
+        content = _read_template(name)
+        if dry_run:
+            written.append(str(rel_file))
+            continue
+        dest_file.parent.mkdir(parents=True, exist_ok=True)
+        dest_file.write_text(content, encoding="utf-8")
+        written.append(str(rel_file))
+
+
+def _maybe_write_readme_claude_and_gui_stub(
+    repo_root: Path,
+    *,
+    agent: str,
+    force: bool,
+    dry_run: bool,
+    write_claude_md: bool,
+    gui_settings_stub: bool,
+    written: list[str],
+    skipped: list[str],
+) -> None:
+    readme_rel = Path(".specyrd/README.md")
+    readme_path = repo_root / readme_rel
+    if readme_path.is_file() and not force:
+        skipped.append(str(readme_rel))
+    else:
+        readme_content = _read_dot_specyrd_readme()
+        if dry_run:
+            written.append(str(readme_rel))
+        else:
+            readme_path.parent.mkdir(parents=True, exist_ok=True)
+            readme_path.write_text(readme_content, encoding="utf-8")
+            written.append(str(readme_rel))
+
+    claude_rel = Path("CLAUDE.md")
+    claude_path = repo_root / claude_rel
+    if write_claude_md and agent == "claude-code":
+        if claude_path.is_file() and not force:
+            skipped.append(str(claude_rel))
+        else:
+            body = _read_claude_template()
+            if dry_run:
+                written.append(str(claude_rel))
+            else:
+                claude_path.write_text(body, encoding="utf-8")
+                written.append(str(claude_rel))
+
+    gui_home = Path.home() / ".specy-road" / "gui-settings.json"
+    if gui_settings_stub:
+        gui_display = "~/.specy-road/gui-settings.json"
+        if dry_run:
+            written.append(gui_display)
+        elif not gui_home.is_file() or force:
+            gui_home.parent.mkdir(parents=True, exist_ok=True)
+            gui_home.write_text(DEFAULT_GUI_SETTINGS_JSON, encoding="utf-8")
+            written.append(gui_display)
+
+
 def run_init(
     *,
     target: Path,
@@ -265,56 +337,21 @@ def run_init(
         files_to_install = ROLE_COMMAND_FILES[role]
     else:
         files_to_install = COMMAND_FILES
-    for name in files_to_install:
-        rel_file = rel_dest / name
-        dest_file = repo_root / rel_file
-        if dest_file.is_file() and not force:
-            skipped.append(str(rel_file))
-            continue
-        content = _read_template(name)
-        if dry_run:
-            written.append(str(rel_file))
-            continue
-        dest_file.parent.mkdir(parents=True, exist_ok=True)
-        dest_file.write_text(content, encoding="utf-8")
-        written.append(str(rel_file))
+    _append_command_stub_installs(
+        repo_root, rel_dest, files_to_install, force, dry_run, written, skipped
+    )
+    _maybe_write_readme_claude_and_gui_stub(
+        repo_root,
+        agent=agent,
+        force=force,
+        dry_run=dry_run,
+        write_claude_md=write_claude_md,
+        gui_settings_stub=gui_settings_stub,
+        written=written,
+        skipped=skipped,
+    )
 
     readme_rel = Path(".specyrd/README.md")
-    readme_path = repo_root / readme_rel
-    if readme_path.is_file() and not force:
-        skipped.append(str(readme_rel))
-    else:
-        readme_content = _read_dot_specyrd_readme()
-        if dry_run:
-            written.append(str(readme_rel))
-        else:
-            readme_path.parent.mkdir(parents=True, exist_ok=True)
-            readme_path.write_text(readme_content, encoding="utf-8")
-            written.append(str(readme_rel))
-
-    claude_rel = Path("CLAUDE.md")
-    claude_path = repo_root / claude_rel
-    if write_claude_md and agent == "claude-code":
-        if claude_path.is_file() and not force:
-            skipped.append(str(claude_rel))
-        else:
-            body = _read_claude_template()
-            if dry_run:
-                written.append(str(claude_rel))
-            else:
-                claude_path.write_text(body, encoding="utf-8")
-                written.append(str(claude_rel))
-
-    gui_home = Path.home() / ".specy-road" / "gui-settings.json"
-    if gui_settings_stub:
-        gui_display = "~/.specy-road/gui-settings.json"
-        if dry_run:
-            written.append(gui_display)
-        elif not gui_home.is_file() or force:
-            gui_home.parent.mkdir(parents=True, exist_ok=True)
-            gui_home.write_text(DEFAULT_GUI_SETTINGS_JSON, encoding="utf-8")
-            written.append(gui_display)
-
     if not dry_run:
         agents: dict[str, list[str]] = manifest.setdefault("agents", {})
         cmd_paths = [str(rel_dest / n) for n in files_to_install]
