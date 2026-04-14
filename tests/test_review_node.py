@@ -83,6 +83,7 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "shared/README.md" in captured[0]
     assert "Current feature sheet" in captured[0]
     assert "Expected shape" in captured[0]
+    assert "scaffold-planning" in captured[0]
 
 
 def test_normalize_review_strips_markdown_fence() -> None:

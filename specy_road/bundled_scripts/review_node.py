@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 
 from generate_brief import index as make_index, render_brief
+from planning_sheet_bootstrap import (
+    feature_sheet_expected_shape_block,
+    feature_sheet_structure_instruction_for_llm,
+)
 from roadmap_load import load_roadmap
 
 from specy_road.runtime_paths import default_user_repo_root
@@ -21,21 +25,24 @@ class ReviewError(Exception):
 
 
 # Concise: the model returns a replacement feature sheet, not a narrative review.
-SYSTEM_PROMPT = """You revise the Markdown feature sheet for one roadmap item.
-
-Output rules (strict):
-- Return ONLY the full revised feature sheet as Markdown. No preamble, title line, or closing commentary.
-- Do not wrap the document in a fenced code block.
-- Be concise: short paragraphs, tight bullets, minimal words per line.
-- Use ordinary feature-sheet shape: level-2 sections (## …). Prefer ## Intent, ## Approach, ## Tasks / checklist, ## References when structuring or rewriting. If the current sheet uses other ## headings (e.g. ## Source, ## Contracts), you may keep those names when they still fit.
-- Do not repeat the roadmap node id, display id, title, or node_key in the body—they belong in the roadmap JSON and filename.
-- Do not explain what you changed; the UI will diff against the previous sheet.
-
-Context below includes the roadmap brief, constraints, cited contracts, and the current feature sheet. Improve clarity, checklist completeness, and alignment with constraints and citations—not generic advice."""
-
-FEATURE_SHEET_SHAPE_HINT = (
-    "Typical sections (adapt to the node): ## Intent, ## Approach, "
-    "## Tasks / checklist (markdown `- [ ]` items), ## References."
+# Section list is coupled to templates/planning-node/feature-sheet.md.template via
+# planning_sheet_bootstrap.feature_sheet_structure_instruction_for_llm().
+SYSTEM_PROMPT = (
+    "You revise the Markdown feature sheet for one roadmap item.\n\n"
+    "Output rules (strict):\n"
+    "- Return ONLY the full revised feature sheet as Markdown. No preamble, title "
+    "line, or closing commentary.\n"
+    "- Do not wrap the document in a fenced code block.\n"
+    "- Be concise: short paragraphs, tight bullets, minimal words per line.\n"
+    "- "
+    + feature_sheet_structure_instruction_for_llm()
+    + "\n"
+    "- Do not repeat the roadmap node id, display id, title, or node_key in the "
+    "body—they belong in the roadmap JSON and filename.\n"
+    "- Do not explain what you changed; the UI will diff against the previous sheet.\n\n"
+    "Context below includes the roadmap brief, constraints, cited contracts, and the "
+    "current feature sheet. Improve clarity, checklist completeness, and alignment "
+    "with constraints and citations—not generic advice."
 )
 
 
@@ -269,7 +276,7 @@ def run_review(
             "## constraints/README.md\n\n" + constraints,
             "## Cited documents (from contract_citation)\n\n" + cited,
             "## Current feature sheet\n\n" + sheet,
-            "## Expected shape\n\n" + FEATURE_SHEET_SHAPE_HINT,
+            "## Expected shape\n\n" + feature_sheet_expected_shape_block(),
         ],
     )
     client = _make_client()

@@ -7,6 +7,7 @@ import pytest
 from planning_artifacts import expected_planning_rel, resolve_planning_path
 from planning_sheet_bootstrap import (
     ensure_planning_sheet_for_new_node,
+    feature_sheet_level2_titles,
     remove_planning_sheet_if_present,
     render_feature_sheet_template,
 )
@@ -16,6 +17,16 @@ def test_render_feature_sheet_template_substitutes_node_id() -> None:
     text = render_feature_sheet_template("M9.9")
     assert "M9.9" in text
     assert "{{NODE_ID}}" not in text
+
+
+def test_feature_sheet_level2_titles_match_scaffold_template() -> None:
+    titles = feature_sheet_level2_titles()
+    assert titles == (
+        "Intent",
+        "Approach",
+        "Tasks / checklist",
+        "References",
+    )
 
 
 def test_ensure_planning_sheet_creates_file_and_sets_planning_dir(tmp_path: Path) -> None:

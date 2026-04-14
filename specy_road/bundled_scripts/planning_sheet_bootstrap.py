@@ -14,6 +14,49 @@ from specy_road.runtime_paths import specy_road_package_dir
 _TYPES_WITH_PLANNING = frozenset({"vision", "phase", "milestone", "task"})
 _TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
 
+# If ``feature-sheet.md.template`` is missing (broken install), LLM + validators still have a fallback.
+_FALLBACK_LEVEL2_TITLES = (
+    "Intent",
+    "Approach",
+    "Tasks / checklist",
+    "References",
+)
+
+
+def feature_sheet_level2_titles() -> tuple[str, ...]:
+    """Ordered ``##`` section titles from ``feature-sheet.md.template`` (source of truth)."""
+    path = _TEMPLATES / "feature-sheet.md.template"
+    if not path.is_file():
+        return _FALLBACK_LEVEL2_TITLES
+    titles: list[str] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if line.startswith("## ") and not line.startswith("###"):
+            titles.append(line[3:].strip())
+    return tuple(titles) if titles else _FALLBACK_LEVEL2_TITLES
+
+
+def feature_sheet_structure_instruction_for_llm() -> str:
+    """One instruction line for ``review_node`` SYSTEM_PROMPT (kept in sync with the template)."""
+    titles = feature_sheet_level2_titles()
+    ordered = ", ".join(f"## {t}" for t in titles)
+    return (
+        "Structure: use exactly these level-2 sections in this order: "
+        f"{ordered}. "
+        "Use markdown task items (`- [ ]` / `- [x]`) under Tasks / checklist. "
+        "If the sheet uses legacy headings, merge content into this shape "
+        "(e.g. fold Sources/Contracts into References and Intent)."
+    )
+
+
+def feature_sheet_expected_shape_block() -> str:
+    """User-message block for LLM review (matches scaffold template)."""
+    lines = "\n".join(f"- ## {t}" for t in feature_sheet_level2_titles())
+    return (
+        "Canonical feature sheet outline (same as `specy-road scaffold-planning`):\n"
+        + lines
+    )
+
 
 def render_feature_sheet_template(node_id: str) -> str:
     path = _TEMPLATES / "feature-sheet.md.template"
