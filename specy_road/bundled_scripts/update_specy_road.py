@@ -197,7 +197,7 @@ def _print_reset_dry_run_commands(kit: Path, remote: str, branch: str) -> None:
         "Would run (destructive: discards local commits and uncommitted changes):",
     )
     print(f"  git fetch {remote}")
-    print(f"  git checkout {branch}")
+    print(f"  git checkout -f {branch}")
     print(f"  git reset --hard {remote}/{branch}")
     for rel in RESET_CLEAN_PATHSPECS:
         print(f"  git clean -fd -- {rel}")
@@ -213,7 +213,9 @@ def _emit_reset_warning() -> None:
 
 def _git_reset_to_match_origin(kit: Path, remote: str, branch: str) -> None:
     subprocess.check_call(["git", "fetch", remote], cwd=kit)
-    subprocess.check_call(["git", "checkout", branch], cwd=kit)
+    # ``-f``: destructive reset must succeed when untracked files would block
+    # checkout (e.g. untracked README.md that exists on the target branch).
+    subprocess.check_call(["git", "checkout", "-f", branch], cwd=kit)
     subprocess.check_call(
         ["git", "reset", "--hard", f"{remote}/{branch}"],
         cwd=kit,

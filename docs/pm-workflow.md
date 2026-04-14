@@ -115,7 +115,7 @@ The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:
 - **Dependency view** — A picture of roadmap items as boxes arranged by **dependency depth** (what must finish before what). Lines show dependencies.
 - **Colors** — Roughly: not started (gray), in progress (blue), complete (green), blocked (red), cancelled (muted). Exact shades may vary.
 - **Registry** — When a developer has claimed work, you may see **branch names** or **timestamps** on the relevant item (from `roadmap/registry.yaml`). When they finish their task, that overlay usually clears after the next refresh.
-- **Git workflow** — The header includes **Git workflow**. It turns **incomplete** (like Vision/Constitution) when `roadmap/git-workflow.yaml` is missing, invalid, the folder is not a git checkout, or your local clone has no ref yet for the configured integration branch (hover for fixes: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When your **current branch** matches a task’s registered feature branch, that row gets a **green left accent** so you can see active work at a glance.
+- **Git workflow status** — Next to the **settings** (gear) icon, a **read-only label** shows trunk/remote and current branch when healthy (**green**). **Red** means missing or invalid `roadmap/git-workflow.yaml`. **Yellow** means the folder is not a git clone, or the integration branch ref is not present locally yet (hover the label for details: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When your **current branch** matches a task’s registered feature branch, that outline row gets a **green left accent** so you can see active work at a glance.
 
 ### Pick an item
 
