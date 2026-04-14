@@ -32,6 +32,22 @@ Verify:
 specy-road --help
 ```
 
+### Update an editable clone (pull + reinstall PM GUI stack)
+
+From the **specy-road** repository root, fast-forward `main` (or your branch) and optionally refresh the editable install and Vite build — same steps as `specy-road init gui --install-gui`:
+
+```bash
+specy-road update --install-gui-stack
+```
+
+Preview without changing anything:
+
+```bash
+specy-road update --dry-run --install-gui-stack
+```
+
+If your clone is not auto-discovered, pass `--path /path/to/specy-road`. PyPI-only installs cannot use `specy-road update`; use `pip install --upgrade specy-road` instead.
+
 ---
 
 ## Install the pre-commit hook

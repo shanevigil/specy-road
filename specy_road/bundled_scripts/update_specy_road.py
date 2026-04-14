@@ -5,6 +5,10 @@ Uses the latest commit on the configured remote branch (default: main).
 A future mode may checkout the latest release tag instead; see --help.
 
 PyPI-only installs cannot use this command — use pip to upgrade.
+
+After a successful fast-forward, optional ``--install-gui-stack`` runs the same
+steps as ``specy-road init gui --install-gui`` (editable ``.[gui-next]`` pip
+install and ``gui/pm-gantt`` npm build when sources exist).
 """
 
 from __future__ import annotations
@@ -255,6 +259,15 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Allow a dirty working tree (not recommended).",
     )
+    p.add_argument(
+        "--install-gui-stack",
+        action="store_true",
+        help=(
+            "After git: run pip install -e '.[gui-next]' and build gui/pm-gantt "
+            "(same as: specy-road init gui --install-gui). "
+            "Use with --dry-run to print what would run."
+        ),
+    )
     return p
 
 
@@ -287,8 +300,30 @@ def main(argv: list[str] | None = None) -> None:
     if not args.dry_run:
         print(
             f"[ok] specy-road kit at {kit} is fast-forwarded to "
-            f"{args.remote}/{args.branch}."
+            f"{args.remote}/{args.branch}.",
+            flush=True,
         )
+
+    if args.install_gui_stack:
+        from specy_road.cli_init import run_install_gui
+
+        if not args.dry_run:
+            print(
+                "Installing editable [gui-next] and PM Gantt UI build …",
+                flush=True,
+            )
+        run_install_gui(
+            dry_run=args.dry_run,
+            reinstall=False,
+            do_pip=True,
+            npm_only=False,
+            skip_npm_after_pip=False,
+        )
+        if not args.dry_run:
+            print(
+                "[ok] gui-next stack refresh finished (see messages above).",
+                flush=True,
+            )
 
 
 if __name__ == "__main__":

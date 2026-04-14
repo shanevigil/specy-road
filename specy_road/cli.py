@@ -41,7 +41,7 @@ _USAGE_TEXT = (
     "    (optional: --dry-run --force)\n"
     "  init gui — optional PM UI: --install-gui | --reinstall-gui | --build-gui [--skip-npm-build]\n"
     "  update — fast-forward a git clone of specy-road from github.com/shanevigil/specy-road "
-    "(optional: --path DIR --remote NAME --branch BRANCH --dry-run)\n"
+    "(optional: --path DIR --remote NAME --branch BRANCH --dry-run --install-gui-stack)\n"
     "  gui — FastAPI + Gantt PM UI (after: init --install-gui or pip install 'specy-road[gui-next]')\n"
     "\n"
     "Dev task loop:\n"

@@ -69,6 +69,7 @@ def test_specy_road_update_help() -> None:
     assert "--path" in out
     assert "--dry-run" in out
     assert "--allow-dirty" in out
+    assert "--install-gui-stack" in out
 
 
 def test_update_dry_run_tmp_repo(tmp_path: Path) -> None:
