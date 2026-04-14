@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import {
   fetchPlanningArtifacts,
@@ -12,6 +19,10 @@ import {
 import { hasLlmConfigured } from "../llmConfigured";
 import { getDefaultEditModalRect, type ModalRect } from "../modalRect";
 import { titleToCodename } from "../titleCodename";
+import {
+  mergeBySectionChoices,
+  splitByH2,
+} from "../planningSectionUtils";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { PlanningSheetDiffPane } from "./PlanningSheetDiffPane";
@@ -188,10 +199,21 @@ export function EditModal({
   const [reviewReport, setReviewReport] = useState<string | null>(null);
   const [reviewErr, setReviewErr] = useState<string | null>(null);
   const [llmConfigured, setLlmConfigured] = useState(false);
+  /** Stable “before” document for diff + merge (set when LLM review completes). */
+  const [contentSnapshotAtReview, setContentSnapshotAtReview] = useState<
+    string | null
+  >(null);
+  /** When true, show TipTap + raw proposed text instead of the diff pane. */
+  const [showRawCompare, setShowRawCompare] = useState(false);
+  const [sectionChoices, setSectionChoices] = useState<
+    Array<"before" | "proposed" | null>
+  >([]);
+  const [hoveredSection, setHoveredSection] = useState<number | null>(null);
   /** Bumps when the user changes selection in the review textarea (for Append selection). */
   const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
 
   const reviewTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const sectionScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const titleConflict = useMemo(() => {
     if (!node) {
@@ -218,6 +240,10 @@ export function EditModal({
     setPersistMsg(null);
     setReviewReport(null);
     setReviewErr(null);
+    setContentSnapshotAtReview(null);
+    setShowRawCompare(false);
+    setSectionChoices([]);
+    setHoveredSection(null);
     setHydrated(false);
     fetchPlanningArtifacts(node.id)
       .then((a) => {
@@ -358,6 +384,34 @@ export function EditModal({
     [headerMinTop],
   );
 
+  const rawProposedFieldId = useId();
+
+  const diffOriginal = contentSnapshotAtReview ?? content;
+
+  const pairedSectionCount = useMemo(() => {
+    if (reviewReport == null || contentSnapshotAtReview == null) return 0;
+    return Math.min(
+      splitByH2(contentSnapshotAtReview).length,
+      splitByH2(reviewReport).length,
+    );
+  }, [reviewReport, contentSnapshotAtReview]);
+
+  const sectionCountMismatch = useMemo(() => {
+    if (reviewReport == null || contentSnapshotAtReview == null) return false;
+    return (
+      splitByH2(contentSnapshotAtReview).length !==
+      splitByH2(reviewReport).length
+    );
+  }, [reviewReport, contentSnapshotAtReview]);
+
+  const allSectionsChosen = useMemo(
+    () =>
+      pairedSectionCount > 0 &&
+      sectionChoices.length === pairedSectionCount &&
+      sectionChoices.every((c) => c != null),
+    [pairedSectionCount, sectionChoices],
+  );
+
   if (!node) return null;
 
   const roadmapStatus = (node.status as string) || "Not Started";
@@ -382,11 +436,22 @@ export function EditModal({
         return postLlmReview(node.id, llm, sheetSnapshot);
       })
       .then((report) => {
+        const paired = Math.min(
+          splitByH2(sheetSnapshot).length,
+          splitByH2(report).length,
+        );
+        setContentSnapshotAtReview(sheetSnapshot);
+        setSectionChoices(Array.from({ length: paired }, () => null));
+        setShowRawCompare(false);
+        setHoveredSection(null);
         setReviewReport(report);
       })
       .catch((e: unknown) => {
         setReviewErr(String(e));
         setReviewReport(null);
+        setContentSnapshotAtReview(null);
+        setSectionChoices([]);
+        setShowRawCompare(false);
       })
       .finally(() => setReviewBusy(false));
   };
@@ -394,6 +459,39 @@ export function EditModal({
   const dismissReview = () => {
     setReviewReport(null);
     setReviewErr(null);
+    setContentSnapshotAtReview(null);
+    setShowRawCompare(false);
+    setSectionChoices([]);
+    setHoveredSection(null);
+  };
+
+  const applyMergedSheet = () => {
+    if (!contentSnapshotAtReview || reviewReport == null) return;
+    if (sectionChoices.some((c) => c == null)) return;
+    const merged = mergeBySectionChoices(
+      contentSnapshotAtReview,
+      reviewReport,
+      sectionChoices as Array<"before" | "proposed">,
+    );
+    setContent(merged);
+  };
+
+  const chooseSection = (sectionIndex: number, choice: "before" | "proposed") => {
+    setSectionChoices((prev) => {
+      const next = [...prev];
+      next[sectionIndex] = choice;
+      window.setTimeout(() => {
+        let j = sectionIndex + 1;
+        while (j < next.length && next[j] != null) j += 1;
+        if (j < next.length) {
+          sectionScrollRefs.current[j]?.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+          });
+        }
+      }, 0);
+      return next;
+    });
   };
 
   const appendToDocument = (chunk: string) => {
@@ -629,33 +727,45 @@ export function EditModal({
               {reviewErr}
             </p>
           ) : null}
-          <div
-            className={
-              reviewReport != null
-                ? "modal-edit-review-split"
-                : "modal-edit-review-split modal-edit-review-split--single"
-            }
-          >
-            <div className="modal-edit-md-column">
-              <MarkdownWorkspace
-                className="modal-markdown-fill constitution-md-workspace"
-                value={content}
-                onChange={setContent}
-                spellCheck
-                editorLabel="Planning markdown"
-              />
+          {reviewReport == null ? (
+            <div className="modal-edit-review-split modal-edit-review-split--single">
+              <div className="modal-edit-md-column">
+                <MarkdownWorkspace
+                  className="modal-markdown-fill constitution-md-workspace"
+                  value={content}
+                  onChange={setContent}
+                  spellCheck
+                  editorLabel="Planning markdown"
+                />
+              </div>
             </div>
-            {reviewReport != null ? (
-              <div className="modal-edit-review-pane">
+          ) : showRawCompare ? (
+            <div className="modal-edit-review-split modal-edit-review-split--raw-compare">
+              <div className="modal-edit-md-column">
+                <MarkdownWorkspace
+                  className="modal-markdown-fill constitution-md-workspace"
+                  value={content}
+                  onChange={setContent}
+                  spellCheck
+                  editorLabel="Planning markdown"
+                />
+              </div>
+              <div className="modal-edit-raw-proposed-panel">
                 <div className="modal-edit-review-actions">
+                  <button
+                    type="button"
+                    onClick={() => setShowRawCompare(false)}
+                  >
+                    Back to diff
+                  </button>
                   <button type="button" onClick={() => dismissReview()}>
-                    Dismiss
+                    Dismiss review
                   </button>
                   <button
                     type="button"
                     onClick={() => appendSelectionFromReview()}
                     disabled={!hasReviewTextSelection}
-                    title="Append selected text from raw proposed markdown"
+                    title="Append selected text from raw proposed text"
                   >
                     Append selection
                   </button>
@@ -667,26 +777,75 @@ export function EditModal({
                     Append proposed sheet
                   </button>
                 </div>
-                <PlanningSheetDiffPane
-                  originalMarkdown={content}
-                  proposedMarkdown={reviewReport}
+                <label
+                  className="modal-edit-raw-proposed-label"
+                  htmlFor={rawProposedFieldId}
+                >
+                  Raw proposed text
+                </label>
+                <textarea
+                  id={rawProposedFieldId}
+                  ref={reviewTextareaRef}
+                  className="planning-review-raw-textarea planning-review-raw-textarea--panel"
+                  readOnly
+                  value={reviewReport}
+                  aria-label="Raw proposed text"
+                  onSelect={() => setReviewSelectionTick((n) => n + 1)}
+                  onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
+                  onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
                 />
-                <details className="planning-review-raw-details">
-                  <summary>Raw proposed markdown (for precise selection)</summary>
-                  <textarea
-                    ref={reviewTextareaRef}
-                    className="planning-review-raw-textarea"
-                    readOnly
-                    value={reviewReport}
-                    aria-label="Raw proposed markdown"
-                    onSelect={() => setReviewSelectionTick((n) => n + 1)}
-                    onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
-                    onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
-                  />
-                </details>
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : (
+            <div className="modal-edit-review-diff-full">
+              <div className="modal-edit-review-actions modal-edit-review-actions--diff">
+                <button type="button" onClick={() => dismissReview()}>
+                  Dismiss
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRawCompare(true)}
+                  title="Show the editor and read-only proposed text (exits diff view)"
+                >
+                  Raw proposed text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyMergedSheet()}
+                  disabled={!allSectionsChosen}
+                  title={
+                    allSectionsChosen
+                      ? "Replace the planning sheet with your per-section choices"
+                      : "Choose Before or Proposed for every section first"
+                  }
+                >
+                  Apply merged sheet
+                </button>
+              </div>
+              {sectionCountMismatch ? (
+                <p
+                  className="modal-review-section-mismatch"
+                  role="status"
+                >
+                  This sheet and the proposal have different numbers of{" "}
+                  <code>##</code> sections. Only the first {pairedSectionCount}{" "}
+                  paired sections are merged; unpaired trailing content stays
+                  visible in the diff but is omitted from the merged result—use
+                  raw proposed text if you need to copy it.
+                </p>
+              ) : null}
+              <PlanningSheetDiffPane
+                originalMarkdown={diffOriginal}
+                proposedMarkdown={reviewReport}
+                pairedSectionCount={pairedSectionCount}
+                sectionChoices={sectionChoices}
+                onSectionChoice={chooseSection}
+                hoveredSection={hoveredSection}
+                onHoverSection={setHoveredSection}
+                sectionScrollRefs={sectionScrollRefs}
+              />
+            </div>
+          )}
         </section>
       ) : (
         <section className="modal-edit-planning-section modal-edit-planning-section--empty">

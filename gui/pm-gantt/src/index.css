@@ -1225,6 +1225,65 @@ button {
   flex-direction: column;
 }
 
+/** LLM review: full-width diff (TipTap hidden). */
+.modal-edit-review-diff-full {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modal-edit-review-actions--diff {
+  flex-shrink: 0;
+}
+
+.modal-review-section-mismatch {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--muted) 88%, var(--fg));
+}
+
+.modal-edit-review-split--raw-compare {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .modal-edit-review-split--raw-compare {
+    flex-direction: column;
+  }
+}
+
+.modal-edit-raw-proposed-panel {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem;
+  background: color-mix(in srgb, var(--muted) 6%, var(--bg));
+}
+
+.modal-edit-raw-proposed-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+.planning-review-raw-textarea--panel {
+  flex: 1;
+  min-height: 10rem;
+  max-height: none;
+}
+
 .modal-edit-md-column {
   flex: 1;
   min-width: 0;
@@ -1315,6 +1374,64 @@ button {
   border-radius: 4px;
   padding: 0.35rem 0.45rem;
   background: var(--bg);
+}
+
+.planning-md-diff-section {
+  position: relative;
+  padding-top: 1.75rem;
+  margin-bottom: 0.15rem;
+  border-radius: 4px;
+}
+
+.planning-md-diff-section--resolved {
+  opacity: 0.74;
+}
+
+.planning-md-diff-section--hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--muted) 38%, var(--border));
+}
+
+.planning-md-diff-section-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  max-width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.planning-md-diff-section:hover .planning-md-diff-section-actions,
+.planning-md-diff-section:focus-within .planning-md-diff-section-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .planning-md-diff-section-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.planning-md-diff-use-btn {
+  padding: 0.15rem 0.4rem;
+  font: inherit;
+  font-size: 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.planning-md-diff-use-btn:hover {
+  background: color-mix(in srgb, var(--muted) 14%, var(--bg));
 }
 
 /* One grid per row so columns cannot overlap (minmax(0,1fr) lets cells shrink). */
