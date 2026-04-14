@@ -64,7 +64,7 @@ def _run_init_cli(rest: list[str]) -> None:
         )
     assert ns.init_cmd == "gui"
     if not ns.install_gui and not ns.reinstall_gui and not ns.build_gui:
-        pg.print_help()
+        p.print_help()
         print(
             "\nerror: specify at least one of --install-gui, --reinstall-gui, or --build-gui.",
             file=sys.stderr,

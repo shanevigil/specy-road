@@ -183,9 +183,17 @@ export function SettingsDrawer({
   const [git, setGit] = useState<Record<string, string>>({});
   const [inheritLlm, setInheritLlm] = useState(true);
   const [inheritGitRemote, setInheritGitRemote] = useState(true);
+  const [inheritPmGui, setInheritPmGui] = useState(true);
+  const [registryRemoteOverlay, setRegistryRemoteOverlay] = useState(false);
+  const [gitRemoteTestedOk, setGitRemoteTestedOk] = useState(false);
   const [repoLabel, setRepoLabel] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
+
+  /** Last saved effective `pm_gui.registry_remote_overlay` from GET /settings. */
+  const pmGuiOverlayPersistedRef = useRef(false);
+  /** True after the user changes the overlay toggle (until a successful save). */
+  const pmGuiOverlayDirtyRef = useRef(false);
 
   const skipAutosave = useRef(true);
 
@@ -203,6 +211,13 @@ export function SettingsDrawer({
         if (typeof s.inherit_llm === "boolean") setInheritLlm(s.inherit_llm);
         if (typeof s.inherit_git_remote === "boolean")
           setInheritGitRemote(s.inherit_git_remote);
+        if (typeof s.inherit_pm_gui === "boolean") setInheritPmGui(s.inherit_pm_gui);
+        const pm = (s.pm_gui as Record<string, unknown>) || {};
+        const tested = s.git_remote_tested_ok === true;
+        pmGuiOverlayPersistedRef.current = pm.registry_remote_overlay === true;
+        pmGuiOverlayDirtyRef.current = false;
+        setGitRemoteTestedOk(tested);
+        setRegistryRemoteOverlay(pmGuiOverlayPersistedRef.current && tested);
         const root = typeof s.repo_root === "string" ? s.repo_root : "";
         setRepoLabel(root ? root : "");
         setLlm(
@@ -229,9 +244,13 @@ export function SettingsDrawer({
     /* eslint-disable-next-line react-hooks/set-state-in-effect -- autosave status */
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
+      const overlayOutbound = pmGuiOverlayDirtyRef.current
+        ? registryRemoteOverlay
+        : pmGuiOverlayPersistedRef.current;
       putSettings({
         inherit_llm: inheritLlm,
         inherit_git_remote: inheritGitRemote,
+        inherit_pm_gui: inheritPmGui,
         llm: buildLlmPayload(llm),
         git_remote: {
           provider: git.provider || "github",
@@ -239,8 +258,13 @@ export function SettingsDrawer({
           token: git.token || "",
           base_url: git.base_url || "",
         },
+        pm_gui: {
+          registry_remote_overlay: overlayOutbound,
+        },
       })
         .then(() => {
+          pmGuiOverlayPersistedRef.current = overlayOutbound;
+          pmGuiOverlayDirtyRef.current = false;
           setPersistMsg("Saved.");
           window.setTimeout(() => setPersistMsg(null), 2000);
         })
@@ -250,7 +274,15 @@ export function SettingsDrawer({
         });
     }, 800);
     return () => window.clearTimeout(t);
-  }, [llm, git, inheritLlm, inheritGitRemote, open]);
+  }, [
+    llm,
+    git,
+    inheritLlm,
+    inheritGitRemote,
+    inheritPmGui,
+    registryRemoteOverlay,
+    open,
+  ]);
 
   if (!open) return null;
 
@@ -276,6 +308,10 @@ export function SettingsDrawer({
         base_url: git.base_url || "",
       });
       setMsg(out.message || "Git remote responded.");
+      if (out.git_remote_tested_ok) {
+        setGitRemoteTestedOk(true);
+        setRegistryRemoteOverlay(pmGuiOverlayPersistedRef.current);
+      }
     } catch (e: unknown) {
       setMsg(String(e));
     }
@@ -318,6 +354,31 @@ export function SettingsDrawer({
         onChange={setInheritGitRemote}
         label="Use global Git remote settings for this repository"
         optionTitle="When off, Git remote fields below are stored only for this git worktree (e.g. different repo slug or token)."
+      />
+      <SettingsToggleRow
+        checked={inheritPmGui}
+        onChange={setInheritPmGui}
+        label="Use global PM GUI options for this repository"
+        optionTitle="When off, the registry overlay toggle below is stored only for this repository."
+      />
+      <SettingsToggleRow
+        checked={registryRemoteOverlay}
+        onChange={(next) => {
+          if (next && !gitRemoteTestedOk) {
+            setMsg(
+              'Use "Test Git" successfully (GitHub/GitLab API) before enabling this option.',
+            );
+            return;
+          }
+          pmGuiOverlayDirtyRef.current = true;
+          setRegistryRemoteOverlay(next);
+        }}
+        label="Merge registry from remote feature branches"
+        optionTitle={
+          gitRemoteTestedOk
+            ? "When on, the server reads roadmap/registry.yaml from refs/remotes/<remote>/feature/rm-* (periodic git fetch, same cadence as chart auto-refresh by default) and merges active claims with your working tree."
+            : 'Disabled until Git remote credentials are saved and "Test Git" succeeds (GitHub or GitLab).'
+        }
       />
       <h3 className="settings-appearance-title">Appearance</h3>
       <ThemeModeSegmented value={themeMode} onChange={onThemeModeChange} />

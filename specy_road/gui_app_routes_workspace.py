@@ -7,6 +7,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
+from pm_gui_git_remote_verify import set_git_remote_tested_ok
+
 from roadmap_gui_lib import (
     apply_llm_env_from_settings,
     save_settings_for_repo,
@@ -88,8 +90,10 @@ def register_settings_and_remote(api: APIRouter) -> None:
             get_repo_root(),
             inherit_llm=body.inherit_llm,
             inherit_git_remote=body.inherit_git_remote,
+            inherit_pm_gui=body.inherit_pm_gui,
             llm=body.llm,
             git_remote=body.git_remote,
+            pm_gui=body.pm_gui,
         )
         return {"ok": "true"}
 
@@ -121,4 +125,5 @@ def register_settings_and_remote(api: APIRouter) -> None:
         ok, msg = test_git_remote(body.git_remote)
         if not ok:
             raise HTTPException(status_code=400, detail=msg)
-        return {"ok": True, "message": msg}
+        set_git_remote_tested_ok(get_repo_root(), True)
+        return {"ok": True, "message": msg, "git_remote_tested_ok": True}

@@ -892,6 +892,9 @@ export default function App() {
               gitBranchCurrent={
                 data.git_workflow?.resolved?.git_branch_current ?? null
               }
+              gitUserName={
+                data.git_workflow?.resolved?.git_user_name ?? null
+              }
               depEditId={depEditId}
               depDraftKeys={depDraftKeys}
               onToggleDepCandidate={toggleDepCandidate}

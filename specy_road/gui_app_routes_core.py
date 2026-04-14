@@ -24,6 +24,13 @@ from roadmap_layout import (
 from roadmap_load import load_roadmap
 
 from specy_road.git_workflow_config import build_git_workflow_status
+from specy_road.registry_remote_overlay import (
+    merge_registry_with_remote_overlay,
+    maybe_auto_git_fetch,
+    registry_remote_overlay_enabled,
+    resolve_git_remote,
+    roadmap_fingerprint_with_remote_refs,
+)
 from specy_road.registry_visibility import build_registry_visibility
 from specy_road.governance_completion import (
     constitution_needs_completion,
@@ -36,12 +43,25 @@ from specy_road.gui_app_helpers import get_repo_root
 def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
     nodes = doc.get("nodes") or []
-    reg = load_registry(root)
+    head_reg = load_registry(root)
+    reg = head_reg
+    registry_overlay_meta: dict[str, Any] | None = None
+    if registry_remote_overlay_enabled(root):
+        maybe_auto_git_fetch(root, resolve_git_remote(root))
+        reg, registry_overlay_meta = merge_registry_with_remote_overlay(
+            head_reg, root
+        )
     by_reg = registry_by_node_id(reg)
     settings = load_settings(root)
     gr = settings.get("git_remote") or {}
     pr_hints = build_pr_hints(by_reg, gr)
-    git_enrichment = build_registry_enrichment(by_reg, gr)
+    gw = build_git_workflow_status(root)
+    resolved = gw.get("resolved") or {}
+    rm_raw = resolved.get("remote")
+    rm = str(rm_raw).strip() if isinstance(rm_raw, str) and rm_raw.strip() else "origin"
+    git_enrichment = build_registry_enrichment(
+        by_reg, gr, repo_root=root, remote=rm
+    )
     tree_rows = ordered_tree_rows(nodes)
     ordered = [t[0] for t in tree_rows]
     row_depths = [d for _, d in tree_rows]
@@ -56,7 +76,6 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
             "can_indent": can_indent_outline(nodes, by_id, nid),
             "can_outdent": can_outdent_outline(by_id, nid),
         }
-    gw = build_git_workflow_status(root)
     out: dict[str, Any] = {
         "version": doc.get("version"),
         "nodes": nodes,
@@ -77,7 +96,9 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
         "outline_actions": outline_actions,
         "git_workflow": gw,
     }
-    rv = build_registry_visibility(root, reg, gw)
+    if registry_overlay_meta is not None:
+        out["registry_overlay"] = registry_overlay_meta
+    rv = build_registry_visibility(root, head_reg, gw)
     if rv is not None:
         out["registry_visibility"] = rv
     return out
@@ -105,7 +126,12 @@ def register_core(api: APIRouter) -> None:
     @api.get("/roadmap/fingerprint")
     def api_roadmap_fingerprint() -> dict[str, int]:
         root = get_repo_root()
-        return {"fingerprint": roadmap_fingerprint(root)}
+        if registry_remote_overlay_enabled(root):
+            maybe_auto_git_fetch(root, resolve_git_remote(root))
+        base = roadmap_fingerprint(root)
+        return {
+            "fingerprint": roadmap_fingerprint_with_remote_refs(root, base),
+        }
 
     @api.get("/governance-completion")
     def api_governance_completion() -> dict[str, bool]:

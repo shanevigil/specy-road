@@ -317,7 +317,7 @@ def main(argv: list[str] | None = None) -> None:
 
     _checkout_new_branch(branch)
     _register_and_commit(node, branch, reg)
-    print(f"registered in registry.yaml, first commit done")
+    print("registered in registry.yaml, first commit done")
 
     brief_path = _write_brief(node, nodes)
     prompt_path = _write_prompt(node, brief_path)

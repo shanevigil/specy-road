@@ -37,8 +37,10 @@ class AddNodeBody(BaseModel):
 class GuiSettingsPutBody(BaseModel):
     inherit_llm: bool = True
     inherit_git_remote: bool = True
+    inherit_pm_gui: bool = True
     llm: dict[str, Any] = Field(default_factory=dict)
     git_remote: dict[str, Any] = Field(default_factory=dict)
+    pm_gui: dict[str, Any] = Field(default_factory=dict)
 
 
 class LlmTestBody(BaseModel):

@@ -74,7 +74,7 @@ git add roadmap/registry.yaml
 git commit -m "chore(rm-<codename>): register as in-progress"
 ```
 
-That registration commit exists on the **feature branch** until merge. A PM (or a second monitor) who keeps the **integration branch** checked out in the same tree will not see that `registry.yaml` row in the PM Gantt until it lands on their branch—see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+That registration commit exists on the **feature branch** until merge. A PM who keeps the **integration branch** checked out will not see that row in **HEAD’s** `registry.yaml` until it lands on their branch **unless** they use the PM Gantt **remote registry overlay** (see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md))—see also [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
 
 4. Generate a brief:
 

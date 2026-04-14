@@ -109,10 +109,16 @@ function siblingOrderInsertAfter(
   return [...without.slice(0, insertAt), aid, ...without.slice(insertAt)];
 }
 
+/**
+ * Dev column: owner → forge PR/MR author → remote tip author (PM on integration branch)
+ * → local git user.name when current branch matches registered branch → branch / hints → —.
+ */
 function devLabel(
   nid: string,
   registryByNode: Record<string, Record<string, unknown>> | undefined,
   gitEnrichment: Record<string, Record<string, unknown>>,
+  gitBranchCurrent: string | null | undefined,
+  gitUserName: string | null | undefined,
 ): string {
   const e = registryByNode?.[nid];
   const owner = e?.owner;
@@ -122,14 +128,24 @@ function devLabel(
     const author = g.author as string | undefined;
     if (author) return `@${author}`;
   }
+  if (g?.kind === "remote_tip") {
+    const a = g.author as string | undefined;
+    if (typeof a === "string" && a.trim()) return a.trim();
+  }
+  const regBranch = e?.branch;
+  const curBr = gitBranchCurrent?.trim() || "";
+  const regBrStr = typeof regBranch === "string" ? regBranch.trim() : "";
+  if (curBr && regBrStr && curBr === regBrStr) {
+    const local = gitUserName?.trim();
+    if (local) return local;
+  }
   if (g?.kind === "registry") {
     const br = g.branch as string | undefined;
     const hint = g.hint_line as string | undefined;
     if (typeof br === "string" && br.trim()) return br.trim();
     if (typeof hint === "string" && hint.trim()) return hint.trim();
   }
-  const regBranch = e?.branch;
-  if (typeof regBranch === "string" && regBranch.trim()) return regBranch.trim();
+  if (regBrStr) return regBrStr;
   return "—";
 }
 
@@ -454,6 +470,8 @@ type Props = {
   registryByNode?: Record<string, Record<string, unknown>>;
   /** Current named git branch (for row highlight vs registry branch). */
   gitBranchCurrent?: string | null;
+  /** Local ``git config user.name`` when Dev column matches checkout (developer convenience). */
+  gitUserName?: string | null;
   depEditId: string | null;
   depDraftKeys: Set<string>;
   onToggleDepCandidate: (candidateNodeId: string) => void;
@@ -477,6 +495,7 @@ export function OutlineTable({
   dependencyInheritance,
   registryByNode,
   gitBranchCurrent,
+  gitUserName,
   depEditId,
   depDraftKeys,
   onToggleDepCandidate,
@@ -515,6 +534,12 @@ export function OutlineTable({
         assignees?.length ? `A: ${assignees.join(", ")}` : "",
       ].filter(Boolean);
       return bits.join(" · ") || (g.hint_line as string) || "";
+    }
+    if (g?.kind === "remote_tip") {
+      const br = g.branch as string | undefined;
+      const author = g.author as string | undefined;
+      if (br && author) return `${br} · ${author}`;
+      if (g?.hint_line) return String(g.hint_line);
     }
     if (g?.hint_line) return String(g.hint_line);
     if (prHints[nid]) return prHints[nid].replace(/<br>/g, " · ");
@@ -948,7 +973,13 @@ export function OutlineTable({
                     selected={selectedId === id}
                     meta={metaLine(id)}
                     statusText={(node?.status as string) || "—"}
-                    devText={devLabel(id, registryByNode, gitEnrichment)}
+                    devText={devLabel(
+                      id,
+                      registryByNode,
+                      gitEnrichment,
+                      gitBranchCurrent,
+                      gitUserName,
+                    )}
                     depCellText={depCellLabel(id)}
                     depEditId={depEditId}
                     isGitCheckoutRow={isGitCheckoutRow}

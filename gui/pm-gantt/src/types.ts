@@ -38,6 +38,8 @@ export type GitWorkflowResolved = {
   remote: string;
   git_branch_current: string | null;
   git_head_short: string | null;
+  /** Local ``git config user.name``; used for Dev column when HEAD matches ``registry.branch``. */
+  git_user_name?: string | null;
 };
 
 export type GitWorkflowPayload = {
@@ -56,6 +58,15 @@ export type RegistryVisibilityPayload = {
   on_integration_branch: boolean;
   local_registry_entry_count: number;
   remote_feature_rm_ref_count: number;
+};
+
+/** Present when ``SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY`` merged remote registry rows. */
+export type RegistryOverlayPayload = {
+  enabled: boolean;
+  remote: string;
+  remote_refs_scanned: number;
+  merged_remote_entries: number;
+  skipped_refs: number;
 };
 
 export type RoadmapResponse = {
@@ -78,4 +89,5 @@ export type RoadmapResponse = {
   outline_actions?: Record<string, OutlineActionsEntry>;
   git_workflow?: GitWorkflowPayload;
   registry_visibility?: RegistryVisibilityPayload;
+  registry_overlay?: RegistryOverlayPayload;
 };

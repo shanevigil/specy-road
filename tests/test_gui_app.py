@@ -85,11 +85,37 @@ def test_api_roadmap_returns_nodes(api_client: TestClient) -> None:
     assert "git_workflow" in data
     gw = data["git_workflow"]
     assert "ok" in gw and "issues" in gw and "resolved" in gw
+    assert "git_user_name" in gw["resolved"]
     rv = data.get("registry_visibility")
     assert rv is not None
     assert "on_integration_branch" in rv
     assert "local_registry_entry_count" in rv
     assert "remote_feature_rm_ref_count" in rv
+
+
+def test_api_roadmap_includes_registry_overlay_when_enabled(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+    monkeypatch.delenv("SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY", raising=False)
+
+    def _force_overlay(_root):
+        return True
+
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.registry_remote_overlay_enabled",
+        _force_overlay,
+    )
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.get("/api/roadmap")
+    assert r.status_code == 200
+    ov = r.json().get("registry_overlay")
+    assert isinstance(ov, dict)
+    assert ov.get("enabled") is True
+    assert "remote_refs_scanned" in ov
 
 
 def test_api_roadmap_omits_registry_visibility_when_env_disabled(

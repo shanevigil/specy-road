@@ -250,8 +250,10 @@ export async function getSettings() {
 export async function putSettings(payload: {
   inherit_llm: boolean;
   inherit_git_remote: boolean;
+  inherit_pm_gui?: boolean;
   llm: Record<string, string>;
   git_remote: Record<string, string>;
+  pm_gui?: Record<string, unknown>;
 }) {
   const r = await fetch(`${API}/settings`, {
     method: "PUT",
@@ -340,7 +342,7 @@ export async function postLlmReview(
 
 export async function postGitTest(
   gitRemote: Record<string, string>,
-): Promise<{ ok: boolean; message: string }> {
+): Promise<{ ok: boolean; message: string; git_remote_tested_ok?: boolean }> {
   const r = await fetch(`${API}/git/test`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -349,6 +351,7 @@ export async function postGitTest(
   const raw = (await r.json()) as {
     ok?: boolean;
     message?: string;
+    git_remote_tested_ok?: boolean;
     detail?: unknown;
   };
   if (!r.ok) {
@@ -364,5 +367,6 @@ export async function postGitTest(
   return {
     ok: Boolean(raw.ok),
     message: typeof raw.message === "string" ? raw.message : "",
+    git_remote_tested_ok: raw.git_remote_tested_ok === true,
   };
 }

@@ -128,6 +128,34 @@ def current_head_short_sha(repo_root: Path) -> str | None:
     return sha if ok else None
 
 
+def git_config_user_name(repo_root: Path) -> str | None:
+    """Local ``git config user.name`` for this repo (developer identity on this clone)."""
+    if not is_git_worktree(repo_root):
+        return None
+    ok, out = _git_ok(["config", "--get", "user.name"], repo_root)
+    if not ok or not (out or "").strip():
+        return None
+    return (out or "").strip()
+
+
+def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
+    """Author name (``%an``) of the latest commit on ``refs/remotes/<remote>/<branch>``."""
+    if not is_git_worktree(repo_root):
+        return None
+    rm = (remote or "").strip()
+    br = (branch or "").strip()
+    if not rm or not br:
+        return None
+    ref = f"refs/remotes/{rm}/{br}"
+    ok, _ = _git_ok(["show-ref", "--verify", ref], repo_root)
+    if not ok:
+        return None
+    ok2, line = _git_ok(["log", "-1", "--format=%an", ref], repo_root)
+    if not ok2 or not (line or "").strip():
+        return None
+    return (line or "").strip()
+
+
 def integration_refs_present(
     repo_root: Path,
     remote: str,
@@ -153,6 +181,7 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
 
     branch_current = current_branch_name(repo_root)
     head_short = current_head_short_sha(repo_root)
+    git_user_name = git_config_user_name(repo_root)
 
     if not path.is_file():
         issues.append(
@@ -213,5 +242,6 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
             "remote": rm,
             "git_branch_current": branch_current,
             "git_head_short": head_short,
+            "git_user_name": git_user_name,
         },
     }

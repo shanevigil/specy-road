@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from typing import Any
+
+from specy_road.git_workflow_config import git_remote_tip_author
 from urllib.parse import quote
 
 import requests
@@ -230,14 +232,29 @@ def fetch_branch_enrichment(gr: dict[str, Any], branch_name: str) -> dict[str, A
 def build_registry_enrichment(
     by_reg: dict[str, dict[str, Any]],
     gr: dict[str, Any],
+    *,
+    repo_root: Path | None = None,
+    remote: str = "origin",
 ) -> dict[str, dict[str, Any]]:
-    """Per node_id: PR/MR detail plus registry branch/started when no open PR."""
+    """Per node_id: PR/MR detail, remote tip author, or registry branch/started when no open PR."""
     out: dict[str, dict[str, Any]] = {}
+    rm = (remote or "").strip() or "origin"
     for nid, entry in by_reg.items():
         br = entry.get("branch") or ""
         detail = fetch_branch_enrichment(gr, br) if br else None
         if detail:
             out[nid] = detail
+            continue
+        tip_author: str | None = None
+        if br and repo_root is not None:
+            tip_author = git_remote_tip_author(repo_root, rm, br)
+        if tip_author:
+            out[nid] = {
+                "kind": "remote_tip",
+                "author": tip_author,
+                "branch": br,
+                "hint_line": f"{br} · {tip_author}",
+            }
             continue
         line = br
         started = entry.get("started")
