@@ -1,4 +1,7 @@
-"""Path and ID helpers for the PM Gantt HTTP API (requires bundled_scripts on sys.path)."""
+"""Path and ID helpers for the PM Gantt HTTP API.
+
+Requires ``bundled_scripts`` on ``sys.path``.
+"""
 
 from __future__ import annotations
 
@@ -7,18 +10,18 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from roadmap_gui_lib import resolve_repo_root
+from specy_road.runtime_paths import default_user_repo_root
 
 
-def get_repo_root(pkg_parent: Path) -> Path:
+def get_repo_root() -> Path:
     env = os.environ.get("SPECY_ROAD_REPO_ROOT")
     if env:
         return Path(env).resolve()
-    return resolve_repo_root(pkg_parent)
+    return default_user_repo_root()
 
 
 def safe_rel_path(repo_root: Path, rel: str) -> Path:
-    """Resolve a repo-relative path, rejecting empty paths and ``..`` segments."""
+    """Resolve a repo-relative path; reject empty paths and ``..`` segments."""
     raw = (rel or "").strip().replace("\\", "/").lstrip("/")
     if not raw or ".." in raw.split("/"):
         raise HTTPException(status_code=400, detail="invalid path")
@@ -30,7 +33,11 @@ def safe_rel_path(repo_root: Path, rel: str) -> Path:
     return p
 
 
-def assert_under_allowed_root(repo_root: Path, path: Path, allowed_top: str) -> None:
+def assert_under_allowed_root(
+    repo_root: Path,
+    path: Path,
+    allowed_top: str,
+) -> None:
     """Require ``path`` to resolve under ``repo_root/<allowed_top>/``."""
     allowed = (repo_root / allowed_top).resolve()
     try:
@@ -43,7 +50,7 @@ def assert_under_allowed_root(repo_root: Path, path: Path, allowed_top: str) -> 
 
 
 def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
-    """Next display id among siblings: ``M{n}`` at the root, ``<parent>.<n>`` when nested."""
+    """Next display id: ``M{n}`` at root, ``<parent>.<n>`` when nested."""
     children = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
     if parent_id is None:
         nums: list[int] = []
@@ -59,7 +66,7 @@ def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
     nums = []
     for cid in children:
         if cid.startswith(prefix):
-            tail = cid[len(prefix) :]
+            tail = cid[len(prefix):]
             if tail.isdigit():
                 nums.append(int(tail))
     n = max(nums, default=0) + 1

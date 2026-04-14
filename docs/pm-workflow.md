@@ -90,7 +90,7 @@ Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling 
 
 ### Gantt PM UI (FastAPI + React)
 
-**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/`), or pass `--repo-root /path/to/repo` so the server loads the correct roadmap.
+**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/`). The UI discovers that root the same way as other CLI commands (git worktree from the current directory, or the current directory if not in git). If that resolves to the wrong tree—nested checkouts, monorepos—pass `--repo-root /path/to/repo` or set `SPECY_ROAD_REPO_ROOT`.
 
 **One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init gui --install-gui` also compiles that tree. After `pip install specy-road`:
 

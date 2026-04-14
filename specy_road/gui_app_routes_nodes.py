@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -29,13 +28,11 @@ from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
 
-_REPO_FALLBACK = Path(__file__).resolve().parent.parent
-
 
 def register_node_mutations(api: APIRouter) -> None:
     @api.patch("/nodes/{node_id}")
     def api_patch_node(node_id: str, body: PatchBody) -> dict[str, str]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         pairs = [(p.key, p.value) for p in body.pairs]
         try:
             edit_node_set_pairs(root, node_id, pairs)
@@ -45,7 +42,7 @@ def register_node_mutations(api: APIRouter) -> None:
 
     @api.delete("/nodes/{node_id}")
     def api_delete_node(node_id: str) -> dict[str, str]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         try:
             delete_roadmap_node_hard(root, node_id)
         except ValueError as e:
@@ -54,7 +51,7 @@ def register_node_mutations(api: APIRouter) -> None:
 
     @api.post("/outline/reorder")
     def api_reorder(body: ReorderBody) -> dict[str, str]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         pid: str | None = body.parent_id
         try:
             reorder_siblings(root, pid, body.ordered_child_ids)
@@ -64,7 +61,7 @@ def register_node_mutations(api: APIRouter) -> None:
 
     @api.post("/outline/move")
     def api_outline_move(body: MoveOutlineBody) -> dict[str, str]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         try:
             move_node_outline(
                 root,
@@ -78,7 +75,7 @@ def register_node_mutations(api: APIRouter) -> None:
 
     @api.post("/nodes/{node_id}/indent")
     def api_indent(node_id: str) -> dict[str, Any]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         try:
             changed = apply_indent(root, node_id)
         except ValueError as e:
@@ -87,7 +84,7 @@ def register_node_mutations(api: APIRouter) -> None:
 
     @api.post("/nodes/{node_id}/outdent")
     def api_outdent(node_id: str) -> dict[str, Any]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         try:
             changed = apply_outdent(root, node_id)
         except ValueError as e:
@@ -98,7 +95,7 @@ def register_node_mutations(api: APIRouter) -> None:
 def register_add_node(api: APIRouter) -> None:
     @api.post("/nodes/add")
     def api_add_node(body: AddNodeBody) -> dict[str, Any]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         nodes = load_roadmap(root)["nodes"]
         by_id = {n["id"]: n for n in nodes}
         ref = body.reference_node_id

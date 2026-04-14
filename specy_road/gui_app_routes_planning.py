@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Query
@@ -31,13 +30,11 @@ from specy_road.gui_app_models import (
     PutFileBody,
 )
 
-_REPO_FALLBACK = Path(__file__).resolve().parent.parent
-
 
 def api_constitution_scaffold(
     body: ConstitutionScaffoldBody = Body(default_factory=ConstitutionScaffoldBody),
 ) -> dict[str, Any]:
-    root = get_repo_root(_REPO_FALLBACK)
+    root = get_repo_root()
     force = bool(body.force)
     try:
         result = write_constitution(root, force=force)
@@ -56,7 +53,7 @@ def api_planning_scaffold(
     node_id: str,
     body: PlanningScaffoldBody = Body(default_factory=PlanningScaffoldBody),
 ) -> dict[str, Any]:
-    root = get_repo_root(_REPO_FALLBACK)
+    root = get_repo_root()
     try:
         return scaffold_planning_for_node(
             root,
@@ -69,7 +66,7 @@ def api_planning_scaffold(
 
 
 def api_planning_artifacts(node_id: str) -> dict[str, Any]:
-    root = get_repo_root(_REPO_FALLBACK)
+    root = get_repo_root()
     nodes = load_roadmap(root)["nodes"]
     by_id = {n["id"]: n for n in nodes}
     if node_id not in by_id:
@@ -111,7 +108,7 @@ def api_planning_artifacts(node_id: str) -> dict[str, Any]:
 
 
 def api_planning_get(path: str = Query(..., description="Repo-relative path")) -> dict[str, str]:
-    root = get_repo_root(_REPO_FALLBACK)
+    root = get_repo_root()
     p = safe_rel_path(root, path)
     assert_under_allowed_root(root, p, "planning")
     if not p.is_file():
@@ -124,7 +121,7 @@ def api_planning_put(
     path: str = Query(...),
     body: PutFileBody = Body(...),
 ) -> dict[str, str]:
-    root = get_repo_root(_REPO_FALLBACK)
+    root = get_repo_root()
     p = safe_rel_path(root, path)
     assert_under_allowed_root(root, p, "planning")
     had_file = p.is_file()

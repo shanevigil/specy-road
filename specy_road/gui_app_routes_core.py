@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -30,8 +29,6 @@ from specy_road.governance_completion import (
 
 from specy_road.gui_app_helpers import get_repo_root
 
-_REPO_FALLBACK = Path(__file__).resolve().parent.parent
-
 
 def register_core(api: APIRouter) -> None:
     @api.get("/health")
@@ -40,12 +37,12 @@ def register_core(api: APIRouter) -> None:
 
     @api.get("/repo")
     def api_repo() -> dict[str, str]:
-        r = get_repo_root(_REPO_FALLBACK)
+        r = get_repo_root()
         return {"repo_root": str(r)}
 
     @api.get("/roadmap")
     def api_roadmap() -> dict[str, Any]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         try:
             doc = load_roadmap(root)
         except (OSError, SystemExit, ValueError) as e:
@@ -93,12 +90,12 @@ def register_core(api: APIRouter) -> None:
 
     @api.get("/roadmap/fingerprint")
     def api_roadmap_fingerprint() -> dict[str, int]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         return {"fingerprint": roadmap_fingerprint(root)}
 
     @api.get("/governance-completion")
     def api_governance_completion() -> dict[str, bool]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         return {
             "vision_needs_completion": vision_needs_completion(root),
             "constitution_needs_completion": constitution_needs_completion(root),

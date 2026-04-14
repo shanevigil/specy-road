@@ -64,6 +64,8 @@ Run the server against the playground tree:
 specy-road gui --repo-root playground
 ```
 
+`--repo-root` sets the GUI’s project root for that process (same as `SPECY_ROAD_REPO_ROOT`); it overrides repo discovery from the current directory, so you can keep your shell at the toolkit root.
+
 After you change sources under **`gui/pm-gantt/`**, rebuild bundled assets, then restart the GUI:
 
 ```bash

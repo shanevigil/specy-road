@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -30,15 +29,13 @@ from specy_road.gui_app_models import (
     SharedUploadBody,
 )
 
-_REPO_FALLBACK = Path(__file__).resolve().parent.parent
-
 
 def register_workspace_routes(api: APIRouter) -> None:
     @api.get("/workspace/files")
     def api_workspace_files(
         prefix: str = Query(..., pattern="^(shared|work)$"),
     ) -> dict[str, Any]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         base = root / prefix
         if not base.exists():
             base.mkdir(parents=True, exist_ok=True)
@@ -65,7 +62,7 @@ def register_workspace_routes(api: APIRouter) -> None:
 
     @api.post("/workspace/upload")
     def api_workspace_upload(body: SharedUploadBody) -> dict[str, str]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         raw = body.path.strip().replace("\\", "/").lstrip("/")
         if not raw.startswith("shared/"):
             raise HTTPException(status_code=400, detail="path must start with shared/")
@@ -83,12 +80,12 @@ def register_workspace_routes(api: APIRouter) -> None:
 def register_settings_and_remote(api: APIRouter) -> None:
     @api.get("/settings")
     def api_settings_get() -> dict[str, Any]:
-        return settings_api_payload(get_repo_root(_REPO_FALLBACK))
+        return settings_api_payload(get_repo_root())
 
     @api.put("/settings")
     def api_settings_put(body: GuiSettingsPutBody) -> dict[str, str]:
         save_settings_for_repo(
-            get_repo_root(_REPO_FALLBACK),
+            get_repo_root(),
             inherit_llm=body.inherit_llm,
             inherit_git_remote=body.inherit_git_remote,
             llm=body.llm,
@@ -105,7 +102,7 @@ def register_settings_and_remote(api: APIRouter) -> None:
 
     @api.post("/llm/review")
     def api_llm_review(body: LlmReviewBody) -> dict[str, str]:
-        root = get_repo_root(_REPO_FALLBACK)
+        root = get_repo_root()
         apply_llm_env_from_settings(body.llm)
         try:
             report = run_review(body.node_id.strip(), root)

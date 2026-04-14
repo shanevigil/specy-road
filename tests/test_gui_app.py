@@ -28,6 +28,45 @@ def api_client(
     return TestClient(create_app())
 
 
+def test_api_repo_follows_cwd_when_env_unset(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without SPECY_ROAD_REPO_ROOT, repo root follows cwd like other CLI."""
+    monkeypatch.delenv("SPECY_ROAD_REPO_ROOT", raising=False)
+    monkeypatch.chdir(dogfood_copy)
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.get("/api/repo")
+    assert r.status_code == 200
+    assert Path(r.json()["repo_root"]).resolve() == dogfood_copy.resolve()
+    r2 = client.get("/api/roadmap")
+    assert r2.status_code == 200
+    assert "nodes" in r2.json()
+
+
+def test_api_repo_env_overrides_cwd(
+    dogfood_copy: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SPECY_ROAD_REPO_ROOT wins over cwd (e.g. ``gui --repo-root playground``)."""
+    elsewhere = tmp_path / "not_the_playground"
+    elsewhere.mkdir()
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+    monkeypatch.chdir(elsewhere)
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.get("/api/repo")
+    assert r.status_code == 200
+    assert Path(r.json()["repo_root"]).resolve() == dogfood_copy.resolve()
+    r2 = client.get("/api/roadmap")
+    assert r2.status_code == 200
+    assert "nodes" in r2.json()
+
+
 def test_api_health(api_client: TestClient) -> None:
     r = api_client.get("/api/health")
     assert r.status_code == 200
