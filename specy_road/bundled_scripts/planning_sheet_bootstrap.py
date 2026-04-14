@@ -16,7 +16,6 @@ _TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
 
 
 def render_feature_sheet_template(node_id: str) -> str:
-    """Return feature sheet Markdown from the package template."""
     path = _TEMPLATES / "feature-sheet.md.template"
     if not path.is_file():
         raise FileNotFoundError(f"missing template {path}")
@@ -50,7 +49,7 @@ def ensure_planning_sheet_for_new_node(repo_root: Path, node: dict) -> None:
 
 
 def remove_planning_sheet_if_present(repo_root: Path, planning_dir: object) -> None:
-    """Delete the feature sheet file if ``planning_dir`` is a valid path to an existing file."""
+    """Unlink the feature sheet when ``planning_dir`` resolves to a file; otherwise no-op."""
     if not isinstance(planning_dir, str) or not planning_dir.strip():
         return
     try:

@@ -55,11 +55,6 @@ def resolve_planning_path(repo_root: Path, planning_dir: str) -> Path:
     return path
 
 
-def resolve_planning_dir(repo_root: Path, planning_dir: str) -> Path:
-    """Backward-compatible alias: ``planning_dir`` is now a file path."""
-    return resolve_planning_path(repo_root, planning_dir)
-
-
 def codename_to_slug(codename: str | None) -> str:
     """Filesystem-friendly slug from milestone/phase codename; ``unnamed`` if missing."""
     if not codename or not str(codename).strip():

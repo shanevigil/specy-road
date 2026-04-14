@@ -1,5 +1,3 @@
-"""Tests for planning_sheet_bootstrap (new-node planning file creation)."""
-
 from __future__ import annotations
 
 from pathlib import Path

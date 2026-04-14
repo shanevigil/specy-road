@@ -113,6 +113,7 @@ def _get_repo_root() -> Path:
 
 
 def _safe_rel_path(repo_root: Path, rel: str) -> Path:
+    """Resolve a repo-relative path, rejecting empty paths and ``..`` segments."""
     raw = (rel or "").strip().replace("\\", "/").lstrip("/")
     if not raw or ".." in raw.split("/"):
         raise HTTPException(status_code=400, detail="invalid path")
@@ -125,6 +126,7 @@ def _safe_rel_path(repo_root: Path, rel: str) -> Path:
 
 
 def _assert_under_allowed_root(repo_root: Path, path: Path, allowed_top: str) -> None:
+    """Require ``path`` to resolve under ``repo_root/<allowed_top>/``."""
     allowed = (repo_root / allowed_top).resolve()
     try:
         path.resolve().relative_to(allowed)
@@ -136,6 +138,7 @@ def _assert_under_allowed_root(repo_root: Path, path: Path, allowed_top: str) ->
 
 
 def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
+    """Next display id among siblings: ``M{n}`` at the root, ``<parent>.<n>`` when nested."""
     children = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
     if parent_id is None:
         nums: list[int] = []
@@ -210,8 +213,6 @@ class PutFileBody(BaseModel):
 
 
 class SharedUploadBody(BaseModel):
-    """Binary upload as base64 into ``shared/`` (repo-relative path)."""
-
     path: str = Field(
         ...,
         description="Repo-relative path starting with shared/, e.g. shared/docs/x.png",
@@ -545,7 +546,6 @@ def create_app() -> FastAPI:
     def api_workspace_files(
         prefix: str = Query(..., pattern="^(shared|work)$"),
     ) -> dict[str, Any]:
-        """List files recursively under ``shared/`` or ``work/`` (repo-relative)."""
         root = _get_repo_root()
         base = root / prefix
         if not base.exists():
@@ -573,7 +573,6 @@ def create_app() -> FastAPI:
 
     @app.post("/api/workspace/upload")
     def api_workspace_upload(body: SharedUploadBody) -> dict[str, str]:
-        """Upload raw bytes (base64) into ``shared/`` at the given repo-relative path."""
         root = _get_repo_root()
         raw = body.path.strip().replace("\\", "/").lstrip("/")
         if not raw.startswith("shared/"):

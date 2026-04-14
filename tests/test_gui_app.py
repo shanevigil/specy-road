@@ -1,5 +1,3 @@
-"""Integration tests for gui_app FastAPI routes (temp repo + TestClient)."""
-
 from __future__ import annotations
 
 import base64

@@ -164,18 +164,6 @@ def ordered_tree_rows(nodes: list[dict]) -> list[tuple[dict, int]]:
     return out
 
 
-def dependency_edges(nodes: list[dict]) -> list[tuple[str, str]]:
-    """Edges (dependency_id, dependent_id) for graph overlays; deps are ``node_key`` values."""
-    key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
-    edges: list[tuple[str, str]] = []
-    for n in nodes:
-        for dep in n.get("dependencies") or []:
-            tid = key_to_id.get(dep)
-            if tid:
-                edges.append((tid, n["id"]))
-    return edges
-
-
 def dependency_edges_detailed(
     nodes: list[dict],
 ) -> list[dict[str, str]]:

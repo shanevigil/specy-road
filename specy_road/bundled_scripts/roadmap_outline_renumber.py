@@ -74,7 +74,7 @@ def renumber_display_ids_inplace(nodes: list[dict]) -> dict[str, str]:
     ch_map = _children_by_parent(nodes, by_old_id)
     key_to_new_id: dict[str, str] = {}
 
-    def visit(old_parent_id: str | None, new_parent_id: str | None, children: list[dict]) -> None:
+    def visit(_: str | None, new_parent_id: str | None, children: list[dict]) -> None:
         for i, n in enumerate(children):
             nk = n.get("node_key")
             if not isinstance(nk, str) or not nk:

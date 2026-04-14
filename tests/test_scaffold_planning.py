@@ -1,5 +1,3 @@
-"""Tests for scaffold_planning (feature sheet + planning_dir)."""
-
 from __future__ import annotations
 
 from pathlib import Path

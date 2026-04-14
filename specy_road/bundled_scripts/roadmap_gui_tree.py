@@ -6,13 +6,6 @@ from roadmap_layout import sibling_sort_key
 from roadmap_outline_renumber import can_indent_to_parent
 
 
-def row_index(tree_rows: list[tuple[dict, int]], nid: str) -> int | None:
-    for i, (n, _) in enumerate(tree_rows):
-        if n["id"] == nid:
-            return i
-    return None
-
-
 def is_ancestor(by_id: dict, ancestor_id: str, nid: str) -> bool:
     cur: str | None = by_id[nid].get("parent_id")
     while cur:

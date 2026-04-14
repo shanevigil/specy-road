@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import threading
-import time
 from pathlib import Path
 from typing import Any
 
@@ -30,16 +28,6 @@ from roadmap_gui_settings import (
     settings_api_payload,
 )
 
-try:
-    from watchdog.events import FileSystemEventHandler
-    from watchdog.observers import Observer
-except ImportError:
-    Observer = None  # type: ignore[misc, assignment]
-    FileSystemEventHandler = None  # type: ignore[misc, assignment]
-
-_WATCHDOG_LOCK = threading.Lock()
-_WATCHDOG_STARTED = False
-_WATCH_OBS_HOLD: list[Any] = []
 
 def resolve_repo_root(fallback: Path) -> Path:
     try:
@@ -139,40 +127,3 @@ def roadmap_fingerprint(root: Path) -> int:
         except OSError:
             pass
     return h
-
-
-def _run_watchdog_observer(root: Path, bump: list[float]) -> None:
-    if Observer is None or FileSystemEventHandler is None:
-        return
-    roadmap_dir = root / "roadmap"
-    if not roadmap_dir.is_dir():
-        return
-
-    class Handler(FileSystemEventHandler):
-        def on_modified(self, event):  # type: ignore[override]
-            if event.is_directory:
-                return
-            p = getattr(event, "src_path", "")
-            if p.endswith((".yaml", ".yml", ".json", ".md")):
-                bump[0] = time.time()
-
-    try:
-        obs = Observer()
-        obs.schedule(Handler(), str(roadmap_dir), recursive=True)
-        obs.start()
-        _WATCH_OBS_HOLD.append(obs)
-    except Exception:
-        pass
-
-
-def ensure_watchdog_thread(root: Path, bump: list[float]) -> None:
-    global _WATCHDOG_STARTED
-    with _WATCHDOG_LOCK:
-        if _WATCHDOG_STARTED:
-            return
-        _WATCHDOG_STARTED = True
-    threading.Thread(
-        target=_run_watchdog_observer,
-        args=(root, bump),
-        daemon=True,
-    ).start()

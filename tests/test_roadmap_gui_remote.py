@@ -1,5 +1,3 @@
-"""Tests for roadmap_gui_remote (outbound git/LLM checks) with mocks."""
-
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

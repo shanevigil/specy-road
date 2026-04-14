@@ -42,24 +42,6 @@ def gate_display(node: dict) -> str:
     return "—"
 
 
-def children_of(parent_id: str | None, nodes: list[dict]) -> list[dict]:
-    out = [n for n in nodes if n.get("parent_id") == parent_id]
-    return sorted(out, key=lambda n: sort_key(n["id"]))
-
-
-def collect_subtree(root_id: str, by_id: dict[str, dict]) -> list[dict]:
-    out: list[dict] = []
-
-    def walk(nid: str) -> None:
-        n = by_id[nid]
-        out.append(n)
-        for c in children_of(nid, list(by_id.values())):
-            walk(c["id"])
-
-    walk(root_id)
-    return out
-
-
 def render_index(nodes: list[dict]) -> str:
     lines = [
         "# Roadmap index",
