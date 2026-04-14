@@ -125,15 +125,34 @@ def sync_planning_dir_filename(node: dict) -> str | None:
     return f"planning/{planning_filename_for_node(node)}"
 
 
-def _maybe_resync_planning_dir_after_edit(node: dict, dotted_key: str) -> None:
-    """When codename changes, update ``planning_dir`` to the canonical flat filename."""
-    if dotted_key != "codename":
-        return
+def update_planning_dir_to_canonical(node: dict) -> None:
+    """Set ``planning_dir`` to ``planning/<id>_<slug>_<node_key>.md`` from current node fields."""
     if node.get("planning_dir") is None:
         return
     new_path = sync_planning_dir_filename(node)
     if new_path is not None:
         node["planning_dir"] = new_path
+
+
+def maybe_sync_codename_from_title(node: dict) -> None:
+    """
+    When the user edits ``title``, set ``codename`` to ``title_to_codename(title)`` so the
+    stored codename, filename slug, and PM GUI title-bar slug stay aligned. If the title does
+    not yield a valid kebab slug, clear ``codename`` (planning filename uses ``unnamed``).
+    """
+    new_title = str(node.get("title") or "")
+    new_tc = title_to_codename(new_title)
+    if new_tc:
+        node["codename"] = new_tc
+    else:
+        node.pop("codename", None)
+
+
+def _maybe_resync_planning_dir_after_edit(node: dict, dotted_key: str) -> None:
+    """After ``title`` or ``codename`` edits, refresh ``planning_dir`` to the canonical path."""
+    if dotted_key not in ("codename", "title"):
+        return
+    update_planning_dir_to_canonical(node)
 
 
 def _set_codename(node: dict, raw_val: str) -> None:
@@ -260,15 +279,18 @@ def apply_set(
         raise ValueError(f"key not allowed for --set: {dotted_key!r}")
     parts = dotted_key.split(".")
     if len(parts) == 1:
+        key = parts[0]
         _apply_scalar_top_level(
             node,
-            parts[0],
+            key,
             raw_val,
             all_ids=all_ids,
             all_node_keys=all_node_keys,
             self_id=self_id,
         )
-        _maybe_resync_planning_dir_after_edit(node, parts[0])
+        if key == "title":
+            maybe_sync_codename_from_title(node)
+        _maybe_resync_planning_dir_after_edit(node, key)
         return
     if parts[0] == "decision" and len(parts) == 2:
         _apply_decision(node, parts[1], raw_val)

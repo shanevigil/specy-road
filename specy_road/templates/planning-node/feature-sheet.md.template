@@ -1,13 +1,6 @@
----
-node_id: {{NODE_ID}}
-node_key: {{NODE_KEY}}
----
-
-# Feature sheet — `{{NODE_ID}}` — {{TITLE}}
-
 ## Intent
 
-What problem this slice solves; link to roadmap node `{{NODE_ID}}`.
+What problem this slice solves; cite the roadmap node and `shared/` contracts where relevant.
 
 ## User-visible behavior
 

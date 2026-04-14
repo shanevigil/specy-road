@@ -15,21 +15,8 @@ from planning_artifacts import (
     normalize_planning_dir,
     resolve_planning_path,
 )
-from specy_road.runtime_paths import default_user_repo_root, specy_road_package_dir
-
-_TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
-
-
-def _render_feature_sheet(node_id: str, title: str, node_key: str) -> str:
-    path = _TEMPLATES / "feature-sheet.md.template"
-    if not path.is_file():
-        raise FileNotFoundError(f"missing template {path}")
-    text = path.read_text(encoding="utf-8")
-    return (
-        text.replace("{{NODE_ID}}", node_id)
-        .replace("{{TITLE}}", title)
-        .replace("{{NODE_KEY}}", str(node_key).strip().lower())
-    )
+from planning_sheet_bootstrap import render_feature_sheet_template
+from specy_road.runtime_paths import default_user_repo_root
 
 
 def _resolve_scaffold_planning_path(
@@ -67,7 +54,6 @@ def scaffold_planning_for_node(
     if nid not in by_id:
         raise ValueError(f"unknown node id {nid!r}")
     node = by_id[nid]
-    title = str(node.get("title", ""))
     nk = node.get("node_key")
     if not nk:
         raise ValueError(f"node {nid!r} has no node_key")
@@ -84,7 +70,7 @@ def scaffold_planning_for_node(
         edit_node_set_pairs(root, nid, [("planning_dir", norm)])
         run_validate_raise(root)
         return {"planning_dir": norm, "written": []}
-    content = _render_feature_sheet(nid, title, str(nk))
+    content = render_feature_sheet_template(nid)
     dest.write_text(content, encoding="utf-8")
     rel = str(dest.relative_to(root)).replace("\\", "/")
     written = [rel]

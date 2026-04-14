@@ -140,8 +140,9 @@ export function MarkdownWorkspace({
       <MarkdownToolbar editor={editor} disabled={disabled} />
       {frontmatterNote ? (
         <p className="markdown-workspace-frontmatter-note outline-meta">
-          YAML frontmatter at the top of this file may not round-trip exactly in
-          the editor; body content below should still save as markdown. (
+          This file starts with YAML frontmatter (optional for planning sheets;
+          identity is in the filename). The editor may not round-trip frontmatter
+          exactly; body content below should still save as markdown. (
           <code>@tiptap/markdown</code> differs from the old{" "}
           <code>remark-frontmatter</code> preview.)
         </p>

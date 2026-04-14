@@ -15,8 +15,49 @@ import { titleToCodename } from "../titleCodename";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 
+type TitleConflict = {
+  hasConflict: boolean;
+  peerIds: string[];
+  duplicateTitle: boolean;
+  duplicateSlug: boolean;
+};
+
+function analyzeTitleConflict(
+  draftTitle: string,
+  selfId: string,
+  allNodes: RoadmapNode[],
+): TitleConflict {
+  const trimmed = draftTitle.trim();
+  const slug = titleToCodename(draftTitle);
+  const peerIdsTitle = new Set<string>();
+  const peerIdsSlug = new Set<string>();
+  for (const p of allNodes) {
+    if (p.id === selfId) continue;
+    if (trimmed.length > 0 && (p.title || "").trim() === trimmed) {
+      peerIdsTitle.add(p.id);
+    }
+    if (slug) {
+      const ps = titleToCodename(p.title || "");
+      if (ps && ps === slug) peerIdsSlug.add(p.id);
+    }
+  }
+  const duplicateTitle = peerIdsTitle.size > 0;
+  const duplicateSlug = peerIdsSlug.size > 0;
+  const peerIds = Array.from(
+    new Set([...peerIdsTitle, ...peerIdsSlug]),
+  ).sort();
+  return {
+    hasConflict: duplicateTitle || duplicateSlug,
+    peerIds,
+    duplicateTitle,
+    duplicateSlug,
+  };
+}
+
 type Props = {
   node: RoadmapNode | null;
+  /** All roadmap nodes (for duplicate title / slug checks). */
+  allNodes?: RoadmapNode[];
   /** Explicit vs ancestor-inherited dependency display ids (from API). */
   dependencyInheritance?: DependencyInheritanceEntry;
   /** Same maps as the outline table: registry row, PR/MR enrichment, PR hint HTML. */
@@ -108,6 +149,7 @@ function gitWorkSummary(
 
 export function EditModal({
   node,
+  allNodes = [],
   dependencyInheritance,
   registryByNode,
   gitEnrichment,
@@ -129,8 +171,12 @@ export function EditModal({
   onRectCommit,
 }: Props) {
   const [title, setTitle] = useState("");
-  const [files, setFiles] = useState<{ role: string; path: string }[]>([]);
-  const [activePath, setActivePath] = useState<string | null>(null);
+  /** Repo-relative paths of ancestor feature sheets (read-only context); not editable in this dialog. */
+  const [ancestorFiles, setAncestorFiles] = useState<
+    { path: string; exists: boolean }[]
+  >([]);
+  /** This node's single planning file (`planning_dir`); flat layout — no file picker. */
+  const [sheetPath, setSheetPath] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -145,6 +191,18 @@ export function EditModal({
   const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
 
   const reviewTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const titleConflict = useMemo(() => {
+    if (!node) {
+      return {
+        hasConflict: false,
+        peerIds: [] as string[],
+        duplicateTitle: false,
+        duplicateSlug: false,
+      };
+    }
+    return analyzeTitleConflict(title, node.id, allNodes);
+  }, [allNodes, node, title]);
 
   const lastSaved = useRef<SavedSnap>({
     title: "",
@@ -163,23 +221,22 @@ export function EditModal({
     fetchPlanningArtifacts(node.id)
       .then((a) => {
         const anc = (a.ancestor_planning_files || []).map((f) => ({
-          role: f.role || "ancestor",
           path: f.path,
+          exists: f.exists !== false,
         }));
-        const leaf = (a.files || []).map((f) => ({ role: f.role, path: f.path }));
-        const fs = [...anc, ...leaf];
-        setFiles(fs);
+        setAncestorFiles(anc);
+        const leaf = a.files || [];
+        const sheet = leaf.find((x) => x.role === "sheet") || leaf[0];
         const nt = node.title || "";
-        if (fs.length > 0) {
-          const sheet = leaf.find((x) => x.role === "sheet");
-          setActivePath(sheet ? sheet.path : fs[0].path);
+        if (sheet?.path) {
+          setSheetPath(sheet.path);
           lastSaved.current = {
             title: nt,
             path: "",
             content: "",
           };
         } else {
-          setActivePath(null);
+          setSheetPath(null);
           setContent("");
           lastSaved.current = {
             title: nt,
@@ -193,8 +250,9 @@ export function EditModal({
         setErr(String(e));
         setHydrated(true);
       });
+    // Re-fetch when server renames planning file (title → codename slug) or path otherwise changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [node?.id]);
+  }, [node?.id, node?.planning_dir]);
 
   useEffect(() => {
     if (!node) return;
@@ -208,19 +266,19 @@ export function EditModal({
 
   useEffect(() => {
     if (!node) return;
-    if (!activePath) {
+    if (!sheetPath) {
       setContent("");
       setHydrated(true);
       return;
     }
     setLoading(true);
     setHydrated(false);
-    fetchPlanningFile(activePath)
+    fetchPlanningFile(sheetPath)
       .then((f) => {
         setContent(f.content);
         lastSaved.current = {
           ...lastSaved.current,
-          path: activePath,
+          path: sheetPath,
           content: f.content,
         };
       })
@@ -230,10 +288,11 @@ export function EditModal({
         setHydrated(true);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath, node?.id]);
+  }, [sheetPath, node?.id]);
 
   useEffect(() => {
     if (!hydrated || !node || loading) return;
+    if (titleConflict.hasConflict) return;
     if (title === lastSaved.current.title) {
       return;
     }
@@ -252,24 +311,24 @@ export function EditModal({
         });
     }, 500);
     return () => window.clearTimeout(t);
-  }, [title, hydrated, node, loading, onPersisted]);
+  }, [title, hydrated, node, loading, onPersisted, titleConflict.hasConflict]);
 
   useEffect(() => {
-    if (!hydrated || !node || loading || !activePath) return;
+    if (!hydrated || !node || loading || !sheetPath) return;
     if (
       content === lastSaved.current.content &&
-      activePath === lastSaved.current.path
+      sheetPath === lastSaved.current.path
     ) {
       return;
     }
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
-      savePlanningFile(activePath, content)
+      savePlanningFile(sheetPath, content)
         .then(() => {
           lastSaved.current = {
             ...lastSaved.current,
             content,
-            path: activePath,
+            path: sheetPath,
           };
           setPersistMsg("Saved.");
           onPersisted?.();
@@ -281,7 +340,7 @@ export function EditModal({
         });
     }, 600);
     return () => window.clearTimeout(t);
-  }, [content, activePath, hydrated, node, loading, onPersisted]);
+  }, [content, sheetPath, hydrated, node, loading, onPersisted]);
 
   const depItems = useMemo(
     () =>
@@ -371,23 +430,22 @@ export function EditModal({
       })
       .then((a) => {
         const anc = (a.ancestor_planning_files || []).map((f) => ({
-          role: f.role || "ancestor",
           path: f.path,
+          exists: f.exists !== false,
         }));
-        const leaf = (a.files || []).map((f) => ({ role: f.role, path: f.path }));
-        const fs = [...anc, ...leaf];
-        setFiles(fs);
+        setAncestorFiles(anc);
+        const leaf = a.files || [];
+        const sheet = leaf.find((x) => x.role === "sheet") || leaf[0];
         const nt = node.title || "";
-        if (fs.length > 0) {
-          const sheet = leaf.find((x) => x.role === "sheet");
-          setActivePath(sheet ? sheet.path : fs[0].path);
+        if (sheet?.path) {
+          setSheetPath(sheet.path);
           lastSaved.current = {
             title: nt,
             path: "",
             content: "",
           };
         } else {
-          setActivePath(null);
+          setSheetPath(null);
           setContent("");
           lastSaved.current = {
             title: nt,
@@ -453,13 +511,39 @@ export function EditModal({
     >
       <div className="modal-edit-fields">
         {loading ? <p className="modal-edit-loading">Loading…</p> : null}
-        <label>
+        <label
+          className={
+            titleConflict.hasConflict
+              ? "modal-edit-title-wrap modal-edit-title-wrap--invalid"
+              : "modal-edit-title-wrap"
+          }
+        >
           Title
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             autoComplete="off"
+            aria-invalid={titleConflict.hasConflict}
+            aria-describedby={
+              titleConflict.hasConflict ? `${titleIdAttr}-title-err` : undefined
+            }
           />
+          {titleConflict.hasConflict ? (
+            <p
+              className="modal-edit-title-error"
+              id={`${titleIdAttr}-title-err`}
+              role="alert"
+            >
+              <strong>Title taken.</strong> Another item already uses
+              {titleConflict.duplicateTitle && titleConflict.duplicateSlug
+                ? " this exact title or the same codename slug"
+                : titleConflict.duplicateTitle
+                  ? " this exact title"
+                  : " the same codename slug"}{" "}
+              (see {titleConflict.peerIds.join(", ")}). Add a number, phase name,
+              or short qualifier so items stay distinct.
+            </p>
+          ) : null}
         </label>
         {workLine ? (
           <p className="modal-edit-work-line" title={workLine}>
@@ -497,23 +581,15 @@ export function EditModal({
           )}
         </div>
       ) : null}
-      {files.length > 0 ? (
+      {sheetPath != null ? (
         <section className="modal-edit-planning-section">
           <div className="modal-edit-planning-toolbar">
-            <label className="modal-edit-planning-file-label">
-              <span className="modal-edit-planning-file-text">Planning file</span>
-              <select
-                className="modal-edit-planning-select"
-                value={activePath || ""}
-                onChange={(e) => setActivePath(e.target.value || null)}
-              >
-                {files.map((f) => (
-                  <option key={f.path} value={f.path}>
-                    {f.role}: {f.path}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="modal-edit-planning-path-wrap">
+              <span className="modal-edit-planning-file-text">Planning</span>
+              <code className="modal-edit-planning-path" title={sheetPath}>
+                {sheetPath}
+              </code>
+            </div>
             <button
               type="button"
               className="modal-edit-llm-review-btn"
@@ -525,6 +601,27 @@ export function EditModal({
               {reviewBusy ? "Running…" : "LLM Review"}
             </button>
           </div>
+          {ancestorFiles.length > 0 ? (
+            <p className="modal-edit-planning-ancestors outline-meta">
+              <span className="modal-edit-planning-ancestors-label">
+                Ancestor sheets
+              </span>
+              {ancestorFiles.map((f) => (
+                <span key={f.path} className="modal-edit-planning-ancestor-item">
+                  <code
+                    className={
+                      f.exists
+                        ? "modal-edit-planning-ancestor-path"
+                        : "modal-edit-planning-ancestor-path modal-edit-planning-ancestor-path--missing"
+                    }
+                    title={f.path}
+                  >
+                    {f.path}
+                  </code>
+                </span>
+              ))}
+            </p>
+          ) : null}
           {reviewErr ? (
             <p className="modal-review-error modal-review-error--toolbar">
               {reviewErr}

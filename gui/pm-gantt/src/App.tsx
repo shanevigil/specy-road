@@ -935,6 +935,7 @@ export default function App() {
               <EditModal
                 key={nodeId}
                 node={emNode}
+                allNodes={data.nodes}
                 modalStorageKey={nodeId}
                 stackZIndex={50 + index}
                 backdropPassThrough={passThrough}

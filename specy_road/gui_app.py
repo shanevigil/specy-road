@@ -87,6 +87,7 @@ from planning_artifacts import (  # noqa: E402
     normalize_planning_dir,
     planning_artifact_paths,
 )
+from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node  # noqa: E402
 from scaffold_planning import scaffold_planning_for_node  # noqa: E402
 
 from review_node import ReviewError, run_review  # noqa: E402
@@ -406,6 +407,8 @@ def create_app() -> FastAPI:
             "touch_zones": [],
         }
 
+        ensure_planning_sheet_for_new_node(root, new_node)
+
         try:
             append_node_to_chunk(root, chunk_arg, new_node)
             run_validate_raise(root)
@@ -508,6 +511,7 @@ def create_app() -> FastAPI:
     def api_planning_get(path: str = Query(..., description="Repo-relative path")) -> dict[str, str]:
         root = _get_repo_root()
         p = _safe_rel_path(root, path)
+        _assert_under_allowed_root(root, p, "planning")
         if not p.is_file():
             raise HTTPException(status_code=404, detail="file not found")
         text = p.read_text(encoding="utf-8", errors="replace")
@@ -520,8 +524,21 @@ def create_app() -> FastAPI:
     ) -> dict[str, str]:
         root = _get_repo_root()
         p = _safe_rel_path(root, path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(body.content, encoding="utf-8")
+        _assert_under_allowed_root(root, p, "planning")
+        had_file = p.is_file()
+        previous: str | None = (
+            p.read_text(encoding="utf-8", errors="replace") if had_file else None
+        )
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(body.content, encoding="utf-8")
+            run_validate_raise(root)
+        except ValueError as e:
+            if had_file and previous is not None:
+                p.write_text(previous, encoding="utf-8")
+            elif p.is_file():
+                p.unlink()
+            raise HTTPException(status_code=400, detail=str(e)) from e
         return {"ok": "true", "path": path}
 
     @app.get("/api/workspace/files")

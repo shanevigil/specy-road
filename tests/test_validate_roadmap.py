@@ -33,6 +33,33 @@ def test_validate_codenames_duplicate() -> None:
         vr.validate_codenames(nodes)
 
 
+def test_validate_unique_titles_duplicate() -> None:
+    nodes = [
+        {"id": "M1", "title": "  Shared name  "},
+        {"id": "M2", "title": "Shared name"},
+    ]
+    with pytest.raises(SystemExit):
+        vr.validate_unique_titles(nodes)
+
+
+def test_validate_unique_titles_ok_when_empty_or_distinct() -> None:
+    nodes = [
+        {"id": "M1", "title": "  "},
+        {"id": "M2", "title": "Only one real title"},
+    ]
+    vr.validate_unique_titles(nodes)
+
+
+def test_validate_unique_title_slugs_duplicate_different_titles() -> None:
+    """Kebab slug from title_to_codename must be unique (spacing vs hyphen)."""
+    nodes = [
+        {"id": "M1", "title": "Hello World"},
+        {"id": "M2", "title": "hello-world"},
+    ]
+    with pytest.raises(SystemExit):
+        vr.validate_unique_title_slugs(nodes)
+
+
 def test_validate_required_planning_dirs_phase() -> None:
     nodes = [
         {

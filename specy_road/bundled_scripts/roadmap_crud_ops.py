@@ -16,11 +16,14 @@ from roadmap_chunk_utils import (
     write_json_chunk,
 )
 from planning_rename import rename_planning_file_if_path_changed
+from planning_sheet_bootstrap import (
+    ensure_planning_sheet_for_new_node,
+    remove_planning_sheet_if_present,
+)
 from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
 from roadmap_node_keys import new_node_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
-
 from specy_road.runtime_paths import default_user_repo_root
 
 
@@ -226,6 +229,8 @@ def cmd_add(args: object) -> None:
     if node.get("dependencies") == []:
         node["dependencies"] = []
 
+    ensure_planning_sheet_for_new_node(root, node)
+
     chunk_path = append_node_to_chunk(root, args.chunk, node)
     print(f"[ok] appended node {nid} to {chunk_path.relative_to(root)}")
     run_validate(root)
@@ -336,6 +341,8 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     ok, msg = can_hard_remove(root, node_id)
     if not ok:
         raise ValueError(msg)
+    removed = nodes[idx]
+    remove_planning_sheet_if_present(root, removed.get("planning_dir"))
     del nodes[idx]
     write_json_chunk(chunk, nodes)
     run_validate_raise(root)

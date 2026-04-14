@@ -11,16 +11,7 @@ Use `specy-road scaffold-planning <NODE_ID>` (templates ship inside the `specy-r
 - **`node_key`** — stable UUID from the roadmap node (lowercase in the filename).
 - **`codename_slug`** — kebab-case from `codename`, or `unnamed` if absent.
 
-The file **must** start with YAML frontmatter:
-
-```yaml
----
-node_id: M1.1
-node_key: a1b2c3d4-e5f6-4789-a012-3456789abcde
----
-```
-
-Validation (`specy-road validate`) checks the file exists, the name matches the node, and frontmatter matches `node_id` / `node_key`. Orphan `planning/*.md` files not referenced by any node fail validation.
+Validation (`specy-road validate`) checks the file exists and the name matches the node (display id, codename slug, and `node_key`). The Markdown body is not required to repeat those identifiers; feature sheets typically start with `## Intent`. Orphan `planning/*.md` files not referenced by any node fail validation.
 
 ## Relationship to the roadmap graph
 

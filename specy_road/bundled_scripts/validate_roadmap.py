@@ -13,6 +13,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
+from roadmap_edit_fields import title_to_codename
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from planning_artifacts import collect_planning_artifact_errors
 from specy_road.runtime_paths import default_user_repo_root
@@ -142,6 +143,43 @@ def validate_agentic_checklists(nodes: list[dict]) -> None:
             raise SystemExit(1)
 
 
+def validate_unique_titles(nodes: list[dict]) -> None:
+    """No two nodes may share the same non-empty title (after strip)."""
+    seen: dict[str, str] = {}
+    for n in nodes:
+        t = (n.get("title") or "").strip()
+        if not t:
+            continue
+        if t in seen:
+            msg = (
+                f"roadmap: duplicate title {t!r} on nodes {seen[t]} and {n['id']}"
+            )
+            print(msg, file=sys.stderr)
+            raise SystemExit(1)
+        seen[t] = n["id"]
+
+
+def validate_unique_title_slugs(nodes: list[dict]) -> None:
+    """
+    Kebab-case slugs derived from titles (``title_to_codename``) must be unique.
+    Matches the PM GUI codename slug and planning filename middle segment when codename tracks title.
+    """
+    seen: dict[str, str] = {}
+    for n in nodes:
+        slug = title_to_codename(str(n.get("title") or ""))
+        if not slug:
+            continue
+        if slug in seen:
+            msg = (
+                f"roadmap: duplicate title-derived slug {slug!r} on nodes "
+                f"{seen[slug]} and {n['id']} (titles differ but map to the same codename; "
+                "add a number or qualifier to one title)"
+            )
+            print(msg, file=sys.stderr)
+            raise SystemExit(1)
+        seen[slug] = n["id"]
+
+
 def validate_codenames(nodes: list[dict]) -> None:
     seen: dict[str, str] = {}
     for n in nodes:
@@ -242,6 +280,8 @@ def run_validation(
     cycle_check(nodes)
     validate_agentic_checklists(nodes)
     validate_contract_citations(nodes)
+    validate_unique_titles(nodes)
+    validate_unique_title_slugs(nodes)
     validate_codenames(nodes)
     validate_required_planning_dirs(nodes)
 

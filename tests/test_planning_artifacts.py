@@ -14,10 +14,9 @@ from planning_artifacts import (
 from roadmap_edit_fields import apply_set
 
 
-def _minimal_sheet(node_id: str, node_key: str) -> str:
-    return (
-        f"---\nnode_id: {node_id}\nnode_key: {node_key}\n---\n\n# Sheet\n"
-    )
+def _minimal_sheet(_node_id: str, _node_key: str) -> str:
+    """Body only; node identity is enforced via filename, not frontmatter."""
+    return "# Sheet\n"
 
 
 def test_normalize_planning_dir() -> None:
@@ -58,6 +57,24 @@ def test_collect_planning_errors_ok_minimal(tmp_path: Path) -> None:
     p.parent.mkdir(parents=True)
     p.write_text(
         _minimal_sheet("M1", "10000000-0000-4000-8000-000000000001"),
+        encoding="utf-8",
+    )
+    nodes = [
+        {
+            "id": "M1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "planning_dir": "planning/M1_unnamed_10000000-0000-4000-8000-000000000001.md",
+        },
+    ]
+    assert collect_planning_artifact_errors(tmp_path, nodes) == []
+
+
+def test_collect_planning_errors_ok_legacy_frontmatter_ignored(tmp_path: Path) -> None:
+    """Wrong or stale YAML must not fail validation when the filename is canonical."""
+    p = tmp_path / "planning" / "M1_unnamed_10000000-0000-4000-8000-000000000001.md"
+    p.parent.mkdir(parents=True)
+    p.write_text(
+        "---\nnode_id: WRONG\nnode_key: 00000000-0000-4000-8000-000000000000\n---\n\n# Sheet\n",
         encoding="utf-8",
     )
     nodes = [

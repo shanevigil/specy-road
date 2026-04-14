@@ -60,7 +60,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 
 ### Nodes with planning (vision, phase, milestone, task)
 
-- Set **`planning_dir`** — Repo-relative path to **one** Markdown file, e.g. `planning/M1.1_slug_<node_key>.md`. **Required** for `vision`, `phase`, `milestone`, and `task` per validation. Filename pattern and YAML frontmatter are described in `planning/README.md`.
+- Set **`planning_dir`** — Repo-relative path to **one** Markdown file, e.g. `planning/M1.1_slug_<node_key>.md`. **Required** for `vision`, `phase`, `milestone`, and `task` per validation. Filename pattern is described in `planning/README.md` (identity is in the filename, not required YAML frontmatter).
 
 ### Common optional fields
 
@@ -81,7 +81,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 For every `planning_dir` you reference:
 
 1. Create `planning/<id>_<slug>_<node_key>.md` with content derived from existing docs (or run **`specy-road scaffold-planning <NODE_ID>`** to create from the package template).
-2. Ensure YAML frontmatter sets `node_id` and `node_key` matching the roadmap node.
+2. Ensure the planning file name matches `<id>_<codename_slug>_<node_key>.md` (see `planning/README.md`).
 
 ## Phase 5 — Export and limits
 

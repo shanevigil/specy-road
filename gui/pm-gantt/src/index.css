@@ -1063,6 +1063,27 @@ button {
   min-height: 0;
 }
 
+.modal-edit-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.modal-edit-title-wrap--invalid input {
+  border-color: color-mix(in srgb, crimson 75%, var(--border)) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, crimson 45%, transparent),
+    0 0 14px color-mix(in srgb, crimson 22%, transparent);
+}
+
+.modal-edit-title-error {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: color-mix(in srgb, crimson 92%, var(--fg));
+  max-width: 42rem;
+}
+
 .modal-edit-fields {
   flex-shrink: 0;
 }
@@ -1120,16 +1141,16 @@ button {
   flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem 0.75rem;
 }
 
-.modal-edit-planning-file-label {
+.modal-edit-planning-path-wrap {
   flex: 1;
-  min-width: 12rem;
+  min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .modal-edit-planning-file-text {
@@ -1139,16 +1160,36 @@ button {
   color: var(--muted);
 }
 
-.modal-edit-planning-select {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  font-size: 0.875rem;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--fg);
+.modal-edit-planning-path {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.modal-edit-planning-ancestors {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.modal-edit-planning-ancestors-label {
+  display: block;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.modal-edit-planning-ancestor-item {
+  display: block;
+}
+
+.modal-edit-planning-ancestor-path {
+  font-size: inherit;
+}
+
+.modal-edit-planning-ancestor-path--missing {
+  opacity: 0.65;
 }
 
 .modal-edit-llm-review-btn {

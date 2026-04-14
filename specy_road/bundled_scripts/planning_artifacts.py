@@ -88,6 +88,7 @@ def split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     Parse a leading YAML frontmatter block (``---`` … ``---``).
 
     Returns ``({}, body)`` if no valid frontmatter.
+    Identity for validation remains filename + roadmap JSON; frontmatter is optional and not checked.
     """
     if not text.startswith("---"):
         return {}, text
@@ -194,38 +195,19 @@ def _append_orphan_planning_files(
             )
 
 
-def _append_filename_and_frontmatter_errors(
-    n: dict, norm: str, abs_path: Path, errors: list[str]
-) -> None:
+def _append_planning_filename_errors(n: dict, abs_path: Path, errors: list[str]) -> None:
+    """Identity is encoded in the filename; body may be plain Markdown (no YAML required)."""
     fname = abs_path.name
     if not PLANNING_FILENAME_RE.match(fname):
         errors.append(
             f"roadmap: node {n['id']}: planning file name must match "
             f"<id>_<codename_slug>_<node_key>.md, got {fname!r}",
         )
-    else:
-        exp = planning_filename_for_node(n)
-        if fname != exp:
-            errors.append(
-                f"roadmap: node {n['id']}: planning file should be named {exp!r}, got {fname!r}",
-            )
-    try:
-        text = abs_path.read_text(encoding="utf-8")
-    except OSError as e:
-        errors.append(f"roadmap: node {n['id']}: cannot read {norm}: {e}")
         return
-    fm, _ = split_frontmatter(text)
-    if not fm.get("node_id") or str(fm.get("node_id")).strip() != n["id"]:
+    exp = planning_filename_for_node(n)
+    if fname != exp:
         errors.append(
-            f"roadmap: node {n['id']}: {norm} YAML frontmatter must set "
-            f"node_id: {n['id']!r}",
-        )
-    exp_key = str(n["node_key"]).strip().lower()
-    fk = fm.get("node_key")
-    if not fk or str(fk).strip().lower() != exp_key:
-        errors.append(
-            f"roadmap: node {n['id']}: {norm} YAML frontmatter must set "
-            f"node_key: {exp_key!r}",
+            f"roadmap: node {n['id']}: planning file should be named {exp!r}, got {fname!r}",
         )
 
 
@@ -282,7 +264,7 @@ def _process_node_planning_dir(
             f"roadmap: node {n['id']}: planning file missing: {norm}",
         )
         return
-    _append_filename_and_frontmatter_errors(n, norm, abs_path, errors)
+    _append_planning_filename_errors(n, abs_path, errors)
 
 
 def collect_planning_artifact_errors(repo_root: Path, nodes: list[dict]) -> list[str]:
@@ -300,14 +282,12 @@ def collect_planning_artifact_errors(repo_root: Path, nodes: list[dict]) -> list
     return errors
 
 
-def collect_planning_artifact_warnings(repo_root: Path, nodes: list[dict]) -> list[str]:
-    """Non-fatal hints (currently unused; reserved for future checks)."""
-    _ = (repo_root, nodes)
-    return []
-
-
 def planning_artifact_paths(repo_root: Path, planning_dir_norm: str) -> dict[str, Path]:
-    """Resolved paths: single feature sheet file; ``dir`` is the parent ``planning/`` folder."""
+    """
+    Resolved paths for the PM API: single feature sheet file.
+
+    Keys ``overview`` / ``plan`` / ``tasks_md`` duplicate ``sheet`` for older UI clients.
+    """
     p = resolve_planning_path(repo_root, planning_dir_norm)
     return {
         "dir": p.parent,

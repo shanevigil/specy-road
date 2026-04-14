@@ -1,13 +1,6 @@
----
-node_id: M0
-node_key: 81df7683-5e2f-5c97-b96c-fc9df4fac123
----
-
-# Feature sheet — `M0` — Foundation — architecture and contracts
-
 ## Intent
 
-What problem this slice solves; link to roadmap node `M0`.
+What problem this slice solves; cite the roadmap and `shared/` contracts where relevant.
 
 ## User-visible behavior
 

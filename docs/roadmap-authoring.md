@@ -4,7 +4,7 @@
 
 **Canonical:** the roadmap graph under [`roadmap/`](../tests/fixtures/specy_road_dogfood/roadmap/). The entry file is **required**: [`roadmap/manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
 
-All node IDs are **immutable**; gaps in numbering are allowed; **never renumber** existing IDs.
+Display **`id`** values may be **renumbered** when outline operations rewrite the tree; stable identity is always **`node_key`** (UUID). Gaps in numbering are allowed; do not recycle or collide **`node_key`** values. (See [Display `id` vs stable `node_key`](#display-id-vs-stable-node_key) below.)
 
 ### PM vocabulary vs schema `type`
 
@@ -299,7 +299,7 @@ Multiple developers and multiple agents per developer are assumed.
 
 1. Read [`vision.md`](../vision.md) for invariants before editing.
 2. Edit the **JSON chunk** for the relevant phase; reorder **`includes`** in [`manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) when you want a different chunk merge order.
-3. **Never renumber** sub-task or fourth-level IDs — gaps are allowed.
+3. When editing chunks **by hand**, avoid arbitrary renumbering of display **`id`** values; gaps are allowed. Outline tools (e.g. PM UI) may still **rewrite display ids** for the whole tree; stable identity remains **`node_key`**.
 4. Split oversized chunk files at ~500 lines, along milestone or theme boundaries; add new paths to the manifest.
 5. Use `decision` blocks for architectural forks; link ADRs in `adr_ref` when they exist.
 6. Tag sub-tasks; split mixed types; align milestone `execution_milestone` with the dominant work type.

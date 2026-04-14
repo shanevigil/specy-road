@@ -16,13 +16,13 @@
       "type": "phase"
     },
     {
-      "codename": "first-deliverable",
+      "codename": "first-milestone",
       "dependencies": [],
       "execution_milestone": "Mixed",
       "id": "M1.1",
       "node_key": "b2c3d4e5-f6a7-4890-b123-456789abcdef",
       "parallel_tracks": 1,
-      "planning_dir": "planning/M1.1_first-deliverable_b2c3d4e5-f6a7-4890-b123-456789abcdef.md",
+      "planning_dir": "planning/M1.1_first-milestone_b2c3d4e5-f6a7-4890-b123-456789abcdef.md",
       "parent_id": "M1",
       "sibling_order": 0,
       "status": "Not Started",

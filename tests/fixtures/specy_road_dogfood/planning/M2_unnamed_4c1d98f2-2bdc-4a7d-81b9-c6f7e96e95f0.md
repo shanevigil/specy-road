@@ -1,13 +1,6 @@
----
-node_id: M2
-node_key: 4c1d98f2-2bdc-4a7d-81b9-c6f7e96e95f0
----
-
-# Feature sheet — `M2` — testing
-
 ## Intent
 
-What problem this slice solves; link to roadmap node `M2`.
+What problem this slice solves; cite the roadmap and `shared/` contracts where relevant.
 
 ## User-visible behavior
 

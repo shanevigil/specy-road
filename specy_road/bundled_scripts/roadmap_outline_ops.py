@@ -11,6 +11,7 @@ from roadmap_layout import ordered_tree_rows, sibling_sort_key
 from roadmap_load import load_manifest_mapping, load_roadmap
 from roadmap_node_keys import build_key_to_node
 from roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
+from sync_planning_artifacts import sync_planning_artifacts
 
 
 def _chunk_includes(root: Path) -> list[str]:
@@ -65,6 +66,7 @@ def reorder_siblings(
     for i, nid in enumerate(ordered_child_ids):
         by_id[nid]["sibling_order"] = i
     old_to_new = renumber_display_ids_inplace(nodes)
+    sync_planning_artifacts(root, nodes)
     persist_merged_nodes(root, nodes)
     sync_registry_node_ids(root, old_to_new)
     run_validate_raise(root)
@@ -146,6 +148,7 @@ def move_node_outline(
     _detach_reindex_old_parent(nodes, by_id, old_parent, old_id)
     _attach_at_index(nodes, by_id, moved, old_id, new_parent_id, new_index)
     old_to_new = renumber_display_ids_inplace(nodes)
+    sync_planning_artifacts(root, nodes)
     persist_merged_nodes(root, nodes)
     sync_registry_node_ids(root, old_to_new)
     run_validate_raise(root)

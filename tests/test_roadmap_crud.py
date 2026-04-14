@@ -15,8 +15,8 @@ from roadmap_crud_ops import append_node_to_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 
-def _sheet_stub(nid: str, nk: str) -> str:
-    return f"---\nnode_id: {nid}\nnode_key: {nk}\n---\n\n# {nid}\n"
+def _sheet_stub(nid: str, _nk: str) -> str:
+    return f"# {nid}\n"
 
 
 def _m99_crud_nodes(nk99: str, nk991: str, nk992: str) -> list[dict]:
@@ -146,10 +146,7 @@ def test_append_node_validate(tmp_path: Path) -> None:
         "parallel_tracks": 1,
     }
     p = tmp_path / "planning" / f"M99.3_three_{nk}.md"
-    p.write_text(
-        f"---\nnode_id: M99.3\nnode_key: {nk}\n---\n\n# M99.3\n",
-        encoding="utf-8",
-    )
+    p.write_text("# M99.3\n", encoding="utf-8")
     append_node_to_chunk(tmp_path, "phases/T.json", node)
     v = subprocess.run(
         [
@@ -177,6 +174,35 @@ def test_hard_remove_blocked_by_dependency(tmp_path: Path) -> None:
     )
     assert r.returncode == 1
     assert "depends" in r.stderr
+
+
+def test_hard_remove_deletes_planning_file(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    nk992 = "10000000-0000-4000-8000-000000009903"
+    planning = tmp_path / "planning" / f"M99.2_two_{nk992}.md"
+    assert planning.is_file()
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M99.2",
+        "--hard-remove",
+    )
+    assert r.returncode == 0, r.stderr
+    assert not planning.exists()
+    v = subprocess.run(
+        [
+            sys.executable,
+            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
+            "--repo-root",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+        env=script_subprocess_env(),
+    )
+    assert v.returncode == 0, v.stderr
 
 
 def test_edit_node_cli(tmp_path: Path) -> None:
