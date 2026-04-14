@@ -48,6 +48,8 @@ specy-road update --dry-run --install-gui-stack
 
 If your clone is not auto-discovered, pass `--path /path/to/specy-road`. PyPI-only installs cannot use `specy-road update`; use `pip install --upgrade specy-road` instead.
 
+**Destructive sync:** `specy-road update --reset-to-origin` forces the checkout to match the remote tracking branch (`git fetch`, then `git reset --hard` to `origin/<branch>`). That **discards local commits and uncommitted changes**. It also runs a scoped `git clean` only under `specy_road/pm_gantt_static/` (built GUI artifacts), not a repo-wide clean. Use this only when you intentionally want your tree to match the server; default `specy-road update` remains non-destructive.
+
 ---
 
 ## Install the pre-commit hook

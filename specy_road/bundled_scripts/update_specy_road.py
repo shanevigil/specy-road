@@ -21,6 +21,10 @@ from pathlib import Path
 # Canonical upstream (SSH/HTTPS variants accepted via normalization).
 CANONICAL_OWNER_REPO = "shanevigil/specy-road"
 
+# Untracked paths removed by ``--reset-to-origin`` after ``git reset --hard``
+# (typical Vite output under ``specy_road/pm_gantt_static/``).
+RESET_CLEAN_PATHSPECS: tuple[str, ...] = ("specy_road/pm_gantt_static",)
+
 
 def normalize_github_repo_path(url: str) -> str | None:
     """Return 'owner/repo' for a github.com remote URL, else None."""
@@ -187,6 +191,43 @@ def _print_dry_run_commands(kit: Path, remote: str, branch: str) -> None:
     print(f"  {' '.join(merge)}")
 
 
+def _print_reset_dry_run_commands(kit: Path, remote: str, branch: str) -> None:
+    print(f"Kit root: {kit}")
+    print(
+        "Would run (destructive: discards local commits and uncommitted changes):",
+    )
+    print(f"  git fetch {remote}")
+    print(f"  git checkout {branch}")
+    print(f"  git reset --hard {remote}/{branch}")
+    for rel in RESET_CLEAN_PATHSPECS:
+        print(f"  git clean -fd -- {rel}")
+
+
+def _emit_reset_warning() -> None:
+    print(
+        "warning: --reset-to-origin discards local commits and uncommitted "
+        "changes, then removes untracked files under known build paths.",
+        file=sys.stderr,
+    )
+
+
+def _git_reset_to_match_origin(kit: Path, remote: str, branch: str) -> None:
+    subprocess.check_call(["git", "fetch", remote], cwd=kit)
+    subprocess.check_call(["git", "checkout", branch], cwd=kit)
+    subprocess.check_call(
+        ["git", "reset", "--hard", f"{remote}/{branch}"],
+        cwd=kit,
+    )
+
+
+def _git_clean_reset_build_paths(kit: Path) -> None:
+    for rel in RESET_CLEAN_PATHSPECS:
+        p = kit / rel
+        if not p.exists():
+            continue
+        subprocess.check_call(["git", "clean", "-fd", "--", rel], cwd=kit)
+
+
 def _git_fast_forward(kit: Path, remote: str, branch: str) -> None:
     subprocess.check_call(["git", "fetch", remote], cwd=kit)
     subprocess.check_call(["git", "checkout", branch], cwd=kit)
@@ -216,8 +257,18 @@ def _run_update(
     branch: str,
     dry_run: bool,
     allow_dirty: bool,
+    reset_to_origin: bool,
 ) -> None:
     _assert_canonical_remote(kit, remote)
+    if reset_to_origin:
+        if dry_run:
+            _emit_reset_warning()
+            _print_reset_dry_run_commands(kit, remote, branch)
+            return
+        _emit_reset_warning()
+        _git_reset_to_match_origin(kit, remote, branch)
+        _git_clean_reset_build_paths(kit)
+        return
     _guard_clean_tree(kit, allow_dirty)
     if dry_run:
         _print_dry_run_commands(kit, remote, branch)
@@ -257,7 +308,18 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--allow-dirty",
         action="store_true",
-        help="Allow a dirty working tree (not recommended).",
+        help="Allow a dirty working tree (not recommended). Ignored with "
+        "--reset-to-origin.",
+    )
+    p.add_argument(
+        "--reset-to-origin",
+        action="store_true",
+        help=(
+            "Destructive: fetch and reset --hard to match the remote branch tip, "
+            "then git clean known build dirs (e.g. specy_road/pm_gantt_static/). "
+            "Discards local commits and uncommitted changes. Default update "
+            "remains a fast-forward merge on a clean tree."
+        ),
     )
     p.add_argument(
         "--install-gui-stack",
@@ -295,14 +357,18 @@ def main(argv: list[str] | None = None) -> None:
         branch=args.branch,
         dry_run=args.dry_run,
         allow_dirty=args.allow_dirty,
+        reset_to_origin=args.reset_to_origin,
     )
 
     if not args.dry_run:
-        print(
-            f"[ok] specy-road kit at {kit} is fast-forwarded to "
-            f"{args.remote}/{args.branch}.",
-            flush=True,
+        ok_msg = (
+            f"[ok] specy-road kit at {kit} matches "
+            f"{args.remote}/{args.branch} (hard reset)."
+            if args.reset_to_origin
+            else f"[ok] specy-road kit at {kit} is fast-forwarded to "
+            f"{args.remote}/{args.branch}."
         )
+        print(ok_msg, flush=True)
 
     if args.install_gui_stack:
         from specy_road.cli_init import run_install_gui
