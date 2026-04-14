@@ -10,6 +10,24 @@ The scaffold includes **`roadmap/git-workflow.yaml`**: your team’s **integrati
 
 Keep this file accurate so PMs see correct git status in the dashboard and validation can warn when local refs are stale (for example after `git fetch`).
 
+**Examples** (schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json)):
+
+`main` as the daily trunk:
+
+```yaml
+version: 1
+integration_branch: main
+remote: origin
+```
+
+`dev` as the daily trunk (feature work merges here before promotion to `staging` / `main`):
+
+```yaml
+version: 1
+integration_branch: dev
+remote: origin
+```
+
 ## Branch naming
 
 | Kind | Pattern | Example |
