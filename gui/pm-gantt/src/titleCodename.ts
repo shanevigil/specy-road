@@ -1,4 +1,4 @@
-/** Mirrors ``title_to_codename`` in ``scripts/roadmap_edit_fields.py`` (kebab-case codename). */
+/** Mirrors ``title_to_codename`` in ``specy_road/bundled_scripts/roadmap_edit_fields.py`` (kebab-case codename). */
 
 const CODENAME_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 

@@ -3,7 +3,7 @@
 
 Run once from the repository root on roadmaps created before stable keys::
 
-    python scripts/migrate_stable_node_keys.py --repo-root .
+    python -m specy_road.bundled_scripts.migrate_stable_node_keys --repo-root .
 
 Idempotent: skips nodes that already have ``node_key``.
 """

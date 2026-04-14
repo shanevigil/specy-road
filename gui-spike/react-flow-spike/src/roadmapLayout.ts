@@ -26,7 +26,7 @@ function normalizeStatus(s: string | undefined): string {
   return (s ?? "not started").trim().toLowerCase();
 }
 
-/** Same recursive depth idea as scripts/roadmap_layout.py `compute_depths`. */
+/** Same recursive depth idea as specy_road/bundled_scripts/roadmap_layout.py `compute_depths`. */
 export function computeDepths(nodes: RoadmapNode[]): Map<string, number> {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const memo = new Map<string, number>();
