@@ -38,6 +38,18 @@ specy-road brief M1.1 -o work/brief-M1.1.md
 
 Use `specy-road init project --dry-run` to preview files, or `--force` to replace an existing scaffold. Optional: `specyrd init --here --ai cursor` for slash-command stubs that call the same CLI.
 
+### Bootstrap prompts (optional)
+
+The **specy-road source tree** includes **[`suggested_prompts/`](suggested_prompts/)** — copy-paste Markdown prompts for Cursor, Claude Code, or similar agents. They are **not** added to your project by `pip install`; open them from your **clone of the specy-road repository** (or the same paths in a source checkout).
+
+| Prompt | When to use it |
+| ------ | ---------------- |
+| [`bootstrap-governance.md`](suggested_prompts/bootstrap-governance.md) | **Existing** repos: align vision, constitution, constraints, and `shared/` with specy-road. |
+| [`bootstrap-roadmap.md`](suggested_prompts/bootstrap-roadmap.md) | **Existing** repos: migrate notes into `roadmap/` (JSON + manifest), `registry.yaml`, and `planning/`. |
+| [`bootstrap-agents-md.md`](suggested_prompts/bootstrap-agents-md.md) | **Existing** repos (or after `init project`): merge `AGENTS.md`, `CLAUDE.md`, and Cursor rules; clarifies **consumer vs upstream toolkit** boundaries. |
+
+**New project:** run [`specy-road init project`](#new-project-consumer) first so the scaffold exists. Use the prompts **only if** you want an agent to help refine governance, roadmap content, or editor/agent config afterward—especially when you already have team rules or docs to preserve.
+
 ### Developing **specy-road** (this repository)
 
 ```bash
@@ -143,6 +155,7 @@ specyrd init --here --ai cursor --force
 | [docs/roadmap-authoring.md](docs/roadmap-authoring.md)                       | JSON chunks, manifest ordering, generated `roadmap.md`                                             |
 | [docs/git-workflow.md](docs/git-workflow.md)                                 | Branches, registry, merge-back                                                                   |
 | [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP, etc.) for product repos—not required by the kit |
+| [`suggested_prompts/`](suggested_prompts/)                                   | Optional AI copy-paste prompts for adopting specy-road in existing projects (see [Bootstrap prompts](#bootstrap-prompts-optional)) |
 | [AGENTS.md](AGENTS.md)                                                       | Short entry for coding agents                                                                    |
 
 
@@ -156,6 +169,7 @@ specyrd init --here --ai cursor --force
 | ---- | ---- |
 | [`specy_road/`](specy_road/) | Python package: `specy-road` / `specyrd` CLIs, `bundled_scripts/` (validators, brief, export), PM GUI assets |
 | [`specy_road/templates/project/`](specy_road/templates/project/) | Files copied by `specy-road init project` |
+| [`suggested_prompts/`](suggested_prompts/) | Optional AI adoption prompts (not installed by `pip`; see [Bootstrap prompts](#bootstrap-prompts-optional)) |
 | [`tests/fixtures/specy_road_dogfood/`](tests/fixtures/specy_road_dogfood/) | Maintainer sample roadmap + contracts for CI |
 | [`templates/`](templates/) | Extra stubs (roadmap checklists, etc.) |
 | [`docs/`](docs/) | Architecture, workflows, philosophy |
