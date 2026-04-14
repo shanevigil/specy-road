@@ -19,7 +19,6 @@ dependencies = [
 dev = [
   "pytest>=7.0",
   "fastapi>=0.115",
-  "httpx>=0.27",
   "requests>=2.31",
 ]
 review = [

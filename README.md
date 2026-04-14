@@ -56,6 +56,8 @@ specy-road file-limits
 pytest
 ```
 
+**Dependency CVE checks (maintainers):** after `pip install -e ".[dev]"`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. See [docs/setup.md](docs/setup.md#dependency-and-security-checks).
+
 **Trying `specy-road init project`:** With no path, the CLI resolves the git worktree root — in this repository that would write consumer layout files into the **toolkit** tree. Prefer an explicit target directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [`playground/`](playground/README.md) directory documented there.
 
 Optional git hooks: `pip install pre-commit && pre-commit install` (same checks as CI).

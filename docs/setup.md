@@ -110,14 +110,43 @@ Automated tests use temporary directories; interactive or GUI checks can use the
 
 ---
 
+## Dependency and security checks
+
+Use these **after** installing the Python dev stack (`pip install -e ".[dev]"` or `pip install -r requirements.txt` then `pip install -e ".[dev]"`).
+
+**Python (PyPI packages):**
+
+```bash
+pip install pip-audit
+pip-audit
+```
+
+If `pip-audit` warns that it is auditing a different interpreter than your virtualenv, point it at that venv’s Python, for example:
+
+```bash
+PIPAPI_PYTHON_LOCATION="$(command -v python)" pip-audit
+```
+
+**Gantt UI (`gui/pm-gantt/`, npm):** production dependencies only (matches CI; fewer false positives from dev tooling):
+
+```bash
+cd gui/pm-gantt
+npm ci
+npm audit --omit=dev
+```
+
+For a stricter local pass including devDependencies, run `npm audit` without `--omit=dev`.
+
+---
+
 ## CI
 
 GitHub Actions runs the full validation suite on every push and PR to `main`/`dev`:
 
 ```
-validate roadmap → export check → file limits → pytest
+validate roadmap → export check → file limits → pytest → pip-audit → npm audit (pm-gantt)
 ```
 
 The workflow file is at [`.github/workflows/validate.yml`](../.github/workflows/validate.yml).
 No additional setup is needed — it installs dependencies and runs the same commands
-available locally.
+available locally (plus dependency audits).

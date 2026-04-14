@@ -18,6 +18,8 @@ Before using any prompt below:
   - (optional) `[YOUR_DEPENDENCY_INSTALL_CMD]` (only for dependency changes)
   - (optional) `[YOUR_SECURITY_SCAN_CMD]` (only for dependency/CVE scanning)
 
+When working **in the specy-road toolkit repository** (this repo), use the commands documented under **Dependency and security checks** in [`docs/setup.md`](setup.md#dependency-and-security-checks) instead of placeholders for install and CVE scanning.
+
 ---
 
 ## Architecture and vision compliance
