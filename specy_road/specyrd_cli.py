@@ -111,7 +111,7 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
             "Install only the stubs relevant to a role: "
             "pm (validate, export, author, sync, list-nodes, show-node, "
             "add-node, review-node), dev (validate, brief, claim, finish, "
-            "do-next-task), or both (same as omitting --role: all 13 stubs). "
+            "do-next-task), or both (same as omitting --role: all 14 stubs). "
             "With --no-prompt this flag is required."
         ),
     )
