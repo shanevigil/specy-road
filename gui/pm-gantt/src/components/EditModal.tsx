@@ -208,7 +208,6 @@ export function EditModal({
   const [sectionChoices, setSectionChoices] = useState<
     Array<"before" | "proposed" | null>
   >([]);
-  const [hoveredSection, setHoveredSection] = useState<number | null>(null);
   /** Bumps when the user changes selection in the review textarea (for Append selection). */
   const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
 
@@ -243,7 +242,6 @@ export function EditModal({
     setContentSnapshotAtReview(null);
     setShowRawCompare(false);
     setSectionChoices([]);
-    setHoveredSection(null);
     setHydrated(false);
     fetchPlanningArtifacts(node.id)
       .then((a) => {
@@ -384,7 +382,7 @@ export function EditModal({
     [headerMinTop],
   );
 
-  const rawProposedFieldId = useId();
+  const rawProposedSourceId = useId();
 
   const diffOriginal = contentSnapshotAtReview ?? content;
 
@@ -411,6 +409,16 @@ export function EditModal({
       sectionChoices.every((c) => c != null),
     [pairedSectionCount, sectionChoices],
   );
+
+  const canAcceptReviewMerge = useMemo(
+    () =>
+      pairedSectionCount > 0 &&
+      contentSnapshotAtReview != null &&
+      reviewReport != null,
+    [pairedSectionCount, contentSnapshotAtReview, reviewReport],
+  );
+
+  const noopReviewMarkdown = useCallback(() => {}, []);
 
   if (!node) return null;
 
@@ -443,7 +451,6 @@ export function EditModal({
         setContentSnapshotAtReview(sheetSnapshot);
         setSectionChoices(Array.from({ length: paired }, () => null));
         setShowRawCompare(false);
-        setHoveredSection(null);
         setReviewReport(report);
       })
       .catch((e: unknown) => {
@@ -462,7 +469,6 @@ export function EditModal({
     setContentSnapshotAtReview(null);
     setShowRawCompare(false);
     setSectionChoices([]);
-    setHoveredSection(null);
   };
 
   const applyMergedSheet = () => {
@@ -474,6 +480,20 @@ export function EditModal({
       sectionChoices as Array<"before" | "proposed">,
     );
     setContent(merged);
+  };
+
+  const acceptAllProposed = () => {
+    if (!contentSnapshotAtReview || reviewReport == null) return;
+    if (pairedSectionCount === 0) return;
+    const merged = mergeBySectionChoices(
+      contentSnapshotAtReview,
+      reviewReport,
+      Array.from({ length: pairedSectionCount }, () => "proposed" as const),
+    );
+    setContent(merged);
+    setSectionChoices(
+      Array.from({ length: pairedSectionCount }, () => "proposed" as const),
+    );
   };
 
   const chooseSection = (sectionIndex: number, choice: "before" | "proposed") => {
@@ -751,7 +771,7 @@ export function EditModal({
                 />
               </div>
               <div className="modal-edit-raw-proposed-panel">
-                <div className="modal-edit-review-actions">
+                <div className="modal-edit-review-actions modal-edit-review-actions--raw">
                   <button
                     type="button"
                     onClick={() => setShowRawCompare(false)}
@@ -759,13 +779,13 @@ export function EditModal({
                     Back to diff
                   </button>
                   <button type="button" onClick={() => dismissReview()}>
-                    Dismiss review
+                    Dismiss
                   </button>
                   <button
                     type="button"
                     onClick={() => appendSelectionFromReview()}
                     disabled={!hasReviewTextSelection}
-                    title="Append selected text from raw proposed text"
+                    title="Append selected text from the markdown source below"
                   >
                     Append selection
                   </button>
@@ -776,24 +796,110 @@ export function EditModal({
                   >
                     Append proposed sheet
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMergedSheet()}
+                    disabled={!allSectionsChosen}
+                    title={
+                      allSectionsChosen
+                        ? "Apply your per-section Before/Proposed choices to the planning sheet"
+                        : "Choose Before or Proposed for every section first (in diff view)"
+                    }
+                  >
+                    Accept selections
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => acceptAllProposed()}
+                    disabled={!canAcceptReviewMerge}
+                    title={
+                      canAcceptReviewMerge
+                        ? "Use the proposed text for every paired section"
+                        : "Nothing to merge"
+                    }
+                  >
+                    Accept all (proposed)
+                  </button>
                 </div>
-                <label
-                  className="modal-edit-raw-proposed-label"
-                  htmlFor={rawProposedFieldId}
-                >
-                  Raw proposed text
-                </label>
-                <textarea
-                  id={rawProposedFieldId}
-                  ref={reviewTextareaRef}
-                  className="planning-review-raw-textarea planning-review-raw-textarea--panel"
-                  readOnly
+                <p className="modal-edit-raw-proposed-label">Proposed sheet</p>
+                <MarkdownWorkspace
+                  className="modal-edit-proposed-preview-md constitution-md-workspace"
                   value={reviewReport}
-                  aria-label="Raw proposed text"
-                  onSelect={() => setReviewSelectionTick((n) => n + 1)}
-                  onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
-                  onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
+                  onChange={noopReviewMarkdown}
+                  disabled
+                  showToolbar={false}
+                  editorLabel="Proposed sheet preview"
                 />
+                <details className="planning-review-source-details">
+                  <summary>Markdown source (for precise selection)</summary>
+                  <label
+                    className="modal-edit-raw-proposed-label modal-edit-raw-proposed-label--source"
+                    htmlFor={rawProposedSourceId}
+                  >
+                    Markdown source
+                  </label>
+                  <textarea
+                    id={rawProposedSourceId}
+                    ref={reviewTextareaRef}
+                    className="planning-review-raw-textarea planning-review-raw-textarea--panel"
+                    readOnly
+                    value={reviewReport}
+                    aria-label="Markdown source for proposed sheet"
+                    onSelect={() => setReviewSelectionTick((n) => n + 1)}
+                    onMouseUp={() => setReviewSelectionTick((n) => n + 1)}
+                    onKeyUp={() => setReviewSelectionTick((n) => n + 1)}
+                  />
+                </details>
+                <div className="modal-edit-review-actions modal-edit-review-actions--raw modal-edit-review-actions--diff-bottom">
+                  <button
+                    type="button"
+                    onClick={() => setShowRawCompare(false)}
+                  >
+                    Back to diff
+                  </button>
+                  <button type="button" onClick={() => dismissReview()}>
+                    Dismiss
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => appendSelectionFromReview()}
+                    disabled={!hasReviewTextSelection}
+                    title="Append selected text from the markdown source above"
+                  >
+                    Append selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => appendEntireReport()}
+                    title="Append the full proposed sheet to the planning document"
+                  >
+                    Append proposed sheet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyMergedSheet()}
+                    disabled={!allSectionsChosen}
+                    title={
+                      allSectionsChosen
+                        ? "Apply your per-section Before/Proposed choices to the planning sheet"
+                        : "Choose Before or Proposed for every section first (in diff view)"
+                    }
+                  >
+                    Accept selections
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => acceptAllProposed()}
+                    disabled={!canAcceptReviewMerge}
+                    title={
+                      canAcceptReviewMerge
+                        ? "Use the proposed text for every paired section"
+                        : "Nothing to merge"
+                    }
+                  >
+                    Accept all (proposed)
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -805,9 +911,9 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => setShowRawCompare(true)}
-                  title="Show the editor and read-only proposed text (exits diff view)"
+                  title="Side-by-side editor and rendered proposed sheet"
                 >
-                  Raw proposed text
+                  Proposed preview
                 </button>
                 <button
                   type="button"
@@ -815,11 +921,23 @@ export function EditModal({
                   disabled={!allSectionsChosen}
                   title={
                     allSectionsChosen
-                      ? "Replace the planning sheet with your per-section choices"
-                      : "Choose Before or Proposed for every section first"
+                      ? "Apply your per-section Before/Proposed choices to the planning sheet"
+                      : "Choose Before or Proposed for every paired section first"
                   }
                 >
-                  Apply merged sheet
+                  Accept selections
+                </button>
+                <button
+                  type="button"
+                  onClick={() => acceptAllProposed()}
+                  disabled={!canAcceptReviewMerge}
+                  title={
+                    canAcceptReviewMerge
+                      ? "Use the proposed text for every paired section"
+                      : "Nothing to merge"
+                  }
+                >
+                  Accept all (proposed)
                 </button>
               </div>
               {sectionCountMismatch ? (
@@ -831,7 +949,7 @@ export function EditModal({
                   <code>##</code> sections. Only the first {pairedSectionCount}{" "}
                   paired sections are merged; unpaired trailing content stays
                   visible in the diff but is omitted from the merged result—use
-                  raw proposed text if you need to copy it.
+                  proposed preview if you need to copy it.
                 </p>
               ) : null}
               <PlanningSheetDiffPane
@@ -840,10 +958,44 @@ export function EditModal({
                 pairedSectionCount={pairedSectionCount}
                 sectionChoices={sectionChoices}
                 onSectionChoice={chooseSection}
-                hoveredSection={hoveredSection}
-                onHoverSection={setHoveredSection}
                 sectionScrollRefs={sectionScrollRefs}
               />
+              <div className="modal-edit-review-actions modal-edit-review-actions--diff modal-edit-review-actions--diff-bottom">
+                <button type="button" onClick={() => dismissReview()}>
+                  Dismiss
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRawCompare(true)}
+                  title="Side-by-side editor and rendered proposed sheet"
+                >
+                  Proposed preview
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyMergedSheet()}
+                  disabled={!allSectionsChosen}
+                  title={
+                    allSectionsChosen
+                      ? "Apply your per-section Before/Proposed choices to the planning sheet"
+                      : "Choose Before or Proposed for every paired section first"
+                  }
+                >
+                  Accept selections
+                </button>
+                <button
+                  type="button"
+                  onClick={() => acceptAllProposed()}
+                  disabled={!canAcceptReviewMerge}
+                  title={
+                    canAcceptReviewMerge
+                      ? "Use the proposed text for every paired section"
+                      : "Nothing to merge"
+                  }
+                >
+                  Accept all (proposed)
+                </button>
+              </div>
             </div>
           )}
         </section>

@@ -1278,10 +1278,54 @@ button {
   margin: 0;
 }
 
+.modal-edit-raw-proposed-label--source {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+/** Read-only TipTap preview of proposed sheet (matches main editor rendering). */
+.modal-edit-proposed-preview-md.markdown-workspace {
+  flex: 1;
+  min-height: 6rem;
+  max-height: min(46vh, 22rem);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-edit-proposed-preview-md .markdown-workspace-editor-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.modal-edit-review-actions--diff-bottom {
+  border-top: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  padding-top: 0.45rem;
+  margin-top: 0.2rem;
+}
+
+.planning-review-source-details {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.planning-review-source-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
 .planning-review-raw-textarea--panel {
   flex: 1;
   min-height: 10rem;
   max-height: none;
+}
+
+.planning-review-source-details .planning-review-raw-textarea--panel {
+  flex: 0 1 auto;
+  min-height: 5rem;
+  max-height: 12rem;
+  margin-top: 0.35rem;
 }
 
 .modal-edit-md-column {
@@ -1378,60 +1422,55 @@ button {
 
 .planning-md-diff-section {
   position: relative;
-  padding-top: 1.75rem;
   margin-bottom: 0.15rem;
   border-radius: 4px;
 }
 
 .planning-md-diff-section--resolved {
-  opacity: 0.74;
+  opacity: 0.94;
 }
 
-.planning-md-diff-section--hover {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--muted) 38%, var(--border));
-}
-
-.planning-md-diff-section-actions {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 2;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.25rem;
-  max-width: 100%;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.12s ease;
-}
-
-.planning-md-diff-section:hover .planning-md-diff-section-actions,
-.planning-md-diff-section:focus-within .planning-md-diff-section-actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-@media (hover: none) {
-  .planning-md-diff-section-actions {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-
-.planning-md-diff-use-btn {
-  padding: 0.15rem 0.4rem;
-  font: inherit;
-  font-size: 0.72rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--fg);
+.planning-md-diff-cell--pickable {
   cursor: pointer;
 }
 
-.planning-md-diff-use-btn:hover {
-  background: color-mix(in srgb, var(--muted) 14%, var(--bg));
+.planning-md-diff-cell--pickable > * {
+  position: relative;
+  z-index: 1;
+}
+
+/** Hover highlight for the column being pointed at */
+.planning-md-diff-cell--pickable.planning-md-diff-cell--column-hover-before::after,
+.planning-md-diff-cell--pickable.planning-md-diff-cell--column-hover-proposed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.planning-md-diff-cell--pickable.planning-md-diff-cell--column-hover-before::after {
+  background: color-mix(in srgb, #5b8fd4 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #5b8fd4 45%, var(--border));
+}
+
+.planning-md-diff-cell--pickable.planning-md-diff-cell--column-hover-proposed::after {
+  background: color-mix(in srgb, #1f9d55 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #1f9d55 40%, var(--border));
+}
+
+/** Chosen column — glow on each cell in that column */
+.planning-md-diff-cell--picked-before {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #5b8fd4 55%, var(--border)),
+    0 0 12px color-mix(in srgb, #5b8fd4 22%, transparent);
+}
+
+.planning-md-diff-cell--picked-proposed {
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #1f9d55 50%, var(--border)),
+    0 0 12px color-mix(in srgb, #1f9d55 22%, transparent);
 }
 
 /* One grid per row so columns cannot overlap (minmax(0,1fr) lets cells shrink). */

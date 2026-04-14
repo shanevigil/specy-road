@@ -27,6 +27,8 @@ type Props = {
   /** Accessible label for the editor region (file path or role). */
   editorLabel?: string;
   className?: string;
+  /** When false, hide the formatting toolbar (e.g. read-only preview). */
+  showToolbar?: boolean;
 };
 
 export function MarkdownWorkspace({
@@ -36,6 +38,7 @@ export function MarkdownWorkspace({
   spellCheck = false,
   editorLabel = "Markdown editor",
   className,
+  showToolbar = true,
 }: Props) {
   const regionId = useId();
   const frontmatterNote = hasLeadingYamlFrontmatter(value);
@@ -137,8 +140,10 @@ export function MarkdownWorkspace({
 
   return (
     <div className={rootClass}>
-      <MarkdownToolbar editor={editor} disabled={disabled} />
-      {frontmatterNote ? (
+      {showToolbar ? (
+        <MarkdownToolbar editor={editor} disabled={disabled} />
+      ) : null}
+      {showToolbar && frontmatterNote ? (
         <p className="markdown-workspace-frontmatter-note outline-meta">
           This file starts with YAML frontmatter (optional for planning sheets;
           identity is in the filename). The editor may not round-trip frontmatter
