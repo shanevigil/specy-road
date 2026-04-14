@@ -39,7 +39,7 @@ jobs:
           if-no-files-found: ignore
       - name: Enforce pip-audit exit code
         run: test "$(cat pip-audit.exitcode)" -eq 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
