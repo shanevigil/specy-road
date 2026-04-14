@@ -9,9 +9,10 @@ Root `constitution/` here describes the **toolkit**; consumer application repos 
 1. [`constitution/purpose.md`](constitution/purpose.md) — if present at repo root; else see template under [`specy_road/templates/project/`](specy_road/templates/project/)
 2. [`constitution/principles.md`](constitution/principles.md)
 3. [`constraints/README.md`](constraints/README.md) — limits for **this** repo (package + tests)
-4. Dogfood merged graph — [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) (`manifest.json` + chunk files) for maintainer validation only
-5. **[Flat `planning/*.md` feature sheets](tests/fixtures/specy_road_dogfood/planning/README.md)** under the dogfood fixture when relevant (read ancestor sheets for context)
-6. [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) in the fixture, then only cited contracts
+4. [`docs/supply-chain-security.md`](docs/supply-chain-security.md) — dependency verification policy and CI mapping
+5. Dogfood merged graph — [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) (`manifest.json` + chunk files) for maintainer validation only
+6. **[Flat `planning/*.md` feature sheets](tests/fixtures/specy_road_dogfood/planning/README.md)** under the dogfood fixture when relevant (read ancestor sheets for context)
+7. [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) in the fixture, then only cited contracts
 
 Focused brief (against the dogfood tree):
 

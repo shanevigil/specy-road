@@ -132,7 +132,16 @@ Automated tests use temporary directories; interactive or GUI checks can use the
 
 ## Dependency and security checks
 
-Use these **after** installing the Python dev stack (`pip install -e ".[dev]"` or `pip install -r requirements.txt` then `pip install -e ".[dev]"`).
+Policy and source mapping: [`supply-chain-security.md`](supply-chain-security.md).
+
+Use these **after** installing the same Python stack as CI:
+
+```bash
+pip install -r requirements-ci.txt
+python -m pip install --upgrade 'pip>=25.3'
+```
+
+(`requirements-ci.txt` is compiled from `requirements-ci.in` / `pyproject.toml` — see [`supply-chain-security.md`](supply-chain-security.md). Upgrading `pip` avoids reporting known CVEs in the installer itself.)
 
 **Python (PyPI packages):**
 
@@ -146,6 +155,8 @@ If `pip-audit` warns that it is auditing a different interpreter than your virtu
 ```bash
 PIPAPI_PYTHON_LOCATION="$(command -v python)" pip-audit
 ```
+
+The editable package **`specy-road`** is expected to show as skipped (not on PyPI) when auditing from a source checkout.
 
 **Gantt UI (`gui/pm-gantt/`, npm):** production dependencies only (matches CI; fewer false positives from dev tooling):
 
@@ -164,9 +175,11 @@ For a stricter local pass including devDependencies, run `npm audit` without `--
 GitHub Actions runs the full validation suite on every push and PR to `main`/`dev`:
 
 ```
-validate roadmap → export check → file limits → pytest → pip-audit → npm audit (pm-gantt)
+install Python (requirements-ci.txt) → pip upgrade → pip-audit (+ artifact)
+→ npm ci → lockfile-lint → npm audit (+ artifact) → OSV-Scanner lockfiles (+ artifact)
+→ validate roadmap → export check → file limits → pytest
 ```
 
-The workflow file is at [`.github/workflows/validate.yml`](../.github/workflows/validate.yml).
-No additional setup is needed — it installs dependencies and runs the same commands
-available locally (plus dependency audits).
+The workflow file is at [`.github/workflows/validate.yml`](../.github/workflows/validate.yml). JSON reports from audits are uploaded as **workflow artifacts** for traceability.
+
+[Dependabot](../.github/dependabot.yml) opens weekly dependency PRs for pip, npm, and GitHub Actions — review before merge ([`supply-chain-security.md`](supply-chain-security.md)).

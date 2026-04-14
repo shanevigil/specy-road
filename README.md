@@ -56,9 +56,10 @@ The **specy-road source tree** includes **[`suggested_prompts/`](suggested_promp
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-pip install -e ".[dev]"
+pip install -r requirements-ci.txt
 ```
+
+(`requirements-ci.txt` is a compiled lock matching CI; regenerate with `pip-compile` — see [`docs/supply-chain-security.md`](docs/supply-chain-security.md). The short [`requirements.txt`](requirements.txt) list mirrors core runtime deps from `pyproject.toml` for reference only.)
 
 Validate the **dogfood** sample tree and run tests (maintainers):
 
@@ -69,7 +70,7 @@ specy-road file-limits
 pytest
 ```
 
-**Dependency CVE checks (maintainers):** after `pip install -e ".[dev]"`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. See [docs/setup.md](docs/setup.md#dependency-and-security-checks).
+**Dependency and supply-chain:** policy and tool mapping are in [`docs/supply-chain-security.md`](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. See [docs/setup.md](docs/setup.md#dependency-and-security-checks).
 
 **Trying `specy-road init project`:** With no path, the CLI resolves the git worktree root — in this repository that would write consumer layout files into the **toolkit** tree. Prefer an explicit target directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [`playground/`](playground/README.md) directory documented there.
 

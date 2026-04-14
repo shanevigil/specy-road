@@ -49,7 +49,7 @@ Create or **replace placeholder content** at these paths (match the structure fr
 Either:
 
 - Run **`specy-road init project`** at `[REPO_ROOT]`** once** (use `--dry-run` first; use `--force` only if intentionally replacing an existing scaffold), **then** edit the governance files above; or  
-- Copy the full `templates/project` tree so you include: `schemas/*.json`, `work/README.md`, `AGENTS.md`, and a **minimal valid** `roadmap/` (`manifest.json`, `git-workflow.yaml`, `registry.yaml`, at least one JSON chunk under e.g. `roadmap/phases/`) so `specy-road validate` passes.
+- Copy the full `templates/project` tree so you include: `schemas/*.json`, `work/README.md`, `AGENTS.md`, `docs/supply-chain-security.md`, and a **minimal valid** `roadmap/` (`manifest.json`, `git-workflow.yaml`, `registry.yaml`, at least one JSON chunk under e.g. `roadmap/phases/`) so `specy-road validate` passes.
 
 If the user will run a **separate** prompt to build the full roadmap from existing notes, **do not** deeply author roadmap nodes here—keep a **minimal** graph that validates, or rely on `init project` and governance-only edits.
 
