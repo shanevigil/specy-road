@@ -20,7 +20,7 @@ from specy_road.constitution_scaffold import (
     write_constitution,
 )
 from specy_road.gui_app_helpers import (
-    assert_under_allowed_root,
+    assert_planning_file_api_path,
     get_repo_root,
     safe_rel_path,
 )
@@ -110,7 +110,7 @@ def api_planning_artifacts(node_id: str) -> dict[str, Any]:
 def api_planning_get(path: str = Query(..., description="Repo-relative path")) -> dict[str, str]:
     root = get_repo_root()
     p = safe_rel_path(root, path)
-    assert_under_allowed_root(root, p, "planning")
+    assert_planning_file_api_path(root, p)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="file not found")
     text = p.read_text(encoding="utf-8", errors="replace")
@@ -123,7 +123,7 @@ def api_planning_put(
 ) -> dict[str, str]:
     root = get_repo_root()
     p = safe_rel_path(root, path)
-    assert_under_allowed_root(root, p, "planning")
+    assert_planning_file_api_path(root, p)
     had_file = p.is_file()
     previous: str | None = (
         p.read_text(encoding="utf-8", errors="replace") if had_file else None

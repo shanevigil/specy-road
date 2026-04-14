@@ -49,6 +49,30 @@ def assert_under_allowed_root(
         ) from e
 
 
+def assert_planning_file_api_path(repo_root: Path, path: Path) -> None:
+    """Allow ``planning/``, ``constitution/``, and repo-root ``vision.md``."""
+    resolved = path.resolve()
+    root = repo_root.resolve()
+    try:
+        rel = resolved.relative_to(root)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="path escapes repo") from e
+    parts = rel.parts
+    if parts == ("vision.md",):
+        return
+    if parts and parts[0] == "planning":
+        return
+    if parts and parts[0] == "constitution":
+        return
+    raise HTTPException(
+        status_code=400,
+        detail=(
+            "path must be under planning/ or constitution/, "
+            "or vision.md at repo root"
+        ),
+    )
+
+
 def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
     """Next display id: ``M{n}`` at root, ``<parent>.<n>`` when nested."""
     children = [n["id"] for n in nodes if n.get("parent_id") == parent_id]

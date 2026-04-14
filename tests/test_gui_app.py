@@ -100,6 +100,29 @@ def test_api_planning_file_reads_existing(api_client: TestClient) -> None:
     assert "M0.2" in c or "roadmap" in c.lower()
 
 
+def test_api_planning_file_reads_repo_root_vision(api_client: TestClient) -> None:
+    r = api_client.get(
+        "/api/planning/file",
+        params={"path": "vision.md"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["path"] == "vision.md"
+    assert "content" in body
+    assert len(body["content"]) > 0
+
+
+def test_api_planning_file_reads_constitution(api_client: TestClient) -> None:
+    r = api_client.get(
+        "/api/planning/file",
+        params={"path": "constitution/purpose.md"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["path"] == "constitution/purpose.md"
+    assert "content" in body
+
+
 def test_api_planning_file_rejects_parent_segments(
     api_client: TestClient,
 ) -> None:
@@ -110,7 +133,7 @@ def test_api_planning_file_rejects_parent_segments(
     assert r.status_code == 400
 
 
-def test_api_planning_file_requires_under_planning(
+def test_api_planning_file_rejects_disallowed_paths(
     api_client: TestClient,
 ) -> None:
     r = api_client.get(
