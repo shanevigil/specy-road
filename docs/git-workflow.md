@@ -10,6 +10,12 @@ The scaffold includes **`roadmap/git-workflow.yaml`**: your team’s **integrati
 
 Keep this file accurate so PMs see correct git status in the dashboard and validation can warn when local refs are stale (for example after `git fetch`).
 
+## PM Gantt and `registry.yaml` visibility
+
+The **PM Gantt** reads **`roadmap/registry.yaml` from the current working tree** (same repo root as other `specy-road` commands: discover from cwd / git, or **`SPECY_ROAD_REPO_ROOT`**). It does **not** merge registry files from other branches or remotes by default.
+
+On the **integration branch**, `entries` is often **empty** while developers hold active claims only on **`feature/rm-*`** branches (first-commit registration). The outline **green accent** appears only when your **checked-out branch name** matches a row’s **`branch`** field in **that** checkout’s registry file. PMs who need live registry overlays while staying on the integration branch should use another **worktree** or clone checked out to the feature branch, or rely on PR/issue tracking outside the GUI—see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+
 **Examples** (schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json)):
 
 `main` as the daily trunk:

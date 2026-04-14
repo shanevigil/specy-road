@@ -41,7 +41,7 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
 
 
 def _brief_deps_and_contracts(
-    n: dict, deps: list, root: Path, by_id: dict[str, dict]
+    _n: dict, deps: list, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
     # dependencies[] stores node_key UUIDs, not display ids — resolve via key map
     by_key = build_key_to_node(list(by_id.values()))

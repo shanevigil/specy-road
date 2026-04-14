@@ -41,6 +41,15 @@ export function GitWorkflowStatusLabel({ gitWorkflow }: Props) {
         className="app-header-doc-tip app-header-doc-tip--wide app-header-doc-tip--git-workflow"
       >
         <p className="git-workflow-tip-intro">{pres.tooltipIntro}</p>
+        <div className="git-workflow-outline-hint">
+          <div className="git-workflow-tip-section-title">Outline</div>
+          <p className="git-workflow-outline-hint-text">
+            A green left accent on a row means your named git branch matches the{" "}
+            <code>branch</code> field for that task in{" "}
+            <code>roadmap/registry.yaml</code> in <em>this</em> checkout (not
+            necessarily on other branches).
+          </p>
+        </div>
         {gitWorkflow.issues.length > 0 ? (
           <div className="git-workflow-issues-block">
             <div className="git-workflow-tip-section-title">Details</div>

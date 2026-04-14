@@ -209,7 +209,7 @@ def _append_planning_filename_errors(n: dict, abs_path: Path, errors: list[str])
 def _process_node_planning_dir(
     n: dict,
     repo_root: Path,
-    root: Path,
+    _root: Path,
     by_id: dict[str, dict],
     planning_dirs: dict[str, str],
     errors: list[str],

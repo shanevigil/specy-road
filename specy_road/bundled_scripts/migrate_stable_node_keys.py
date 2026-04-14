@@ -18,7 +18,6 @@ import yaml
 
 from roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
 from roadmap_load import load_manifest_mapping, load_roadmap
-from roadmap_node_keys import new_node_key
 from validate_roadmap import validate_at
 
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
 from roadmap_crud_ops import run_validate_raise
 from roadmap_gui_tree import indent_parent_id, outdent_parent_id
-from roadmap_layout import ordered_tree_rows, sibling_sort_key
+from roadmap_layout import sibling_sort_key
 from roadmap_load import load_manifest_mapping, load_roadmap
 from roadmap_node_keys import build_key_to_node
 from roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace

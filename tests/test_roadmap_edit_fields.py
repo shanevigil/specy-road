@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from roadmap_crud_ops import edit_node_set_pairs
 from roadmap_edit_fields import apply_set, title_to_codename
 

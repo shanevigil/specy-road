@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -152,7 +151,7 @@ def test_resolve_context_rejects_registry_branch_mismatch(
     monkeypatch.setattr(
         ft,
         "load_roadmap",
-        lambda p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     with pytest.raises(SystemExit):
         ft._resolve_context("feature/rm-example")
@@ -175,7 +174,7 @@ def test_resolve_context_rejects_missing_branch_field(
     monkeypatch.setattr(
         ft,
         "load_roadmap",
-        lambda p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     with pytest.raises(SystemExit):
         ft._resolve_context("feature/rm-example")

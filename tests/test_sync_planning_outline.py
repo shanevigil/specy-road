@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import json
 import shutil
-import sys
 from pathlib import Path
 
 from roadmap_chunk_utils import write_json_chunk
 from roadmap_load import load_roadmap
 from roadmap_outline_ops import reorder_siblings
 from sync_planning_artifacts import sync_planning_artifacts
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
+from tests.helpers import REPO, SCHEMAS
 from validate_roadmap import validate_at
 
 _AGENTIC = {

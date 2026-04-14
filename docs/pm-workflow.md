@@ -115,7 +115,18 @@ The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:
 - **Dependency view** — A picture of roadmap items as boxes arranged by **dependency depth** (what must finish before what). Lines show dependencies.
 - **Colors** — Roughly: not started (gray), in progress (blue), complete (green), blocked (red), cancelled (muted). Exact shades may vary.
 - **Registry** — When a developer has claimed work, you may see **branch names** or **timestamps** on the relevant item (from `roadmap/registry.yaml`). When they finish their task, that overlay usually clears after the next refresh.
-- **Git workflow status** — Next to the **settings** (gear) icon, a **read-only label** shows trunk/remote and current branch when healthy (**green**). **Red** means missing or invalid `roadmap/git-workflow.yaml`. **Yellow** means the folder is not a git clone, or the integration branch ref is not present locally yet (hover the label for details: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When your **current branch** matches a task’s registered feature branch, that outline row gets a **green left accent** so you can see active work at a glance.
+- **Git workflow status** — Next to the **settings** (gear) icon, a **read-only label** shows trunk/remote and current branch when healthy (**green**). **Red** means missing or invalid `roadmap/git-workflow.yaml`. **Yellow** means the folder is not a git clone, or the integration branch ref is not present locally yet (hover the label for details: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When your **current branch** matches a task’s registered feature branch **in the `roadmap/registry.yaml` present in this checkout**, that outline row gets a **green left accent** (hover the row for the exact rule).
+
+### Monitoring in-progress work while on the integration branch
+
+The PM Gantt loads **`roadmap/registry.yaml` from the working tree** used by the server (the repo root from your cwd, or `SPECY_ROAD_REPO_ROOT` / `--repo-root`). Developers typically add their first registry row on **`feature/rm-<codename>`** only; until that commit merges, your **integration branch** checkout often still has **`entries: []`** even while work is progressing on the feature branch.
+
+- The outline **green left accent** compares **`git branch --show-current`** to each row’s registered **`branch`** field in **that** `registry.yaml`. It does **not** follow registrations that exist only on another branch or in another clone.
+- To see registry overlays and the green accent for in-flight work, **check out the feature branch**, add a **second git worktree** checked out to that branch, or run the GUI against a clone where that branch is **HEAD**. Run **`git fetch`** so `refs/remotes/<remote>/feature/rm-*` refs exist locally.
+
+If you stay on the integration branch with an empty local registry while remote-tracking feature branches exist, the UI may show a short **dismissible notice** explaining this. To disable the extra payload fields, set **`SPECY_ROAD_GUI_REGISTRY_VISIBILITY=0`** for the GUI process.
+
+See [git-workflow.md](git-workflow.md) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
 
 ### Pick an item
 

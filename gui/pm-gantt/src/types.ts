@@ -51,6 +51,13 @@ export type GitWorkflowPayload = {
   resolved: GitWorkflowResolved;
 };
 
+/** PM Gantt: when registry.yaml on HEAD may not list in-flight feature-branch work. */
+export type RegistryVisibilityPayload = {
+  on_integration_branch: boolean;
+  local_registry_entry_count: number;
+  remote_feature_rm_ref_count: number;
+};
+
 export type RoadmapResponse = {
   version: number;
   nodes: RoadmapNode[];
@@ -70,4 +77,5 @@ export type RoadmapResponse = {
   dependency_inheritance?: Record<string, DependencyInheritanceEntry>;
   outline_actions?: Record<string, OutlineActionsEntry>;
   git_workflow?: GitWorkflowPayload;
+  registry_visibility?: RegistryVisibilityPayload;
 };

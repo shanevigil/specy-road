@@ -8,8 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from roadmap_chunk_utils import find_chunk_path, write_json_chunk
 from roadmap_crud_ops import append_node_to_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env

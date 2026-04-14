@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -23,12 +24,63 @@ from roadmap_layout import (
 from roadmap_load import load_roadmap
 
 from specy_road.git_workflow_config import build_git_workflow_status
+from specy_road.registry_visibility import build_registry_visibility
 from specy_road.governance_completion import (
     constitution_needs_completion,
     vision_needs_completion,
 )
 
 from specy_road.gui_app_helpers import get_repo_root
+
+
+def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
+    """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
+    nodes = doc.get("nodes") or []
+    reg = load_registry(root)
+    by_reg = registry_by_node_id(reg)
+    settings = load_settings(root)
+    gr = settings.get("git_remote") or {}
+    pr_hints = build_pr_hints(by_reg, gr)
+    git_enrichment = build_registry_enrichment(by_reg, gr)
+    tree_rows = ordered_tree_rows(nodes)
+    ordered = [t[0] for t in tree_rows]
+    row_depths = [d for _, d in tree_rows]
+    dep_starts, dep_spans = compute_dependency_steps(nodes)
+    edges = dependency_edges_detailed(nodes)
+    by_id = {n["id"]: n for n in nodes}
+    dep_inheritance = dependency_inheritance_display(nodes)
+    outline_actions: dict[str, dict[str, bool]] = {}
+    for n in nodes:
+        nid = n["id"]
+        outline_actions[nid] = {
+            "can_indent": can_indent_outline(nodes, by_id, nid),
+            "can_outdent": can_outdent_outline(by_id, nid),
+        }
+    gw = build_git_workflow_status(root)
+    out: dict[str, Any] = {
+        "version": doc.get("version"),
+        "nodes": nodes,
+        "registry": reg,
+        "registry_by_node": by_reg,
+        "tree": [
+            {"id": n["id"], "outline_depth": d, "row_index": i}
+            for i, (n, d) in enumerate(tree_rows)
+        ],
+        "dependency_depths": dep_starts,
+        "dependency_spans": dep_spans,
+        "edges": edges,
+        "ordered_ids": [n["id"] for n in ordered],
+        "row_depths": row_depths,
+        "pr_hints": pr_hints,
+        "git_enrichment": git_enrichment,
+        "dependency_inheritance": dep_inheritance,
+        "outline_actions": outline_actions,
+        "git_workflow": gw,
+    }
+    rv = build_registry_visibility(root, reg, gw)
+    if rv is not None:
+        out["registry_visibility"] = rv
+    return out
 
 
 def register_core(api: APIRouter) -> None:
@@ -48,48 +100,7 @@ def register_core(api: APIRouter) -> None:
             doc = load_roadmap(root)
         except (OSError, SystemExit, ValueError) as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
-        nodes = doc.get("nodes") or []
-        reg = load_registry(root)
-        by_reg = registry_by_node_id(reg)
-        settings = load_settings(root)
-        gr = settings.get("git_remote") or {}
-        pr_hints = build_pr_hints(by_reg, gr)
-        git_enrichment = build_registry_enrichment(by_reg, gr)
-        tree_rows = ordered_tree_rows(nodes)
-        ordered = [t[0] for t in tree_rows]
-        row_depths = [d for _, d in tree_rows]
-        dep_starts, dep_spans = compute_dependency_steps(nodes)
-        edges = dependency_edges_detailed(nodes)
-        by_id = {n["id"]: n for n in nodes}
-        dep_inheritance = dependency_inheritance_display(nodes)
-        outline_actions: dict[str, dict[str, bool]] = {}
-        for n in nodes:
-            nid = n["id"]
-            outline_actions[nid] = {
-                "can_indent": can_indent_outline(nodes, by_id, nid),
-                "can_outdent": can_outdent_outline(by_id, nid),
-            }
-        gw = build_git_workflow_status(root)
-        return {
-            "version": doc.get("version"),
-            "nodes": nodes,
-            "registry": reg,
-            "registry_by_node": by_reg,
-            "tree": [
-                {"id": n["id"], "outline_depth": d, "row_index": i}
-                for i, (n, d) in enumerate(tree_rows)
-            ],
-            "dependency_depths": dep_starts,
-            "dependency_spans": dep_spans,
-            "edges": edges,
-            "ordered_ids": [n["id"] for n in ordered],
-            "row_depths": row_depths,
-            "pr_hints": pr_hints,
-            "git_enrichment": git_enrichment,
-            "dependency_inheritance": dep_inheritance,
-            "outline_actions": outline_actions,
-            "git_workflow": gw,
-        }
+        return _roadmap_payload(root, doc)
 
     @api.get("/roadmap/fingerprint")
     def api_roadmap_fingerprint() -> dict[str, int]:

@@ -16,7 +16,7 @@ if str(_LIB_DIR) not in sys.path:
 
 import yaml
 from roadmap_chunk_utils import iter_roadmap_fingerprint_files
-from roadmap_gui_settings import (
+from roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
     SETTINGS_DIR,
     SETTINGS_FILE_VERSION,
     SETTINGS_PATH,

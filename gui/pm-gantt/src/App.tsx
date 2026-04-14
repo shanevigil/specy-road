@@ -25,6 +25,7 @@ import type { ModalRect } from "./modalRect";
 import type { RoadmapNode, RoadmapResponse } from "./types";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
+import { RegistryVisibilityBanner } from "./components/RegistryVisibilityBanner";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
 import { EditModal } from "./components/EditModal";
@@ -254,8 +255,8 @@ export default function App() {
   }, [refreshGovernanceCompletion]);
 
   useEffect(() => {
-    /* eslint-disable-next-line react-hooks/set-state-in-effect -- fetch roadmap on mount / when load changes */
-    void load();
+    /* Initial fetch; load() updates React state — intentional on mount. */
+    void load(); // eslint-disable-line react-hooks/set-state-in-effect -- mount fetch
   }, [load]);
 
   useEffect(() => {
@@ -403,8 +404,9 @@ export default function App() {
     editRectsRef.current[nodeId] = r;
     setSpawnRects((s) => {
       if (!(nodeId in s)) return s;
-      const { [nodeId]: _removed, ...rest } = s;
-      return rest;
+      const next = { ...s };
+      delete next[nodeId];
+      return next;
     });
   }, []);
 
@@ -440,8 +442,9 @@ export default function App() {
     delete editRectsRef.current[id];
     setSpawnRects((s) => {
       if (!(id in s)) return s;
-      const { [id]: _r, ...rest } = s;
-      return rest;
+      const next = { ...s };
+      delete next[id];
+      return next;
     });
   }, []);
 
@@ -861,6 +864,11 @@ export default function App() {
           </div>
         </div>
       </header>
+      <RegistryVisibilityBanner
+        key={repo || "__repo_pending__"}
+        repoRoot={repo}
+        visibility={data?.registry_visibility}
+      />
       {err ? (
         <p style={{ padding: "0 0.75rem", color: "crimson" }}>{err}</p>
       ) : null}

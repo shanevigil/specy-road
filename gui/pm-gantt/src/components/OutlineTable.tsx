@@ -372,11 +372,16 @@ function SortableRow({
 
   const depActive = depEditId === id;
 
+  const gitCheckoutTitle = isGitCheckoutRow
+    ? "Named branch matches the branch field in roadmap/registry.yaml for this row in this checkout."
+    : undefined;
+
   return (
     <tr
       ref={setNodeRef}
       style={style}
       className={rowClass || undefined}
+      title={gitCheckoutTitle}
       {...listeners}
       {...attributes}
       onDoubleClick={handleRowDoubleClick}
@@ -772,6 +777,8 @@ export function OutlineTable({
     null,
   );
 
+  /* Floating toolbar position must update in a layout effect (same frame as dep edit). */
+  /* eslint-disable react-hooks/set-state-in-effect */
   useLayoutEffect(() => {
     if (!depEditId) {
       setDepToolbarStyle(null);
@@ -824,6 +831,7 @@ export function OutlineTable({
       ro.disconnect();
     };
   }, [depEditId, orderedIds, depDraftKeys]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const depToolbarFallbackStyle: CSSProperties = {
     position: "fixed",

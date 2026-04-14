@@ -48,7 +48,6 @@ def _outline_children_map(nodes: list[dict]) -> dict[str | None, list[str]]:
 def _outline_post_order_ids(nodes: list[dict]) -> list[str]:
     """Outline post-order (children before parent); orphans appended like ``ordered_tree_rows``."""
     children = _outline_children_map(nodes)
-    by_id = {n["id"]: n for n in nodes}
     post: list[str] = []
 
     def dfs(nid: str) -> None:
