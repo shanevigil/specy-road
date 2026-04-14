@@ -105,6 +105,9 @@ def iter_roadmap_fingerprint_files(root: Path) -> list[Path]:
     reg = base / "registry.yaml"
     if reg.is_file():
         out.append(reg)
+    gw = base / "git-workflow.yaml"
+    if gw.is_file():
+        out.append(gw)
     return sorted(set(out), key=lambda p: str(p))
 
 

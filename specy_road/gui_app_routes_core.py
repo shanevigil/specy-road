@@ -22,6 +22,7 @@ from roadmap_layout import (
 )
 from roadmap_load import load_roadmap
 
+from specy_road.git_workflow_config import build_git_workflow_status
 from specy_road.governance_completion import (
     constitution_needs_completion,
     vision_needs_completion,
@@ -68,6 +69,7 @@ def register_core(api: APIRouter) -> None:
                 "can_indent": can_indent_outline(nodes, by_id, nid),
                 "can_outdent": can_outdent_outline(by_id, nid),
             }
+        gw = build_git_workflow_status(root)
         return {
             "version": doc.get("version"),
             "nodes": nodes,
@@ -86,6 +88,7 @@ def register_core(api: APIRouter) -> None:
             "git_enrichment": git_enrichment,
             "dependency_inheritance": dep_inheritance,
             "outline_actions": outline_actions,
+            "git_workflow": gw,
         }
 
     @api.get("/roadmap/fingerprint")
@@ -100,3 +103,8 @@ def register_core(api: APIRouter) -> None:
             "vision_needs_completion": vision_needs_completion(root),
             "constitution_needs_completion": constitution_needs_completion(root),
         }
+
+    @api.get("/git-workflow-status")
+    def api_git_workflow_status() -> dict[str, Any]:
+        root = get_repo_root()
+        return build_git_workflow_status(root)

@@ -26,7 +26,7 @@ A missing contract is a planning gap, not something to fill during implementatio
 
 ### Start: automated path
 
-The automated path syncs the integration branch (default `main`), **lists** eligible
+The automated path syncs the integration branch (defaults from **`roadmap/git-workflow.yaml`**, else `main`), **lists** eligible
 agentic tasks, you **choose one by number** at the prompt, then it creates the branch,
 registers it, and writes the brief and prompt in one step.
 
@@ -34,13 +34,13 @@ With sync **on** (the default), your working tree must be **clean** — commit, 
 discard local changes first. The tool runs `git fetch`, checks out the integration
 branch, and `git merge --ff-only` against the remote ref (e.g. `origin/main`). If your
 local integration branch has diverged, resolve that before retrying. Use `--no-sync`
-for offline use or CI. Repos that integrate on `dev` should pass `--base dev`.
+for offline use or CI. Set **`roadmap/git-workflow.yaml`** to your real trunk (e.g. `dev`) or pass **`--base dev`** once without editing the file.
 
 **Terminal:**
 
 ```bash
 specy-road do-next-available-task
-# optional: specy-road do-next-available-task --base dev --remote origin
+# optional overrides: specy-road do-next-available-task --base dev --remote origin
 # offline:  specy-road do-next-available-task --no-sync
 ```
 

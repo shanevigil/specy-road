@@ -16,6 +16,11 @@ from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from roadmap_edit_fields import title_to_codename
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from planning_artifacts import collect_planning_artifact_errors
+from specy_road.git_workflow_config import (
+    integration_refs_present,
+    is_git_worktree,
+    load_git_workflow_config,
+)
 from specy_road.runtime_paths import default_user_repo_root
 
 AGENTIC_KEYS = (
@@ -306,6 +311,36 @@ def run_validation(
     print("OK: roadmap and registry validate.")
 
 
+def validate_git_workflow_contract(root: Path) -> None:
+    """Validate ``roadmap/git-workflow.yaml`` if present; warn on missing refs."""
+    gw = root / "roadmap" / "git-workflow.yaml"
+    if not gw.is_file():
+        print(
+            "warning: missing roadmap/git-workflow.yaml — add the template from "
+            "`specy-road init project` so CLI and PM GUI share your integration branch.",
+            file=sys.stderr,
+        )
+        return
+    data, err = load_git_workflow_config(root)
+    if err:
+        print(err, file=sys.stderr)
+        raise SystemExit(1)
+    assert data is not None
+    if is_git_worktree(root):
+        ok, _ = integration_refs_present(
+            root,
+            str(data["remote"]),
+            str(data["integration_branch"]),
+        )
+        if not ok:
+            print(
+                "warning: no local git ref for "
+                f"{data['remote']}/{data['integration_branch']} — "
+                f"run: git fetch {data['remote']}",
+                file=sys.stderr,
+            )
+
+
 def validate_at(
     root: Path, *, no_overlap_warn: bool = False, require_registry: bool = True
 ) -> None:
@@ -317,6 +352,7 @@ def validate_at(
 
     validate_roadmap_line_limits(root)
     discover_manifest_path(root)
+    validate_git_workflow_contract(root)
     mdoc = load_manifest_mapping(root)
     mschema = root / "schemas" / "manifest.schema.json"
     validate_schema(mdoc, load_schema(mschema), "manifest.schema")

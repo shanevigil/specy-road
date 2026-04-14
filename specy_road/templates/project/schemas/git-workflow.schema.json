@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/git-workflow.schema.json",
+  "title": "specy-road git workflow contract",
+  "type": "object",
+  "required": ["version", "integration_branch", "remote"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "integration_branch": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._/-]+$",
+      "description": "Daily integration trunk (e.g. main, dev)."
+    },
+    "remote": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "description": "Git remote name (usually origin)."
+    }
+  }
+}

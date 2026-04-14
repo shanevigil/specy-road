@@ -27,6 +27,30 @@ export type DependencyEdge = {
   kind?: "explicit" | "inherited";
 };
 
+export type GitWorkflowIssue = {
+  code: string;
+  message: string;
+  detail: string;
+};
+
+export type GitWorkflowResolved = {
+  integration_branch: string;
+  remote: string;
+  git_branch_current: string | null;
+  git_head_short: string | null;
+};
+
+export type GitWorkflowPayload = {
+  ok: boolean;
+  config: {
+    version: number;
+    integration_branch: string;
+    remote: string;
+  } | null;
+  issues: GitWorkflowIssue[];
+  resolved: GitWorkflowResolved;
+};
+
 export type RoadmapResponse = {
   version: number;
   nodes: RoadmapNode[];
@@ -45,4 +69,5 @@ export type RoadmapResponse = {
   git_enrichment: Record<string, Record<string, unknown>>;
   dependency_inheritance?: Record<string, DependencyInheritanceEntry>;
   outline_actions?: Record<string, OutlineActionsEntry>;
+  git_workflow?: GitWorkflowPayload;
 };

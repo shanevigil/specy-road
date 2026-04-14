@@ -75,7 +75,7 @@ Do **not** invent a parallel roadmap format (e.g. YAML merge file) in agent rule
 
 If `CLAUDE.md` exists, **merge** specy-road guidance:
 
-- Roadmap model: merged graph = `manifest.json` + chunks; `registry.yaml` = claims overlay, not a graph chunk.
+- Roadmap model: merged graph = `manifest.json` + chunks; `git-workflow.yaml` = CLI/PM git defaults; `registry.yaml` = claims overlay, not a graph chunk.
 - Commands: `specy-road validate`, `specy-road export --check`, `specy-road file-limits`, `specy-road brief <NODE_ID> -o work/brief-...`.
 - Pointer to `AGENTS.md` as the canonical load order.
 

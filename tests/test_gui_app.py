@@ -80,6 +80,17 @@ def test_api_roadmap_returns_nodes(api_client: TestClient) -> None:
     assert "nodes" in data
     assert isinstance(data["nodes"], list)
     assert len(data["nodes"]) >= 1
+    assert "git_workflow" in data
+    gw = data["git_workflow"]
+    assert "ok" in gw and "issues" in gw and "resolved" in gw
+
+
+def test_api_git_workflow_status(api_client: TestClient) -> None:
+    r = api_client.get("/api/git-workflow-status")
+    assert r.status_code == 200
+    body = r.json()
+    assert "ok" in body
+    assert isinstance(body.get("issues"), list)
 
 
 _M02_PLANNING = (

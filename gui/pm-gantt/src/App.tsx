@@ -847,6 +847,48 @@ export default function App() {
                 </button>
               </div>
               <div className="app-header-doc-slot">
+                <div
+                  className={
+                    data?.git_workflow && !data.git_workflow.ok
+                      ? "app-header-doc-tooltip app-header-doc-tooltip--incomplete"
+                      : "app-header-doc-tooltip"
+                  }
+                >
+                  <button
+                    type="button"
+                    className={
+                      data?.git_workflow && !data.git_workflow.ok
+                        ? "app-header-doc-btn app-header-doc-btn--incomplete"
+                        : "app-header-doc-btn"
+                    }
+                    aria-describedby={
+                      data?.git_workflow && !data.git_workflow.ok
+                        ? "gov-tip-git-workflow"
+                        : undefined
+                    }
+                    title="Git workflow contract (roadmap/git-workflow.yaml)"
+                  >
+                    Git workflow
+                  </button>
+                  {data?.git_workflow && !data.git_workflow.ok ? (
+                    <div
+                      id="gov-tip-git-workflow"
+                      role="tooltip"
+                      className="app-header-doc-tip app-header-doc-tip--wide"
+                    >
+                      {data.git_workflow.issues.map((issue) => (
+                        <div key={issue.code} className="git-workflow-issue">
+                          <strong>{issue.message}</strong>
+                          <div className="git-workflow-issue-detail">
+                            {issue.detail}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <div className="app-header-doc-slot">
                 <button
                   type="button"
                   className="app-header-doc-btn"
@@ -879,6 +921,9 @@ export default function App() {
               gitEnrichment={data.git_enrichment}
               dependencyInheritance={data.dependency_inheritance}
               registryByNode={data.registry_by_node}
+              gitBranchCurrent={
+                data.git_workflow?.resolved?.git_branch_current ?? null
+              }
               depEditId={depEditId}
               depDraftKeys={depDraftKeys}
               onToggleDepCandidate={toggleDepCandidate}

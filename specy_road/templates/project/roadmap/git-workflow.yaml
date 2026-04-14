@@ -1,0 +1,7 @@
+# Machine-readable git defaults for specy-road CLI and PM Gantt.
+# Edit integration_branch to match your team's daily trunk (e.g. dev instead of main).
+# Precedence: CLI --base / --remote overrides this file; see docs/git-workflow.md
+
+version: 1
+integration_branch: main
+remote: origin

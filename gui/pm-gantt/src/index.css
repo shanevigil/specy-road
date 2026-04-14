@@ -229,6 +229,22 @@ button {
   font-size: 0.68rem;
 }
 
+.app-header-doc-tip--wide {
+  max-width: min(26rem, calc(100vw - 2rem));
+}
+
+.git-workflow-issue + .git-workflow-issue {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border);
+}
+
+.git-workflow-issue-detail {
+  margin-top: 0.2rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .app-header-doc-tooltip--incomplete:hover .app-header-doc-tip,
 .app-header-doc-tooltip--incomplete:focus-within .app-header-doc-tip {
   opacity: 1;
@@ -600,6 +616,24 @@ button {
 
 .outline-table tr.selected td {
   background: var(--sel-bg);
+}
+
+.outline-table tbody tr.outline-row-git-current td {
+  box-shadow: inset 3px 0 0 0 #2e7d32;
+}
+
+:root[data-theme="dark"] .outline-table tbody tr.outline-row-git-current td {
+  box-shadow: inset 3px 0 0 0 #66bb6a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"])
+    .outline-table
+    tbody
+    tr.outline-row-git-current
+    td {
+    box-shadow: inset 3px 0 0 0 #66bb6a;
+  }
 }
 
 .outline-id {

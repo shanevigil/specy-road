@@ -13,10 +13,22 @@ from fastapi import HTTPException
 from specy_road.runtime_paths import default_user_repo_root
 
 
+def resolve_roadmap_project_root_from_cwd() -> Path | None:
+    """Nearest ancestor of cwd containing ``roadmap/manifest.json``, if any."""
+    cwd = Path.cwd().resolve()
+    for anc in [cwd, *cwd.parents]:
+        if (anc / "roadmap" / "manifest.json").is_file():
+            return anc
+    return None
+
+
 def get_repo_root() -> Path:
     env = os.environ.get("SPECY_ROAD_REPO_ROOT")
     if env:
         return Path(env).resolve()
+    discovered = resolve_roadmap_project_root_from_cwd()
+    if discovered:
+        return discovered
     return default_user_repo_root()
 
 

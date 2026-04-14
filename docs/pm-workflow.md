@@ -115,6 +115,7 @@ The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:
 - **Dependency view** — A picture of roadmap items as boxes arranged by **dependency depth** (what must finish before what). Lines show dependencies.
 - **Colors** — Roughly: not started (gray), in progress (blue), complete (green), blocked (red), cancelled (muted). Exact shades may vary.
 - **Registry** — When a developer has claimed work, you may see **branch names** or **timestamps** on the relevant item (from `roadmap/registry.yaml`). When they finish their task, that overlay usually clears after the next refresh.
+- **Git workflow** — The header includes **Git workflow**. It turns **incomplete** (like Vision/Constitution) when `roadmap/git-workflow.yaml` is missing, invalid, the folder is not a git checkout, or your local clone has no ref yet for the configured integration branch (hover for fixes: edit the YAML, run `git fetch`, or set `SPECY_ROAD_REPO_ROOT` if the GUI resolved the wrong tree). When your **current branch** matches a task’s registered feature branch, that row gets a **green left accent** so you can see active work at a glance.
 
 ### Pick an item
 
@@ -180,7 +181,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 
 | Command                                            | In plain English                                                                                                                            |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `specy-road sync`                                  | Download the latest from the team’s main branch (default), then validate and refresh the Markdown export. Use before a big editing session. |
+| `specy-road sync`                                  | Fast-forward your integration branch from the remote (defaults from `roadmap/git-workflow.yaml`, else `main`/`origin`), then validate and refresh the Markdown export. Use before a big editing session. |
 | `specy-road scaffold-constitution`                 | Create starter `constitution/purpose.md` and `constitution/principles.md` if missing (`--force` overwrites).                               |
 | `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check.                                   |
 | `specy-road export`                                | Regenerate `roadmap.md` from the merged graph — shareable index for stakeholders.                                            |

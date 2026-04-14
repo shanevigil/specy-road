@@ -31,12 +31,13 @@ From your **application repository root** (or pass a path):
 
 ```bash
 specy-road init project
+# Edit roadmap/git-workflow.yaml so integration_branch / remote match your team (e.g. dev, origin)
 specy-road validate
 specy-road export
 specy-road brief M1.1 -o work/brief-M1.1.md
 ```
 
-Use `specy-road init project --dry-run` to preview files, or `--force` to replace an existing scaffold. Optional: `specyrd init --here --ai cursor` for slash-command stubs that call the same CLI.
+Use `specy-road init project --dry-run` to preview files, or `--force` to replace an existing scaffold. After init, set **`roadmap/git-workflow.yaml`** (integration trunk and remote) so CLI defaults and the PM Gantt match your repository; see [docs/git-workflow.md](docs/git-workflow.md). Optional: `specyrd init --here --ai cursor` for slash-command stubs that call the same CLI.
 
 ### Bootstrap prompts (optional)
 

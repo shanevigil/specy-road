@@ -124,6 +124,8 @@ The init npm step does **not** start the Vite dev server (port 5173). A first `n
 - Use an **explicit directory**: `specy-road init project /tmp/specy-consumer-sandbox` (then `specy-road validate --repo-root /tmp/specy-consumer-sandbox`).
 - Or run against the repo’s gitignored **[`playground/`](../playground/README.md)** after reading that folder’s README.
 
+After init in a real app repo, set **`roadmap/git-workflow.yaml`** (integration branch and remote) so `specy-road sync`, `do-next-available-task`, and the PM Gantt agree with your team’s trunk. See [git-workflow.md](git-workflow.md).
+
 Automated tests use temporary directories; interactive or GUI checks can use the options above.
 
 ---

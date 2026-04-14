@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 from generate_brief import index as make_index, render_brief
 from roadmap_load import load_roadmap
+from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.runtime_paths import default_user_repo_root
 
 ROOT = Path.cwd()
@@ -249,15 +250,21 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     p.add_argument(
         "--base",
-        default="main",
+        default=None,
         metavar="BRANCH",
-        help="Integration branch to sync before creating feature/rm-* (default: main).",
+        help=(
+            "Integration branch to sync before creating feature/rm-* "
+            "(default: roadmap/git-workflow.yaml, else main)."
+        ),
     )
     p.add_argument(
         "--remote",
-        default="origin",
+        default=None,
         metavar="NAME",
-        help="Git remote to fetch and merge from (default: origin).",
+        help=(
+            "Git remote to fetch and merge from "
+            "(default: roadmap/git-workflow.yaml, else origin)."
+        ),
     )
     p.add_argument(
         "--no-sync",
@@ -280,6 +287,13 @@ def main(argv: list[str] | None = None) -> None:
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
     REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
     WORK_DIR = ROOT / "work"
+    base, remote, gw_warns = resolve_integration_defaults(
+        ROOT,
+        explicit_base=args.base,
+        explicit_remote=args.remote,
+    )
+    for w in gw_warns:
+        print(f"warning: {w}", file=sys.stderr)
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
     available = _available(nodes, reg)
@@ -292,7 +306,7 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(0)
 
     if not args.no_sync:
-        _sync_integration_branch(args.base, args.remote)
+        _sync_integration_branch(base, remote)
 
     node = _pick(available, nodes)
     node_id = node["id"]

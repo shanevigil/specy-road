@@ -2,6 +2,14 @@
 
 This document is product-agnostic. Adapt branch names (`main` / `dev`) to your org; the **invariants** are registration, touch zones, and non-overlapping active claims.
 
+## Machine-readable contract (`roadmap/git-workflow.yaml`)
+
+The scaffold includes **`roadmap/git-workflow.yaml`**: your team’s **integration branch** (daily trunk) and **remote** name. The specy-road CLI (`specy-road sync`, `do-next-available-task`) and the **PM Gantt** read this file unless you override with `--base` / `--remote` or optional environment variables (`SPECY_ROAD_INTEGRATION_BRANCH`, `SPECY_ROAD_REMOTE`). If the file is missing, tools fall back to `main` / `origin` and may warn.
+
+**Precedence:** CLI flags → env → `roadmap/git-workflow.yaml` → defaults.
+
+Keep this file accurate so PMs see correct git status in the dashboard and validation can warn when local refs are stale (for example after `git fetch`).
+
 ## Branch naming
 
 | Kind | Pattern | Example |

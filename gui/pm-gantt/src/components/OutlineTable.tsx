@@ -122,6 +122,14 @@ function devLabel(
     const author = g.author as string | undefined;
     if (author) return `@${author}`;
   }
+  if (g?.kind === "registry") {
+    const br = g.branch as string | undefined;
+    const hint = g.hint_line as string | undefined;
+    if (typeof br === "string" && br.trim()) return br.trim();
+    if (typeof hint === "string" && hint.trim()) return hint.trim();
+  }
+  const regBranch = e?.branch;
+  if (typeof regBranch === "string" && regBranch.trim()) return regBranch.trim();
   return "—";
 }
 
@@ -219,6 +227,8 @@ type RowProps = {
   dragDisabled: boolean;
   /** Set only for the row whose dependency cell is being edited; anchors the floating toolbar. */
   depCellRef?: RefObject<HTMLTableCellElement | null>;
+  /** Registry branch matches current git checkout (named branch). */
+  isGitCheckoutRow?: boolean;
 };
 
 function SortableRow({
@@ -245,6 +255,7 @@ function SortableRow({
   onDepCellClick,
   dragDisabled,
   depCellRef,
+  isGitCheckoutRow,
 }: RowProps) {
   const {
     attributes,
@@ -354,6 +365,7 @@ function SortableRow({
     selected ? "selected" : "",
     depEditId === id ? "dep-edit-row" : "",
     isDepCandidate ? "dep-candidate-row" : "",
+    isGitCheckoutRow ? "outline-row-git-current" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -435,6 +447,8 @@ type Props = {
   gitEnrichment: Record<string, Record<string, unknown>>;
   dependencyInheritance?: Record<string, DependencyInheritanceEntry>;
   registryByNode?: Record<string, Record<string, unknown>>;
+  /** Current named git branch (for row highlight vs registry branch). */
+  gitBranchCurrent?: string | null;
   depEditId: string | null;
   depDraftKeys: Set<string>;
   onToggleDepCandidate: (candidateNodeId: string) => void;
@@ -457,6 +471,7 @@ export function OutlineTable({
   gitEnrichment,
   dependencyInheritance,
   registryByNode,
+  gitBranchCurrent,
   depEditId,
   depDraftKeys,
   onToggleDepCandidate,
@@ -905,6 +920,12 @@ export function OutlineTable({
                 Boolean(nk) &&
                 depDraftKeys.has(nk) &&
                 depEditId !== id;
+              const curBr = gitBranchCurrent?.trim() || "";
+              const regBr = registryByNode?.[id]?.branch;
+              const isGitCheckoutRow =
+                Boolean(curBr) &&
+                typeof regBr === "string" &&
+                regBr.trim() === curBr;
               return (
                 <Fragment key={id}>
                   <RowGapBefore
@@ -922,6 +943,7 @@ export function OutlineTable({
                     devText={devLabel(id, registryByNode, gitEnrichment)}
                     depCellText={depCellLabel(id)}
                     depEditId={depEditId}
+                    isGitCheckoutRow={isGitCheckoutRow}
                     isDepCandidate={isCandidate}
                     titleEditing={editingTitleId === id}
                     titleDraft={titleDraft}

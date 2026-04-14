@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -132,4 +133,20 @@ def roadmap_fingerprint(root: Path) -> int:
             h += reg.stat().st_mtime_ns
         except OSError:
             pass
+    try:
+        gr = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+        if gr.returncode == 0 and (sha := gr.stdout.strip()):
+            h += int.from_bytes(
+                hashlib.sha256(sha.encode("utf-8")).digest()[:8],
+                "little",
+            )
+    except OSError:
+        pass
     return h
