@@ -23,6 +23,7 @@ from specy_road.registry_remote_overlay import (
     roadmap_fingerprint_with_remote_refs,
     list_remote_feature_rm_refs,
 )
+import specy_road.registry_remote_overlay as _registry_overlay  # noqa: E402
 from roadmap_gui_lib import roadmap_fingerprint
 
 
@@ -160,6 +161,16 @@ def test_registry_remote_overlay_requires_git_remote_test_ok(
     monkeypatch.delenv("SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY", raising=False)
     root = tmp_path / "r"
     root.mkdir()
+    # Isolate from developer ~/.specy-road/gui-settings.json (module binds import at load time).
+    monkeypatch.setattr(
+        _registry_overlay,
+        "effective_settings_for_repo",
+        lambda _repo: {
+            "llm": {},
+            "git_remote": {"repo": "", "token": ""},
+            "pm_gui": {"registry_remote_overlay": False},
+        },
+    )
     monkeypatch.setattr(_pm_git, "get_git_remote_tested_ok", lambda _r: False)
     assert registry_remote_overlay_enabled(root) is False
     monkeypatch.setattr(_pm_git, "get_git_remote_tested_ok", lambda _r: True)

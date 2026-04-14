@@ -91,6 +91,62 @@ def test_api_roadmap_returns_nodes(api_client: TestClient) -> None:
     assert "on_integration_branch" in rv
     assert "local_registry_entry_count" in rv
     assert "remote_feature_rm_ref_count" in rv
+    assert "registry" in data and isinstance(data["registry"], dict)
+    assert "registry_by_node" in data and isinstance(data["registry_by_node"], dict)
+    assert data["registry"].get("entries") == []
+    assert data["registry_by_node"] == {}
+
+
+def test_api_roadmap_registry_by_node_reflects_merged_registry(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """PM UI keys rows by display id via registry_by_node; must track merged overlay registry."""
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+    monkeypatch.delenv("SPECY_ROAD_GUI_REGISTRY_VISIBILITY", raising=False)
+    fake_entry = {
+        "codename": "api-test",
+        "node_id": "M1",
+        "branch": "feature/rm-api-test",
+        "touch_zones": ["tests/"],
+    }
+    merged = {"version": 1, "entries": [fake_entry]}
+    meta = {
+        "enabled": True,
+        "remote": "origin",
+        "remote_refs_scanned": 1,
+        "merged_remote_entries": 1,
+        "skipped_refs": 0,
+    }
+
+    def fake_merge(_head: dict, _root: Path) -> tuple[dict, dict]:
+        return merged, meta
+
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.registry_remote_overlay_enabled",
+        lambda _r: True,
+    )
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.merge_registry_with_remote_overlay",
+        fake_merge,
+    )
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.maybe_auto_git_fetch",
+        lambda *_a, **_kw: None,
+    )
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.get("/api/roadmap")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["registry"] == merged
+    rb = data["registry_by_node"]
+    assert rb["M1"]["branch"] == "feature/rm-api-test"
+    assert rb["M1"]["codename"] == "api-test"
+    ov = data.get("registry_overlay")
+    assert isinstance(ov, dict)
+    assert ov.get("merged_remote_entries") == 1
 
 
 def test_api_roadmap_includes_registry_overlay_when_enabled(

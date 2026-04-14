@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { hasLlmConfigured } from "../llmConfigured";
 import { getDefaultEditModalRect, type ModalRect } from "../modalRect";
+import { pmDisplayStatus } from "../pmDisplayStatus";
 import { titleToCodename } from "../titleCodename";
 import {
   mergeBySectionChoices,
@@ -287,6 +288,7 @@ export function EditModal({
         setLlmConfigured(hasLlmConfigured(llm));
       })
       .catch(() => setLlmConfigured(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- global LLM settings; re-check only when switching tasks (id), not on node reference churn
   }, [node?.id]);
 
   useEffect(() => {
@@ -414,9 +416,12 @@ export function EditModal({
 
   if (!node) return null;
 
-  const roadmapStatus = (node.status as string) || "Not Started";
+  const persistedRoadmapStatus =
+    (node.status as string)?.trim() || "Not Started";
+  const pmShownStatus = pmDisplayStatus(node, registryByNode?.[node.id]);
+  const pmStatusDiffersFromRoadmap = pmShownStatus !== persistedRoadmapStatus;
   const codename = titleToCodename(title) || "—";
-  const titleBarText = `Edit ${node.id} - ${codename} - ${roadmapStatus}`;
+  const titleBarText = `Edit ${node.id} - ${codename} - ${persistedRoadmapStatus}`;
 
   const workLine = gitWorkSummary(
     node.id,
@@ -672,6 +677,13 @@ export function EditModal({
         {workLine ? (
           <p className="modal-edit-work-line" title={workLine}>
             {workLine}
+          </p>
+        ) : null}
+        {pmStatusDiffersFromRoadmap ? (
+          <p className="outline-meta">
+            PM Gantt shows <strong>{pmShownStatus}</strong> in the outline while this node is
+            registered in <code>roadmap/registry.yaml</code>; the saved roadmap status is{" "}
+            <strong>{persistedRoadmapStatus}</strong>.
           </p>
         ) : null}
       </div>

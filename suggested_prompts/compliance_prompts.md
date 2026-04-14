@@ -175,11 +175,20 @@ Audit areas (where applicable):
 2. Input/path validation and traversal resistance
 3. Config/secrets handling and redaction
 4. Authn/authz boundaries
-5. Dependency CVEs ([YOUR_SECURITY_SCAN_CMD])
+5. Dependency CVEs and supply-chain risk ([YOUR_SECURITY_SCAN_CMD])
+
+Dependency review requirements:
+- Enumerate all Python and npm direct/transitive dependencies.
+- Check authoritative online sources for CVEs, malware advisories, package compromise,
+  deprecation, suspicious publisher history, and unsafe install/build scripts.
+- Review npm lifecycle scripts and Python build/install hooks for risky behavior.
+- Flag unapproved registries, git/tarball installs, loose version ranges, and
+  provenance/trust issues.
+- Do not treat “no CVE found” as “safe.”
 
 For each finding, report:
 - Severity (CRITICAL/HIGH/MEDIUM/LOW)
-- File + line
+- File + line where applicable, otherwise package + version
 - Attack vector and realistic impact
 - Recommended fix
 

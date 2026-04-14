@@ -23,6 +23,7 @@ import {
 } from "./editModalLayout";
 import type { ModalRect } from "./modalRect";
 import type { RoadmapNode, RoadmapResponse } from "./types";
+import { pmDisplayStatus } from "./pmDisplayStatus";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { RegistryVisibilityBanner } from "./components/RegistryVisibilityBanner";
@@ -350,12 +351,22 @@ export default function App() {
     [data],
   );
 
+  const displayStatusById = useMemo(() => {
+    if (!data?.ordered_ids) return {} as Record<string, string>;
+    const reg = data.registry_by_node ?? {};
+    const out: Record<string, string> = {};
+    for (const id of data.ordered_ids) {
+      out[id] = pmDisplayStatus(byId[id], reg[id]);
+    }
+    return out;
+  }, [data, byId]);
+
   const keyToDisplayId = useMemo(() => {
     if (!data?.nodes) return {} as Record<string, string>;
     return Object.fromEntries(
       data.nodes.map((n) => [n.node_key, n.id] as const),
     );
-  }, [data?.nodes]);
+  }, [data]);
 
   const highlightDepRowIds = useMemo(() => {
     if (!highlightDepChain || !selectedId) return null;
@@ -469,6 +480,7 @@ export default function App() {
     }
   }, [data, editOpenIds, byId, editTileMode, headerBottomPx]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- sync focused dialog when open stack changes */
   useEffect(() => {
     if (
       focusedEditNodeId != null &&
@@ -479,14 +491,18 @@ export default function App() {
       );
     }
   }, [editOpenIds, focusedEditNodeId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect -- exit tile mode when last dialog closes */
   useEffect(() => {
     if (editOpenIds.length === 0 && editTileMode) {
       setEditTileMode(false);
       setTileRects(null);
     }
   }, [editOpenIds.length, editTileMode]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect -- recompute tiled window positions from graph order */
   useEffect(() => {
     if (!editTileMode || !data || editOpenIds.length === 0) return;
     const sorted = sortOpenIdsByDependencyOrder(
@@ -496,6 +512,7 @@ export default function App() {
     );
     setTileRects(computeTileRects(sorted, headerBottomPx));
   }, [editTileMode, data, editOpenIds, byId, headerBottomPx]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const indentDisabled =
     !selectedId ||
@@ -883,6 +900,7 @@ export default function App() {
             <OutlineTable
               orderedIds={data.ordered_ids}
               nodesById={byId}
+              displayStatusById={displayStatusById}
               rowDepths={data.row_depths}
               selectedId={selectedId}
               prHints={data.pr_hints}
@@ -926,6 +944,7 @@ export default function App() {
             <GanttPane
               orderedIds={data.ordered_ids}
               nodesById={byId}
+              displayStatusById={displayStatusById}
               depths={data.dependency_depths}
               spans={data.dependency_spans}
               edges={data.edges}

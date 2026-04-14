@@ -19,6 +19,7 @@ function statusColor(status: string | undefined): string {
 type Props = {
   orderedIds: string[];
   nodesById: Record<string, RoadmapNode>;
+  displayStatusById?: Record<string, string>;
   depths: Record<string, number>;
   /** Steps spanned per row (default 1 when missing). */
   spans?: Record<string, number>;
@@ -47,6 +48,7 @@ function barWidthPx(span: number): number {
 export function GanttPane({
   orderedIds,
   nodesById,
+  displayStatusById,
   depths,
   spans = {},
   edges,
@@ -204,7 +206,9 @@ export function GanttPane({
                 ? "var(--accent)"
                 : hi
                   ? "var(--gantt-dep-highlight)"
-                  : statusColor(node?.status)
+                  : statusColor(
+                      displayStatusById?.[id] ?? (node?.status as string | undefined),
+                    )
             }
             stroke="rgba(0,0,0,0.15)"
             strokeWidth={1}

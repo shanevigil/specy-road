@@ -224,6 +224,7 @@ type RowProps = {
   selected: boolean;
   meta?: string;
   statusText: string;
+  statusCellTitle?: string;
   devText: string;
   depCellText: string;
   depEditId: string | null;
@@ -254,6 +255,7 @@ function SortableRow({
   selected,
   meta,
   statusText,
+  statusCellTitle,
   devText,
   depCellText,
   depEditId,
@@ -433,7 +435,11 @@ function SortableRow({
         )}
         {meta ? <div className="outline-meta">{meta}</div> : null}
       </td>
-      <td className="outline-col-status" onClick={handleStatusDevClick}>
+      <td
+        className="outline-col-status"
+        title={statusCellTitle}
+        onClick={handleStatusDevClick}
+      >
         {statusText}
       </td>
       <td className="outline-col-dev" onClick={handleStatusDevClick}>
@@ -483,6 +489,7 @@ type Props = {
   onDoubleClick: (id: string) => void;
   onReordered: () => Promise<void>;
   onGapInsert: (referenceNodeId: string) => void;
+  displayStatusById?: Record<string, string>;
 };
 
 export function OutlineTable({
@@ -507,6 +514,7 @@ export function OutlineTable({
   onDoubleClick,
   onReordered,
   onGapInsert,
+  displayStatusById,
 }: Props) {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
@@ -959,6 +967,18 @@ export function OutlineTable({
                 Boolean(curBr) &&
                 typeof regBr === "string" &&
                 regBr.trim() === curBr;
+              // Must match pmDisplayStatus(): absent status → Not Started for tooltip/display parity.
+              const persistedNorm =
+                (node?.status as string)?.trim() || "Not Started";
+              const statusText =
+                displayStatusById != null
+                  ? displayStatusById[id] ?? persistedNorm
+                  : (node?.status as string) || "—";
+              const statusCellTitle =
+                displayStatusById != null &&
+                statusText !== persistedNorm
+                  ? "PM view reflects active registration in roadmap/registry.yaml; the roadmap file may still list another status until it is updated."
+                  : undefined;
               return (
                 <Fragment key={id}>
                   <RowGapBefore
@@ -972,7 +992,8 @@ export function OutlineTable({
                     outlineDepth={rowDepths[i] ?? 0}
                     selected={selectedId === id}
                     meta={metaLine(id)}
-                    statusText={(node?.status as string) || "—"}
+                    statusText={statusText}
+                    statusCellTitle={statusCellTitle}
                     devText={devLabel(
                       id,
                       registryByNode,
