@@ -1,7 +1,31 @@
-import { Fragment, useId } from "react";
+import { useId } from "react";
+import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildPlanningSideBySideRows } from "../planningDiffUtils";
+
+/** Keep each diff row as a single block; avoid margins that collapse across rows. */
+const mdComponents: Components = {
+  p: ({ children }) => <p className="planning-md-diff-md-block">{children}</p>,
+  ul: ({ children, className }) => (
+    <ul className={`planning-md-diff-md-list ${className ?? ""}`.trim()}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, className }) => (
+    <ol className={`planning-md-diff-md-list ${className ?? ""}`.trim()}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, className, ...rest }) => (
+    <li
+      className={`planning-md-diff-md-li ${className ?? ""}`.trim()}
+      {...rest}
+    >
+      {children}
+    </li>
+  ),
+};
 
 function MdLine({
   line,
@@ -21,7 +45,9 @@ function MdLine({
   }
   return (
     <div className={cls}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{line}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+        {line}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -49,7 +75,7 @@ export function PlanningSheetDiffPane({ originalMarkdown, proposedMarkdown }: Pr
       </div>
       <div className="planning-md-diff-scroll">
         {rows.map((row, idx) => (
-          <Fragment key={idx}>
+          <div className="planning-md-diff-row" key={idx}>
             <div
               className={
                 row.left
@@ -84,7 +110,7 @@ export function PlanningSheetDiffPane({ originalMarkdown, proposedMarkdown }: Pr
                 </div>
               )}
             </div>
-          </Fragment>
+          </div>
         ))}
       </div>
     </div>

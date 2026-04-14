@@ -1306,21 +1306,40 @@ button {
 .planning-md-diff-scroll {
   flex: 1;
   min-height: 10rem;
+  min-width: 0;
   overflow: auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 0.5rem;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 0.35rem 0.45rem;
   background: var(--bg);
 }
 
+/* One grid per row so columns cannot overlap (minmax(0,1fr) lets cells shrink). */
+.planning-md-diff-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 0.5rem;
+  align-items: start;
+  padding: 0.12rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.planning-md-diff-row:last-child {
+  border-bottom: none;
+}
+
 .planning-md-diff-cell {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
   border-radius: 2px;
   padding: 0.1rem 0.25rem;
   min-height: 1.15em;
+  contain: layout;
+  position: relative;
 }
 
 .planning-md-diff-cell--ctx {
@@ -1364,6 +1383,27 @@ button {
 .planning-md-diff-line ol {
   margin: 0;
   padding-left: 1.1rem;
+}
+
+.planning-md-diff-md-block {
+  margin: 0;
+}
+
+.planning-md-diff-md-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  list-style-position: outside;
+}
+
+.planning-md-diff-md-li {
+  margin: 0;
+  padding: 0;
+}
+
+.planning-md-diff-line input[type="checkbox"] {
+  margin: 0 0.35rem 0 0;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .planning-md-diff-line--pad {
