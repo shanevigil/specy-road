@@ -402,14 +402,6 @@ export function EditModal({
     );
   }, [reviewReport, contentSnapshotAtReview]);
 
-  const allSectionsChosen = useMemo(
-    () =>
-      pairedSectionCount > 0 &&
-      sectionChoices.length === pairedSectionCount &&
-      sectionChoices.every((c) => c != null),
-    [pairedSectionCount, sectionChoices],
-  );
-
   const canAcceptReviewMerge = useMemo(
     () =>
       pairedSectionCount > 0 &&
@@ -471,15 +463,29 @@ export function EditModal({
     setSectionChoices([]);
   };
 
+  /** After merging, leave diff/preview mode so TipTap shows the updated sheet (autosave runs via content effect). */
+  const exitReviewAfterMerge = () => {
+    setReviewReport(null);
+    setReviewErr(null);
+    setContentSnapshotAtReview(null);
+    setShowRawCompare(false);
+    setSectionChoices([]);
+  };
+
   const applyMergedSheet = () => {
     if (!contentSnapshotAtReview || reviewReport == null) return;
-    if (sectionChoices.some((c) => c == null)) return;
+    if (pairedSectionCount === 0) return;
+    const effectiveChoices = Array.from(
+      { length: pairedSectionCount },
+      (_, i) => sectionChoices[i] ?? "before",
+    );
     const merged = mergeBySectionChoices(
       contentSnapshotAtReview,
       reviewReport,
-      sectionChoices as Array<"before" | "proposed">,
+      effectiveChoices,
     );
     setContent(merged);
+    exitReviewAfterMerge();
   };
 
   const acceptAllProposed = () => {
@@ -491,9 +497,7 @@ export function EditModal({
       Array.from({ length: pairedSectionCount }, () => "proposed" as const),
     );
     setContent(merged);
-    setSectionChoices(
-      Array.from({ length: pairedSectionCount }, () => "proposed" as const),
-    );
+    exitReviewAfterMerge();
   };
 
   const chooseSection = (sectionIndex: number, choice: "before" | "proposed") => {
@@ -779,7 +783,7 @@ export function EditModal({
                     Back to diff
                   </button>
                   <button type="button" onClick={() => dismissReview()}>
-                    Dismiss
+                    Close LLM Review
                   </button>
                   <button
                     type="button"
@@ -799,11 +803,11 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => applyMergedSheet()}
-                    disabled={!allSectionsChosen}
+                    disabled={!canAcceptReviewMerge}
                     title={
-                      allSectionsChosen
-                        ? "Apply your per-section Before/Proposed choices to the planning sheet"
-                        : "Choose Before or Proposed for every section first (in diff view)"
+                      canAcceptReviewMerge
+                        ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
+                        : "Nothing to merge"
                     }
                   >
                     Accept selections
@@ -858,7 +862,7 @@ export function EditModal({
                     Back to diff
                   </button>
                   <button type="button" onClick={() => dismissReview()}>
-                    Dismiss
+                    Close LLM Review
                   </button>
                   <button
                     type="button"
@@ -878,11 +882,11 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => applyMergedSheet()}
-                    disabled={!allSectionsChosen}
+                    disabled={!canAcceptReviewMerge}
                     title={
-                      allSectionsChosen
-                        ? "Apply your per-section Before/Proposed choices to the planning sheet"
-                        : "Choose Before or Proposed for every section first (in diff view)"
+                      canAcceptReviewMerge
+                        ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
+                        : "Nothing to merge"
                     }
                   >
                     Accept selections
@@ -906,7 +910,7 @@ export function EditModal({
             <div className="modal-edit-review-diff-full">
               <div className="modal-edit-review-actions modal-edit-review-actions--diff">
                 <button type="button" onClick={() => dismissReview()}>
-                  Dismiss
+                  Close LLM Review
                 </button>
                 <button
                   type="button"
@@ -918,11 +922,11 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => applyMergedSheet()}
-                  disabled={!allSectionsChosen}
+                  disabled={!canAcceptReviewMerge}
                   title={
-                    allSectionsChosen
-                      ? "Apply your per-section Before/Proposed choices to the planning sheet"
-                      : "Choose Before or Proposed for every paired section first"
+                    canAcceptReviewMerge
+                      ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
+                      : "Nothing to merge"
                   }
                 >
                   Accept selections
@@ -962,7 +966,7 @@ export function EditModal({
               />
               <div className="modal-edit-review-actions modal-edit-review-actions--diff modal-edit-review-actions--diff-bottom">
                 <button type="button" onClick={() => dismissReview()}>
-                  Dismiss
+                  Close LLM Review
                 </button>
                 <button
                   type="button"
@@ -974,11 +978,11 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => applyMergedSheet()}
-                  disabled={!allSectionsChosen}
+                  disabled={!canAcceptReviewMerge}
                   title={
-                    allSectionsChosen
-                      ? "Apply your per-section Before/Proposed choices to the planning sheet"
-                      : "Choose Before or Proposed for every paired section first"
+                    canAcceptReviewMerge
+                      ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
+                      : "Nothing to merge"
                   }
                 >
                   Accept selections
