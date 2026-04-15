@@ -90,6 +90,65 @@ def test_v1_flat_file_migrates_to_v2(
     assert struct["global"]["git_remote"]["repo"] == "o/r"
 
 
+def test_llm_inherit_off_is_blank_without_project_overlay(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Project-only LLM: no merge with global; empty overlay => blank fields."""
+    gui = tmp_path / ".specy-road" / "gui-settings.json"
+    monkeypatch.setattr(st, "SETTINGS_DIR", tmp_path / ".specy-road")
+    monkeypatch.setattr(st, "SETTINGS_PATH", gui)
+    m.save_settings(
+        {
+            "llm": {**m.default_settings()["llm"], "openai_api_key": "global-only"},
+            "git_remote": m.default_settings()["git_remote"],
+        },
+    )
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    blank = st._blank_llm_base()
+    m.save_settings_for_repo(
+        repo,
+        inherit_llm=False,
+        inherit_git_remote=False,
+        llm=blank,
+        git_remote=m.default_settings()["git_remote"],
+    )
+    eff = m.effective_settings_for_repo(repo)["llm"]
+    assert eff["openai_api_key"] == ""
+    assert eff["openai_model"] == ""
+
+
+def test_git_remote_is_per_repository_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Global git_remote in file must not apply to a checkout's effective settings."""
+    gui = tmp_path / ".specy-road" / "gui-settings.json"
+    monkeypatch.setattr(st, "SETTINGS_DIR", tmp_path / ".specy-road")
+    monkeypatch.setattr(st, "SETTINGS_PATH", gui)
+    m.save_settings(
+        {
+            "llm": m.default_settings()["llm"],
+            "git_remote": {
+                **m.default_settings()["git_remote"],
+                "repo": "should-not-appear",
+            },
+        },
+    )
+    repo = tmp_path / "r"
+    repo.mkdir()
+    d = m.default_settings()
+    m.save_settings_for_repo(
+        repo,
+        inherit_llm=True,
+        inherit_git_remote=False,
+        llm=d["llm"],
+        git_remote={**d["git_remote"], "repo": "my/o"},
+    )
+    assert m.effective_settings_for_repo(repo)["git_remote"]["repo"] == "my/o"
+
+
 def test_per_repo_llm_overlay(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -111,7 +170,7 @@ def test_per_repo_llm_overlay(
     m.save_settings_for_repo(
         repo_a,
         inherit_llm=False,
-        inherit_git_remote=True,
+        inherit_git_remote=False,
         llm={**d["llm"], "openai_api_key": "key-a"},
         git_remote={**d["git_remote"]},
     )

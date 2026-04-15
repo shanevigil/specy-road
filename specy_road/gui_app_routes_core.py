@@ -11,6 +11,7 @@ from roadmap_gui_lib import (
     load_registry,
     load_settings,
     registry_by_node_id,
+    repo_settings_id,
     roadmap_fingerprint,
 )
 from roadmap_gui_remote import build_pr_hints, build_registry_enrichment
@@ -113,7 +114,7 @@ def register_core(api: APIRouter) -> None:
     @api.get("/repo")
     def api_repo() -> dict[str, str]:
         r = get_repo_root()
-        return {"repo_root": str(r)}
+        return {"repo_root": str(r), "repo_id": repo_settings_id(r)}
 
     @api.get("/roadmap")
     def api_roadmap() -> dict[str, Any]:

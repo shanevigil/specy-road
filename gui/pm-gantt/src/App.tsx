@@ -49,20 +49,16 @@ import {
   IconRowBelow,
   IconTrash,
 } from "./toolbarIcons";
+import {
+  BROWSER_PREF_KEYS,
+  readBrowserPref,
+  readLegacyBrowserPref,
+  writeBrowserPref,
+} from "./repoBrowserPrefs";
 
-const SPLIT_STORAGE_KEY = "pmGanttSplitPct";
-const REFRESH_STORAGE_KEY = "pmGanttRefreshSec";
-const INHERITED_DEPS_STORAGE_KEY = "pmGanttShowInheritedDeps";
-const HIGHLIGHT_DEP_CHAIN_KEY = "pmGanttHighlightDepChain";
-const THEME_MODE_STORAGE_KEY = "pmGanttThemeMode";
-
-function readStoredThemeMode(): ThemeMode {
-  try {
-    const s = localStorage.getItem(THEME_MODE_STORAGE_KEY);
-    if (s === "light" || s === "dark" || s === "system") return s;
-  } catch {
-    /* ignore */
-  }
+function readLegacyThemeMode(): ThemeMode {
+  const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.themeMode);
+  if (s === "light" || s === "dark" || s === "system") return s;
   return "system";
 }
 
@@ -86,6 +82,8 @@ function repoRootFolderDisplayName(repoRoot: string): string {
 export default function App() {
   const [data, setData] = useState<RoadmapResponse | null>(null);
   const [repo, setRepo] = useState<string>("");
+  /** Stable id for this GUI process (matches gui-settings.json project keys); drives namespaced localStorage. */
+  const [repoId, setRepoId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Node ids with an open edit dialog (order = stack; last is topmost). */
@@ -123,14 +121,10 @@ export default function App() {
   } | null>(null);
 
   const [refreshSec, setRefreshSec] = useState(() => {
-    try {
-      const s = localStorage.getItem(REFRESH_STORAGE_KEY);
-      if (s !== null) {
-        const n = parseInt(s, 10);
-        if (!Number.isNaN(n) && n >= 0 && n <= 120) return n;
-      }
-    } catch {
-      /* ignore */
+    const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.refreshSec);
+    if (s !== null) {
+      const n = parseInt(s, 10);
+      if (!Number.isNaN(n) && n >= 0 && n <= 120) return n;
     }
     return 5;
   });
@@ -138,42 +132,53 @@ export default function App() {
   const lastFingerprintRef = useRef<number | null>(null);
 
   const [splitPct, setSplitPct] = useState(() => {
-    try {
-      const s = localStorage.getItem(SPLIT_STORAGE_KEY);
-      if (s) {
-        const n = Number(s);
-        if (!Number.isNaN(n) && n >= 15 && n <= 85) return n;
-      }
-    } catch {
-      /* ignore */
+    const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.splitPct);
+    if (s) {
+      const n = Number(s);
+      if (!Number.isNaN(n) && n >= 15 && n <= 85) return n;
     }
     return 42;
   });
 
   /** Dashed edges = deps inherited from ancestors; hidden by default to reduce clutter. */
   const [showInheritedDeps, setShowInheritedDeps] = useState(() => {
-    try {
-      const s = localStorage.getItem(INHERITED_DEPS_STORAGE_KEY);
-      if (s === "1") return true;
-      if (s === "0") return false;
-    } catch {
-      /* ignore */
-    }
+    const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.showInheritedDeps);
+    if (s === "1") return true;
+    if (s === "0") return false;
     return false;
   });
 
   /** Gantt: band + bar tint for every preceding (transitive effective) dependency of the selection. */
   const [highlightDepChain, setHighlightDepChain] = useState(() => {
-    try {
-      const s = localStorage.getItem(HIGHLIGHT_DEP_CHAIN_KEY);
-      if (s === "0") return false;
-    } catch {
-      /* ignore */
-    }
+    const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.highlightDepChain);
+    if (s === "0") return false;
     return true;
   });
 
-  const [themeMode, setThemeMode] = useState<ThemeMode>(readStoredThemeMode);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(readLegacyThemeMode);
+
+  /** After `/api/repo` returns, apply namespaced (or migrated) browser prefs for this project. */
+  useLayoutEffect(() => {
+    if (!repoId) return;
+    const tm = readBrowserPref(BROWSER_PREF_KEYS.themeMode, repoId);
+    if (tm === "light" || tm === "dark" || tm === "system") {
+      setThemeMode(tm);
+    }
+    const rs = readBrowserPref(BROWSER_PREF_KEYS.refreshSec, repoId);
+    if (rs !== null) {
+      const n = parseInt(rs, 10);
+      if (!Number.isNaN(n) && n >= 0 && n <= 120) setRefreshSec(n);
+    }
+    const sp = readBrowserPref(BROWSER_PREF_KEYS.splitPct, repoId);
+    if (sp) {
+      const n = Number(sp);
+      if (!Number.isNaN(n) && n >= 15 && n <= 85) setSplitPct(n);
+    }
+    const inh = readBrowserPref(BROWSER_PREF_KEYS.showInheritedDeps, repoId);
+    setShowInheritedDeps(inh === "1");
+    const hi = readBrowserPref(BROWSER_PREF_KEYS.highlightDepChain, repoId);
+    setHighlightDepChain(hi !== "0");
+  }, [repoId]);
 
   /** Node id whose explicit dependencies are being edited; draft keys are node_key UUIDs. */
   const [depEditId, setDepEditId] = useState<string | null>(null);
@@ -208,12 +213,8 @@ export default function App() {
   }, [themeMode]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
-    } catch {
-      /* ignore */
-    }
-  }, [themeMode]);
+    writeBrowserPref(BROWSER_PREF_KEYS.themeMode, repoId, themeMode);
+  }, [themeMode, repoId]);
 
   useLayoutEffect(() => {
     const el = headerRef.current;
@@ -278,7 +279,9 @@ export default function App() {
         fetch("/api/repo").then((x) => x.json()),
       ]);
       setData(r);
-      setRepo((repoRes as { repo_root?: string }).repo_root || "");
+      const rr = repoRes as { repo_root?: string; repo_id?: string };
+      setRepo(rr.repo_root || "");
+      setRepoId(typeof rr.repo_id === "string" ? rr.repo_id : null);
       setSelectedId((cur) => {
         if (cur && r.ordered_ids.includes(cur)) return cur;
         return r.ordered_ids[0] ?? null;
@@ -301,42 +304,36 @@ export default function App() {
   }, [load]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(SPLIT_STORAGE_KEY, String(splitPct));
-    } catch {
-      /* ignore */
-    }
-  }, [splitPct]);
+    writeBrowserPref(
+      BROWSER_PREF_KEYS.splitPct,
+      repoId,
+      String(splitPct),
+    );
+  }, [splitPct, repoId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        INHERITED_DEPS_STORAGE_KEY,
-        showInheritedDeps ? "1" : "0",
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [showInheritedDeps]);
+    writeBrowserPref(
+      BROWSER_PREF_KEYS.showInheritedDeps,
+      repoId,
+      showInheritedDeps ? "1" : "0",
+    );
+  }, [showInheritedDeps, repoId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        HIGHLIGHT_DEP_CHAIN_KEY,
-        highlightDepChain ? "1" : "0",
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [highlightDepChain]);
+    writeBrowserPref(
+      BROWSER_PREF_KEYS.highlightDepChain,
+      repoId,
+      highlightDepChain ? "1" : "0",
+    );
+  }, [highlightDepChain, repoId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(REFRESH_STORAGE_KEY, String(refreshSec));
-    } catch {
-      /* ignore */
-    }
-  }, [refreshSec]);
+    writeBrowserPref(
+      BROWSER_PREF_KEYS.refreshSec,
+      repoId,
+      String(refreshSec),
+    );
+  }, [refreshSec, repoId]);
 
   useEffect(() => {
     if (refreshSec <= 0) return;

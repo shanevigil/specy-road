@@ -9,6 +9,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from roadmap_gui_settings_scope import (
+    blank_llm_base as _blank_llm_base,
+    git_effective as _git_effective,
+    read_settings_file_struct_with_git_migration as _read_settings_file_struct_with_git_migration,
+)
+
 SETTINGS_DIR = Path.home() / ".specy-road"
 SETTINGS_PATH = SETTINGS_DIR / "gui-settings.json"
 SETTINGS_FILE_VERSION = 2
@@ -194,6 +200,7 @@ def _merged_global_pm_gui(struct: dict[str, Any]) -> dict[str, Any]:
     gp = g.get("pm_gui") if isinstance(g.get("pm_gui"), dict) else {}
     return {**d["pm_gui"], **gp}
 
+
 def _get_project_entry(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
     raw = struct.get("projects") or {}
     if not isinstance(raw, dict):
@@ -202,7 +209,7 @@ def _get_project_entry(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
     if not isinstance(p, dict):
         return {
             "inherit_llm": True,
-            "inherit_git_remote": True,
+            "inherit_git_remote": False,
             "inherit_pm_gui": True,
             "llm": {},
             "git_remote": {},
@@ -213,7 +220,7 @@ def _get_project_entry(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
     ppm = p["pm_gui"] if isinstance(p.get("pm_gui"), dict) else {}
     return {
         "inherit_llm": bool(p.get("inherit_llm", True)),
-        "inherit_git_remote": bool(p.get("inherit_git_remote", True)),
+        "inherit_git_remote": bool(p.get("inherit_git_remote", False)),
         "inherit_pm_gui": bool(p.get("inherit_pm_gui", True)),
         "llm": plm,
         "git_remote": pgr,
@@ -221,7 +228,8 @@ def _get_project_entry(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
     }
 
 def _effective_from_struct(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
-    g_llm, g_git = _merged_global_llm_git(struct)
+    d = default_settings()
+    g_llm = _merged_global_llm_git(struct)[0]
     g_pm = _merged_global_pm_gui(struct)
     proj = _get_project_entry(struct, repo_id)
     pl = proj["llm"]
@@ -230,11 +238,10 @@ def _effective_from_struct(struct: dict[str, Any], repo_id: str) -> dict[str, An
     if proj["inherit_llm"]:
         out_llm = g_llm
     else:
-        out_llm = {**g_llm, **pl}
-    if proj["inherit_git_remote"]:
-        out_git = g_git
-    else:
-        out_git = {**g_git, **pg}
+        blank = _blank_llm_base()
+        out_llm = {**blank, **pl}
+    # Git remote: always this checkout only (never global or cross-project).
+    out_git = _git_effective(d["git_remote"], pg)
     if proj["inherit_pm_gui"]:
         out_pm = g_pm
     else:
@@ -242,7 +249,7 @@ def _effective_from_struct(struct: dict[str, Any], repo_id: str) -> dict[str, An
     return {"llm": out_llm, "git_remote": out_git, "pm_gui": out_pm}
 
 def effective_settings_for_repo(repo_root: Path) -> dict[str, Any]:
-    struct = _read_settings_file_struct()
+    struct = _read_settings_file_struct_with_git_migration(repo_root)
     rid = repo_settings_id(repo_root)
     return _effective_from_struct(struct, rid)
 
@@ -258,7 +265,7 @@ def _overlay_diff(eff: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
 def settings_api_payload(repo_root: Path) -> dict[str, Any]:
     from pm_gui_git_remote_verify import get_git_remote_tested_ok
 
-    struct = _read_settings_file_struct()
+    struct = _read_settings_file_struct_with_git_migration(repo_root)
     rid = repo_settings_id(repo_root)
     proj = _get_project_entry(struct, rid)
     g_llm, g_git = _merged_global_llm_git(struct)
@@ -269,7 +276,7 @@ def settings_api_payload(repo_root: Path) -> dict[str, Any]:
         "repo_id": rid,
         "repo_root": str(repo_root.resolve()),
         "inherit_llm": proj["inherit_llm"],
-        "inherit_git_remote": proj["inherit_git_remote"],
+        "inherit_git_remote": False,
         "inherit_pm_gui": proj["inherit_pm_gui"],
         "llm": eff["llm"],
         "git_remote": eff["git_remote"],
@@ -287,15 +294,18 @@ def save_settings_for_repo(
     repo_root: Path,
     *,
     inherit_llm: bool,
-    inherit_git_remote: bool,
+    inherit_git_remote: bool = False,
     inherit_pm_gui: bool = True,
     llm: dict[str, Any],
     git_remote: dict[str, Any],
     pm_gui: dict[str, Any] | None = None,
 ) -> None:
-    """Persist settings: global and/or per-repo overlays from inheritance flags."""
+    """Persist settings: global LLM when inheriting; project-only LLM overlay otherwise.
+
+    Git remote is always stored per repository only (``inherit_git_remote`` is ignored).
+    """
     old_git_eff = effective_settings_for_repo(repo_root)["git_remote"]
-    struct = _read_settings_file_struct()
+    struct = _read_settings_file_struct_with_git_migration(repo_root)
     rid = repo_settings_id(repo_root)
     d = default_settings()
     if "global" not in struct or not isinstance(struct["global"], dict):
@@ -305,16 +315,15 @@ def save_settings_for_repo(
     if not isinstance(struct["global"].get("pm_gui"), dict):
         struct["global"]["pm_gui"] = {}
 
-    g_base_llm = {**d["llm"], **(struct["global"].get("llm") or {})}
-    g_base_gr = {**d["git_remote"], **(struct["global"].get("git_remote") or {})}
     g_base_pm = {**d["pm_gui"], **(struct["global"].get("pm_gui") or {})}
+    blank_llm = _blank_llm_base()
     pm_in = pm_gui if isinstance(pm_gui, dict) else {}
 
     entry = struct["projects"].get(rid)
     if not isinstance(entry, dict):
         entry = {
             "inherit_llm": True,
-            "inherit_git_remote": True,
+            "inherit_git_remote": False,
             "inherit_pm_gui": True,
             "llm": {},
             "git_remote": {},
@@ -331,15 +340,11 @@ def save_settings_for_repo(
         entry["llm"] = {}
     else:
         entry["inherit_llm"] = False
-        entry["llm"] = _overlay_diff(llm, g_base_llm)
+        entry["llm"] = _overlay_diff(llm, blank_llm)
 
-    if inherit_git_remote:
-        struct["global"]["git_remote"] = {**d["git_remote"], **git_remote}
-        entry["inherit_git_remote"] = True
-        entry["git_remote"] = {}
-    else:
-        entry["inherit_git_remote"] = False
-        entry["git_remote"] = _overlay_diff(git_remote, g_base_gr)
+    # Git remote: always per-repository (never write global.git_remote from the GUI).
+    entry["inherit_git_remote"] = False
+    entry["git_remote"] = _overlay_diff(git_remote, d["git_remote"])
 
     if inherit_pm_gui:
         struct["global"]["pm_gui"] = {**d["pm_gui"], **pm_in}

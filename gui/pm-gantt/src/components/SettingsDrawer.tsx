@@ -161,7 +161,7 @@ function buildLlmPayload(llm: Record<string, string>) {
     azure_endpoint: llm.azure_endpoint || "",
     azure_api_key: llm.azure_api_key || "",
     azure_deployment: llm.azure_deployment || "",
-    azure_api_version: llm.azure_api_version || "2024-02-15-preview",
+    azure_api_version: llm.azure_api_version || "",
     anthropic_api_key: llm.anthropic_api_key || "",
     anthropic_model: llm.anthropic_model || "",
   };
@@ -182,7 +182,6 @@ export function SettingsDrawer({
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
   const [inheritLlm, setInheritLlm] = useState(true);
-  const [inheritGitRemote, setInheritGitRemote] = useState(true);
   const [inheritPmGui, setInheritPmGui] = useState(true);
   const [registryRemoteOverlay, setRegistryRemoteOverlay] = useState(false);
   const [integrationBranchAutoFf, setIntegrationBranchAutoFf] = useState(false);
@@ -210,8 +209,6 @@ export function SettingsDrawer({
         const l = (s.llm as Record<string, unknown>) || {};
         const g = (s.git_remote as Record<string, unknown>) || {};
         if (typeof s.inherit_llm === "boolean") setInheritLlm(s.inherit_llm);
-        if (typeof s.inherit_git_remote === "boolean")
-          setInheritGitRemote(s.inherit_git_remote);
         if (typeof s.inherit_pm_gui === "boolean") setInheritPmGui(s.inherit_pm_gui);
         const pm = (s.pm_gui as Record<string, unknown>) || {};
         const tested = s.git_remote_tested_ok === true;
@@ -251,7 +248,7 @@ export function SettingsDrawer({
         : pmGuiOverlayPersistedRef.current;
       putSettings({
         inherit_llm: inheritLlm,
-        inherit_git_remote: inheritGitRemote,
+        inherit_git_remote: false,
         inherit_pm_gui: inheritPmGui,
         llm: buildLlmPayload(llm),
         git_remote: {
@@ -281,7 +278,6 @@ export function SettingsDrawer({
     llm,
     git,
     inheritLlm,
-    inheritGitRemote,
     inheritPmGui,
     registryRemoteOverlay,
     integrationBranchAutoFf,
@@ -334,10 +330,10 @@ export function SettingsDrawer({
       footer={footer}
     >
       <p className="outline-meta">
-        Credentials live in ~/.specy-road/gui-settings.json (versioned file with
-        global defaults and per-repository overrides). API keys use simple obfuscation
-        on disk, not encryption. Environment variables still override saved values
-        when set. Changes save automatically.
+        Credentials live in ~/.specy-road/gui-settings.json (global LLM defaults when
+        enabled below; Git remote is always per open repository). API keys use simple
+        obfuscation on disk, not encryption. Environment variables still override saved
+        values when set. Changes save automatically.
       </p>
       {repoLabel ? (
         <p className="outline-meta" title={repoLabel}>
@@ -351,13 +347,7 @@ export function SettingsDrawer({
         checked={inheritLlm}
         onChange={setInheritLlm}
         label="Use global LLM settings for this repository"
-        optionTitle="When off, LLM fields below are stored only for this git worktree (overlays on global defaults)."
-      />
-      <SettingsToggleRow
-        checked={inheritGitRemote}
-        onChange={setInheritGitRemote}
-        label="Use global Git remote settings for this repository"
-        optionTitle="When off, Git remote fields below are stored only for this git worktree (e.g. different repo slug or token)."
+        optionTitle="When on, values you save become the global LLM defaults. When off, the form starts blank for this repository only—enter credentials here to store them for this checkout (nothing is shared with other projects)."
       />
       <SettingsToggleRow
         checked={inheritPmGui}
@@ -394,7 +384,7 @@ export function SettingsDrawer({
       <ThemeModeSegmented value={themeMode} onChange={onThemeModeChange} />
       <h3
         className="settings-pm-chart-title"
-        title="Chart display and refresh options are saved in this browser only (localStorage)."
+        title="Chart display and refresh options are saved in this browser only (localStorage), keyed to the repository shown under Open repository (same scope as server settings)."
       >
         PM Chart Settings
       </h3>
@@ -521,7 +511,8 @@ export function SettingsDrawer({
           <label>
             API version
             <input
-              value={llm.azure_api_version || "2024-02-15-preview"}
+              value={llm.azure_api_version || ""}
+              placeholder="2024-02-15-preview"
               onChange={(e) =>
                 setLlm({ ...llm, azure_api_version: e.target.value })
               }

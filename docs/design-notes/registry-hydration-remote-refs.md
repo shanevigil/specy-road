@@ -6,7 +6,7 @@ The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/bundled_scripts/ro
 
 ## Remote registry overlay (opt-in)
 
-In the PM Gantt **Settings** drawer, configure **Git remote** (GitHub or GitLab: repo slug and token), run **Test Git** once successfully, then turn on **“Merge registry from remote feature branches”** (stored under **`pm_gui.registry_remote_overlay`** in [`~/.specy-road/gui-settings.json`](../../specy_road/bundled_scripts/roadmap_gui_settings.py), with the same **per-repository / global inheritance** pattern as Git remote settings). The server persists **`git_remote_tested_ok`** per repo; changing effective Git remote fields clears that flag. Optional env override: **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** forces off; **`=1`** forces on (e.g. CI) and skips the Test Git gate.
+In the PM Gantt **Settings** drawer, configure **Git remote** (GitHub or GitLab: repo slug and token)—always **per resolved project root**, not a shared global—run **Test Git** once successfully, then turn on **“Merge registry from remote feature branches”** (stored under **`pm_gui.registry_remote_overlay`** in [`~/.specy-road/gui-settings.json`](../../specy_road/bundled_scripts/roadmap_gui_settings.py); that flag can follow the **PM GUI** global/per-repo toggle like other `pm_gui.*` options). The server persists **`git_remote_tested_ok`** per repo; changing effective Git remote fields clears that flag. Optional env override: **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** forces off; **`=1`** forces on (e.g. CI) and skips the Test Git gate.
 
 When enabled, [`GET /api/roadmap`](../../specy_road/gui_app_routes_core.py) **merges** registry entries from **remote-tracking** branches without checking them out:
 

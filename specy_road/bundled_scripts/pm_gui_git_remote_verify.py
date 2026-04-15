@@ -40,7 +40,7 @@ def set_git_remote_tested_ok(repo_root, ok: bool) -> None:
     if not isinstance(entry, dict):
         entry = {
             "inherit_llm": True,
-            "inherit_git_remote": True,
+            "inherit_git_remote": False,
             "inherit_pm_gui": True,
             "llm": {},
             "git_remote": {},

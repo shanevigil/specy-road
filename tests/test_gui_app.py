@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -8,6 +9,11 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+
+
+def _expected_gui_repo_id(path: Path) -> str:
+    """Matches ``repo_settings_id`` / ``gui-settings.json`` project keys."""
+    return hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()
 
 
 @pytest.fixture()
@@ -43,6 +49,7 @@ def test_api_repo_follows_cwd_when_env_unset(
     r = client.get("/api/repo")
     assert r.status_code == 200
     assert Path(r.json()["repo_root"]).resolve() == dogfood_copy.resolve()
+    assert r.json()["repo_id"] == _expected_gui_repo_id(dogfood_copy)
     r2 = client.get("/api/roadmap")
     assert r2.status_code == 200
     assert "nodes" in r2.json()
@@ -64,6 +71,7 @@ def test_api_repo_env_overrides_cwd(
     r = client.get("/api/repo")
     assert r.status_code == 200
     assert Path(r.json()["repo_root"]).resolve() == dogfood_copy.resolve()
+    assert r.json()["repo_id"] == _expected_gui_repo_id(dogfood_copy)
     r2 = client.get("/api/roadmap")
     assert r2.status_code == 200
     assert "nodes" in r2.json()
