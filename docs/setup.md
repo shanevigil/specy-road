@@ -176,7 +176,8 @@ GitHub Actions runs the full validation suite on every push and PR to `main`/`de
 
 ```
 install Python (requirements-ci.txt) → pip upgrade → pip-audit (+ artifact)
-→ npm ci → lockfile-lint → npm audit (+ artifact) → OSV-Scanner lockfiles (+ artifact)
+→ npm ci → lockfile-lint → npm audit (+ artifact) → Vitest (gui/pm-gantt)
+→ OSV-Scanner lockfiles (+ artifact)
 → validate roadmap → export check → file limits → pytest
 ```
 

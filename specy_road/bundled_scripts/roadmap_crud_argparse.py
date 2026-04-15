@@ -88,7 +88,7 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
 def _p_archive(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "archive-node",
-        help="Set status Cancelled or --hard-remove the node",
+        help="Remove the node from the roadmap JSON (--hard-remove). Soft Cancelled is removed from the schema.",
     )
     sp.add_argument("node_id", metavar="NODE_ID")
     sp.add_argument(

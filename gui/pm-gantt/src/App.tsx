@@ -23,7 +23,11 @@ import {
 } from "./editModalLayout";
 import type { ModalRect } from "./modalRect";
 import type { RoadmapNode, RoadmapResponse } from "./types";
-import { pmDisplayStatus } from "./pmDisplayStatus";
+import {
+  pmDisplayStatus,
+  pmOutlineDisplayStatus,
+  pmPlanningTitleReadOnlyFromRow,
+} from "./pmDisplayStatus";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
@@ -178,6 +182,8 @@ export default function App() {
   const splitRef = useRef<HTMLDivElement>(null);
   const leftRef = useRef<HTMLDivElement>(null);
   const rightRef = useRef<HTMLDivElement>(null);
+  /** Matches outline thead + first gap row height for Gantt grid alignment. */
+  const [ganttStackHeaderPx, setGanttStackHeaderPx] = useState(52);
   const syncLock = useRef(false);
   const resizing = useRef(false);
 
@@ -218,6 +224,39 @@ export default function App() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const measureGanttStackHeader = useCallback(() => {
+    const wrap = leftRef.current;
+    if (!wrap) return;
+    const thead = wrap.querySelector("thead");
+    const gapTr = wrap.querySelector("tbody tr.outline-gap-tr");
+    const th = thead?.getBoundingClientRect().height ?? 0;
+    const gh = gapTr?.getBoundingClientRect().height;
+    const gapPx = typeof gh === "number" && gh > 0 ? gh : 8;
+    const sum = th + gapPx;
+    if (sum > 0) setGanttStackHeaderPx(Math.round(sum * 10) / 10);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!data) return;
+    const wrap = leftRef.current;
+    if (!wrap) return;
+    const ro = new ResizeObserver(() => {
+      measureGanttStackHeader();
+    });
+    ro.observe(wrap);
+    const thead = wrap.querySelector("thead");
+    const tbody = wrap.querySelector("tbody");
+    if (thead) ro.observe(thead);
+    if (tbody) ro.observe(tbody);
+    const raf = requestAnimationFrame(() => {
+      measureGanttStackHeader();
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [data, measureGanttStackHeader]);
 
   const refreshGovernanceCompletion = useCallback(async () => {
     try {
@@ -362,6 +401,17 @@ export default function App() {
     return out;
   }, [data, byId]);
 
+  const outlineStatusById = useMemo(() => {
+    if (!data?.ordered_ids) return {} as Record<string, string>;
+    const reg = data.registry_by_node ?? {};
+    const enr = data.git_enrichment ?? {};
+    const out: Record<string, string> = {};
+    for (const id of data.ordered_ids) {
+      out[id] = pmOutlineDisplayStatus(byId[id], reg[id], enr[id]);
+    }
+    return out;
+  }, [data, byId]);
+
   const gitCheckoutById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, boolean>;
     const reg = data.registry_by_node ?? {};
@@ -373,9 +423,24 @@ export default function App() {
     return out;
   }, [data]);
 
-  const selectedReadOnlyCheckout = Boolean(
-    selectedId && gitCheckoutById[selectedId],
-  );
+  const selectedPlanningReadOnly = useMemo(() => {
+    if (!selectedId) return false;
+    const persisted =
+      (byId[selectedId]?.status as string)?.trim() || "Not Started";
+    const base = displayStatusById[selectedId] ?? persisted;
+    const outline = outlineStatusById[selectedId] ?? base;
+    return pmPlanningTitleReadOnlyFromRow(
+      Boolean(gitCheckoutById[selectedId]),
+      base,
+      outline,
+    );
+  }, [
+    selectedId,
+    byId,
+    displayStatusById,
+    outlineStatusById,
+    gitCheckoutById,
+  ]);
 
   const keyToDisplayId = useMemo(() => {
     if (!data?.nodes) return {} as Record<string, string>;
@@ -738,10 +803,10 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={!selectedId || selectedReadOnlyCheckout}
+                disabled={!selectedId || selectedPlanningReadOnly}
                 title={
-                  selectedReadOnlyCheckout
-                    ? "Editing is disabled while this task's registered branch is checked out"
+                  selectedPlanningReadOnly
+                    ? "Editing is disabled while this task is in active development (in progress, MR state, or checkout matches the registered branch)"
                     : "Edit selected task"
                 }
                 aria-label="Edit selected task"
@@ -921,6 +986,7 @@ export default function App() {
               orderedIds={data.ordered_ids}
               nodesById={byId}
               displayStatusById={displayStatusById}
+              outlineStatusById={outlineStatusById}
               rowDepths={data.row_depths}
               selectedId={selectedId}
               prHints={data.pr_hints}
@@ -966,6 +1032,9 @@ export default function App() {
               nodesById={byId}
               displayStatusById={displayStatusById}
               gitCheckoutById={gitCheckoutById}
+              registryByNode={data.registry_by_node}
+              gitEnrichment={data.git_enrichment}
+              stackHeaderPx={ganttStackHeaderPx}
               depths={data.dependency_depths}
               spans={data.dependency_spans}
               edges={data.edges}
@@ -986,6 +1055,16 @@ export default function App() {
         ? editOpenIds.map((nodeId, index) => {
             const emNode = byId[nodeId];
             if (!emNode) return null;
+            const persisted =
+              (emNode.status as string)?.trim() || "Not Started";
+            const emBaseStatus = displayStatusById[nodeId] ?? persisted;
+            const emOutlineStatus =
+              outlineStatusById[nodeId] ?? emBaseStatus;
+            const modalPlanningReadOnly = pmPlanningTitleReadOnlyFromRow(
+              Boolean(gitCheckoutById[nodeId]),
+              emBaseStatus,
+              emOutlineStatus,
+            );
             const passThrough = editOpenIds.length > 1;
             return (
               <EditModal
@@ -1011,7 +1090,7 @@ export default function App() {
                 onClose={() => closeEditNode(nodeId)}
                 onOpenNode={openEditNode}
                 onPersisted={() => void load()}
-                readOnlyCheckout={Boolean(gitCheckoutById[nodeId])}
+                readOnlyCheckout={modalPlanningReadOnly}
               />
             );
           })

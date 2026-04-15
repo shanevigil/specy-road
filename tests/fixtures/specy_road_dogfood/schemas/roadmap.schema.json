@@ -51,7 +51,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["Not Started", "In Progress", "Complete", "Blocked", "Cancelled"]
+          "enum": ["Not Started", "In Progress", "Complete", "Blocked"]
         },
         "touch_zones": {
           "type": "array",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   devColumnDetailTitle,
   displayStatusAllowsCheckoutBar,
+  isDisplayStatusInProgress,
   rowMatchesRegisteredBranch,
 } from "./rowMatchesRegisteredBranch";
 
@@ -88,12 +89,19 @@ describe("devColumnDetailTitle", () => {
 describe("displayStatusAllowsCheckoutBar", () => {
   it("is false for terminal states", () => {
     expect(displayStatusAllowsCheckoutBar("Complete")).toBe(false);
-    expect(displayStatusAllowsCheckoutBar("Cancelled")).toBe(false);
     expect(displayStatusAllowsCheckoutBar("Blocked")).toBe(false);
   });
 
   it("is true for in progress and not started", () => {
     expect(displayStatusAllowsCheckoutBar("In Progress")).toBe(true);
     expect(displayStatusAllowsCheckoutBar("Not Started")).toBe(true);
+  });
+});
+
+describe("isDisplayStatusInProgress", () => {
+  it("detects in progress label", () => {
+    expect(isDisplayStatusInProgress("In Progress")).toBe(true);
+    expect(isDisplayStatusInProgress("in progress")).toBe(true);
+    expect(isDisplayStatusInProgress("Not Started")).toBe(false);
   });
 });

@@ -232,13 +232,14 @@ def test_show_node_cli(tmp_path: Path) -> None:
     assert '"id": "M99.1"' in r.stdout
 
 
-def test_archive_node_soft_sets_cancelled(tmp_path: Path) -> None:
+def test_archive_node_without_hard_remove_is_rejected(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "archive-node", "M99.1")
-    assert r.returncode == 0, r.stderr
+    assert r.returncode == 1, r.stderr
+    assert "hard-remove" in (r.stderr + r.stdout).lower()
     nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
     node = next(n for n in nodes if n["id"] == "M99.1")
-    assert node["status"] == "Cancelled"
+    assert node["status"] != "Cancelled"
 
 
 def test_hard_remove_leaf_node_succeeds(tmp_path: Path) -> None:

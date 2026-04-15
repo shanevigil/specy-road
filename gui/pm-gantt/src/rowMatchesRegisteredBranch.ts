@@ -70,6 +70,41 @@ export function displayStatusAllowsCheckoutBar(
   displayStatus: string | undefined,
 ): boolean {
   const s = (displayStatus || "Not Started").toLowerCase();
-  if (s === "complete" || s === "cancelled" || s === "blocked") return false;
+  if (s === "complete" || s === "blocked") return false;
   return true;
+}
+
+/** PM outline / Gantt display label for active work (includes registry-promoted In Progress). */
+export function isDisplayStatusInProgress(
+  displayStatus: string | undefined,
+): boolean {
+  return (displayStatus || "").trim().toLowerCase() === "in progress";
+}
+
+/** True when registry lists a non-empty feature branch for this node (`feature/rm-*`, etc.). */
+export function hasRegisteredFeatureBranch(
+  nodeId: string,
+  registryByNode: Record<string, Record<string, unknown>> | undefined,
+): boolean {
+  const br = registryByNode?.[nodeId]?.branch;
+  return typeof br === "string" && br.trim().length > 0;
+}
+
+/**
+ * Gantt green bar: active feature work tied to a registered branch.
+ * Requires a dedicated branch in registry plus in-progress display (or current checkout).
+ * Terminal display states (Complete, Blocked) are excluded — merged work
+ * should move the roadmap off those or clear registration; we do not infer merge from git here.
+ */
+export function showActiveFeatureBranchBar(
+  nodeId: string,
+  displayStatus: string | undefined,
+  registryByNode: Record<string, Record<string, unknown>> | undefined,
+  gitCheckoutById: Record<string, boolean> | undefined,
+): boolean {
+  if (!displayStatusAllowsCheckoutBar(displayStatus)) return false;
+  if (!hasRegisteredFeatureBranch(nodeId, registryByNode)) return false;
+  const checkout = Boolean(gitCheckoutById?.[nodeId]);
+  const inProgress = isDisplayStatusInProgress(displayStatus);
+  return checkout || inProgress;
 }

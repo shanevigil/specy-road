@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import yaml
+from do_next_available import _available, _load_branch_enrichment
 from generate_brief import index as make_index, render_brief
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import resolve_integration_defaults
@@ -30,48 +31,6 @@ def _load_registry() -> dict:
         return {"version": 1, "entries": []}
     with REGISTRY_PATH.open(encoding="utf-8") as f:
         return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
-def _claimed_node_ids(reg: dict) -> set[str]:
-    return {e["node_id"] for e in reg.get("entries", []) if "node_id" in e}
-
-
-def _statuses_by_node_key(nodes: list[dict]) -> dict[str, str]:
-    """Map node_key -> lowercased status (dependencies reference node_key UUIDs)."""
-    return {
-        n["node_key"]: (n.get("status") or "").lower()
-        for n in nodes
-        if isinstance(n.get("node_key"), str) and n["node_key"]
-    }
-
-
-def _deps_met(node: dict, statuses_by_key: dict[str, str]) -> bool:
-    return all(
-        statuses_by_key.get(dep, "") == "complete"
-        for dep in (node.get("dependencies") or [])
-    )
-
-
-def _available(nodes: list[dict], reg: dict) -> list[dict]:
-    statuses_by_key = _statuses_by_node_key(nodes)
-    claimed = _claimed_node_ids(reg)
-    skip = {"complete", "in progress", "cancelled", "blocked"}
-    result = []
-    for n in nodes:
-        if (n.get("status") or "Not Started").lower() in skip:
-            continue
-        if not n.get("codename"):
-            continue
-        exec_m = n.get("execution_milestone", "")
-        exec_s = n.get("execution_subtask", "")
-        if exec_m not in ("Agentic-led", "Mixed") and exec_s != "agentic":
-            continue
-        if not _deps_met(n, statuses_by_key):
-            continue
-        if n["id"] in claimed:
-            continue
-        result.append(n)
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -296,12 +255,14 @@ def main(argv: list[str] | None = None) -> None:
         print(f"warning: {w}", file=sys.stderr)
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
-    available = _available(nodes, reg)
+    enrich = _load_branch_enrichment(ROOT)
+    available = _available(nodes, reg, enrich)
 
     if not available:
         print(
-            "No available agentic tasks — all are complete, in-progress, "
-            "blocked, or have unmet dependencies."
+            "No available agentic tasks — none pass execution gates with met dependencies, "
+            "all are claimed or skipped (complete/in-progress/cancelled), "
+            "or the unblock/retry queue is empty."
         )
         raise SystemExit(0)
 

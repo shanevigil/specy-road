@@ -68,13 +68,15 @@ specy-road validate --repo-root tests/fixtures/specy_road_dogfood
 specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
 specy-road file-limits
 pytest
+# After changing gui/pm-gantt sources:
+#   cd gui/pm-gantt && npm ci && npm test && npm run build
 ```
 
 **Dependency and supply-chain:** policy and tool mapping are in [`docs/supply-chain-security.md`](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. See [docs/setup.md](docs/setup.md#dependency-and-security-checks).
 
 **Trying `specy-road init project`:** With no path, the CLI resolves the git worktree root — in this repository that would write consumer layout files into the **toolkit** tree. Prefer an explicit target directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [`playground/`](playground/README.md) directory documented there.
 
-Optional git hooks: `pip install pre-commit && pre-commit install` (same checks as CI).
+Optional git hooks: `pip install pre-commit && pre-commit install` — runs a **subset** of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [docs/setup.md](docs/setup.md#install-the-pre-commit-hook).
 
 ## specyrd (optional IDE command stubs)
 

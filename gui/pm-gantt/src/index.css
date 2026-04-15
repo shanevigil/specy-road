@@ -12,14 +12,20 @@
   --outline-gap-h: 8px;
   --sel-bg: rgba(25, 118, 210, 0.12);
   --bar-not-started: #b0b0b0;
+  /* Legacy; semantic bars use --bar-in-progress. */
   --bar-progress: #1976d2;
-  /** Matches outline git-checkout accent; used when HEAD matches registry branch. */
-  --bar-checkout-active: #2e7d32;
+  --bar-in-progress: #2e7d32;
+  --bar-checkout-active: var(--bar-in-progress);
+  --bar-mr-pending: #ef6c00;
+  --bar-mr-rejected: #c62828;
   --bar-blocked: #d32f2f;
   --bar-complete: #424242;
-  --bar-cancelled: #757575;
-  --gantt-dep-highlight: #e65100;
-  --gantt-dep-highlight-bg: rgba(230, 81, 0, 0.18);
+  --gantt-bar-selected: var(--accent);
+  --gantt-dep-chain: #f9a825;
+  --gantt-dep-chain-bg: rgba(249, 168, 37, 0.2);
+  /* Alias for older selectors; prefer --gantt-dep-chain / --gantt-dep-chain-bg */
+  --gantt-dep-highlight: var(--gantt-dep-chain);
+  --gantt-dep-highlight-bg: var(--gantt-dep-chain-bg);
   font-family:
     system-ui,
     -apple-system,
@@ -41,9 +47,14 @@
   --muted: #9e9e9e;
   --accent: #64b5f6;
   --sel-bg: rgba(100, 181, 246, 0.15);
-  --bar-checkout-active: #66bb6a;
-  --gantt-dep-highlight: #ffb74d;
-  --gantt-dep-highlight-bg: rgba(255, 183, 77, 0.12);
+  --bar-in-progress: #66bb6a;
+  --bar-checkout-active: var(--bar-in-progress);
+  --bar-mr-pending: #ffa726;
+  --bar-mr-rejected: #ef5350;
+  --gantt-dep-chain: #ffca28;
+  --gantt-dep-chain-bg: rgba(255, 202, 40, 0.14);
+  --gantt-dep-highlight: var(--gantt-dep-chain);
+  --gantt-dep-highlight-bg: var(--gantt-dep-chain-bg);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,9 +65,14 @@
     --muted: #9e9e9e;
     --accent: #64b5f6;
     --sel-bg: rgba(100, 181, 246, 0.15);
-    --bar-checkout-active: #66bb6a;
-    --gantt-dep-highlight: #ffb74d;
-    --gantt-dep-highlight-bg: rgba(255, 183, 77, 0.12);
+    --bar-in-progress: #66bb6a;
+    --bar-checkout-active: var(--bar-in-progress);
+    --bar-mr-pending: #ffa726;
+    --bar-mr-rejected: #ef5350;
+    --gantt-dep-chain: #ffca28;
+    --gantt-dep-chain-bg: rgba(255, 202, 40, 0.14);
+    --gantt-dep-highlight: var(--gantt-dep-chain);
+    --gantt-dep-highlight-bg: var(--gantt-dep-chain-bg);
   }
 }
 
@@ -881,6 +897,32 @@ button {
 
 .outline-title {
   padding-right: 0.35rem;
+}
+
+.outline-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.outline-title-text-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.outline-pm-lock {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  line-height: 0;
+  opacity: 0.8;
+  color: var(--muted);
+  user-select: none;
+}
+
+.outline-pm-lock-icon {
+  display: block;
 }
 
 .outline-title-input {

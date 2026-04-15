@@ -36,6 +36,8 @@ flowchart TD
 | `shared/` | Contracts cited from tasks |
 | `specy_road/` (install) | Python package; `specy-road` CLI; `bundled_scripts/` implements validate/brief/export |
 
+**This toolkit repository** does not use a top-level `schemas/` folder: canonical schema sources are under [`specy_road/templates/project/schemas/`](../specy_road/templates/project/schemas/) (consumer scaffold) and [`tests/fixtures/specy_road_dogfood/schemas/`](../tests/fixtures/specy_road_dogfood/schemas/) (dogfood for CI).
+
 **Source of truth:** node definitions in chunk files under `roadmap/` (see [`roadmap-authoring.md`](roadmap-authoring.md)). `roadmap.md` at the **project** root is a generated index.
 
 **This repository** additionally keeps a maintainer sample under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) for CI (`--repo-root tests/fixtures/specy_road_dogfood`).

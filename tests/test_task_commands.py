@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+import do_next_available as dna
 import do_next_task as dnt
 import finish_task as ft
 
@@ -39,19 +40,19 @@ def _reg(*node_ids: str) -> dict:
 
 def test_available_returns_unclaimed_agentic() -> None:
     nodes = [_BASE_NODE]
-    result = dnt._available(nodes, _reg())
+    result = dnt._available(nodes, _reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M1.1"
 
 
 def test_available_excludes_claimed() -> None:
     nodes = [_BASE_NODE]
-    assert dnt._available(nodes, _reg("M1.1")) == []
+    assert dnt._available(nodes, _reg("M1.1"), {}) == []
 
 
 def test_available_excludes_complete() -> None:
     node = {**_BASE_NODE, "status": "Complete"}
-    assert dnt._available([node], _reg()) == []
+    assert dnt._available([node], _reg(), {}) == []
 
 
 def test_available_excludes_unmet_deps() -> None:
@@ -65,7 +66,7 @@ def test_available_excludes_unmet_deps() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    assert dnt._available([dep, node], _reg()) == []
+    assert dnt._available([dep, node], _reg(), {}) == []
 
 
 def test_available_includes_when_deps_complete() -> None:
@@ -79,13 +80,13 @@ def test_available_includes_when_deps_complete() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    result = dnt._available([dep, node], _reg())
+    result = dnt._available([dep, node], _reg(), {})
     assert len(result) == 1
 
 
 def test_available_excludes_human_led_no_agentic_subtask() -> None:
     node = {**_BASE_NODE, "execution_milestone": "Human-led"}
-    assert dnt._available([node], _reg()) == []
+    assert dnt._available([node], _reg(), {}) == []
 
 
 def test_available_includes_agentic_subtask() -> None:
@@ -94,13 +95,69 @@ def test_available_includes_agentic_subtask() -> None:
         "execution_milestone": None,
         "execution_subtask": "agentic",
     }
-    result = dnt._available([node], _reg())
+    result = dnt._available([node], _reg(), {})
     assert len(result) == 1
 
 
 def test_available_excludes_no_codename() -> None:
     node = {**_BASE_NODE, "codename": None}
-    assert dnt._available([node], _reg()) == []
+    assert dnt._available([node], _reg(), {}) == []
+
+
+def test_available_prioritizes_blocked_before_not_started() -> None:
+    a = {**_BASE_NODE, "id": "M1.2", "codename": "a", "status": "Not Started"}
+    b = {**_BASE_NODE, "id": "M1.3", "node_key": "33333333-3333-4333-8333-333333333333", "codename": "b", "status": "Blocked"}
+    result = dnt._available([a, b], _reg(), {})
+    assert [n["id"] for n in result] == ["M1.3", "M1.2"]
+
+
+def test_load_branch_enrichment_returns_empty_on_registry_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path,
+) -> None:
+    def boom(_root):
+        raise RuntimeError("no registry")
+
+    monkeypatch.setattr(dna, "load_registry", boom)
+    assert dna._load_branch_enrichment(tmp_path) == {}
+
+
+def test_available_orders_blocked_then_mr_rejected_then_not_started() -> None:
+    a = {**_BASE_NODE, "id": "M1.2", "codename": "a", "status": "Not Started"}
+    b = {
+        **_BASE_NODE,
+        "id": "M1.3",
+        "node_key": "33333333-3333-4333-8333-333333333333",
+        "codename": "b",
+        "status": "Blocked",
+    }
+    c = {
+        **_BASE_NODE,
+        "id": "M1.4",
+        "node_key": "44444444-4444-4444-8444-444444444444",
+        "codename": "c",
+        "status": "In Progress",
+    }
+    enrich = {
+        "M1.4": {"kind": "github_pr", "pr_state": "rejected", "merged": False},
+    }
+    result = dnt._available([a, b, c], _reg(), enrich)
+    assert [n["id"] for n in result] == ["M1.3", "M1.4", "M1.2"]
+
+
+def test_available_prioritizes_mr_rejected_before_not_started() -> None:
+    a = {**_BASE_NODE, "id": "M1.2", "codename": "a", "status": "Not Started"}
+    b = {
+        **_BASE_NODE,
+        "id": "M1.3",
+        "node_key": "33333333-3333-4333-8333-333333333333",
+        "codename": "b",
+        "status": "In Progress",
+    }
+    enrich = {
+        "M1.3": {"kind": "github_pr", "pr_state": "rejected", "merged": False},
+    }
+    result = dnt._available([a, b], _reg(), enrich)
+    assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
 
 def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -> None:

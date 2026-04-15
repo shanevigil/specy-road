@@ -32,10 +32,14 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
+import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
 import {
   devColumnDetailTitle,
   rowMatchesRegisteredBranch,
 } from "../rowMatchesRegisteredBranch";
+
+const TITLE_PLAN_READONLY_HINT =
+  "Title and planning are read-only while this task is in active development (in progress, open or merged merge request, or this checkout matches the registered branch).";
 
 /** Prefer pointer-actual droppables (gap / into) over sortable row hitboxes. */
 const outlineCollisionDetection: CollisionDetection = (args) => {
@@ -420,11 +424,7 @@ function SortableRow({
       </td>
       <td
         className="outline-title"
-        title={
-          titleEditLocked
-            ? "Title editing is disabled while this task's registered branch is checked out."
-            : undefined
-        }
+        title={titleEditLocked ? TITLE_PLAN_READONLY_HINT : undefined}
         onClick={handleTitleClick}
         onPointerDown={handleTitlePointerDown}
         onPointerMove={handleTitlePointerMove}
@@ -446,7 +446,45 @@ function SortableRow({
             onDoubleClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <div>{node.title}</div>
+          <div className="outline-title-row">
+            {titleEditLocked ? (
+              <span
+                className="outline-pm-lock"
+                title={TITLE_PLAN_READONLY_HINT}
+                aria-label="Read-only"
+              >
+                <svg
+                  className="outline-pm-lock-icon"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <rect
+                    x="3"
+                    y="11"
+                    width="18"
+                    height="11"
+                    rx="2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M7 11V7a5 5 0 0 1 10 0v4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            ) : null}
+            <div className="outline-title-text-wrap">
+              <div>{node.title}</div>
+            </div>
+          </div>
         )}
         {meta ? <div className="outline-meta">{meta}</div> : null}
       </td>
@@ -509,6 +547,8 @@ type Props = {
   onReordered: () => Promise<void>;
   onGapInsert: (referenceNodeId: string) => void;
   displayStatusById?: Record<string, string>;
+  /** Status column: MR lifecycle labels on top of {@link displayStatusById}. */
+  outlineStatusById?: Record<string, string>;
 };
 
 export function OutlineTable({
@@ -534,6 +574,7 @@ export function OutlineTable({
   onReordered,
   onGapInsert,
   displayStatusById,
+  outlineStatusById,
 }: Props) {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
@@ -1016,15 +1057,29 @@ export function OutlineTable({
               // Must match pmDisplayStatus(): absent status → Not Started for tooltip/display parity.
               const persistedNorm =
                 (node?.status as string)?.trim() || "Not Started";
-              const statusText =
+              const baseDisp =
                 displayStatusById != null
                   ? displayStatusById[id] ?? persistedNorm
-                  : (node?.status as string) || "—";
+                  : persistedNorm;
+              const outlineDisp =
+                outlineStatusById != null
+                  ? outlineStatusById[id] ?? baseDisp
+                  : baseDisp;
+              const statusText =
+                outlineStatusById != null
+                  ? outlineDisp
+                  : displayStatusById != null
+                    ? baseDisp
+                    : (node?.status as string) || "—";
               const statusCellTitle =
-                displayStatusById != null &&
-                statusText !== persistedNorm
-                  ? "PM view reflects active registration in roadmap/registry.yaml; the roadmap file may still list another status until it is updated."
+                outlineDisp !== persistedNorm
+                  ? "PM view reflects active registration or Git remote state; the roadmap file may still list another status until it is updated."
                   : undefined;
+              const titlePlanLocked = pmPlanningTitleReadOnlyFromRow(
+                isGitCheckoutRow,
+                baseDisp,
+                outlineDisp,
+              );
               return (
                 <Fragment key={id}>
                   <RowGapBefore
@@ -1056,7 +1111,7 @@ export function OutlineTable({
                       gitEnrichment,
                       prHints,
                     )}
-                    titleEditLocked={isGitCheckoutRow}
+                    titleEditLocked={titlePlanLocked}
                     isDepCandidate={isCandidate}
                     titleEditing={editingTitleId === id}
                     titleDraft={titleDraft}

@@ -137,7 +137,7 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | Field | When to use |
 |-------|-------------|
 | `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. |
-| `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` / `Cancelled` |
+| `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | Milestone-level gate: `Human-led` / `Agentic-led` / `Mixed` |
 | `execution_subtask` | Sub-task tag: `human` / `agentic` / `human-gate` |
 | `touch_zones` | Paths or areas this node modifies (enables overlap detection). |
@@ -149,6 +149,8 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
 | `agentic_checklist` | **Required** when `execution_subtask: agentic`. See below. |
+
+**Dropped status:** `Cancelled` is no longer a valid `status`. To retire a feature, remove the node (for example `specy-road archive-node <id> --hard-remove` after team agreement) or set an appropriate status such as **Complete** / **Blocked** with notes.
 
 ### Decision block (`decision`)
 

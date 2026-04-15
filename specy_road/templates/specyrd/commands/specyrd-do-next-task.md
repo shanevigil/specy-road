@@ -21,9 +21,10 @@ By default this **syncs** the integration branch (`main`), then continues. Flags
 
 This will:
 
-1. Read the roadmap and registry.
-2. List available tasks — `Agentic-led` or `agentic`, not started, dependencies met,
-   not already claimed.
+1. Read the roadmap and registry (and Git remote enrichment when configured in GUI settings).
+2. List available tasks — `Agentic-led` or `agentic`, dependencies met, not already claimed.
+   **Blocked** tasks and tasks whose registered branch has a **rejected/closed-unmerged** PR/MR
+   are listed **before** ordinary **Not Started** work so you can unblock or retry first.
 3. You pick a number.
 4. Create the feature branch (`feature/rm-<codename>`), write the registry entry,
    and make the first commit.

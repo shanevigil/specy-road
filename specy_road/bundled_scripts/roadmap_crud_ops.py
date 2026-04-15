@@ -348,29 +348,6 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     run_validate_raise(root)
 
 
-def _archive_apply(
-    nodes: list,
-    idx: int,
-    nid: str,
-    chunk: Path,
-    root: Path,
-    *,
-    hard_remove: bool,
-) -> None:
-    if hard_remove:
-        ok, msg = can_hard_remove(root, nid)
-        if not ok:
-            print(f"error: cannot hard-remove: {msg}", file=sys.stderr)
-            raise SystemExit(1)
-        del nodes[idx]
-        print(f"[ok] removed {nid} from {chunk.relative_to(root)}")
-    else:
-        node = nodes[idx]
-        if isinstance(node, dict):
-            node["status"] = "Cancelled"
-        print(f"[ok] status -> Cancelled for {nid}")
-
-
 def cmd_archive(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
@@ -382,19 +359,10 @@ def cmd_archive(args: object) -> None:
             raise SystemExit(1) from e
         print(f"[ok] removed {nid}")
         return
-    chunk = find_chunk_path(root, nid)
-    if not chunk:
-        print(f"error: no chunk contains node {nid!r}", file=sys.stderr)
-        raise SystemExit(1)
-    if chunk.suffix.lower() == ".json":
-        nodes = load_json_chunk(chunk)
-        idx = node_index_in_chunk(nodes, nid)
-        if idx is None:
-            print(f"error: node {nid!r} not found", file=sys.stderr)
-            raise SystemExit(1)
-        _archive_apply(nodes, idx, nid, chunk, root, hard_remove=False)
-        write_json_chunk(chunk, nodes)
-        run_validate(root)
-        return
-    print(f"error: unsupported chunk type {chunk.suffix}", file=sys.stderr)
+    print(
+        "error: archive-node without --hard-remove is no longer supported "
+        "(Cancelled was removed from the roadmap schema). "
+        "Remove the node with --hard-remove after team agreement, or edit the JSON chunk.",
+        file=sys.stderr,
+    )
     raise SystemExit(1)

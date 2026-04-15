@@ -148,7 +148,8 @@ Run:
   [YOUR_SECURITY_SCAN_CMD]
 
 Report each finding with package, issue type, and recommended action.
-Do not auto-upgrade unless explicitly asked.
+Do not auto-upgrade unless explicitly asked. Do not remove dependencies 
+required by tests.
 
 If asked to apply upgrades:
 - Run [YOUR_DEPENDENCY_INSTALL_CMD]

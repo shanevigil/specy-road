@@ -709,8 +709,9 @@ export function EditModal({
         ) : null}
         {readOnlyCheckout ? (
           <p className="outline-meta" role="status">
-            This task's registered branch matches your current git checkout; the title and
-            planning sheet are read-only here.
+            The title and planning sheet are read-only while this task is in active development
+            (in progress, open or merged merge request, or this checkout matches the registered
+            branch).
           </p>
         ) : null}
       </div>

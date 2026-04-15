@@ -67,6 +67,9 @@ jobs:
           if-no-files-found: ignore
       - name: Enforce npm audit exit code
         run: test "$(cat npm-audit.exitcode)" -eq 0
+      - name: PM Gantt unit tests (Vitest)
+        working-directory: gui/pm-gantt
+        run: npm test
       - name: Install OSV-Scanner
         run: |
           curl -sSL -o /usr/local/bin/osv-scanner \

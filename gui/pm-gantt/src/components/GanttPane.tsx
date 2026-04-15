@@ -1,5 +1,6 @@
+import type { GitEnrichmentEntry } from "../ganttBarSemantic";
+import { resolveGanttBarStyle } from "../ganttBarSemantic";
 import type { RoadmapNode } from "../types";
-import { displayStatusAllowsCheckoutBar } from "../rowMatchesRegisteredBranch";
 
 const ROW_H = 38;
 const UNIT = 52;
@@ -7,22 +8,21 @@ const BAR_FR = 0.82;
 /** Left inset for chart content; keep in sync with `--gantt-pad-x` in `index.css`. */
 const PAD_L = 8;
 
-function statusColor(status: string | undefined): string {
-  const s = (status || "Not Started").toLowerCase();
-  if (s === "not started") return "var(--bar-not-started)";
-  if (s === "in progress") return "var(--bar-progress)";
-  if (s === "blocked") return "var(--bar-blocked)";
-  if (s === "complete") return "var(--bar-complete)";
-  if (s === "cancelled") return "var(--bar-cancelled)";
-  return "#9e9e9e";
-}
-
 type Props = {
   orderedIds: string[];
   nodesById: Record<string, RoadmapNode>;
   displayStatusById?: Record<string, string>;
   /** Current git branch matches registry branch for this row (same as outline green accent). */
   gitCheckoutById?: Record<string, boolean>;
+  /** Per-node registry rows (`branch`, …) — required to treat work as feature-branch work. */
+  registryByNode?: Record<string, Record<string, unknown>>;
+  /** `git_enrichment` from the roadmap API (optional). */
+  gitEnrichment?: Record<string, GitEnrichmentEntry>;
+  /**
+   * Pixels from SVG top to first data row (matches outline thead + gap before first task).
+   * Keeps scroll-synced rows aligned with the feature list.
+   */
+  stackHeaderPx?: number;
   depths: Record<string, number>;
   /** Steps spanned per row (default 1 when missing). */
   spans?: Record<string, number>;
@@ -53,6 +53,9 @@ export function GanttPane({
   nodesById,
   displayStatusById,
   gitCheckoutById,
+  registryByNode,
+  gitEnrichment,
+  stackHeaderPx = 52,
   depths,
   spans = {},
   edges,
@@ -73,7 +76,10 @@ export function GanttPane({
   }
   const colCount = maxExtent + 2;
   const chartW = PAD_L + colCount * UNIT + 16;
-  const svgH = n * ROW_H + 36;
+  const dataStartY = Math.max(32, stackHeaderPx);
+  const svgH = n * ROW_H + dataStartY;
+  /** Step labels sit above the top grid line (not on the stroke). */
+  const stepLabelBaselineY = Math.max(16, dataStartY - 6);
 
   const rowOf: Record<string, number> = {};
   orderedIds.forEach((id, i) => {
@@ -131,7 +137,7 @@ export function GanttPane({
         <g key={c} pointerEvents="none">
           <line
             x1={PAD_L + c * UNIT}
-            y1={28}
+            y1={dataStartY}
             x2={PAD_L + c * UNIT}
             y2={svgH}
             stroke="var(--border)"
@@ -139,7 +145,7 @@ export function GanttPane({
           />
           <text
             x={PAD_L + c * UNIT + 4}
-            y={32}
+            y={stepLabelBaselineY}
             fontSize={10}
             fill="var(--muted)"
           >
@@ -149,9 +155,9 @@ export function GanttPane({
       ))}
       <line
         x1={0}
-        y1={28}
+        y1={dataStartY}
         x2={chartW}
-        y2={28}
+        y2={dataStartY}
         stroke="var(--border)"
         strokeWidth={1}
         pointerEvents="none"
@@ -160,9 +166,9 @@ export function GanttPane({
         <line
           key={`h-${id}`}
           x1={0}
-          y1={36 + i * ROW_H + ROW_H}
+          y1={dataStartY + i * ROW_H + ROW_H}
           x2={chartW}
-          y2={36 + i * ROW_H + ROW_H}
+          y2={dataStartY + i * ROW_H + ROW_H}
           stroke="var(--border)"
           strokeOpacity={0.5}
           strokeWidth={1}
@@ -172,7 +178,7 @@ export function GanttPane({
       {highlightRowIds && highlightRowIds.size > 0
         ? orderedIds.map((id, i) => {
             if (!highlightRowIds.has(id)) return null;
-            const y = 36 + i * ROW_H;
+            const y = dataStartY + i * ROW_H;
             return (
               <rect
                 key={`dep-hi-${id}`}
@@ -180,7 +186,7 @@ export function GanttPane({
                 y={y}
                 width={chartW}
                 height={ROW_H}
-                fill="var(--gantt-dep-highlight-bg)"
+                fill="var(--gantt-dep-chain-bg)"
                 opacity={0.35}
                 pointerEvents="none"
               />
@@ -192,26 +198,23 @@ export function GanttPane({
         const d = depths[id] ?? 0;
         const span = spans[id] ?? 1;
         const bw = barWidthPx(span);
-        const y = 36 + i * ROW_H;
+        const y = dataStartY + i * ROW_H;
         const x = PAD_L + d * UNIT;
         const sel = selectedId === id;
         const hi =
           Boolean(highlightRowIds?.has(id)) && !sel;
         const disp =
           displayStatusById?.[id] ?? (node?.status as string | undefined);
-        const checkoutBar =
-          Boolean(gitCheckoutById?.[id]) && displayStatusAllowsCheckoutBar(disp);
-        let fill: string;
-        if (checkoutBar) {
-          fill = "var(--bar-checkout-active)";
-        } else if (sel) {
-          fill = "var(--accent)";
-        } else if (hi) {
-          fill = "var(--gantt-dep-highlight)";
-        } else {
-          fill = statusColor(disp);
-        }
-        const selCheckout = sel && checkoutBar;
+        const { fill, stroke, strokeWidth } = resolveGanttBarStyle({
+          nodeId: id,
+          selected: sel,
+          depHighlight: hi,
+          displayStatus: disp,
+          node,
+          registryByNode,
+          gitCheckoutById,
+          gitEnrichment,
+        });
         return (
           <rect
             key={`bar-${id}`}
@@ -221,8 +224,8 @@ export function GanttPane({
             height={ROW_H - 12}
             rx={3}
             fill={fill}
-            stroke={selCheckout ? "var(--accent)" : "rgba(0,0,0,0.15)"}
-            strokeWidth={selCheckout ? 2 : 1}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
             style={{ cursor: "pointer", pointerEvents: "all" }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => onSelect(id)}
@@ -238,8 +241,8 @@ export function GanttPane({
         const w0 = barWidthPx(spans[dep] ?? 1);
         const x0 = PAD_L + d0 * UNIT + w0;
         const x1 = PAD_L + d1 * UNIT;
-        const cy0 = 36 + yi * ROW_H + ROW_H / 2;
-        const cy1 = 36 + yj * ROW_H + ROW_H / 2;
+        const cy0 = dataStartY + yi * ROW_H + ROW_H / 2;
+        const cy1 = dataStartY + yj * ROW_H + ROW_H / 2;
         const midX = (x0 + x1) / 2;
         const inherited = kind === "inherited";
         return (

@@ -27,7 +27,7 @@ A missing contract is a planning gap, not something to fill during implementatio
 ### Start: automated path
 
 The automated path syncs the integration branch (defaults from **`roadmap/git-workflow.yaml`**, else `main`), **lists** eligible
-agentic tasks, you **choose one by number** at the prompt, then it creates the branch,
+agentic tasks (with **Blocked** and **Git-rejected MR** rows first when Git remote settings allow enrichment), you **choose one by number** at the prompt, then it creates the branch,
 registers it, and writes the brief and prompt in one step.
 
 With sync **on** (the default), your working tree must be **clean** — commit, stash, or

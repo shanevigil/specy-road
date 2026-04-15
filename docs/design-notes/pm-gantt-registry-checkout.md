@@ -7,6 +7,8 @@
 
 So the accent means: **this working tree’s `registry.yaml` claims this node is active on the branch you have checked out** — not “someone, somewhere, has registered this milestone.”
 
+**Gantt bars:** the same “active feature branch” signal drives a **green bar** when the row is in progress and registered; that **green** is the bar fill (`--bar-in-progress`), not the outline **accent** color (see [pm-workflow.md](../pm-workflow.md) Colors). Selection and dependency-chain highlights use **blue** and **yellow** and override those fills.
+
 **Dev column (outline):** Precedence is **`owner`** (registry) → **forge PR/MR author** (when `git_remote` is configured) → **author of the latest commit on the remote-tracking branch** (`refs/remotes/<remote>/<branch>`, when that ref exists after `git fetch`) → **local `git config user.name`** only when **current branch equals** that row’s registered `branch` (developer convenience on `feature/rm-*`) → branch string / `—`. Git does not record “who checked out” a branch; remote tip author is a practical proxy for PMs who stay on the integration branch.
 
 **Registry rows on integration branch:** with **Settings → “Merge registry from remote feature branches”** (or env `SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=1`), the server merges registry YAML from remote-tracking **`feature/rm-*`** refs into `registry_by_node` so PMs do not need to check out each feature branch. Requires **`git fetch`** so those refs exist. See [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md).
