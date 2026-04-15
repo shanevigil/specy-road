@@ -75,6 +75,8 @@ type Props = {
   dependencyInheritance?: DependencyInheritanceEntry;
   /** Same maps as the outline table: registry row, PR/MR enrichment, PR hint HTML. */
   registryByNode?: Record<string, Record<string, unknown>>;
+  /** Outline/Gantt display status after registry + phase subtree rollup (when enabled). */
+  pmDisplayStatusResolved?: string;
   gitEnrichment?: Record<string, Record<string, unknown>>;
   prHints?: Record<string, string>;
   onClose: () => void;
@@ -167,6 +169,7 @@ export function EditModal({
   allNodes = [],
   dependencyInheritance,
   registryByNode,
+  pmDisplayStatusResolved,
   gitEnrichment,
   prHints,
   onClose,
@@ -431,7 +434,9 @@ export function EditModal({
 
   const persistedRoadmapStatus =
     (node.status as string)?.trim() || "Not Started";
-  const pmShownStatus = pmDisplayStatus(node, registryByNode?.[node.id]);
+  const pmShownStatus =
+    pmDisplayStatusResolved ??
+    pmDisplayStatus(node, registryByNode?.[node.id]);
   const pmStatusDiffersFromRoadmap = pmShownStatus !== persistedRoadmapStatus;
   const codename = titleToCodename(title) || "—";
   const titleBarText = `Edit ${node.id} - ${codename} - ${persistedRoadmapStatus}`;

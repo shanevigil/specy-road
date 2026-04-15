@@ -33,6 +33,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
 import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
+import { phaseRollupDerivedComplete } from "../parentStatusRollup";
 import {
   devColumnDetailTitle,
   rowMatchesRegisteredBranch,
@@ -51,6 +52,33 @@ const outlineCollisionDetection: CollisionDetection = (args) => {
 };
 
 const TABLE_COLS = 5;
+
+function statusColumnTooltip(
+  node: RoadmapNode | undefined,
+  persistedNorm: string,
+  baseDisp: string,
+  outlineDisp: string,
+): string | undefined {
+  const rollup = phaseRollupDerivedComplete(node, baseDisp);
+  const outlineDiffers = outlineDisp !== persistedNorm;
+  const rollupOnlyVisualComplete =
+    rollup &&
+    outlineDisp.trim().toLowerCase() === "complete" &&
+    persistedNorm.trim().toLowerCase() !== "complete";
+
+  const parts: string[] = [];
+  if (rollup) {
+    parts.push(
+      "Display: all descendants complete (roadmap status unchanged).",
+    );
+  }
+  if (outlineDiffers && !rollupOnlyVisualComplete) {
+    parts.push(
+      "PM view reflects active registration or Git remote state; the roadmap file may still list another status until it is updated.",
+    );
+  }
+  return parts.length > 0 ? parts.join("\n\n") : undefined;
+}
 
 function parentKey(n: RoadmapNode | undefined): string | null {
   const p = n?.parent_id;
@@ -1071,10 +1099,12 @@ export function OutlineTable({
                   : displayStatusById != null
                     ? baseDisp
                     : (node?.status as string) || "—";
-              const statusCellTitle =
-                outlineDisp !== persistedNorm
-                  ? "PM view reflects active registration or Git remote state; the roadmap file may still list another status until it is updated."
-                  : undefined;
+              const statusCellTitle = statusColumnTooltip(
+                node,
+                persistedNorm,
+                baseDisp,
+                outlineDisp,
+              );
               const titlePlanLocked = pmPlanningTitleReadOnlyFromRow(
                 isGitCheckoutRow,
                 baseDisp,

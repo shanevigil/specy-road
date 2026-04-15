@@ -24,10 +24,10 @@ import {
 import type { ModalRect } from "./modalRect";
 import type { RoadmapNode, RoadmapResponse } from "./types";
 import {
-  pmDisplayStatus,
   pmOutlineDisplayStatus,
   pmPlanningTitleReadOnlyFromRow,
 } from "./pmDisplayStatus";
+import { buildDisplayStatusWithPhaseRollup } from "./parentStatusRollup";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
@@ -393,12 +393,11 @@ export default function App() {
 
   const displayStatusById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, string>;
-    const reg = data.registry_by_node ?? {};
-    const out: Record<string, string> = {};
-    for (const id of data.ordered_ids) {
-      out[id] = pmDisplayStatus(byId[id], reg[id]);
-    }
-    return out;
+    return buildDisplayStatusWithPhaseRollup(
+      data.ordered_ids,
+      byId,
+      data.registry_by_node,
+    );
   }, [data, byId]);
 
   const outlineStatusById = useMemo(() => {
@@ -407,10 +406,15 @@ export default function App() {
     const enr = data.git_enrichment ?? {};
     const out: Record<string, string> = {};
     for (const id of data.ordered_ids) {
-      out[id] = pmOutlineDisplayStatus(byId[id], reg[id], enr[id]);
+      out[id] = pmOutlineDisplayStatus(
+        byId[id],
+        reg[id],
+        enr[id],
+        displayStatusById[id],
+      );
     }
     return out;
-  }, [data, byId]);
+  }, [data, byId, displayStatusById]);
 
   const gitCheckoutById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, boolean>;
@@ -1070,6 +1074,7 @@ export default function App() {
               <EditModal
                 key={nodeId}
                 node={emNode}
+                pmDisplayStatusResolved={displayStatusById[nodeId]}
                 allNodes={data.nodes}
                 modalStorageKey={nodeId}
                 stackZIndex={50 + index}

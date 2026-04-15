@@ -126,6 +126,17 @@ describe("pmOutlineDisplayStatus", () => {
       }),
     ).toBe("MR Merged");
   });
+
+  it("uses displayBaseOverride when provided (phase rollup)", () => {
+    expect(
+      pmOutlineDisplayStatus(
+        node("In Progress"),
+        { branch: "feature/x", node_id: "M1.2", codename: "x", touch_zones: [] },
+        undefined,
+        "Complete",
+      ),
+    ).toBe("Complete");
+  });
 });
 
 describe("pmPlanningTitleReadOnlyFromRow", () => {

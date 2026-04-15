@@ -181,6 +181,14 @@ the PM (or delegate), with team agreement — it affects audit trail and anythin
 depended on that node being done. Prefer adding a **follow-up task** with a clear title
 over silently rolling status backward, unless your team explicitly uses rollback.
 
+**Parent / phase rows:** Finishing a leaf milestone does **not** automatically set
+`status: Complete` on parent **phase** nodes in the JSON — the PM Gantt may still *show* a
+phase as done when every descendant is complete (see [pm-workflow.md](pm-workflow.md)).
+To align the file with that state, edit the phase row (for example `specy-road
+edit-node <PHASE_ID> --set status=Complete`) or rely on display-only rollup.
+`specy-road validate` may **warn** when a phase is not `Complete` but every descendant
+is; use `--no-phase-status-warn` to hide that message in CI if it is too noisy.
+
 ---
 
 ## Senior or maintainer review

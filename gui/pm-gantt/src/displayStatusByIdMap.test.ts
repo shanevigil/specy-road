@@ -1,19 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { pmDisplayStatus } from "./pmDisplayStatus";
+import { buildDisplayStatusWithPhaseRollup } from "./parentStatusRollup";
 import type { RoadmapNode } from "./types";
 
-/** Same loop as ``App`` ``displayStatusById`` useMemo (wiring parity). */
+/** Same pipeline as ``App`` ``displayStatusById`` useMemo (wiring parity). */
 function buildDisplayStatusById(
   orderedIds: string[],
   byId: Record<string, RoadmapNode>,
   registryByNode: Record<string, Record<string, unknown>> | undefined,
 ): Record<string, string> {
-  const reg = registryByNode ?? {};
-  const out: Record<string, string> = {};
-  for (const id of orderedIds) {
-    out[id] = pmDisplayStatus(byId[id], reg[id]);
-  }
-  return out;
+  return buildDisplayStatusWithPhaseRollup(orderedIds, byId, registryByNode);
 }
 
 describe("buildDisplayStatusById (App parity)", () => {

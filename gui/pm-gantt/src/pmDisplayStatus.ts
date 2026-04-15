@@ -34,8 +34,13 @@ export function pmOutlineDisplayStatus(
   node: RoadmapNode | undefined,
   registryEntry: Record<string, unknown> | undefined,
   gitEnrichmentEntry: Record<string, unknown> | undefined,
+  /** When set (e.g. phase subtree rollup), used instead of {@link pmDisplayStatus}. */
+  displayBaseOverride?: string,
 ): string {
-  const base = pmDisplayStatus(node, registryEntry);
+  const base =
+    displayBaseOverride !== undefined
+      ? displayBaseOverride
+      : pmDisplayStatus(node, registryEntry);
   const g = gitEnrichmentEntry;
   if (!g) return base;
   const kind = String(g.kind || "");
