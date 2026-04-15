@@ -185,6 +185,7 @@ export function SettingsDrawer({
   const [inheritGitRemote, setInheritGitRemote] = useState(true);
   const [inheritPmGui, setInheritPmGui] = useState(true);
   const [registryRemoteOverlay, setRegistryRemoteOverlay] = useState(false);
+  const [integrationBranchAutoFf, setIntegrationBranchAutoFf] = useState(false);
   const [gitRemoteTestedOk, setGitRemoteTestedOk] = useState(false);
   const [repoLabel, setRepoLabel] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -218,6 +219,7 @@ export function SettingsDrawer({
         pmGuiOverlayDirtyRef.current = false;
         setGitRemoteTestedOk(tested);
         setRegistryRemoteOverlay(pmGuiOverlayPersistedRef.current && tested);
+        setIntegrationBranchAutoFf(pm.integration_branch_auto_ff === true);
         const root = typeof s.repo_root === "string" ? s.repo_root : "";
         setRepoLabel(root ? root : "");
         setLlm(
@@ -260,6 +262,7 @@ export function SettingsDrawer({
         },
         pm_gui: {
           registry_remote_overlay: overlayOutbound,
+          integration_branch_auto_ff: integrationBranchAutoFf,
         },
       })
         .then(() => {
@@ -281,6 +284,7 @@ export function SettingsDrawer({
     inheritGitRemote,
     inheritPmGui,
     registryRemoteOverlay,
+    integrationBranchAutoFf,
     open,
   ]);
 
@@ -359,7 +363,7 @@ export function SettingsDrawer({
         checked={inheritPmGui}
         onChange={setInheritPmGui}
         label="Use global PM GUI options for this repository"
-        optionTitle="When off, the registry overlay toggle below is stored only for this repository."
+        optionTitle="When off, the PM GUI toggles below (registry overlay, integration fast-forward) are stored only for this repository."
       />
       <SettingsToggleRow
         checked={registryRemoteOverlay}
@@ -379,6 +383,12 @@ export function SettingsDrawer({
             ? "When on, the server reads roadmap/registry.yaml from refs/remotes/<remote>/feature/rm-* (periodic git fetch, same cadence as chart auto-refresh by default) and merges active claims with your working tree."
             : 'Disabled until Git remote credentials are saved and "Test Git" succeeds (GitHub or GitLab).'
         }
+      />
+      <SettingsToggleRow
+        checked={integrationBranchAutoFf}
+        onChange={setIntegrationBranchAutoFf}
+        label="Fast-forward integration branch (git fetch + merge --ff-only)"
+        optionTitle="When you are checked out on the integration branch from roadmap/git-workflow.yaml and the working tree is clean, the server periodically runs git fetch and merge --ff-only so the PM chart matches the remote trunk (throttled; interval matches registry fetch by default, overridable via SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S). Ignored on other branches or with local changes."
       />
       <h3 className="settings-appearance-title">Appearance</h3>
       <ThemeModeSegmented value={themeMode} onChange={onThemeModeChange} />

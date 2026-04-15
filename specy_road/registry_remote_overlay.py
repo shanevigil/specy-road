@@ -2,6 +2,9 @@
 
 Primary control: **Settings** → ``pm_gui.registry_remote_overlay`` in ``~/.specy-road/gui-settings.json``.
 Optional env override: ``SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`` forces off; ``=1`` forces on.
+
+Optional fast-forward of the **integration branch** (``git fetch`` + ``git merge --ff-only``) is controlled by
+``pm_gui.integration_branch_auto_ff`` and ``SPECY_ROAD_GUI_AUTO_INTEGRATION_FF``; see ``maybe_auto_integration_ff``.
 """
 
 from __future__ import annotations
@@ -17,7 +20,13 @@ from typing import Any
 
 import yaml
 
-from specy_road.git_workflow_config import is_git_worktree, load_git_workflow_config
+from specy_road.git_workflow_config import (
+    current_branch_name,
+    is_git_worktree,
+    load_git_workflow_config,
+    resolve_integration_defaults,
+    working_tree_clean,
+)
 
 _LIB_DIR = Path(__file__).resolve().parent / "bundled_scripts"
 if str(_LIB_DIR) not in sys.path:
@@ -28,8 +37,9 @@ REGISTRY_REL = Path("roadmap") / "registry.yaml"
 DEFAULT_MAX_REFS = 48
 DEFAULT_TOTAL_BUDGET_S = 5.0
 PER_SHOW_TIMEOUT_S = 4.0
-_FETCH_LOCK = threading.Lock()
+_GIT_SYNC_LOCK = threading.Lock()
 _LAST_FETCH_MONO: dict[str, float] = {}
+_LAST_INTEGRATION_FF_MONO: dict[str, float] = {}
 
 
 def registry_remote_overlay_enabled(repo_root: Path | None = None) -> bool:
@@ -53,6 +63,85 @@ def registry_remote_overlay_enabled(repo_root: Path | None = None) -> bool:
     return bool(str(gr.get("repo") or "").strip() and str(gr.get("token") or "").strip())
 
 
+def integration_branch_auto_ff_enabled(repo_root: Path | None = None) -> bool:
+    """True when periodic fast-forward of the integration branch is allowed (settings or env)."""
+    v = os.environ.get("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "").strip().lower()
+    if v in ("0", "false", "no", "off"):
+        return False
+    if v in ("1", "true", "yes", "on"):
+        return True
+    if repo_root is None:
+        return False
+    eff = effective_settings_for_repo(repo_root)
+    pm = eff.get("pm_gui") if isinstance(eff.get("pm_gui"), dict) else {}
+    return pm.get("integration_branch_auto_ff") is True
+
+
+def _integration_ff_interval_s() -> float:
+    raw = os.environ.get("SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S", "").strip()
+    if raw:
+        try:
+            return max(1.0, min(float(raw), 3600.0))
+        except ValueError:
+            pass
+    raw_iv = os.environ.get("SPECY_ROAD_GUI_REGISTRY_FETCH_INTERVAL_S", "").strip()
+    try:
+        interval = float(raw_iv) if raw_iv else 5.0
+    except ValueError:
+        interval = 5.0
+    return max(1.0, min(interval, 3600.0))
+
+
+def maybe_auto_integration_ff(repo_root: Path) -> None:
+    """Best-effort ``git fetch`` + ``git merge --ff-only`` on the integration branch when HEAD matches it.
+
+    Requires a clean working tree. Throttled separately from overlay fetch. Errors ignored.
+    Serialized with :func:`maybe_auto_git_fetch` via ``_GIT_SYNC_LOCK``.
+    """
+    if not integration_branch_auto_ff_enabled(repo_root):
+        return
+    if not is_git_worktree(repo_root):
+        return
+    base, remote, _warns = resolve_integration_defaults(
+        repo_root,
+        explicit_base=None,
+        explicit_remote=None,
+    )
+    cur = current_branch_name(repo_root)
+    if not cur or cur != base:
+        return
+    if not working_tree_clean(repo_root):
+        return
+    interval = _integration_ff_interval_s()
+    key = str(repo_root.resolve())
+    now = time.monotonic()
+    rname = (remote or "").strip() or "origin"
+    with _GIT_SYNC_LOCK:
+        last = _LAST_INTEGRATION_FF_MONO.get(key, 0.0)
+        if now - last < interval:
+            return
+        _LAST_INTEGRATION_FF_MONO[key] = now
+        try:
+            subprocess.run(
+                ["git", "fetch", "--quiet", rname],
+                cwd=repo_root,
+                capture_output=True,
+                text=True,
+                timeout=120.0,
+                check=False,
+            )
+            subprocess.run(
+                ["git", "merge", "--ff-only", f"{rname}/{base}"],
+                cwd=repo_root,
+                capture_output=True,
+                text=True,
+                timeout=120.0,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+
 def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
     """Best-effort ``git fetch`` for ``remote``; throttled by interval; errors ignored."""
     af = os.environ.get("SPECY_ROAD_GUI_REGISTRY_AUTO_FETCH", "").strip().lower()
@@ -68,23 +157,23 @@ def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
     interval = max(1.0, min(interval, 3600.0))
     key = str(repo_root.resolve())
     now = time.monotonic()
-    with _FETCH_LOCK:
+    rname = (remote or "").strip() or "origin"
+    with _GIT_SYNC_LOCK:
         last = _LAST_FETCH_MONO.get(key, 0.0)
         if now - last < interval:
             return
         _LAST_FETCH_MONO[key] = now
-    rname = (remote or "").strip() or "origin"
-    try:
-        subprocess.run(
-            ["git", "fetch", "--quiet", rname],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=120.0,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        pass
+        try:
+            subprocess.run(
+                ["git", "fetch", "--quiet", rname],
+                cwd=repo_root,
+                capture_output=True,
+                text=True,
+                timeout=120.0,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            pass
 
 
 def _max_refs() -> int:

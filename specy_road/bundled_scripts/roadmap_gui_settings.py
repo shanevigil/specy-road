@@ -42,6 +42,7 @@ def default_settings() -> dict[str, Any]:
         },
         "pm_gui": {
             "registry_remote_overlay": False,
+            "integration_branch_auto_ff": False,
         },
     }
 

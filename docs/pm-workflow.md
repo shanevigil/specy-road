@@ -148,6 +148,7 @@ See [git-workflow.md](git-workflow.md) and [design-notes/pm-gantt-registry-check
 
 - Use the sidebar **“Auto-refresh seconds”** slider. Set it above zero so the app checks for file changes on a timer (for example every 30 seconds).
 - Saving roadmap files on disk (by you or by tooling) updates what the app reads on the next load or refresh.
+- **Optional:** enable **“Fast-forward integration branch”** in **Settings** (under **This repository**) so that, while you are checked out on the integration branch from `roadmap/git-workflow.yaml` with a **clean** working tree, the server periodically runs **`git fetch`** and **`git merge --ff-only`** (throttled; same default cadence as registry fetch unless you override `SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S`). That keeps on-disk roadmap JSON aligned with the remote trunk without relying on `git fetch` alone (which does not update `HEAD`). See [design-notes/pm-gui-integration-branch-auto-ff.md](design-notes/pm-gui-integration-branch-auto-ff.md).
 
 ### Change status from the dashboard
 
@@ -174,6 +175,7 @@ In **Settings**, use **This repository** toggles:
 
 - **Use global LLM settings for this repository** — when on, LLM fields you edit are saved as **global** defaults. When off, only fields that differ from those defaults are stored for **this** checkout (so you can use one API key everywhere, or a different key per project).
 - **Use global Git remote settings for this repository** — same idea for GitHub/GitLab **repo** name, token, and related fields (useful when each codebase has its own remote but you share one token).
+- **Use global PM GUI options for this repository** — when off, **Merge registry from remote feature branches** and **Fast-forward integration branch** are stored per checkout (see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md) and [design-notes/pm-gui-integration-branch-auto-ff.md](design-notes/pm-gui-integration-branch-auto-ff.md)).
 
 | Tab            | What it is for                                                                                                                                                                                                                 |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

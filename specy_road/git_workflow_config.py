@@ -121,6 +121,16 @@ def current_branch_name(repo_root: Path) -> str | None:
     return None
 
 
+def working_tree_clean(repo_root: Path) -> bool:
+    """True when ``git status --porcelain`` is empty (no staged/unstaged/untracked noise)."""
+    if not is_git_worktree(repo_root):
+        return False
+    ok, out = _git_ok(["status", "--porcelain"], repo_root)
+    if not ok:
+        return False
+    return not (out or "").strip()
+
+
 def current_head_short_sha(repo_root: Path) -> str | None:
     if not is_git_worktree(repo_root):
         return None

@@ -15,8 +15,11 @@ if str(BUNDLED_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(BUNDLED_SCRIPTS))
 import pm_gui_git_remote_verify as _pm_git  # noqa: E402
 
+from specy_road.git_workflow_config import working_tree_clean
 from specy_road.registry_remote_overlay import (
+    integration_branch_auto_ff_enabled,
     merge_registry_with_remote_overlay,
+    maybe_auto_integration_ff,
     read_registry_at_ref,
     registry_remote_overlay_enabled,
     remote_feature_refs_fingerprint_addendum,
@@ -201,3 +204,153 @@ def test_roadmap_fingerprint_combined(
     base = roadmap_fingerprint(overlay_repo)
     combined = roadmap_fingerprint_with_remote_refs(overlay_repo, base)
     assert combined != base
+
+
+def _init_integration_ff_repo(tmp_path: Path) -> Path:
+    """Single-branch ``main`` repo with ``roadmap/git-workflow.yaml`` integration_branch: main."""
+    repo = tmp_path / "ff"
+    repo.mkdir()
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "t@example.com"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "T"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    roadmap = repo / "roadmap"
+    roadmap.mkdir(parents=True)
+    _write_gw(repo)
+    (roadmap / "manifest.json").write_text(
+        '{"version":1,"includes":[]}\n',
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "roadmap"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
+    return repo
+
+
+def test_working_tree_clean(tmp_path: Path) -> None:
+    repo = _init_integration_ff_repo(tmp_path)
+    assert working_tree_clean(repo) is True
+    (repo / "untracked.txt").write_text("x", encoding="utf-8")
+    assert working_tree_clean(repo) is False
+
+
+def test_integration_branch_auto_ff_enabled_env(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", raising=False)
+    root = tmp_path / "x"
+    root.mkdir()
+    assert integration_branch_auto_ff_enabled(root) is False
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
+    assert integration_branch_auto_ff_enabled(root) is True
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "0")
+    assert integration_branch_auto_ff_enabled(root) is False
+
+
+def test_maybe_auto_integration_ff_skips_without_env_or_settings(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", raising=False)
+    repo = _init_integration_ff_repo(tmp_path)
+    calls: list[list[str]] = []
+
+    def fake_run(args: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(list(args))
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    maybe_auto_integration_ff(repo)
+    assert calls == []
+
+
+def _patch_subprocess_run_track_fetch_merge(
+    monkeypatch: pytest.MonkeyPatch,
+) -> list[list[str]]:
+    """Record only ``git fetch`` / ``git merge --ff-only``; delegate other git to real ``run``."""
+    tracked: list[list[str]] = []
+    real_run = subprocess.run
+
+    def fake_run(
+        args: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[str]:
+        a = list(args)
+        if a[:2] == ["git", "fetch"] and "--quiet" in a:
+            tracked.append(a)
+            return subprocess.CompletedProcess(a, 0, "", "")
+        if len(a) >= 3 and a[0] == "git" and a[1] == "merge" and a[2] == "--ff-only":
+            tracked.append(a)
+            return subprocess.CompletedProcess(a, 0, "", "")
+        return real_run(args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    return tracked
+
+
+def test_maybe_auto_integration_ff_skips_wrong_branch(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
+    repo = _init_integration_ff_repo(tmp_path)
+    subprocess.run(["git", "checkout", "-b", "feature/x"], cwd=repo, check=True, capture_output=True)
+    calls = _patch_subprocess_run_track_fetch_merge(monkeypatch)
+    maybe_auto_integration_ff(repo)
+    assert calls == []
+
+
+def test_maybe_auto_integration_ff_skips_dirty_tree(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
+    repo = _init_integration_ff_repo(tmp_path)
+    (repo / "dirty.txt").write_text("z", encoding="utf-8")
+    calls = _patch_subprocess_run_track_fetch_merge(monkeypatch)
+    maybe_auto_integration_ff(repo)
+    assert calls == []
+
+
+def test_maybe_auto_integration_ff_runs_fetch_and_merge(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
+    repo = _init_integration_ff_repo(tmp_path)
+    _registry_overlay._LAST_INTEGRATION_FF_MONO.clear()
+    calls = _patch_subprocess_run_track_fetch_merge(monkeypatch)
+    maybe_auto_integration_ff(repo)
+    assert calls[0] == ["git", "fetch", "--quiet", "origin"]
+    assert calls[1] == ["git", "merge", "--ff-only", "origin/main"]
+    maybe_auto_integration_ff(repo)
+    assert len(calls) == 2
+
+
+def test_maybe_auto_integration_ff_respects_throttle(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
+    monkeypatch.setenv("SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S", "3600")
+    repo = _init_integration_ff_repo(tmp_path)
+    _registry_overlay._LAST_INTEGRATION_FF_MONO.clear()
+    calls = _patch_subprocess_run_track_fetch_merge(monkeypatch)
+    maybe_auto_integration_ff(repo)
+    assert len(calls) == 2
+    maybe_auto_integration_ff(repo)
+    assert len(calls) == 2
