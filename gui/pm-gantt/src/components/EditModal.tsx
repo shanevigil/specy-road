@@ -105,6 +105,8 @@ type Props = {
   onActivate?: () => void;
   /** Report position/size for stacking and tile restore. */
   onRectCommit?: (r: ModalRect) => void;
+  /** Current git branch matches this task's registered branch — title/planning edits disabled. */
+  readOnlyCheckout?: boolean;
 };
 
 type SavedSnap = {
@@ -182,6 +184,7 @@ export function EditModal({
   titleBarActive = false,
   onActivate,
   onRectCommit,
+  readOnlyCheckout = false,
 }: Props) {
   const [title, setTitle] = useState("");
   /** Repo-relative paths of ancestor feature sheets (read-only context); not editable in this dialog. */
@@ -319,6 +322,7 @@ export function EditModal({
 
   useEffect(() => {
     if (!hydrated || !node || loading) return;
+    if (readOnlyCheckout) return;
     if (titleConflict.hasConflict) return;
     if (title === lastSaved.current.title) {
       return;
@@ -338,10 +342,19 @@ export function EditModal({
         });
     }, 500);
     return () => window.clearTimeout(t);
-  }, [title, hydrated, node, loading, onPersisted, titleConflict.hasConflict]);
+  }, [
+    title,
+    hydrated,
+    node,
+    loading,
+    onPersisted,
+    titleConflict.hasConflict,
+    readOnlyCheckout,
+  ]);
 
   useEffect(() => {
     if (!hydrated || !node || loading || !sheetPath) return;
+    if (readOnlyCheckout) return;
     if (
       content === lastSaved.current.content &&
       sheetPath === lastSaved.current.path
@@ -367,7 +380,7 @@ export function EditModal({
         });
     }, 600);
     return () => window.clearTimeout(t);
-  }, [content, sheetPath, hydrated, node, loading, onPersisted]);
+  }, [content, sheetPath, hydrated, node, loading, onPersisted, readOnlyCheckout]);
 
   const depItems = useMemo(
     () =>
@@ -431,7 +444,7 @@ export function EditModal({
   );
 
   const runLlmReview = () => {
-    if (!node) return;
+    if (!node || readOnlyCheckout) return;
     const sheetSnapshot = content;
     setReviewBusy(true);
     setReviewErr(null);
@@ -478,6 +491,7 @@ export function EditModal({
   };
 
   const applyMergedSheet = () => {
+    if (readOnlyCheckout) return;
     if (!contentSnapshotAtReview || reviewReport == null) return;
     if (pairedSectionCount === 0) return;
     const effectiveChoices = Array.from(
@@ -494,6 +508,7 @@ export function EditModal({
   };
 
   const acceptAllProposed = () => {
+    if (readOnlyCheckout) return;
     if (!contentSnapshotAtReview || reviewReport == null) return;
     if (pairedSectionCount === 0) return;
     const merged = mergeBySectionChoices(
@@ -506,6 +521,7 @@ export function EditModal({
   };
 
   const chooseSection = (sectionIndex: number, choice: "before" | "proposed") => {
+    if (readOnlyCheckout) return;
     setSectionChoices((prev) => {
       const next = [...prev];
       next[sectionIndex] = choice;
@@ -524,6 +540,7 @@ export function EditModal({
   };
 
   const appendToDocument = (chunk: string) => {
+    if (readOnlyCheckout) return;
     const t = chunk.trim();
     if (!t) return;
     setContent((prev) => {
@@ -549,7 +566,7 @@ export function EditModal({
   };
 
   const onScaffoldPlanning = () => {
-    if (!node) return;
+    if (!node || readOnlyCheckout) return;
     setScaffolding(true);
     setErr(null);
     void scaffoldPlanning(node.id)
@@ -611,10 +628,13 @@ export function EditModal({
       </>
     ) : null;
 
-  const llmReviewDisabled = !llmConfigured || reviewBusy;
-  const llmReviewTitle = llmConfigured
-    ? "Have an LLM provide a suggested clean up"
-    : "Configure an LLM in Settings to enable this";
+  const llmReviewDisabled =
+    !llmConfigured || reviewBusy || readOnlyCheckout;
+  const llmReviewTitle = readOnlyCheckout
+    ? "Editing is disabled while this task's registered branch is checked out"
+    : llmConfigured
+      ? "Have an LLM provide a suggested clean up"
+      : "Configure an LLM in Settings to enable this";
 
   return (
     <ModalFrame
@@ -650,6 +670,7 @@ export function EditModal({
           Title
           <input
             value={title}
+            readOnly={readOnlyCheckout}
             onChange={(e) => setTitle(e.target.value)}
             autoComplete="off"
             aria-invalid={titleConflict.hasConflict}
@@ -684,6 +705,12 @@ export function EditModal({
             PM Gantt shows <strong>{pmShownStatus}</strong> in the outline while this node is
             registered in <code>roadmap/registry.yaml</code>; the saved roadmap status is{" "}
             <strong>{persistedRoadmapStatus}</strong>.
+          </p>
+        ) : null}
+        {readOnlyCheckout ? (
+          <p className="outline-meta" role="status">
+            This task's registered branch matches your current git checkout; the title and
+            planning sheet are read-only here.
           </p>
         ) : null}
       </div>
@@ -770,6 +797,7 @@ export function EditModal({
                   className="modal-markdown-fill constitution-md-workspace"
                   value={content}
                   onChange={setContent}
+                  disabled={readOnlyCheckout}
                   spellCheck
                   editorLabel="Planning markdown"
                 />
@@ -782,6 +810,7 @@ export function EditModal({
                   className="modal-markdown-fill constitution-md-workspace"
                   value={content}
                   onChange={setContent}
+                  disabled={readOnlyCheckout}
                   spellCheck
                   editorLabel="Planning markdown"
                 />
@@ -800,7 +829,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => appendSelectionFromReview()}
-                    disabled={!hasReviewTextSelection}
+                    disabled={readOnlyCheckout || !hasReviewTextSelection}
                     title="Append selected text from the markdown source below"
                   >
                     Append selection
@@ -808,6 +837,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => appendEntireReport()}
+                    disabled={readOnlyCheckout}
                     title="Append the full proposed sheet to the planning document"
                   >
                     Append proposed sheet
@@ -815,7 +845,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => applyMergedSheet()}
-                    disabled={!canAcceptReviewMerge}
+                    disabled={readOnlyCheckout || !canAcceptReviewMerge}
                     title={
                       canAcceptReviewMerge
                         ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
@@ -827,7 +857,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => acceptAllProposed()}
-                    disabled={!canAcceptReviewMerge}
+                    disabled={readOnlyCheckout || !canAcceptReviewMerge}
                     title={
                       canAcceptReviewMerge
                         ? "Use the proposed text for every paired section"
@@ -879,7 +909,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => appendSelectionFromReview()}
-                    disabled={!hasReviewTextSelection}
+                    disabled={readOnlyCheckout || !hasReviewTextSelection}
                     title="Append selected text from the markdown source above"
                   >
                     Append selection
@@ -887,6 +917,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => appendEntireReport()}
+                    disabled={readOnlyCheckout}
                     title="Append the full proposed sheet to the planning document"
                   >
                     Append proposed sheet
@@ -894,7 +925,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => applyMergedSheet()}
-                    disabled={!canAcceptReviewMerge}
+                    disabled={readOnlyCheckout || !canAcceptReviewMerge}
                     title={
                       canAcceptReviewMerge
                         ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
@@ -906,7 +937,7 @@ export function EditModal({
                   <button
                     type="button"
                     onClick={() => acceptAllProposed()}
-                    disabled={!canAcceptReviewMerge}
+                    disabled={readOnlyCheckout || !canAcceptReviewMerge}
                     title={
                       canAcceptReviewMerge
                         ? "Use the proposed text for every paired section"
@@ -934,7 +965,7 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => applyMergedSheet()}
-                  disabled={!canAcceptReviewMerge}
+                  disabled={readOnlyCheckout || !canAcceptReviewMerge}
                   title={
                     canAcceptReviewMerge
                       ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
@@ -946,7 +977,7 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => acceptAllProposed()}
-                  disabled={!canAcceptReviewMerge}
+                  disabled={readOnlyCheckout || !canAcceptReviewMerge}
                   title={
                     canAcceptReviewMerge
                       ? "Use the proposed text for every paired section"
@@ -990,7 +1021,7 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => applyMergedSheet()}
-                  disabled={!canAcceptReviewMerge}
+                  disabled={readOnlyCheckout || !canAcceptReviewMerge}
                   title={
                     canAcceptReviewMerge
                       ? "Merge paired sections: uses Proposed where you chose it; unmarked sections use the before (snapshot) text"
@@ -1002,7 +1033,7 @@ export function EditModal({
                 <button
                   type="button"
                   onClick={() => acceptAllProposed()}
-                  disabled={!canAcceptReviewMerge}
+                  disabled={readOnlyCheckout || !canAcceptReviewMerge}
                   title={
                     canAcceptReviewMerge
                       ? "Use the proposed text for every paired section"
@@ -1026,7 +1057,7 @@ export function EditModal({
             </p>
             <button
               type="button"
-              disabled={scaffolding}
+              disabled={scaffolding || readOnlyCheckout}
               onClick={onScaffoldPlanning}
             >
               {scaffolding ? "Creating…" : "Create planning file"}

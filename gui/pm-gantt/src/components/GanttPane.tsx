@@ -1,4 +1,5 @@
 import type { RoadmapNode } from "../types";
+import { displayStatusAllowsCheckoutBar } from "../rowMatchesRegisteredBranch";
 
 const ROW_H = 38;
 const UNIT = 52;
@@ -20,6 +21,8 @@ type Props = {
   orderedIds: string[];
   nodesById: Record<string, RoadmapNode>;
   displayStatusById?: Record<string, string>;
+  /** Current git branch matches registry branch for this row (same as outline green accent). */
+  gitCheckoutById?: Record<string, boolean>;
   depths: Record<string, number>;
   /** Steps spanned per row (default 1 when missing). */
   spans?: Record<string, number>;
@@ -49,6 +52,7 @@ export function GanttPane({
   orderedIds,
   nodesById,
   displayStatusById,
+  gitCheckoutById,
   depths,
   spans = {},
   edges,
@@ -193,6 +197,21 @@ export function GanttPane({
         const sel = selectedId === id;
         const hi =
           Boolean(highlightRowIds?.has(id)) && !sel;
+        const disp =
+          displayStatusById?.[id] ?? (node?.status as string | undefined);
+        const checkoutBar =
+          Boolean(gitCheckoutById?.[id]) && displayStatusAllowsCheckoutBar(disp);
+        let fill: string;
+        if (checkoutBar) {
+          fill = "var(--bar-checkout-active)";
+        } else if (sel) {
+          fill = "var(--accent)";
+        } else if (hi) {
+          fill = "var(--gantt-dep-highlight)";
+        } else {
+          fill = statusColor(disp);
+        }
+        const selCheckout = sel && checkoutBar;
         return (
           <rect
             key={`bar-${id}`}
@@ -201,17 +220,9 @@ export function GanttPane({
             width={bw}
             height={ROW_H - 12}
             rx={3}
-            fill={
-              sel
-                ? "var(--accent)"
-                : hi
-                  ? "var(--gantt-dep-highlight)"
-                  : statusColor(
-                      displayStatusById?.[id] ?? (node?.status as string | undefined),
-                    )
-            }
-            stroke="rgba(0,0,0,0.15)"
-            strokeWidth={1}
+            fill={fill}
+            stroke={selCheckout ? "var(--accent)" : "rgba(0,0,0,0.15)"}
+            strokeWidth={selCheckout ? 2 : 1}
             style={{ cursor: "pointer", pointerEvents: "all" }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => onSelect(id)}

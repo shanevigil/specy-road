@@ -13,6 +13,8 @@
   --sel-bg: rgba(25, 118, 210, 0.12);
   --bar-not-started: #b0b0b0;
   --bar-progress: #1976d2;
+  /** Matches outline git-checkout accent; used when HEAD matches registry branch. */
+  --bar-checkout-active: #2e7d32;
   --bar-blocked: #d32f2f;
   --bar-complete: #424242;
   --bar-cancelled: #757575;
@@ -39,6 +41,7 @@
   --muted: #9e9e9e;
   --accent: #64b5f6;
   --sel-bg: rgba(100, 181, 246, 0.15);
+  --bar-checkout-active: #66bb6a;
   --gantt-dep-highlight: #ffb74d;
   --gantt-dep-highlight-bg: rgba(255, 183, 77, 0.12);
 }
@@ -51,6 +54,7 @@
     --muted: #9e9e9e;
     --accent: #64b5f6;
     --sel-bg: rgba(100, 181, 246, 0.15);
+    --bar-checkout-active: #66bb6a;
     --gantt-dep-highlight: #ffb74d;
     --gantt-dep-highlight-bg: rgba(255, 183, 77, 0.12);
   }

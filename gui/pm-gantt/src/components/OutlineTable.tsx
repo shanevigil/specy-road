@@ -32,6 +32,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
+import {
+  devColumnDetailTitle,
+  rowMatchesRegisteredBranch,
+} from "../rowMatchesRegisteredBranch";
 
 /** Prefer pointer-actual droppables (gap / into) over sortable row hitboxes. */
 const outlineCollisionDetection: CollisionDetection = (args) => {
@@ -246,6 +250,10 @@ type RowProps = {
   depCellRef?: RefObject<HTMLTableCellElement | null>;
   /** Registry branch matches current git checkout (named branch). */
   isGitCheckoutRow?: boolean;
+  /** Branch / registry details (hover); not shown under title to keep row height aligned with Gantt. */
+  devCellTitle?: string;
+  /** Inline title edit disabled (same condition as isGitCheckoutRow). */
+  titleEditLocked?: boolean;
 };
 
 function SortableRow({
@@ -274,6 +282,8 @@ function SortableRow({
   dragDisabled,
   depCellRef,
   isGitCheckoutRow,
+  devCellTitle,
+  titleEditLocked,
 }: RowProps) {
   const {
     attributes,
@@ -307,7 +317,7 @@ function SortableRow({
   };
 
   const handleTitlePointerDown = (e: ReactPointerEvent<HTMLTableCellElement>) => {
-    if (depEditId || titleEditing) return;
+    if (depEditId || titleEditing || titleEditLocked) return;
     if (e.button !== 0) return;
     clearLongPressTimer();
     longPressOrigin.current = { x: e.clientX, y: e.clientY };
@@ -410,6 +420,11 @@ function SortableRow({
       </td>
       <td
         className="outline-title"
+        title={
+          titleEditLocked
+            ? "Title editing is disabled while this task's registered branch is checked out."
+            : undefined
+        }
         onClick={handleTitleClick}
         onPointerDown={handleTitlePointerDown}
         onPointerMove={handleTitlePointerMove}
@@ -442,7 +457,11 @@ function SortableRow({
       >
         {statusText}
       </td>
-      <td className="outline-col-dev" onClick={handleStatusDevClick}>
+      <td
+        className="outline-col-dev"
+        title={devCellTitle}
+        onClick={handleStatusDevClick}
+      >
         {devText}
       </td>
       <td
@@ -534,6 +553,9 @@ export function OutlineTable({
 
   const metaLine = (nid: string) => {
     const g = gitEnrichment[nid];
+    if (g?.kind === "registry" || g?.kind === "remote_tip") {
+      return "";
+    }
     if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
       const assignees = g.assignees as string[] | undefined;
       const author = g.author as string | undefined;
@@ -542,12 +564,6 @@ export function OutlineTable({
         assignees?.length ? `A: ${assignees.join(", ")}` : "",
       ].filter(Boolean);
       return bits.join(" · ") || (g.hint_line as string) || "";
-    }
-    if (g?.kind === "remote_tip") {
-      const br = g.branch as string | undefined;
-      const author = g.author as string | undefined;
-      if (br && author) return `${br} · ${author}`;
-      if (g?.hint_line) return String(g.hint_line);
     }
     if (g?.hint_line) return String(g.hint_line);
     if (prHints[nid]) return prHints[nid].replace(/<br>/g, " · ");
@@ -578,6 +594,16 @@ export function OutlineTable({
 
   const flushTitleIfDirty = useCallback(async () => {
     if (!editingTitleId) return;
+    if (
+      rowMatchesRegisteredBranch(
+        editingTitleId,
+        registryByNode,
+        gitBranchCurrent,
+      )
+    ) {
+      setEditingTitleId(null);
+      return;
+    }
     const n = nodesById[editingTitleId];
     if (!n) {
       setEditingTitleId(null);
@@ -593,7 +619,14 @@ export function OutlineTable({
       }
     }
     setEditingTitleId(null);
-  }, [editingTitleId, titleDraft, nodesById, onReordered]);
+  }, [
+    editingTitleId,
+    titleDraft,
+    nodesById,
+    onReordered,
+    registryByNode,
+    gitBranchCurrent,
+  ]);
 
   const cancelTitleEdit = useCallback(() => {
     setEditingTitleId(null);
@@ -612,6 +645,10 @@ export function OutlineTable({
     if (!editingTitleId) return;
     const id = editingTitleId;
     const tid = window.setInterval(() => {
+      if (rowMatchesRegisteredBranch(id, registryByNode, gitBranchCurrent)) {
+        setEditingTitleId(null);
+        return;
+      }
       const n = nodesById[id];
       if (!n) return;
       const trimmed = titleDraft.trim();
@@ -622,7 +659,14 @@ export function OutlineTable({
       }
     }, 2500);
     return () => window.clearInterval(tid);
-  }, [editingTitleId, titleDraft, nodesById, onReordered]);
+  }, [
+    editingTitleId,
+    titleDraft,
+    nodesById,
+    onReordered,
+    registryByNode,
+    gitBranchCurrent,
+  ]);
 
   const depCellActivate = useCallback(
     (nodeId: string) => {
@@ -652,6 +696,9 @@ export function OutlineTable({
 
   const beginTitleEdit = (nid: string) => {
     if (depEditId) return;
+    if (rowMatchesRegisteredBranch(nid, registryByNode, gitBranchCurrent)) {
+      return;
+    }
     const n = nodesById[nid];
     if (!n) return;
     setEditingTitleId(nid);
@@ -961,12 +1008,11 @@ export function OutlineTable({
                 Boolean(nk) &&
                 depDraftKeys.has(nk) &&
                 depEditId !== id;
-              const curBr = gitBranchCurrent?.trim() || "";
-              const regBr = registryByNode?.[id]?.branch;
-              const isGitCheckoutRow =
-                Boolean(curBr) &&
-                typeof regBr === "string" &&
-                regBr.trim() === curBr;
+              const isGitCheckoutRow = rowMatchesRegisteredBranch(
+                id,
+                registryByNode,
+                gitBranchCurrent,
+              );
               // Must match pmDisplayStatus(): absent status → Not Started for tooltip/display parity.
               const persistedNorm =
                 (node?.status as string)?.trim() || "Not Started";
@@ -1004,6 +1050,13 @@ export function OutlineTable({
                     depCellText={depCellLabel(id)}
                     depEditId={depEditId}
                     isGitCheckoutRow={isGitCheckoutRow}
+                    devCellTitle={devColumnDetailTitle(
+                      id,
+                      registryByNode,
+                      gitEnrichment,
+                      prHints,
+                    )}
+                    titleEditLocked={isGitCheckoutRow}
                     isDepCandidate={isCandidate}
                     titleEditing={editingTitleId === id}
                     titleDraft={titleDraft}

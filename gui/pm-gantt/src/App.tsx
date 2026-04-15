@@ -24,6 +24,7 @@ import {
 import type { ModalRect } from "./modalRect";
 import type { RoadmapNode, RoadmapResponse } from "./types";
 import { pmDisplayStatus } from "./pmDisplayStatus";
+import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { RegistryVisibilityBanner } from "./components/RegistryVisibilityBanner";
@@ -360,6 +361,21 @@ export default function App() {
     }
     return out;
   }, [data, byId]);
+
+  const gitCheckoutById = useMemo(() => {
+    if (!data?.ordered_ids) return {} as Record<string, boolean>;
+    const reg = data.registry_by_node ?? {};
+    const cur = data.git_workflow?.resolved?.git_branch_current ?? null;
+    const out: Record<string, boolean> = {};
+    for (const id of data.ordered_ids) {
+      out[id] = rowMatchesRegisteredBranch(id, reg, cur);
+    }
+    return out;
+  }, [data]);
+
+  const selectedReadOnlyCheckout = Boolean(
+    selectedId && gitCheckoutById[selectedId],
+  );
 
   const keyToDisplayId = useMemo(() => {
     if (!data?.nodes) return {} as Record<string, string>;
@@ -722,8 +738,12 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={!selectedId}
-                title="Edit selected task"
+                disabled={!selectedId || selectedReadOnlyCheckout}
+                title={
+                  selectedReadOnlyCheckout
+                    ? "Editing is disabled while this task's registered branch is checked out"
+                    : "Edit selected task"
+                }
                 aria-label="Edit selected task"
                 onClick={() => {
                   if (!selectedId) return;
@@ -945,6 +965,7 @@ export default function App() {
               orderedIds={data.ordered_ids}
               nodesById={byId}
               displayStatusById={displayStatusById}
+              gitCheckoutById={gitCheckoutById}
               depths={data.dependency_depths}
               spans={data.dependency_spans}
               edges={data.edges}
@@ -990,6 +1011,7 @@ export default function App() {
                 onClose={() => closeEditNode(nodeId)}
                 onOpenNode={openEditNode}
                 onPersisted={() => void load()}
+                readOnlyCheckout={Boolean(gitCheckoutById[nodeId])}
               />
             );
           })
