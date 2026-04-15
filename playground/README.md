@@ -1,6 +1,8 @@
 # Playground (local only)
 
-Use this directory as a **fake consumer project** while you work in the **specy-road** repository: run `init project` here so roadmap JSON, `AGENTS.md`, `planning/`, and the rest land under `playground/` instead of beside `pyproject.toml`.
+Use this directory as a **fake consumer project** while you work in the **specy-road** repository: run `init project` here so the full bundled layout (roadmap JSON, `AGENTS.md`, `constitution/`, `constraints/`, `planning/`, `shared/`, `docs/supply-chain-security.md`, `work/`, …) lands under `playground/` instead of beside `pyproject.toml`. That matches what [`specy-road init project`](../README.md#new-project-consumer) writes for a real app repo.
+
+**Maintainers:** automated validation and export checks in this repository use the dogfood tree [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) (see root [`AGENTS.md`](../AGENTS.md)). **Playground** is for interactive trials of the **consumer** scaffold and the PM GUI, not the canonical toolkit roadmap.
 
 **Git:** Everything under `playground/` is ignored except this file and [`.gitkeep`](.gitkeep). Scaffold output, briefs, and exports stay local. Remove contents when finished, or delete the whole folder; nothing here ships with the package.
 
@@ -33,6 +35,8 @@ Preview without writing:
 specy-road init project playground --dry-run
 ```
 
+After the scaffold exists, set **`roadmap/git-workflow.yaml`** (integration branch and remote) so `specy-road sync`, registry flows, and the PM Gantt agree with your repository. See [`docs/git-workflow.md`](../docs/git-workflow.md).
+
 ---
 
 ## PM CLI: always pass `--repo-root`
@@ -64,7 +68,11 @@ Run the server against the playground tree:
 specy-road gui --repo-root playground
 ```
 
+Open the Gantt UI at the URL printed on startup (by default **`http://127.0.0.1:8765/`**). Use **`--host`** and **`--port`** on `specy-road gui` if you need a different bind address.
+
 `--repo-root` sets the GUI’s project root for that process (same as `SPECY_ROAD_REPO_ROOT`); it overrides repo discovery from the current directory, so you can keep your shell at the toolkit root.
+
+After you **pull** changes to this clone, you can refresh the editable install and GUI build with **`specy-road update --install-gui-stack`** (same idea as `init gui --install-gui`; see "Update an editable clone" in [`docs/setup.md`](../docs/setup.md)).
 
 After you change sources under **`gui/pm-gantt/`**, rebuild bundled assets, then restart the GUI:
 
@@ -80,4 +88,5 @@ specy-road gui --repo-root playground
 ```bash
 specy-road validate --repo-root playground
 specy-road export --check --repo-root playground
+specy-road file-limits --repo-root playground
 ```

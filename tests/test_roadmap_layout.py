@@ -63,7 +63,7 @@ def test_dependency_edges_detailed_marks_inherited() -> None:
 
 
 def test_compute_dependency_steps_m1_playground_shape() -> None:
-    """Isomorphic to ``playground/roadmap/phases/M1.json`` (phase, chained features, milestone dep)."""
+    """Synthetic graph: phase with chained sibling deps plus a milestone depending on a child (regression for ``compute_dependency_steps``)."""
     k0 = "a1b2c3d4-e5f6-4789-a012-3456789abcde"
     k1 = "b2c3d4e5-f6a7-4890-b123-456789abcdef"
     k11 = "20562f21-a15d-47be-a40f-429397a93a02"

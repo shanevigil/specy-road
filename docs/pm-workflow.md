@@ -51,7 +51,7 @@ Roadmap nodes keep stable machine `type` values for validation. In everyday term
 2. A **clone of the repository** on your computer (same folder the developers use).
 3. A **terminal** open **in that folder** (the project root — where you see `roadmap/`, `AGENTS.md`, and your app sources).
 
-**Windows users:** If you use **WSL**, open a Linux terminal, `cd` to the project there, and run all commands below inside WSL. Then open the dashboard in your normal browser at `http://localhost:8501`.
+**Windows users:** If you use **WSL**, open a Linux terminal, `cd` to the project there, and run all commands below inside WSL. Then open the Gantt PM UI in your normal browser at the URL printed when you run `specy-road gui` (by default `http://127.0.0.1:8765/`).
 
 ---
 
