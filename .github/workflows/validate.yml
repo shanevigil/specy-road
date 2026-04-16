@@ -70,6 +70,32 @@ jobs:
       - name: PM Gantt unit tests (Vitest)
         working-directory: gui/pm-gantt
         run: npm test
+      - name: PM Gantt production build
+        working-directory: gui/pm-gantt
+        run: npm run build
+      - name: Enforce PM Gantt bundle budget
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import sys
+
+          budget_bytes = 900_000
+          assets = sorted(
+              Path("specy_road/pm_gantt_static/assets").glob("index-*.js")
+          )
+          if not assets:
+              print("error: no built PM Gantt index chunk found")
+              sys.exit(1)
+          latest = max(assets, key=lambda p: p.stat().st_mtime)
+          size = latest.stat().st_size
+          print(f"PM Gantt entry chunk: {latest} ({size} bytes)")
+          if size > budget_bytes:
+              print(
+                  f"error: PM Gantt entry chunk exceeds budget "
+                  f"({size} > {budget_bytes} bytes)"
+              )
+              sys.exit(1)
+          PY
       - name: Install OSV-Scanner
         run: |
           curl -sSL -o /usr/local/bin/osv-scanner \

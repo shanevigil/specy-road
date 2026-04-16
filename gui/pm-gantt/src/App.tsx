@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -36,12 +38,7 @@ import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
-import { EditModal } from "./components/EditModal";
-import { ConstitutionDrawer } from "./components/ConstitutionDrawer";
-import { SettingsDrawer, type ThemeMode } from "./components/SettingsDrawer";
-import { SharedDocsDrawer } from "./components/SharedDocsDrawer";
-import { VisionDrawer } from "./components/VisionDrawer";
-import { WorkNotesDrawer } from "./components/WorkNotesDrawer";
+import type { ThemeMode } from "./components/SettingsDrawer";
 import {
   IconGear,
   IconIndent,
@@ -57,6 +54,33 @@ import {
   readLegacyBrowserPref,
   writeBrowserPref,
 } from "./repoBrowserPrefs";
+
+const EditModal = lazy(() =>
+  import("./components/EditModal").then((m) => ({ default: m.EditModal })),
+);
+const ConstitutionDrawer = lazy(() =>
+  import("./components/ConstitutionDrawer").then((m) => ({
+    default: m.ConstitutionDrawer,
+  })),
+);
+const SettingsDrawer = lazy(() =>
+  import("./components/SettingsDrawer").then((m) => ({
+    default: m.SettingsDrawer,
+  })),
+);
+const SharedDocsDrawer = lazy(() =>
+  import("./components/SharedDocsDrawer").then((m) => ({
+    default: m.SharedDocsDrawer,
+  })),
+);
+const VisionDrawer = lazy(() =>
+  import("./components/VisionDrawer").then((m) => ({ default: m.VisionDrawer })),
+);
+const WorkNotesDrawer = lazy(() =>
+  import("./components/WorkNotesDrawer").then((m) => ({
+    default: m.WorkNotesDrawer,
+  })),
+);
 
 function readLegacyThemeMode(): ThemeMode {
   const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.themeMode);
@@ -1125,85 +1149,87 @@ export default function App() {
       ) : (
         <p style={{ padding: "1rem" }}>Loading roadmap…</p>
       )}
-      {data
-        ? editOpenIds.map((nodeId, index) => {
-            const emNode = byId[nodeId];
-            if (!emNode) return null;
-            const persisted =
-              (emNode.status as string)?.trim() || "Not Started";
-            const emBaseStatus = displayStatusById[nodeId] ?? persisted;
-            const emOutlineStatus =
-              outlineStatusById[nodeId] ?? emBaseStatus;
-            const modalPlanningReadOnly = pmPlanningTitleReadOnlyFromRow(
-              Boolean(gitCheckoutById[nodeId]),
-              emBaseStatus,
-              emOutlineStatus,
-            );
-            const passThrough = editOpenIds.length > 1;
-            return (
-              <EditModal
-                key={nodeId}
-                node={emNode}
-                pmDisplayStatusResolved={displayStatusById[nodeId]}
-                allNodes={data.nodes}
-                modalStorageKey={nodeId}
-                stackZIndex={50 + index}
-                backdropPassThrough={passThrough}
-                closeOnEscape={index === editOpenIds.length - 1}
-                headerMinTop={headerBottomPx}
-                spawnInitialRect={spawnRects[nodeId]}
-                editTileMode={editTileMode}
-                tileRect={tileRects?.[nodeId] ?? null}
-                resumeFreeRect={resumeAfterUntile?.[nodeId] ?? null}
-                titleBarActive={focusedEditNodeId === nodeId}
-                onActivate={() => focusEditNode(nodeId)}
-                onRectCommit={(r) => handleEditRectCommit(nodeId, r)}
-                dependencyInheritance={data.dependency_inheritance?.[nodeId]}
-                registryByNode={data.registry_by_node}
-                gitEnrichment={data.git_enrichment}
-                prHints={data.pr_hints}
-                onClose={() => closeEditNode(nodeId)}
-                onOpenNode={openEditNode}
-                onPersisted={() => void load()}
-                readOnlyCheckout={modalPlanningReadOnly}
-              />
-            );
-          })
-        : null}
-      <ConstitutionDrawer
-        open={constitutionOpen}
-        onClose={() => {
-          setConstitutionOpen(false);
-          void refreshGovernanceCompletion();
-        }}
-      />
-      <VisionDrawer
-        open={visionOpen}
-        onClose={() => {
-          setVisionOpen(false);
-          void refreshGovernanceCompletion();
-        }}
-      />
-      <SharedDocsDrawer
-        open={sharedDocsOpen}
-        onClose={() => setSharedDocsOpen(false)}
-      />
-      <WorkNotesDrawer
-        open={workNotesOpen}
-        onClose={() => setWorkNotesOpen(false)}
-      />
-      <SettingsDrawer
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        themeMode={themeMode}
-        onThemeModeChange={setThemeMode}
-        highlightDepChain={highlightDepChain}
-        onHighlightDepChainChange={setHighlightDepChain}
-        showInheritedDeps={showInheritedDeps}
-        onShowInheritedDepsChange={setShowInheritedDeps}
-        refreshSec={refreshSec}
-        onRefreshSecChange={setRefreshSec}
-      />
+      <Suspense fallback={null}>
+        {data
+          ? editOpenIds.map((nodeId, index) => {
+              const emNode = byId[nodeId];
+              if (!emNode) return null;
+              const persisted =
+                (emNode.status as string)?.trim() || "Not Started";
+              const emBaseStatus = displayStatusById[nodeId] ?? persisted;
+              const emOutlineStatus =
+                outlineStatusById[nodeId] ?? emBaseStatus;
+              const modalPlanningReadOnly = pmPlanningTitleReadOnlyFromRow(
+                Boolean(gitCheckoutById[nodeId]),
+                emBaseStatus,
+                emOutlineStatus,
+              );
+              const passThrough = editOpenIds.length > 1;
+              return (
+                <EditModal
+                  key={nodeId}
+                  node={emNode}
+                  pmDisplayStatusResolved={displayStatusById[nodeId]}
+                  allNodes={data.nodes}
+                  modalStorageKey={nodeId}
+                  stackZIndex={50 + index}
+                  backdropPassThrough={passThrough}
+                  closeOnEscape={index === editOpenIds.length - 1}
+                  headerMinTop={headerBottomPx}
+                  spawnInitialRect={spawnRects[nodeId]}
+                  editTileMode={editTileMode}
+                  tileRect={tileRects?.[nodeId] ?? null}
+                  resumeFreeRect={resumeAfterUntile?.[nodeId] ?? null}
+                  titleBarActive={focusedEditNodeId === nodeId}
+                  onActivate={() => focusEditNode(nodeId)}
+                  onRectCommit={(r) => handleEditRectCommit(nodeId, r)}
+                  dependencyInheritance={data.dependency_inheritance?.[nodeId]}
+                  registryByNode={data.registry_by_node}
+                  gitEnrichment={data.git_enrichment}
+                  prHints={data.pr_hints}
+                  onClose={() => closeEditNode(nodeId)}
+                  onOpenNode={openEditNode}
+                  onPersisted={() => void load()}
+                  readOnlyCheckout={modalPlanningReadOnly}
+                />
+              );
+            })
+          : null}
+        <ConstitutionDrawer
+          open={constitutionOpen}
+          onClose={() => {
+            setConstitutionOpen(false);
+            void refreshGovernanceCompletion();
+          }}
+        />
+        <VisionDrawer
+          open={visionOpen}
+          onClose={() => {
+            setVisionOpen(false);
+            void refreshGovernanceCompletion();
+          }}
+        />
+        <SharedDocsDrawer
+          open={sharedDocsOpen}
+          onClose={() => setSharedDocsOpen(false)}
+        />
+        <WorkNotesDrawer
+          open={workNotesOpen}
+          onClose={() => setWorkNotesOpen(false)}
+        />
+        <SettingsDrawer
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          themeMode={themeMode}
+          onThemeModeChange={setThemeMode}
+          highlightDepChain={highlightDepChain}
+          onHighlightDepChainChange={setHighlightDepChain}
+          showInheritedDeps={showInheritedDeps}
+          onShowInheritedDepsChange={setShowInheritedDeps}
+          refreshSec={refreshSec}
+          onRefreshSecChange={setRefreshSec}
+        />
+      </Suspense>
     </div>
   );
 }

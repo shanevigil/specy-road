@@ -11,6 +11,25 @@ export default defineConfig({
   build: {
     outDir,
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (
+            id.includes("@tiptap") ||
+            id.includes("react-markdown") ||
+            id.includes("remark-gfm")
+          ) {
+            return "markdown-stack";
+          }
+          if (id.includes("@dnd-kit")) return "dnd-stack";
+          if (id.includes("react") || id.includes("scheduler")) {
+            return "react-vendor";
+          }
+          return "vendor";
+        },
+      },
+    },
   },
   server: {
     port: 5173,
