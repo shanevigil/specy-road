@@ -22,6 +22,16 @@ Optional field **`require_implementation_review_before_finish`** (boolean): when
 
 Optional field **`cleanup_work_artifacts_on_finish`** (boolean): when **true** or omitted (default), `finish-this-task` deletes per-node **`work/brief-`**, **`work/prompt-`**, and **`work/implementation-summary-`** files after validate/export, staging deletions when tracked. Set **false** or pass **`--no-cleanup-work`** to keep them. See [dev-workflow.md](dev-workflow.md).
 
+Optional field **`on_complete`** (`pr`, `merge`, or `auto`; default **`pr`**): controls how **`specy-road finish-this-task`** lands work after the bookkeeping commit on the feature branch.
+
+- **`pr`** — Print guidance to push (if needed) and open a **pull request** or **merge request** targeting the integration branch. On GitHub this is a **PR**; on GitLab and many other hosts it is an **MR**. They are the same kind of integration review; this doc uses **PR/MR** when the forge is unspecified.
+- **`merge`** — After bookkeeping, try **`git merge`** of the feature branch into the **integration branch** locally, then **`git push`** the integration branch. On failure (conflicts, non-fast-forward integration branch, push rejected), exit with **merge pending** and the same PR/MR hints as **`pr`**.
+- **`auto`** — Try the **`merge`** path first; if landing the merge fails, fall back to the PR/MR guidance (**merge pending**) instead of only failing.
+
+**Precedence for `finish-this-task`:** CLI **`--on-complete`** overrides **`work/.on-complete-<NODE_ID>.yaml`** (written by **`do-next-available-task`** for that task) overrides environment **`SPECY_ROAD_ON_COMPLETE`** overrides **`on_complete`** in this file, else **`pr`**.
+
+**`do-next-available-task`:** On an interactive terminal, the command shows the resolved default and asks for **`pr`**, **`merge`**, or **`auto`** for **this task** (unless you pass **`--on-complete`**). Non-interactive runs use the default from the file/env without prompting.
+
 **Examples** (schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json)):
 
 `main` as the daily trunk:

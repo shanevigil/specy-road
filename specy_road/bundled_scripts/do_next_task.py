@@ -17,9 +17,15 @@ from generate_brief import index as make_index, render_brief
 from registration_pickup_commit import registration_commit_message
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
+    ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
+)
+from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
+from specy_road.on_complete_session import (
+    write_on_complete_session,
+    on_complete_session_path,
 )
 from specy_road.runtime_paths import default_user_repo_root
 
@@ -235,42 +241,18 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="DIR",
         help="Repository root (default: git root or cwd).",
     )
+    p.add_argument(
+        "--on-complete",
+        choices=sorted(ON_COMPLETE_MODES),
+        default=None,
+        metavar="MODE",
+        help=(
+            "Completion workflow for this task: pr, merge, or auto. "
+            "Sets session for finish-this-task; skips TTY prompt when set. "
+            "See roadmap/git-workflow.yaml on_complete and docs/git-workflow.md."
+        ),
+    )
     return p.parse_args(argv)
-
-
-def _print_pickup_footer(
-    *,
-    brief_path: Path,
-    prompt_path: Path,
-    push_registry: bool,
-    remote: str,
-    base: str,
-    mr_manual: bool,
-    impl_review_gate: bool,
-) -> None:
-    print(f"brief:  {brief_path.relative_to(ROOT)}")
-    print(f"prompt: {prompt_path.relative_to(ROOT)}")
-    print()
-    if not push_registry:
-        print("Push the integration branch so PMs see the registry update:")
-        print(f"  git push {remote} {base}")
-        print()
-    if mr_manual:
-        print(
-            "Merge requests require manual approval in this repo "
-            "(roadmap/git-workflow.yaml). Open the MR after push and wait for review.",
-        )
-        print()
-    print("-" * 60)
-    print(f"Open {prompt_path.relative_to(ROOT)} in your agent to begin.")
-    if impl_review_gate:
-        print(
-            "When done: write work/implementation-summary-<NODE_ID>.md, then human runs "
-            "specy-road mark-implementation-reviewed, then specy-road finish-this-task",
-        )
-    else:
-        print("When done: specy-road finish-this-task")
-    print("-" * 60)
 
 
 def _finalize_pickup(
@@ -282,6 +264,7 @@ def _finalize_pickup(
     remote: str,
     push_registry: bool,
     include_ci_skip: bool,
+    on_complete: str,
 ) -> None:
     node_id = node["id"]
     print(f"\n[{node_id}] {node.get('title', '')}")
@@ -307,16 +290,26 @@ def _finalize_pickup(
         _push_integration_branch(remote, base)
 
     _checkout_new_branch(branch)
+    sess_path = on_complete_session_path(WORK_DIR, node_id)
+    write_on_complete_session(
+        sess_path,
+        node_id=node_id,
+        codename=node["codename"],
+        on_complete=on_complete,
+    )
     prompt_path = write_agent_prompt(
         node,
         nodes,
         brief_path,
         repo_root=ROOT,
         work_dir=WORK_DIR,
+        on_complete=on_complete,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
     impl_gate = require_implementation_review_before_finish(ROOT)
-    _print_pickup_footer(
+    print_pickup_footer(
+        root=ROOT,
+        work_dir=WORK_DIR,
         brief_path=brief_path,
         prompt_path=prompt_path,
         push_registry=push_registry,
@@ -324,6 +317,8 @@ def _finalize_pickup(
         base=base,
         mr_manual=mr_manual,
         impl_review_gate=impl_gate,
+        on_complete=on_complete,
+        node_id=node_id,
     )
 
 
@@ -371,6 +366,7 @@ def main(argv: list[str] | None = None) -> None:
 
     node = _pick_interactive(available, nodes) if args.interactive else available[0]
     branch = f"feature/rm-{node['codename']}"
+    on_complete = prompt_on_complete(ROOT, args.on_complete)
     _finalize_pickup(
         node,
         nodes,
@@ -379,6 +375,7 @@ def main(argv: list[str] | None = None) -> None:
         remote=remote,
         push_registry=True,
         include_ci_skip=include_ci_skip,
+        on_complete=on_complete,
     )
 
 

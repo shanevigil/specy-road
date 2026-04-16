@@ -15,6 +15,10 @@ _PACKAGE_DIR = Path(__file__).resolve().parent
 _GIT_WORKFLOW_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "git-workflow.schema.json"
 GIT_WORKFLOW_REL = Path("roadmap") / "git-workflow.yaml"
 
+# finish-this-task / do-next: how to land completed work (PR/MR vs local merge).
+ON_COMPLETE_MODES = frozenset({"auto", "merge", "pr"})
+DEFAULT_ON_COMPLETE = "pr"
+
 
 def git_workflow_yaml_path(repo_root: Path) -> Path:
     return (repo_root / GIT_WORKFLOW_REL).resolve()
@@ -127,6 +131,39 @@ def should_cleanup_work_artifacts_on_finish(
     if no_cleanup_work_cli:
         return False
     return cleanup_work_artifacts_on_finish(repo_root)
+
+
+def on_complete_from_git_workflow(repo_root: Path) -> str:
+    """``on_complete`` from ``roadmap/git-workflow.yaml``; default ``pr`` if missing or invalid."""
+    data, err = load_git_workflow_config(repo_root)
+    if err or not data:
+        return DEFAULT_ON_COMPLETE
+    v = data.get("on_complete")
+    if isinstance(v, str) and v in ON_COMPLETE_MODES:
+        return v
+    return DEFAULT_ON_COMPLETE
+
+
+def resolve_on_complete(
+    repo_root: Path,
+    *,
+    cli: str | None,
+    session: str | None,
+) -> str:
+    """
+    Effective mode for ``finish-this-task``.
+
+    Precedence: CLI ``--on-complete`` > session file > ``SPECY_ROAD_ON_COMPLETE`` >
+    ``roadmap/git-workflow.yaml`` > ``pr``.
+    """
+    if cli and cli in ON_COMPLETE_MODES:
+        return cli
+    if session and session in ON_COMPLETE_MODES:
+        return session
+    env = os.environ.get("SPECY_ROAD_ON_COMPLETE", "").strip()
+    if env in ON_COMPLETE_MODES:
+        return env
+    return on_complete_from_git_workflow(repo_root)
 
 
 def _git_ok(args: list[str], cwd: Path) -> tuple[bool, str]:
@@ -263,6 +300,8 @@ def _optional_git_workflow_config_fields(data: dict[str, Any]) -> dict[str, Any]
         out["cleanup_work_artifacts_on_finish"] = bool(
             data["cleanup_work_artifacts_on_finish"],
         )
+    if "on_complete" in data and isinstance(data.get("on_complete"), str):
+        out["on_complete"] = data["on_complete"]
     return out
 
 

@@ -19,7 +19,7 @@ specy-road finish-this-task
 ```
 
 Optional: `specy-road finish-this-task --push` (and `--remote <name>`) to run `git push -u`
-after the bookkeeping commit. By default, session files **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** are removed after validate/export; use **`--no-cleanup-work`** or set **`cleanup_work_artifacts_on_finish: false`** in `roadmap/git-workflow.yaml` to keep them.
+after the bookkeeping commit; optional **`--on-complete pr|merge|auto`** overrides how work is landed (PR/MR vs local merge to integration). By default, session files **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** are removed after validate/export; use **`--no-cleanup-work`** or set **`cleanup_work_artifacts_on_finish: false`** in `roadmap/git-workflow.yaml` to keep them. **PR** (GitHub) and **MR** (GitLab) mean the same integration request; see `docs/git-workflow.md`.
 
 This will:
 
@@ -30,8 +30,8 @@ This will:
 4. Run `specy-road validate` and `specy-road export`.
 5. Remove the per-node **`work/`** session files listed above (unless skipped), staging deletions if tracked.
 6. Commit the bookkeeping changes.
-7. Print the `git push` + `gh pr create` commands to open a PR (or push first if `--push`).
+7. Land work per **`on_complete`**: **`pr`** — print `git push` + `gh pr create` (or push first if `--push`); **`merge`** / **`auto`** — merge the feature branch into the integration branch locally and push, or exit **merge pending** with PR/MR hints (**`auto`** falls back on failure).
 
-Merge when CI is green. No PM sign-off required.
+Merge when CI is green (or after a successful local integration merge). No PM sign-off required.
 
 See `docs/dev-workflow.md` for the full task loop.

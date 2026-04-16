@@ -12,10 +12,17 @@ import yaml
 from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
+    ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
+    resolve_on_complete,
     should_cleanup_work_artifacts_on_finish,
+)
+from specy_road.finish_modes import apply_on_complete_mode
+from specy_road.on_complete_session import (
+    on_complete_session_path,
+    read_on_complete_session,
 )
 from specy_road.runtime_paths import default_user_repo_root
 
@@ -202,34 +209,67 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "(default: delete after successful validate/export)."
         ),
     )
+    p.add_argument(
+        "--on-complete",
+        choices=sorted(ON_COMPLETE_MODES),
+        default=None,
+        metavar="MODE",
+        help=(
+            "Override completion workflow: pr, merge, or auto. "
+            "Default: session file from do-next-available-task, then "
+            "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
+        ),
+    )
     return p.parse_args(argv)
 
 
-def _print_finish_tail(
-    args: argparse.Namespace,
-    *,
-    node_id: str,
-    node: dict,
-    branch: str,
-    integration_branch: str,
-    mr_manual: bool,
-) -> None:
-    title = f"[{node_id}] {node.get('title', '')}"
-    print()
-    print("-" * 60)
-    if not args.push:
-        print("Branch ready. Push and open a PR:")
-        print(f"  git push -u {args.remote} {branch}")
-    else:
-        print("Branch pushed. Open a PR:")
+def _impl_review_or_exit(entry: dict, node_id: str) -> None:
+    if not require_implementation_review_before_finish(ROOT):
+        return
+    if entry.get("implementation_review") == "approved":
+        return
     print(
-        f'  gh pr create --base {integration_branch} --head {branch} --title "{title}"'
+        "error: implementation review is required before finish-this-task.",
+        file=sys.stderr,
     )
-    if mr_manual:
-        print(
-            "  Merge requests require manual approval — wait for review, then merge.",
-        )
-    print("-" * 60)
+    print(
+        "  Run: specy-road mark-implementation-reviewed "
+        "(after work/implementation-summary-"
+        f"{node_id}.md is written and you reviewed it).",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def _bookkeeping_commit_phase(
+    args: argparse.Namespace,
+    codename: str,
+    node_id: str,
+    branch: str,
+    reg: dict,
+) -> None:
+    changed_files = _update_chunk_status(node_id)
+    changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
+    reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
+    _save_registry(reg)
+    print(f"[ok] removed registry entry for '{codename}'\n")
+    print("-> specy-road validate")
+    print("-> specy-road export")
+    _validate_and_export()
+    work_tracked_removals: list[str] = []
+    if should_cleanup_work_artifacts_on_finish(
+        ROOT,
+        no_cleanup_work_cli=args.no_cleanup_work,
+    ):
+        work_tracked_removals = _cleanup_work_artifacts(ROOT, node_id)
+    changed_files.append("roadmap.md")
+    changed_files.extend(work_tracked_removals)
+    _git("add", *changed_files)
+    _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
+    print("\n[ok] bookkeeping committed")
+    if args.push:
+        print(f"-> git push -u {args.remote} {branch}")
+        _git("push", "-u", args.remote, branch)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -250,64 +290,45 @@ def main(argv: list[str] | None = None) -> None:
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
 
-    if require_implementation_review_before_finish(ROOT):
-        if entry.get("implementation_review") != "approved":
-            print(
-                "error: implementation review is required before finish-this-task.",
-                file=sys.stderr,
-            )
-            print(
-                "  Run: specy-road mark-implementation-reviewed "
-                "(after work/implementation-summary-"
-                f"{node_id}.md is written and you reviewed it).",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
+    work_dir = ROOT / "work"
+    sess_path = on_complete_session_path(work_dir, node_id)
+    session_oc = read_on_complete_session(
+        sess_path,
+        node_id=node_id,
+        codename=codename,
+    )
+    on_mode = resolve_on_complete(
+        ROOT,
+        cli=args.on_complete,
+        session=session_oc,
+    )
+
+    _impl_review_or_exit(entry, node_id)
 
     print(f"Finishing [{node_id}] {node.get('title', '')}")
-    print(f"Branch:   {branch}\n")
+    print(f"Branch:   {branch}")
+    print(f"on_complete: {on_mode}\n")
 
-    changed_files = _update_chunk_status(node_id)
-    changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
+    _bookkeeping_commit_phase(args, codename, node_id, branch, reg)
 
-    reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
-    _save_registry(reg)
-    print(f"[ok] removed registry entry for '{codename}'\n")
-
-    print("-> specy-road validate")
-    print("-> specy-road export")
-    _validate_and_export()
-
-    work_tracked_removals: list[str] = []
-    if should_cleanup_work_artifacts_on_finish(
-        ROOT,
-        no_cleanup_work_cli=args.no_cleanup_work,
-    ):
-        work_tracked_removals = _cleanup_work_artifacts(ROOT, node_id)
-
-    changed_files.append("roadmap.md")
-    changed_files.extend(work_tracked_removals)
-    _git("add", *changed_files)
-    _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
-    print("\n[ok] bookkeeping committed")
-
-    if args.push:
-        print(f"-> git push -u {args.remote} {branch}")
-        _git("push", "-u", args.remote, branch)
-
-    ib, _rm, _gw = resolve_integration_defaults(
+    ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT,
         explicit_base=None,
         explicit_remote=None,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
-    _print_finish_tail(
+
+    apply_on_complete_mode(
+        ROOT,
         args,
+        on_mode=on_mode,
+        branch=branch,
+        sess_path=sess_path,
+        ib=ib,
+        gw_remote=gw_remote,
+        mr_manual=mr_manual,
         node_id=node_id,
         node=node,
-        branch=branch,
-        integration_branch=ib,
-        mr_manual=mr_manual,
     )
 
 

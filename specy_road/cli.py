@@ -45,12 +45,12 @@ _USAGE_TEXT = (
     "  gui — FastAPI + Gantt PM UI (after: init --install-gui or pip install 'specy-road[gui-next]')\n"
     "\n"
     "Dev task loop:\n"
-    "  do-next-available-task  — sync base, brief, register on base, push base, branch, prompt\n"
+    "  do-next-available-task  — sync base, brief, register on base, push base, branch, prompt (on_complete)\n"
     "    (optional: --base BRANCH --remote NAME | --interactive | "
     "--no-ci-skip-in-message)\n"
     "  mark-implementation-reviewed — human gate: record review after implementation-summary\n"
     "    (optional: --yes | --allow-missing-summary)\n"
-    "  finish-this-task        — complete task, validate, commit\n"
+    "  finish-this-task        — complete task, validate, commit; land pr|merge|auto\n"
     "    (optional: --push [--remote NAME] | --no-cleanup-work)\n"
 )
 

@@ -154,14 +154,16 @@ specy-road finish-this-task
 `finish-this-task` will:
 
 1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`). If the implementation-review gate is on, the registry must already show **`implementation_review: approved`** (see `mark-implementation-reviewed` above).
-2. Update the node `status` to `Complete` in the roadmap chunk file.
-3. Remove the registry entry.
-4. Run `specy-road validate` and `specy-road export`.
-5. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked).
-6. Commit the bookkeeping changes on the feature branch.
-7. Print `git push` and `gh pr create --base <integration-branch>` (integration branch comes from `roadmap/git-workflow.yaml`). If **`merge_request_requires_manual_approval`** is set, the CLI reminds you to wait for review.
+2. Resolve **`on_complete`** (`pr`, `merge`, or `auto`): CLI **`--on-complete`** wins, then **`work/.on-complete-<NODE_ID>.yaml`** from **`do-next-available-task`**, then **`SPECY_ROAD_ON_COMPLETE`**, then **`roadmap/git-workflow.yaml`**, else **`pr`**. See [git-workflow.md](git-workflow.md) (PR and MR are the same idea on different forges).
+3. Update the node `status` to `Complete` in the roadmap chunk file.
+4. Remove the registry entry.
+5. Run `specy-road validate` and `specy-road export`.
+6. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked).
+7. Commit the bookkeeping changes on the feature branch.
+8. If **`--push`** was passed, push the feature branch.
+9. If **`on_complete`** is **`pr`**, print `git push` (if needed) and **`gh pr create`**-style guidance for a **PR/MR** to the integration branch. If **`merge`** or **`auto`**, merge the feature branch into the integration branch locally and push the integration branch, or exit with **merge pending** and PR/MR hints on failure (**`auto`** falls back to those hints).
 
-Merge when CI is green and your team’s MR policy is satisfied.
+Merge when CI is green and your team’s MR policy is satisfied (or after a successful local integration merge when your workflow uses **`merge`** / **`auto`**).
 
 ---
 

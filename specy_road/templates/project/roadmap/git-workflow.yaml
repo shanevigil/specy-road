@@ -11,3 +11,4 @@ require_implementation_review_before_finish: true
 # Omit or set true for default; set false to keep those files (CLI --no-cleanup-work also skips).
 cleanup_work_artifacts_on_finish: true
 # Optional: merge_request_requires_manual_approval: true
+# Optional: on_complete: pr   # pr | merge | auto — how finish-this-task lands work (default pr); see docs/git-workflow.md

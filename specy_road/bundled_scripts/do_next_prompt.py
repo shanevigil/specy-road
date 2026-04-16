@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from generate_brief import index as make_index
-from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.git_workflow_config import (
+    require_implementation_review_before_finish,
+)
 from planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
@@ -101,7 +103,44 @@ def _leaf_planning_excerpt_lines(node: dict, root: Path) -> list[str]:
     return lines
 
 
-def _finish_instruction_lines(node_id: str, repo_root: Path) -> list[str]:
+def _on_complete_hint_lines(on_complete: str) -> list[str]:
+    oc = (on_complete or "pr").strip().lower()
+    if oc == "merge":
+        return [
+            (
+                "**Completion workflow (this task):** `merge` — when you run "
+                "`specy-road finish-this-task`, the toolkit marks the node complete, "
+                "removes the registry entry, then tries to **merge this feature branch "
+                "into the integration branch locally** and **push** the integration "
+                "branch. Resolve conflicts or open a PR/MR if the merge cannot complete."
+            ),
+        ]
+    if oc == "auto":
+        return [
+            (
+                "**Completion workflow (this task):** `auto` — `finish-this-task` "
+                "tries **local merge + push** to the integration branch first; if that "
+                "fails (conflicts, branch protection, etc.), it prints **merge pending** "
+                "and the same PR/MR guidance as the `pr` mode."
+            ),
+        ]
+    return [
+        (
+            "**Completion workflow (this task):** `pr` — `finish-this-task` updates "
+            "roadmap/registry and JSON, then you **open a pull request (PR) or merge "
+            "request (MR)** to the integration branch (GitHub uses “PR”, GitLab uses "
+            "“MR”; same idea). Use `finish-this-task --push` to push the feature branch "
+            "first if needed."
+        ),
+    ]
+
+
+def _finish_instruction_lines(
+    node_id: str,
+    repo_root: Path,
+    *,
+    on_complete: str,
+) -> list[str]:
     base = [
         (
             "1. Read governance docs and planning sheets above, "
@@ -113,8 +152,9 @@ def _finish_instruction_lines(node_id: str, repo_root: Path) -> list[str]:
             "on every commit."
         ),
     ]
+    oc_lines = _on_complete_hint_lines(on_complete)
     if require_implementation_review_before_finish(repo_root):
-        return base + [
+        return base + oc_lines + [
             (
                 f"4. When implementation is complete, write "
                 f"`work/implementation-summary-{node_id}.md` with sections "
@@ -131,7 +171,7 @@ def _finish_instruction_lines(node_id: str, repo_root: Path) -> list[str]:
                 "recorded — the registry must show implementation review approved."
             ),
         ]
-    return base + [
+    return base + oc_lines + [
         (
             "4. When complete: run `specy-road finish-this-task` "
             "to close out the branch."
@@ -146,6 +186,7 @@ def write_agent_prompt(
     *,
     repo_root: Path,
     work_dir: Path,
+    on_complete: str = "pr",
 ) -> Path:
     """Write ``work/prompt-<NODE_ID>.md`` and return its path."""
     node_id = node["id"]
@@ -186,7 +227,7 @@ def write_agent_prompt(
         )
 
     lines += ["", "## Instructions", ""]
-    lines += _finish_instruction_lines(node_id, repo_root)
+    lines += _finish_instruction_lines(node_id, repo_root, on_complete=on_complete)
 
     work_dir.mkdir(parents=True, exist_ok=True)
     path = work_dir / f"prompt-{node_id}.md"

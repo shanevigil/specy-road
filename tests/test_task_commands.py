@@ -308,7 +308,6 @@ def test_finish_blocks_when_implementation_review_pending(
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
     monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
     monkeypatch.setattr(ft, "_git", lambda *_a, **_k: None)
-    monkeypatch.setattr(ft, "_print_finish_tail", lambda **_: None)
     with pytest.raises(SystemExit) as ei:
         ft.main([])
     assert ei.value.code == 1

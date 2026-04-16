@@ -30,6 +30,11 @@
     "cleanup_work_artifacts_on_finish": {
       "type": "boolean",
       "description": "When true (default if omitted), finish-this-task removes work/brief-, work/prompt-, and work/implementation-summary- for the node after validate/export."
+    },
+    "on_complete": {
+      "type": "string",
+      "enum": ["auto", "merge", "pr"],
+      "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
     }
   }
 }

@@ -18,7 +18,7 @@ specy-road do-next-available-task
 
 ### Autonomous agents
 
-Run **exactly** the command above (from the repo root, clean tree). Add only **`--base`**, **`--remote`**, **`--interactive`**, or **`--no-ci-skip-in-message`** when the user explicitly asked for them.
+Run **exactly** the command above (from the repo root, clean tree). Add only **`--base`**, **`--remote`**, **`--interactive`**, **`--on-complete`**, or **`--no-ci-skip-in-message`** when the user explicitly asked for them.
 
 By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). See `specy-road do-next-available-task --help`.
 
@@ -30,6 +30,7 @@ This will:
 4. Commit the registry entry on the **integration branch** (registration only).
 5. Push the integration branch.
 6. Create the feature branch and write `work/prompt-<NODE_ID>.md` (governance, planning context, checklist).
+7. On an interactive terminal, prompt for **`on_complete`** (`pr`, `merge`, or `auto`) for **this task**, unless **`--on-complete`** was passed; write **`work/.on-complete-<NODE_ID>.yaml`** for **`finish-this-task`** to read. Default comes from **`roadmap/git-workflow.yaml`** / **`SPECY_ROAD_ON_COMPLETE`**. See `docs/git-workflow.md`.
 
 Open `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
 
