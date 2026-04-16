@@ -79,3 +79,14 @@ class ConstitutionScaffoldBody(BaseModel):
 class PlanningScaffoldBody(BaseModel):
     planning_dir: str | None = None
     force: bool = False
+
+
+class PublishRoadmapBody(BaseModel):
+    """Commit message for scoped roadmap/planning publish (single line)."""
+
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description="Git commit message; must be a single line.",
+    )

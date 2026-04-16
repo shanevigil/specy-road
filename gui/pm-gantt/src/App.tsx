@@ -12,11 +12,13 @@ import {
   addNode,
   deleteNode,
   fetchGovernanceCompletion,
+  fetchPublishStatus,
   fetchRoadmap,
   fetchRoadmapFingerprint,
   indentNode,
   outdentNode,
   patchNode,
+  postPublish,
 } from "./api";
 import {
   computeSpawnRect,
@@ -24,7 +26,11 @@ import {
   sortOpenIdsByDependencyOrder,
 } from "./editModalLayout";
 import type { ModalRect } from "./modalRect";
-import type { RoadmapNode, RoadmapResponse } from "./types";
+import type {
+  PublishStatusPayload,
+  RoadmapNode,
+  RoadmapResponse,
+} from "./types";
 import {
   pmOutlineDisplayStatus,
   pmPlanningTitleReadOnlyFromRow,
@@ -38,12 +44,14 @@ import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
+import { PublishRoadmapModal } from "./components/PublishRoadmapModal";
 import type { ThemeMode } from "./components/SettingsDrawer";
 import {
   IconGear,
   IconIndent,
   IconOutdent,
   IconPencil,
+  IconPublish,
   IconRowAbove,
   IconRowBelow,
   IconTrash,
@@ -146,6 +154,11 @@ export default function App() {
     vision: boolean;
     constitution: boolean;
   } | null>(null);
+
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [publishStatus, setPublishStatus] = useState<PublishStatusPayload | null>(
+    null,
+  );
 
   const [refreshSec, setRefreshSec] = useState(() => {
     const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.refreshSec);
@@ -303,6 +316,14 @@ export default function App() {
     }
   }, []);
 
+  const refreshPublishStatus = useCallback(async () => {
+    try {
+      setPublishStatus(await fetchPublishStatus());
+    } catch {
+      setPublishStatus(null);
+    }
+  }, []);
+
   const loadSnapshot = useCallback(async () => {
     setErr(null);
     try {
@@ -325,10 +346,16 @@ export default function App() {
         /* fingerprint is optional for sync */
       }
       void refreshGovernanceCompletion();
+      void refreshPublishStatus();
     } catch (e: unknown) {
       setErr(String(e));
     }
-  }, [refreshGovernanceCompletion]);
+  }, [refreshGovernanceCompletion, refreshPublishStatus]);
+
+  const handlePublishRoadmap = useCallback(async (message: string) => {
+    await postPublish(message);
+    await loadSnapshot();
+  }, [loadSnapshot]);
 
   const { busy: roadmapBusy, busyLabel, runRoadmapAction } =
     useRoadmapActionQueue();
@@ -347,6 +374,13 @@ export default function App() {
     void loadSnapshot();
   }, [loadSnapshot]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      void refreshPublishStatus();
+    }, 12000);
+    return () => window.clearInterval(id);
+  }, [refreshPublishStatus]);
 
   useEffect(() => {
     writeBrowserPref(
@@ -857,6 +891,13 @@ export default function App() {
     }).catch((e) => setErr(String(e)));
   };
 
+  const publishReady =
+    Boolean(
+      publishStatus?.scope_dirty &&
+        !publishStatus?.blocked &&
+        !roadmapBusy,
+    );
+
   return (
     <div className="app-shell">
       {roadmapBusy ? (
@@ -954,6 +995,29 @@ export default function App() {
         <div className="app-header-row2">
           <div className="app-header-row2-inner">
             <div className="app-header-toolbar">
+              <button
+                type="button"
+                className={
+                  publishReady
+                    ? "toolbar-icon-btn toolbar-icon-btn--publish-ready"
+                    : "toolbar-icon-btn"
+                }
+                disabled={roadmapBusy}
+                title={
+                  publishStatus?.blocked
+                    ? "Publish blocked — see dialog for details"
+                    : publishReady
+                      ? "Publish roadmap changes (ready to share)"
+                      : "Publish roadmap changes to the remote repository"
+                }
+                aria-label="Publish roadmap changes"
+                onClick={() => {
+                  setPublishOpen(true);
+                  void refreshPublishStatus();
+                }}
+              >
+                <IconPublish />
+              </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
@@ -1296,6 +1360,14 @@ export default function App() {
           onShowInheritedDepsChange={setShowInheritedDeps}
           refreshSec={refreshSec}
           onRefreshSecChange={setRefreshSec}
+        />
+        <PublishRoadmapModal
+          open={publishOpen}
+          onClose={() => setPublishOpen(false)}
+          status={publishStatus}
+          onRefreshStatus={refreshPublishStatus}
+          onPublish={handlePublishRoadmap}
+          headerMinTop={headerBottomPx}
         />
       </Suspense>
       </div>

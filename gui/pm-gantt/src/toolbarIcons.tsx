@@ -56,6 +56,21 @@ export function IconGear() {
   );
 }
 
+/** Cloud + arrow — publish / share roadmap changes. */
+export function IconPublish() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M9 16h6v2H9v-2zm-2.5-6.5L12 4l5.5 5.5-1.42 1.41L13 8.83V16h-2V8.83L8.08 11.09 6.5 9.5z" />
+    </svg>
+  );
+}
+
 export function IconPencil() {
   return (
     <svg

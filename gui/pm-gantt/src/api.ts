@@ -1,4 +1,4 @@
-import type { RoadmapResponse } from "./types";
+import type { PublishStatusPayload, RoadmapResponse } from "./types";
 
 const API = "/api";
 
@@ -6,6 +6,54 @@ export async function fetchRoadmap(): Promise<RoadmapResponse> {
   const r = await fetch(`${API}/roadmap`);
   if (!r.ok) throw new Error(`roadmap: ${r.status}`);
   return r.json() as Promise<RoadmapResponse>;
+}
+
+export async function fetchPublishStatus(): Promise<PublishStatusPayload> {
+  const r = await fetch(`${API}/publish/status`);
+  const raw = (await r.json()) as PublishStatusPayload & { detail?: unknown };
+  if (!r.ok) {
+    const d = raw.detail;
+    throw new Error(
+      typeof d === "string" ? d : JSON.stringify(raw),
+    );
+  }
+  return raw as PublishStatusPayload;
+}
+
+export async function postPublish(message: string): Promise<{
+  ok: boolean;
+  commit_sha?: string | null;
+  pushed?: boolean;
+  branch?: string | null;
+}> {
+  const r = await fetch(`${API}/publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  const raw = (await r.json()) as {
+    ok?: boolean;
+    commit_sha?: string | null;
+    pushed?: boolean;
+    branch?: string | null;
+    detail?: unknown;
+  };
+  if (!r.ok) {
+    const d = raw.detail;
+    const msg =
+      typeof d === "string"
+        ? d
+        : d != null
+          ? JSON.stringify(d)
+          : JSON.stringify(raw);
+    throw new Error(msg);
+  }
+  return {
+    ok: Boolean(raw.ok),
+    commit_sha: raw.commit_sha,
+    pushed: raw.pushed,
+    branch: raw.branch,
+  };
 }
 
 export async function fetchGovernanceCompletion(): Promise<{

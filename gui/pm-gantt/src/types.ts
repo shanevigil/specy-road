@@ -81,6 +81,19 @@ export type IntegrationBranchAutoFfPayload = {
     | "diverged";
 };
 
+/** ``GET /api/publish/status`` — git scope for Publish roadmap control. */
+export type PublishStatusPayload = {
+  can_publish: boolean;
+  scope_dirty: boolean;
+  blocked: boolean;
+  blocked_reason: string | null;
+  detail: string | null;
+  current_branch: string | null;
+  upstream: string | null;
+  scope_paths: string[];
+  out_of_scope_paths: string[];
+};
+
 export type RoadmapResponse = {
   version: number;
   nodes: RoadmapNode[];

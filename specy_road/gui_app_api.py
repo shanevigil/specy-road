@@ -10,6 +10,7 @@ from specy_road.gui_app_routes_nodes import (
     register_node_mutations,
 )
 from specy_road.gui_app_routes_planning import register_planning_routes
+from specy_road.gui_app_routes_publish import register_publish_routes
 from specy_road.gui_app_routes_workspace import (
     register_settings_and_remote,
     register_workspace_routes,
@@ -24,4 +25,5 @@ def make_api_router() -> APIRouter:
     register_planning_routes(api)
     register_workspace_routes(api)
     register_settings_and_remote(api)
+    register_publish_routes(api)
     return api
