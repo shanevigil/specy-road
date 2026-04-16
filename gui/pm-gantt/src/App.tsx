@@ -54,6 +54,7 @@ import {
   readLegacyBrowserPref,
   writeBrowserPref,
 } from "./repoBrowserPrefs";
+import { useRoadmapActionQueue } from "./roadmapSync";
 
 const EditModal = lazy(() =>
   import("./components/EditModal").then((m) => ({ default: m.EditModal })),
@@ -187,6 +188,7 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(readLegacyThemeMode);
 
   /** After `/api/repo` returns, apply namespaced (or migrated) browser prefs for this project. */
+  /* eslint-disable react-hooks/set-state-in-effect -- sync localStorage prefs into React state when repo id resolves */
   useLayoutEffect(() => {
     if (!repoId) return;
     const tm = readBrowserPref(BROWSER_PREF_KEYS.themeMode, repoId);
@@ -208,6 +210,7 @@ export default function App() {
     const hi = readBrowserPref(BROWSER_PREF_KEYS.highlightDepChain, repoId);
     setHighlightDepChain(hi !== "0");
   }, [repoId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   /** Node id whose explicit dependencies are being edited; draft keys are node_key UUIDs. */
   const [depEditId, setDepEditId] = useState<string | null>(null);
@@ -300,7 +303,7 @@ export default function App() {
     }
   }, []);
 
-  const load = useCallback(async () => {
+  const loadSnapshot = useCallback(async () => {
     setErr(null);
     try {
       const [r, repoRes] = await Promise.all([
@@ -327,10 +330,23 @@ export default function App() {
     }
   }, [refreshGovernanceCompletion]);
 
+  const { busy: roadmapBusy, busyLabel, runRoadmapAction } =
+    useRoadmapActionQueue();
+
+  const performRoadmapMutation = useCallback(
+    (label: string, mutation: () => Promise<void>) =>
+      runRoadmapAction(label, async () => {
+        await mutation();
+        await loadSnapshot();
+      }),
+    [runRoadmapAction, loadSnapshot],
+  );
+
+  /* eslint-disable react-hooks/set-state-in-effect -- initial roadmap fetch on mount */
   useEffect(() => {
-    /* Initial fetch; load() updates React state — intentional on mount. */
-    void load(); // eslint-disable-line react-hooks/set-state-in-effect -- mount fetch
-  }, [load]);
+    void loadSnapshot();
+  }, [loadSnapshot]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     writeBrowserPref(
@@ -372,7 +388,7 @@ export default function App() {
           const fp = await fetchRoadmapFingerprint();
           const prev = lastFingerprintRef.current;
           if (prev !== null && fp !== prev) {
-            await load();
+            await runRoadmapAction("Checking for updates…", () => loadSnapshot());
           } else {
             lastFingerprintRef.current = fp;
           }
@@ -382,7 +398,7 @@ export default function App() {
       })();
     }, refreshSec * 1000);
     return () => window.clearInterval(id);
-  }, [refreshSec, load]);
+  }, [refreshSec, runRoadmapAction, loadSnapshot]);
 
   const cancelDepEdit = useCallback(() => {
     setDepEditId(null);
@@ -399,13 +415,15 @@ export default function App() {
     const val = [...depDraftKeysRef.current].sort().join(" ");
     try {
       setErr(null);
-      await patchNode(nid, [{ key: "dependencies", value: val }]);
-      cancelDepEdit();
-      await load();
+      await runRoadmapAction("Saving dependencies…", async () => {
+        await patchNode(nid, [{ key: "dependencies", value: val }]);
+        cancelDepEdit();
+        await loadSnapshot();
+      });
     } catch (e: unknown) {
       setErr(String(e));
     }
-  }, [load, cancelDepEdit]);
+  }, [runRoadmapAction, loadSnapshot, cancelDepEdit]);
 
   const repoFolderLabel = useMemo(
     () => repoRootFolderDisplayName(repo),
@@ -436,6 +454,7 @@ export default function App() {
     );
   }, [data, byId]);
 
+  /* eslint-disable react-hooks/preserve-manual-memoization -- deps intentionally narrow vs inferred `data` */
   const visibleOrderedIds = useMemo(() => {
     if (!data?.ordered_ids) return [] as string[];
     if (!hideCompleteActive) return data.ordered_ids;
@@ -459,8 +478,10 @@ export default function App() {
     }
     return out;
   }, [data?.ordered_ids, data?.row_depths, hideCompleteActive, effectiveDisplayById]);
+  /* eslint-enable react-hooks/preserve-manual-memoization */
 
   /** When hiding complete rows, move selection off hidden ids and exit dependency edit if its row is hidden. */
+  /* eslint-disable react-hooks/set-state-in-effect -- derive selection / dep-edit from filtered outline */
   useEffect(() => {
     if (!hideCompleteActive || !data?.ordered_ids?.length) return;
     const hidden = (id: string) =>
@@ -477,6 +498,7 @@ export default function App() {
       cancelDepEdit();
     }
   }, [hideCompleteActive, depEditId, effectiveDisplayById, cancelDepEdit]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const outlineStatusById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, string>;
@@ -723,10 +745,16 @@ export default function App() {
         e.preventDefault();
         if (e.shiftKey) {
           if (!outdentDisabled) {
-            void outdentNode(selectedId).then(load);
+            void runRoadmapAction("Updating outline…", async () => {
+              await outdentNode(selectedId);
+              await loadSnapshot();
+            }).catch((err: unknown) => setErr(String(err)));
           }
         } else if (!indentDisabled) {
-          void indentNode(selectedId).then(load);
+          void runRoadmapAction("Updating outline…", async () => {
+            await indentNode(selectedId);
+            await loadSnapshot();
+          }).catch((err: unknown) => setErr(String(err)));
         }
       }
     };
@@ -741,7 +769,8 @@ export default function App() {
     selectedId,
     indentDisabled,
     outdentDisabled,
-    load,
+    runRoadmapAction,
+    loadSnapshot,
     cancelDepEdit,
     applyDepEdit,
   ]);
@@ -786,26 +815,29 @@ export default function App() {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void addNode(selectedId, "above", t, "task")
-      .then(load)
-      .catch((e) => setErr(String(e)));
+    void runRoadmapAction("Adding task…", async () => {
+      await addNode(selectedId, "above", t, "task");
+      await loadSnapshot();
+    }).catch((e) => setErr(String(e)));
   };
 
   const addBelow = () => {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void addNode(selectedId, "below", t, "task")
-      .then(load)
-      .catch((e) => setErr(String(e)));
+    void runRoadmapAction("Adding task…", async () => {
+      await addNode(selectedId, "below", t, "task");
+      await loadSnapshot();
+    }).catch((e) => setErr(String(e)));
   };
 
   const onGapInsert = (referenceNodeId: string) => {
     const t = promptNewTaskTitle();
     if (!t) return;
-    void addNode(referenceNodeId, "above", t, "task")
-      .then(load)
-      .catch((e) => setErr(String(e)));
+    void runRoadmapAction("Adding task…", async () => {
+      await addNode(referenceNodeId, "above", t, "task");
+      await loadSnapshot();
+    }).catch((e) => setErr(String(e)));
   };
 
   const onDeleteSelected = () => {
@@ -819,13 +851,30 @@ export default function App() {
       return;
     }
     setErr(null);
-    void deleteNode(selectedId)
-      .then(() => load())
-      .catch((e) => setErr(String(e)));
+    void runRoadmapAction("Removing task…", async () => {
+      await deleteNode(selectedId);
+      await loadSnapshot();
+    }).catch((e) => setErr(String(e)));
   };
 
   return (
     <div className="app-shell">
+      {roadmapBusy ? (
+        <div
+          className="roadmap-sync-banner"
+          role="status"
+          aria-live="polite"
+          aria-label={busyLabel ?? "Working"}
+        >
+          <span className="roadmap-sync-spinner" aria-hidden="true" />
+          <span>{busyLabel ?? "Working…"}</span>
+        </div>
+      ) : null}
+      <div
+        className="app-chrome"
+        aria-busy={roadmapBusy}
+        inert={roadmapBusy ? true : undefined}
+      >
       <header ref={headerRef} className="app-header">
         <div className="app-header-row1">
           <div className="app-header-row1-left">
@@ -858,6 +907,7 @@ export default function App() {
               type="button"
               className="app-header-icon-btn app-header-tile-btn"
               aria-pressed={hideCompleteActive}
+              disabled={roadmapBusy}
               title={
                 hideCompleteActive
                   ? "Show all roadmap rows, including completed work"
@@ -875,6 +925,7 @@ export default function App() {
                 type="button"
                 className="app-header-icon-btn app-header-tile-btn"
                 aria-pressed={editTileMode}
+                disabled={roadmapBusy}
                 title={
                   editTileMode
                     ? "Restore task dialogs to their positions before tiling"
@@ -893,6 +944,7 @@ export default function App() {
               className="app-header-icon-btn"
               aria-label="Settings"
               title="Settings"
+              disabled={roadmapBusy}
               onClick={() => setSettingsOpen(true)}
             >
               <IconGear />
@@ -905,7 +957,9 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={!selectedId || selectedPlanningReadOnly}
+                disabled={
+                  roadmapBusy || !selectedId || selectedPlanningReadOnly
+                }
                 title={
                   selectedPlanningReadOnly
                     ? "Editing is disabled while this task is in active development (in progress, MR state, or checkout matches the registered branch)"
@@ -922,31 +976,39 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={indentDisabled}
+                disabled={roadmapBusy || indentDisabled}
                 title="Indent"
                 aria-label="Indent"
-                onClick={() =>
-                  selectedId && void indentNode(selectedId).then(load)
-                }
+                onClick={() => {
+                  if (!selectedId) return;
+                  void runRoadmapAction("Updating outline…", async () => {
+                    await indentNode(selectedId);
+                    await loadSnapshot();
+                  }).catch((e) => setErr(String(e)));
+                }}
               >
                 <IconIndent />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={outdentDisabled}
+                disabled={roadmapBusy || outdentDisabled}
                 title="Outdent"
                 aria-label="Outdent"
-                onClick={() =>
-                  selectedId && void outdentNode(selectedId).then(load)
-                }
+                onClick={() => {
+                  if (!selectedId) return;
+                  void runRoadmapAction("Updating outline…", async () => {
+                    await outdentNode(selectedId);
+                    await loadSnapshot();
+                  }).catch((e) => setErr(String(e)));
+                }}
               >
                 <IconOutdent />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={!selectedId}
+                disabled={roadmapBusy || !selectedId}
                 title="Add task above selection"
                 aria-label="Add task above selection"
                 onClick={addAbove}
@@ -956,7 +1018,7 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={!selectedId}
+                disabled={roadmapBusy || !selectedId}
                 title="Add task below selection"
                 aria-label="Add task below selection"
                 onClick={addBelow}
@@ -966,7 +1028,7 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn toolbar-icon-btn-danger"
-                disabled={!selectedId}
+                disabled={roadmapBusy || !selectedId}
                 title="Delete selected row"
                 aria-label="Delete selected row"
                 onClick={onDeleteSelected}
@@ -1086,6 +1148,7 @@ export default function App() {
               outlineStatusById={outlineStatusById}
               rowDepths={visibleRowDepths}
               reorderLocked={hideCompleteActive}
+              interactionLocked={roadmapBusy}
               selectedId={selectedId}
               prHints={data.pr_hints}
               gitEnrichment={data.git_enrichment}
@@ -1109,7 +1172,8 @@ export default function App() {
                 setSelectedId(id);
                 openEditNode(id);
               }}
-              onReordered={load}
+              performRoadmapMutation={performRoadmapMutation}
+              onMutationError={(msg) => setErr(msg)}
               onGapInsert={onGapInsert}
             />
           </div>
@@ -1189,7 +1253,11 @@ export default function App() {
                   prHints={data.pr_hints}
                   onClose={() => closeEditNode(nodeId)}
                   onOpenNode={openEditNode}
-                  onPersisted={() => void load()}
+                  onPersisted={() =>
+                    void runRoadmapAction("Saving task…", loadSnapshot).catch(
+                      (e: unknown) => setErr(String(e)),
+                    )
+                  }
                   readOnlyCheckout={modalPlanningReadOnly}
                 />
               );
@@ -1230,6 +1298,7 @@ export default function App() {
           onRefreshSecChange={setRefreshSec}
         />
       </Suspense>
+      </div>
     </div>
   );
 }

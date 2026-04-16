@@ -103,6 +103,40 @@ button {
   height: 100%;
 }
 
+.app-chrome {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.roadmap-sync-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-bg);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.roadmap-sync-spinner {
+  box-sizing: border-box;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: roadmap-sync-spin 0.75s linear infinite;
+}
+
+@keyframes roadmap-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .git-workflow-outline-hint {
   margin-top: 0.65rem;
   padding-top: 0.5rem;

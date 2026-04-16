@@ -651,13 +651,20 @@ type Props = {
   onClearDepDraft: () => void;
   onSelect: (id: string) => void;
   onDoubleClick: (id: string) => void;
-  onReordered: () => Promise<void>;
+  /** Serial mutation + roadmap refresh (see App performRoadmapMutation). */
+  performRoadmapMutation: (
+    label: string,
+    mutation: () => Promise<void>,
+  ) => Promise<void>;
+  onMutationError: (message: string) => void;
   onGapInsert: (referenceNodeId: string) => void;
   displayStatusById?: Record<string, string>;
   /** Status column: MR lifecycle labels on top of {@link displayStatusById}. */
   outlineStatusById?: Record<string, string>;
   /** When true, row drag-and-drop reorder is disabled (e.g. outline filtered). */
   reorderLocked?: boolean;
+  /** When true, outline is non-interactive while the app saves/refreshes the roadmap. */
+  interactionLocked?: boolean;
 };
 
 export function OutlineTable({
@@ -680,11 +687,13 @@ export function OutlineTable({
   onClearDepDraft,
   onSelect,
   onDoubleClick,
-  onReordered,
+  performRoadmapMutation,
+  onMutationError,
   onGapInsert,
   displayStatusById,
   outlineStatusById,
   reorderLocked = false,
+  interactionLocked = false,
 }: Props) {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
@@ -762,10 +771,12 @@ export function OutlineTable({
     const t = titleDraft.trim();
     if (t && t !== n.title) {
       try {
-        await patchNode(editingTitleId, [{ key: "title", value: t }]);
-        await onReordered();
-      } catch (e) {
+        await performRoadmapMutation("Saving title…", () =>
+          patchNode(editingTitleId, [{ key: "title", value: t }]),
+        );
+      } catch (e: unknown) {
         console.error(e);
+        onMutationError(String(e));
       }
     }
     setEditingTitleId(null);
@@ -773,7 +784,8 @@ export function OutlineTable({
     editingTitleId,
     titleDraft,
     nodesById,
-    onReordered,
+    performRoadmapMutation,
+    onMutationError,
     registryByNode,
     gitBranchCurrent,
   ]);
@@ -803,9 +815,9 @@ export function OutlineTable({
       if (!n) return;
       const trimmed = titleDraft.trim();
       if (trimmed && trimmed !== n.title) {
-        void patchNode(id, [{ key: "title", value: trimmed }]).then(() =>
-          onReordered(),
-        );
+        void performRoadmapMutation("Saving title…", () =>
+          patchNode(id, [{ key: "title", value: trimmed }]),
+        ).catch((e: unknown) => onMutationError(String(e)));
       }
     }, 2500);
     return () => window.clearInterval(tid);
@@ -813,7 +825,8 @@ export function OutlineTable({
     editingTitleId,
     titleDraft,
     nodesById,
-    onReordered,
+    performRoadmapMutation,
+    onMutationError,
     registryByNode,
     gitBranchCurrent,
   ]);
@@ -846,6 +859,7 @@ export function OutlineTable({
 
   const beginTitleEdit = (nid: string) => {
     if (depEditId) return;
+    if (interactionLocked) return;
     if (rowMatchesRegisteredBranch(nid, registryByNode, gitBranchCurrent)) {
       return;
     }
@@ -854,6 +868,11 @@ export function OutlineTable({
     setEditingTitleId(nid);
     setTitleDraft(n.title);
   };
+
+  const refreshRoadmapOnly = useCallback(
+    () => performRoadmapMutation("Refreshing roadmap…", async () => {}),
+    [performRoadmapMutation],
+  );
 
   const applyInsertBefore = async (aid: string, oid: string) => {
     if (aid === oid) return;
@@ -875,21 +894,25 @@ export function OutlineTable({
       const next = siblingOrderInsertBefore(P, aid, oid, orderedIds, nodesById);
       if (!next?.length) return;
       try {
-        await reorderOutline(P, next);
-        await onReordered();
-      } catch (err) {
+        await performRoadmapMutation("Updating outline…", () =>
+          reorderOutline(P, next),
+        );
+      } catch (err: unknown) {
         console.error(err);
-        await onReordered();
+        onMutationError(String(err));
+        await refreshRoadmapOnly();
       }
       return;
     }
 
     try {
-      await moveOutline(na.node_key, P, newIndex);
-      await onReordered();
-    } catch (err) {
+      await performRoadmapMutation("Updating outline…", () =>
+        moveOutline(na.node_key, P, newIndex),
+      );
+    } catch (err: unknown) {
       console.error(err);
-      await onReordered();
+      onMutationError(String(err));
+      await refreshRoadmapOnly();
     }
   };
 
@@ -914,21 +937,25 @@ export function OutlineTable({
       const next = siblingOrderInsertAfter(P, aid, oid, orderedIds, nodesById);
       if (!next?.length) return;
       try {
-        await reorderOutline(P, next);
-        await onReordered();
-      } catch (err) {
+        await performRoadmapMutation("Updating outline…", () =>
+          reorderOutline(P, next),
+        );
+      } catch (err: unknown) {
         console.error(err);
-        await onReordered();
+        onMutationError(String(err));
+        await refreshRoadmapOnly();
       }
       return;
     }
 
     try {
-      await moveOutline(na.node_key, P, newIndex);
-      await onReordered();
-    } catch (err) {
+      await performRoadmapMutation("Updating outline…", () =>
+        moveOutline(na.node_key, P, newIndex),
+      );
+    } catch (err: unknown) {
       console.error(err);
-      await onReordered();
+      onMutationError(String(err));
+      await refreshRoadmapOnly();
     }
   };
 
@@ -956,7 +983,7 @@ export function OutlineTable({
       const parentDisplay = raw === "__root__" ? null : raw;
       if (parentDisplay === aid) return;
       if (parentDisplay && isDescendant(nodesById, aid, parentDisplay)) {
-        await onReordered();
+        await refreshRoadmapOnly();
         return;
       }
       if (cannotReparentUnder(aid, parentDisplay, nodesById)) return;
@@ -965,11 +992,13 @@ export function OutlineTable({
       );
       const newIndex = others.length;
       try {
-        await moveOutline(na.node_key, parentDisplay, newIndex);
-        await onReordered();
-      } catch (err) {
+        await performRoadmapMutation("Updating outline…", () =>
+          moveOutline(na.node_key, parentDisplay, newIndex),
+        );
+      } catch (err: unknown) {
         console.error(err);
-        await onReordered();
+        onMutationError(String(err));
+        await refreshRoadmapOnly();
       }
       return;
     }
@@ -1000,7 +1029,8 @@ export function OutlineTable({
     }
   };
 
-  const dragDisabled = Boolean(depEditId) || reorderLocked;
+  const dragDisabled =
+    Boolean(depEditId) || reorderLocked || interactionLocked;
 
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
