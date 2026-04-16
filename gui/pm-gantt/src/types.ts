@@ -59,7 +59,26 @@ export type RegistryOverlayPayload = {
   remote: string;
   remote_refs_scanned: number;
   merged_remote_entries: number;
+  merged_integration_branch_entries?: number;
   skipped_refs: number;
+  integration_branch_ref?: string | null;
+};
+
+/** Present when ``pm_gui.integration_branch_auto_ff`` is on (``GET /api/roadmap``). */
+export type IntegrationBranchAutoFfPayload = {
+  enabled: true;
+  integration_branch: string;
+  remote: string;
+  skipped_reason?:
+    | "not_git_repo"
+    | "not_on_integration_branch"
+    | "dirty_working_tree"
+    | "integration_ref_unavailable";
+  sync_state?:
+    | "up_to_date"
+    | "behind_ff_possible"
+    | "ahead_of_remote"
+    | "diverged";
 };
 
 export type RoadmapResponse = {
@@ -82,4 +101,5 @@ export type RoadmapResponse = {
   outline_actions?: Record<string, OutlineActionsEntry>;
   git_workflow?: GitWorkflowPayload;
   registry_overlay?: RegistryOverlayPayload;
+  integration_branch_auto_ff?: IntegrationBranchAutoFfPayload;
 };

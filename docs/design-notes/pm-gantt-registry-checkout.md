@@ -3,7 +3,7 @@
 ## Data flow
 
 - The FastAPI **`GET /api/roadmap`** handler loads `roadmap/registry.yaml` with [`load_registry()`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **repository root** resolved for the GUI ([`get_repo_root()`](../../specy_road/gui_app_helpers.py): `SPECY_ROAD_REPO_ROOT`, else roadmap discovery from cwd).
-- When [**remote registry overlay**](registry-hydration-remote-refs.md) is enabled (default in GUI defaults, gated by Git remote + **Test Git**), the server **merges** `registry.yaml` from **`git show refs/remotes/<remote>/feature/rm-*:roadmap/registry.yaml`** into the payload. **`registry`**, **`registry_by_node`**, **`pr_hints`**, and **`git_enrichment`** then reflect that **merged** view. HEAD entries win on duplicate **`node_id`**; remote rows fill gaps.
+- When [**remote registry overlay**](registry-hydration-remote-refs.md) is enabled (default in GUI defaults, gated by Git remote + **Test Git**), the server **merges** `registry.yaml` from **`refs/remotes/<remote>/<integration_branch>`** and from **`refs/remotes/<remote>/feature/rm-*`** into the payload. **`registry`**, **`registry_by_node`**, **`pr_hints`**, and **`git_enrichment`** then reflect that **merged** view. HEAD entries win on duplicate **`node_id`**; remote integration ref then feature refs fill gaps.
 
 ## Green outline accent (developers vs PMs)
 
@@ -21,7 +21,7 @@ The recommended flow ([registration on integration](../git-workflow.md#registrat
 
 If a team still registers **only** on **`feature/rm-<codename>`** (legacy), the integration branch does not contain that commit until merge, so the **on-disk** file at **`dev`** can still show **`entries: []`** while work proceeds on the feature branch.
 
-**Overlay path:** configure **Git remote** in Settings, run **Test Git**, keep **“Merge registry from remote feature branches”** on (default for new GUI profiles), and rely on periodic **`git fetch`** so `refs/remotes/<remote>/feature/rm-*` exist — see [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md). You do **not** need to check out each feature branch to see registry-driven status, owners, and enrichment.
+**Overlay path:** configure **Git remote** in Settings, run **Test Git**, keep **“Merge registry from remote feature branches”** on (default for new GUI profiles), and rely on periodic **`git fetch`** so `refs/remotes/<remote>/<integration_branch>` and `refs/remotes/<remote>/feature/rm-*` exist — see [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md). You do **not** need to check out each feature branch to see registry-driven status, owners, and enrichment.
 
 ## Optional: checkout / second worktree
 

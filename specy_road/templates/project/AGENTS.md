@@ -14,4 +14,4 @@ Focused brief:
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
-**Task pickup:** When using `specy-road do-next-available-task`, use the **default** flow (sync integration branch, register, **push** integration branch, then `feature/rm-*`) so the team sees the claim on the remote. **`--no-sync`** and **`--no-push-registry`** are for explicit offline/CI-style use only—not a default for agents.
+**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push).

@@ -20,7 +20,6 @@ specy-road export                   # regenerate roadmap.md
 
 #Optional:
 specy-road do-next-available-task --interactive   # choose task by number (same git steps)
-specy-road do-next-available-task --no-push-registry   # skip push after register (e.g. offline)
 specy-road do-next-available-task --no-ci-skip-in-message   # registration commit without CI-skip tokens
 
 ```
@@ -36,9 +35,9 @@ specy-road do-next-available-task --no-ci-skip-in-message   # registration commi
 
 ## Agents and registration
 
-**Default:** Run **`specy-road do-next-available-task`** from the repo root with **no** `--no-sync` or `--no-push-registry` unless you explicitly need offline/CI-style behavior. The default flow **syncs** the integration branch, **commits** `roadmap/registry.yaml` there, **pushes** it to the remote, then creates **`feature/rm-<codename>`** — so teammates and the PM Gantt see the claim after `git pull` / fetch on that branch.
+**Always:** Run **`specy-road do-next-available-task`** from the repo root. The command **syncs** the integration branch (`git fetch`, checkout, `merge --ff-only`), **commits** `roadmap/registry.yaml` there, **pushes** it to the remote, then creates **`feature/rm-<codename>`** — so teammates and the PM Gantt see the claim after `git pull` / fetch on that branch. There is **no** `--no-sync` or `--no-push-registry`; if push fails, fix auth/network and retry so the claim reaches **`remote/<integration-branch>`**.
 
-**Opt-in only:** **`--no-sync`** and **`--no-push-registry`** skip fetch/merge and/or push; others will not see your registration on the remote until someone pushes the integration branch. See **`specy-road do-next-available-task --help`** and the IDE stub installed by **`specyrd init`** (e.g. **`/specyrd-do-next-task`**).
+See **`specy-road do-next-available-task --help`** and the IDE stub from **`specyrd init`** (e.g. **`/specyrd-do-next-task`**).
 
 ---
 
@@ -65,16 +64,10 @@ The CLI keeps the **integration branch** current (from **`roadmap/git-workflow.y
 1. Selects the **first** eligible agentic task in priority order (**Blocked** and **Git-rejected MR** rows first when enrichment is available), unless you pass **`--interactive`** to choose by number — **both modes run the same steps after selection**.
 2. Writes **`work/brief-<NODE_ID>.md`** while still on the integration branch.
 3. **Commits `roadmap/registry.yaml` on the integration branch** (registration only — no implementation in that commit). By default the commit message appends common **CI skip** markers (`[skip ci]`, `[ci skip]`, `***NO_CI***`) so full pipelines that honor commit-message skips often stay quiet for this administrative change. Use **`--no-ci-skip-in-message`** for a legacy one-line message only (e.g. org policy forbids skip tokens). Commit-message skips are **best-effort**: workflows driven only by **path filters** may still run unless your CI also ignores `roadmap/registry.yaml` or similar.
-4. **`git push <remote> <integration-branch>`** runs by default so PMs and the PM Gantt see the claim after `git pull` / fetch. Use **`--no-push-registry`** to skip the push (offline or when you will push manually).
+4. **`git push <remote> <integration-branch>`** runs so PMs and the PM Gantt see the claim after `git pull` / fetch. If push fails, resolve the error and retry (or push manually: `git push <remote> <integration-branch>`).
 5. Creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`** (governance, ancestor planning paths, task sheet excerpt, checklist).
 
-With sync **on** (the default), your working tree must be **clean**. The tool runs `git fetch`, checks out the integration branch, and `git merge --ff-only` to the remote tracking branch. If your local integration branch has diverged, resolve that before retrying. Use **`--no-sync`** for offline or CI; you must already be on the integration branch. Set **`roadmap/git-workflow.yaml`** to your trunk (e.g. `dev`) or pass **`--base dev`**.
-
-**Push after register:** If you used **`--no-push-registry`**, push the integration branch so others see the registry row:
-
-```bash
-git push <remote> <integration-branch>
-```
+Your working tree must be **clean**. The tool runs `git fetch`, checks out the integration branch, and `git merge --ff-only` to the remote tracking branch. If your local integration branch has diverged, resolve that before retrying. Set **`roadmap/git-workflow.yaml`** to your trunk (e.g. `dev`) or pass **`--base dev`**.
 
 Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_approval`** reminds the CLI that MRs need human approval; align with your team’s process before merging.
 
@@ -83,7 +76,6 @@ Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_
 ```bash
 specy-road do-next-available-task
 # optional: specy-road do-next-available-task --base dev --remote origin --interactive
-# offline:  specy-road do-next-available-task --no-sync --no-push-registry
 ```
 
 **IDE slash command** (after `specyrd init --ai <ide> --role dev`):

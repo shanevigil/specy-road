@@ -18,11 +18,9 @@ specy-road do-next-available-task
 
 ### Autonomous agents
 
-Run **exactly** the command above (from the repo root, clean tree). Add only **`--base`**, **`--remote`**, or **`--interactive`** when the user explicitly asked for them.
+Run **exactly** the command above (from the repo root, clean tree). Add only **`--base`**, **`--remote`**, **`--interactive`**, or **`--no-ci-skip-in-message`** when the user explicitly asked for them.
 
-**Do not** pass **`--no-sync`** or **`--no-push-registry`** unless the user explicitly requested offline/CI-style behavior, or a prior step proved fetch/push cannot reach the remote. Those flags skip team-visible registration on the remote; if you must use them, say what was skipped and tell the user to run `git push <remote> <integration-branch>` so others see the claim.
-
-By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). Flags: `--base`, `--remote`, `--no-sync`, `--no-push-registry`, `--no-ci-skip-in-message` (see `specy-road do-next-available-task --help`).
+By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). See `specy-road do-next-available-task --help`.
 
 This will:
 
@@ -30,10 +28,8 @@ This will:
 2. Select an available task — `Agentic-led` or `agentic`, dependencies met, not already claimed (**Blocked** and **MR-rejected** rows first when enrichment allows).
 3. Write `work/brief-<NODE_ID>.md` on the integration branch.
 4. Commit the registry entry on the **integration branch** (registration only).
-5. Push the integration branch (unless **`--no-push-registry`**).
+5. Push the integration branch.
 6. Create the feature branch and write `work/prompt-<NODE_ID>.md` (governance, planning context, checklist).
-
-If you skipped push, run `git push <remote> <integration-branch>` so others see the claim.
 
 Open `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally, then
 use `/specyrd-finish` (or `specy-road finish-this-task`) when done.

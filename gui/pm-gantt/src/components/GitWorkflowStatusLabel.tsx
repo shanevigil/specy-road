@@ -1,15 +1,28 @@
-import type { GitWorkflowPayload } from "../types";
-import { computeGitWorkflowPresentation } from "../gitWorkflowUi";
+import type {
+  GitWorkflowPayload,
+  IntegrationBranchAutoFfPayload,
+} from "../types";
+import {
+  applyIntegrationBranchAutoFfPresentation,
+  computeGitWorkflowPresentation,
+} from "../gitWorkflowUi";
 
 type Props = {
   gitWorkflow: GitWorkflowPayload | undefined;
+  integrationBranchAutoFf?: IntegrationBranchAutoFfPayload;
+  /** True when Settings has remote registry overlay active (merged claims from remote refs). */
+  registryRemoteOverlay?: boolean;
 };
 
 /**
  * Read-only status next to the settings gear (not a button).
  * Red / yellow / green per contract + git connectivity.
  */
-export function GitWorkflowStatusLabel({ gitWorkflow }: Props) {
+export function GitWorkflowStatusLabel({
+  gitWorkflow,
+  integrationBranchAutoFf,
+  registryRemoteOverlay = false,
+}: Props) {
   if (gitWorkflow === undefined) {
     return (
       <span
@@ -21,7 +34,11 @@ export function GitWorkflowStatusLabel({ gitWorkflow }: Props) {
     );
   }
 
-  const pres = computeGitWorkflowPresentation(gitWorkflow);
+  const pres = applyIntegrationBranchAutoFfPresentation(
+    computeGitWorkflowPresentation(gitWorkflow),
+    integrationBranchAutoFf,
+    registryRemoteOverlay,
+  );
   const tipId = "git-workflow-status-tip";
   const { resolved } = gitWorkflow;
 

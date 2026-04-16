@@ -825,7 +825,11 @@ export default function App() {
             </h1>
           </div>
           <div className="app-header-row1-actions">
-            <GitWorkflowStatusLabel gitWorkflow={data?.git_workflow} />
+            <GitWorkflowStatusLabel
+              gitWorkflow={data?.git_workflow}
+              integrationBranchAutoFf={data?.integration_branch_auto_ff}
+              registryRemoteOverlay={data?.registry_overlay?.enabled === true}
+            />
             <button
               type="button"
               className="app-header-icon-btn app-header-tile-btn"

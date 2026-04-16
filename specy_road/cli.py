@@ -46,8 +46,8 @@ _USAGE_TEXT = (
     "\n"
     "Dev task loop:\n"
     "  do-next-available-task  — sync base, brief, register on base, push base, branch, prompt\n"
-    "    (optional: --base BRANCH --remote NAME | --no-sync | --interactive | "
-    "--no-push-registry | --no-ci-skip-in-message)\n"
+    "    (optional: --base BRANCH --remote NAME | --interactive | "
+    "--no-ci-skip-in-message)\n"
     "  finish-this-task        — complete task, validate, commit\n"
     "    (optional: --push [--remote NAME])\n"
 )

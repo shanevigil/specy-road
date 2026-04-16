@@ -1,10 +1,9 @@
 ---
-description: do-next-available-task must publish registry to remote by default
+description: do-next-available-task publishes registry to the remote
 alwaysApply: true
 ---
 
 ## `do-next-available-task` and remote registration
 
-- Do **not** pass **`--no-sync`** or **`--no-push-registry`** to `specy-road do-next-available-task` unless the user explicitly asked for offline/CI-style behavior or a prior step showed fetch/push cannot reach the remote.
-- Prefer a **failed `git push`** with a clear error over a local-only registration that others cannot see on the integration branch.
-- If degraded flags are used, state what was skipped and the manual remediation (`git push <remote> <integration-branch>` per `docs/dev-workflow.md`).
+- `specy-road do-next-available-task` **always** syncs the integration branch and **pushes** the registration commit so teammates can see `roadmap/registry.yaml` on the remote integration branch.
+- Prefer a **failed `git push`** with a clear error over stopping before push — fix network/auth and retry, or push manually with `git push <remote> <integration-branch>` per `docs/dev-workflow.md`.

@@ -14,7 +14,7 @@ from do_next_available import _available, _load_branch_enrichment
 from do_next_prompt import write_agent_prompt
 from do_next_task_interactive import pick_interactive as _pick_interactive
 from generate_brief import index as make_index, render_brief
-from registration_pickup_commit import registration_commit_message, warn_degraded_pickup
+from registration_pickup_commit import registration_commit_message
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
@@ -97,7 +97,7 @@ def _assert_current_branch_equals(base: str) -> None:
             file=sys.stderr,
         )
         print(
-            f"  Run with sync enabled, or: git checkout {base}",
+            f"  git checkout {base}",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -205,27 +205,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
-        "--no-sync",
-        action="store_true",
-        help="Skip fetch/checkout/ff-merge of the integration branch (offline/CI).",
-    )
-    p.add_argument(
         "--interactive",
         action="store_true",
         help="Choose a task from a numbered list instead of auto-picking the first.",
-    )
-    p.add_argument(
-        "--no-push-registry",
-        action="store_true",
-        help=(
-            "Skip git push after registering on the integration branch "
-            "(offline/CI; default is to push so others see the claim)."
-        ),
-    )
-    p.add_argument(
-        "--push-registry",
-        action="store_true",
-        help=argparse.SUPPRESS,
     )
     p.add_argument(
         "--no-ci-skip-in-message",
@@ -322,7 +304,6 @@ def _finalize_pickup(
 def main(argv: list[str] | None = None) -> None:
     global ROOT, REGISTRY_PATH, WORK_DIR
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    push_registry = not args.no_push_registry
     include_ci_skip = not args.no_ci_skip_in_message
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
     REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
@@ -334,13 +315,6 @@ def main(argv: list[str] | None = None) -> None:
     )
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
-
-    warn_degraded_pickup(
-        no_sync=args.no_sync,
-        no_push_registry=args.no_push_registry,
-        remote=remote,
-        base=base,
-    )
 
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
@@ -355,20 +329,17 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(0)
 
-    if not args.no_sync:
-        _sync_integration_branch(base, remote)
-        reg = _load_registry()
-        nodes = load_roadmap(ROOT)["nodes"]
-        enrich = _load_branch_enrichment(ROOT)
-        available = _available(nodes, reg, enrich)
-        if not available:
-            print(
-                "No available agentic tasks after sync — another teammate may have "
-                "claimed work, or the graph changed on the integration branch.",
-            )
-            raise SystemExit(0)
-    else:
-        _assert_working_tree_clean()
+    _sync_integration_branch(base, remote)
+    reg = _load_registry()
+    nodes = load_roadmap(ROOT)["nodes"]
+    enrich = _load_branch_enrichment(ROOT)
+    available = _available(nodes, reg, enrich)
+    if not available:
+        print(
+            "No available agentic tasks after sync — another teammate may have "
+            "claimed work, or the graph changed on the integration branch.",
+        )
+        raise SystemExit(0)
 
     _assert_current_branch_equals(base)
 
@@ -380,7 +351,7 @@ def main(argv: list[str] | None = None) -> None:
         branch,
         base=base,
         remote=remote,
-        push_registry=push_registry,
+        push_registry=True,
         include_ci_skip=include_ci_skip,
     )
 

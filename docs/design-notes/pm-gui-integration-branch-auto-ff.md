@@ -14,7 +14,7 @@ Optional **auto fast-forward** runs (when enabled) on the same throttled cadence
 | **`SPECY_ROAD_GUI_AUTO_INTEGRATION_FF`** | `1` / `true` forces on; `0` / `false` forces off (e.g. CI). |
 | **`SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S`** | Throttle (seconds, clamped). If unset, falls back to **`SPECY_ROAD_GUI_REGISTRY_FETCH_INTERVAL_S`**, then **5**. |
 
-Implementation: [`maybe_auto_integration_ff`](../../specy_road/registry_remote_overlay.py).
+Implementation: [`maybe_auto_integration_ff`](../../specy_road/registry_remote_overlay.py). Status for the PM header (why FF did not run, or sync vs `refs/remotes/<remote>/<integration_branch>`): [`describe_integration_branch_auto_ff`](../../specy_road/pm_integration_registry.py), exposed on [`GET /api/roadmap`](../../specy_road/gui_app_routes_core.py) as **`integration_branch_auto_ff`** when the setting is on.
 
 ## Safety
 
@@ -24,7 +24,7 @@ Implementation: [`maybe_auto_integration_ff`](../../specy_road/registry_remote_o
 
 ## Relation to registry overlay
 
-- **Overlay:** merge `registry.yaml` from **`refs/remotes/<remote>/feature/rm-*`** without checkout — see [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md).
-- **Integration auto-ff:** updates **local** `HEAD` and files for the integration trunk. Use one or both depending on whether you need remote feature registry rows vs. an up-to-date working tree for merged roadmap JSON.
+- **Overlay:** merge `registry.yaml` from **`refs/remotes/<remote>/<integration_branch>`** and from **`refs/remotes/<remote>/feature/rm-*`** without checkout — see [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md). That updates **registry-driven** fields in the PM UI (claims, Dev column, locks) from **`git fetch`** even when auto-ff does not run (e.g. dirty tree).
+- **Integration auto-ff:** updates **local** `HEAD` and on-disk roadmap **JSON** for the integration trunk. Use it when you want the **merged graph files** to match the remote without a manual pull; registry visibility does not depend on it when overlay is on.
 
 Both paths share **`_GIT_SYNC_LOCK`** in [`registry_remote_overlay.py`](../../specy_road/registry_remote_overlay.py) so `git fetch` / merge steps do not overlap per repository.

@@ -92,11 +92,11 @@ def test_specy_road_do_next_available_task_help() -> None:
         text=True,
         check=True,
     )
-    assert "--no-sync" in r.stdout
     assert "--base" in r.stdout
     assert "--interactive" in r.stdout
-    assert "--no-push-registry" in r.stdout
     assert "--no-ci-skip-in-message" in r.stdout
+    assert "--no-sync" not in r.stdout
+    assert "--no-push-registry" not in r.stdout
 
 
 def test_specy_road_init_requires_subcommand() -> None:

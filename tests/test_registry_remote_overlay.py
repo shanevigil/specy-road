@@ -127,6 +127,7 @@ def test_merge_fills_gap_from_remote(overlay_repo: Path) -> None:
     head = {"version": 1, "entries": []}
     merged, meta = merge_registry_with_remote_overlay(head, overlay_repo, "origin")
     assert meta["merged_remote_entries"] == 1
+    assert meta.get("merged_integration_branch_entries", 0) == 0
     assert meta["remote_refs_scanned"] >= 1
     by_id = {e["node_id"]: e for e in merged.get("entries", [])}
     assert "M9.9" in by_id
@@ -147,6 +148,7 @@ def test_merge_head_wins_same_node_id(overlay_repo: Path) -> None:
     }
     merged, meta = merge_registry_with_remote_overlay(head, overlay_repo, "origin")
     assert meta["merged_remote_entries"] == 0
+    assert meta.get("merged_integration_branch_entries", 0) == 0
     by_id = {e["node_id"]: e for e in merged.get("entries", [])}
     assert by_id["M9.9"]["codename"] == "head"
 

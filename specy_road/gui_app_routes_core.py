@@ -26,6 +26,7 @@ from roadmap_load import load_roadmap
 
 from specy_road.git_workflow_config import build_git_workflow_status
 from specy_road.registry_remote_overlay import (
+    describe_integration_branch_auto_ff,
     merge_registry_with_remote_overlay,
     maybe_auto_git_fetch,
     maybe_auto_integration_ff,
@@ -99,6 +100,9 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     }
     if registry_overlay_meta is not None:
         out["registry_overlay"] = registry_overlay_meta
+    ibaff = describe_integration_branch_auto_ff(root)
+    if ibaff.get("enabled") is True:
+        out["integration_branch_auto_ff"] = ibaff
     return out
 
 
@@ -115,6 +119,8 @@ def register_core(api: APIRouter) -> None:
     @api.get("/roadmap")
     def api_roadmap() -> dict[str, Any]:
         root = get_repo_root()
+        if registry_remote_overlay_enabled(root):
+            maybe_auto_git_fetch(root, resolve_git_remote(root))
         maybe_auto_integration_ff(root)
         try:
             doc = load_roadmap(root)
@@ -125,9 +131,9 @@ def register_core(api: APIRouter) -> None:
     @api.get("/roadmap/fingerprint")
     def api_roadmap_fingerprint() -> dict[str, int]:
         root = get_repo_root()
-        maybe_auto_integration_ff(root)
         if registry_remote_overlay_enabled(root):
             maybe_auto_git_fetch(root, resolve_git_remote(root))
+        maybe_auto_integration_ff(root)
         base = roadmap_fingerprint(root)
         return {
             "fingerprint": roadmap_fingerprint_with_remote_refs(root, base),

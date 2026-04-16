@@ -1,16 +1,19 @@
-"""Merge ``roadmap/registry.yaml`` from remote-tracking ``feature/rm-*`` refs into the PM GUI payload.
+"""Merge ``roadmap/registry.yaml`` from the remote integration branch and from ``feature/rm-*`` into the PM GUI payload.
+
+Reads (after ``git fetch``) ``refs/remotes/<remote>/<integration_branch>`` first, then ``feature/rm-*`` — ``HEAD``
+entries win on duplicate ``node_id``; remote sources fill gaps (integration branch before feature refs).
 
 Primary control: **Settings** → ``pm_gui.registry_remote_overlay`` in ``~/.specy-road/gui-settings.json``
 (default **on** for new profiles; still requires Git remote repo/token and successful **Test Git**).
 Optional env override: ``SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`` forces off; ``=1`` forces on.
 
 Optional fast-forward of the **integration branch** (``git fetch`` + ``git merge --ff-only``) is controlled by
-``pm_gui.integration_branch_auto_ff`` and ``SPECY_ROAD_GUI_AUTO_INTEGRATION_FF``; see ``maybe_auto_integration_ff``.
+``pm_gui.integration_branch_auto_ff`` and ``SPECY_ROAD_GUI_AUTO_INTEGRATION_FF``; see ``maybe_auto_integration_ff``
+and ``describe_integration_branch_auto_ff``.
 """
 
 from __future__ import annotations
 
-import hashlib
 import os
 import subprocess
 import sys
@@ -27,6 +30,10 @@ from specy_road.git_workflow_config import (
     load_git_workflow_config,
     resolve_integration_defaults,
     working_tree_clean,
+)
+from specy_road.pm_integration_registry import (
+    describe_integration_branch_auto_ff,
+    remote_registry_overlay_fingerprint_addendum as remote_feature_refs_fingerprint_addendum,
 )
 
 _LIB_DIR = Path(__file__).resolve().parent / "bundled_scripts"
@@ -278,22 +285,49 @@ def _normalize_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _append_remote_registry_entries(
+    doc: dict[str, Any] | None,
+    head_ids: set[str],
+    merged_entries: list[dict[str, Any]],
+    seen_remote_nodes: set[str],
+) -> int:
+    """Append entries from a parsed registry doc; return count added."""
+    if doc is None:
+        return 0
+    n = 0
+    for e in _normalize_entries(doc):
+        nid = str(e["node_id"])
+        if nid in head_ids or nid in seen_remote_nodes:
+            continue
+        seen_remote_nodes.add(nid)
+        merged_entries.append(dict(e))
+        n += 1
+    return n
+
+
 def merge_registry_with_remote_overlay(
     head_reg: dict[str, Any],
     repo_root: Path,
     remote: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """HEAD entries win on ``node_id``; remote refs fill gaps.
+    """HEAD entries win on ``node_id``; remote integration ref then ``feature/rm-*`` refs fill gaps.
 
     Returns ``(merged_registry_doc, meta)``.
     """
     rm = (remote or resolve_git_remote(repo_root)).strip() or "origin"
+    base, _remote_def, _warns = resolve_integration_defaults(
+        repo_root,
+        explicit_base=None,
+        explicit_remote=None,
+    )
     meta: dict[str, Any] = {
         "enabled": True,
         "remote": rm,
         "remote_refs_scanned": 0,
         "merged_remote_entries": 0,
+        "merged_integration_branch_entries": 0,
         "skipped_refs": 0,
+        "integration_branch_ref": None,
     }
 
     head_entries = list(_normalize_entries(head_reg))
@@ -301,9 +335,24 @@ def merge_registry_with_remote_overlay(
     merged_entries: list[dict[str, Any]] = [dict(e) for e in head_entries]
     seen_remote_nodes: set[str] = set()
 
-    refs = list_remote_feature_rm_refs(repo_root, rm)[: _max_refs()]
     budget = _total_budget_s()
     t0 = time.monotonic()
+
+    ib_ref = f"refs/remotes/{rm}/{base}"
+    ok_ib, _ = _git_ok(["show-ref", "--verify", ib_ref], repo_root, min(5.0, budget))
+    if ok_ib:
+        meta["integration_branch_ref"] = ib_ref
+        remain = budget - (time.monotonic() - t0)
+        if remain > 0:
+            timeout = min(PER_SHOW_TIMEOUT_S, max(0.5, remain))
+            doc = read_registry_at_ref(repo_root, ib_ref, timeout)
+            meta["merged_integration_branch_entries"] += _append_remote_registry_entries(
+                doc, head_ids, merged_entries, seen_remote_nodes
+            )
+    else:
+        meta["integration_branch_ref"] = None
+
+    refs = list_remote_feature_rm_refs(repo_root, rm)[: _max_refs()]
 
     for ref in refs:
         if time.monotonic() - t0 > budget:
@@ -315,38 +364,15 @@ def merge_registry_with_remote_overlay(
         if doc is None:
             meta["skipped_refs"] += 1
             continue
-        for e in _normalize_entries(doc):
-            nid = str(e["node_id"])
-            if nid in head_ids:
-                continue
-            if nid in seen_remote_nodes:
-                continue
-            seen_remote_nodes.add(nid)
-            merged_entries.append(dict(e))
-            meta["merged_remote_entries"] += 1
+        meta["merged_remote_entries"] += _append_remote_registry_entries(
+            doc, head_ids, merged_entries, seen_remote_nodes
+        )
 
     out_doc: dict[str, Any] = {
         "version": 1,
         "entries": merged_entries,
     }
     return out_doc, meta
-
-
-def remote_feature_refs_fingerprint_addendum(repo_root: Path) -> int:
-    """Stable int from remote ``feature/rm-*`` ref object names (when overlay enabled)."""
-    if not registry_remote_overlay_enabled(repo_root) or not is_git_worktree(repo_root):
-        return 0
-    rm = resolve_git_remote(repo_root)
-    pattern = f"refs/remotes/{rm}/feature/rm-*"
-    ok, out = _git_ok(
-        ["for-each-ref", "--format=%(objectname) %(refname)", pattern],
-        repo_root,
-        60.0,
-    )
-    if not ok or not out.strip():
-        return 0
-    h = hashlib.sha256(out.encode("utf-8")).digest()[:8]
-    return int.from_bytes(h, "little")
 
 
 def roadmap_fingerprint_with_remote_refs(repo_root: Path, base_fp: int) -> int:
