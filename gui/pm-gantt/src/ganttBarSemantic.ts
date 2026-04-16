@@ -135,6 +135,13 @@ export function resolveGanttBarStyle(ctx: GanttBarResolveContext): {
       strokeWidth: 1,
     };
   }
+  if (ctx.node?.type === "gate") {
+    return {
+      fill: "var(--bar-gate)",
+      stroke: "rgba(0,0,0,0.12)",
+      strokeWidth: 1,
+    };
+  }
   const thickGreen =
     semantic === "var(--bar-in-progress)" &&
     showActiveFeatureBranchBar(

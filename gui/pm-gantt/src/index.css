@@ -20,6 +20,8 @@
   --bar-mr-rejected: #c62828;
   --bar-blocked: #d32f2f;
   --bar-complete: #424242;
+  --bar-gate: #7b1fa2;
+  --row-gate-bg: rgba(123, 31, 162, 0.1);
   --gantt-bar-selected: var(--accent);
   --gantt-dep-chain: #f9a825;
   --gantt-dep-chain-bg: rgba(249, 168, 37, 0.2);
@@ -51,6 +53,8 @@
   --bar-checkout-active: var(--bar-in-progress);
   --bar-mr-pending: #ffa726;
   --bar-mr-rejected: #ef5350;
+  --bar-gate: #ba68c8;
+  --row-gate-bg: rgba(186, 104, 200, 0.14);
   --gantt-dep-chain: #ffca28;
   --gantt-dep-chain-bg: rgba(255, 202, 40, 0.14);
   --gantt-dep-highlight: var(--gantt-dep-chain);
@@ -69,6 +73,8 @@
     --bar-checkout-active: var(--bar-in-progress);
     --bar-mr-pending: #ffa726;
     --bar-mr-rejected: #ef5350;
+    --bar-gate: #ba68c8;
+    --row-gate-bg: rgba(186, 104, 200, 0.14);
     --gantt-dep-chain: #ffca28;
     --gantt-dep-chain-bg: rgba(255, 202, 40, 0.14);
     --gantt-dep-highlight: var(--gantt-dep-chain);
@@ -864,6 +870,14 @@ button {
 
 .outline-table tr.selected td {
   background: var(--sel-bg);
+}
+
+.outline-table tbody tr.outline-row-gate td {
+  background: var(--row-gate-bg);
+}
+
+.outline-table tbody tr.outline-row-gate.selected td {
+  background: color-mix(in srgb, var(--row-gate-bg) 55%, var(--sel-bg));
 }
 
 .outline-table tbody tr.outline-row-git-current td {

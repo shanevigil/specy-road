@@ -469,6 +469,13 @@ export default function App() {
     [data],
   );
 
+  /** Gates must be under vision/phase; root-level rows have no parent_id. */
+  const gateInsertDisabled = useMemo(() => {
+    if (!selectedId) return true;
+    const p = byId[selectedId]?.parent_id;
+    return p == null || p === "";
+  }, [selectedId, byId]);
+
   const displayStatusById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, string>;
     return buildDisplayStatusWithPhaseRollup(
@@ -865,12 +872,12 @@ export default function App() {
     }).catch((e) => setErr(String(e)));
   };
 
-  const addGateBelow = () => {
+  const insertGateAtSelection = () => {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void runRoadmapAction("Adding gate…", async () => {
-      await addNode(selectedId, "below", t, "gate");
+    void runRoadmapAction("Inserting gate…", async () => {
+      await addNode(selectedId, "above", t, "gate");
       await loadSnapshot();
     }).catch((e) => setErr(String(e)));
   };
@@ -1102,10 +1109,16 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId}
-                title="Add gate below selection (PM approval hold; not dev pickup)"
-                aria-label="Add gate below selection"
-                onClick={addGateBelow}
+                disabled={roadmapBusy || !selectedId || gateInsertDisabled}
+                title={
+                  !selectedId
+                    ? "Select a row first"
+                    : gateInsertDisabled
+                      ? "Gate rows must sit under a vision or phase — select an indented row"
+                      : "Insert gate at selection (above this row); display ids renumber. PM hold, not dev pickup"
+                }
+                aria-label="Insert gate at selection"
+                onClick={insertGateAtSelection}
               >
                 <span className="toolbar-gate-icon" aria-hidden="true">
                   G

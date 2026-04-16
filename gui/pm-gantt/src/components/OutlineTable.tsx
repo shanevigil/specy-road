@@ -574,6 +574,7 @@ function SortableRow({
     depEditId === id ? "dep-edit-row" : "",
     isDepCandidate ? "dep-candidate-row" : "",
     isGitCheckoutRow ? "outline-row-git-current" : "",
+    node.type === "gate" ? "outline-row-gate" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -1341,6 +1342,7 @@ export function OutlineTable({
                   rp.depEditId === did ? "dep-edit-row" : "",
                   rp.isDepCandidate ? "dep-candidate-row" : "",
                   rp.isGitCheckoutRow ? "outline-row-git-current" : "",
+                  rp.node.type === "gate" ? "outline-row-gate" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");

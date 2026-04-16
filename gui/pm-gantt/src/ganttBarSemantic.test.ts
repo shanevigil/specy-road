@@ -158,6 +158,28 @@ describe("resolveGanttBarStyle", () => {
     expect(s.fill).toBe("var(--gantt-dep-chain)");
   });
 
+  it("gate rows use purple bar when not selected", () => {
+    const s = resolveGanttBarStyle({
+      nodeId: "N1",
+      selected: false,
+      depHighlight: false,
+      displayStatus: "Not Started",
+      node: { ...stubNode("N1", "Not Started"), type: "gate" },
+    });
+    expect(s.fill).toBe("var(--bar-gate)");
+  });
+
+  it("selection wins over gate purple on bar", () => {
+    const s = resolveGanttBarStyle({
+      nodeId: "N1",
+      selected: true,
+      depHighlight: false,
+      displayStatus: "Not Started",
+      node: { ...stubNode("N1", "Not Started"), type: "gate" },
+    });
+    expect(s.fill).toBe("var(--gantt-bar-selected)");
+  });
+
   it("uses thick accent stroke for feature-branch in-progress bar only", () => {
     const thick = resolveGanttBarStyle({
       nodeId: "N1",

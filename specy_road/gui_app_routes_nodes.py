@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -21,12 +22,32 @@ from roadmap_outline_ops import (
     apply_indent,
     apply_outdent,
     move_node_outline,
+    persist_merged_nodes,
     reorder_siblings,
+    sync_registry_node_ids,
 )
+from roadmap_outline_renumber import renumber_display_ids_inplace
+from sync_planning_artifacts import sync_planning_artifacts
 from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
+
+
+def _canonical_ids_after_add(
+    root: Path, provisional_new_id: str, inserted_node_key: str
+) -> str:
+    """Renumber display ids after insert (same pipeline as outline reorder)."""
+    nodes3 = list(load_roadmap(root)["nodes"])
+    old_to_new = renumber_display_ids_inplace(nodes3)
+    sync_planning_artifacts(root, nodes3)
+    persist_merged_nodes(root, nodes3)
+    sync_registry_node_ids(root, old_to_new)
+    run_validate_raise(root)
+    return next(
+        (n["id"] for n in nodes3 if n.get("node_key") == inserted_node_key),
+        old_to_new.get(provisional_new_id, provisional_new_id),
+    )
 
 
 def register_node_mutations(api: APIRouter) -> None:
@@ -103,6 +124,14 @@ def register_add_node(api: APIRouter) -> None:
             raise HTTPException(status_code=404, detail="reference node not found")
         ref_node = by_id[ref]
         parent_id: str | None = ref_node.get("parent_id")
+        if body.type == "gate" and parent_id in (None, ""):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "gate requires a parent vision or phase; select a row under "
+                    "a phase (not a top-level row)"
+                ),
+            )
         chunk_path = find_chunk_path(root, ref)
         if not chunk_path:
             raise HTTPException(status_code=500, detail="chunk for reference not found")
@@ -132,6 +161,7 @@ def register_add_node(api: APIRouter) -> None:
         }
 
         ensure_planning_sheet_for_new_node(root, new_node)
+        inserted_key = new_node["node_key"]
 
         try:
             append_node_to_chunk(root, chunk_arg, new_node)
@@ -153,4 +183,8 @@ def register_add_node(api: APIRouter) -> None:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
-        return {"ok": "true", "id": new_id}
+        try:
+            final_id = _canonical_ids_after_add(root, new_id, inserted_key)
+        except (SystemExit, OSError, ValueError) as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": "true", "id": final_id}
