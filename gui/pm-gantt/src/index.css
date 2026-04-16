@@ -628,7 +628,16 @@ button {
   background: rgba(25, 118, 210, 0.07);
 }
 
-.outline-col-status,
+.outline-col-status {
+  font-size: 0.75rem;
+  padding: 0 0.25rem;
+  padding-left: 0.5rem;
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .outline-col-dev {
   font-size: 0.75rem;
   padding: 0 0.25rem;
@@ -709,6 +718,17 @@ button {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+}
+
+/* Drag preview: stacked subtree rows following the pointer */
+.outline-drag-overlay-table {
+  width: max-content;
+  min-width: 100%;
+  max-width: min(100vw - 2rem, 48rem);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
 }
 
 .outline-table tbody tr:not(.outline-gap-tr) {
@@ -853,7 +873,7 @@ button {
 }
 
 .outline-title {
-  padding-right: 0.35rem;
+  padding-right: 0.5rem;
 }
 
 .outline-title-row {

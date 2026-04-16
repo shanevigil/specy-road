@@ -15,11 +15,15 @@ import {
 import { createPortal } from "react-dom";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   closestCorners,
   pointerWithin,
   type CollisionDetection,
   type DragEndEvent,
+  type DragStartEvent,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
   useSensor,
   useSensors,
   useDroppable,
@@ -39,6 +43,7 @@ import {
   devColumnLabel,
   rowMatchesRegisteredBranch,
 } from "../rowMatchesRegisteredBranch";
+import { contiguousSubtreeIds } from "../outlineSubtree";
 
 const TITLE_PLAN_READONLY_HINT =
   "Title and planning are read-only while this task is in active development (in progress, open or merged merge request, or this checkout matches the registered branch).";
@@ -179,16 +184,22 @@ function RowGapBefore({
   targetId,
   onInsertClick,
   depEditActive,
+  hidden: gapHidden,
 }: {
   targetId: string;
   onInsertClick: (targetId: string) => void;
   depEditActive: boolean;
+  /** Hide gap between rows that move together in a subtree drag. */
+  hidden?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `before:${targetId}`,
   });
+  const gapStyle: CSSProperties | undefined = gapHidden
+    ? { opacity: 0, pointerEvents: "none" }
+    : undefined;
   return (
-    <tr ref={setNodeRef} className="outline-gap-tr">
+    <tr ref={setNodeRef} className="outline-gap-tr" style={gapStyle}>
       <td
         className={
           isOver ? "outline-gap-cell outline-gap-active" : "outline-gap-cell"
@@ -249,6 +260,181 @@ type RowProps = {
   titleEditLocked?: boolean;
 };
 
+type OutlineRowTrExtra = {
+  variant: "interactive" | "dragPreview";
+  rowClass: string;
+  gitCheckoutTitle?: string;
+  trRef?: (el: HTMLTableRowElement | null) => void;
+  trStyle?: CSSProperties;
+  dndListeners?: DraggableSyntheticListeners;
+  dndAttributes?: DraggableAttributes;
+  onRowDoubleClick?: (e: MouseEvent<HTMLTableRowElement>) => void;
+  onTitleClick?: () => void;
+  onTitlePointerDown?: (e: ReactPointerEvent<HTMLTableCellElement>) => void;
+  onTitlePointerMove?: (e: ReactPointerEvent<HTMLTableCellElement>) => void;
+  onTitlePointerEnd?: () => void;
+  onIdClick?: () => void;
+  onStatusDevClick?: () => void;
+};
+
+function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
+  const {
+    variant,
+    id,
+    node,
+    outlineDepth,
+    meta,
+    statusText,
+    statusCellTitle,
+    devText,
+    depCellText,
+    depEditId,
+    titleEditing,
+    titleDraft,
+    onTitleDraftChange,
+    onTitleBlur,
+    onTitleKeyDown,
+    titleInputRef,
+    onDepCellClick,
+    depCellRef,
+    devCellTitle,
+    titleEditLocked,
+    rowClass,
+    gitCheckoutTitle,
+    trRef,
+    trStyle,
+    dndListeners,
+    dndAttributes,
+    onRowDoubleClick,
+    onTitleClick,
+    onTitlePointerDown,
+    onTitlePointerMove,
+    onTitlePointerEnd,
+    onIdClick,
+    onStatusDevClick,
+  } = props;
+
+  const depActive = depEditId === id;
+  const isPreview = variant === "dragPreview";
+
+  return (
+    <tr
+      ref={trRef}
+      style={trStyle}
+      className={rowClass || undefined}
+      title={gitCheckoutTitle}
+      {...(isPreview ? {} : (dndListeners ?? {}))}
+      {...(isPreview ? {} : (dndAttributes ?? {}))}
+      onDoubleClick={onRowDoubleClick}
+    >
+      <td className="outline-id" onClick={isPreview ? undefined : onIdClick}>
+        <span className="outline-id-text">{node.id}</span>
+        {isPreview ? null : <IntoDropBadge nodeId={node.id} />}
+      </td>
+      <td
+        className="outline-title"
+        title={titleEditLocked ? TITLE_PLAN_READONLY_HINT : undefined}
+        onClick={isPreview ? undefined : onTitleClick}
+        onPointerDown={isPreview ? undefined : onTitlePointerDown}
+        onPointerMove={isPreview ? undefined : onTitlePointerMove}
+        onPointerUp={isPreview ? undefined : onTitlePointerEnd}
+        onPointerCancel={isPreview ? undefined : onTitlePointerEnd}
+        onPointerLeave={isPreview ? undefined : onTitlePointerEnd}
+        style={{ paddingLeft: `${outlineDepth * 12}px` }}
+      >
+        {!isPreview && titleEditing ? (
+          <input
+            ref={titleInputRef}
+            className="outline-title-input"
+            value={titleDraft}
+            onChange={(e) => onTitleDraftChange(e.target.value)}
+            onBlur={onTitleBlur}
+            onKeyDown={onTitleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDownCapture={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <div className="outline-title-row">
+            <div className="outline-title-text-wrap">
+              <div>{node.title}</div>
+            </div>
+            {titleEditLocked ? (
+              <span
+                className="outline-pm-lock"
+                title={TITLE_PLAN_READONLY_HINT}
+                aria-label="Read-only"
+              >
+                <svg
+                  className="outline-pm-lock-icon"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <rect
+                    x="3"
+                    y="11"
+                    width="18"
+                    height="11"
+                    rx="2"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M7 11V7a5 5 0 0 1 10 0v4"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+            ) : null}
+          </div>
+        )}
+        {meta ? <div className="outline-meta">{meta}</div> : null}
+      </td>
+      <td
+        className="outline-col-status"
+        title={statusCellTitle}
+        onClick={isPreview ? undefined : onStatusDevClick}
+      >
+        {statusText}
+      </td>
+      <td
+        className="outline-col-dev"
+        title={devCellTitle}
+        onClick={isPreview ? undefined : onStatusDevClick}
+      >
+        {devText}
+      </td>
+      <td
+        ref={depCellRef}
+        className={
+          depActive
+            ? "outline-col-dep outline-col-dep-active"
+            : "outline-col-dep"
+        }
+        title="Click to choose which features this item depends on (explicit)"
+        onClick={
+          isPreview
+            ? undefined
+            : (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDepCellClick();
+              }
+        }
+      >
+        <span className="outline-dep-cell-text">{depCellText}</span>
+      </td>
+    </tr>
+  );
+}
+
 function SortableRow({
   id,
   node,
@@ -277,20 +463,21 @@ function SortableRow({
   isGitCheckoutRow,
   devCellTitle,
   titleEditLocked,
-}: RowProps) {
+  rowSourceHidden,
+}: RowProps & { rowSourceHidden: boolean }) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
     transition,
-    isDragging,
   } = useSortable({ id, disabled: dragDisabled });
 
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.7 : 1,
+    opacity: rowSourceHidden ? 0 : 1,
+    pointerEvents: rowSourceHidden ? "none" : undefined,
   };
 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -391,123 +578,54 @@ function SortableRow({
     .filter(Boolean)
     .join(" ");
 
-  const depActive = depEditId === id;
-
   const gitCheckoutTitle = isGitCheckoutRow
     ? "Named branch matches the branch field in roadmap/registry.yaml for this row in this checkout."
     : undefined;
 
   return (
-    <tr
-      ref={setNodeRef}
-      style={style}
-      className={rowClass || undefined}
-      title={gitCheckoutTitle}
-      {...listeners}
-      {...attributes}
-      onDoubleClick={handleRowDoubleClick}
-    >
-      <td className="outline-id" onClick={handleIdClick}>
-        <span className="outline-id-text">{node.id}</span>
-        <IntoDropBadge nodeId={node.id} />
-      </td>
-      <td
-        className="outline-title"
-        title={titleEditLocked ? TITLE_PLAN_READONLY_HINT : undefined}
-        onClick={handleTitleClick}
-        onPointerDown={handleTitlePointerDown}
-        onPointerMove={handleTitlePointerMove}
-        onPointerUp={handleTitlePointerEnd}
-        onPointerCancel={handleTitlePointerEnd}
-        onPointerLeave={handleTitlePointerEnd}
-        style={{ paddingLeft: `${outlineDepth * 12}px` }}
-      >
-        {titleEditing ? (
-          <input
-            ref={titleInputRef}
-            className="outline-title-input"
-            value={titleDraft}
-            onChange={(e) => onTitleDraftChange(e.target.value)}
-            onBlur={onTitleBlur}
-            onKeyDown={onTitleKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDownCapture={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <div className="outline-title-row">
-            <div className="outline-title-text-wrap">
-              <div>{node.title}</div>
-            </div>
-            {titleEditLocked ? (
-              <span
-                className="outline-pm-lock"
-                title={TITLE_PLAN_READONLY_HINT}
-                aria-label="Read-only"
-              >
-                <svg
-                  className="outline-pm-lock-icon"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  <rect
-                    x="3"
-                    y="11"
-                    width="18"
-                    height="11"
-                    rx="2"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M7 11V7a5 5 0 0 1 10 0v4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-            ) : null}
-          </div>
-        )}
-        {meta ? <div className="outline-meta">{meta}</div> : null}
-      </td>
-      <td
-        className="outline-col-status"
-        title={statusCellTitle}
-        onClick={handleStatusDevClick}
-      >
-        {statusText}
-      </td>
-      <td
-        className="outline-col-dev"
-        title={devCellTitle}
-        onClick={handleStatusDevClick}
-      >
-        {devText}
-      </td>
-      <td
-        ref={depCellRef}
-        className={
-          depActive
-            ? "outline-col-dep outline-col-dep-active"
-            : "outline-col-dep"
-        }
-        title="Click to choose which features this item depends on (explicit)"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onDepCellClick();
-        }}
-      >
-        <span className="outline-dep-cell-text">{depCellText}</span>
-      </td>
-    </tr>
+    <OutlineRowTr
+      id={id}
+      node={node}
+      outlineDepth={outlineDepth}
+      selected={selected}
+      meta={meta}
+      statusText={statusText}
+      statusCellTitle={statusCellTitle}
+      devText={devText}
+      depCellText={depCellText}
+      depEditId={depEditId}
+      isDepCandidate={isDepCandidate}
+      titleEditing={titleEditing}
+      titleDraft={titleDraft}
+      onTitleDraftChange={onTitleDraftChange}
+      onTitleBlur={onTitleBlur}
+      onTitleKeyDown={onTitleKeyDown}
+      titleInputRef={titleInputRef}
+      onBeginTitleEdit={onBeginTitleEdit}
+      onSelectRow={onSelectRow}
+      onOpenModal={onOpenModal}
+      onDepRowBodyClick={onDepRowBodyClick}
+      onDepCellClick={onDepCellClick}
+      dragDisabled={dragDisabled}
+      depCellRef={depCellRef}
+      isGitCheckoutRow={isGitCheckoutRow}
+      devCellTitle={devCellTitle}
+      titleEditLocked={titleEditLocked}
+      variant="interactive"
+      rowClass={rowClass}
+      gitCheckoutTitle={gitCheckoutTitle}
+      trRef={setNodeRef}
+      trStyle={style}
+      dndListeners={listeners}
+      dndAttributes={attributes}
+      onRowDoubleClick={handleRowDoubleClick}
+      onTitleClick={handleTitleClick}
+      onTitlePointerDown={handleTitlePointerDown}
+      onTitlePointerMove={handleTitlePointerMove}
+      onTitlePointerEnd={handleTitlePointerEnd}
+      onIdClick={handleIdClick}
+      onStatusDevClick={handleStatusDevClick}
+    />
   );
 }
 
@@ -824,6 +942,7 @@ export function OutlineTable({
   }, []);
 
   const onDragEnd = async (e: DragEndEvent) => {
+    setActiveDragId(null);
     if (depEditId) return;
     const { active, over } = e;
     if (!over) return;
@@ -882,6 +1001,31 @@ export function OutlineTable({
   };
 
   const dragDisabled = Boolean(depEditId) || reorderLocked;
+
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  const activeSubtreeIds = useMemo(
+    () =>
+      activeDragId
+        ? contiguousSubtreeIds(orderedIds, rowDepths, activeDragId)
+        : [],
+    [activeDragId, orderedIds, rowDepths],
+  );
+
+  const subtreeFirstId = activeSubtreeIds[0] ?? null;
+
+  const activeSubtreeSet = useMemo(
+    () => new Set(activeSubtreeIds),
+    [activeSubtreeIds],
+  );
+
+  const onDragStart = (e: DragStartEvent) => {
+    setActiveDragId(String(e.active.id));
+  };
+
+  const onDragCancel = () => {
+    setActiveDragId(null);
+  };
 
   const depCellAnchorRef = useRef<HTMLTableCellElement | null>(null);
   const depToolbarRef = useRef<HTMLDivElement | null>(null);
@@ -944,6 +1088,96 @@ export function OutlineTable({
     };
   }, [depEditId, orderedIds, depDraftKeys]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  const makeRowProps = (rowId: string, i: number): RowProps | null => {
+    const node = nodesById[rowId];
+    if (!node) return null;
+    const nk = node?.node_key;
+    const isCandidate =
+      Boolean(depEditId) &&
+      Boolean(nk) &&
+      depDraftKeys.has(nk) &&
+      depEditId !== rowId;
+    const isGitCheckoutRow = rowMatchesRegisteredBranch(
+      rowId,
+      registryByNode,
+      gitBranchCurrent,
+    );
+    const persistedNorm =
+      (node?.status as string)?.trim() || "Not Started";
+    const baseDisp =
+      displayStatusById != null
+        ? displayStatusById[rowId] ?? persistedNorm
+        : persistedNorm;
+    const outlineDisp =
+      outlineStatusById != null
+        ? outlineStatusById[rowId] ?? baseDisp
+        : baseDisp;
+    const statusText =
+      outlineStatusById != null
+        ? outlineDisp
+        : displayStatusById != null
+          ? baseDisp
+          : (node?.status as string) || "—";
+    const statusCellTitle = statusColumnTooltip(
+      node,
+      persistedNorm,
+      baseDisp,
+      outlineDisp,
+    );
+    const titlePlanLocked = pmPlanningTitleReadOnlyFromRow(
+      isGitCheckoutRow,
+      baseDisp,
+      outlineDisp,
+    );
+    return {
+      id: rowId,
+      node,
+      outlineDepth: rowDepths[i] ?? 0,
+      selected: selectedId === rowId,
+      meta: metaLine(rowId),
+      statusText,
+      statusCellTitle,
+      devText: devColumnLabel(
+        rowId,
+        registryByNode,
+        gitEnrichment,
+        gitBranchCurrent,
+        gitUserName,
+      ),
+      depCellText: depCellLabel(rowId),
+      depEditId,
+      isGitCheckoutRow,
+      devCellTitle: devColumnDetailTitle(
+        rowId,
+        registryByNode,
+        gitEnrichment,
+        prHints,
+      ),
+      titleEditLocked: titlePlanLocked,
+      isDepCandidate: isCandidate,
+      titleEditing: editingTitleId === rowId,
+      titleDraft,
+      onTitleDraftChange: setTitleDraft,
+      onTitleBlur: () => void flushTitleIfDirty(),
+      onTitleKeyDown,
+      titleInputRef,
+      onBeginTitleEdit: () => beginTitleEdit(rowId),
+      dragDisabled,
+      onSelectRow: () => onSelect(rowId),
+      onOpenModal: () => onDoubleClick(rowId),
+      onDepRowBodyClick: () => {
+        if (!depEditId) return;
+        if (rowId === depEditId) {
+          onSelect(rowId);
+          return;
+        }
+        onToggleDepCandidate(rowId);
+      },
+      onDepCellClick: () => depCellActivate(rowId),
+      depCellRef: depEditId === rowId ? depCellAnchorRef : undefined,
+    };
+  };
 
   const depToolbarFallbackStyle: CSSProperties = {
     position: "fixed",
@@ -1010,8 +1244,11 @@ export function OutlineTable({
     <DndContext
       sensors={sensors}
       collisionDetection={outlineCollisionDetection}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onDragCancel={onDragCancel}
     >
+      <>
       <table
         className={`outline-table${depEditId ? " dep-edit-mode" : ""}`}
       >
@@ -1033,101 +1270,26 @@ export function OutlineTable({
             strategy={verticalListSortingStrategy}
           >
             {orderedIds.map((id, i) => {
-              const node = nodesById[id];
-              const nk = node?.node_key;
-              const isCandidate =
-                Boolean(depEditId) &&
-                Boolean(nk) &&
-                depDraftKeys.has(nk) &&
-                depEditId !== id;
-              const isGitCheckoutRow = rowMatchesRegisteredBranch(
-                id,
-                registryByNode,
-                gitBranchCurrent,
-              );
-              // Must match pmDisplayStatus(): absent status → Not Started for tooltip/display parity.
-              const persistedNorm =
-                (node?.status as string)?.trim() || "Not Started";
-              const baseDisp =
-                displayStatusById != null
-                  ? displayStatusById[id] ?? persistedNorm
-                  : persistedNorm;
-              const outlineDisp =
-                outlineStatusById != null
-                  ? outlineStatusById[id] ?? baseDisp
-                  : baseDisp;
-              const statusText =
-                outlineStatusById != null
-                  ? outlineDisp
-                  : displayStatusById != null
-                    ? baseDisp
-                    : (node?.status as string) || "—";
-              const statusCellTitle = statusColumnTooltip(
-                node,
-                persistedNorm,
-                baseDisp,
-                outlineDisp,
-              );
-              const titlePlanLocked = pmPlanningTitleReadOnlyFromRow(
-                isGitCheckoutRow,
-                baseDisp,
-                outlineDisp,
-              );
+              const rp = makeRowProps(id, i);
+              if (!rp) return null;
               return (
                 <Fragment key={id}>
                   <RowGapBefore
                     targetId={id}
                     depEditActive={Boolean(depEditId)}
                     onInsertClick={onGapInsert}
+                    hidden={Boolean(
+                      activeDragId &&
+                        subtreeFirstId &&
+                        activeSubtreeSet.has(id) &&
+                        id !== subtreeFirstId,
+                    )}
                   />
                   <SortableRow
-                    id={id}
-                    node={node}
-                    outlineDepth={rowDepths[i] ?? 0}
-                    selected={selectedId === id}
-                    meta={metaLine(id)}
-                    statusText={statusText}
-                    statusCellTitle={statusCellTitle}
-                    devText={devColumnLabel(
-                      id,
-                      registryByNode,
-                      gitEnrichment,
-                      gitBranchCurrent,
-                      gitUserName,
+                    {...rp}
+                    rowSourceHidden={Boolean(
+                      activeDragId && activeSubtreeSet.has(id),
                     )}
-                    depCellText={depCellLabel(id)}
-                    depEditId={depEditId}
-                    isGitCheckoutRow={isGitCheckoutRow}
-                    devCellTitle={devColumnDetailTitle(
-                      id,
-                      registryByNode,
-                      gitEnrichment,
-                      prHints,
-                    )}
-                    titleEditLocked={titlePlanLocked}
-                    isDepCandidate={isCandidate}
-                    titleEditing={editingTitleId === id}
-                    titleDraft={titleDraft}
-                    onTitleDraftChange={setTitleDraft}
-                    onTitleBlur={() => void flushTitleIfDirty()}
-                    onTitleKeyDown={onTitleKeyDown}
-                    titleInputRef={titleInputRef}
-                    onBeginTitleEdit={() => beginTitleEdit(id)}
-                    dragDisabled={dragDisabled}
-                    onSelectRow={() => onSelect(id)}
-                    onOpenModal={() => onDoubleClick(id)}
-                    onDepRowBodyClick={() => {
-                      if (!depEditId) return;
-                      if (id === depEditId) {
-                        onSelect(id);
-                        return;
-                      }
-                      onToggleDepCandidate(id);
-                    }}
-                    onDepCellClick={() => depCellActivate(id)}
-                    depCellRef={
-                      depEditId === id ? depCellAnchorRef : undefined
-                    }
                   />
                 </Fragment>
               );
@@ -1135,6 +1297,43 @@ export function OutlineTable({
           </SortableContext>
         </tbody>
       </table>
+      <DragOverlay dropAnimation={null}>
+        {activeDragId && activeSubtreeIds.length > 0 ? (
+          <table className="outline-table outline-drag-overlay-table">
+            <tbody>
+              {activeSubtreeIds.map((did) => {
+                const idx = orderedIds.indexOf(did);
+                if (idx < 0) return null;
+                const rp = makeRowProps(did, idx);
+                if (!rp) return null;
+                const rowClass = [
+                  rp.selected ? "selected" : "",
+                  rp.depEditId === did ? "dep-edit-row" : "",
+                  rp.isDepCandidate ? "dep-candidate-row" : "",
+                  rp.isGitCheckoutRow ? "outline-row-git-current" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
+                return (
+                  <OutlineRowTr
+                    key={did}
+                    {...rp}
+                    variant="dragPreview"
+                    rowClass={rowClass}
+                    gitCheckoutTitle={
+                      rp.isGitCheckoutRow
+                        ? "Named branch matches the branch field in roadmap/registry.yaml for this row in this checkout."
+                        : undefined
+                    }
+                    trStyle={{ cursor: "grabbing" }}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
+        ) : null}
+      </DragOverlay>
+      </>
     </DndContext>
     </>
   );
