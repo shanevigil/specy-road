@@ -200,10 +200,10 @@ export function SettingsDrawer({
   useEffect(() => {
     if (!open) return;
     skipAutosave.current = true;
-    /* eslint-disable react-hooks/set-state-in-effect -- reset when opening */
+    /* eslint-disable @eslint-react/set-state-in-effect -- reset when opening */
     setMsg(null);
     setPersistMsg(null);
-    /* eslint-enable react-hooks/set-state-in-effect */
+    /* eslint-enable @eslint-react/set-state-in-effect */
     getSettings()
       .then((s) => {
         const l = (s.llm as Record<string, unknown>) || {};
@@ -240,7 +240,7 @@ export function SettingsDrawer({
 
   useEffect(() => {
     if (!open || skipAutosave.current) return;
-    /* eslint-disable-next-line react-hooks/set-state-in-effect -- autosave status */
+    /* eslint-disable-next-line @eslint-react/set-state-in-effect -- autosave status */
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
       const overlayOutbound = pmGuiOverlayDirtyRef.current

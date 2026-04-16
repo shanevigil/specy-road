@@ -48,7 +48,7 @@ For each dependency, the audit should:
 
 | Tier | What | Notes |
 |------|------|--------|
-| **CI** | `pip-audit` on the **frozen** install from `requirements-ci.txt`; `npm ci` + `npm audit --omit=dev`; optional OSV-Scanner on lockfiles; lockfile-lint for npm | Gates merges to protected branches |
+| **CI** | `pip-audit` on the **frozen** install from `requirements-ci.txt`; `npm ci` + `npm audit --omit=dev` + `npm run lint` (Gantt); optional OSV-Scanner on lockfiles; lockfile-lint for npm | Gates merges to protected branches |
 | **Local** | Same commands as [setup.md](setup.md#dependency-and-security-checks) | Run before release or when changing dependencies |
 | **Periodic / release** | Human review using the checklist below | Typosquatting, maintainer churn, script review, rumors before CVEs |
 | **Optional vendor** | Socket, Phylum, etc. | Org policy |

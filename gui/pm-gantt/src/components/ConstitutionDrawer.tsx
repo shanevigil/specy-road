@@ -30,12 +30,12 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- reset when dialog opens */
+    /* eslint-disable @eslint-react/set-state-in-effect -- reset when dialog opens */
     setMsg(null);
     setPersistMsg(null);
     setLoading(true);
     canAutosave.current = false;
-    /* eslint-enable react-hooks/set-state-in-effect */
+    /* eslint-enable @eslint-react/set-state-in-effect */
     const load = async () => {
       let p = "";
       let pr = "";
@@ -76,7 +76,7 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
     }
     if (purposeMissing || principlesMissing) return;
 
-    /* eslint-disable-next-line react-hooks/set-state-in-effect -- autosave status */
+    /* eslint-disable-next-line @eslint-react/set-state-in-effect -- autosave status */
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
       Promise.all([

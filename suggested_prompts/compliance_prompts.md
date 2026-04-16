@@ -24,7 +24,9 @@ Before using any prompt in this file:
 | `[YOUR_DEPENDENCY_INSTALL_CMD]` | `pip install -r requirements-ci.txt` (frozen lock matching CI; regenerate with `pip-compile` — see `docs/supply-chain-security.md`) |
 | `[YOUR_SECURITY_SCAN_CMD]` | `python -m pip install --upgrade 'pip>=25.3'` then `pip install pip-audit && pip-audit` (same venv; optional `PIPAPI_PYTHON_LOCATION="$(command -v python)"` if pip-audit warns). Gantt UI: `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. CI also runs OSV-Scanner on `requirements-ci.txt` + `package-lock.json` and lockfile-lint — see `docs/setup.md` (**CI**). |
 | `[YOUR_TEST_CMD]` | `pytest` |
-| `[YOUR_STATIC_ANALYSIS_CMD]` | No dedicated linter in this repo; use maintainer gates: `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits` |
+| `[YOUR_STATIC_ANALYSIS_CMD]` | **Python / roadmap (always):** `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`. **PM Gantt frontend (`gui/pm-gantt/`, when relevant):** `cd gui/pm-gantt && npm ci && npm run lint` — ESLint 10 flat config with `@eslint-react/eslint-plugin` (replaces `eslint-plugin-react-hooks` for ESLint 10 compatibility); see [`gui/pm-gantt/eslint.config.js`](../gui/pm-gantt/eslint.config.js). |
+
+When a prompt’s scope is **only** Python or roadmap JSON, omit the `gui/pm-gantt` line. When touching React/TS under `gui/pm-gantt/`, include it.
 
 ---
 

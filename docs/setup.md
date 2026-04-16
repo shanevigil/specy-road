@@ -174,6 +174,8 @@ npm ci
 npm audit --omit=dev
 ```
 
+**ESLint (Gantt sources):** the SPA uses **ESLint 10** with flat config in `eslint.config.js` and **`@eslint-react/eslint-plugin`** (React + hooks-style rules compatible with ESLint 10; this replaces `eslint-plugin-react-hooks`, which only peers through ESLint 9). CI runs `npm run lint` after `npm ci` / audit; run the same locally before push. See also [`suggested_prompts/compliance_prompts.md`](../suggested_prompts/compliance_prompts.md) for `[YOUR_STATIC_ANALYSIS_CMD]` substitutions.
+
 For a stricter local pass including devDependencies, run `npm audit` without `--omit=dev`.
 
 PM bundle budget check (same threshold as CI, currently **900000 bytes** for the built
@@ -201,8 +203,8 @@ GitHub Actions runs the full validation suite on every push and PR to `main`/`de
 
 ```text
 install Python (requirements-ci.txt) → pip upgrade → pip-audit (+ artifact)
-→ npm ci → lockfile-lint → npm audit (+ artifact) → Vitest (gui/pm-gantt)
-→ PM Gantt build → PM bundle budget check
+→ npm ci → lockfile-lint → npm audit (+ artifact) → ESLint (gui/pm-gantt)
+→ Vitest (gui/pm-gantt) → PM Gantt build → PM bundle budget check
 → OSV-Scanner lockfiles (+ artifact)
 → validate roadmap → export check → file limits → pytest
 ```

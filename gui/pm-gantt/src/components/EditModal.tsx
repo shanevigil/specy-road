@@ -283,7 +283,7 @@ export function EditModal({
         setHydrated(true);
       });
     // Re-fetch when server renames planning file (title → codename slug) or path otherwise changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [node?.id, node?.planning_dir]);
 
   useEffect(() => {
@@ -294,7 +294,7 @@ export function EditModal({
         setLlmConfigured(hasLlmConfigured(llm));
       })
       .catch(() => setLlmConfigured(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- global LLM settings; re-check only when switching tasks (id), not on node reference churn
+    // eslint-disable-next-line @eslint-react/exhaustive-deps -- global LLM settings; re-check only when switching tasks (id), not on node reference churn
   }, [node?.id]);
 
   useEffect(() => {
@@ -320,7 +320,7 @@ export function EditModal({
         setLoading(false);
         setHydrated(true);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [sheetPath, node?.id]);
 
   useEffect(() => {

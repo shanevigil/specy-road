@@ -201,7 +201,7 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<ThemeMode>(readLegacyThemeMode);
 
   /** After `/api/repo` returns, apply namespaced (or migrated) browser prefs for this project. */
-  /* eslint-disable react-hooks/set-state-in-effect -- sync localStorage prefs into React state when repo id resolves */
+  /* eslint-disable @eslint-react/set-state-in-effect -- sync localStorage prefs into React state when repo id resolves */
   useLayoutEffect(() => {
     if (!repoId) return;
     const tm = readBrowserPref(BROWSER_PREF_KEYS.themeMode, repoId);
@@ -223,7 +223,7 @@ export default function App() {
     const hi = readBrowserPref(BROWSER_PREF_KEYS.highlightDepChain, repoId);
     setHighlightDepChain(hi !== "0");
   }, [repoId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
   /** Node id whose explicit dependencies are being edited; draft keys are node_key UUIDs. */
   const [depEditId, setDepEditId] = useState<string | null>(null);
@@ -369,11 +369,9 @@ export default function App() {
     [runRoadmapAction, loadSnapshot],
   );
 
-  /* eslint-disable react-hooks/set-state-in-effect -- initial roadmap fetch on mount */
   useEffect(() => {
     void loadSnapshot();
   }, [loadSnapshot]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -495,7 +493,6 @@ export default function App() {
     );
   }, [data, byId]);
 
-  /* eslint-disable react-hooks/preserve-manual-memoization -- deps intentionally narrow vs inferred `data` */
   const visibleOrderedIds = useMemo(() => {
     if (!data?.ordered_ids) return [] as string[];
     if (!hideCompleteActive) return data.ordered_ids;
@@ -519,10 +516,9 @@ export default function App() {
     }
     return out;
   }, [data?.ordered_ids, data?.row_depths, hideCompleteActive, effectiveDisplayById]);
-  /* eslint-enable react-hooks/preserve-manual-memoization */
 
   /** When hiding complete rows, move selection off hidden ids and exit dependency edit if its row is hidden. */
-  /* eslint-disable react-hooks/set-state-in-effect -- derive selection / dep-edit from filtered outline */
+  /* eslint-disable @eslint-react/set-state-in-effect -- derive selection / dep-edit from filtered outline */
   useEffect(() => {
     if (!hideCompleteActive || !data?.ordered_ids?.length) return;
     const hidden = (id: string) =>
@@ -539,7 +535,7 @@ export default function App() {
       cancelDepEdit();
     }
   }, [hideCompleteActive, depEditId, effectiveDisplayById, cancelDepEdit]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
   const outlineStatusById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, string>;
@@ -706,7 +702,7 @@ export default function App() {
     }
   }, [data, editOpenIds, byId, editTileMode, headerBottomPx]);
 
-  /* eslint-disable react-hooks/set-state-in-effect -- sync focused dialog when open stack changes */
+  /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open stack changes */
   useEffect(() => {
     if (
       focusedEditNodeId != null &&
@@ -717,18 +713,18 @@ export default function App() {
       );
     }
   }, [editOpenIds, focusedEditNodeId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
-  /* eslint-disable react-hooks/set-state-in-effect -- exit tile mode when last dialog closes */
+  /* eslint-disable @eslint-react/set-state-in-effect -- exit tile mode when last dialog closes */
   useEffect(() => {
     if (editOpenIds.length === 0 && editTileMode) {
       setEditTileMode(false);
       setTileRects(null);
     }
   }, [editOpenIds.length, editTileMode]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
-  /* eslint-disable react-hooks/set-state-in-effect -- recompute tiled window positions from graph order */
+  /* eslint-disable @eslint-react/set-state-in-effect -- recompute tiled window positions from graph order */
   useEffect(() => {
     if (!editTileMode || !data || editOpenIds.length === 0) return;
     const sorted = sortOpenIdsByDependencyOrder(
@@ -738,7 +734,7 @@ export default function App() {
     );
     setTileRects(computeTileRects(sorted, headerBottomPx));
   }, [editTileMode, data, editOpenIds, byId, headerBottomPx]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
   const indentDisabled =
     !selectedId ||

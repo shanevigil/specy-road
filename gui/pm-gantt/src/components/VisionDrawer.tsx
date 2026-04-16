@@ -24,12 +24,12 @@ export function VisionDrawer({ open, onClose }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- reset when dialog opens */
+    /* eslint-disable @eslint-react/set-state-in-effect -- reset when dialog opens */
     setMsg(null);
     setPersistMsg(null);
     setLoading(true);
     canAutosave.current = false;
-    /* eslint-enable react-hooks/set-state-in-effect */
+    /* eslint-enable @eslint-react/set-state-in-effect */
     const load = async () => {
       try {
         const r = await fetchPlanningFile(VISION_PATH);
@@ -54,7 +54,7 @@ export function VisionDrawer({ open, onClose }: Props) {
     if (content === lastSnap.current.vision) return;
     if (missing) return;
 
-    /* eslint-disable-next-line react-hooks/set-state-in-effect -- autosave status */
+    /* eslint-disable-next-line @eslint-react/set-state-in-effect -- autosave status */
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
       savePlanningFile(VISION_PATH, content)

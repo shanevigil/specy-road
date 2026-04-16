@@ -73,7 +73,7 @@ specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
 specy-road file-limits
 pytest
 # After changing gui/pm-gantt sources:
-#   cd gui/pm-gantt && npm ci && npm test && npm run build
+#   cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build
 ```
 
 **Dependency and supply-chain:** see [docs/supply-chain-security.md](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. More detail: [docs/setup.md](docs/setup.md#dependency-and-security-checks).

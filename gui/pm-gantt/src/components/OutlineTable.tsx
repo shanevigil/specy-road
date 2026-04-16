@@ -1065,7 +1065,7 @@ export function OutlineTable({
   );
 
   /* Floating toolbar position must update in a layout effect (same frame as dep edit). */
-  /* eslint-disable react-hooks/set-state-in-effect */
+  /* eslint-disable @eslint-react/set-state-in-effect */
   useLayoutEffect(() => {
     if (!depEditId) {
       setDepToolbarStyle(null);
@@ -1118,7 +1118,7 @@ export function OutlineTable({
       ro.disconnect();
     };
   }, [depEditId, orderedIds, depDraftKeys]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  /* eslint-enable @eslint-react/set-state-in-effect */
 
   const makeRowProps = (rowId: string, i: number): RowProps | null => {
     const node = nodesById[rowId];

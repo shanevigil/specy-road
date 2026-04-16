@@ -130,7 +130,7 @@ export function ModalFrame({
 
   useEffect(() => {
     onRectCommit?.(rectRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- report initial rect once
+    // eslint-disable-next-line @eslint-react/exhaustive-deps -- report initial rect once
   }, []);
 
   const dragRef = useRef<{

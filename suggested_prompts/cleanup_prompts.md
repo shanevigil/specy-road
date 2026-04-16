@@ -16,6 +16,8 @@ Before using any prompt in this file:
   - `[YOUR_TEST_CMD]`
   - (optional) `[YOUR_DEAD_CODE_SCAN_CMD]`
 
+**specy-road toolkit (this repository):** use the same placeholder substitutions as [`compliance_prompts.md`](compliance_prompts.md) (see its table for `[YOUR_STATIC_ANALYSIS_CMD]`, `[YOUR_TEST_CMD]`, etc.). In particular, after structural cleanup under `gui/pm-gantt/`, run `cd gui/pm-gantt && npm ci && npm run lint` in addition to the Python `specy-road` gates when those files changed.
+
 ---
 
 ## File & Function Size Enforcement
