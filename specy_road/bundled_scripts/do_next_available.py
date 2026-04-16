@@ -11,7 +11,7 @@ Eligible-task order within each tier follows ``ordered_tree_rows`` (outline /
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from roadmap_gui_lib import load_registry, load_settings, registry_by_node_id
 from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
@@ -29,6 +29,66 @@ def _statuses_by_node_key(nodes: list[dict]) -> dict[str, str]:
         for n in nodes
         if isinstance(n.get("node_key"), str) and n["node_key"]
     }
+
+
+def _merge_status_overrides(
+    nodes: list[dict],
+    status_overrides: dict[str, str] | None,
+) -> dict[str, str]:
+    out = _statuses_by_node_key(nodes)
+    if status_overrides:
+        for k, v in status_overrides.items():
+            out[k] = (v or "").lower()
+    return out
+
+
+def _unmet_dependency_keys(
+    node: dict, statuses_by_key: dict[str, str]
+) -> list[str]:
+    return [
+        d
+        for d in (node.get("dependencies") or [])
+        if statuses_by_key.get(d, "") != "complete"
+    ]
+
+
+def interactive_deps_blocked_entries(
+    nodes: list[dict],
+    reg: dict,
+    *,
+    integration_statuses: dict[str, str],
+    ready_ids: Iterable[str],
+) -> list[tuple[dict, list[str]]]:
+    """Leaves that look pickable except dependencies fail on integration-only statuses."""
+    ready_set = set(ready_ids)
+    claimed = _claimed_node_ids(reg)
+    leaf_ids = _leaf_node_ids(nodes)
+    pairs: list[tuple[dict, list[str]]] = []
+    for n in nodes:
+        nid = n["id"]
+        if nid not in leaf_ids or nid in ready_set:
+            continue
+        if not n.get("codename"):
+            continue
+        if not _agentic_execution_ok(n):
+            continue
+        if nid in claimed:
+            continue
+        stv = (n.get("status") or "Not Started").lower()
+        if stv in ("complete", "cancelled", "in progress"):
+            continue
+        unmet = _unmet_dependency_keys(n, integration_statuses)
+        if not unmet:
+            continue
+        pairs.append((n, unmet))
+    order_index = _outline_order_index(nodes)
+    tail = 10**9
+
+    def sort_key(t: tuple[dict, list[str]]) -> int:
+        return order_index.get(t[0]["id"], tail)
+
+    pairs.sort(key=sort_key)
+    return pairs
 
 
 def _leaf_node_ids(nodes: list[dict]) -> set[str]:
@@ -152,12 +212,21 @@ def _available(
     nodes: list[dict],
     reg: dict,
     enrich: dict[str, dict[str, Any]] | None = None,
+    *,
+    status_overrides: dict[str, str] | None = None,
+    virtual_complete_keys: set[str] | None = None,
 ) -> list[dict]:
     """Actionable leaf candidates: blocked first, then MR-rejected, then the rest.
 
     Within each tier, order follows outline (tree) order, not merged chunk order.
+
+    ``status_overrides`` merges into per-node_key statuses for dependency checks only
+    (e.g. feature-branch tips Complete before PR merges into the integration branch).
+
+    ``virtual_complete_keys`` prefers leaves that depend on those keys within the
+    non-blocked, non-MR-rejected tier (``rest``).
     """
-    statuses_by_key = _statuses_by_node_key(nodes)
+    statuses_by_key = _merge_status_overrides(nodes, status_overrides)
     claimed = _claimed_node_ids(reg)
     leaf_ids = _leaf_node_ids(nodes)
     enr = enrich or {}
@@ -202,8 +271,19 @@ def _available(
             continue
         rest.append(n)
 
+    vc = virtual_complete_keys or set()
+    rest_dep: list[dict] = []
+    rest_other: list[dict] = []
+    for n in rest:
+        deps = set(n.get("dependencies") or [])
+        if deps & vc:
+            rest_dep.append(n)
+        else:
+            rest_other.append(n)
+
     return (
         _sort_by_outline(blocked, order_index)
         + _sort_by_outline(mr_rejected, order_index)
-        + _sort_by_outline(rest, order_index)
+        + _sort_by_outline(rest_dep, order_index)
+        + _sort_by_outline(rest_other, order_index)
     )

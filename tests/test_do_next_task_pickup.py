@@ -214,7 +214,7 @@ def test_pickup_rejects_non_leaf_when_available_returns_parent(
     leaf = _pickup_test_node()
     leaf["parent_id"] = "M9"
 
-    def misconfigured_available(_nodes, _reg, _enrich=None):
+    def misconfigured_available(_nodes, _reg, _enrich=None, **_kwargs):
         return [parent]
 
     monkeypatch.setattr(

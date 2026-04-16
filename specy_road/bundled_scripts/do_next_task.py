@@ -10,7 +10,13 @@ import sys
 from pathlib import Path
 
 import yaml
-from do_next_available import _available, _load_branch_enrichment
+from do_next_available import (
+    _available,
+    _load_branch_enrichment,
+    _statuses_by_node_key,
+    interactive_deps_blocked_entries,
+)
+from roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from do_next_prompt import write_agent_prompt
 from do_next_task_interactive import pick_interactive as _pick_interactive
 from do_next_task_leaf_guards import (
@@ -180,6 +186,47 @@ def _register_and_commit(
 
 def _push_integration_branch(remote: str, base: str) -> None:
     _git("push", remote, base)
+
+
+def _virtual_complete_from_registry(
+    reg: dict,
+    *,
+    repo_root: Path,
+    remote: str,
+) -> tuple[set[str], list[str]]:
+    """node_keys Complete on feature-branch tips but not yet on integration (dep eval only)."""
+    virtual: set[str] = set()
+    log_lines: list[str] = []
+    entries = reg.get("entries") or []
+    for e in entries:
+        if not isinstance(e, dict):
+            continue
+        branch = e.get("branch")
+        node_id = e.get("node_id")
+        if not isinstance(branch, str) or not branch.strip():
+            continue
+        if not isinstance(node_id, str) or not node_id.strip():
+            continue
+        ref = f"{remote}/{branch.strip()}"
+        nodes_at = load_roadmap_nodes_at_ref(repo_root, ref)
+        if nodes_at is None:
+            continue
+        matched = next((n for n in nodes_at if n.get("id") == node_id), None)
+        if matched is None:
+            continue
+        if (matched.get("status") or "").lower() != "complete":
+            continue
+        nk = matched.get("node_key")
+        if not isinstance(nk, str) or not nk:
+            continue
+        virtual.add(nk)
+        codename = e.get("codename", "") or ""
+        log_lines.append(
+            f"[info] Treating node {node_id} ({codename}) as Complete for dependency "
+            f"evaluation — {ref} shows Complete; integration branch may not have merged "
+            f"the PR yet."
+        )
+    return virtual, log_lines
 
 
 # ---------------------------------------------------------------------------
@@ -353,13 +400,37 @@ def main(argv: list[str] | None = None) -> None:
     reg = _load_registry()
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
-    available = _available(nodes, reg, enrich)
+    integration_statuses = _statuses_by_node_key(nodes)
+    virtual_keys, virtual_logs = _virtual_complete_from_registry(
+        reg,
+        repo_root=ROOT,
+        remote=remote,
+    )
+    for line in virtual_logs:
+        print(line)
+    status_overrides = {nk: "complete" for nk in virtual_keys}
+    available = _available(
+        nodes,
+        reg,
+        enrich,
+        status_overrides=status_overrides or None,
+        virtual_complete_keys=virtual_keys or None,
+    )
     if not available:
         _exit_no_actionable_leaves(nodes, reg, after_sync=True)
 
     _assert_current_branch_equals(base)
 
-    node = _pick_interactive(available, nodes) if args.interactive else available[0]
+    if args.interactive:
+        blocked = interactive_deps_blocked_entries(
+            nodes,
+            reg,
+            integration_statuses=integration_statuses,
+            ready_ids={n["id"] for n in available},
+        )
+        node = _pick_interactive(available, nodes, blocked_entries=blocked)
+    else:
+        node = available[0]
     _assert_leaf_target(node, nodes)
     branch = f"feature/rm-{node['codename']}"
     on_complete = prompt_on_complete(ROOT, args.on_complete)

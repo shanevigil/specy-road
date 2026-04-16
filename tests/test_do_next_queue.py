@@ -228,6 +228,33 @@ def test_available_orders_eligible_by_outline_not_merged_chunk_order() -> None:
     assert [n["id"] for n in result] == ["M0.2", "M0.1"]
 
 
+def test_pick_interactive_blocked_row_selectable_by_id(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    dep = {
+        "id": "M1.0",
+        "node_key": _NK_PREREQ,
+        "type": "milestone",
+        "codename": "prereq",
+        "execution_milestone": "Human-led",
+        "status": "Not Started",
+        "dependencies": [],
+    }
+    leaf = {
+        **_BASE_NODE,
+        "id": "M1.1",
+        "dependencies": [_NK_PREREQ],
+        "touch_zones": ["z"],
+    }
+    blocked = [(leaf, [_NK_PREREQ])]
+    monkeypatch.setattr("builtins.input", lambda _prompt: "M1.1")
+    picked = dnti.pick_interactive([], [dep, leaf], blocked_entries=blocked)
+    assert picked["id"] == "M1.1"
+    err = capsys.readouterr().err
+    assert "dependency-blocked" in err
+
+
 def test_pick_interactive_rejects_parent_selection(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
