@@ -13,6 +13,40 @@ export function rowMatchesRegisteredBranch(
 }
 
 /**
+ * Dev column cell text: owner → forge PR/MR author → remote tip author
+ * → local `git config user.name` when current branch matches registered branch.
+ * Does not show branch names; use {@link devColumnDetailTitle} on hover for branch and hints.
+ */
+export function devColumnLabel(
+  nid: string,
+  registryByNode: Record<string, Record<string, unknown>> | undefined,
+  gitEnrichment: Record<string, Record<string, unknown>>,
+  gitBranchCurrent: string | null | undefined,
+  gitUserName: string | null | undefined,
+): string {
+  const e = registryByNode?.[nid];
+  const owner = e?.owner;
+  if (typeof owner === "string" && owner.trim()) return owner.trim();
+  const g = gitEnrichment[nid];
+  if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
+    const author = g.author as string | undefined;
+    if (author) return `@${author}`;
+  }
+  if (g?.kind === "remote_tip") {
+    const a = g.author as string | undefined;
+    if (typeof a === "string" && a.trim()) return a.trim();
+  }
+  const regBranch = e?.branch;
+  const curBr = gitBranchCurrent?.trim() || "";
+  const regBrStr = typeof regBranch === "string" ? regBranch.trim() : "";
+  if (curBr && regBrStr && curBr === regBrStr) {
+    const local = gitUserName?.trim();
+    if (local) return local;
+  }
+  return "—";
+}
+
+/**
  * Tooltip for the outline Dev column: branch and registry / remote enrichment
  * (content that previously appeared under the task title as outline-meta).
  */
@@ -27,8 +61,10 @@ export function devColumnDetailTitle(
   const branch = typeof reg?.branch === "string" ? reg.branch.trim() : "";
   if (branch) lines.push(`Branch: ${branch}`);
   const started = reg?.started;
-  if (started != null && String(started).trim()) {
-    lines.push(`Started: ${String(started).trim()}`);
+  const startedTrim =
+    started != null && String(started).trim() ? String(started).trim() : "";
+  if (startedTrim) {
+    lines.push(`Started: ${startedTrim}`);
   }
 
   const g = gitEnrichment[nid];
@@ -46,7 +82,12 @@ export function devColumnDetailTitle(
     }
   } else if (g?.kind === "registry") {
     const hint = (g.hint_line as string | undefined)?.trim();
-    if (hint) lines.push(hint);
+    const redundant =
+      Boolean(hint) &&
+      Boolean(branch) &&
+      (hint === branch ||
+        (startedTrim.length > 0 && hint === `${branch} · ${startedTrim}`));
+    if (hint && !redundant) lines.push(hint);
   } else if (g?.hint_line) {
     const h = String(g.hint_line).trim();
     if (h) lines.push(h);

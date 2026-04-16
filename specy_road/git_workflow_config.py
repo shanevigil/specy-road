@@ -206,6 +206,31 @@ def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | No
     return (line or "").strip()
 
 
+def git_local_branch_tip_author(repo_root: Path, branch: str) -> str | None:
+    """Latest commit author (%an) on ``refs/heads/<branch>`` when that ref exists."""
+    if not is_git_worktree(repo_root):
+        return None
+    br = (branch or "").strip()
+    if not br:
+        return None
+    ref = f"refs/heads/{br}"
+    ok, _ = _git_ok(["show-ref", "--verify", ref], repo_root)
+    if not ok:
+        return None
+    ok2, line = _git_ok(["log", "-1", "--format=%an", ref], repo_root)
+    if not ok2 or not (line or "").strip():
+        return None
+    return (line or "").strip()
+
+
+def git_branch_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
+    """Remote-tracking tip author, else local ``refs/heads/<branch>`` tip author."""
+    a = git_remote_tip_author(repo_root, remote, branch)
+    if a:
+        return a
+    return git_local_branch_tip_author(repo_root, branch)
+
+
 def integration_refs_present(
     repo_root: Path,
     remote: str,

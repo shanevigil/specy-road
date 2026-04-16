@@ -36,6 +36,7 @@ import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
 import { phaseRollupDerivedComplete } from "../parentStatusRollup";
 import {
   devColumnDetailTitle,
+  devColumnLabel,
   rowMatchesRegisteredBranch,
 } from "../rowMatchesRegisteredBranch";
 
@@ -143,46 +144,6 @@ function siblingOrderInsertAfter(
   if (pos < 0) return null;
   const insertAt = pos + 1;
   return [...without.slice(0, insertAt), aid, ...without.slice(insertAt)];
-}
-
-/**
- * Dev column: owner → forge PR/MR author → remote tip author (PM on integration branch)
- * → local git user.name when current branch matches registered branch → branch / hints → —.
- */
-function devLabel(
-  nid: string,
-  registryByNode: Record<string, Record<string, unknown>> | undefined,
-  gitEnrichment: Record<string, Record<string, unknown>>,
-  gitBranchCurrent: string | null | undefined,
-  gitUserName: string | null | undefined,
-): string {
-  const e = registryByNode?.[nid];
-  const owner = e?.owner;
-  if (typeof owner === "string" && owner.trim()) return owner.trim();
-  const g = gitEnrichment[nid];
-  if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
-    const author = g.author as string | undefined;
-    if (author) return `@${author}`;
-  }
-  if (g?.kind === "remote_tip") {
-    const a = g.author as string | undefined;
-    if (typeof a === "string" && a.trim()) return a.trim();
-  }
-  const regBranch = e?.branch;
-  const curBr = gitBranchCurrent?.trim() || "";
-  const regBrStr = typeof regBranch === "string" ? regBranch.trim() : "";
-  if (curBr && regBrStr && curBr === regBrStr) {
-    const local = gitUserName?.trim();
-    if (local) return local;
-  }
-  if (g?.kind === "registry") {
-    const br = g.branch as string | undefined;
-    const hint = g.hint_line as string | undefined;
-    if (typeof br === "string" && br.trim()) return br.trim();
-    if (typeof hint === "string" && hint.trim()) return hint.trim();
-  }
-  if (regBrStr) return regBrStr;
-  return "—";
 }
 
 function IntoDropBadge({ nodeId }: { nodeId: string }) {
@@ -630,7 +591,7 @@ export function OutlineTable({
     }
     if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
       const assignees = g.assignees as string[] | undefined;
-      // PR/MR author is omitted; Dev column shows the same via devLabel().
+      // PR/MR author is omitted; Dev column shows the same via devColumnLabel().
       const bits = [
         assignees?.length ? `A: ${assignees.join(", ")}` : "",
       ].filter(Boolean);
@@ -1127,7 +1088,7 @@ export function OutlineTable({
                     meta={metaLine(id)}
                     statusText={statusText}
                     statusCellTitle={statusCellTitle}
-                    devText={devLabel(
+                    devText={devColumnLabel(
                       id,
                       registryByNode,
                       gitEnrichment,

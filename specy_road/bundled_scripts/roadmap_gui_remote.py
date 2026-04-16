@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_workflow_config import git_remote_tip_author
+from specy_road.git_workflow_config import git_branch_tip_author
 from urllib.parse import quote
 
 import requests
@@ -376,7 +376,7 @@ def build_registry_enrichment(
             continue
         tip_author: str | None = None
         if br and repo_root is not None:
-            tip_author = git_remote_tip_author(repo_root, rm, br)
+            tip_author = git_branch_tip_author(repo_root, rm, br)
         if tip_author:
             out[nid] = {
                 "kind": "remote_tip",
