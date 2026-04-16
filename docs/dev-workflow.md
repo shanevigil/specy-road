@@ -8,6 +8,8 @@ For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 
 Canonical model: **execute leaves, contextualize with ancestors, roll up progress upward**.
 
+`do-next-available-task` considers **effective** dependencies (each leaf’s explicit `dependencies` plus prerequisites listed on **ancestors**), matching the PM Gantt. A **`type: gate`** node is never a pickup target; PMs clear a scoped hold by marking that Gate **Complete** (see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate)).
+
 ## Quick reference
 
 ```bash

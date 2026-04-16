@@ -76,6 +76,8 @@ def _validate_reparent_target(
     by_id: dict[str, dict],
     old_id: str,
     new_parent_id: str | None,
+    *,
+    moved_type: str | None = None,
 ) -> None:
     if new_parent_id is not None and new_parent_id not in by_id:
         raise ValueError(f"unknown new_parent_id {new_parent_id!r}")
@@ -86,6 +88,16 @@ def _validate_reparent_target(
         if cur == old_id:
             raise ValueError("cannot move node under its descendant")
         cur = by_id.get(cur, {}).get("parent_id")
+    if new_parent_id is not None:
+        parent = by_id.get(new_parent_id)
+        if parent and parent.get("type") == "gate":
+            raise ValueError("cannot move node under a gate")
+    if moved_type == "gate":
+        if new_parent_id is None:
+            raise ValueError("gate must have a vision or phase parent")
+        np = by_id.get(new_parent_id)
+        if not np or np.get("type") not in ("vision", "phase"):
+            raise ValueError("gate must be a direct child of vision or phase")
 
 
 def _detach_reindex_old_parent(
@@ -143,7 +155,9 @@ def move_node_outline(
     by_id = {n["id"]: n for n in nodes}
     moved = by_key[node_key]
     old_id = moved["id"]
-    _validate_reparent_target(by_id, old_id, new_parent_id)
+    _validate_reparent_target(
+        by_id, old_id, new_parent_id, moved_type=moved.get("type")
+    )
     old_parent = moved.get("parent_id")
     _detach_reindex_old_parent(nodes, by_id, old_parent, old_id)
     _attach_at_index(nodes, by_id, moved, old_id, new_parent_id, new_index)

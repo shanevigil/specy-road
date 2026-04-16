@@ -30,6 +30,7 @@ from validate_roadmap_checks import (
     validate_unique_titles,
     warn_phase_status_when_all_descendants_complete,
 )
+from validate_roadmap_gates import validate_gates
 
 __all__ = [
     "cycle_check",
@@ -38,6 +39,7 @@ __all__ = [
     "validate_at",
     "validate_codenames",
     "validate_contract_citations",
+    "validate_gates",
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",

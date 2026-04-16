@@ -15,7 +15,7 @@ from typing import Any, Iterable
 
 from roadmap_gui_lib import load_registry, load_settings, registry_by_node_id
 from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
-from roadmap_layout import ordered_tree_rows
+from roadmap_layout import effective_dependency_keys, ordered_tree_rows
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -42,12 +42,17 @@ def _merge_status_overrides(
     return out
 
 
-def _unmet_dependency_keys(
-    node: dict, statuses_by_key: dict[str, str]
+def _unmet_effective_dependency_keys(
+    node: dict,
+    statuses_by_key: dict[str, str],
+    effective_dep_keys: dict[str, set[str]],
 ) -> list[str]:
+    nk = node.get("node_key")
+    if not nk:
+        return []
     return [
         d
-        for d in (node.get("dependencies") or [])
+        for d in effective_dep_keys.get(nk, set())
         if statuses_by_key.get(d, "") != "complete"
     ]
 
@@ -60,6 +65,7 @@ def interactive_deps_blocked_entries(
     ready_ids: Iterable[str],
 ) -> list[tuple[dict, list[str]]]:
     """Leaves that look pickable except dependencies fail on integration-only statuses."""
+    effective_dep_keys = effective_dependency_keys(nodes)
     ready_set = set(ready_ids)
     claimed = _claimed_node_ids(reg)
     leaf_ids = _leaf_node_ids(nodes)
@@ -77,7 +83,9 @@ def interactive_deps_blocked_entries(
         stv = (n.get("status") or "Not Started").lower()
         if stv in ("complete", "cancelled", "in progress"):
             continue
-        unmet = _unmet_dependency_keys(n, integration_statuses)
+        unmet = _unmet_effective_dependency_keys(
+            n, integration_statuses, effective_dep_keys
+        )
         if not unmet:
             continue
         pairs.append((n, unmet))
@@ -101,11 +109,18 @@ def _leaf_node_ids(nodes: list[dict]) -> set[str]:
     return {n["id"] for n in nodes if n.get("id") not in parent_ids}
 
 
-def _deps_met(node: dict, statuses_by_key: dict[str, str]) -> bool:
-    return all(
-        statuses_by_key.get(dep, "") == "complete"
-        for dep in (node.get("dependencies") or [])
-    )
+def _effective_deps_met(
+    node: dict,
+    statuses_by_key: dict[str, str],
+    effective_dep_keys: dict[str, set[str]],
+) -> bool:
+    nk = node.get("node_key")
+    if not nk:
+        return True
+    for dep in effective_dep_keys.get(nk, set()):
+        if statuses_by_key.get(dep, "") != "complete":
+            return False
+    return True
 
 
 def _agentic_execution_ok(n: dict) -> bool:
@@ -118,12 +133,15 @@ def _base_agentic_candidate(
     n: dict,
     statuses_by_key: dict[str, str],
     claimed: set[str],
+    effective_dep_keys: dict[str, set[str]],
 ) -> bool:
+    if n.get("type") == "gate":
+        return False
     if not n.get("codename"):
         return False
     if not _agentic_execution_ok(n):
         return False
-    if not _deps_met(n, statuses_by_key):
+    if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
         return False
     if n["id"] in claimed:
         return False
@@ -161,6 +179,7 @@ def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
 
 def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int]:
     """Deterministic diagnostics when no actionable leaf exists."""
+    effective_dep_keys = effective_dependency_keys(nodes)
     statuses_by_key = _statuses_by_node_key(nodes)
     claimed = _claimed_node_ids(reg)
     leaf_ids = _leaf_node_ids(nodes)
@@ -179,6 +198,9 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
     for n in leaf_nodes:
         nid = n["id"]
         status = (n.get("status") or "Not Started").lower()
+        if n.get("type") == "gate":
+            non_agentic_leaf_ids.append(nid)
+            continue
         if nid in claimed:
             claimed_leaf_ids.append(nid)
             continue
@@ -188,7 +210,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
         if not _agentic_execution_ok(n):
             non_agentic_leaf_ids.append(nid)
             continue
-        if not _deps_met(n, statuses_by_key):
+        if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
             deps_blocked_leaf_ids.append(nid)
             continue
         if status in ("complete", "cancelled"):
@@ -206,6 +228,42 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
         "non_agentic_leaf_ids": non_agentic_leaf_ids,
         "missing_codename_leaf_ids": missing_codename_leaf_ids,
     }
+
+
+def _collect_do_next_tiers(
+    nodes: list[dict],
+    base_ok,
+    st,
+    enr: dict[str, dict[str, Any]],
+) -> tuple[list[dict], list[dict], list[dict]]:
+    blocked: list[dict] = []
+    seen: set[str] = set()
+    for n in nodes:
+        if not base_ok(n):
+            continue
+        if st(n) == "blocked":
+            blocked.append(n)
+            seen.add(n["id"])
+    mr_rejected: list[dict] = []
+    for n in nodes:
+        if n["id"] in seen or not base_ok(n):
+            continue
+        if st(n) in ("complete", "cancelled"):
+            continue
+        if enrichment_is_mr_rejected(enr.get(n["id"])):
+            mr_rejected.append(n)
+            seen.add(n["id"])
+    rest: list[dict] = []
+    skip_rest = {"complete", "in progress", "cancelled", "blocked"}
+    for n in nodes:
+        if n["id"] in seen:
+            continue
+        if not base_ok(n):
+            continue
+        if st(n) in skip_rest:
+            continue
+        rest.append(n)
+    return blocked, mr_rejected, rest
 
 
 def _available(
@@ -227,6 +285,7 @@ def _available(
     non-blocked, non-MR-rejected tier (``rest``).
     """
     statuses_by_key = _merge_status_overrides(nodes, status_overrides)
+    effective_dep_keys = effective_dependency_keys(nodes)
     claimed = _claimed_node_ids(reg)
     leaf_ids = _leaf_node_ids(nodes)
     enr = enrich or {}
@@ -238,44 +297,18 @@ def _available(
     def base_ok(n: dict) -> bool:
         if n["id"] not in leaf_ids:
             return False
-        return _base_agentic_candidate(n, statuses_by_key, claimed)
+        return _base_agentic_candidate(
+            n, statuses_by_key, claimed, effective_dep_keys
+        )
 
-    blocked: list[dict] = []
-    seen: set[str] = set()
-
-    for n in nodes:
-        if not base_ok(n):
-            continue
-        if st(n) == "blocked":
-            blocked.append(n)
-            seen.add(n["id"])
-
-    mr_rejected: list[dict] = []
-    for n in nodes:
-        if n["id"] in seen or not base_ok(n):
-            continue
-        if st(n) in ("complete", "cancelled"):
-            continue
-        if enrichment_is_mr_rejected(enr.get(n["id"])):
-            mr_rejected.append(n)
-            seen.add(n["id"])
-
-    rest: list[dict] = []
-    skip_rest = {"complete", "in progress", "cancelled", "blocked"}
-    for n in nodes:
-        if n["id"] in seen:
-            continue
-        if not base_ok(n):
-            continue
-        if st(n) in skip_rest:
-            continue
-        rest.append(n)
+    blocked, mr_rejected, rest = _collect_do_next_tiers(nodes, base_ok, st, enr)
 
     vc = virtual_complete_keys or set()
     rest_dep: list[dict] = []
     rest_other: list[dict] = []
     for n in rest:
-        deps = set(n.get("dependencies") or [])
+        nk = n.get("node_key")
+        deps = set(effective_dep_keys.get(nk, set())) if nk else set()
         if deps & vc:
             rest_dep.append(n)
         else:

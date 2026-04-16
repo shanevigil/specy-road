@@ -31,7 +31,10 @@ class AddNodeBody(BaseModel):
     reference_node_id: str
     position: str = Field(..., pattern="^(above|below)$")
     title: str = Field(..., min_length=1)
-    type: str = Field(default="task", pattern="^(vision|phase|milestone|task)$")
+    type: str = Field(
+        default="task",
+        pattern="^(vision|phase|milestone|task|gate)$",
+    )
 
 
 class GuiSettingsPutBody(BaseModel):

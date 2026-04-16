@@ -11,7 +11,7 @@ from planning_artifacts import (
 )
 from specy_road.runtime_paths import specy_road_package_dir
 
-_TYPES_WITH_PLANNING = frozenset({"vision", "phase", "milestone", "task"})
+_TYPES_WITH_PLANNING = frozenset({"vision", "phase", "milestone", "task", "gate"})
 _TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
 
 # If ``feature-sheet.md.template`` is missing (broken install), LLM + validators still have a fallback.

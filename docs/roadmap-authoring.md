@@ -151,7 +151,7 @@ Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../t
 
 CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unless a command explicitly accepts a UUID.
 
-**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) treats each dependency as satisfied when that **`node_key`**’s node is `Complete`. Candidate selection is actionable **leaf-only**; ancestor/umbrella nodes are context containers and not default claim targets. Among eligible leaves, auto-pick order follows **outline (tree) order**, not raw merged chunk order (see [Reordering and reparenting](#reordering-and-reparenting)).
+**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) uses **effective** prerequisites: each node’s explicit `dependencies` plus every `dependencies` entry on its **ancestors** (same union as the PM Gantt’s inherited dependency model). Each prerequisite is satisfied when that **`node_key`**’s node is `Complete`. Candidate selection is actionable **leaf-only**; ancestor/umbrella nodes are context containers and not default claim targets. **`type: gate`** nodes are never pickup targets. Among eligible leaves, auto-pick order follows **outline (tree) order**, not raw merged chunk order (see [Reordering and reparenting](#reordering-and-reparenting)).
 
 ### Required on every node
 
@@ -159,10 +159,10 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 |-------|-------------|
 | `node_key` | Stable UUID v4 (hex with hyphens). |
 | `id` | Hierarchical display id, e.g. `M1.2` or `M1.2.3.4` (fourth-level supported). |
-| `type` | `vision` / `phase` / `milestone` / `task` |
+| `type` | `vision` / `phase` / `milestone` / `task` / `gate` |
 | `title` | Human-readable label. |
 
-### Required when `type` is `vision`, `phase`, `milestone`, or `task`
+### Required when `type` is `vision`, `phase`, `milestone`, `task`, or `gate`
 
 | Field | Description |
 |-------|-------------|
@@ -187,6 +187,13 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `agentic_checklist` | **Required** when `execution_subtask: agentic`. See below. |
 
 **Dropped status:** `Cancelled` is no longer a valid `status`. To retire a feature, remove the node (for example `specy-road archive-node <id> --hard-remove` after team agreement) or set an appropriate status such as **Complete** / **Blocked** with notes.
+
+### Gate (`type: gate`)
+
+A **Gate** is a **leaf-only** human hold point: it has a feature sheet (`planning_dir`) for PM notes, but it is **not** claimed via `do-next-available-task`, and **`roadmap/registry.yaml` must not** reference a Gate’s `node_id`.
+
+- **Placement:** Parent must be **`vision` or `phase`** only (not `milestone` or `task`). A Gate cannot have child rows.
+- **Scoped dev hold:** List the Gate’s **`node_key`** in `dependencies` on the **phase** (or an ancestor milestone) that covers the work you want to pause. Descendant agentic leaves **inherit** that prerequisite; until the Gate is **`Complete`**, those leaves are not actionable for automated pickup. Clear the hold by setting the Gate to **Complete** (or remove the Gate node if you must unwind the freeze — not preferred).
 
 ### Decision block (`decision`)
 

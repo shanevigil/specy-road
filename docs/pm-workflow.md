@@ -44,6 +44,7 @@ Roadmap nodes keep stable machine `type` values for validation. In everyday term
 | `phase` | Time-bounded arc or release train |
 | `milestone` | Shippable slice or feature milestone |
 | `task` | Sub-feature or work item under a milestone |
+| `gate` | PM-only approval hold (planning sheet, not dev pickup); see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate) |
 
 ---
 

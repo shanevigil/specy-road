@@ -554,6 +554,13 @@ button {
   color: var(--fg);
 }
 
+.toolbar-gate-icon {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
 .toolbar-icon-btn:hover:not(:disabled) {
   background: var(--sel-bg);
 }

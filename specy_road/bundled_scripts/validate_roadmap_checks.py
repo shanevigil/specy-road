@@ -13,6 +13,8 @@ from roadmap_edit_fields import title_to_codename
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.runtime_paths import default_user_repo_root
 
+from validate_roadmap_gates import validate_gates
+
 AGENTIC_KEYS = (
     "artifact_action",
     "contract_citation",
@@ -249,10 +251,10 @@ def validate_codenames(nodes: list[dict]) -> None:
 
 
 def validate_required_planning_dirs(nodes: list[dict]) -> None:
-    """Vision/phase/milestone/task nodes must set planning_dir (one .md)."""
+    """Vision/phase/milestone/task/gate nodes must set planning_dir (one .md)."""
     for n in nodes:
         t = n.get("type")
-        if t not in ("vision", "phase", "milestone", "task"):
+        if t not in ("vision", "phase", "milestone", "task", "gate"):
             continue
         pd = n.get("planning_dir")
         if isinstance(pd, str) and pd.strip():
@@ -333,6 +335,7 @@ def run_validation(
 
     validate_node_keys(nodes)
     validate_parents(nodes)
+    validate_gates(nodes)
     validate_dependency_ids(nodes)
     cycle_check(nodes)
     validate_agentic_checklists(nodes)
@@ -353,6 +356,7 @@ def run_validation(
         raise SystemExit(1)
 
     id_set = set(ids)
+    id_to_type = {n["id"]: n.get("type") for n in nodes}
     gate = require_implementation_review_before_finish(r)
     allowed_review = frozenset({"pending", "approved"})
     for e in registry.get("entries") or []:
@@ -361,6 +365,14 @@ def run_validation(
             cn = e.get("codename")
             unk = f"registry: entry {cn} references unknown node_id {nid}"
             print(unk, file=sys.stderr)
+            raise SystemExit(1)
+        if nid and id_to_type.get(nid) == "gate":
+            cn = e.get("codename")
+            print(
+                f"registry: entry {cn!r} must not reference a gate node "
+                f"(node_id {nid!r})",
+                file=sys.stderr,
+            )
             raise SystemExit(1)
         if gate:
             cn = e.get("codename")

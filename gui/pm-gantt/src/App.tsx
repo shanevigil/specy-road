@@ -865,6 +865,16 @@ export default function App() {
     }).catch((e) => setErr(String(e)));
   };
 
+  const addGateBelow = () => {
+    if (!selectedId) return;
+    const t = promptNewTaskTitle();
+    if (!t) return;
+    void runRoadmapAction("Adding gate…", async () => {
+      await addNode(selectedId, "below", t, "gate");
+      await loadSnapshot();
+    }).catch((e) => setErr(String(e)));
+  };
+
   const onGapInsert = (referenceNodeId: string) => {
     const t = promptNewTaskTitle();
     if (!t) return;
@@ -1088,6 +1098,18 @@ export default function App() {
                 onClick={addBelow}
               >
                 <IconRowBelow />
+              </button>
+              <button
+                type="button"
+                className="toolbar-icon-btn"
+                disabled={roadmapBusy || !selectedId}
+                title="Add gate below selection (PM approval hold; not dev pickup)"
+                aria-label="Add gate below selection"
+                onClick={addGateBelow}
+              >
+                <span className="toolbar-gate-icon" aria-hidden="true">
+                  G
+                </span>
               </button>
               <button
                 type="button"

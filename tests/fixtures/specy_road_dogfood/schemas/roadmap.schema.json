@@ -34,7 +34,7 @@
         },
         "type": {
           "type": "string",
-          "enum": ["vision", "phase", "milestone", "task"]
+          "enum": ["vision", "phase", "milestone", "task", "gate"]
         },
         "title": { "type": "string", "minLength": 1 },
         "codename": {

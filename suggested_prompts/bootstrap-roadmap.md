@@ -52,16 +52,16 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 
 - **`id`** — Display id, pattern `M[0-9]+(\.[0-9]+)*` (e.g. `M1`, `M1.2`). **Immutable**; never renumber existing ids (gaps allowed).
 - **`node_key`** — Stable **UUID** (lowercase hex with hyphens). Used in **`dependencies`** and optionally in registry.
-- **`type`** — One of: `vision`, `phase`, `milestone`, `task`.
+- **`type`** — One of: `vision`, `phase`, `milestone`, `task`, `gate` (see `docs/roadmap-authoring.md` for Gate — PM hold, not dev pickup).
 - **`title`** — Non-empty string.
 
 ### Dependencies
 
 - **`dependencies`** — Array of **`node_key`** UUID strings (depends-on), **not** display `id` strings.
 
-### Nodes with planning (vision, phase, milestone, task)
+### Nodes with planning (vision, phase, milestone, task, gate)
 
-- Set **`planning_dir`** — Repo-relative path to **one** Markdown file, e.g. `planning/M1.1_slug_<node_key>.md`. **Required** for `vision`, `phase`, `milestone`, and `task` per validation. Filename pattern is described in `planning/README.md` (identity is in the filename, not required YAML frontmatter).
+- Set **`planning_dir`** — Repo-relative path to **one** Markdown file, e.g. `planning/M1.1_slug_<node_key>.md`. **Required** for `vision`, `phase`, `milestone`, `task`, and `gate` per validation. Filename pattern is described in `planning/README.md` (identity is in the filename, not required YAML frontmatter).
 
 ### Common optional fields
 

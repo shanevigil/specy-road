@@ -30,7 +30,7 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     sp.add_argument(
         "--type",
         required=True,
-        choices=["vision", "phase", "milestone", "task"],
+        choices=["vision", "phase", "milestone", "task", "gate"],
     )
     sp.add_argument("--title", required=True)
     sp.add_argument(

@@ -41,6 +41,10 @@ def can_indent_to_parent(
     p = by_id.get(new_parent_id)
     if not n or not p:
         return False
+    if p.get("type") == "gate":
+        return False
+    if n.get("type") == "gate" and p.get("type") not in ("vision", "phase"):
+        return False
     parent_seg = outline_depth_from_id(new_parent_id)
     # After reparent: node sits at parent_seg+1; deepest descendant adds edges below node.
     down = max_edge_depth_below(nodes, node_id)

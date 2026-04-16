@@ -54,7 +54,7 @@ EDIT_WHITELIST = frozenset({
     "planning_dir",
 })
 
-NODE_TYPES = frozenset({"vision", "phase", "milestone", "task"})
+NODE_TYPES = frozenset({"vision", "phase", "milestone", "task", "gate"})
 EXEC_MILESTONES = frozenset({"Human-led", "Agentic-led", "Mixed"})
 EXEC_SUBTASKS = frozenset({"human", "agentic", "human-gate"})
 DECISION_STATUS = frozenset({"pending", "decided"})
