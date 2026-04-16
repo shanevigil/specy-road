@@ -31,8 +31,8 @@ flowchart LR
 
 - **`roadmap/manifest.json`** — `version: 1` and `includes`: ordered list of chunk paths **relative to `roadmap/`**. Do **not** put `nodes` in the manifest.
 - **Chunk files** — JSON containing a `nodes` array (or shapes the loader accepts per `docs/roadmap-authoring.md`). Split large graphs across multiple chunks for git-friendly diffs; respect line limits in `constraints/file-limits.yaml`.
-- **`roadmap/git-workflow.yaml`** — Machine defaults for integration branch and remote (CLI + PM Gantt). Edit to match your trunk (e.g. `dev` vs `main`). Optional PM Gantt setting `pm_gui.integration_branch_auto_ff` can fast-forward that branch from the remote on a timer when you stay on the integration branch with a clean tree (see `docs/design-notes/pm-gui-integration-branch-auto-ff.md`). For PMs on the integration branch, `pm_gui.registry_remote_overlay` defaults **on** (merge `registry.yaml` from `refs/remotes/<remote>/<integration_branch>` and from remote `feature/rm-*` refs after `git fetch`; see `docs/design-notes/registry-hydration-remote-refs.md`).
-- **`roadmap/registry.yaml`** — `version: 1`, `entries: []` or active rows. **Not** part of `includes`. Records in-progress work (codename, `node_id`, branch, `touch_zones`, optional `started`, `owner`, optional `node_key`).
+- **`roadmap/git-workflow.yaml`** — Machine defaults for integration branch and remote (CLI + PM Gantt). Edit to match your trunk (e.g. `dev` vs `main`). Optional: **`require_implementation_review_before_finish`** — when `true`, humans must run **`specy-road mark-implementation-reviewed`** (after `work/implementation-summary-<NODE_ID>.md`) before **`specy-road finish-this-task`**; see `docs/dev-workflow.md`. Optional PM Gantt setting `pm_gui.integration_branch_auto_ff` can fast-forward that branch from the remote on a timer when you stay on the integration branch with a clean tree (see `docs/design-notes/pm-gui-integration-branch-auto-ff.md`). For PMs on the integration branch, `pm_gui.registry_remote_overlay` defaults **on** (merge `registry.yaml` from `refs/remotes/<remote>/<integration_branch>` and from remote `feature/rm-*` refs after `git fetch`; see `docs/design-notes/registry-hydration-remote-refs.md`).
+- **`roadmap/registry.yaml`** — `version: 1`, `entries: []` or active rows. **Not** part of `includes`. Records in-progress work (codename, `node_id`, branch, `touch_zones`, optional `started`, `owner`, optional `node_key`). When **`require_implementation_review_before_finish`** is enabled, each row may include **`implementation_review`**: `pending` | `approved`, and optional **`implementation_review_at`** after approval.
 - **`roadmap.md` at repo root** — **Generated** by `specy-road export`. Do not maintain it by hand as the source of truth.
 
 ## Phase 1 — Discovery
@@ -75,7 +75,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 ## Phase 3 — Registry
 
 - Start from **`roadmap/registry.yaml`** with `version: 1` and `entries: []` unless migrating active work.
-- Each active entry: **`codename`**, **`node_id`**, **`branch`** (`feature/rm-<codename>`), **`touch_zones`** (non-empty array), optional **`node_key`**, **`started`**, **`owner`** — see `schemas/registry.schema.json` and `docs/git-workflow.md` (register on the **integration branch**, then `feature/rm-*`; remove entry before merge).
+- Each active entry: **`codename`**, **`node_id`**, **`branch`** (`feature/rm-<codename>`), **`touch_zones`** (non-empty array), optional **`node_key`**, **`started`**, **`owner`**, and when the implementation-review gate is on: **`implementation_review`** — see `schemas/registry.schema.json` and `docs/git-workflow.md` (register on the **integration branch**, then `feature/rm-*`; remove entry before merge).
 
 ## Phase 4 — Planning feature sheets
 

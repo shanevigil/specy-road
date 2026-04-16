@@ -98,6 +98,15 @@ def merge_request_requires_manual_approval(repo_root: Path) -> bool:
     return v is True
 
 
+def require_implementation_review_before_finish(repo_root: Path) -> bool:
+    """True when ``roadmap/git-workflow.yaml`` sets ``require_implementation_review_before_finish``."""
+    data, err = load_git_workflow_config(repo_root)
+    if err or not data:
+        return False
+    v = data.get("require_implementation_review_before_finish")
+    return v is True
+
+
 def _git_ok(args: list[str], cwd: Path) -> tuple[bool, str]:
     try:
         r = subprocess.run(
@@ -230,6 +239,10 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
             if "merge_request_requires_manual_approval" in data:
                 config["merge_request_requires_manual_approval"] = bool(
                     data["merge_request_requires_manual_approval"],
+                )
+            if "require_implementation_review_before_finish" in data:
+                config["require_implementation_review_before_finish"] = bool(
+                    data["require_implementation_review_before_finish"],
                 )
 
     if not is_git_worktree(repo_root):

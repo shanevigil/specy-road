@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator
 
 from planning_artifacts import collect_planning_artifact_errors
 from roadmap_edit_fields import title_to_codename
+from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.runtime_paths import default_user_repo_root
 
 AGENTIC_KEYS = (
@@ -352,6 +353,8 @@ def run_validation(
         raise SystemExit(1)
 
     id_set = set(ids)
+    gate = require_implementation_review_before_finish(r)
+    allowed_review = frozenset({"pending", "approved"})
     for e in registry.get("entries") or []:
         nid = e.get("node_id")
         if nid and nid not in id_set:
@@ -359,6 +362,17 @@ def run_validation(
             unk = f"registry: entry {cn} references unknown node_id {nid}"
             print(unk, file=sys.stderr)
             raise SystemExit(1)
+        if gate:
+            cn = e.get("codename")
+            rv = e.get("implementation_review")
+            if rv not in allowed_review:
+                print(
+                    f"registry: entry {cn!r}: when require_implementation_review_before_finish "
+                    f"is true, implementation_review must be 'pending' or 'approved' "
+                    f"(got {rv!r}).",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
 
     if registry.get("entries") and not no_overlap_warn:
         touch_zone_overlap(registry["entries"])

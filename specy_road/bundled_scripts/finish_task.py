@@ -13,6 +13,7 @@ from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chu
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
+    require_implementation_review_before_finish,
     resolve_integration_defaults,
 )
 from specy_road.runtime_paths import default_user_repo_root
@@ -198,6 +199,20 @@ def main(argv: list[str] | None = None) -> None:
     codename, reg, entry, nodes = _resolve_context(branch)
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
+
+    if require_implementation_review_before_finish(ROOT):
+        if entry.get("implementation_review") != "approved":
+            print(
+                "error: implementation review is required before finish-this-task.",
+                file=sys.stderr,
+            )
+            print(
+                "  Run: specy-road mark-implementation-reviewed "
+                "(after work/implementation-summary-"
+                f"{node_id}.md is written and you reviewed it).",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
 
     print(f"Finishing [{node_id}] {node.get('title', '')}")
     print(f"Branch:   {branch}\n")

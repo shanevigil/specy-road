@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from generate_brief import index as make_index
+from specy_road.git_workflow_config import require_implementation_review_before_finish
 from planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
@@ -100,6 +101,44 @@ def _leaf_planning_excerpt_lines(node: dict, root: Path) -> list[str]:
     return lines
 
 
+def _finish_instruction_lines(node_id: str, repo_root: Path) -> list[str]:
+    base = [
+        (
+            "1. Read governance docs and planning sheets above, "
+            "then the brief and contracts."
+        ),
+        "2. Stay within the declared touch zones.",
+        (
+            "3. Commit incrementally — the pre-commit hook validates "
+            "on every commit."
+        ),
+    ]
+    if require_implementation_review_before_finish(repo_root):
+        return base + [
+            (
+                f"4. When implementation is complete, write "
+                f"`work/implementation-summary-{node_id}.md` with sections "
+                "**Summary**, **Changes**, **Verification**, and optional "
+                "**## Walkthrough** (numbered steps for the reviewer)."
+            ),
+            (
+                "5. Hand off for human review. The developer runs "
+                "`specy-road mark-implementation-reviewed` (reads the summary; "
+                "optional walkthrough menu), then `specy-road finish-this-task`."
+            ),
+            (
+                "**Do not** run `finish-this-task` yourself until review is "
+                "recorded — the registry must show implementation review approved."
+            ),
+        ]
+    return base + [
+        (
+            "4. When complete: run `specy-road finish-this-task` "
+            "to close out the branch."
+        ),
+    ]
+
+
 def write_agent_prompt(
     node: dict,
     nodes: list[dict],
@@ -146,24 +185,8 @@ def write_agent_prompt(
             "_(no agentic_checklist — check with PM before starting)_",
         )
 
-    lines += [
-        "",
-        "## Instructions",
-        "",
-        (
-            "1. Read governance docs and planning sheets above, "
-            "then the brief and contracts."
-        ),
-        "2. Stay within the declared touch zones.",
-        (
-            "3. Commit incrementally — the pre-commit hook validates "
-            "on every commit."
-        ),
-        (
-            "4. When complete: run `specy-road finish-this-task` "
-            "to close out the branch."
-        ),
-    ]
+    lines += ["", "## Instructions", ""]
+    lines += _finish_instruction_lines(node_id, repo_root)
 
     work_dir.mkdir(parents=True, exist_ok=True)
     path = work_dir / f"prompt-{node_id}.md"

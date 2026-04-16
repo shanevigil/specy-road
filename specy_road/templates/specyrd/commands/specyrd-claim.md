@@ -25,6 +25,8 @@ entries:
       - path/to/affected/dir/
     started: "YYYY-MM-DD"
     owner: "your name or agent ID"
+    # When roadmap/git-workflow.yaml sets require_implementation_review_before_finish: true:
+    # implementation_review: pending
 ```
 
 3. Validate, commit **on the integration branch**, push so PMs see the claim:

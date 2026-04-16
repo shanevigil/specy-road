@@ -9,6 +9,7 @@ import pytest
 import do_next_available as dna
 import do_next_task as dnt
 import finish_task as ft
+import mark_implementation_reviewed as mir
 
 # ---------------------------------------------------------------------------
 # do_next_task: _available
@@ -258,6 +259,59 @@ def test_resolve_context_rejects_missing_branch_field(
     )
     with pytest.raises(SystemExit):
         ft._resolve_context("feature/rm-example")
+
+
+def test_extract_walkthrough_parses_markdown_section() -> None:
+    text = """# X
+
+## Walkthrough
+
+1. First
+2. Second
+
+## Other
+noop
+"""
+    body = mir._extract_walkthrough(text)
+    assert body is not None
+    assert "1. First" in body
+    assert "noop" not in body
+
+
+def test_extract_walkthrough_none_when_missing() -> None:
+    assert mir._extract_walkthrough("# Only\n\nno walk") is None
+
+
+def test_finish_blocks_when_implementation_review_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "example",
+                "node_id": "M1.1",
+                "branch": "feature/rm-example",
+                "touch_zones": ["src/"],
+                "implementation_review": "pending",
+            }
+        ],
+    }
+    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
+    monkeypatch.setattr(
+        ft,
+        "load_roadmap",
+        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
+    )
+    monkeypatch.setattr(ft, "require_implementation_review_before_finish", lambda _r: True)
+    monkeypatch.setattr(ft, "_current_branch", lambda: "feature/rm-example")
+    monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
+    monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
+    monkeypatch.setattr(ft, "_git", lambda *_a, **_k: None)
+    monkeypatch.setattr(ft, "_print_finish_tail", lambda **_: None)
+    with pytest.raises(SystemExit) as ei:
+        ft.main([])
+    assert ei.value.code == 1
 
 
 def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:

@@ -18,6 +18,7 @@ from registration_pickup_commit import registration_commit_message
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
+    require_implementation_review_before_finish,
     resolve_integration_defaults,
 )
 from specy_road.runtime_paths import default_user_repo_root
@@ -141,16 +142,26 @@ def _validate_touch_zones(node: dict) -> None:
         raise SystemExit(1)
 
 
-def _register_and_commit(node: dict, branch: str, reg: dict, commit_message: str) -> None:
+def _register_and_commit(
+    node: dict,
+    branch: str,
+    reg: dict,
+    commit_message: str,
+    *,
+    impl_review_gate: bool,
+) -> None:
     codename = node["codename"]
     _validate_touch_zones(node)
-    reg.setdefault("entries", []).append({
+    entry: dict = {
         "codename": codename,
         "node_id": node["id"],
         "branch": branch,
         "touch_zones": list(node.get("touch_zones") or []),
         "started": datetime.date.today().isoformat(),
-    })
+    }
+    if impl_review_gate:
+        entry["implementation_review"] = "pending"
+    reg.setdefault("entries", []).append(entry)
     with REGISTRY_PATH.open("w", encoding="utf-8") as f:
         yaml.dump(reg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     _git("add", str(REGISTRY_PATH))
@@ -235,6 +246,7 @@ def _print_pickup_footer(
     remote: str,
     base: str,
     mr_manual: bool,
+    impl_review_gate: bool,
 ) -> None:
     print(f"brief:  {brief_path.relative_to(ROOT)}")
     print(f"prompt: {prompt_path.relative_to(ROOT)}")
@@ -251,7 +263,13 @@ def _print_pickup_footer(
         print()
     print("-" * 60)
     print(f"Open {prompt_path.relative_to(ROOT)} in your agent to begin.")
-    print("When done: specy-road finish-this-task")
+    if impl_review_gate:
+        print(
+            "When done: write work/implementation-summary-<NODE_ID>.md, then human runs "
+            "specy-road mark-implementation-reviewed, then specy-road finish-this-task",
+        )
+    else:
+        print("When done: specy-road finish-this-task")
     print("-" * 60)
 
 
@@ -275,7 +293,13 @@ def _finalize_pickup(
         node["codename"],
         include_ci_skip=include_ci_skip,
     )
-    _register_and_commit(node, branch, reg, commit_msg)
+    _register_and_commit(
+        node,
+        branch,
+        reg,
+        commit_msg,
+        impl_review_gate=require_implementation_review_before_finish(ROOT),
+    )
     print("registered in roadmap/registry.yaml on integration branch (committed)")
 
     if push_registry:
@@ -291,6 +315,7 @@ def _finalize_pickup(
         work_dir=WORK_DIR,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
+    impl_gate = require_implementation_review_before_finish(ROOT)
     _print_pickup_footer(
         brief_path=brief_path,
         prompt_path=prompt_path,
@@ -298,6 +323,7 @@ def _finalize_pickup(
         remote=remote,
         base=base,
         mr_manual=mr_manual,
+        impl_review_gate=impl_gate,
     )
 
 

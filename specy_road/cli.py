@@ -48,6 +48,8 @@ _USAGE_TEXT = (
     "  do-next-available-task  — sync base, brief, register on base, push base, branch, prompt\n"
     "    (optional: --base BRANCH --remote NAME | --interactive | "
     "--no-ci-skip-in-message)\n"
+    "  mark-implementation-reviewed — human gate: record review after implementation-summary\n"
+    "    (optional: --yes | --allow-missing-summary)\n"
     "  finish-this-task        — complete task, validate, commit\n"
     "    (optional: --push [--remote NAME])\n"
 )
@@ -246,6 +248,8 @@ def main(argv: list[str] | None = None) -> None:
         _run("validate_file_limits.py", rest)
     elif cmd == "do-next-available-task":
         _run("do_next_task.py", rest)
+    elif cmd == "mark-implementation-reviewed":
+        _run("mark_implementation_reviewed.py", rest)
     elif cmd == "finish-this-task":
         _run("finish_task.py", rest)
     elif cmd == "sync":

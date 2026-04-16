@@ -31,8 +31,9 @@ This will:
 5. Push the integration branch.
 6. Create the feature branch and write `work/prompt-<NODE_ID>.md` (governance, planning context, checklist).
 
-Open `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally, then
-use `/specyrd-finish` (or `specy-road finish-this-task`) when done.
+Open `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
+
+When **`require_implementation_review_before_finish`** is **true**, write `work/implementation-summary-<NODE_ID>.md`, then a human runs `/specyrd-mark-reviewed`, then `/specyrd-finish`. Otherwise use `/specyrd-finish` (or `specy-road finish-this-task`) when done.
 
 Multiple devs or agents can each run this concurrently — the registry prevents
 double-claiming.

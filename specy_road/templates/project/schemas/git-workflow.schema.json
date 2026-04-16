@@ -22,6 +22,10 @@
     "merge_request_requires_manual_approval": {
       "type": "boolean",
       "description": "When true, merge requests require human approval before merge; CLI may print reminders."
+    },
+    "require_implementation_review_before_finish": {
+      "type": "boolean",
+      "description": "When true, finish-this-task requires a human-approved implementation review in registry.yaml and work/implementation-summary-<NODE_ID>.md before closing the task."
     }
   }
 }

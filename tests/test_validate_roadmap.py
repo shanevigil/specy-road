@@ -12,7 +12,9 @@ import pytest
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 import validate_roadmap as vr
+from roadmap_load import load_roadmap
 from validate_roadmap_checks import (
+    run_validation,
     touch_zone_overlap,
     validate_dependency_ids,
     validate_node_keys,
@@ -325,3 +327,49 @@ def test_validate_script_rejects_registry_unknown_node_id(tmp_path: Path) -> Non
     assert r.returncode == 1
     combined = (r.stderr or "") + (r.stdout or "")
     assert "unknown node_id" in combined
+
+
+def test_run_validation_requires_implementation_review_when_gate_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "validate_roadmap_checks.require_implementation_review_before_finish",
+        lambda _r: True,
+    )
+    roadmap = load_roadmap(DOGFOOD)
+    registry = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "roadmap-ci",
+                "node_id": "M0.2",
+                "branch": "feature/rm-roadmap-ci",
+                "touch_zones": ["specy_road/bundled_scripts/"],
+            }
+        ],
+    }
+    with pytest.raises(SystemExit):
+        run_validation(roadmap, registry, True, repo_root=DOGFOOD)
+
+
+def test_run_validation_accepts_implementation_review_pending_when_gate_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "validate_roadmap_checks.require_implementation_review_before_finish",
+        lambda _r: True,
+    )
+    roadmap = load_roadmap(DOGFOOD)
+    registry = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "roadmap-ci",
+                "node_id": "M0.2",
+                "branch": "feature/rm-roadmap-ci",
+                "touch_zones": ["specy_road/bundled_scripts/"],
+                "implementation_review": "pending",
+            }
+        ],
+    }
+    run_validation(roadmap, registry, True, repo_root=DOGFOOD)

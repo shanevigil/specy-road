@@ -217,3 +217,21 @@ def test_specy_road_finish_this_task_help() -> None:
         check=True,
     )
     assert "--push" in r.stdout
+
+
+def test_specy_road_mark_implementation_reviewed_help() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "mark-implementation-reviewed",
+            "--help",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "--yes" in r.stdout
+    assert "--allow-missing-summary" in r.stdout

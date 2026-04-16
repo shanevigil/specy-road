@@ -13,6 +13,7 @@ For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 #Auto-picks first task
 specy-road do-next-available-task   # sync, brief, register on base, push base, branch, prompt
 
+specy-road mark-implementation-reviewed  # human gate: after work/implementation-summary-<NODE_ID>.md
 specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
@@ -29,6 +30,7 @@ specy-road do-next-available-task --no-ci-skip-in-message   # registration commi
 /specyrd-do-next-task   — automated start
 /specyrd-claim          — manual start: register on integration, then branch (see below)
 /specyrd-brief          — manual start: generate brief
+/specyrd-mark-reviewed  — mark implementation reviewed (when gate enabled)
 /specyrd-finish         — finish (both paths)
 /specyrd-validate       — validate at any point
 ```
@@ -121,23 +123,36 @@ The PM Gantt can still **merge registry rows from remote `feature/rm-*` refs** w
 
 Run from the feature branch when implementation is complete.
 
+If **`roadmap/git-workflow.yaml`** sets **`require_implementation_review_before_finish: true`** (default in new `specy-road init project` scaffolds), use this order:
+
+1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**). Use `work/implementation-summary.template.md` as a starting point.
+2. **Review** — the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary, offers an interactive menu (walkthrough / approve / quit), commits **`implementation_review: approved`** in `roadmap/registry.yaml`, then you run **`specy-road finish-this-task`**. Non-interactive approval: `specy-road mark-implementation-reviewed --yes`. Emergency without a summary file: `--allow-missing-summary` (loud warning).
+3. **Close the task** — same as below.
+
+If that flag is **false** or omitted, skip step 2 and run `finish-this-task` when work is done (registry rows omit `implementation_review`).
+
 **Terminal:**
 
 ```bash
+specy-road mark-implementation-reviewed
+# optional: specy-road mark-implementation-reviewed --yes
+#          specy-road mark-implementation-reviewed --allow-missing-summary   # emergency only
+
 specy-road finish-this-task
 # optional: specy-road finish-this-task --push
 #          specy-road finish-this-task --push --remote origin
 ```
 
-**IDE slash command:**
+**IDE slash commands:**
 
 ```text
+/specyrd-mark-reviewed
 /specyrd-finish
 ```
 
-This will:
+`finish-this-task` will:
 
-1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`).
+1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`). If the implementation-review gate is on, the registry must already show **`implementation_review: approved`** (see `mark-implementation-reviewed` above).
 2. Update the node `status` to `Complete` in the roadmap chunk file.
 3. Remove the registry entry.
 4. Run `specy-road validate` and `specy-road export`.

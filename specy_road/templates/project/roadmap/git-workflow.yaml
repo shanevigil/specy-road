@@ -5,4 +5,6 @@
 version: 1
 integration_branch: main
 remote: origin
+# Human must review implementation (summary + optional walkthrough) before finish-this-task.
+require_implementation_review_before_finish: true
 # Optional: merge_request_requires_manual_approval: true
