@@ -4,6 +4,8 @@ This guide is for **product managers, program leads, and tech leads** who shape 
 
 Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [setup.md](setup.md).
 
+What ships for the browser dashboard (FastAPI, static build, package layout): [pm-gui.md](pm-gui.md).
+
 ---
 
 ## What you are working with
@@ -129,7 +131,7 @@ The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:
 
 ### Monitoring in-progress work while on the integration branch
 
-The PM Gantt loads **`roadmap/registry.yaml` from the working tree** at HEAD, then (when **remote registry overlay** is active) **merges** rows from remote-tracking **`feature/rm-*`** refs so you can stay on **`dev`** / **`main`** and still see in-flight claims. Developers add their first registry row on **`feature/rm-<codename>`** only; until that work merges, the **file on disk** at the integration branch often still has **`entries: []`** — overlay fixes the **API** view without switching branches.
+The PM Gantt loads **`roadmap/registry.yaml` from the working tree** at HEAD, then (when **remote registry overlay** is active) **merges** rows from remote-tracking **`feature/rm-*`** refs so you can stay on **`dev`** / **`main`** and still see in-flight claims. The recommended **`do-next-available-task`** path **registers on the integration branch first** (then branches); after **`git pull`**, HEAD’s file usually **already lists** in-progress rows. **Overlay** still fills gaps when registration exists only on unpushed or feature-only commits (see [registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md)).
 
 **Primary path:** configure **Git remote** in **Settings**, run **Test Git**, and keep **“Merge registry from remote feature branches”** enabled (default **on** for new GUI profiles). Ensure **`git fetch`** runs (automatically on a cooldown while overlay is active, or manually) so **`refs/remotes/<remote>/feature/rm-*`** exist. HEAD entries win on duplicate **`node_id`**; remote rows fill gaps. See [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md).
 

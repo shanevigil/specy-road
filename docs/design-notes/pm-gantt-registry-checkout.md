@@ -15,11 +15,13 @@ So the accent means: **your checkout’s current branch matches this row’s reg
 
 **Dev column (outline):** Precedence is **`owner`** (registry) → **forge PR/MR author** (when `git_remote` is configured) → **author of the latest commit on the remote-tracking branch** (`refs/remotes/<remote>/<branch>`, when that ref exists after `git fetch`) → **local `git config user.name`** only when **current branch equals** that row’s registered `branch` (developer convenience on `feature/rm-*`) → branch string / `—`. Git does not record “who checked out” a branch; remote tip author is a practical proxy for PMs who stay on the integration branch.
 
-## Why HEAD on the integration branch often looks empty
+## Why HEAD on the integration branch sometimes looks empty
 
-The [first-commit registration](../git-workflow.md#first-commit-registration-mandatory) workflow adds `roadmap/registry.yaml` on **`feature/rm-<codename>`** before implementation. The integration branch (e.g. `dev`) does not contain that commit until merge. The **on-disk** file at **`dev`** therefore often has **`entries: []`** while work proceeds on the feature branch.
+The recommended flow ([registration on integration](../git-workflow.md#registration-commit-mandatory), then `feature/rm-*`) puts active rows **on the integration branch** after push — **`git pull`** on **`dev`** / **`main`** is often enough.
 
-**Primary PM path:** configure **Git remote** in Settings, run **Test Git**, keep **“Merge registry from remote feature branches”** on (default for new GUI profiles), and rely on periodic **`git fetch`** so `refs/remotes/<remote>/feature/rm-*` exist — see [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md). You do **not** need to check out each feature branch to see registry-driven status, owners, and enrichment.
+If a team still registers **only** on **`feature/rm-<codename>`** (legacy), the integration branch does not contain that commit until merge, so the **on-disk** file at **`dev`** can still show **`entries: []`** while work proceeds on the feature branch.
+
+**Overlay path:** configure **Git remote** in Settings, run **Test Git**, keep **“Merge registry from remote feature branches”** on (default for new GUI profiles), and rely on periodic **`git fetch`** so `refs/remotes/<remote>/feature/rm-*` exist — see [registry-hydration-remote-refs.md](registry-hydration-remote-refs.md). You do **not** need to check out each feature branch to see registry-driven status, owners, and enrichment.
 
 ## Optional: checkout / second worktree
 

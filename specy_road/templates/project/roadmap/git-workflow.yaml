@@ -5,3 +5,4 @@
 version: 1
 integration_branch: main
 remote: origin
+# Optional: merge_request_requires_manual_approval: true

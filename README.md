@@ -25,6 +25,8 @@ pip install specy-road
 # optional: pip install "specy-road[review]" for `specy-road review-node`
 ```
 
+How the PM Gantt UI is packaged (FastAPI + built frontend): [docs/pm-gui.md](docs/pm-gui.md).
+
 You get two commands: **`specy-road`** (validate, brief, export, `init project`, …) and **`specyrd`** (optional IDE stubs — see [specyrd](#specyrd-optional-ide-command-stubs)).
 
 ### New project (consumer)
@@ -146,7 +148,7 @@ specyrd init --here --ai cursor --force
 3. **Validate** — `specy-road validate` (use `--repo-root` if not in the project root).
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.
 5. **Focus a task** — `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`, then implement against `shared/` contracts cited for that node.
-6. **Branches** — Follow [docs/git-workflow.md](docs/git-workflow.md): `feature/rm-<codename>`, register in `roadmap/registry.yaml` on the **first** commit, then implement.
+6. **Branches** — Follow [docs/git-workflow.md](docs/git-workflow.md): register in `roadmap/registry.yaml` on the **integration branch**, then `feature/rm-<codename>` (or use `specy-road do-next-available-task`).
 7. **Optional IDE commands** — [specyrd](#specyrd-optional-ide-command-stubs) installs thin stubs that invoke the same CLI.
 
 ## Where to read next

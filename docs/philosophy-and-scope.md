@@ -7,7 +7,7 @@ This document is for **humans and coding agents** adopting or working on specy-r
 - **Roadmap-first evolution** — The graph under `roadmap/` ([`manifest.json`](../specy_road/templates/project/roadmap/manifest.json) + ordered **JSON** chunk files) is canonical: immutable milestone IDs, dependencies, gates, codenames, and touch zones.
 - **Separation of concerns** — [`constitution/`](../specy_road/templates/project/constitution/purpose.md) holds purpose and principles (human judgment). [`constraints/`](../specy_road/templates/project/constraints/README.md) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
 - **Contracts over tribal knowledge** — [`shared/`](../specy_road/templates/project/shared/README.md) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
-- **Multi-agent safety** — [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml) plus touch zones and first-commit registration ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
+- **Multi-agent safety** — [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml) plus touch zones and registration on the integration branch ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
 - **Planning as narrative spine** — Nodes with **`planning_dir`** point at a **single** feature sheet [`planning/<id>_<slug>_<node_key>.md`](../specy_road/templates/project/planning/README.md) in the repo. Session scratch and generated briefs may still live under [`work/`](../specy_road/templates/project/work/README.md).
 
 ## What specy-road does not prescribe

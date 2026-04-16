@@ -11,6 +11,10 @@ from pathlib import Path
 import yaml
 from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from roadmap_load import load_roadmap
+from specy_road.git_workflow_config import (
+    merge_request_requires_manual_approval,
+    resolve_integration_defaults,
+)
 from specy_road.runtime_paths import default_user_repo_root
 
 ROOT = Path.cwd()
@@ -151,7 +155,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def _print_finish_tail(
-    args: argparse.Namespace, *, node_id: str, node: dict, branch: str
+    args: argparse.Namespace,
+    *,
+    node_id: str,
+    node: dict,
+    branch: str,
+    integration_branch: str,
+    mr_manual: bool,
 ) -> None:
     title = f"[{node_id}] {node.get('title', '')}"
     print()
@@ -161,7 +171,13 @@ def _print_finish_tail(
         print(f"  git push -u {args.remote} {branch}")
     else:
         print("Branch pushed. Open a PR:")
-    print(f'  gh pr create --base main --head {branch} --title "{title}"')
+    print(
+        f'  gh pr create --base {integration_branch} --head {branch} --title "{title}"'
+    )
+    if mr_manual:
+        print(
+            "  Merge requests require manual approval — wait for review, then merge.",
+        )
     print("-" * 60)
 
 
@@ -206,7 +222,20 @@ def main(argv: list[str] | None = None) -> None:
         print(f"-> git push -u {args.remote} {branch}")
         _git("push", "-u", args.remote, branch)
 
-    _print_finish_tail(args, node_id=node_id, node=node, branch=branch)
+    ib, _rm, _gw = resolve_integration_defaults(
+        ROOT,
+        explicit_base=None,
+        explicit_remote=None,
+    )
+    mr_manual = merge_request_requires_manual_approval(ROOT)
+    _print_finish_tail(
+        args,
+        node_id=node_id,
+        node=node,
+        branch=branch,
+        integration_branch=ib,
+        mr_manual=mr_manual,
+    )
 
 
 if __name__ == "__main__":

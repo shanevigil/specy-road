@@ -89,6 +89,15 @@ def resolve_integration_defaults(
     return base, remote, warnings
 
 
+def merge_request_requires_manual_approval(repo_root: Path) -> bool:
+    """True when ``roadmap/git-workflow.yaml`` sets ``merge_request_requires_manual_approval``."""
+    data, err = load_git_workflow_config(repo_root)
+    if err or not data:
+        return False
+    v = data.get("merge_request_requires_manual_approval")
+    return v is True
+
+
 def _git_ok(args: list[str], cwd: Path) -> tuple[bool, str]:
     try:
         r = subprocess.run(
@@ -218,6 +227,10 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
                 "integration_branch": data["integration_branch"],
                 "remote": data["remote"],
             }
+            if "merge_request_requires_manual_approval" in data:
+                config["merge_request_requires_manual_approval"] = bool(
+                    data["merge_request_requires_manual_approval"],
+                )
 
     if not is_git_worktree(repo_root):
         issues.append(

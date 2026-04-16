@@ -10,7 +10,7 @@ You are migrating **roadmap-like** information from an existing project into **s
 
 1. **`specy-road init project --dry-run`** — Lists every scaffold path; use as checklist.
 2. **`docs/roadmap-authoring.md`** — Manifest, chunks, immutability, line limits, planning feature sheets.
-3. **`docs/git-workflow.md`** — Branch `feature/rm-<codename>`, first-commit registration, touch zones.
+3. **`docs/git-workflow.md`** — Register on the integration branch, then `feature/rm-<codename>`, touch zones.
 4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`.
 
 ## Mental model (do not confuse these)
@@ -75,7 +75,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 ## Phase 3 — Registry
 
 - Start from **`roadmap/registry.yaml`** with `version: 1` and `entries: []` unless migrating active work.
-- Each active entry: **`codename`**, **`node_id`**, **`branch`** (`feature/rm-<codename>`), **`touch_zones`** (non-empty array), optional **`node_key`**, **`started`**, **`owner`** — see `schemas/registry.schema.json` and `docs/git-workflow.md` (first commit on a roadmap branch registers work; remove entry before merge).
+- Each active entry: **`codename`**, **`node_id`**, **`branch`** (`feature/rm-<codename>`), **`touch_zones`** (non-empty array), optional **`node_key`**, **`started`**, **`owner`** — see `schemas/registry.schema.json` and `docs/git-workflow.md` (register on the **integration branch**, then `feature/rm-*`; remove entry before merge).
 
 ## Phase 4 — Planning feature sheets
 

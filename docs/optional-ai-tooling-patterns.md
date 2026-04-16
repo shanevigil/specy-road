@@ -109,12 +109,12 @@ Separate worktrees give isolated working trees while sharing history. Pair with 
 
 - Confirm gates and dependencies for the milestone.
 - Read `roadmap/registry.yaml` for overlapping touch zones.
-- Branch `feature/rm-<codename>`; first commit registers work per [`git-workflow.md`](git-workflow.md).
+- Register on the integration branch, then branch `feature/rm-<codename>` per [`git-workflow.md`](git-workflow.md).
 - Implement; remove registry entry before merge.
 
 **Greenfield product repo (optional, if you use markdown status):**
 
-- Some teams maintain `docs/roadmap-status.md` and register there first commit instead of YAML—equivalent **discipline**, different storage. Prefer **one** system per repo.
+- Some teams maintain `docs/roadmap-status.md` instead of YAML—equivalent **discipline** (still register on integration before feature work), different storage. Prefer **one** system per repo.
 
 ---
 

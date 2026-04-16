@@ -101,6 +101,8 @@ When `gui` is included in `--extras`, a starter `~/.specy-road/gui-settings.json
 
 ## Optional: Gantt PM GUI (FastAPI + React)
 
+Architecture of the shipped UI (server, static assets, `gui/pm-gantt/` sources): [pm-gui.md](pm-gui.md).
+
 For the split-pane outline and Gantt timeline, use one command from the repo root:
 
 ```bash

@@ -18,6 +18,10 @@
       "minLength": 1,
       "pattern": "^[A-Za-z0-9._-]+$",
       "description": "Git remote name (usually origin)."
+    },
+    "merge_request_requires_manual_approval": {
+      "type": "boolean",
+      "description": "When true, merge requests require human approval before merge; CLI may print reminders."
     }
   }
 }

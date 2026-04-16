@@ -22,6 +22,6 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures
 
 ## Coordination
 
-For roadmap-linked implementation in this repo, read [`docs/git-workflow.md`](docs/git-workflow.md) and register in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) (first commit on `feature/rm-<codename>`).
+For roadmap-linked implementation in this repo, read [`docs/git-workflow.md`](docs/git-workflow.md) and register in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) (registration commit on the integration branch, then `feature/rm-<codename>`).
 
 If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.

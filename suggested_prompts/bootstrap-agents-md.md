@@ -20,7 +20,7 @@ Framing matters: later phases merge into `CLAUDE.md` / `.cursor` for **this repo
 
 1. **Consumer AGENTS template:** Same content as `specy-road init project` → `AGENTS.md` (load order + `specy-road brief` example).
 2. **Optional CLAUDE.md style** for consumer repos: the package ships `specy_road/templates/specyrd/CLAUDE.md.template`—use it as a **merge** pattern, not as a wholesale replace of this repo’s unique `CLAUDE.md` if one exists.
-3. **Branching and registry:** `docs/git-workflow.md` (first-commit registration on `feature/rm-<codename>`, touch zones).
+3. **Branching and registry:** `docs/git-workflow.md` (register on integration branch, then `feature/rm-<codename>`, touch zones).
 4. **Consumer boundary (copy-paste snippets):** Align with shipped stubs under `specy_road/templates/adoption/` in the package (`specy-road-consumer-claude-snippet.md`, `004-specy-road-consumer.mdc`) when merging the **specy-road (consumer)** section and optional Cursor rule—edit the consumer repo’s own files; do not treat those paths as the app’s source tree.
 
 ## Phase 1 — Discovery
@@ -60,7 +60,7 @@ Use the real repo’s node IDs when you know them.
 - **Add** a dedicated subsection for specy-road **invariants**, for example:
   - Docs win over chat when instructions conflict.
   - Smallest change that satisfies the task; no drive-by refactors.
-  - Roadmap-linked work: follow `docs/git-workflow.md` and `roadmap/registry.yaml` (register on first commit of `feature/rm-<codename>`; remove registry entry before merge).
+  - Roadmap-linked work: follow `docs/git-workflow.md` and `roadmap/registry.yaml` (register on the integration branch, then `feature/rm-<codename>`; remove registry entry before merge).
 
 ### specy-road consumer invariants (merge into `AGENTS.md` and/or optional Cursor rule)
 

@@ -4,6 +4,10 @@
 
 The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **working tree at HEAD**. On the **integration branch**, that file is often empty or stale while active work lives on unmerged **`feature/rm-*`** commits.
 
+### Integration-branch registration (recommended)
+
+The default **`specy-road do-next-available-task`** flow **commits `registry.yaml` on the integration branch** before creating `feature/rm-*`. After **`git pull`** (or auto-ff), **HEAD** already contains active rows — PMs see claims without depending on overlay. **Overlay** remains useful for **feature-only** registration (legacy or manual), or when a developer has not pushed the integration branch yet.
+
 ## Remote registry overlay (default on; gated)
 
 In the PM Gantt **Settings** drawer, configure **Git remote** (GitHub or GitLab: repo slug and token)—always **per resolved project root**, not a shared global—and run **Test Git** once successfully. **“Merge registry from remote feature branches”** (**`pm_gui.registry_remote_overlay`** in [`~/.specy-road/gui-settings.json`](../../specy_road/bundled_scripts/roadmap_gui_settings.py)) defaults to **on** for new GUI profiles so PMs on the integration branch see in-flight claims after **`git fetch`**. You can turn it off per repo; the flag can follow the **PM GUI** global/per-repo toggle like other `pm_gui.*` options. The server persists **`git_remote_tested_ok`** per repo; changing effective Git remote fields clears that flag. Optional env override: **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** forces off; **`=1`** forces on (e.g. CI) and skips the Test Git gate.

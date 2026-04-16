@@ -6,6 +6,28 @@ implements it against contracts, and merges back.
 For setup (install, pre-commit hook, IDE stubs) see [setup.md](setup.md).
 For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 
+## Quick reference
+
+```bash
+# Terminal
+specy-road do-next-available-task   # sync base, brief, register on base, branch, prompt (auto-picks first task)
+specy-road do-next-available-task --interactive   # choose task by number (same git steps)
+specy-road do-next-available-task --push-registry   # after register: push integration branch
+specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
+specy-road validate                 # validate merged roadmap graph + registry
+specy-road brief <NODE_ID>          # manual: generate brief for a specific node
+specy-road export                   # regenerate roadmap.md
+```
+
+```text
+# IDE slash commands (after specyrd init --role dev)
+/specyrd-do-next-task   — automated start
+/specyrd-claim          — manual start: register on integration, then branch (see below)
+/specyrd-brief          — manual start: generate brief
+/specyrd-finish         — finish (both paths)
+/specyrd-validate       — validate at any point
+```
+
 ---
 
 ## Your role in the system
@@ -24,23 +46,31 @@ A missing contract is a planning gap, not something to fill during implementatio
 
 ## The task loop
 
-### Start: automated path
+### Start: automated path (`do-next-available-task`)
 
-The automated path syncs the integration branch (defaults from **`roadmap/git-workflow.yaml`**, else `main`), **lists** eligible
-agentic tasks (with **Blocked** and **Git-rejected MR** rows first when Git remote settings allow enrichment), you **choose one by number** at the prompt, then it creates the branch,
-registers it, and writes the brief and prompt in one step.
+The CLI keeps the **integration branch** current (from **`roadmap/git-workflow.yaml`**, overridable with **`--base`** / **`--remote`**), then:
 
-With sync **on** (the default), your working tree must be **clean** — commit, stash, or
-discard local changes first. The tool runs `git fetch`, checks out the integration
-branch, and `git merge --ff-only` against the remote ref (e.g. `origin/main`). If your
-local integration branch has diverged, resolve that before retrying. Use `--no-sync`
-for offline use or CI. Set **`roadmap/git-workflow.yaml`** to your real trunk (e.g. `dev`) or pass **`--base dev`** once without editing the file.
+1. Selects the **first** eligible agentic task in priority order (**Blocked** and **Git-rejected MR** rows first when enrichment is available), unless you pass **`--interactive`** to choose by number — **both modes run the same steps after selection**.
+2. Writes **`work/brief-<NODE_ID>.md`** while still on the integration branch.
+3. **Commits `roadmap/registry.yaml` on the integration branch** (registration only — no implementation in that commit).
+4. Optionally **`--push-registry`** pushes that commit to the remote integration branch so PMs and the PM Gantt see the claim after `git pull` / fetch.
+5. Creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`** (governance, ancestor planning paths, task sheet excerpt, checklist).
+
+With sync **on** (the default), your working tree must be **clean**. The tool runs `git fetch`, checks out the integration branch, and `git merge --ff-only` to the remote tracking branch. If your local integration branch has diverged, resolve that before retrying. Use **`--no-sync`** for offline or CI; you must already be on the integration branch. Set **`roadmap/git-workflow.yaml`** to your trunk (e.g. `dev`) or pass **`--base dev`**.
+
+**Push after register:** If you did not use `--push-registry`, push the integration branch so others see the registry row:
+
+```bash
+git push <remote> <integration-branch>
+```
+
+Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_approval`** reminds the CLI that MRs need human approval; align with your team’s process before merging.
 
 **Terminal:**
 
 ```bash
 specy-road do-next-available-task
-# optional overrides: specy-road do-next-available-task --base dev --remote origin
+# optional: specy-road do-next-available-task --base dev --remote origin --interactive
 # offline:  specy-road do-next-available-task --no-sync
 ```
 
@@ -50,43 +80,38 @@ specy-road do-next-available-task
 /specyrd-do-next-task
 ```
 
-Open the generated `work/prompt-<NODE_ID>.md` in your agent. Implement, commit
-incrementally.
+Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
 
 ### Start: manual path
 
-Use the manual path when you want to pick a specific node rather than taking the next
-available one, or when you need finer control over the registry entry.
+Use the manual path when you pick a specific node without the automated queue, or when automation is unavailable.
 
-1. Find a node in the generated `roadmap.md` at your **application** project root where `execution_milestone` is
-   `Agentic-led` or `Mixed`, `status` is `Not Started`, and all `dependencies` are
-   `Complete`. (Worked example in this repo: [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) under the dogfood fixture.)
-2. Confirm it is not claimed in `roadmap/registry.yaml`. (Example: [`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) in the dogfood fixture.)
-3. Branch and register:
+1. Find a node in `roadmap.md` where `execution_milestone` is `Agentic-led` or `Mixed`, `status` is eligible, and dependencies are met.
+2. Confirm it is not claimed in `roadmap/registry.yaml`.
+3. On the **integration branch** (up to date, clean tree), add the registry row and commit **there first** (same fields as automation: codename, `node_id`, `branch: feature/rm-<codename>`, non-empty `touch_zones`, optional `started`), then create the feature branch:
 
 **Terminal / IDE (`/specyrd-claim`):**
 
 ```bash
-git checkout -b feature/rm-<codename>
-# add entry to roadmap/registry.yaml, then:
+git checkout <integration-branch>   # e.g. dev
+git pull
+# edit roadmap/registry.yaml — add entry with branch: feature/rm-<codename>
 specy-road validate
 git add roadmap/registry.yaml
 git commit -m "chore(rm-<codename>): register as in-progress"
+git push <remote> <integration-branch>   # so PMs see the claim
+git checkout -b feature/rm-<codename>
 ```
 
-That registration commit exists on the **feature branch** until merge. A PM who keeps the **integration branch** checked out will not see that row in **HEAD’s** on-disk `registry.yaml` until it lands on their branch; the PM Gantt **remote registry overlay** (default **on** for new GUI settings when Git remote is configured) merges those rows into the dashboard after **`git fetch`** — see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md), [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch), and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
-
-4. Generate a brief:
-
-**Terminal / IDE (`/specyrd-brief`):**
+4. Generate a brief if needed:
 
 ```bash
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
-The brief lists **ancestor** planning feature sheets (parent phase/milestone) and **this node’s** sheet under `planning/`. Read ancestors first for scope and constraints, then the leaf sheet, then cited `shared/` contracts.
-
 5. Implement, commit incrementally.
+
+The PM Gantt can still **merge registry rows from remote `feature/rm-*` refs** when remote overlay is enabled ([design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md)); the **primary** visibility path for new work is the **committed file on the integration branch** after you push.
 
 ### Finish (both paths)
 
@@ -108,23 +133,20 @@ specy-road finish-this-task
 
 This will:
 
-1. Read the current branch name to find the codename and registry entry (the registry
-   `branch` must match `HEAD`).
-2. Update the node `status` to `Complete` in the roadmap chunk file (or use `specy-road finish-this-task`).
+1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`).
+2. Update the node `status` to `Complete` in the roadmap chunk file.
 3. Remove the registry entry.
 4. Run `specy-road validate` and `specy-road export`.
-5. Commit the bookkeeping changes.
-6. Unless `--push` was passed, print the `git push` + `gh pr create` commands to open a PR.
-   With `--push`, run `git push -u` after the bookkeeping commit, then print the PR hint.
+5. Commit the bookkeeping changes on the feature branch.
+6. Print `git push` and `gh pr create --base <integration-branch>` (integration branch comes from `roadmap/git-workflow.yaml`). If **`merge_request_requires_manual_approval`** is set, the CLI reminds you to wait for review.
 
-Merge when CI is green. No PM sign-off required.
+Merge when CI is green and your team’s MR policy is satisfied.
 
 ---
 
 ## Branch model
 
-One branch per roadmap milestone. All feature branches fork from and merge back to the
-same integration branch.
+One branch per roadmap milestone. Feature branches are created **after** registering on the integration branch; they merge back through a PR/MR to that same integration branch.
 
 ```text
 main ─────────────────────────────────────────────► main
@@ -158,7 +180,7 @@ unless your team explicitly tracks this work on the roadmap.
 **Roadmap-visible rework:** If stakeholders need the graph to show the effort (touch
 zones, dependencies, ordering), the PM adds a **new** node (or follows your team’s
 policy for reopening — see below). You then use `feature/rm-<codename>` with
-first-commit registration per [git-workflow.md](git-workflow.md).
+registration on the integration branch per [git-workflow.md](git-workflow.md).
 
 Git mechanics for “undoing” a merge on a shared branch are covered in
 [git-workflow.md](git-workflow.md#correcting-merged-work-revert-vs-follow-up) (revert PR
@@ -269,7 +291,7 @@ Optional:
 
 When multiple developers or agents are running simultaneously:
 
-- `do-next-available-task` filters out already-claimed nodes — safe to run in parallel.
+- `do-next-available-task` filters out already-claimed nodes — safe to run in parallel; **push the integration branch** after registering so others see claims quickly. If two pickups race on push, pull/rebase the integration branch and retry.
 - `specy-road validate` warns on overlapping touch zones between registry entries.
 - **Prefer git worktrees** for parallel agents on one machine — isolated working trees
   on disjoint branches.
@@ -278,25 +300,3 @@ When multiple developers or agents are running simultaneously:
   finish before milestone B, A’s `node_key` appears in B’s `dependencies`; tools resolve those keys to
   display ids in UIs and briefs. The dependent node cannot proceed until every listed dependency is
   `Complete` (see `specy_road/bundled_scripts/do_next_task.py`).
-
----
-
-## Quick reference
-
-```bash
-# Terminal
-specy-road do-next-available-task   # sync base, list+choose, branch, register, brief + prompt
-specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
-specy-road validate                 # validate merged roadmap graph + registry
-specy-road brief <NODE_ID>          # manual: generate brief for a specific node
-specy-road export                   # regenerate roadmap.md
-```
-
-```text
-# IDE slash commands (after specyrd init --role dev)
-/specyrd-do-next-task   — automated start
-/specyrd-claim          — manual start: branch + register
-/specyrd-brief          — manual start: generate brief
-/specyrd-finish         — finish (both paths)
-/specyrd-validate       — validate at any point
-```

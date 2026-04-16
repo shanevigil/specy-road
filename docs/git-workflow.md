@@ -14,7 +14,9 @@ Keep this file accurate so PMs see correct git status in the dashboard and valid
 
 The **PM Gantt** reads **`roadmap/registry.yaml` from the current working tree** (same repo root as other `specy-road` commands: discover from cwd / git, or **`SPECY_ROAD_REPO_ROOT`**), then **merges** registry rows from remote-tracking **`feature/rm-*`** refs when **remote registry overlay** is enabled in PM Gantt **Settings** (default **on** for new GUI profiles; requires Git remote + **Test Git**). See [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md). Set **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** to force HEAD-only behavior without changing saved settings.
 
-On the **integration branch**, the on-disk file often has **`entries: []`** while developers hold active claims only on **`feature/rm-*`** branches (first-commit registration). **Overlay** still exposes those rows in the GUI after **`git fetch`**. The outline **green accent** appears only when your **checked-out branch name** matches a row’s **`branch`** field — typical for **developers** on the feature branch, not for **PMs** on the integration branch; see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+**Default dev CLI path:** `specy-road do-next-available-task` **commits registration to the integration branch first**, then creates `feature/rm-*`. After **`git pull`** on the integration branch, **HEAD’s `registry.yaml` shows active rows** without relying on overlay. **Overlay** still helps for older flows or unpushed feature-only registration — it merges rows from remote **`feature/rm-*`** refs after **`git fetch`**. The outline **green accent** appears when your **checked-out branch name** matches a row’s **`branch`** field (usually the feature branch for implementers); see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+
+Optional field **`merge_request_requires_manual_approval`** (boolean) documents that MRs need human approval; the `finish-this-task` CLI may print a reminder. Schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json).
 
 **Examples** (schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json)):
 
@@ -48,16 +50,18 @@ remote: origin
 
 1. Confirm **gates** and dependencies for your milestone (see root/index or generated tables).
 2. Read `roadmap/registry.yaml` in your application repository — no overlapping **touch zones** with active entries (coordinate with PM / integration lead if unsure). Example layout: [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml). Maintainers working on this toolkit use the dogfood copy: [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml).
-3. Create the roadmap-driven branch from your integration branch (e.g. `dev`): `git checkout -b feature/rm-<codename>`.
+3. **Register on the integration branch, then branch:** add your row to **`roadmap/registry.yaml`** and commit **on the integration branch** (e.g. `dev`) — registration only, no implementation in that commit. Message: `chore(rm-<codename>): register as in-progress`. Push if others need visibility. Then: `git checkout -b feature/rm-<codename>` and implement on that branch. (Automated path: [`do-next-available-task`](dev-workflow.md) does brief → register on integration → create feature branch → prompt.)
 
-## First-commit registration (mandatory)
+Teams using `docs/roadmap-status.md` instead of YAML should follow the same **register on integration before feature work** discipline.
 
-On that new branch, the **first commit** registers work only — **no implementation** in that commit:
+## Registration commit (mandatory)
 
-1. Add a row to **`roadmap/registry.yaml`** (or, in an application repo, `docs/roadmap-status.md` per team convention) with: codename, `node_id`, branch `feature/rm-<codename>`, touch zones, optional `started` date.
-2. Commit message: `chore(rm-<codename>): register as in-progress`
+The **registration commit** contains **only** the registry update (or equivalent status row):
 
-Only **after** that registration commit should you add implementation commits.
+1. Add a row with: codename, `node_id`, branch `feature/rm-<codename>`, non-empty touch zones, optional `started` date.
+2. Commit on the **integration branch** first; then create **`feature/rm-<codename>`** for implementation commits.
+
+Only **after** registration (and branching) should you add implementation commits on the feature branch.
 
 ## While working
 

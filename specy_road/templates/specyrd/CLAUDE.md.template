@@ -29,7 +29,7 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 - **Docs win**: if instructions conflict, prefer tracked repo docs (not chat history).
 - **No scope creep**: don’t refactor or reorganize unrelated code “for cleanliness”.
 - **Search before adding**: prefer reusing existing scripts/validators over creating new ones.
-- **Roadmap-linked implementation**: follow `docs/git-workflow.md` and the registry protocol in `roadmap/registry.yaml` (first commit registers work).
+- **Roadmap-linked implementation**: follow `docs/git-workflow.md` and the registry protocol in `roadmap/registry.yaml` (register on the integration branch, then `feature/rm-*`).
 
 ## Common commands (repo root)
 
