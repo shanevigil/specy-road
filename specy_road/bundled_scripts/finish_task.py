@@ -15,6 +15,7 @@ from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
+    should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.runtime_paths import default_user_repo_root
 
@@ -130,6 +131,47 @@ def _validate_and_export() -> None:
     )
 
 
+def _work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:
+    return (
+        f"work/brief-{node_id}.md",
+        f"work/prompt-{node_id}.md",
+        f"work/implementation-summary-{node_id}.md",
+    )
+
+
+def _is_git_tracked(repo_root: Path, rel: str) -> bool:
+    r = subprocess.run(
+        ["git", "ls-files", "--", rel],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return bool((r.stdout or "").strip())
+
+
+def _cleanup_work_artifacts(repo_root: Path, node_id: str) -> list[str]:
+    """Remove toolkit session files under work/; return tracked paths to stage as deletions."""
+    need_add: list[str] = []
+    root_r = repo_root.resolve()
+    for rel in _work_artifact_rel_paths(node_id):
+        path = (root_r / rel).resolve()
+        if not path.is_file():
+            continue
+        try:
+            path.relative_to(root_r)
+        except ValueError:
+            continue
+        tracked = _is_git_tracked(root_r, rel)
+        path.unlink()
+        if tracked:
+            need_add.append(rel)
+            print(f"[ok] removed {rel} (tracked — staging deletion)")
+        else:
+            print(f"[ok] removed {rel}")
+    return need_add
+
+
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Mark the current roadmap task complete, validate, export, commit.",
@@ -151,6 +193,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         default=None,
         metavar="DIR",
         help="Repository root (default: git root or cwd).",
+    )
+    p.add_argument(
+        "--no-cleanup-work",
+        action="store_true",
+        help=(
+            "Keep work/brief-, work/prompt-, and work/implementation-summary- for this node "
+            "(default: delete after successful validate/export)."
+        ),
     )
     return p.parse_args(argv)
 
@@ -228,7 +278,15 @@ def main(argv: list[str] | None = None) -> None:
     print("-> specy-road export")
     _validate_and_export()
 
+    work_tracked_removals: list[str] = []
+    if should_cleanup_work_artifacts_on_finish(
+        ROOT,
+        no_cleanup_work_cli=args.no_cleanup_work,
+    ):
+        work_tracked_removals = _cleanup_work_artifacts(ROOT, node_id)
+
     changed_files.append("roadmap.md")
+    changed_files.extend(work_tracked_removals)
     _git("add", *changed_files)
     _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")

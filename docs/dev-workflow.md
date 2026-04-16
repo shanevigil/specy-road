@@ -141,6 +141,7 @@ specy-road mark-implementation-reviewed
 specy-road finish-this-task
 # optional: specy-road finish-this-task --push
 #          specy-road finish-this-task --push --remote origin
+#          specy-road finish-this-task --no-cleanup-work   # keep work/brief-, prompt-, implementation-summary-
 ```
 
 **IDE slash commands:**
@@ -156,8 +157,9 @@ specy-road finish-this-task
 2. Update the node `status` to `Complete` in the roadmap chunk file.
 3. Remove the registry entry.
 4. Run `specy-road validate` and `specy-road export`.
-5. Commit the bookkeeping changes on the feature branch.
-6. Print `git push` and `gh pr create --base <integration-branch>` (integration branch comes from `roadmap/git-workflow.yaml`). If **`merge_request_requires_manual_approval`** is set, the CLI reminds you to wait for review.
+5. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked).
+6. Commit the bookkeeping changes on the feature branch.
+7. Print `git push` and `gh pr create --base <integration-branch>` (integration branch comes from `roadmap/git-workflow.yaml`). If **`merge_request_requires_manual_approval`** is set, the CLI reminds you to wait for review.
 
 Merge when CI is green and your team’s MR policy is satisfied.
 

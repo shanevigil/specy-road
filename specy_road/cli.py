@@ -51,7 +51,7 @@ _USAGE_TEXT = (
     "  mark-implementation-reviewed — human gate: record review after implementation-summary\n"
     "    (optional: --yes | --allow-missing-summary)\n"
     "  finish-this-task        — complete task, validate, commit\n"
-    "    (optional: --push [--remote NAME])\n"
+    "    (optional: --push [--remote NAME] | --no-cleanup-work)\n"
 )
 
 

@@ -7,4 +7,7 @@ integration_branch: main
 remote: origin
 # Human must review implementation (summary + optional walkthrough) before finish-this-task.
 require_implementation_review_before_finish: true
+# Remove session files under work/ when closing a task (brief, prompt, implementation-summary).
+# Omit or set true for default; set false to keep those files (CLI --no-cleanup-work also skips).
+cleanup_work_artifacts_on_finish: true
 # Optional: merge_request_requires_manual_approval: true

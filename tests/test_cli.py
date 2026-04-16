@@ -217,6 +217,7 @@ def test_specy_road_finish_this_task_help() -> None:
         check=True,
     )
     assert "--push" in r.stdout
+    assert "--no-cleanup-work" in r.stdout
 
 
 def test_specy_road_mark_implementation_reviewed_help() -> None:

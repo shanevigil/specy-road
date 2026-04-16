@@ -107,6 +107,28 @@ def require_implementation_review_before_finish(repo_root: Path) -> bool:
     return v is True
 
 
+def cleanup_work_artifacts_on_finish(repo_root: Path) -> bool:
+    """True unless ``cleanup_work_artifacts_on_finish`` is explicitly false in git-workflow.yaml."""
+    data, err = load_git_workflow_config(repo_root)
+    if err or not data:
+        return True
+    v = data.get("cleanup_work_artifacts_on_finish")
+    if v is False:
+        return False
+    return True
+
+
+def should_cleanup_work_artifacts_on_finish(
+    repo_root: Path,
+    *,
+    no_cleanup_work_cli: bool,
+) -> bool:
+    """Respect ``--no-cleanup-work`` over ``roadmap/git-workflow.yaml``."""
+    if no_cleanup_work_cli:
+        return False
+    return cleanup_work_artifacts_on_finish(repo_root)
+
+
 def _git_ok(args: list[str], cwd: Path) -> tuple[bool, str]:
     try:
         r = subprocess.run(
@@ -201,6 +223,24 @@ def integration_refs_present(
     return False, ""
 
 
+def _optional_git_workflow_config_fields(data: dict[str, Any]) -> dict[str, Any]:
+    """Optional booleans exposed in status payload (subset of schema)."""
+    out: dict[str, Any] = {}
+    if "merge_request_requires_manual_approval" in data:
+        out["merge_request_requires_manual_approval"] = bool(
+            data["merge_request_requires_manual_approval"],
+        )
+    if "require_implementation_review_before_finish" in data:
+        out["require_implementation_review_before_finish"] = bool(
+            data["require_implementation_review_before_finish"],
+        )
+    if "cleanup_work_artifacts_on_finish" in data:
+        out["cleanup_work_artifacts_on_finish"] = bool(
+            data["cleanup_work_artifacts_on_finish"],
+        )
+    return out
+
+
 def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
     """Payload for ``GET /api/git-workflow-status`` and CLI hints."""
     issues: list[dict[str, str]] = []
@@ -235,15 +275,8 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
                 "version": data["version"],
                 "integration_branch": data["integration_branch"],
                 "remote": data["remote"],
+                **_optional_git_workflow_config_fields(data),
             }
-            if "merge_request_requires_manual_approval" in data:
-                config["merge_request_requires_manual_approval"] = bool(
-                    data["merge_request_requires_manual_approval"],
-                )
-            if "require_implementation_review_before_finish" in data:
-                config["require_implementation_review_before_finish"] = bool(
-                    data["require_implementation_review_before_finish"],
-                )
 
     if not is_git_worktree(repo_root):
         issues.append(
