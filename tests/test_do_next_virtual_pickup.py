@@ -22,6 +22,29 @@ _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_A = "22222222-2222-4222-8222-222222222222"
 _NK_B = "33333333-3333-4333-8333-333333333333"
 
+_CHUNK_VR2_MAIN = {
+    "nodes": [
+        {
+            "id": "N1",
+            "node_key": _NK_A,
+            "codename": "a",
+            "execution_milestone": "Agentic-led",
+            "status": "Not Started",
+            "dependencies": [],
+            "touch_zones": ["z"],
+        },
+        {
+            "id": "N2",
+            "node_key": _NK_B,
+            "codename": "b",
+            "execution_milestone": "Agentic-led",
+            "status": "Not Started",
+            "dependencies": [_NK_A],
+            "touch_zones": ["z"],
+        },
+    ]
+}
+
 
 def _run_git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
@@ -258,12 +281,9 @@ def test_load_roadmap_nodes_at_ref_reads_feature_tip(tmp_path: Path) -> None:
     assert feat_nodes[0]["status"] == "Complete"
 
 
-def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
-    tmp_path: Path,
-) -> None:
+def _repo_registry_virtual_complete_pickup(tmp_path: Path) -> tuple[Path, dict]:
+    """Build git repo: integration dev, registry entry, feature tip Complete for N1."""
     import yaml
-
-    import roadmap_load as rl
 
     repo = tmp_path / "vr2"
     repo.mkdir()
@@ -276,28 +296,7 @@ def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
         json.dumps({"version": 1, "includes": ["phases/t.json"]}),
         encoding="utf-8",
     )
-    chunk_main = {
-        "nodes": [
-            {
-                "id": "N1",
-                "node_key": _NK_A,
-                "codename": "a",
-                "execution_milestone": "Agentic-led",
-                "status": "Not Started",
-                "dependencies": [],
-                "touch_zones": ["z"],
-            },
-            {
-                "id": "N2",
-                "node_key": _NK_B,
-                "codename": "b",
-                "execution_milestone": "Agentic-led",
-                "status": "Not Started",
-                "dependencies": [_NK_A],
-                "touch_zones": ["z"],
-            },
-        ]
-    }
+    chunk_main = json.loads(json.dumps(_CHUNK_VR2_MAIN))
     (roadmap / "phases").mkdir(parents=True)
     (roadmap / "phases" / "t.json").write_text(
         json.dumps(chunk_main, indent=2),
@@ -345,6 +344,15 @@ def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
 
     with (repo / "roadmap" / "registry.yaml").open(encoding="utf-8") as f:
         reg = yaml.safe_load(f)
+    return repo, reg
+
+
+def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
+    tmp_path: Path,
+) -> None:
+    import roadmap_load as rl
+
+    repo, reg = _repo_registry_virtual_complete_pickup(tmp_path)
 
     keys, logs = dnt._virtual_complete_from_registry(
         reg,

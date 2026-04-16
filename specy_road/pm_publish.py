@@ -198,6 +198,58 @@ def _run_git(
     return run.returncode == 0, run.returncode, err
 
 
+def _verify_staged_index_not_empty(repo_root: Path) -> None:
+    d = subprocess.run(
+        ["git", "diff", "--cached", "--quiet"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        timeout=30.0,
+        check=False,
+    )
+    if d.returncode == 0:
+        raise ValueError("No staged changes after git add.")
+    if d.returncode != 1:
+        raise RuntimeError(
+            f"git diff --cached failed (exit {d.returncode}).",
+        )
+
+
+def _git_commit_roadmap(repo_root: Path, msg: str) -> None:
+    ok, rc, err = _run_git(
+        repo_root,
+        ["commit", "-m", msg],
+        timeout=120.0,
+    )
+    if ok:
+        return
+    if "Please tell me who you are" in err or "user.name" in err:
+        raise RuntimeError(
+            "Git needs your name and email on this computer. "
+            "A developer can run: git config user.name and git config user.email.",
+        )
+    raise RuntimeError(f"git commit failed (exit {rc}): {err or 'unknown error'}")
+
+
+def _raise_push_failure(
+    hint: str,
+    *,
+    current_branch: str | None,
+) -> None:
+    if "no upstream" in hint.lower() or "does not have any commits" in hint.lower():
+        br = current_branch or "your-branch"
+        raise RuntimeError(
+            f"No upstream branch configured. Run: git push -u origin {br}",
+        )
+    if "rejected" in hint.lower() or "non-fast-forward" in hint.lower():
+        raise RuntimeError(
+            "Push was rejected (remote has new commits). "
+            "Pull or merge the latest changes, then try publishing again.\n\n"
+            + hint[:800],
+        )
+    raise RuntimeError(hint[:2000])
+
+
 def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
     """
     Stage publish-scope paths, commit, push to upstream.
@@ -232,57 +284,19 @@ def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
     if not ok:
         raise RuntimeError(f"git add failed (exit {rc}): {err or 'unknown error'}")
 
-    d = subprocess.run(
-        ["git", "diff", "--cached", "--quiet"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        timeout=30.0,
-        check=False,
-    )
-    # Exit 0 = index matches HEAD (nothing staged); 1 = there are staged changes.
-    if d.returncode == 0:
-        raise ValueError("No staged changes after git add.")
-    if d.returncode != 1:
-        raise RuntimeError(
-            f"git diff --cached failed (exit {d.returncode}).",
-        )
-
-    ok, rc, err = _run_git(
-        repo_root,
-        ["commit", "-m", msg],
-        timeout=120.0,
-    )
-    if not ok:
-        if "Please tell me who you are" in err or "user.name" in err:
-            raise RuntimeError(
-                "Git needs your name and email on this computer. "
-                "A developer can run: git config user.name and git config user.email.",
-            )
-        raise RuntimeError(f"git commit failed (exit {rc}): {err or 'unknown error'}")
+    _verify_staged_index_not_empty(repo_root)
+    _git_commit_roadmap(repo_root, msg)
 
     sha_lines = _git_lines(repo_root, ["rev-parse", "--short", "HEAD"])
     short_sha = sha_lines[0] if sha_lines else None
 
-    ok_push, rc_push, err_push = _run_git(
+    ok_push, _rc_push, err_push = _run_git(
         repo_root,
         ["push"],
         timeout=300.0,
     )
     if not ok_push:
-        hint = err_push or "git push failed."
-        if "no upstream" in hint.lower() or "does not have any commits" in hint.lower():
-            br = st.current_branch or "your-branch"
-            raise RuntimeError(
-                f"No upstream branch configured. Run: git push -u origin {br}",
-            )
-        if "rejected" in hint.lower() or "non-fast-forward" in hint.lower():
-            raise RuntimeError(
-                "Push was rejected (remote has new commits). "
-                "Pull or merge the latest changes, then try publishing again.\n\n"
-                + hint[:800],
-            )
-        raise RuntimeError(hint[:2000])
+        _raise_push_failure(err_push or "git push failed.", current_branch=st.current_branch)
 
     return {
         "ok": True,

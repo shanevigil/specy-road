@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import argparse
 import datetime
 import subprocess
 import sys
@@ -16,8 +15,8 @@ from do_next_available import (
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
 )
-from roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from do_next_prompt import write_agent_prompt
+from do_next_task_args import parse_do_next_task_args
 from do_next_task_interactive import pick_interactive as _pick_interactive
 from do_next_task_leaf_guards import (
     assert_leaf_target as _assert_leaf_target,
@@ -26,8 +25,10 @@ from do_next_task_leaf_guards import (
 from generate_brief import index as make_index, render_brief
 from registration_pickup_commit import registration_commit_message
 from roadmap_load import load_roadmap
+from do_next_task_virtual_complete import (
+    virtual_complete_from_registry as _virtual_complete_from_registry,
+)
 from specy_road.git_workflow_config import (
-    ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
@@ -188,47 +189,6 @@ def _push_integration_branch(remote: str, base: str) -> None:
     _git("push", remote, base)
 
 
-def _virtual_complete_from_registry(
-    reg: dict,
-    *,
-    repo_root: Path,
-    remote: str,
-) -> tuple[set[str], list[str]]:
-    """node_keys Complete on feature-branch tips but not yet on integration (dep eval only)."""
-    virtual: set[str] = set()
-    log_lines: list[str] = []
-    entries = reg.get("entries") or []
-    for e in entries:
-        if not isinstance(e, dict):
-            continue
-        branch = e.get("branch")
-        node_id = e.get("node_id")
-        if not isinstance(branch, str) or not branch.strip():
-            continue
-        if not isinstance(node_id, str) or not node_id.strip():
-            continue
-        ref = f"{remote}/{branch.strip()}"
-        nodes_at = load_roadmap_nodes_at_ref(repo_root, ref)
-        if nodes_at is None:
-            continue
-        matched = next((n for n in nodes_at if n.get("id") == node_id), None)
-        if matched is None:
-            continue
-        if (matched.get("status") or "").lower() != "complete":
-            continue
-        nk = matched.get("node_key")
-        if not isinstance(nk, str) or not nk:
-            continue
-        virtual.add(nk)
-        codename = e.get("codename", "") or ""
-        log_lines.append(
-            f"[info] Treating node {node_id} ({codename}) as Complete for dependency "
-            f"evaluation — {ref} shows Complete; integration branch may not have merged "
-            f"the PR yet."
-        )
-    return virtual, log_lines
-
-
 # ---------------------------------------------------------------------------
 # Brief output
 # ---------------------------------------------------------------------------
@@ -245,65 +205,6 @@ def _write_brief(node: dict, nodes: list[dict]) -> Path:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
-
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description=(
-            "Pick the next actionable leaf task: sync integration branch, write brief, "
-            "register on integration branch, create feature/rm-*, write prompt."
-        ),
-    )
-    p.add_argument(
-        "--base",
-        default=None,
-        metavar="BRANCH",
-        help=(
-            "Integration branch to sync before registering and branching "
-            "(default: roadmap/git-workflow.yaml, else main)."
-        ),
-    )
-    p.add_argument(
-        "--remote",
-        default=None,
-        metavar="NAME",
-        help=(
-            "Git remote to fetch and merge from "
-            "(default: roadmap/git-workflow.yaml, else origin)."
-        ),
-    )
-    p.add_argument(
-        "--interactive",
-        action="store_true",
-        help="Choose a task from a numbered list instead of auto-picking the first.",
-    )
-    p.add_argument(
-        "--no-ci-skip-in-message",
-        action="store_true",
-        help=(
-            "Omit CI skip tokens from the registration commit message "
-            "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
-        ),
-    )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
-    p.add_argument(
-        "--on-complete",
-        choices=sorted(ON_COMPLETE_MODES),
-        default=None,
-        metavar="MODE",
-        help=(
-            "Completion workflow for this task: pr, merge, or auto. "
-            "Sets session for finish-this-task; skips TTY prompt when set. "
-            "See roadmap/git-workflow.yaml on_complete and docs/git-workflow.md."
-        ),
-    )
-    return p.parse_args(argv)
 
 
 def _finalize_pickup(
@@ -375,7 +276,7 @@ def _finalize_pickup(
 
 def main(argv: list[str] | None = None) -> None:
     global ROOT, REGISTRY_PATH, WORK_DIR
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
     REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
