@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 import validate_roadmap as vr
+from validate_roadmap_checks import (
+    touch_zone_overlap,
+    validate_dependency_ids,
+    validate_node_keys,
+    validate_parents,
+)
 
 
 def test_warn_phase_status_when_all_descendants_complete_emits(capsys) -> None:
@@ -238,3 +246,82 @@ def test_validate_script_exits_zero_on_repo() -> None:
         env=script_subprocess_env(),
         check=True,
     )
+
+
+def test_validate_node_keys_rejects_empty() -> None:
+    nodes = [{"id": "M1", "node_key": ""}]
+    with pytest.raises(SystemExit):
+        validate_node_keys(nodes)
+
+
+def test_validate_node_keys_rejects_duplicate() -> None:
+    nk = "10000000-0000-4000-8000-000000000001"
+    nodes = [
+        {"id": "M1", "node_key": nk},
+        {"id": "M2", "node_key": nk},
+    ]
+    with pytest.raises(SystemExit):
+        validate_node_keys(nodes)
+
+
+def test_validate_parents_rejects_unknown_parent() -> None:
+    nodes = [
+        {
+            "id": "M1",
+            "node_key": "10000000-0000-4000-8000-000000000001",
+            "parent_id": "NO_SUCH_PARENT",
+        },
+    ]
+    with pytest.raises(SystemExit):
+        validate_parents(nodes)
+
+
+def test_validate_dependency_ids_rejects_missing_node_key() -> None:
+    k1 = "10000000-0000-4000-8000-000000000001"
+    k2 = "20000000-0000-4000-8000-000000000002"
+    k_missing = "30000000-0000-4000-8000-000000000003"
+    nodes = [
+        {"id": "M1", "node_key": k1, "dependencies": [k_missing]},
+        {"id": "M2", "node_key": k2, "dependencies": []},
+    ]
+    with pytest.raises(SystemExit):
+        validate_dependency_ids(nodes)
+
+
+def test_touch_zone_overlap_warns_on_same_path(capsys) -> None:
+    entries = [
+        {"codename": "a", "touch_zones": ["src/"]},
+        {"codename": "b", "touch_zones": ["src/"]},
+    ]
+    touch_zone_overlap(entries)
+    err = capsys.readouterr().err
+    assert "overlap" in err.lower()
+
+
+def test_validate_script_rejects_registry_unknown_node_id(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    shutil.copytree(DOGFOOD, root)
+    (root / "roadmap" / "registry.yaml").write_text(
+        "version: 1\n"
+        "entries:\n"
+        "  - codename: bad-entry\n"
+        "    node_id: M999.1\n"
+        "    branch: feature/rm-bad\n"
+        "    touch_zones: [tests/]\n",
+        encoding="utf-8",
+    )
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
+            "--repo-root",
+            str(root),
+        ],
+        cwd=REPO,
+        env=script_subprocess_env(),
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 1
+    combined = (r.stderr or "") + (r.stdout or "")
+    assert "unknown node_id" in combined

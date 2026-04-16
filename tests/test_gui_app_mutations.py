@@ -1,0 +1,166 @@
+"""PM Gantt API: planning writes, node CRUD, outline errors."""
+
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+import pytest
+from starlette.testclient import TestClient
+
+from tests.helpers import DOGFOOD
+
+_M02_PLANNING = (
+    "planning/M0.2_roadmap-ci_e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208.md"
+)
+
+
+@pytest.fixture()
+def dogfood_copy(tmp_path: Path) -> Path:
+    dest = tmp_path / "dogfood"
+    shutil.copytree(DOGFOOD, dest)
+    return dest
+
+
+@pytest.fixture()
+def api_client(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> TestClient:
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+    from specy_road.gui_app import create_app
+
+    return TestClient(create_app())
+
+
+def test_api_planning_put_success_updates_file(
+    api_client: TestClient,
+    dogfood_copy: Path,
+) -> None:
+    path = _M02_PLANNING
+    sheet = dogfood_copy / path
+    before = sheet.read_text(encoding="utf-8")
+    updated = before + "\n"
+    r = api_client.put(
+        "/api/planning/file",
+        params={"path": path},
+        json={"content": updated},
+    )
+    assert r.status_code == 200
+    assert sheet.read_text(encoding="utf-8") == updated
+
+
+def test_api_planning_put_orphan_file_unlinked_on_validation_failure(
+    api_client: TestClient,
+    dogfood_copy: Path,
+) -> None:
+    """Orphan planning file fails validation; rollback must unlink the new file."""
+    rel = "planning/pytest_gui_orphan_only.md"
+    target = dogfood_copy / rel
+    assert not target.exists()
+    r = api_client.put(
+        "/api/planning/file",
+        params={"path": rel},
+        json={"content": "# orphan\n"},
+    )
+    assert r.status_code == 400
+    assert not target.exists()
+
+
+def test_api_planning_put_restores_content_when_validate_fails(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = _M02_PLANNING
+    sheet = dogfood_copy / path
+    before = sheet.read_text(encoding="utf-8")
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+
+    def _fail(_root: Path) -> None:
+        raise ValueError("forced validation failure for test")
+
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_planning.run_validate_raise",
+        _fail,
+    )
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.put(
+        "/api/planning/file",
+        params={"path": path},
+        json={"content": before + "\n# pytest touch\n"},
+    )
+    assert r.status_code == 400
+    assert sheet.read_text(encoding="utf-8") == before
+
+
+def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
+    r0 = api_client.get("/api/roadmap")
+    assert r0.status_code == 200
+    node = next(n for n in r0.json()["nodes"] if n["id"] == "M0.2")
+    orig = node["title"]
+    r1 = api_client.patch(
+        "/api/nodes/M0.2",
+        json={"pairs": [{"key": "title", "value": f"{orig} [pytest]"}]},
+    )
+    assert r1.status_code == 200
+    r2 = api_client.patch(
+        "/api/nodes/M0.2",
+        json={"pairs": [{"key": "title", "value": orig}]},
+    )
+    assert r2.status_code == 200
+
+
+def test_api_patch_node_rejects_disallowed_key(api_client: TestClient) -> None:
+    r = api_client.patch(
+        "/api/nodes/M0.2",
+        json={"pairs": [{"key": "not_whitelisted", "value": "x"}]},
+    )
+    assert r.status_code == 400
+
+
+def test_api_outline_reorder_rejects_incomplete_child_set(
+    api_client: TestClient,
+) -> None:
+    r = api_client.post(
+        "/api/outline/reorder",
+        json={"parent_id": "M0", "ordered_child_ids": ["M0.1"]},
+    )
+    assert r.status_code == 400
+
+
+def test_api_outline_move_rejects_unknown_node_key(
+    api_client: TestClient,
+) -> None:
+    r = api_client.post(
+        "/api/outline/move",
+        json={
+            "node_key": "00000000-0000-0000-0000-000000000001",
+            "new_parent_id": None,
+            "new_index": 0,
+        },
+    )
+    assert r.status_code == 400
+
+
+def test_api_post_nodes_add_task(api_client: TestClient) -> None:
+    r = api_client.post(
+        "/api/nodes/add",
+        json={
+            "reference_node_id": "M0.1",
+            "position": "below",
+            "title": "pytest GUI add-node",
+            "type": "task",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("ok") == "true"
+    assert "id" in body
+
+
+def test_api_delete_leaf_node(api_client: TestClient) -> None:
+    r = api_client.delete("/api/nodes/M2")
+    assert r.status_code == 200
+    assert r.json().get("node_id") == "M2"
