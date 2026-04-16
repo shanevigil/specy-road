@@ -149,7 +149,7 @@ python -m pip install --upgrade 'pip>=25.3'
 
 ```bash
 pip install pip-audit
-pip-audit
+pip-audit -r requirements-ci.txt
 ```
 
 If `pip-audit` warns that it is auditing a different interpreter than your virtualenv, point it at that venv’s Python, for example:
@@ -159,6 +159,12 @@ PIPAPI_PYTHON_LOCATION="$(command -v python)" pip-audit
 ```
 
 The editable package **`specy-road`** is expected to show as skipped (not on PyPI) when auditing from a source checkout.
+
+Report `pip-audit` results in this order:
+
+1. **Repo-scoped result (required):** `pip-audit -r requirements-ci.txt` (authoritative for this repo).
+2. **Optional extras result (if used):** audit a dedicated extras environment (for example `pip install -e ".[review,gui-next]"`).
+3. **Host/global environment result (optional):** unscoped `pip-audit`; label this as machine-local noise unless packages overlap with `requirements-ci.txt`.
 
 **Gantt UI (`gui/pm-gantt/`, npm):** production dependencies only (matches CI; fewer false positives from dev tooling):
 
@@ -176,7 +182,7 @@ For a stricter local pass including devDependencies, run `npm audit` without `--
 
 GitHub Actions runs the full validation suite on every push and PR to `main`/`dev`:
 
-```
+```text
 install Python (requirements-ci.txt) → pip upgrade → pip-audit (+ artifact)
 → npm ci → lockfile-lint → npm audit (+ artifact) → Vitest (gui/pm-gantt)
 → OSV-Scanner lockfiles (+ artifact)

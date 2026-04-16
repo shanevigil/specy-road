@@ -1,4 +1,7 @@
-"""FastAPI server for the PM Gantt SPA: roadmap CRUD, planning files, settings."""
+"""FastAPI server for the PM Gantt SPA.
+
+Includes roadmap CRUD, planning files, and settings endpoints.
+"""
 
 from __future__ import annotations
 
@@ -23,14 +26,9 @@ def _scripts_dir() -> Path:
     bundled = pkg / "bundled_scripts"
     if bundled.is_dir():
         return bundled
-    legacy = pkg.parent / "scripts"
-    if legacy.is_dir():
-        return legacy
-    cwd = Path.cwd() / "scripts"
-    if cwd.is_dir():
-        return cwd
     raise RuntimeError(
-        "Cannot locate bundled_scripts/ (roadmap modules). Reinstall specy-road, "
+        "Cannot locate bundled_scripts/ (roadmap modules). "
+        "Reinstall specy-road, "
         "or set SPECY_ROAD_SCRIPTS to that directory.",
     )
 

@@ -72,6 +72,30 @@ pip install -r requirements-ci.txt
 
 Then run `pip-audit` (see [setup.md](setup.md#dependency-and-security-checks)).
 
+## Reporting discipline: repo-scoped first
+
+When reporting Python audit results, separate findings into two buckets:
+
+1. **Repo-scoped (authoritative)** — `pip-audit -r requirements-ci.txt` after installing from the same file.
+2. **Host/global environment (informational only)** — unscoped `pip-audit` from a developer machine.
+
+Do not mix these in a single severity list. If unscoped host findings appear, explicitly mark them as **out of repo lock context** unless the package is also present in `requirements-ci.txt`.
+
+## Optional extras audit procedure (`review`, `gui`, `gui-next`)
+
+Default CI does not install optional extras. If you use them, run a separate audit in an isolated environment and report it as an **extras-scoped** pass:
+
+```bash
+python -m venv .venv-audit-extras
+source .venv-audit-extras/bin/activate
+pip install -e ".[review,gui-next]"
+python -m pip install --upgrade 'pip>=25.3'
+pip install pip-audit
+pip-audit -f json
+```
+
+Use the same reporting split as above (extras-scoped vs host/global noise).
+
 ## Direct vs transitive (optional deep dive)
 
 CI tools do not always print a combined “direct vs transitive” column. For a one-off report:

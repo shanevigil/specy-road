@@ -2,11 +2,11 @@
 
 ## Context
 
-The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **working tree at HEAD**. On the **integration branch**, that file is often empty or stale while active work lives on unmerged **`feature/rm-*`** commits.
+The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **working tree at HEAD**. With the default `do-next-available-task` flow, active claims are committed and pushed on the integration branch first, so `HEAD` usually already reflects in-progress work after `git pull`. Remote overlay exists to fill visibility gaps when local HEAD is behind or when teams still use feature-only registration patterns.
 
 ### Integration-branch registration (recommended)
 
-The default **`specy-road do-next-available-task`** flow **commits `registry.yaml` on the integration branch** before creating `feature/rm-*`. After **`git pull`** (or auto-ff), **HEAD** already contains active rows — PMs see claims without depending on overlay. **Overlay** remains useful for **feature-only** registration (legacy or manual), or when a developer has not pushed the integration branch yet.
+The default **`specy-road do-next-available-task`** flow **commits `registry.yaml` on the integration branch** before creating `feature/rm-*`. After **`git pull`** (or auto-ff), **HEAD** already contains active rows — PMs see claims without depending on overlay. **Overlay** remains useful for **feature-only** registration (older or manual flows), or when a developer has not pushed the integration branch yet.
 
 ## Remote registry overlay (default on; gated)
 

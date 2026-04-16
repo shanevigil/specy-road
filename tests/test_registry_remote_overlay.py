@@ -15,8 +15,12 @@ if str(BUNDLED_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(BUNDLED_SCRIPTS))
 import pm_gui_git_remote_verify as _pm_git  # noqa: E402
 
+from specy_road.pm_integration_registry import (
+    describe_integration_branch_auto_ff as describe_integration_branch_auto_ff_pm,
+)
 from specy_road.git_workflow_config import working_tree_clean
 from specy_road.registry_remote_overlay import (
+    describe_integration_branch_auto_ff as describe_integration_branch_auto_ff_overlay,
     integration_branch_auto_ff_enabled,
     merge_registry_with_remote_overlay,
     maybe_auto_integration_ff,
@@ -368,3 +372,28 @@ def test_maybe_auto_integration_ff_respects_throttle(
     assert len(calls) == 2
     maybe_auto_integration_ff(repo)
     assert len(calls) == 2
+
+
+def test_describe_integration_branch_auto_ff_overlay_export_matches_pm_module(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Compatibility export must keep behavior aligned with pm_integration_registry."""
+    monkeypatch.setenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", "1")
+    repo = _init_integration_ff_repo(tmp_path)
+    tip = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", tip],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    via_overlay = describe_integration_branch_auto_ff_overlay(repo)
+    via_pm = describe_integration_branch_auto_ff_pm(repo)
+    assert via_overlay == via_pm

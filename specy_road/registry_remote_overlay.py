@@ -24,6 +24,7 @@ from typing import Any
 
 import yaml
 
+from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import (
     current_branch_name,
     is_git_worktree,
@@ -32,7 +33,7 @@ from specy_road.git_workflow_config import (
     working_tree_clean,
 )
 from specy_road.pm_integration_registry import (
-    describe_integration_branch_auto_ff,
+    describe_integration_branch_auto_ff as _describe_integration_branch_auto_ff,
     remote_registry_overlay_fingerprint_addendum as remote_feature_refs_fingerprint_addendum,
 )
 
@@ -48,6 +49,13 @@ PER_SHOW_TIMEOUT_S = 4.0
 _GIT_SYNC_LOCK = threading.Lock()
 _LAST_FETCH_MONO: dict[str, float] = {}
 _LAST_INTEGRATION_FF_MONO: dict[str, float] = {}
+
+
+def describe_integration_branch_auto_ff(
+    repo_root: Path,
+) -> dict[str, Any] | None:
+    """Backward-compatible export for PM API route imports."""
+    return _describe_integration_branch_auto_ff(repo_root)
 
 
 def registry_remote_overlay_enabled(repo_root: Path | None = None) -> bool:
@@ -211,25 +219,6 @@ def _total_budget_s() -> float:
         return DEFAULT_TOTAL_BUDGET_S
 
 
-def _git_ok(
-    args: list[str], cwd: Path, timeout: float
-) -> tuple[bool, str]:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return False, ""
-    if r.returncode != 0:
-        return False, (r.stderr or r.stdout or "").strip()
-    return True, (r.stdout or "").strip()
-
-
 def resolve_git_remote(repo_root: Path) -> str:
     """Remote name from ``roadmap/git-workflow.yaml``, else ``origin``."""
     data, _ = load_git_workflow_config(repo_root)
@@ -246,7 +235,7 @@ def list_remote_feature_rm_refs(repo_root: Path, remote: str) -> list[str]:
     if not rm or not is_git_worktree(repo_root):
         return []
     pattern = f"refs/remotes/{rm}/feature/rm-*"
-    ok, out = _git_ok(
+    ok, out = git_ok(
         ["for-each-ref", "--format=%(refname)", pattern],
         repo_root,
         60.0,
@@ -262,7 +251,7 @@ def read_registry_at_ref(
 ) -> dict[str, Any] | None:
     """Parse ``roadmap/registry.yaml`` at ``ref`` via ``git show``."""
     spec = f"{ref}:{REGISTRY_REL.as_posix()}"
-    ok, blob = _git_ok(["show", spec], repo_root, timeout)
+    ok, blob = git_ok(["show", spec], repo_root, timeout)
     if not ok or not blob.strip():
         return None
     try:
@@ -339,7 +328,9 @@ def merge_registry_with_remote_overlay(
     t0 = time.monotonic()
 
     ib_ref = f"refs/remotes/{rm}/{base}"
-    ok_ib, _ = _git_ok(["show-ref", "--verify", ib_ref], repo_root, min(5.0, budget))
+    ok_ib, _ = git_ok(
+        ["show-ref", "--verify", ib_ref], repo_root, min(5.0, budget)
+    )
     if ok_ib:
         meta["integration_branch_ref"] = ib_ref
         remain = budget - (time.monotonic() - t0)

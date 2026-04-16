@@ -18,7 +18,7 @@ The **PM Gantt** reads **`roadmap/registry.yaml` from the current working tree**
 
 Optional field **`merge_request_requires_manual_approval`** (boolean) documents that MRs need human approval; the `finish-this-task` CLI may print a reminder.
 
-Optional field **`require_implementation_review_before_finish`** (boolean): when **true**, `finish-this-task` requires a prior **`specy-road mark-implementation-reviewed`** (human reads `work/implementation-summary-<NODE_ID>.md` and approves in `roadmap/registry.yaml`). New scaffolds default this to **true**; omit or set **false** to allow the legacy flow (`finish-this-task` only). Schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json).
+Optional field **`require_implementation_review_before_finish`** (boolean): when **true**, `finish-this-task` requires a prior **`specy-road mark-implementation-reviewed`** (human reads `work/implementation-summary-<NODE_ID>.md` and approves in `roadmap/registry.yaml`). New scaffolds default this to **true**; omit or set **false** to use the streamlined single-command flow (`finish-this-task` only). Schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json).
 
 Optional field **`cleanup_work_artifacts_on_finish`** (boolean): when **true** or omitted (default), `finish-this-task` deletes per-node **`work/brief-`**, **`work/prompt-`**, and **`work/implementation-summary-`** files after validate/export, staging deletions when tracked. Set **false** or pass **`--no-cleanup-work`** to keep them. See [dev-workflow.md](dev-workflow.md).
 
