@@ -14,4 +14,4 @@ Focused brief:
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
 
-**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push).
+**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push). Among eligible tasks, auto-pick follows **outline (tree) order** after Blocked/MR-rejected priority — not raw merged chunk order (`docs/roadmap-authoring.md`).

@@ -3,6 +3,9 @@
 Uses ``roadmap_gui_lib`` for registry/settings and ``roadmap_gui_remote`` for
 ``build_registry_enrichment`` / ``enrichment_is_mr_rejected`` so CLI ordering
 matches the PM GUI’s forge enrichment rules.
+
+Eligible-task order within each tier follows ``ordered_tree_rows`` (outline /
+``sibling_order``), not merged JSON chunk list order.
 """
 
 from __future__ import annotations
@@ -12,6 +15,7 @@ from typing import Any
 
 from roadmap_gui_lib import load_registry, load_settings, registry_by_node_id
 from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
+from roadmap_layout import ordered_tree_rows
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -56,6 +60,23 @@ def _base_agentic_candidate(
     return True
 
 
+def _outline_order_index(nodes: list[dict]) -> dict[str, int]:
+    """Pre-order outline index: siblings ordered by (sibling_order, id)."""
+    rows = ordered_tree_rows(nodes)
+    return {row[0]["id"]: i for i, row in enumerate(rows)}
+
+
+def _sort_by_outline(
+    items: list[dict], order_index: dict[str, int]
+) -> list[dict]:
+    tail = 10**9
+
+    def key(n: dict) -> int:
+        return order_index.get(n["id"], tail)
+
+    return sorted(items, key=key)
+
+
 def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
     """Same enrichment as the PM GUI when settings/registry load; `{}` on any failure (offline-safe)."""
     try:
@@ -73,10 +94,14 @@ def _available(
     reg: dict,
     enrich: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict]:
-    """Agentic candidates: blocked first, then MR-rejected (per `enrich`), then normal not-started queue."""
+    """Agentic candidates: blocked first, then MR-rejected (per `enrich`), then the rest.
+
+    Within each tier, order follows outline (tree) order, not merged chunk order.
+    """
     statuses_by_key = _statuses_by_node_key(nodes)
     claimed = _claimed_node_ids(reg)
     enr = enrich or {}
+    order_index = _outline_order_index(nodes)
 
     def st(node: dict) -> str:
         return (node.get("status") or "Not Started").lower()
@@ -84,23 +109,24 @@ def _available(
     def base_ok(n: dict) -> bool:
         return _base_agentic_candidate(n, statuses_by_key, claimed)
 
-    priority: list[dict] = []
+    blocked: list[dict] = []
     seen: set[str] = set()
 
     for n in nodes:
         if not base_ok(n):
             continue
         if st(n) == "blocked":
-            priority.append(n)
+            blocked.append(n)
             seen.add(n["id"])
 
+    mr_rejected: list[dict] = []
     for n in nodes:
         if n["id"] in seen or not base_ok(n):
             continue
         if st(n) in ("complete", "cancelled"):
             continue
         if enrichment_is_mr_rejected(enr.get(n["id"])):
-            priority.append(n)
+            mr_rejected.append(n)
             seen.add(n["id"])
 
     rest: list[dict] = []
@@ -114,4 +140,8 @@ def _available(
             continue
         rest.append(n)
 
-    return priority + rest
+    return (
+        _sort_by_outline(blocked, order_index)
+        + _sort_by_outline(mr_rejected, order_index)
+        + _sort_by_outline(rest, order_index)
+    )

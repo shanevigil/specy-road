@@ -10,7 +10,7 @@ For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 
 ```bash
 # Terminal
-#Auto-picks first task
+# Auto-picks first eligible task (outline order after Blocked / MR-rejected priority)
 specy-road do-next-available-task   # sync, brief, register on base, push base, branch, prompt
 
 specy-road mark-implementation-reviewed  # human gate: after work/implementation-summary-<NODE_ID>.md
@@ -63,7 +63,7 @@ A missing contract is a planning gap, not something to fill during implementatio
 
 The CLI keeps the **integration branch** current (from **`roadmap/git-workflow.yaml`**, overridable with **`--base`** / **`--remote`**), then:
 
-1. Selects the **first** eligible agentic task in priority order (**Blocked** and **Git-rejected MR** rows first when enrichment is available), unless you pass **`--interactive`** to choose by number — **both modes run the same steps after selection**.
+1. Selects the **first** eligible agentic task: priority (**Blocked**, then **Git-rejected MR** when enrichment is available), then among the rest **outline (tree) order** — pre-order walk with siblings sorted by `(sibling_order, id)` — not raw merged JSON chunk order. Pass **`--interactive`** to choose by number from the same ordered list — **both modes run the same steps after selection**. See [roadmap-authoring.md](roadmap-authoring.md#reordering-and-reparenting).
 2. Writes **`work/brief-<NODE_ID>.md`** while still on the integration branch.
 3. **Commits `roadmap/registry.yaml` on the integration branch** (registration only — no implementation in that commit). By default the commit message appends common **CI skip** markers (`[skip ci]`, `[ci skip]`, `***NO_CI***`) so full pipelines that honor commit-message skips often stay quiet for this administrative change. Use **`--no-ci-skip-in-message`** for a legacy one-line message only (e.g. org policy forbids skip tokens). Commit-message skips are **best-effort**: workflows driven only by **path filters** may still run unless your CI also ignores `roadmap/registry.yaml` or similar.
 4. **`git push <remote> <integration-branch>`** runs so PMs and the PM Gantt see the claim after `git pull` / fetch. If push fails, resolve the error and retry (or push manually: `git push <remote> <integration-branch>`).

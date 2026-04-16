@@ -65,7 +65,7 @@ Keep the graph **logically split** across multiple files under `roadmap/` so eac
 
 Validated by [`schemas/manifest.schema.json`](../tests/fixtures/specy_road_dogfood/schemas/manifest.schema.json). Do not add a top-level `nodes` key to the manifest — nodes live only in chunk files.
 
-**PM ordering:** `includes` order controls **merge order** when building the graph (and narrative flow in tools). **Execution order** is still driven by each node’s `dependencies` and `status`, not by chunk order alone.
+**PM ordering:** `includes` order controls **merge order** when the loader concatenates chunk `nodes` arrays (and affects diffs and narrative flow in some tools). It does **not** define which agentic task `specy-road do-next-available-task` auto-picks among equally eligible work — that follows **outline (tree) order** (see [Reordering and reparenting](#reordering-and-reparenting)). **Gating** (what may start) is still driven by each node’s `dependencies` and `status`. The generated [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) index uses its **own** sort on display `id` for reading; that sort is not the same as merge list order or auto-pick order.
 
 ### Chunk shape
 
@@ -101,6 +101,42 @@ Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load
 
 ---
 
+## Reordering and reparenting
+
+### Single source of truth: identity vs on-disk layout
+
+| Question | Source of truth |
+|----------|-----------------|
+| Who is this node forever? | **`node_key`** (UUID) — never rename or recycle. |
+| What must `dependencies` reference? | Other nodes’ **`node_key`** values (not display `id`). |
+| What do humans and the CLI type for `brief`, registry, branch context? | Display **`id`** (`M…`) and [`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) `node_id` — must match the node’s current **`id`**. |
+| Where does “tree order” for siblings live? | **`parent_id`** + **`sibling_order`** (outline tools and renumbering use these; siblings sort by `(sibling_order, id)`). Prefer **unique consecutive `sibling_order`** per parent so tie-breaks do not depend on display `id` strings. |
+| What encodes the planning file path? | **`planning_dir`** → `planning/<id>_<slug>_<node_key>.md` — the **display `id`** appears in the filename; when `id` changes, update `planning_dir` and rename the file (see below). |
+
+**Disk layout:** Chunk file placement and `manifest.json` **`includes`** order only affect how the merged **`nodes` array** is built. They do **not** change `node_key` or dependency edges by themselves.
+
+### Supported workflow
+
+1. **Reparent or reorder** via the PM UI or `specy-road` CRUD by editing **`parent_id`** and **`sibling_order`**. Do **not** mint new `node_key` values or rewrite **`dependencies`** unless you are splitting/merging nodes or intentionally changing gates.
+2. **Renumber display ids** when needed using outline renumber (e.g. full-tree rewrite from tree shape). Stable **`node_key`** and **`dependencies`** (UUID lists) stay the same; display **`id`** values update.
+3. **Planning sheets:** After **`id`** or codename changes, ensure each node’s **`planning_dir`** matches the canonical pattern (see [`planning_filename_for_node`](../specy_road/bundled_scripts/planning_artifacts.py)). Outline operations in this kit call [`sync_planning_artifacts`](../specy_road/bundled_scripts/sync_planning_artifacts.py) to rewrite paths and rename files under `planning/`. You can also use `specy-road scaffold-planning` for new sheets. Manual edits should end with `specy-road validate`.
+4. **Registry:** Active entries must use the current display **`id`** in **`node_id`**. If you renumber **`id`**, update open claims or `specy-road validate` will fail with an unknown `node_id`.
+5. **Validate:** Run `specy-road validate` — it checks unique `id`/`node_key`, valid parents and dependency keys, DAG (no cycles), planning paths and filenames, and registry references.
+
+### Chunk moves without changing the tree
+
+Moving a node’s JSON from one chunk file to another or changing **`includes`** order **does not** change **`parent_id`**, **`sibling_order`**, **`node_key`**, or **`dependencies`**. Auto **do-next** order (outline-based) stays the same for the same eligibility snapshot.
+
+### Example: renumber display id; logical “next” unchanged
+
+Suppose milestone **A** has display id **`M4.1`**, stable **`node_key` K**, and **`dependencies`** satisfied by completed work. After an outline renumber, the same node might display as **`M8.1`** — **K**, **`dependencies`**, and **`sibling_order`** relative to its siblings are unchanged. The set of agentic, unclaimed, dependency-satisfied tasks is the same; `do-next-available-task` still picks using **outline order** among eligible nodes (after **Blocked** / MR-rejected priority). Renumbering alone does not shuffle that outline position unless **`parent_id`** or **`sibling_order`** also changed.
+
+### Refactor and Git ergonomics
+
+Prefer **one logical change per commit** (graph edit + `sync_planning_artifacts` + `registry.yaml` fixes if needed) so reviewers see intent. `specy-road validate` is the gate for orphan planning files and filename mismatches. Optional: CRUD and [`rename_planning_file_if_path_changed`](../specy_road/bundled_scripts/planning_rename.py) paths perform on-disk renames when updating nodes manually.
+
+---
+
 ## Node fields reference
 
 ### Display `id` vs stable `node_key`
@@ -115,7 +151,7 @@ Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../t
 
 CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unless a command explicitly accepts a UUID.
 
-**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) treats each dependency as satisfied when that **`node_key`**’s node is `Complete`.
+**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) treats each dependency as satisfied when that **`node_key`**’s node is `Complete`. Among eligible tasks, auto-pick order follows **outline (tree) order**, not raw merged chunk order (see [Reordering and reparenting](#reordering-and-reparenting)).
 
 ### Required on every node
 

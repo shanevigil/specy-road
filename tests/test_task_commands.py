@@ -161,6 +161,52 @@ def test_available_prioritizes_mr_rejected_before_not_started() -> None:
     assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
 
+def test_available_orders_eligible_by_outline_not_merged_chunk_order() -> None:
+    """Merged JSON array order must not beat sibling_order / tree pre-order."""
+    nk_root = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    nk_first_in_chunk = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    nk_second_in_chunk = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+    root = {
+        "id": "M0",
+        "node_key": nk_root,
+        "type": "phase",
+        "title": "Phase",
+        "parent_id": None,
+        "sibling_order": 0,
+        "status": "Complete",
+        "dependencies": [],
+    }
+    first_in_array = {
+        "id": "M0.1",
+        "node_key": nk_first_in_chunk,
+        "parent_id": "M0",
+        "sibling_order": 1,
+        "type": "milestone",
+        "title": "Later outline",
+        "codename": "later-outline",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": [],
+    }
+    second_in_array = {
+        "id": "M0.2",
+        "node_key": nk_second_in_chunk,
+        "parent_id": "M0",
+        "sibling_order": 0,
+        "type": "milestone",
+        "title": "Earlier outline",
+        "codename": "earlier-outline",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": [],
+    }
+    nodes = [root, first_in_array, second_in_array]
+    result = dnt._available(nodes, _reg(), {})
+    assert [n["id"] for n in result] == ["M0.2", "M0.1"]
+
+
 def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[list[str]] = []
 

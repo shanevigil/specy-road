@@ -20,12 +20,12 @@ specy-road do-next-available-task
 
 Run **exactly** the command above (from the repo root, clean tree). Add only **`--base`**, **`--remote`**, **`--interactive`**, **`--on-complete`**, or **`--no-ci-skip-in-message`** when the user explicitly asked for them.
 
-By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). See `specy-road do-next-available-task --help`.
+By default this **syncs** the integration branch, **auto-picks** the first eligible task (after **Blocked** / **MR-rejected** priority, tie-break order follows **outline / tree** order — `parent_id`, `sibling_order` — not raw merged JSON chunk order; see `docs/roadmap-authoring.md`), writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number from the same ordered list (same steps afterward). See `specy-road do-next-available-task --help`.
 
 This will:
 
 1. Read the roadmap and registry (and Git remote enrichment when configured in GUI settings).
-2. Select an available task — `Agentic-led` or `agentic`, dependencies met, not already claimed (**Blocked** and **MR-rejected** rows first when enrichment allows).
+2. Select an available task — `Agentic-led` or `agentic`, dependencies met, not already claimed (**Blocked** and **MR-rejected** rows first when enrichment allows); among equally eligible tasks, order follows the roadmap **outline** (not chunk merge order).
 3. Write `work/brief-<NODE_ID>.md` on the integration branch.
 4. Commit the registry entry on the **integration branch** (registration only).
 5. Push the integration branch.
