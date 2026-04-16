@@ -135,6 +135,49 @@ def _on_complete_hint_lines(on_complete: str) -> list[str]:
     ]
 
 
+def _leaf_execution_contract_lines(
+    node: dict,
+    brief_path: Path,
+    repo_root: Path,
+) -> list[str]:
+    node_id = node["id"]
+    codename = node["codename"]
+    title = node.get("title", "")
+    return [
+        f"# Task: {node_id} — {title}",
+        "",
+        (
+            f"You are planning and implementing roadmap leaf "
+            f"**{node_id}** (`{codename}`)."
+        ),
+        "",
+        "## Execution Target",
+        "",
+        f"- **Execution Target (leaf):** `{node_id}`",
+        f"- **Codename:** `{codename}`",
+        "- Exactly one leaf is claimed and implemented for this pickup.",
+        "",
+        "## Ancestor Context Chain",
+        "",
+        "- Ancestors provide objective/context only (root → ... → parent).",
+        "- Do not claim or branch directly from ancestor umbrella nodes.",
+        "",
+        "## Derived Rollup Semantics",
+        "",
+        (
+            "- Ancestor in-progress state is derived from active descendant "
+            "claims."
+        ),
+        (
+            "- Ancestor completion is derived from descendant "
+            "completion semantics."
+        ),
+        "",
+        f"Read the full brief at `{brief_path.relative_to(repo_root)}`.",
+        "",
+    ]
+
+
 def _finish_instruction_lines(
     node_id: str,
     repo_root: Path,
@@ -190,21 +233,10 @@ def write_agent_prompt(
 ) -> Path:
     """Write ``work/prompt-<NODE_ID>.md`` and return its path."""
     node_id = node["id"]
-    codename = node["codename"]
-    title = node.get("title", "")
     ac = node.get("agentic_checklist") or {}
     by_id = make_index(nodes)
 
-    lines: list[str] = [
-        f"# Task: {node_id} — {title}",
-        "",
-        (
-            f"You are planning and implementing roadmap node "
-            f"**{node_id}** (`{codename}`)."
-        ),
-        f"Read the full brief at `{brief_path.relative_to(repo_root)}`.",
-        "",
-    ]
+    lines: list[str] = _leaf_execution_contract_lines(node, brief_path, repo_root)
     lines.extend(_governance_lines(repo_root))
     lines.extend(_ancestor_planning_lines(node_id, by_id, repo_root))
     lines.extend(_leaf_planning_excerpt_lines(node, repo_root))
@@ -227,7 +259,11 @@ def write_agent_prompt(
         )
 
     lines += ["", "## Instructions", ""]
-    lines += _finish_instruction_lines(node_id, repo_root, on_complete=on_complete)
+    lines += _finish_instruction_lines(
+        node_id,
+        repo_root,
+        on_complete=on_complete,
+    )
 
     work_dir.mkdir(parents=True, exist_ok=True)
     path = work_dir / f"prompt-{node_id}.md"

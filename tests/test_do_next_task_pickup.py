@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import yaml
 import pytest
 
 import do_next_task as dnt
@@ -122,6 +123,63 @@ def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp
     assert "[skip ci]" in calls[1][2]
     assert calls[2] == ["push", "origin", "main"]
     assert calls[3] == ["checkout", "-b", "feature/rm-pickup-git"]
+
+
+def test_pickup_registers_leaf_claim_only(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    calls: list[list[str]] = []
+
+    def fake_git(*args: str) -> None:
+        calls.append(list(args))
+
+    (tmp_path / "roadmap").mkdir(parents=True)
+    reg_path = tmp_path / "roadmap" / "registry.yaml"
+    reg_path.write_text("version: 1\nentries: []\n", encoding="utf-8")
+
+    parent = {
+        "id": "M9",
+        "node_key": "11111111-aaaa-4aaa-8aaa-111111111111",
+        "type": "phase",
+        "title": "Parent",
+        "codename": "pickup-parent",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": ["src/"],
+    }
+    leaf = _pickup_test_node()
+    leaf["parent_id"] = "M9"
+    monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [parent, leaf]})
+    monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
+    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
+    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
+    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
+    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
+    monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
+    monkeypatch.setattr(
+        dnt,
+        "resolve_integration_defaults",
+        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
+    )
+    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "brief-M9.1.md")
+    monkeypatch.setattr(
+        dnt,
+        "write_agent_prompt",
+        lambda n, nodes, bp, **kw: tmp_path / "work" / "prompt-M9.1.md",
+    )
+    (tmp_path / "work").mkdir(parents=True)
+    (tmp_path / "work" / "brief-M9.1.md").write_text("x", encoding="utf-8")
+
+    dnt.main(["--repo-root", str(tmp_path)])
+
+    reg_doc = yaml.safe_load(reg_path.read_text(encoding="utf-8"))
+    assert reg_doc["entries"][0]["node_id"] == "M9.1"
+    assert reg_doc["entries"][0]["codename"] == "pickup-git"
+    assert calls[2] == ["checkout", "-b", "feature/rm-pickup-git"]
 
 
 def test_registration_commit_message_ci_skip_toggle() -> None:

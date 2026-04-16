@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pick the next agentic task, sync integration branch, brief, register on trunk, branch, prompt."""
+"""Pick the next actionable leaf, sync integration branch, brief, register on trunk, branch, prompt."""
 
 from __future__ import annotations
 
@@ -13,6 +13,10 @@ import yaml
 from do_next_available import _available, _load_branch_enrichment
 from do_next_prompt import write_agent_prompt
 from do_next_task_interactive import pick_interactive as _pick_interactive
+from do_next_task_leaf_guards import (
+    assert_leaf_target as _assert_leaf_target,
+    exit_no_actionable_leaves as _exit_no_actionable_leaves,
+)
 from generate_brief import index as make_index, render_brief
 from registration_pickup_commit import registration_commit_message
 from roadmap_load import load_roadmap
@@ -199,7 +203,7 @@ def _write_brief(node: dict, nodes: list[dict]) -> Path:
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
-            "Pick the next agentic task: sync integration branch, write brief, "
+            "Pick the next actionable leaf task: sync integration branch, write brief, "
             "register on integration branch, create feature/rm-*, write prompt."
         ),
     )
@@ -343,12 +347,7 @@ def main(argv: list[str] | None = None) -> None:
     available = _available(nodes, reg, enrich)
 
     if not available:
-        print(
-            "No available agentic tasks — none pass execution gates with met dependencies, "
-            "all are claimed or skipped (complete/in-progress/cancelled), "
-            "or the unblock/retry queue is empty.",
-        )
-        raise SystemExit(0)
+        _exit_no_actionable_leaves(nodes, reg, after_sync=False)
 
     _sync_integration_branch(base, remote)
     reg = _load_registry()
@@ -356,15 +355,12 @@ def main(argv: list[str] | None = None) -> None:
     enrich = _load_branch_enrichment(ROOT)
     available = _available(nodes, reg, enrich)
     if not available:
-        print(
-            "No available agentic tasks after sync — another teammate may have "
-            "claimed work, or the graph changed on the integration branch.",
-        )
-        raise SystemExit(0)
+        _exit_no_actionable_leaves(nodes, reg, after_sync=True)
 
     _assert_current_branch_equals(base)
 
     node = _pick_interactive(available, nodes) if args.interactive else available[0]
+    _assert_leaf_target(node, nodes)
     branch = f"feature/rm-{node['codename']}"
     on_complete = prompt_on_complete(ROOT, args.on_complete)
     _finalize_pickup(
