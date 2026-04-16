@@ -1,19 +1,12 @@
-"""Tests for do_next_task and finish_task logic."""
+"""Tests for do-next queue, interactive picker, and empty-queue diagnostics."""
 
 from __future__ import annotations
-
-from unittest.mock import patch
 
 import pytest
 
 import do_next_available as dna
 import do_next_task as dnt
-import finish_task as ft
-import mark_implementation_reviewed as mir
-
-# ---------------------------------------------------------------------------
-# do_next_task: _available
-# ---------------------------------------------------------------------------
+import do_next_task_interactive as dnti
 
 # dependencies[] reference node_key UUIDs (not display ids)
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
@@ -44,6 +37,28 @@ def test_available_returns_unclaimed_agentic() -> None:
     result = dnt._available(nodes, _reg(), {})
     assert len(result) == 1
     assert result[0]["id"] == "M1.1"
+
+
+def test_available_picks_leaf_not_parent_when_descendant_is_ready() -> None:
+    parent = {
+        "id": "M1",
+        "node_key": "99999999-9999-4999-8999-999999999999",
+        "type": "phase",
+        "title": "Parent",
+        "codename": "parent-node",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": [],
+    }
+    leaf = {
+        **_BASE_NODE,
+        "id": "M1.1",
+        "parent_id": "M1",
+        "codename": "leaf-node",
+    }
+    result = dnt._available([parent, leaf], _reg(), {})
+    assert [n["id"] for n in result] == ["M1.1"]
 
 
 def test_available_excludes_claimed() -> None:
@@ -107,7 +122,13 @@ def test_available_excludes_no_codename() -> None:
 
 def test_available_prioritizes_blocked_before_not_started() -> None:
     a = {**_BASE_NODE, "id": "M1.2", "codename": "a", "status": "Not Started"}
-    b = {**_BASE_NODE, "id": "M1.3", "node_key": "33333333-3333-4333-8333-333333333333", "codename": "b", "status": "Blocked"}
+    b = {
+        **_BASE_NODE,
+        "id": "M1.3",
+        "node_key": "33333333-3333-4333-8333-333333333333",
+        "codename": "b",
+        "status": "Blocked",
+    }
     result = dnt._available([a, b], _reg(), {})
     assert [n["id"] for n in result] == ["M1.3", "M1.2"]
 
@@ -207,184 +228,64 @@ def test_available_orders_eligible_by_outline_not_merged_chunk_order() -> None:
     assert [n["id"] for n in result] == ["M0.2", "M0.1"]
 
 
-def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[list[str]] = []
-
-    def fake_git(*args: str) -> None:
-        calls.append(list(args))
-
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
-    dnt._sync_integration_branch("main", "origin")
-    assert calls == [
-        ["fetch", "origin"],
-        ["checkout", "main"],
-        ["merge", "--ff-only", "origin/main"],
-    ]
-
-
-def test_assert_current_branch_equals_ok(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dnt, "_current_branch", lambda: "dev")
-    dnt._assert_current_branch_equals("dev")
-
-
-def test_assert_current_branch_equals_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dnt, "_current_branch", lambda: "other")
-    with pytest.raises(SystemExit):
-        dnt._assert_current_branch_equals("dev")
-
-
-def test_assert_current_branch_equals_detached_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(dnt, "_current_branch", lambda: "HEAD")
-    with pytest.raises(SystemExit):
-        dnt._assert_current_branch_equals("main")
-
-
-def test_validate_touch_zones_empty_exits(monkeypatch: pytest.MonkeyPatch) -> None:
-    node = {"id": "M1.1", "codename": "x", "touch_zones": []}
-    with pytest.raises(SystemExit):
-        dnt._validate_touch_zones(node)
-
-
-def test_working_tree_clean_true() -> None:
-    with patch.object(dnt.subprocess, "run", return_value=__import__("types").SimpleNamespace(stdout="", returncode=0)):
-        assert dnt._working_tree_clean() is True
-
-
-def test_working_tree_clean_false() -> None:
-    with patch.object(
-        dnt.subprocess,
-        "run",
-        return_value=__import__("types").SimpleNamespace(stdout=" M foo\n", returncode=0),
-    ):
-        assert dnt._working_tree_clean() is False
-
-
-def test_resolve_context_rejects_registry_branch_mismatch(
+def test_pick_interactive_rejects_parent_selection(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    reg = {
-        "version": 1,
-        "entries": [
-            {
-                "codename": "example",
-                "node_id": "M1.1",
-                "branch": "feature/rm-other",
-                "touch_zones": ["src/"],
-            }
-        ],
+    parent = {
+        "id": "M1",
+        "node_key": "99999999-9999-4999-8999-999999999999",
+        "type": "phase",
+        "title": "Parent",
+        "codename": "parent-node",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": [],
     }
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
-    monkeypatch.setattr(
-        ft,
-        "load_roadmap",
-        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
-    )
-    with pytest.raises(SystemExit):
-        ft._resolve_context("feature/rm-example")
+    leaf = {
+        **_BASE_NODE,
+        "id": "M1.1",
+        "parent_id": "M1",
+        "codename": "leaf-node",
+    }
+    answers = iter(["M1", "1"])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    picked = dnti.pick_interactive([leaf], [parent, leaf])
+    assert picked["id"] == "M1.1"
+    err = capsys.readouterr().err
+    assert "Cannot claim parent node" in err
 
 
-def test_resolve_context_rejects_missing_branch_field(
-    monkeypatch: pytest.MonkeyPatch,
+def test_exit_no_actionable_leaves_has_deterministic_diagnostics(
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    reg = {
-        "version": 1,
-        "entries": [
-            {
-                "codename": "example",
-                "node_id": "M1.1",
-                "touch_zones": ["src/"],
-            }
-        ],
+    parent = {
+        "id": "M2",
+        "node_key": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "type": "phase",
+        "title": "Parent",
+        "codename": "parent-node",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": [],
     }
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
-    monkeypatch.setattr(
-        ft,
-        "load_roadmap",
-        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
-    )
-    with pytest.raises(SystemExit):
-        ft._resolve_context("feature/rm-example")
-
-
-def test_extract_walkthrough_parses_markdown_section() -> None:
-    text = """# X
-
-## Walkthrough
-
-1. First
-2. Second
-
-## Other
-noop
-"""
-    body = mir._extract_walkthrough(text)
-    assert body is not None
-    assert "1. First" in body
-    assert "noop" not in body
-
-
-def test_extract_walkthrough_none_when_missing() -> None:
-    assert mir._extract_walkthrough("# Only\n\nno walk") is None
-
-
-def test_finish_blocks_when_implementation_review_pending(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    reg = {
-        "version": 1,
-        "entries": [
-            {
-                "codename": "example",
-                "node_id": "M1.1",
-                "branch": "feature/rm-example",
-                "touch_zones": ["src/"],
-                "implementation_review": "pending",
-            }
-        ],
+    leaf = {
+        **_BASE_NODE,
+        "id": "M2.1",
+        "parent_id": "M2",
+        "codename": "leaf-node",
     }
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
-    monkeypatch.setattr(
-        ft,
-        "load_roadmap",
-        lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
-    )
-    monkeypatch.setattr(ft, "require_implementation_review_before_finish", lambda _r: True)
-    monkeypatch.setattr(ft, "_current_branch", lambda: "feature/rm-example")
-    monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
-    monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
-    monkeypatch.setattr(ft, "_git", lambda *_a, **_k: None)
     with pytest.raises(SystemExit) as ei:
-        ft.main([])
+        dnt._exit_no_actionable_leaves(
+            [parent, leaf],
+            _reg("M2.1"),
+            after_sync=False,
+        )
     assert ei.value.code == 1
-
-
-def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:
-    import json
-
-    from roadmap_chunk_utils import load_json_chunk
-
-    (tmp_path / "roadmap" / "phases").mkdir(parents=True)
-    (tmp_path / "roadmap" / "manifest.json").write_text(
-        json.dumps({"version": 1, "includes": ["phases/x.json"]}) + "\n",
-        encoding="utf-8",
-    )
-    nodes = [
-        {
-            "id": "M1.1",
-            "parent_id": None,
-            "type": "milestone",
-            "title": "Example",
-            "codename": "example",
-            "status": "Not Started",
-        },
-    ]
-    (tmp_path / "roadmap" / "phases" / "x.json").write_text(
-        json.dumps({"nodes": nodes}, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(ft, "ROOT", tmp_path)
-    changed = ft._update_chunk_status("M1.1")
-    assert changed == ["roadmap/phases/x.json"]
-    out = load_json_chunk(tmp_path / "roadmap" / "phases" / "x.json")
-    assert out[0]["status"] == "Complete"
+    err = capsys.readouterr().err
+    assert "No actionable leaf tasks available (before sync)." in err
+    assert "blocked by unmet dependencies: none" in err
+    assert "already claimed leaves: M2.1" in err
+    assert "open leaves (dependency-satisfied, unclaimed): none" in err

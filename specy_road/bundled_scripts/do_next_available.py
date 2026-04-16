@@ -1,4 +1,4 @@
-"""Task queue selection for ``do_next_task`` (blocked and MR-rejected first).
+"""Task queue selection for ``do_next_task`` (actionable leaves only).
 
 Uses ``roadmap_gui_lib`` for registry/settings and ``roadmap_gui_remote`` for
 ``build_registry_enrichment`` / ``enrichment_is_mr_rejected`` so CLI ordering
@@ -29,6 +29,16 @@ def _statuses_by_node_key(nodes: list[dict]) -> dict[str, str]:
         for n in nodes
         if isinstance(n.get("node_key"), str) and n["node_key"]
     }
+
+
+def _leaf_node_ids(nodes: list[dict]) -> set[str]:
+    """Structural leaves: nodes that are not parents of any other node."""
+    parent_ids = {
+        n.get("parent_id")
+        for n in nodes
+        if isinstance(n.get("parent_id"), str) and n.get("parent_id")
+    }
+    return {n["id"] for n in nodes if n.get("id") not in parent_ids}
 
 
 def _deps_met(node: dict, statuses_by_key: dict[str, str]) -> bool:
@@ -89,17 +99,67 @@ def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
         return {}
 
 
+def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int]:
+    """Deterministic diagnostics when no actionable leaf exists."""
+    statuses_by_key = _statuses_by_node_key(nodes)
+    claimed = _claimed_node_ids(reg)
+    leaf_ids = _leaf_node_ids(nodes)
+    order_index = _outline_order_index(nodes)
+
+    leaf_nodes = [n for n in nodes if n.get("id") in leaf_ids]
+    leaf_nodes = _sort_by_outline(leaf_nodes, order_index)
+
+    claimed_leaf_ids: list[str] = []
+    deps_blocked_leaf_ids: list[str] = []
+    closed_leaf_ids: list[str] = []
+    non_agentic_leaf_ids: list[str] = []
+    missing_codename_leaf_ids: list[str] = []
+    open_leaf_ids: list[str] = []
+
+    for n in leaf_nodes:
+        nid = n["id"]
+        status = (n.get("status") or "Not Started").lower()
+        if nid in claimed:
+            claimed_leaf_ids.append(nid)
+            continue
+        if not n.get("codename"):
+            missing_codename_leaf_ids.append(nid)
+            continue
+        if not _agentic_execution_ok(n):
+            non_agentic_leaf_ids.append(nid)
+            continue
+        if not _deps_met(n, statuses_by_key):
+            deps_blocked_leaf_ids.append(nid)
+            continue
+        if status in ("complete", "cancelled"):
+            closed_leaf_ids.append(nid)
+            continue
+        open_leaf_ids.append(nid)
+
+    return {
+        "total_nodes": len(nodes),
+        "leaf_nodes": len(leaf_nodes),
+        "open_leaf_ids": open_leaf_ids,
+        "claimed_leaf_ids": claimed_leaf_ids,
+        "deps_blocked_leaf_ids": deps_blocked_leaf_ids,
+        "closed_leaf_ids": closed_leaf_ids,
+        "non_agentic_leaf_ids": non_agentic_leaf_ids,
+        "missing_codename_leaf_ids": missing_codename_leaf_ids,
+    }
+
+
 def _available(
     nodes: list[dict],
     reg: dict,
     enrich: dict[str, dict[str, Any]] | None = None,
 ) -> list[dict]:
-    """Agentic candidates: blocked first, then MR-rejected (per `enrich`), then the rest.
+    """Actionable leaf candidates: blocked first, then MR-rejected, then the rest.
 
     Within each tier, order follows outline (tree) order, not merged chunk order.
     """
     statuses_by_key = _statuses_by_node_key(nodes)
     claimed = _claimed_node_ids(reg)
+    leaf_ids = _leaf_node_ids(nodes)
     enr = enrich or {}
     order_index = _outline_order_index(nodes)
 
@@ -107,6 +167,8 @@ def _available(
         return (node.get("status") or "Not Started").lower()
 
     def base_ok(n: dict) -> bool:
+        if n["id"] not in leaf_ids:
+            return False
         return _base_agentic_candidate(n, statuses_by_key, claimed)
 
     blocked: list[dict] = []

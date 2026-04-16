@@ -209,6 +209,27 @@ describe("buildDisplayStatusWithPhaseRollup", () => {
     expect(map.M1).toBe(DISPLAY_STATUS_COMPLETE);
   });
 
+  it("shows derived In Progress on ancestor when descendant is claimed", () => {
+    const nodes = [phase("M1", "Not Started"), milestone("M1.1", "Not Started", "M1")];
+    const byId: Record<string, RoadmapNode | undefined> = Object.fromEntries(
+      nodes.map((n) => [n.id, n]),
+    );
+    const reg = {
+      "M1.1": {
+        branch: "feature/rm-child",
+        codename: "child",
+        node_id: "M1.1",
+        touch_zones: ["a"],
+      },
+    };
+    const ordered = ["M1", "M1.1"];
+    const map = buildDisplayStatusWithPhaseRollup(ordered, byId, reg, {
+      enabled: true,
+    });
+    expect(map["M1.1"]).toBe("In Progress");
+    expect(map.M1).toBe("In Progress");
+  });
+
   it("returns base map when rollup disabled", () => {
     const nodes = [phase("M1", "In Progress"), milestone("M1.1", "Complete", "M1")];
     const byId: Record<string, RoadmapNode | undefined> = Object.fromEntries(

@@ -95,6 +95,7 @@ def test_specy_road_do_next_available_task_help() -> None:
     assert "--base" in r.stdout
     assert "--interactive" in r.stdout
     assert "--no-ci-skip-in-message" in r.stdout
+    assert "actionable leaf task" in r.stdout
     assert "--no-sync" not in r.stdout
     assert "--no-push-registry" not in r.stdout
 

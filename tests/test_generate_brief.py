@@ -16,6 +16,9 @@ def test_render_brief_m02_contains_title() -> None:
     text = gb.render_brief("M0.2", by_id)
     assert "Roadmap validator in CI" in text
     assert "M0.2" in text
+    assert "## Execution Target" in text
+    assert "## Ancestor Context Chain" in text
+    assert "## Derived Rollup Semantics" in text
 
 
 def test_render_brief_dependencies_use_display_ids_not_raw_node_keys() -> None:

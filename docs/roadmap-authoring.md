@@ -65,7 +65,7 @@ Keep the graph **logically split** across multiple files under `roadmap/` so eac
 
 Validated by [`schemas/manifest.schema.json`](../tests/fixtures/specy_road_dogfood/schemas/manifest.schema.json). Do not add a top-level `nodes` key to the manifest — nodes live only in chunk files.
 
-**PM ordering:** `includes` order controls **merge order** when the loader concatenates chunk `nodes` arrays (and affects diffs and narrative flow in some tools). It does **not** define which agentic task `specy-road do-next-available-task` auto-picks among equally eligible work — that follows **outline (tree) order** (see [Reordering and reparenting](#reordering-and-reparenting)). **Gating** (what may start) is still driven by each node’s `dependencies` and `status`. The generated [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) index uses its **own** sort on display `id` for reading; that sort is not the same as merge list order or auto-pick order.
+**PM ordering:** `includes` order controls **merge order** when the loader concatenates chunk `nodes` arrays (and affects diffs and narrative flow in some tools). It does **not** define which actionable **leaf** `specy-road do-next-available-task` auto-picks among equally eligible work — that follows **outline (tree) order** (see [Reordering and reparenting](#reordering-and-reparenting)). **Gating** (what may start) is still driven by each node’s `dependencies` and `status`. The generated [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) index uses its **own** sort on display `id` for reading; that sort is not the same as merge list order or auto-pick order.
 
 ### Chunk shape
 
@@ -151,7 +151,7 @@ Every node carries **two** identifiers (see [`schemas/roadmap.schema.json`](../t
 
 CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unless a command explicitly accepts a UUID.
 
-**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) treats each dependency as satisfied when that **`node_key`**’s node is `Complete`. Among eligible tasks, auto-pick order follows **outline (tree) order**, not raw merged chunk order (see [Reordering and reparenting](#reordering-and-reparenting)).
+**Tooling:** Briefs and task pickers resolve `dependencies` to **display ids** for readability. Availability logic (`do-next-available-task`) treats each dependency as satisfied when that **`node_key`**’s node is `Complete`. Candidate selection is actionable **leaf-only**; ancestor/umbrella nodes are context containers and not default claim targets. Among eligible leaves, auto-pick order follows **outline (tree) order**, not raw merged chunk order (see [Reordering and reparenting](#reordering-and-reparenting)).
 
 ### Required on every node
 

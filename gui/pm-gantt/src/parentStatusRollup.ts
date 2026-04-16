@@ -31,6 +31,10 @@ function isTerminalComplete(base: string): boolean {
   return normLower(base) === "complete";
 }
 
+function isInProgress(base: string): boolean {
+  return normLower(base) === "in progress";
+}
+
 /** Direct children from `parent_id` (outline tree). */
 export function childrenIdsByParentId(
   nodes: RoadmapNode[],
@@ -85,7 +89,9 @@ export function postOrderIdsForForest(
 
 /**
  * Bottom-up effective display: a node is effectively Complete iff its base is Complete, or
- * (base is not Blocked and every direct child is effectively Complete). Blocked is sticky.
+ * (base is not Blocked and every direct child is effectively Complete). A non-terminal parent
+ * is effectively In Progress when any direct child is effectively In Progress.
+ * Blocked is sticky.
  */
 export function computeEffectiveDisplayById(
   orderedPostOrder: string[],
@@ -109,10 +115,19 @@ export function computeEffectiveDisplayById(
       eff[nid] = base;
       continue;
     }
+    const anyChildInProgress = kids.some((c) => isInProgress(eff[c]));
     const allChildrenComplete = kids.every(
       (c) => normLower(eff[c]) === "complete",
     );
-    eff[nid] = allChildrenComplete ? DISPLAY_STATUS_COMPLETE : base;
+    if (allChildrenComplete) {
+      eff[nid] = DISPLAY_STATUS_COMPLETE;
+      continue;
+    }
+    if (anyChildInProgress) {
+      eff[nid] = "In Progress";
+      continue;
+    }
+    eff[nid] = base;
   }
 
   return eff;
@@ -154,6 +169,7 @@ export type PhaseRollupOptions = {
 /**
  * Per-node display after `pmDisplayStatus`, then phase-only rollup: `type === "phase"` may
  * show Complete when all descendants are effectively Complete (and base is not Blocked).
+ * Any ancestor row may display derived In Progress when descendants are in progress.
  */
 export function buildDisplayStatusWithPhaseRollup(
   orderedIds: string[],
@@ -178,6 +194,17 @@ export function buildDisplayStatusWithPhaseRollup(
   const out: Record<string, string> = { ...baseById };
   for (const id of orderedIds) {
     const n = byId[id];
+    const hasChildren = (childrenByParent.get(id)?.length || 0) > 0;
+    const baseLower = normLower(baseById[id]);
+    if (
+      hasChildren &&
+      eff[id] === "In Progress" &&
+      baseLower !== "complete" &&
+      baseLower !== "blocked" &&
+      baseLower !== "in progress"
+    ) {
+      out[id] = "In Progress";
+    }
     if (n?.type === "phase" && eff[id] === DISPLAY_STATUS_COMPLETE) {
       out[id] = DISPLAY_STATUS_COMPLETE;
     }

@@ -85,6 +85,20 @@ def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
     if not any(n["id"] == node_id for n in nodes):
         print(f"error: node '{node_id}' not found in roadmap.", file=sys.stderr)
         raise SystemExit(1)
+    if any(
+        isinstance(n.get("parent_id"), str) and n.get("parent_id") == node_id
+        for n in nodes
+    ):
+        print(
+            f"error: registry entry for '{node_id}' is not a leaf claim.",
+            file=sys.stderr,
+        )
+        print(
+            "  finish-this-task only supports leaf-scoped claims "
+            "(feature/rm-<leaf-codename>).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     reg_branch = entry.get("branch")
     if not reg_branch:
         print(

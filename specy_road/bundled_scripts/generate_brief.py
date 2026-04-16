@@ -138,18 +138,28 @@ def render_brief(
     head = [
         f"# Brief: `{node_id}` — {n.get('title', '')}",
         "",
-        "## Ancestor chain",
+        "## Execution Target",
+        "",
+        f"- **Leaf node:** `{node_id}`",
+        f"- **Codename:** {n.get('codename')}",
+        f"- **Title:** {n.get('title', '')}",
+        "",
+        "## Ancestor Context Chain",
         "",
     ]
-    for item in chain:
+    for item in chain[:-1]:
         tid = item["id"]
         typ = item.get("type")
         ttl = item.get("title", "")
-        head.append(f"- **{tid}** ({typ}) — {ttl}")
+        status = item.get("status")
+        head.append(
+            f"- **{tid}** ({typ}) — {ttl} "
+            f"_(objective context; status: {status})_"
+        )
     head.extend(
         [
             "",
-            "## This node",
+            "## Leaf Action Details",
             "",
             f"- **Status:** {n.get('status')}",
             f"- **Execution (milestone):** {n.get('execution_milestone')}",
@@ -158,6 +168,25 @@ def render_brief(
             (
                 "- **Touch zones:** "
                 f"{', '.join(n.get('touch_zones') or []) or '—'}"
+            ),
+        ]
+    )
+    head.extend(
+        [
+            "",
+            "## Derived Rollup Semantics",
+            "",
+            (
+                "- Ancestors are context containers and are not execution "
+                "pickup targets."
+            ),
+            (
+                "- Ancestor in-progress state is derived from active "
+                "descendant claims."
+            ),
+            (
+                "- Complete ancestor status rolls up from descendant "
+                "completion semantics."
             ),
         ]
     )
