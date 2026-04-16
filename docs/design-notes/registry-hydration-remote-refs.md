@@ -25,7 +25,9 @@ Implementation: [`specy_road/registry_remote_overlay.py`](../../specy_road/regis
 
 **Limits:** max refs scanned (default **48**, override with **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_MAX_REFS`**), total time budget (default **5s**, **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_BUDGET_S`**), per-`git show` timeout. Invalid YAML on a ref is skipped.
 
-**Payload:** `registry`, `registry_by_node`, `pr_hints`, and `git_enrichment` use the **merged** view when overlay is active. The response may include **`registry_overlay`** (scan counts).
+**Payload:** `registry`, `registry_by_node`, `pr_hints`, and `git_enrichment` use the **merged** view when overlay is active. The response may include **`registry_overlay`** (scan counts) plus **`registry_overlay.last_auto_fetch_attempt`** (`ok`, `reason`, `step`, `error`, timestamp) so PMs can see when background `git fetch` failed.
+
+When integration auto-ff is enabled, **`integration_branch_auto_ff`** may also include **`last_auto_ff_attempt`** with the same status shape (`ok`, `reason`, `step`, `error`, timestamp). Failures remain best-effort (the API still responds), but metadata and logs now surface stale-sync causes.
 
 **Fingerprint:** [`/api/roadmap/fingerprint`](../../specy_road/gui_app_routes_core.py) mixes in a hash of remote **`feature/rm-*`** tips and the **`roadmap/registry.yaml`** blob (or integration ref tip) on **`refs/remotes/<remote>/<integration_branch>`** when overlay is enabled so the UI can refresh after remote-only registry changes **without** local file edits.
 

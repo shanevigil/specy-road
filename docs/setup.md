@@ -176,6 +176,23 @@ npm audit --omit=dev
 
 For a stricter local pass including devDependencies, run `npm audit` without `--omit=dev`.
 
+PM bundle budget check (same threshold as CI, currently **900000 bytes** for the built
+`index-*.js` entry chunk under `specy_road/pm_gantt_static/assets/`):
+
+```bash
+cd gui/pm-gantt
+npm run build
+python - <<'PY'
+from pathlib import Path
+budget = 900_000
+assets = sorted(Path("../../specy_road/pm_gantt_static/assets").glob("index-*.js"))
+latest = max(assets, key=lambda p: p.stat().st_mtime)
+size = latest.stat().st_size
+print(f"{latest} -> {size} bytes")
+raise SystemExit(1 if size > budget else 0)
+PY
+```
+
 ---
 
 ## CI
@@ -185,6 +202,7 @@ GitHub Actions runs the full validation suite on every push and PR to `main`/`de
 ```text
 install Python (requirements-ci.txt) → pip upgrade → pip-audit (+ artifact)
 → npm ci → lockfile-lint → npm audit (+ artifact) → Vitest (gui/pm-gantt)
+→ PM Gantt build → PM bundle budget check
 → OSV-Scanner lockfiles (+ artifact)
 → validate roadmap → export check → file limits → pytest
 ```
