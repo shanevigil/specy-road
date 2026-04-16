@@ -14,7 +14,7 @@ from do_next_available import _available, _load_branch_enrichment
 from do_next_prompt import write_agent_prompt
 from do_next_task_interactive import pick_interactive as _pick_interactive
 from generate_brief import index as make_index, render_brief
-from registration_pickup_commit import registration_commit_message
+from registration_pickup_commit import registration_commit_message, warn_degraded_pickup
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
@@ -334,6 +334,13 @@ def main(argv: list[str] | None = None) -> None:
     )
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
+
+    warn_degraded_pickup(
+        no_sync=args.no_sync,
+        no_push_registry=args.no_push_registry,
+        remote=remote,
+        base=base,
+    )
 
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()

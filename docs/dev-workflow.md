@@ -34,6 +34,12 @@ specy-road do-next-available-task --no-ci-skip-in-message   # registration commi
 /specyrd-validate       — validate at any point
 ```
 
+## Agents and registration
+
+**Default:** Run **`specy-road do-next-available-task`** from the repo root with **no** `--no-sync` or `--no-push-registry` unless you explicitly need offline/CI-style behavior. The default flow **syncs** the integration branch, **commits** `roadmap/registry.yaml` there, **pushes** it to the remote, then creates **`feature/rm-<codename>`** — so teammates and the PM Gantt see the claim after `git pull` / fetch on that branch.
+
+**Opt-in only:** **`--no-sync`** and **`--no-push-registry`** skip fetch/merge and/or push; others will not see your registration on the remote until someone pushes the integration branch. See **`specy-road do-next-available-task --help`** and the IDE stub installed by **`specyrd init`** (e.g. **`/specyrd-do-next-task`**).
+
 ---
 
 ## Your role in the system

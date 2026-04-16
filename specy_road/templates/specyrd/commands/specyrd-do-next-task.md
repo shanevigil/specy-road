@@ -16,6 +16,12 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road do-next-available-task
 ```
 
+### Autonomous agents
+
+Run **exactly** the command above (from the repo root, clean tree). Add only **`--base`**, **`--remote`**, or **`--interactive`** when the user explicitly asked for them.
+
+**Do not** pass **`--no-sync`** or **`--no-push-registry`** unless the user explicitly requested offline/CI-style behavior, or a prior step proved fetch/push cannot reach the remote. Those flags skip team-visible registration on the remote; if you must use them, say what was skipped and tell the user to run `git push <remote> <integration-branch>` so others see the claim.
+
 By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). Flags: `--base`, `--remote`, `--no-sync`, `--no-push-registry`, `--no-ci-skip-in-message` (see `specy-road do-next-available-task --help`).
 
 This will:

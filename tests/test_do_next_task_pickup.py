@@ -8,6 +8,7 @@ import do_next_task as dnt
 from registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
+    warn_degraded_pickup,
 )
 
 
@@ -121,6 +122,30 @@ def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp
     assert "[skip ci]" in calls[1][2]
     assert calls[2] == ["push", "origin", "main"]
     assert calls[3] == ["checkout", "-b", "feature/rm-pickup-git"]
+
+
+def test_warn_degraded_pickup_quiet_when_full_defaults(capsys: pytest.CaptureFixture[str]) -> None:
+    warn_degraded_pickup(
+        no_sync=False,
+        no_push_registry=False,
+        remote="origin",
+        base="main",
+    )
+    assert capsys.readouterr().err == ""
+
+
+def test_warn_degraded_pickup_stderr_when_degraded(capsys: pytest.CaptureFixture[str]) -> None:
+    warn_degraded_pickup(
+        no_sync=True,
+        no_push_registry=True,
+        remote="origin",
+        base="dev",
+    )
+    err = capsys.readouterr().err
+    assert "warning: do-next-available-task:" in err
+    assert "Others will not see your registry claim on origin/dev" in err
+    assert "--no-sync" in err
+    assert "--no-push-registry" in err
 
 
 def test_registration_commit_message_ci_skip_toggle() -> None:

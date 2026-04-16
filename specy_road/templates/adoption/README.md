@@ -4,5 +4,6 @@ These files are **optional copy-paste stubs** for consumer application repositor
 
 - **`specy-road-consumer-claude-snippet.md`** — Merge into root `CLAUDE.md` as a **specy-road (consumer)** section.
 - **`004-specy-road-consumer.mdc`** — Copy to **`.cursor/rules/004-specy-road-consumer.mdc`** if you use Cursor and want an always-on consumer boundary rule.
+- **`005-do-next-registry-publish.mdc`** — Copy to **`.cursor/rules/005-do-next-registry-publish.mdc`** if you use Cursor and want agents to avoid skipping sync/push when running `specy-road do-next-available-task`.
 
 See [`suggested_prompts/bootstrap-agents-md.md`](../../../suggested_prompts/bootstrap-agents-md.md) in the specy-road repository for the full bootstrap prompt.
