@@ -27,7 +27,10 @@ import {
   pmOutlineDisplayStatus,
   pmPlanningTitleReadOnlyFromRow,
 } from "./pmDisplayStatus";
-import { buildDisplayStatusWithPhaseRollup } from "./parentStatusRollup";
+import {
+  buildDisplayStatusWithPhaseRollup,
+  computeEffectiveDisplayForAllNodes,
+} from "./parentStatusRollup";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
@@ -154,6 +157,9 @@ export default function App() {
     if (s === "0") return false;
     return true;
   });
+
+  /** When true, omit rows whose effective rolled-up status is Complete (see computeEffectiveDisplayForAllNodes). */
+  const [hideCompleteActive, setHideCompleteActive] = useState(false);
 
   const [themeMode, setThemeMode] = useState<ThemeMode>(readLegacyThemeMode);
 
@@ -396,6 +402,58 @@ export default function App() {
       data.registry_by_node,
     );
   }, [data, byId]);
+
+  /** Full bottom-up effective status (for hiding complete subtrees). */
+  const effectiveDisplayById = useMemo(() => {
+    if (!data?.ordered_ids) return {} as Record<string, string>;
+    return computeEffectiveDisplayForAllNodes(
+      data.ordered_ids,
+      byId,
+      data.registry_by_node,
+    );
+  }, [data, byId]);
+
+  const visibleOrderedIds = useMemo(() => {
+    if (!data?.ordered_ids) return [] as string[];
+    if (!hideCompleteActive) return data.ordered_ids;
+    return data.ordered_ids.filter(
+      (id) =>
+        (effectiveDisplayById[id] ?? "").trim().toLowerCase() !== "complete",
+    );
+  }, [data?.ordered_ids, hideCompleteActive, effectiveDisplayById]);
+
+  const visibleRowDepths = useMemo(() => {
+    if (!data?.ordered_ids || !data.row_depths) return [] as number[];
+    if (!hideCompleteActive) return data.row_depths;
+    const out: number[] = [];
+    for (let i = 0; i < data.ordered_ids.length; i++) {
+      const id = data.ordered_ids[i];
+      if (
+        (effectiveDisplayById[id] ?? "").trim().toLowerCase() !== "complete"
+      ) {
+        out.push(data.row_depths[i] ?? 0);
+      }
+    }
+    return out;
+  }, [data?.ordered_ids, data?.row_depths, hideCompleteActive, effectiveDisplayById]);
+
+  /** When hiding complete rows, move selection off hidden ids and exit dependency edit if its row is hidden. */
+  useEffect(() => {
+    if (!hideCompleteActive || !data?.ordered_ids?.length) return;
+    const hidden = (id: string) =>
+      (effectiveDisplayById[id] ?? "").trim().toLowerCase() === "complete";
+    setSelectedId((cur) => {
+      if (cur && !hidden(cur)) return cur;
+      return data.ordered_ids.find((id) => !hidden(id)) ?? null;
+    });
+  }, [hideCompleteActive, data?.ordered_ids, effectiveDisplayById]);
+
+  useEffect(() => {
+    if (!hideCompleteActive || !depEditId) return;
+    if ((effectiveDisplayById[depEditId] ?? "").trim().toLowerCase() === "complete") {
+      cancelDepEdit();
+    }
+  }, [hideCompleteActive, depEditId, effectiveDisplayById, cancelDepEdit]);
 
   const outlineStatusById = useMemo(() => {
     if (!data?.ordered_ids) return {} as Record<string, string>;
@@ -769,6 +827,22 @@ export default function App() {
           </div>
           <div className="app-header-row1-actions">
             <GitWorkflowStatusLabel gitWorkflow={data?.git_workflow} />
+            <button
+              type="button"
+              className="app-header-icon-btn app-header-tile-btn"
+              aria-pressed={hideCompleteActive}
+              title={
+                hideCompleteActive
+                  ? "Show all roadmap rows, including completed work"
+                  : "Hide rows whose subtree is effectively complete"
+              }
+              aria-label={
+                hideCompleteActive ? "Show completed work" : "Hide completed work"
+              }
+              onClick={() => setHideCompleteActive((v) => !v)}
+            >
+              {hideCompleteActive ? "Show Complete" : "Hide Complete"}
+            </button>
             {editOpenIds.length > 0 ? (
               <button
                 type="button"
@@ -984,11 +1058,12 @@ export default function App() {
             onScroll={() => syncScroll("left")}
           >
             <OutlineTable
-              orderedIds={data.ordered_ids}
+              orderedIds={visibleOrderedIds}
               nodesById={byId}
               displayStatusById={displayStatusById}
               outlineStatusById={outlineStatusById}
-              rowDepths={data.row_depths}
+              rowDepths={visibleRowDepths}
+              reorderLocked={hideCompleteActive}
               selectedId={selectedId}
               prHints={data.pr_hints}
               gitEnrichment={data.git_enrichment}
@@ -1029,7 +1104,7 @@ export default function App() {
             onScroll={() => syncScroll("right")}
           >
             <GanttPane
-              orderedIds={data.ordered_ids}
+              orderedIds={visibleOrderedIds}
               nodesById={byId}
               displayStatusById={displayStatusById}
               gitCheckoutById={gitCheckoutById}

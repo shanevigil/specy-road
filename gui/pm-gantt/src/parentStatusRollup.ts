@@ -118,6 +118,34 @@ export function computeEffectiveDisplayById(
   return eff;
 }
 
+/**
+ * Full bottom-up effective status for every node (same `baseById` + `computeEffectiveDisplayById`
+ * pipeline as {@link buildDisplayStatusWithPhaseRollup}, but returns `eff` for all ids).
+ * Used for "hide complete" filtering. When phase rollup is disabled at build time, returns
+ * `baseById` only (no subtree rollup), matching display behavior.
+ */
+export function computeEffectiveDisplayForAllNodes(
+  orderedIds: string[],
+  byId: Record<string, RoadmapNode | undefined>,
+  registryByNode: Record<string, Record<string, unknown>> | undefined,
+  opts?: PhaseRollupOptions,
+): Record<string, string> {
+  const baseById: Record<string, string> = {};
+  for (const id of orderedIds) {
+    baseById[id] = pmDisplayStatus(byId[id], registryByNode?.[id]);
+  }
+  const enabled = opts?.enabled ?? isPhaseStatusRollupEnabled();
+  if (!enabled) {
+    return { ...baseById };
+  }
+  const nodes = orderedIds
+    .map((id) => byId[id])
+    .filter((n): n is RoadmapNode => Boolean(n));
+  const childrenByParent = childrenIdsByParentId(nodes);
+  const post = postOrderIdsForForest(orderedIds, byId, childrenByParent);
+  return computeEffectiveDisplayById(post, baseById, childrenByParent);
+}
+
 export type PhaseRollupOptions = {
   /** When false, returns `baseById` unchanged for phase rows. */
   enabled?: boolean;

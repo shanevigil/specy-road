@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { fetchPlanningFile, savePlanningFile } from "../api";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
+import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
 import { VISION_STARTER } from "../visionStarter";
 
 const VISION_PATH = "vision.md";
@@ -88,20 +89,13 @@ export function VisionDrawer({ open, onClose }: Props) {
     }
   };
 
-  const footer = (
-    <>
-      {msg ? <span>{msg}</span> : null}
-      {persistMsg ? <span>{persistMsg}</span> : null}
-    </>
-  );
-
   return (
     <ModalFrame
       title="Vision"
       titleId="vision-title"
       onClose={onClose}
       storageKey="vision"
-      footer={msg || persistMsg ? footer : null}
+      footer={<ModalPersistStatusFooter msg={msg} persistMsg={persistMsg} />}
       bodyClassName="modal-body--constitution modal-body--vision"
     >
       <p className="outline-meta">

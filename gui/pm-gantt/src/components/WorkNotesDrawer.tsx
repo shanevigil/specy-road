@@ -7,6 +7,7 @@ import {
 } from "../api";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
+import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
 
 const NEW_NOTE_TEMPLATE = `# Session
 
@@ -161,20 +162,13 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  const footer = (
-    <>
-      {msg ? <span>{msg}</span> : null}
-      {persistMsg ? <span>{persistMsg}</span> : null}
-    </>
-  );
-
   return (
     <ModalFrame
       title="Session notes"
       titleId="session-notes-title"
       onClose={onClose}
       storageKey="session-notes"
-      footer={msg || persistMsg ? footer : null}
+      footer={<ModalPersistStatusFooter msg={msg} persistMsg={persistMsg} />}
       bodyClassName="modal-body--workspace modal-body--work-notes"
     >
       <p className="outline-meta">

@@ -1328,6 +1328,17 @@ button {
   color: var(--muted);
 }
 
+/* Autosave modals: keep footer height stable; only status text changes. */
+.modal-persist-status-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 1.35em;
+  box-sizing: border-box;
+}
+
 .modal-footer .modal-footer-actions {
   margin-left: auto;
   display: flex;

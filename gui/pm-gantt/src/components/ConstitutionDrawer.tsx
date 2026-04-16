@@ -6,6 +6,7 @@ import {
 } from "../api";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
+import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
 
 const PURPOSE_PATH = "constitution/purpose.md";
 const PRINCIPLES_PATH = "constitution/principles.md";
@@ -125,20 +126,13 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
     }
   };
 
-  const footer = (
-    <>
-      {msg ? <span>{msg}</span> : null}
-      {persistMsg ? <span>{persistMsg}</span> : null}
-    </>
-  );
-
   return (
     <ModalFrame
       title="Constitution"
       titleId="constitution-title"
       onClose={onClose}
       storageKey="constitution"
-      footer={msg || persistMsg ? footer : null}
+      footer={<ModalPersistStatusFooter msg={msg} persistMsg={persistMsg} />}
       bodyClassName="modal-body--constitution"
     >
       <p className="outline-meta">

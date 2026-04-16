@@ -1,17 +1,19 @@
 # specy-road
 
-**Roadmap-first coordination** for human teams and coding agents: one canonical graph under `roadmap/`, **planning/** Markdown feature sheets (one `planning/<id>_<slug>_<node_key>.md` per node that has `planning_dir`), clear separation between **purpose**, **principles**, and **enforceable constraints**, and **shared/** contracts cited from work items.
+**Roadmap-first coordination** for teams and coding agents.
+
+You keep one **roadmap graph** under `roadmap/`, one **feature sheet** per node under `planning/` (Markdown), **constitution** prose (purpose and principles), **enforceable limits** under `constraints/`, and **shared** contracts that work items cite. The CLI validates the graph, exports a readable index, and generates **briefs** so agents load only what a task needs.
 
 ## Why use it
 
-- **Single source of truth** — The roadmap graph under `roadmap/` (`manifest.json` + ordered **JSON** chunk files) drives priorities, dependencies, and gates; nodes with **`planning_dir`** point at a **single feature sheet** under `planning/`; contracts live in `shared/` and are cited from work items.
-- **Smaller context for agents** — Generate a focused brief for a node so assistants load only what that task needs, instead of the whole repo story.
-- **Safer parallel work** — Immutable milestone IDs, **touch zones**, and **registration** in `roadmap/registry.yaml` make active work visible before files collide.
-- **Your tools, your workflow** — The kit is opinionated about **roadmapping and specs**, not about which IDE, agent, or in-session planning style you use. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
+- **Single source of truth** — Priorities, dependencies, and gates live in `roadmap/` (`manifest.json` plus JSON chunks). Nodes with `planning_dir` point at a single sheet under `planning/`. Cross-cutting contracts live in `shared/` and are cited where they apply.
+- **Smaller context for agents** — `specy-road brief` assembles the right planning sheets and contracts for one node instead of the whole repo story.
+- **Safer parallel work** — Stable IDs, touch zones, and `roadmap/registry.yaml` make active work visible before files collide.
+- **Your tools, your workflow** — The kit cares about roadmaps and specs, not which IDE or agent ceremony you use. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
 
 ## How this relates to [Spec-Kit](https://github.com/github/spec-kit)
 
-Spec-Kit helped popularize disciplined specs and context hygiene. **specy-road** keeps that spirit but centers a **roadmap graph** and **registry** as the spine of coordination. It does **not** prescribe a particular agent “spec → plan → tasks” ceremony inside Cursor, Claude Code, or any other product—that stays between you and your tools.
+Spec-Kit helped popularize disciplined specs and context hygiene. **specy-road** keeps that spirit but puts a **roadmap graph** and **registry** at the center. It does **not** prescribe an in-product “spec → plan → tasks” ritual in Cursor, Claude Code, or elsewhere—that stays between you and your tools.
 
 ## Install
 
@@ -23,7 +25,7 @@ pip install specy-road
 # optional: pip install "specy-road[review]" for `specy-road review-node`
 ```
 
-The package installs two commands: `**specy-road**` (validators, brief, export, `init project`, …) and `**specyrd**` (optional IDE glue — see [specyrd](#specyrd-optional-ide-command-stubs)).
+You get two commands: **`specy-road`** (validate, brief, export, `init project`, …) and **`specyrd`** (optional IDE stubs — see [specyrd](#specyrd-optional-ide-command-stubs)).
 
 ### New project (consumer)
 
@@ -37,19 +39,19 @@ specy-road export
 specy-road brief M1.1 -o work/brief-M1.1.md
 ```
 
-Use `specy-road init project --dry-run` to preview files, or `--force` to replace an existing scaffold. After init, set **`roadmap/git-workflow.yaml`** (integration trunk and remote) so CLI defaults and the PM Gantt match your repository; see [docs/git-workflow.md](docs/git-workflow.md). Optional: `specyrd init --here --ai cursor` for slash-command stubs that call the same CLI.
+Use `specy-road init project --dry-run` to preview, or `--force` to replace a scaffold. After init, set `roadmap/git-workflow.yaml` (integration branch and remote) so the CLI and PM Gantt match your repo; see [docs/git-workflow.md](docs/git-workflow.md). Optional: `specyrd init --here --ai cursor` adds slash-command stubs that call the same CLI.
 
 ### Bootstrap prompts (optional)
 
-The **specy-road source tree** includes **[`suggested_prompts/`](suggested_prompts/)** — copy-paste Markdown prompts for Cursor, Claude Code, or similar agents. They are **not** added to your project by `pip install`; open them from your **clone of the specy-road repository** (or the same paths in a source checkout).
+The **specy-road source tree** includes **[suggested_prompts/](suggested_prompts/)** — copy-paste prompts for Cursor, Claude Code, or similar. They are **not** installed by `pip install`; open them from a **clone** of this repository.
 
 | Prompt | When to use it |
-| ------ | ---------------- |
-| [`bootstrap-governance.md`](suggested_prompts/bootstrap-governance.md) | **Existing** repos: align vision, constitution, constraints, and `shared/` with specy-road. |
-| [`bootstrap-roadmap.md`](suggested_prompts/bootstrap-roadmap.md) | **Existing** repos: migrate notes into `roadmap/` (JSON + manifest), `registry.yaml`, and `planning/`. |
-| [`bootstrap-agents-md.md`](suggested_prompts/bootstrap-agents-md.md) | **Existing** repos (or after `init project`): merge `AGENTS.md`, `CLAUDE.md`, and Cursor rules; clarifies **consumer vs upstream toolkit** boundaries. |
+| ------ | -------------- |
+| [bootstrap-governance.md](suggested_prompts/bootstrap-governance.md) | Existing repos: align vision, constitution, constraints, and `shared/`. |
+| [bootstrap-roadmap.md](suggested_prompts/bootstrap-roadmap.md) | Existing repos: migrate notes into `roadmap/`, `registry.yaml`, and `planning/`. |
+| [bootstrap-agents-md.md](suggested_prompts/bootstrap-agents-md.md) | Existing repos or after `init project`: merge `AGENTS.md`, `CLAUDE.md`, and Cursor rules; clarifies consumer vs toolkit boundaries. |
 
-**New project:** run [`specy-road init project`](#new-project-consumer) first so the scaffold exists. Use the prompts **only if** you want an agent to help refine governance, roadmap content, or editor/agent config afterward—especially when you already have team rules or docs to preserve.
+**New project:** run [specy-road init project](#new-project-consumer) first. Use these prompts only if you want an agent to help refine governance, roadmap content, or editor config—especially when you already have team docs to preserve.
 
 ### Developing **specy-road** (this repository)
 
@@ -59,7 +61,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements-ci.txt
 ```
 
-(`requirements-ci.txt` is a compiled lock matching CI; regenerate with `pip-compile` — see [`docs/supply-chain-security.md`](docs/supply-chain-security.md). The short [`requirements.txt`](requirements.txt) list mirrors core runtime deps from `pyproject.toml` for reference only.)
+`requirements-ci.txt` is a compiled lock matching CI; regenerate with `pip-compile` — see [docs/supply-chain-security.md](docs/supply-chain-security.md). The short [requirements.txt](requirements.txt) mirrors core runtime deps from `pyproject.toml` for reference only.
 
 Validate the **dogfood** sample tree and run tests (maintainers):
 
@@ -72,18 +74,18 @@ pytest
 #   cd gui/pm-gantt && npm ci && npm test && npm run build
 ```
 
-**Dependency and supply-chain:** policy and tool mapping are in [`docs/supply-chain-security.md`](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. See [docs/setup.md](docs/setup.md#dependency-and-security-checks).
+**Dependency and supply-chain:** see [docs/supply-chain-security.md](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. More detail: [docs/setup.md](docs/setup.md#dependency-and-security-checks).
 
-**Trying `specy-road init project`:** With no path, the CLI resolves the git worktree root — in this repository that would write consumer layout files into the **toolkit** tree. Prefer an explicit target directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [`playground/`](playground/README.md) directory documented there.
+**Trying `specy-road init project`:** With no path, the CLI uses the git worktree root—in **this** repo that would scaffold into the toolkit tree. Prefer an explicit directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [playground/](playground/README.md).
 
-Optional git hooks: `pip install pre-commit && pre-commit install` — runs a **subset** of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [docs/setup.md](docs/setup.md#install-the-pre-commit-hook).
+Optional git hooks: `pip install pre-commit && pre-commit install` — runs part of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [docs/setup.md](docs/setup.md#install-the-pre-commit-hook).
 
 ## specyrd (optional IDE command stubs)
 
-**specyrd** is an optional installer for **slash-command-style markdown** (or equivalent) that points agents at the same workflows as `**specy-road`**. It does **not** replace roadmap validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per roadmap node — unrelated to that tool.
+**specyrd** installs **slash-command-style** stubs that point agents at the same workflows as **`specy-road`**. It does not replace validation or briefs, and it is **not** [Spec Kit](https://github.com/github/spec-kit)’s `specify` CLI. Feature sheets are flat **`planning/*.md`** files per roadmap node—unrelated to that tool.
 
 - **Subcommand:** `init` only.
-- **Typical use:** Run once per repo (or per IDE); add a second agent pack by running `init` again with another `--ai`.
+- **Typical use:** Run once per repo (or per IDE); add another agent pack by running `init` again with a different `--ai`.
 
 ### Command line
 
@@ -91,28 +93,26 @@ Optional git hooks: `pip install pre-commit && pre-commit install` — runs a **
 specyrd init [PATH] --ai <ID> [--ide <ID>] [--here] [--dry-run] [--force] [--ai-commands-dir REL_PATH]
 ```
 
-- `**PATH**` — Directory used to resolve the repository (default: `.`). The tool prefers the git worktree root (`git rev-parse --show-toplevel`) when `PATH` is inside a git repo.
-- `**--ai` / `--ide**` — Required. Same option under two names. Agent pack: `cursor`, `claude-code`, or `generic`.
-- `**--here**` — Use the current working directory as the target (equivalent to `PATH` being `.`).
-- `**--dry-run**` — Print paths that would be written; do not create or overwrite files.
-- `**--force**` — Overwrite existing specyrd command stubs and `.specyrd/README.md` if they already exist.
-- `**--ai-commands-dir REL_PATH**` — **Required** when `--ai generic`. Must be a **relative** path under the repo root (no `..`). Writes command `.md` files into that directory.
+- **PATH** — Resolves the repo (default: `.`). Inside a git repo, the tool prefers the worktree root (`git rev-parse --show-toplevel`).
+- **--ai / --ide** — Required (same flag twice). Agent pack: `cursor`, `claude-code`, or `generic`.
+- **--here** — Use the current directory as the target (same as `PATH` being `.`).
+- **--dry-run** — Print paths only; do not write files.
+- **--force** — Overwrite existing stubs and `.specyrd/README.md`.
+- **--ai-commands-dir REL_PATH** — Required for `--ai generic`. Must be relative under the repo root (no `..`). Writes `specyrd-*.md` into that folder.
 
 ### What gets installed
 
-By default (no `--role`), **fourteen** command files are written: `validate`, `brief`, `export`, `file-limits`, `author`, `constitution`, `claim`, `finish`, `do-next-task`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node` (file names are `specyrd-<name>.md`).
+By default (no `--role`), **fourteen** stub files are written: `validate`, `brief`, `export`, `file-limits`, `author`, `constitution`, `claim`, `finish`, `do-next-task`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node` (files named `specyrd-<name>.md`).
 
+| Target | Path (under repo root) | Also writes |
+| ------ | ------------------------ | ----------- |
+| `cursor` | `.cursor/commands/specyrd-*.md` | `.specyrd/README.md`, `.specyrd/manifest.json` |
+| `claude-code` | `.claude/commands/specyrd-*.md` | same |
+| `generic` | `<REL_PATH>/specyrd-*.md` | same |
 
-| Target        | Path (under repo root)                                          | Meta                                           |
-| ------------- | --------------------------------------------------------------- | ---------------------------------------------- |
-| `cursor`      | `.cursor/commands/specyrd-*.md`                                 | `.specyrd/README.md`, `.specyrd/manifest.json` |
-| `claude-code` | `.claude/commands/specyrd-*.md`                                 | same                                           |
-| `generic`     | `<REL_PATH>/specyrd-*.md` (`REL_PATH` from `--ai-commands-dir`) | same                                           |
+**--role** installs a subset: **`pm`** — `validate`, `export`, `author`, `constitution`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`; **`dev`** — `validate`, `brief`, `claim`, `finish`, `do-next-task`. Omit `--role` for the full set.
 
-
-`**--role`** installs a subset: `**pm**` — `validate`, `export`, `author`, `constitution`, `sync`, `list-nodes`, `show-node`, `add-node`, `review-node`; `**dev**` — `validate`, `brief`, `claim`, `finish`, `do-next-task`. Omit `--role` for the full set above.
-
-Stubs only contain instructions to run `**specy-road**` from the project root (for example `specy-road validate`, `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`). Canonical behavior stays in the CLI.
+Stubs only tell the agent to run **`specy-road`** from the project root (for example `specy-road validate`, `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`). Behavior stays in the CLI.
 
 ### Examples
 
@@ -141,49 +141,47 @@ specyrd init --here --ai cursor --force
 
 ## How to work with it
 
-1. **Bootstrap** — `specy-road init project` (once per repository) lays down `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, and `AGENTS.md`.
-2. **Author** — Edit roadmap JSON chunks under `roadmap/` (listed in `manifest.json`). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
-3. **Validate** — `specy-road validate` (optional `--repo-root` if not running from the project root).
+1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, and `AGENTS.md`.
+2. **Author** — Edit JSON chunks under `roadmap/` (listed in `manifest.json`). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
+3. **Validate** — `specy-road validate` (use `--repo-root` if not in the project root).
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.
-5. **Focus a task** — `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md` and implement against `shared/` contracts cited for that node.
-6. **Parallel or roadmap-driven branches** — Follow [docs/git-workflow.md](docs/git-workflow.md): branch `feature/rm-<codename>`, **first commit** registers in `roadmap/registry.yaml`, then implement.
+5. **Focus a task** — `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`, then implement against `shared/` contracts cited for that node.
+6. **Branches** — Follow [docs/git-workflow.md](docs/git-workflow.md): `feature/rm-<codename>`, register in `roadmap/registry.yaml` on the **first** commit, then implement.
 7. **Optional IDE commands** — [specyrd](#specyrd-optional-ide-command-stubs) installs thin stubs that invoke the same CLI.
 
 ## Where to read next
 
-
-| Document                                                                     | Purpose                                                                                          |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md)                 | What the kit promises and what it leaves to you                                                  |
-| [docs/architecture.md](docs/architecture.md)                                 | End-to-end flow (manifest, chunks, validation, briefs)                                           |
-| [docs/roadmap-authoring.md](docs/roadmap-authoring.md)                       | JSON chunks, manifest ordering, generated `roadmap.md`                                             |
-| [docs/git-workflow.md](docs/git-workflow.md)                                 | Branches, registry, merge-back                                                                   |
-| [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP, etc.) for product repos—not required by the kit |
-| [`suggested_prompts/`](suggested_prompts/)                                   | Optional AI copy-paste prompts for adopting specy-road in existing projects (see [Bootstrap prompts](#bootstrap-prompts-optional)) |
-| [AGENTS.md](AGENTS.md)                                                       | Short entry for coding agents                                                                    |
-
+| Document | Purpose |
+| -------- | ------- |
+| [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md) | What the kit promises and what it leaves to you |
+| [docs/architecture.md](docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
+| [docs/roadmap-authoring.md](docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
+| [docs/git-workflow.md](docs/git-workflow.md) | Branches, registry, merge-back |
+| [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP) for app repos |
+| [suggested_prompts/](suggested_prompts/) | Adoption prompts for existing projects ([Bootstrap prompts](#bootstrap-prompts-optional)) |
+| [AGENTS.md](AGENTS.md) | Short entry for coding agents |
 
 ## Repository layout (overview)
 
 **In your application repo** (after `specy-road init project`), expect `constitution/`, `constraints/`, `roadmap/`, `shared/`, `planning/`, `schemas/`, `work/`, `AGENTS.md`, and a generated `roadmap.md`.
 
-**This repository** (the `specy-road` toolkit) additionally contains:
+**This repository** (the toolkit) also contains:
 
 | Path | Role |
 | ---- | ---- |
-| [`specy_road/`](specy_road/) | Python package: `specy-road` / `specyrd` CLIs, `bundled_scripts/` (validators, brief, export), PM GUI assets |
-| [`specy_road/templates/project/`](specy_road/templates/project/) | Files copied by `specy-road init project` |
-| [`suggested_prompts/`](suggested_prompts/) | Optional AI adoption prompts (not installed by `pip`; see [Bootstrap prompts](#bootstrap-prompts-optional)) |
-| [`tests/fixtures/specy_road_dogfood/`](tests/fixtures/specy_road_dogfood/) | Maintainer sample roadmap + contracts for CI |
-| [`templates/`](templates/) | Extra stubs (roadmap checklists, etc.) |
-| [`docs/`](docs/) | Architecture, workflows, philosophy |
+| [specy_road/](specy_road/) | Python package: CLIs, `bundled_scripts/`, PM GUI assets |
+| [specy_road/templates/project/](specy_road/templates/project/) | Scaffold copied by `specy-road init project` |
+| [suggested_prompts/](suggested_prompts/) | Adoption prompts (not installed by `pip`) |
+| [tests/fixtures/specy_road_dogfood/](tests/fixtures/specy_road_dogfood/) | Maintainer sample roadmap for CI |
+| [templates/](templates/) | Extra stubs (roadmap checklists, etc.) |
+| [docs/](docs/) | Architecture, workflows, philosophy |
 
-Consumer `vision.md` and `roadmap.md` live at the **project** root; they are not duplicated here.
+Consumer `vision.md` and `roadmap.md` live at the **project** root; they are not duplicated in this toolkit repo.
 
 ## CLI migration (tooling releases)
 
-- **PM GUI setup:** use `specy-road init gui --install-gui` (and related flags) instead of `specy-road init --install-gui`.
-- **Project scaffold:** use `specy-road init project` to create `roadmap/`, `constitution/`, etc. in a consumer repository.
+- **PM GUI:** use `specy-road init gui --install-gui` (and related flags), not `specy-road init --install-gui`.
+- **Project scaffold:** use `specy-road init project` for `roadmap/`, `constitution/`, etc. in a consumer repository.
 
 ## Related material
 

@@ -577,6 +577,8 @@ type Props = {
   displayStatusById?: Record<string, string>;
   /** Status column: MR lifecycle labels on top of {@link displayStatusById}. */
   outlineStatusById?: Record<string, string>;
+  /** When true, row drag-and-drop reorder is disabled (e.g. outline filtered). */
+  reorderLocked?: boolean;
 };
 
 export function OutlineTable({
@@ -603,6 +605,7 @@ export function OutlineTable({
   onGapInsert,
   displayStatusById,
   outlineStatusById,
+  reorderLocked = false,
 }: Props) {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
@@ -918,7 +921,7 @@ export function OutlineTable({
     }
   };
 
-  const dragDisabled = Boolean(depEditId);
+  const dragDisabled = Boolean(depEditId) || reorderLocked;
 
   const depCellAnchorRef = useRef<HTMLTableCellElement | null>(null);
   const depToolbarRef = useRef<HTMLDivElement | null>(null);
