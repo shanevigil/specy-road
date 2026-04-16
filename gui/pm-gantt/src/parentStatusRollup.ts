@@ -4,6 +4,9 @@ import { pmDisplayStatus } from "./pmDisplayStatus";
 /** Canonical Complete label (matches roadmap schema enum casing). */
 export const DISPLAY_STATUS_COMPLETE = "Complete";
 
+/** Canonical In Progress label (matches roadmap schema enum casing). */
+export const DISPLAY_STATUS_IN_PROGRESS = "In Progress";
+
 /**
  * When unset or truthy, phase rows may show Complete when every descendant is effectively
  * complete (display-only). Set `VITE_SPECY_ROAD_PM_PHASE_ROLLUP=0` at build time to disable.
@@ -124,7 +127,7 @@ export function computeEffectiveDisplayById(
       continue;
     }
     if (anyChildInProgress) {
-      eff[nid] = "In Progress";
+      eff[nid] = DISPLAY_STATUS_IN_PROGRESS;
       continue;
     }
     eff[nid] = base;
@@ -196,14 +199,18 @@ export function buildDisplayStatusWithPhaseRollup(
     const n = byId[id];
     const hasChildren = (childrenByParent.get(id)?.length || 0) > 0;
     const baseLower = normLower(baseById[id]);
+    // Copy subtree-derived In Progress into `out` when the Status column base is not already
+    // terminal or MR-promoted (Complete / Blocked / In Progress). Matches leaf-first PM contract:
+    // `computeEffectiveDisplayById` keeps persisted Complete as effective Complete, so `eff` is
+    // not In Progress for those parents and this branch does not override them.
     if (
       hasChildren &&
-      eff[id] === "In Progress" &&
+      eff[id] === DISPLAY_STATUS_IN_PROGRESS &&
       baseLower !== "complete" &&
       baseLower !== "blocked" &&
       baseLower !== "in progress"
     ) {
-      out[id] = "In Progress";
+      out[id] = DISPLAY_STATUS_IN_PROGRESS;
     }
     if (n?.type === "phase" && eff[id] === DISPLAY_STATUS_COMPLETE) {
       out[id] = DISPLAY_STATUS_COMPLETE;

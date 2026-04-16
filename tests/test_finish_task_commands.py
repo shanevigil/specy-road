@@ -57,6 +57,7 @@ def test_resolve_context_rejects_missing_branch_field(
 
 def test_resolve_context_rejects_non_leaf_registry_claim(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     reg = {
         "version": 1,
@@ -77,6 +78,10 @@ def test_resolve_context_rejects_non_leaf_registry_claim(
     monkeypatch.setattr(ft, "load_roadmap", lambda _p: {"nodes": nodes})
     with pytest.raises(SystemExit):
         ft._resolve_context("feature/rm-example")
+    err = capsys.readouterr().err.lower()
+    assert "leaf" in err
+    assert "registry" in err
+    assert "not a leaf claim" in err
 
 
 def test_extract_walkthrough_parses_markdown_section() -> None:

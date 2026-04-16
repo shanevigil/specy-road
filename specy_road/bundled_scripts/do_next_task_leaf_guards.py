@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import Iterable
 
-from do_next_available import _leaf_diagnostics
+from do_next_available import _leaf_diagnostics, _leaf_node_ids
 
 
 def _fmt_ids(ids: Iterable[str], *, cap: int = 6) -> str:
@@ -15,15 +15,6 @@ def _fmt_ids(ids: Iterable[str], *, cap: int = 6) -> str:
     if len(vals) <= cap:
         return ", ".join(vals)
     return ", ".join(vals[:cap]) + f", ... (+{len(vals) - cap} more)"
-
-
-def _leaf_node_ids(nodes: list[dict]) -> set[str]:
-    parent_ids = {
-        n.get("parent_id")
-        for n in nodes
-        if isinstance(n.get("parent_id"), str) and n.get("parent_id")
-    }
-    return {n["id"] for n in nodes if n.get("id") not in parent_ids}
 
 
 def assert_leaf_target(node: dict, nodes: list[dict]) -> None:

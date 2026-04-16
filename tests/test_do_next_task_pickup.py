@@ -182,6 +182,82 @@ def test_pickup_registers_leaf_claim_only(
     assert calls[2] == ["checkout", "-b", "feature/rm-pickup-git"]
 
 
+def test_pickup_rejects_non_leaf_when_available_returns_parent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Non-leaf from _available triggers assert_leaf_target before git."""
+
+    def fake_git(*_args: str) -> None:  # pragma: no cover
+        pytest.fail(
+            "git should not run when pickup rejects non-leaf target",
+        )
+
+    (tmp_path / "roadmap").mkdir(parents=True)
+    (tmp_path / "roadmap" / "registry.yaml").write_text(
+        "version: 1\nentries: []\n",
+        encoding="utf-8",
+    )
+
+    parent = {
+        "id": "M9",
+        "node_key": "11111111-aaaa-4aaa-8aaa-111111111111",
+        "type": "phase",
+        "title": "Parent",
+        "codename": "pickup-parent",
+        "execution_milestone": "Agentic-led",
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": ["src/"],
+    }
+    leaf = _pickup_test_node()
+    leaf["parent_id"] = "M9"
+
+    def misconfigured_available(_nodes, _reg, _enrich=None):
+        return [parent]
+
+    monkeypatch.setattr(
+        dnt,
+        "load_roadmap",
+        lambda _p: {"nodes": [parent, leaf]},
+    )
+    monkeypatch.setattr(dnt, "_available", misconfigured_available)
+    monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
+    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
+    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
+    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
+    monkeypatch.setattr(
+        dnt,
+        "merge_request_requires_manual_approval",
+        lambda _r: False,
+    )
+    monkeypatch.setattr(
+        dnt,
+        "resolve_integration_defaults",
+        lambda _root, explicit_base=None, explicit_remote=None: (
+            "main",
+            "origin",
+            [],
+        ),
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        dnt.main(
+            [
+                "--repo-root",
+                str(tmp_path),
+            ],
+        )
+
+    assert excinfo.value.code == 1
+    err = capsys.readouterr().err.lower()
+    assert "not a leaf" in err
+    assert "only claim leaves" in err
+
+
 def test_registration_commit_message_ci_skip_toggle() -> None:
     assert "[skip ci]" in registration_commit_message("foo", include_ci_skip=True)
     assert "[skip ci]" not in registration_commit_message("foo", include_ci_skip=False)
