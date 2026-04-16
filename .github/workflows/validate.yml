@@ -10,10 +10,10 @@ jobs:
   roadmap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Assert packaged Gantt UI static assets exist
         run: test -f specy_road/pm_gantt_static/index.html
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install Python dependencies (frozen lock)
@@ -32,14 +32,14 @@ jobs:
           set -e
       - name: Upload pip-audit JSON
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pip-audit-results
           path: pip-audit-results.json
           if-no-files-found: ignore
       - name: Enforce pip-audit exit code
         run: test "$(cat pip-audit.exitcode)" -eq 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: npm
@@ -60,7 +60,7 @@ jobs:
           set -e
       - name: Upload npm audit JSON
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-audit-results
           path: npm-audit-results.json
@@ -110,7 +110,7 @@ jobs:
             --output-file osv-scanner-results.json
       - name: Upload OSV-Scanner JSON
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: osv-scanner-results
           path: osv-scanner-results.json
