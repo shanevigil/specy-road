@@ -14,6 +14,7 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 # Terminal
 # Auto-picks first actionable leaf (outline order after Blocked / MR-rejected priority)
 specy-road do-next-available-task   # sync, brief, register leaf claim on base, push base, branch, prompt
+specy-road abort-task-pickup        # undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/
 
 specy-road mark-implementation-reviewed  # human gate: after work/implementation-summary-<NODE_ID>.md
 specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
@@ -24,12 +25,14 @@ specy-road export                   # regenerate roadmap.md
 #Optional:
 specy-road do-next-available-task --interactive   # choose task by number (same git steps)
 specy-road do-next-available-task --no-ci-skip-in-message   # registration commit without CI-skip tokens
+specy-road abort-task-pickup --force   # abandon pickup when the feature branch has local-only commits (destructive)
 
 ```
 
 ```text
 # IDE slash commands (after specyrd init --role dev)
 /specyrd-do-next-task   — automated start
+/specyrd-abort-task-pickup — undo automated start (deregister, return to integration branch)
 /specyrd-claim          — manual start: register on integration, then branch (see below)
 /specyrd-brief          — manual start: generate brief
 /specyrd-mark-reviewed  — mark implementation reviewed (when gate enabled)
@@ -89,6 +92,27 @@ specy-road do-next-available-task
 ```
 
 Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
+
+### Abort pickup (`abort-task-pickup`)
+
+If you picked up a task with **`do-next-available-task`** and decide **not** to implement it, run **`specy-road abort-task-pickup`** from the repo root while checked out on **`feature/rm-<codename>`** with a **clean** working tree.
+
+The command **`git fetch`**es, verifies your branch matches **`roadmap/registry.yaml`**, refuses if your feature branch has **commits not on the remote integration branch** (unless **`--force`**), then **`git checkout`** the integration branch, **`git merge --ff-only`** to **`remote/<integration-branch>`**, removes your registry row, **commits** that change on the integration branch, and **`git push`** — so the team sees the claim released the same way pickup published it. It deletes the local **`feature/rm-<codename>`** branch and removes **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/.on-complete-<NODE_ID>.yaml`**. With **`--force`**, it also deletes **`work/implementation-summary-<NODE_ID>.md`** if present.
+
+If the registry row is already gone after syncing (someone else cleaned up), the command exits with an error; fix **`roadmap/registry.yaml`** or remove the local branch and work files manually.
+
+**Terminal:**
+
+```bash
+specy-road abort-task-pickup
+# optional: specy-road abort-task-pickup --base dev --remote origin --force
+```
+
+**IDE slash command** (after `specyrd init --ai <ide> --role dev`):
+
+```text
+/specyrd-abort-task-pickup
+```
 
 ### Start: manual path
 

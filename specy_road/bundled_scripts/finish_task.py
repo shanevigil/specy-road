@@ -20,6 +20,7 @@ from specy_road.git_workflow_config import (
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_modes import apply_on_complete_mode
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
@@ -72,51 +73,7 @@ def _save_registry(doc: dict) -> None:
 
 def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
-    codename = branch[len("feature/rm-"):]
-    reg = _load_registry()
-    entries = reg.get("entries") or []
-    entry = next((e for e in entries if e.get("codename") == codename), None)
-    if not entry:
-        print(f"error: no registry entry for codename '{codename}'.", file=sys.stderr)
-        print("  Is roadmap/registry.yaml up to date?", file=sys.stderr)
-        raise SystemExit(1)
-    node_id = entry["node_id"]
-    nodes = load_roadmap(ROOT)["nodes"]
-    if not any(n["id"] == node_id for n in nodes):
-        print(f"error: node '{node_id}' not found in roadmap.", file=sys.stderr)
-        raise SystemExit(1)
-    if any(
-        isinstance(n.get("parent_id"), str) and n.get("parent_id") == node_id
-        for n in nodes
-    ):
-        print(
-            f"error: registry entry for '{node_id}' is not a leaf claim.",
-            file=sys.stderr,
-        )
-        print(
-            "  finish-this-task only supports leaf-scoped claims "
-            "(feature/rm-<leaf-codename>).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    reg_branch = entry.get("branch")
-    if not reg_branch:
-        print(
-            "error: registry entry is missing 'branch' — fix roadmap/registry.yaml.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    if reg_branch != branch:
-        print(
-            f"error: registry says branch {reg_branch!r} but HEAD is {branch!r}.",
-            file=sys.stderr,
-        )
-        print(
-            "  Check out the feature branch that matches the registry, or fix the entry.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    return codename, reg, entry, nodes
+    return resolve_feature_rm_registry_context(ROOT, branch)
 
 
 def _update_chunk_status(node_id: str) -> list[str]:

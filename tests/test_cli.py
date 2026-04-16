@@ -100,6 +100,26 @@ def test_specy_road_do_next_available_task_help() -> None:
     assert "--no-push-registry" not in r.stdout
 
 
+def test_specy_road_abort_task_pickup_help() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "abort-task-pickup",
+            "--help",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "--base" in r.stdout
+    assert "--remote" in r.stdout
+    assert "--force" in r.stdout
+    assert "do-next-available-task" in r.stdout or "pickup" in r.stdout
+
+
 def test_specy_road_init_requires_subcommand() -> None:
     r = subprocess.run(
         [sys.executable, "-m", "specy_road.cli", "init"],

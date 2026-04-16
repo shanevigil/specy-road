@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import pytest
+import yaml
 
 import finish_task as ft
 import mark_implementation_reviewed as mir
+from specy_road import feature_rm_registry as frm
+
+
+def _write_registry(tmp_path, reg: dict) -> None:
+    p = tmp_path / "roadmap" / "registry.yaml"
+    p.parent.mkdir(parents=True)
+    p.write_text(yaml.dump(reg), encoding="utf-8")
 
 
 def test_resolve_context_rejects_registry_branch_mismatch(
+    tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reg = {
@@ -22,9 +31,10 @@ def test_resolve_context_rejects_registry_branch_mismatch(
             }
         ],
     }
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
-        ft,
+        frm,
         "load_roadmap",
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
@@ -33,6 +43,7 @@ def test_resolve_context_rejects_registry_branch_mismatch(
 
 
 def test_resolve_context_rejects_missing_branch_field(
+    tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reg = {
@@ -45,9 +56,10 @@ def test_resolve_context_rejects_missing_branch_field(
             }
         ],
     }
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
-        ft,
+        frm,
         "load_roadmap",
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
@@ -56,6 +68,7 @@ def test_resolve_context_rejects_missing_branch_field(
 
 
 def test_resolve_context_rejects_non_leaf_registry_claim(
+    tmp_path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -74,8 +87,9 @@ def test_resolve_context_rejects_non_leaf_registry_claim(
         {"id": "M1", "title": "Parent"},
         {"id": "M1.1", "title": "Child", "parent_id": "M1"},
     ]
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
-    monkeypatch.setattr(ft, "load_roadmap", lambda _p: {"nodes": nodes})
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
+    monkeypatch.setattr(frm, "load_roadmap", lambda _p: {"nodes": nodes})
     with pytest.raises(SystemExit):
         ft._resolve_context("feature/rm-example")
     err = capsys.readouterr().err.lower()
@@ -106,6 +120,7 @@ def test_extract_walkthrough_none_when_missing() -> None:
 
 
 def test_finish_blocks_when_implementation_review_pending(
+    tmp_path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     reg = {
@@ -120,9 +135,10 @@ def test_finish_blocks_when_implementation_review_pending(
             }
         ],
     }
-    monkeypatch.setattr(ft, "_load_registry", lambda: reg)
+    _write_registry(tmp_path, reg)
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(
-        ft,
+        frm,
         "load_roadmap",
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
@@ -132,7 +148,7 @@ def test_finish_blocks_when_implementation_review_pending(
     monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
     monkeypatch.setattr(ft, "_git", lambda *_a, **_k: None)
     with pytest.raises(SystemExit) as ei:
-        ft.main([])
+        ft.main(["--repo-root", str(tmp_path)])
     assert ei.value.code == 1
 
 

@@ -62,6 +62,7 @@ Use the real repo’s node IDs when you know them.
   - Smallest change that satisfies the task; no drive-by refactors.
   - Roadmap-linked work: follow `docs/git-workflow.md` and `roadmap/registry.yaml` (register on the integration branch, then `feature/rm-<codename>`; remove registry entry before merge).
   - **`do-next-available-task`:** Run `specy-road do-next-available-task` (it always syncs the integration branch and pushes the registration commit). It always picks an actionable **leaf**; parent/umbrella nodes are context-only. Auto-pick order is **outline (tree) order** after Blocked/MR-rejected priority — not raw merged JSON chunk order; see `docs/roadmap-authoring.md`. If `git push` fails, fix the error and retry so the claim reaches the remote integration branch.
+  - **`abort-task-pickup`:** To release a claim after pickup without finishing, run `specy-road abort-task-pickup` on `feature/rm-<codename>` (clean tree). It deregisters on the integration branch with a forward commit and **push** — no `--no-push`. See `docs/dev-workflow.md`.
 
 ### specy-road consumer invariants (merge into `AGENTS.md` and/or optional Cursor rule)
 
@@ -69,7 +70,7 @@ Copy or adapt the following into **`AGENTS.md`** (and optionally into `.cursor/r
 
 - **Consumer boundary:** Do not patch **`specy-road/`** in this repo to fix toolkit bugs. Instead produce an **upstream handoff**: repro steps, installed `specy-road` version (`pip show specy-road` or equivalent), relevant logs, suspected upstream area, and proposed upstream change or issue text.
 - **Integration fixes** belong in **this** repository only: wrapper scripts, environment variables, and corrections under **`roadmap/`**, **`planning/`**, and **`roadmap/registry.yaml`** per `docs/git-workflow.md`.
-- **Automated task pickup:** Use `specy-road do-next-available-task` (remote-visible registration; no flags to skip sync or push; actionable-leaf ordering follows outline/tree order per `docs/roadmap-authoring.md`); see `docs/dev-workflow.md` (Agents and registration).
+- **Automated task pickup:** Use `specy-road do-next-available-task` (remote-visible registration; no flags to skip sync or push; actionable-leaf ordering follows outline/tree order per `docs/roadmap-authoring.md`); see `docs/dev-workflow.md` (Agents and registration). To undo pickup, use `specy-road abort-task-pickup`.
 
 Do **not** invent a parallel roadmap format (e.g. YAML merge file) in agent rules—the graph is JSON chunks + manifest.
 
