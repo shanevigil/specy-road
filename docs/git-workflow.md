@@ -50,7 +50,7 @@ remote: origin
 
 1. Confirm **gates** and dependencies for your milestone (see root/index or generated tables).
 2. Read `roadmap/registry.yaml` in your application repository — no overlapping **touch zones** with active entries (coordinate with PM / integration lead if unsure). Example layout: [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml). Maintainers working on this toolkit use the dogfood copy: [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml).
-3. **Register on the integration branch, then branch:** add your row to **`roadmap/registry.yaml`** and commit **on the integration branch** (e.g. `dev`) — registration only, no implementation in that commit. Message: `chore(rm-<codename>): register as in-progress`. Push if others need visibility. Then: `git checkout -b feature/rm-<codename>` and implement on that branch. (Automated path: [`do-next-available-task`](dev-workflow.md) does brief → register on integration → create feature branch → prompt.)
+3. **Register on the integration branch, then branch:** add your row to **`roadmap/registry.yaml`** and commit **on the integration branch** (e.g. `dev`) — registration only, no implementation in that commit. Message: `chore(rm-<codename>): register as in-progress`, optionally with CI-skip suffixes matching automation: `[skip ci] [ci skip] ***NO_CI***` (see [`do-next-available-task`](dev-workflow.md)). Push if others need visibility (the automated CLI pushes by default after registering). Then: `git checkout -b feature/rm-<codename>` and implement on that branch. (Automated path: [`do-next-available-task`](dev-workflow.md) does brief → register on integration → push integration branch → create feature branch → prompt.)
 
 Teams using `docs/roadmap-status.md` instead of YAML should follow the same **register on integration before feature work** discipline.
 
@@ -60,6 +60,8 @@ The **registration commit** contains **only** the registry update (or equivalent
 
 1. Add a row with: codename, `node_id`, branch `feature/rm-<codename>`, non-empty touch zones, optional `started` date.
 2. Commit on the **integration branch** first; then create **`feature/rm-<codename>`** for implementation commits.
+
+`specy-road do-next-available-task` appends common CI-skip tokens to the registration commit message by default (best-effort; your pipeline may still require `paths` / `paths-ignore` rules). Manual commits should use the same pattern if you want consistent CI behavior.
 
 Only **after** registration (and branching) should you add implementation commits on the feature branch.
 

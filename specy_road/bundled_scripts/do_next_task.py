@@ -12,7 +12,9 @@ from pathlib import Path
 import yaml
 from do_next_available import _available, _load_branch_enrichment
 from do_next_prompt import write_agent_prompt
+from do_next_task_interactive import pick_interactive as _pick_interactive
 from generate_brief import index as make_index, render_brief
+from registration_pickup_commit import registration_commit_message
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
@@ -139,7 +141,7 @@ def _validate_touch_zones(node: dict) -> None:
         raise SystemExit(1)
 
 
-def _register_and_commit(node: dict, branch: str, reg: dict) -> None:
+def _register_and_commit(node: dict, branch: str, reg: dict, commit_message: str) -> None:
     codename = node["codename"]
     _validate_touch_zones(node)
     reg.setdefault("entries", []).append({
@@ -152,7 +154,7 @@ def _register_and_commit(node: dict, branch: str, reg: dict) -> None:
     with REGISTRY_PATH.open("w", encoding="utf-8") as f:
         yaml.dump(reg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
     _git("add", str(REGISTRY_PATH))
-    _git("commit", "-m", f"chore(rm-{codename}): register as in-progress")
+    _git("commit", "-m", commit_message)
 
 
 def _push_integration_branch(remote: str, base: str) -> None:
@@ -175,39 +177,6 @@ def _write_brief(node: dict, nodes: list[dict]) -> Path:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-
-
-def _pick_interactive(available: list[dict], all_nodes: list[dict]) -> dict:
-    key_to_id = {
-        x["node_key"]: x["id"]
-        for x in all_nodes
-        if isinstance(x.get("node_key"), str) and x.get("node_key")
-    }
-    print(f"Available tasks ({len(available)}):\n")
-    for i, n in enumerate(available, 1):
-        gate = n.get("execution_milestone") or n.get("execution_subtask") or "—"
-        dep_labels = [
-            key_to_id.get(k, k) for k in (n.get("dependencies") or [])
-        ]
-        deps = ", ".join(dep_labels) or "none"
-        print(f"  {i:2}. [{n['id']}] {n.get('title', '')}")
-        print(f"       gate: {gate}  deps: {deps}  codename: {n['codename']}")
-    print()
-    try:
-        raw = input("Select task number (q to quit): ").strip()
-    except (KeyboardInterrupt, EOFError):
-        print()
-        raise SystemExit(0)
-    if raw.lower() in ("q", "quit", ""):
-        raise SystemExit(0)
-    try:
-        idx = int(raw) - 1
-        if not 0 <= idx < len(available):
-            raise ValueError
-    except ValueError:
-        print(f"Invalid selection: {raw!r}", file=sys.stderr)
-        raise SystemExit(1)
-    return available[idx]
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -246,9 +215,25 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Choose a task from a numbered list instead of auto-picking the first.",
     )
     p.add_argument(
+        "--no-push-registry",
+        action="store_true",
+        help=(
+            "Skip git push after registering on the integration branch "
+            "(offline/CI; default is to push so others see the claim)."
+        ),
+    )
+    p.add_argument(
         "--push-registry",
         action="store_true",
-        help="After registering on the integration branch, run git push <remote> <base>.",
+        help=argparse.SUPPRESS,
+    )
+    p.add_argument(
+        "--no-ci-skip-in-message",
+        action="store_true",
+        help=(
+            "Omit CI skip tokens from the registration commit message "
+            "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
+        ),
     )
     p.add_argument(
         "--repo-root",
@@ -288,9 +273,57 @@ def _print_pickup_footer(
     print("-" * 60)
 
 
+def _finalize_pickup(
+    node: dict,
+    nodes: list[dict],
+    branch: str,
+    *,
+    base: str,
+    remote: str,
+    push_registry: bool,
+    include_ci_skip: bool,
+) -> None:
+    node_id = node["id"]
+    print(f"\n[{node_id}] {node.get('title', '')}")
+    print(f"implementation branch: {branch}\n")
+
+    brief_path = _write_brief(node, nodes)
+    reg = _load_registry()
+    commit_msg = registration_commit_message(
+        node["codename"],
+        include_ci_skip=include_ci_skip,
+    )
+    _register_and_commit(node, branch, reg, commit_msg)
+    print("registered in roadmap/registry.yaml on integration branch (committed)")
+
+    if push_registry:
+        print(f"-> git push {remote} {base}")
+        _push_integration_branch(remote, base)
+
+    _checkout_new_branch(branch)
+    prompt_path = write_agent_prompt(
+        node,
+        nodes,
+        brief_path,
+        repo_root=ROOT,
+        work_dir=WORK_DIR,
+    )
+    mr_manual = merge_request_requires_manual_approval(ROOT)
+    _print_pickup_footer(
+        brief_path=brief_path,
+        prompt_path=prompt_path,
+        push_registry=push_registry,
+        remote=remote,
+        base=base,
+        mr_manual=mr_manual,
+    )
+
+
 def main(argv: list[str] | None = None) -> None:
     global ROOT, REGISTRY_PATH, WORK_DIR
     args = _parse_args(argv if argv is not None else sys.argv[1:])
+    push_registry = not args.no_push_registry
+    include_ci_skip = not args.no_ci_skip_in_message
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
     REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
     WORK_DIR = ROOT / "work"
@@ -333,37 +366,15 @@ def main(argv: list[str] | None = None) -> None:
     _assert_current_branch_equals(base)
 
     node = _pick_interactive(available, nodes) if args.interactive else available[0]
-    node_id = node["id"]
     branch = f"feature/rm-{node['codename']}"
-
-    print(f"\n[{node_id}] {node.get('title', '')}")
-    print(f"implementation branch: {branch}\n")
-
-    brief_path = _write_brief(node, nodes)
-    reg = _load_registry()
-    _register_and_commit(node, branch, reg)
-    print("registered in roadmap/registry.yaml on integration branch (committed)")
-
-    if args.push_registry:
-        print(f"-> git push {remote} {base}")
-        _push_integration_branch(remote, base)
-
-    _checkout_new_branch(branch)
-    prompt_path = write_agent_prompt(
+    _finalize_pickup(
         node,
         nodes,
-        brief_path,
-        repo_root=ROOT,
-        work_dir=WORK_DIR,
-    )
-    mr_manual = merge_request_requires_manual_approval(ROOT)
-    _print_pickup_footer(
-        brief_path=brief_path,
-        prompt_path=prompt_path,
-        push_registry=args.push_registry,
-        remote=remote,
+        branch,
         base=base,
-        mr_manual=mr_manual,
+        remote=remote,
+        push_registry=push_registry,
+        include_ci_skip=include_ci_skip,
     )
 
 

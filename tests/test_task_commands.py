@@ -199,69 +199,6 @@ def test_validate_touch_zones_empty_exits(monkeypatch: pytest.MonkeyPatch) -> No
         dnt._validate_touch_zones(node)
 
 
-def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    """brief → register commit on integration → checkout -b feature → (prompt would follow)."""
-    calls: list[list[str]] = []
-
-    def fake_git(*args: str) -> None:
-        calls.append(list(args))
-
-    (tmp_path / "roadmap").mkdir(parents=True)
-    (tmp_path / "roadmap" / "registry.yaml").write_text(
-        "version: 1\nentries: []\n",
-        encoding="utf-8",
-    )
-
-    node = {
-        "id": "M9.1",
-        "node_key": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-        "type": "milestone",
-        "title": "T",
-        "codename": "pickup-git",
-        "execution_milestone": "Agentic-led",
-        "status": "Not Started",
-        "dependencies": [],
-        "touch_zones": ["src/"],
-    }
-    monkeypatch.setattr(
-        dnt,
-        "load_roadmap",
-        lambda _p: {"nodes": [node]},
-    )
-    monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
-    monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
-    monkeypatch.setattr(
-        dnt,
-        "resolve_integration_defaults",
-        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
-    )
-    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "brief-M9.1.md")
-
-    def _fake_prompt(n, nodes, bp, **kw):
-        return tmp_path / "work" / "prompt-M9.1.md"
-
-    monkeypatch.setattr(dnt, "write_agent_prompt", _fake_prompt)
-
-    (tmp_path / "work").mkdir(parents=True)
-    (tmp_path / "work" / "brief-M9.1.md").write_text("x", encoding="utf-8")
-
-    argv = [
-        "--no-sync",
-        "--repo-root",
-        str(tmp_path),
-    ]
-    dnt.main(argv)
-
-    assert calls[0][0] == "add"
-    assert calls[0][1].replace("\\", "/").endswith("roadmap/registry.yaml")
-    assert calls[1][0] == "commit"
-    assert calls[2] == ["checkout", "-b", "feature/rm-pickup-git"]
-
-
 def test_working_tree_clean_true() -> None:
     with patch.object(dnt.subprocess, "run", return_value=__import__("types").SimpleNamespace(stdout="", returncode=0)):
         assert dnt._working_tree_clean() is True

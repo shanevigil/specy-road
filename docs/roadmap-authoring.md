@@ -286,7 +286,7 @@ Multiple developers and multiple agents per developer are assumed.
 1. Confirm **gate** prerequisites (`dependencies`, `execution_milestone`) from the roadmap.
 2. Check [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) — avoid overlapping touch zones with in-progress work.
 3. Branch from the integration branch: `feature/rm-<codename>` matching the milestone codename.
-4. **First commit** registers the work in `registry.yaml` (`chore(rm-<codename>): register as in-progress`) — no implementation before that commit.
+4. **First commit** registers the work in `registry.yaml` — same message as automation: `chore(rm-<codename>): register as in-progress` plus optional CI-skip suffix `[skip ci] [ci skip] ***NO_CI***` when using `do-next-available-task` or matching manually — no implementation before that commit.
 5. Remove the registration entry **before** merging back.
 
 ### Parallelism rules

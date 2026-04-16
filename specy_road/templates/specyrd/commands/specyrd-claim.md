@@ -32,7 +32,7 @@ entries:
 ```bash
 specy-road validate
 git add roadmap/registry.yaml
-git commit -m "chore(rm-CODENAME): register as in-progress"
+git commit -m "chore(rm-CODENAME): register as in-progress [skip ci] [ci skip] ***NO_CI***"
 git push origin <integration-branch>
 ```
 

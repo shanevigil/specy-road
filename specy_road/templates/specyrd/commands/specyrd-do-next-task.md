@@ -16,7 +16,7 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road do-next-available-task
 ```
 
-By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch**, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). Flags: `--base`, `--remote`, `--no-sync`, `--push-registry` (see `specy-road do-next-available-task --help`).
+By default this **syncs** the integration branch, **auto-picks** the first available task, writes a **brief**, **commits `roadmap/registry.yaml` on the integration branch** (with optional CI-skip tokens in the commit message by default), **pushes** the integration branch, then creates **`feature/rm-<codename>`** and writes **`work/prompt-<NODE_ID>.md`**. Use **`--interactive`** to choose a task by number (same steps afterward). Flags: `--base`, `--remote`, `--no-sync`, `--no-push-registry`, `--no-ci-skip-in-message` (see `specy-road do-next-available-task --help`).
 
 This will:
 
@@ -24,9 +24,10 @@ This will:
 2. Select an available task — `Agentic-led` or `agentic`, dependencies met, not already claimed (**Blocked** and **MR-rejected** rows first when enrichment allows).
 3. Write `work/brief-<NODE_ID>.md` on the integration branch.
 4. Commit the registry entry on the **integration branch** (registration only).
-5. Create the feature branch and write `work/prompt-<NODE_ID>.md` (governance, planning context, checklist).
+5. Push the integration branch (unless **`--no-push-registry`**).
+6. Create the feature branch and write `work/prompt-<NODE_ID>.md` (governance, planning context, checklist).
 
-**Push** the integration branch after step 4 if others need visibility (`--push-registry` or `git push <remote> <integration-branch>`).
+If you skipped push, run `git push <remote> <integration-branch>` so others see the claim.
 
 Open `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally, then
 use `/specyrd-finish` (or `specy-road finish-this-task`) when done.
