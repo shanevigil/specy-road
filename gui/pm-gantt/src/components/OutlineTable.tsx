@@ -43,7 +43,7 @@ import {
   devColumnLabel,
   rowMatchesRegisteredBranch,
 } from "../rowMatchesRegisteredBranch";
-import { contiguousSubtreeIds } from "../outlineSubtree";
+import { visibleDragSubtreeIds } from "../outlineSubtree";
 
 const TITLE_PLAN_READONLY_HINT =
   "Title and planning are read-only while this task is in active development (in progress, open or merged merge request, or this checkout matches the registered branch).";
@@ -1007,9 +1007,9 @@ export function OutlineTable({
   const activeSubtreeIds = useMemo(
     () =>
       activeDragId
-        ? contiguousSubtreeIds(orderedIds, rowDepths, activeDragId)
+        ? visibleDragSubtreeIds(orderedIds, nodesById, activeDragId)
         : [],
-    [activeDragId, orderedIds, rowDepths],
+    [activeDragId, orderedIds, nodesById],
   );
 
   const subtreeFirstId = activeSubtreeIds[0] ?? null;
