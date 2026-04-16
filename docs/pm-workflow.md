@@ -129,13 +129,13 @@ The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:
 
 ### Monitoring in-progress work while on the integration branch
 
-The PM Gantt loads **`roadmap/registry.yaml` from the working tree** used by the server (the repo root from your cwd, or `SPECY_ROAD_REPO_ROOT` / `--repo-root`). Developers typically add their first registry row on **`feature/rm-<codename>`** only; until that commit merges, your **integration branch** checkout often still has **`entries: []`** even while work is progressing on the feature branch.
+The PM Gantt loads **`roadmap/registry.yaml` from the working tree** at HEAD, then (when **remote registry overlay** is active) **merges** rows from remote-tracking **`feature/rm-*`** refs so you can stay on **`dev`** / **`main`** and still see in-flight claims. Developers add their first registry row on **`feature/rm-<codename>`** only; until that work merges, the **file on disk** at the integration branch often still has **`entries: []`** — overlay fixes the **API** view without switching branches.
 
-- **Remote registry overlay (optional):** in **Settings**, enable **“Merge registry from remote feature branches”** so **`GET /api/roadmap`** merges `roadmap/registry.yaml` blobs from **`git show refs/remotes/<remote>/feature/rm-*:<path>`** (after **`git fetch`**) into the payload. HEAD entries win on the same **`node_id`**; remote rows fill gaps. See [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md).
-- The outline **green left accent** compares **`git branch --show-current`** to each row’s registered **`branch`** field in **that** `registry.yaml`. It does **not** follow registrations that exist only on another branch or in another clone.
-- Without overlay: to see registry-driven rows and the green accent for in-flight work, **check out the feature branch**, add a **second git worktree** checked out to that branch, or run the GUI against a clone where that branch is **HEAD**. Run **`git fetch`** so `refs/remotes/<remote>/feature/rm-*` refs exist locally.
+**Primary path:** configure **Git remote** in **Settings**, run **Test Git**, and keep **“Merge registry from remote feature branches”** enabled (default **on** for new GUI profiles). Ensure **`git fetch`** runs (automatically on a cooldown while overlay is active, or manually) so **`refs/remotes/<remote>/feature/rm-*`** exist. HEAD entries win on duplicate **`node_id`**; remote rows fill gaps. See [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md).
 
-If you stay on the integration branch with an empty local registry while remote-tracking feature branches exist, the UI may show a short **dismissible notice** explaining this. To disable the extra payload fields, set **`SPECY_ROAD_GUI_REGISTRY_VISIBILITY=0`** for the GUI process.
+The outline **green left accent** compares **`git branch --show-current`** to each row’s registered **`branch`**. PMs on the integration branch usually **do not** get that accent for someone else’s feature branch; use **status colors**, **Dev column**, and **MR** hints instead — see [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+
+**Optional:** check out **`feature/rm-*`**, use a **second worktree**, or open another clone if you need the literal on-disk files for that branch.
 
 See [git-workflow.md](git-workflow.md) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
 

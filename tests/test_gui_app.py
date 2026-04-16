@@ -29,8 +29,6 @@ def api_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> TestClient:
     monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    # Default-on feature; clear so tests do not inherit a host CI opt-out.
-    monkeypatch.delenv("SPECY_ROAD_GUI_REGISTRY_VISIBILITY", raising=False)
     from specy_road.gui_app import create_app
 
     return TestClient(create_app())
@@ -94,11 +92,7 @@ def test_api_roadmap_returns_nodes(api_client: TestClient) -> None:
     gw = data["git_workflow"]
     assert "ok" in gw and "issues" in gw and "resolved" in gw
     assert "git_user_name" in gw["resolved"]
-    rv = data.get("registry_visibility")
-    assert rv is not None
-    assert "on_integration_branch" in rv
-    assert "local_registry_entry_count" in rv
-    assert "remote_feature_rm_ref_count" in rv
+    assert "registry_visibility" not in data
     assert "registry" in data and isinstance(data["registry"], dict)
     assert "registry_by_node" in data and isinstance(data["registry_by_node"], dict)
     assert data["registry"].get("entries") == []
@@ -111,7 +105,6 @@ def test_api_roadmap_registry_by_node_reflects_merged_registry(
 ) -> None:
     """PM UI keys rows by display id via registry_by_node; must track merged overlay registry."""
     monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    monkeypatch.delenv("SPECY_ROAD_GUI_REGISTRY_VISIBILITY", raising=False)
     fake_entry = {
         "codename": "api-test",
         "node_id": "M1",
@@ -180,20 +173,6 @@ def test_api_roadmap_includes_registry_overlay_when_enabled(
     assert isinstance(ov, dict)
     assert ov.get("enabled") is True
     assert "remote_refs_scanned" in ov
-
-
-def test_api_roadmap_omits_registry_visibility_when_env_disabled(
-    dogfood_copy: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
-    monkeypatch.setenv("SPECY_ROAD_GUI_REGISTRY_VISIBILITY", "0")
-    from specy_road.gui_app import create_app
-
-    client = TestClient(create_app())
-    r = client.get("/api/roadmap")
-    assert r.status_code == 200
-    assert "registry_visibility" not in r.json()
 
 
 def test_api_git_workflow_status(api_client: TestClient) -> None:

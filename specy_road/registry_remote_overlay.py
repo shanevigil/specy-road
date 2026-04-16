@@ -1,6 +1,7 @@
 """Merge ``roadmap/registry.yaml`` from remote-tracking ``feature/rm-*`` refs into the PM GUI payload.
 
-Primary control: **Settings** → ``pm_gui.registry_remote_overlay`` in ``~/.specy-road/gui-settings.json``.
+Primary control: **Settings** → ``pm_gui.registry_remote_overlay`` in ``~/.specy-road/gui-settings.json``
+(default **on** for new profiles; still requires Git remote repo/token and successful **Test Git**).
 Optional env override: ``SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`` forces off; ``=1`` forces on.
 
 Optional fast-forward of the **integration branch** (``git fetch`` + ``git merge --ff-only``) is controlled by

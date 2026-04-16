@@ -31,7 +31,7 @@ flowchart LR
 
 - **`roadmap/manifest.json`** — `version: 1` and `includes`: ordered list of chunk paths **relative to `roadmap/`**. Do **not** put `nodes` in the manifest.
 - **Chunk files** — JSON containing a `nodes` array (or shapes the loader accepts per `docs/roadmap-authoring.md`). Split large graphs across multiple chunks for git-friendly diffs; respect line limits in `constraints/file-limits.yaml`.
-- **`roadmap/git-workflow.yaml`** — Machine defaults for integration branch and remote (CLI + PM Gantt). Edit to match your trunk (e.g. `dev` vs `main`). Optional PM Gantt setting `pm_gui.integration_branch_auto_ff` can fast-forward that branch from the remote on a timer when you stay on the integration branch with a clean tree (see `docs/design-notes/pm-gui-integration-branch-auto-ff.md`).
+- **`roadmap/git-workflow.yaml`** — Machine defaults for integration branch and remote (CLI + PM Gantt). Edit to match your trunk (e.g. `dev` vs `main`). Optional PM Gantt setting `pm_gui.integration_branch_auto_ff` can fast-forward that branch from the remote on a timer when you stay on the integration branch with a clean tree (see `docs/design-notes/pm-gui-integration-branch-auto-ff.md`). For PMs on the integration branch, `pm_gui.registry_remote_overlay` defaults **on** (merge `registry.yaml` from remote `feature/rm-*` refs after `git fetch`; see `docs/design-notes/registry-hydration-remote-refs.md`).
 - **`roadmap/registry.yaml`** — `version: 1`, `entries: []` or active rows. **Not** part of `includes`. Records in-progress work (codename, `node_id`, branch, `touch_zones`, optional `started`, `owner`, optional `node_key`).
 - **`roadmap.md` at repo root** — **Generated** by `specy-road export`. Do not maintain it by hand as the source of truth.
 

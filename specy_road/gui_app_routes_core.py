@@ -33,7 +33,6 @@ from specy_road.registry_remote_overlay import (
     resolve_git_remote,
     roadmap_fingerprint_with_remote_refs,
 )
-from specy_road.registry_visibility import build_registry_visibility
 from specy_road.governance_completion import (
     constitution_needs_completion,
     vision_needs_completion,
@@ -100,9 +99,6 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     }
     if registry_overlay_meta is not None:
         out["registry_overlay"] = registry_overlay_meta
-    rv = build_registry_visibility(root, head_reg, gw)
-    if rv is not None:
-        out["registry_visibility"] = rv
     return out
 
 

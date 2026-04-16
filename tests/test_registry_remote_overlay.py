@@ -27,7 +27,16 @@ from specy_road.registry_remote_overlay import (
     list_remote_feature_rm_refs,
 )
 import specy_road.registry_remote_overlay as _registry_overlay  # noqa: E402
+import roadmap_gui_settings as _rgs  # noqa: E402
 from roadmap_gui_lib import roadmap_fingerprint
+
+
+def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Avoid reading the developer's real ``~/.specy-road/gui-settings.json`` in tests."""
+    gui = tmp_path / ".specy-road"
+    gui.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(_rgs, "SETTINGS_DIR", gui)
+    monkeypatch.setattr(_rgs, "SETTINGS_PATH", gui / "gui-settings.json")
 
 
 def _run_git(repo: Path, *args: str) -> None:
@@ -160,7 +169,7 @@ def test_registry_remote_overlay_requires_git_remote_test_ok(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Without env=1, overlay stays off until pm_gui + Test Git + repo/token."""
+    """Without env=1, overlay stays off until pm_gui on + Test Git + repo/token."""
     monkeypatch.delenv("SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY", raising=False)
     root = tmp_path / "r"
     root.mkdir()
@@ -171,12 +180,13 @@ def test_registry_remote_overlay_requires_git_remote_test_ok(
         lambda _repo: {
             "llm": {},
             "git_remote": {"repo": "", "token": ""},
-            "pm_gui": {"registry_remote_overlay": False},
+            "pm_gui": {"registry_remote_overlay": True},
         },
     )
     monkeypatch.setattr(_pm_git, "get_git_remote_tested_ok", lambda _r: False)
     assert registry_remote_overlay_enabled(root) is False
     monkeypatch.setattr(_pm_git, "get_git_remote_tested_ok", lambda _r: True)
+    # Overlay on + Test Git OK, but empty repo/token still disables merge.
     assert registry_remote_overlay_enabled(root) is False
 
 
@@ -251,6 +261,7 @@ def test_integration_branch_auto_ff_enabled_env(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    _isolate_gui_settings(monkeypatch, tmp_path)
     monkeypatch.delenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", raising=False)
     root = tmp_path / "x"
     root.mkdir()
@@ -265,6 +276,7 @@ def test_maybe_auto_integration_ff_skips_without_env_or_settings(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    _isolate_gui_settings(monkeypatch, tmp_path)
     monkeypatch.delenv("SPECY_ROAD_GUI_AUTO_INTEGRATION_FF", raising=False)
     repo = _init_integration_ff_repo(tmp_path)
     calls: list[list[str]] = []

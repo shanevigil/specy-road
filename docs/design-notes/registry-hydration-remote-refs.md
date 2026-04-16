@@ -4,9 +4,9 @@
 
 The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **working tree at HEAD**. On the **integration branch**, that file is often empty or stale while active work lives on unmerged **`feature/rm-*`** commits.
 
-## Remote registry overlay (opt-in)
+## Remote registry overlay (default on; gated)
 
-In the PM Gantt **Settings** drawer, configure **Git remote** (GitHub or GitLab: repo slug and token)—always **per resolved project root**, not a shared global—run **Test Git** once successfully, then turn on **“Merge registry from remote feature branches”** (stored under **`pm_gui.registry_remote_overlay`** in [`~/.specy-road/gui-settings.json`](../../specy_road/bundled_scripts/roadmap_gui_settings.py); that flag can follow the **PM GUI** global/per-repo toggle like other `pm_gui.*` options). The server persists **`git_remote_tested_ok`** per repo; changing effective Git remote fields clears that flag. Optional env override: **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** forces off; **`=1`** forces on (e.g. CI) and skips the Test Git gate.
+In the PM Gantt **Settings** drawer, configure **Git remote** (GitHub or GitLab: repo slug and token)—always **per resolved project root**, not a shared global—and run **Test Git** once successfully. **“Merge registry from remote feature branches”** (**`pm_gui.registry_remote_overlay`** in [`~/.specy-road/gui-settings.json`](../../specy_road/bundled_scripts/roadmap_gui_settings.py)) defaults to **on** for new GUI profiles so PMs on the integration branch see in-flight claims after **`git fetch`**. You can turn it off per repo; the flag can follow the **PM GUI** global/per-repo toggle like other `pm_gui.*` options. The server persists **`git_remote_tested_ok`** per repo; changing effective Git remote fields clears that flag. Optional env override: **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** forces off; **`=1`** forces on (e.g. CI) and skips the Test Git gate.
 
 When enabled, [`GET /api/roadmap`](../../specy_road/gui_app_routes_core.py) **merges** registry entries from **remote-tracking** branches without checking them out:
 
@@ -20,7 +20,7 @@ Implementation: [`specy_road/registry_remote_overlay.py`](../../specy_road/regis
 
 **Limits:** max refs scanned (default **48**, override with **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_MAX_REFS`**), total time budget (default **5s**, **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_BUDGET_S`**), per-`git show` timeout. Invalid YAML on a ref is skipped.
 
-**Payload:** `registry`, `registry_by_node`, `pr_hints`, and `git_enrichment` use the **merged** view. The response may include **`registry_overlay`** (scan counts). **`registry_visibility`** still reflects **HEAD-only** `registry.yaml` for the dismissible banner.
+**Payload:** `registry`, `registry_by_node`, `pr_hints`, and `git_enrichment` use the **merged** view when overlay is active. The response may include **`registry_overlay`** (scan counts).
 
 **Fingerprint:** [`/api/roadmap/fingerprint`](../../specy_road/gui_app_routes_core.py) mixes in a hash of remote **`feature/rm-*`** ref tips when overlay is enabled so the UI can refresh after pushes **without** local roadmap file edits.
 

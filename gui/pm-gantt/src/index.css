@@ -103,55 +103,6 @@ button {
   height: 100%;
 }
 
-.registry-visibility-banner {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin: 0 0.75rem 0.5rem;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 2px;
-  background: var(--bg);
-  font-size: 0.875rem;
-}
-
-.registry-visibility-banner-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.registry-visibility-banner-title {
-  display: block;
-  margin-bottom: 0.25rem;
-}
-
-.registry-visibility-banner-text {
-  margin: 0;
-  color: var(--muted);
-}
-
-.registry-visibility-banner-code {
-  font-size: 0.82em;
-  padding: 0 0.15em;
-  border-radius: 2px;
-  background: rgba(127, 127, 127, 0.12);
-}
-
-.registry-visibility-banner-dismiss {
-  flex-shrink: 0;
-  padding: 0.2rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--fg);
-}
-
-.registry-visibility-banner-dismiss:hover {
-  background: var(--sel-bg);
-}
-
 .git-workflow-outline-hint {
   margin-top: 0.65rem;
   padding-top: 0.5rem;

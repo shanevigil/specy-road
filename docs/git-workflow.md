@@ -12,9 +12,9 @@ Keep this file accurate so PMs see correct git status in the dashboard and valid
 
 ## PM Gantt and `registry.yaml` visibility
 
-The **PM Gantt** reads **`roadmap/registry.yaml` from the current working tree** (same repo root as other `specy-road` commands: discover from cwd / git, or **`SPECY_ROAD_REPO_ROOT`**). **By default** it uses that file only (no merge from other branches or remotes). You can **opt in** to merging registry rows from remote-tracking **`feature/rm-*`** refs via PM Gantt **Settings**—see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md).
+The **PM Gantt** reads **`roadmap/registry.yaml` from the current working tree** (same repo root as other `specy-road` commands: discover from cwd / git, or **`SPECY_ROAD_REPO_ROOT`**), then **merges** registry rows from remote-tracking **`feature/rm-*`** refs when **remote registry overlay** is enabled in PM Gantt **Settings** (default **on** for new GUI profiles; requires Git remote + **Test Git**). See [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md). Set **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY=0`** to force HEAD-only behavior without changing saved settings.
 
-On the **integration branch**, `entries` is often **empty** while developers hold active claims only on **`feature/rm-*`** branches (first-commit registration). The outline **green accent** appears only when your **checked-out branch name** matches a row’s **`branch`** field in **that** checkout’s registry file. PMs who need to **see** in-flight claims without checking out the feature branch can enable the **remote registry overlay** (same design note), use another **worktree** or clone checked out to the feature branch, or rely on PR/issue tracking outside the GUI—see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
+On the **integration branch**, the on-disk file often has **`entries: []`** while developers hold active claims only on **`feature/rm-*`** branches (first-commit registration). **Overlay** still exposes those rows in the GUI after **`git fetch`**. The outline **green accent** appears only when your **checked-out branch name** matches a row’s **`branch`** field — typical for **developers** on the feature branch, not for **PMs** on the integration branch; see [pm-workflow.md](pm-workflow.md#monitoring-in-progress-work-while-on-the-integration-branch) and [design-notes/pm-gantt-registry-checkout.md](design-notes/pm-gantt-registry-checkout.md).
 
 **Examples** (schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json)):
 
@@ -48,14 +48,16 @@ remote: origin
 
 1. Confirm **gates** and dependencies for your milestone (see root/index or generated tables).
 2. Read `roadmap/registry.yaml` in your application repository — no overlapping **touch zones** with active entries (coordinate with PM / integration lead if unsure). Example layout: [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml). Maintainers working on this toolkit use the dogfood copy: [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml).
-3. Create branch from your integration branch (e.g. `dev`): `git checkout -b feature/rm-<codename>`.
+3. Create the roadmap-driven branch from your integration branch (e.g. `dev`): `git checkout -b feature/rm-<codename>`.
 
 ## First-commit registration (mandatory)
 
-On a roadmap-driven branch, the **first commit** must register work—**no implementation** before that:
+On that new branch, the **first commit** registers work only — **no implementation** in that commit:
 
 1. Add a row to **`roadmap/registry.yaml`** (or, in an application repo, `docs/roadmap-status.md` per team convention) with: codename, `node_id`, branch `feature/rm-<codename>`, touch zones, optional `started` date.
 2. Commit message: `chore(rm-<codename>): register as in-progress`
+
+Only **after** that registration commit should you add implementation commits.
 
 ## While working
 

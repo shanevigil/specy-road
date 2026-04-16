@@ -34,7 +34,6 @@ import {
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
-import { RegistryVisibilityBanner } from "./components/RegistryVisibilityBanner";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
 import { EditModal } from "./components/EditModal";
@@ -1041,11 +1040,6 @@ export default function App() {
           </div>
         </div>
       </header>
-      <RegistryVisibilityBanner
-        key={repo || "__repo_pending__"}
-        repoRoot={repo}
-        visibility={data?.registry_visibility}
-      />
       {err ? (
         <p style={{ padding: "0 0.75rem", color: "crimson" }}>{err}</p>
       ) : null}
