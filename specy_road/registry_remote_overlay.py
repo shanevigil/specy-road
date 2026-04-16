@@ -14,6 +14,7 @@ and ``describe_integration_branch_auto_ff``.
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
@@ -22,19 +23,30 @@ import time
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from specy_road.git_subprocess import git_ok
+from specy_road.git_sync_status import (
+    last_integration_auto_ff_status,
+    last_registry_auto_fetch_status,
+    set_last_integration_auto_ff_status,
+    set_last_registry_auto_fetch_status,
+    status_failure,
+    status_ok,
+)
 from specy_road.git_workflow_config import (
     current_branch_name,
     is_git_worktree,
-    load_git_workflow_config,
     resolve_integration_defaults,
     working_tree_clean,
 )
 from specy_road.pm_integration_registry import (
     describe_integration_branch_auto_ff as _describe_integration_branch_auto_ff,
-    remote_registry_overlay_fingerprint_addendum as remote_feature_refs_fingerprint_addendum,
+)
+from specy_road.registry_remote_overlay_merge import (
+    list_remote_feature_rm_refs,
+    merge_registry_with_remote_overlay,
+    read_registry_at_ref,
+    remote_feature_refs_fingerprint_addendum,
+    resolve_git_remote,
+    roadmap_fingerprint_with_remote_refs,
 )
 
 _LIB_DIR = Path(__file__).resolve().parent / "bundled_scripts"
@@ -42,20 +54,28 @@ if str(_LIB_DIR) not in sys.path:
     sys.path.insert(0, str(_LIB_DIR))
 from roadmap_gui_settings import effective_settings_for_repo  # noqa: E402
 
-REGISTRY_REL = Path("roadmap") / "registry.yaml"
-DEFAULT_MAX_REFS = 48
-DEFAULT_TOTAL_BUDGET_S = 5.0
-PER_SHOW_TIMEOUT_S = 4.0
 _GIT_SYNC_LOCK = threading.Lock()
 _LAST_FETCH_MONO: dict[str, float] = {}
 _LAST_INTEGRATION_FF_MONO: dict[str, float] = {}
+_LOG = logging.getLogger(__name__)
+
+
+def _sync_status_key(repo_root: Path) -> str:
+    return str(repo_root.resolve())
 
 
 def describe_integration_branch_auto_ff(
     repo_root: Path,
 ) -> dict[str, Any] | None:
     """Backward-compatible export for PM API route imports."""
-    return _describe_integration_branch_auto_ff(repo_root)
+    out = _describe_integration_branch_auto_ff(repo_root)
+    if out is None:
+        return None
+    status = last_integration_auto_ff_status(repo_root)
+    if status is not None:
+        out = dict(out)
+        out["last_auto_ff_attempt"] = status
+    return out
 
 
 def registry_remote_overlay_enabled(repo_root: Path | None = None) -> bool:
@@ -108,12 +128,79 @@ def _integration_ff_interval_s() -> float:
     return max(1.0, min(interval, 3600.0))
 
 
-def maybe_auto_integration_ff(repo_root: Path) -> None:
-    """Best-effort ``git fetch`` + ``git merge --ff-only`` on the integration branch when HEAD matches it.
+def _git_sync_result(args: list[str], repo_root: Path) -> tuple[bool, int, str]:
+    run = subprocess.run(
+        args,
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        timeout=120.0,
+        check=False,
+    )
+    err = (run.stderr or run.stdout or "").strip()
+    return run.returncode == 0, run.returncode, err
 
-    Requires a clean working tree. Throttled separately from overlay fetch. Errors ignored.
-    Serialized with :func:`maybe_auto_git_fetch` via ``_GIT_SYNC_LOCK``.
-    """
+
+def _record_and_log_ff_failure(
+    repo_root: Path,
+    *,
+    remote: str,
+    base: str,
+    step: str,
+    reason: str,
+    error: str,
+    returncode: int | None = None,
+) -> None:
+    set_last_integration_auto_ff_status(
+        repo_root,
+        status_failure(
+            remote=remote,
+            step=step,
+            reason=reason,
+            error=error,
+            returncode=returncode,
+        ),
+    )
+    _LOG.warning(
+        "integration auto-ff %s failed for %s (remote=%s, base=%s%s): %s",
+        step,
+        repo_root,
+        remote,
+        base,
+        f", rc={returncode}" if returncode is not None else "",
+        error or "<no error output>",
+    )
+
+
+def _record_and_log_fetch_failure(
+    repo_root: Path,
+    *,
+    remote: str,
+    reason: str,
+    error: str,
+    returncode: int | None = None,
+) -> None:
+    set_last_registry_auto_fetch_status(
+        repo_root,
+        status_failure(
+            remote=remote,
+            step="fetch",
+            reason=reason,
+            error=error,
+            returncode=returncode,
+        ),
+    )
+    _LOG.warning(
+        "registry overlay auto-fetch failed for %s (remote=%s%s): %s",
+        repo_root,
+        remote,
+        f", rc={returncode}" if returncode is not None else "",
+        error or "<no error output>",
+    )
+
+
+def maybe_auto_integration_ff(repo_root: Path) -> None:
+    """Best-effort integration branch fetch + ``merge --ff-only``."""
     if not integration_branch_auto_ff_enabled(repo_root):
         return
     if not is_git_worktree(repo_root):
@@ -133,32 +220,64 @@ def maybe_auto_integration_ff(repo_root: Path) -> None:
     now = time.monotonic()
     rname = (remote or "").strip() or "origin"
     with _GIT_SYNC_LOCK:
-        # Do not default last to 0.0: monotonic() may be < interval (e.g. fresh OS
-        # uptime), which would incorrectly suppress the first run.
         if key in _LAST_INTEGRATION_FF_MONO:
             last = _LAST_INTEGRATION_FF_MONO[key]
             if now - last < interval:
                 return
         _LAST_INTEGRATION_FF_MONO[key] = now
         try:
-            subprocess.run(
+            ok_fetch, rc_fetch, err_fetch = _git_sync_result(
                 ["git", "fetch", "--quiet", rname],
-                cwd=repo_root,
-                capture_output=True,
-                text=True,
-                timeout=120.0,
-                check=False,
+                repo_root,
             )
-            subprocess.run(
+            if not ok_fetch:
+                _record_and_log_ff_failure(
+                    repo_root,
+                    remote=rname,
+                    base=base,
+                    step="fetch",
+                    reason="non_zero_exit",
+                    error=err_fetch,
+                    returncode=rc_fetch,
+                )
+                return
+            ok_merge, rc_merge, err_merge = _git_sync_result(
                 ["git", "merge", "--ff-only", f"{rname}/{base}"],
-                cwd=repo_root,
-                capture_output=True,
-                text=True,
-                timeout=120.0,
-                check=False,
+                repo_root,
             )
-        except (OSError, subprocess.TimeoutExpired):
-            pass
+            if not ok_merge:
+                _record_and_log_ff_failure(
+                    repo_root,
+                    remote=rname,
+                    base=base,
+                    step="merge_ff_only",
+                    reason="non_zero_exit",
+                    error=err_merge,
+                    returncode=rc_merge,
+                )
+                return
+            set_last_integration_auto_ff_status(
+                repo_root,
+                status_ok(remote=rname, step="merge_ff_only"),
+            )
+        except subprocess.TimeoutExpired as exc:
+            _record_and_log_ff_failure(
+                repo_root,
+                remote=rname,
+                base=base,
+                step="fetch_or_merge_ff_only",
+                reason="timeout",
+                error=str(exc),
+            )
+        except OSError as exc:
+            _record_and_log_ff_failure(
+                repo_root,
+                remote=rname,
+                base=base,
+                step="fetch_or_merge_ff_only",
+                reason="os_error",
+                error=str(exc),
+            )
 
 
 def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
@@ -174,7 +293,7 @@ def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
     except ValueError:
         interval = 5.0
     interval = max(1.0, min(interval, 3600.0))
-    key = str(repo_root.resolve())
+    key = _sync_status_key(repo_root)
     now = time.monotonic()
     rname = (remote or "").strip() or "origin"
     with _GIT_SYNC_LOCK:
@@ -184,188 +303,34 @@ def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
                 return
         _LAST_FETCH_MONO[key] = now
         try:
-            subprocess.run(
+            ok_fetch, rc_fetch, err_fetch = _git_sync_result(
                 ["git", "fetch", "--quiet", rname],
-                cwd=repo_root,
-                capture_output=True,
-                text=True,
-                timeout=120.0,
-                check=False,
+                repo_root,
             )
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-
-
-def _max_refs() -> int:
-    raw = os.environ.get("SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_MAX_REFS", "").strip()
-    if not raw:
-        return DEFAULT_MAX_REFS
-    try:
-        n = int(raw, 10)
-        return max(1, min(n, 256))
-    except ValueError:
-        return DEFAULT_MAX_REFS
-
-
-def _total_budget_s() -> float:
-    raw = os.environ.get(
-        "SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_BUDGET_S", ""
-    ).strip()
-    if not raw:
-        return DEFAULT_TOTAL_BUDGET_S
-    try:
-        return max(0.5, min(float(raw), 60.0))
-    except ValueError:
-        return DEFAULT_TOTAL_BUDGET_S
-
-
-def resolve_git_remote(repo_root: Path) -> str:
-    """Remote name from ``roadmap/git-workflow.yaml``, else ``origin``."""
-    data, _ = load_git_workflow_config(repo_root)
-    if isinstance(data, dict):
-        rm = data.get("remote")
-        if isinstance(rm, str) and rm.strip():
-            return rm.strip()
-    return "origin"
-
-
-def list_remote_feature_rm_refs(repo_root: Path, remote: str) -> list[str]:
-    """Sorted ``refs/remotes/<remote>/feature/rm-*`` ref names."""
-    rm = (remote or "").strip()
-    if not rm or not is_git_worktree(repo_root):
-        return []
-    pattern = f"refs/remotes/{rm}/feature/rm-*"
-    ok, out = git_ok(
-        ["for-each-ref", "--format=%(refname)", pattern],
-        repo_root,
-        60.0,
-    )
-    if not ok:
-        return []
-    lines = sorted({ln.strip() for ln in out.splitlines() if ln.strip()})
-    return lines
-
-
-def read_registry_at_ref(
-    repo_root: Path, ref: str, timeout: float
-) -> dict[str, Any] | None:
-    """Parse ``roadmap/registry.yaml`` at ``ref`` via ``git show``."""
-    spec = f"{ref}:{REGISTRY_REL.as_posix()}"
-    ok, blob = git_ok(["show", spec], repo_root, timeout)
-    if not ok or not blob.strip():
-        return None
-    try:
-        raw = yaml.safe_load(blob)
-    except yaml.YAMLError:
-        return None
-    if not isinstance(raw, dict):
-        return None
-    return raw
-
-
-def _normalize_entries(doc: dict[str, Any]) -> list[dict[str, Any]]:
-    entries = doc.get("entries")
-    if not isinstance(entries, list):
-        return []
-    out: list[dict[str, Any]] = []
-    for e in entries:
-        if isinstance(e, dict) and e.get("node_id"):
-            out.append(e)
-    return out
-
-
-def _append_remote_registry_entries(
-    doc: dict[str, Any] | None,
-    head_ids: set[str],
-    merged_entries: list[dict[str, Any]],
-    seen_remote_nodes: set[str],
-) -> int:
-    """Append entries from a parsed registry doc; return count added."""
-    if doc is None:
-        return 0
-    n = 0
-    for e in _normalize_entries(doc):
-        nid = str(e["node_id"])
-        if nid in head_ids or nid in seen_remote_nodes:
-            continue
-        seen_remote_nodes.add(nid)
-        merged_entries.append(dict(e))
-        n += 1
-    return n
-
-
-def merge_registry_with_remote_overlay(
-    head_reg: dict[str, Any],
-    repo_root: Path,
-    remote: str | None = None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """HEAD entries win on ``node_id``; remote integration ref then ``feature/rm-*`` refs fill gaps.
-
-    Returns ``(merged_registry_doc, meta)``.
-    """
-    rm = (remote or resolve_git_remote(repo_root)).strip() or "origin"
-    base, _remote_def, _warns = resolve_integration_defaults(
-        repo_root,
-        explicit_base=None,
-        explicit_remote=None,
-    )
-    meta: dict[str, Any] = {
-        "enabled": True,
-        "remote": rm,
-        "remote_refs_scanned": 0,
-        "merged_remote_entries": 0,
-        "merged_integration_branch_entries": 0,
-        "skipped_refs": 0,
-        "integration_branch_ref": None,
-    }
-
-    head_entries = list(_normalize_entries(head_reg))
-    head_ids = {str(e["node_id"]) for e in head_entries}
-    merged_entries: list[dict[str, Any]] = [dict(e) for e in head_entries]
-    seen_remote_nodes: set[str] = set()
-
-    budget = _total_budget_s()
-    t0 = time.monotonic()
-
-    ib_ref = f"refs/remotes/{rm}/{base}"
-    ok_ib, _ = git_ok(
-        ["show-ref", "--verify", ib_ref], repo_root, min(5.0, budget)
-    )
-    if ok_ib:
-        meta["integration_branch_ref"] = ib_ref
-        remain = budget - (time.monotonic() - t0)
-        if remain > 0:
-            timeout = min(PER_SHOW_TIMEOUT_S, max(0.5, remain))
-            doc = read_registry_at_ref(repo_root, ib_ref, timeout)
-            meta["merged_integration_branch_entries"] += _append_remote_registry_entries(
-                doc, head_ids, merged_entries, seen_remote_nodes
+            if not ok_fetch:
+                _record_and_log_fetch_failure(
+                    repo_root,
+                    remote=rname,
+                    reason="non_zero_exit",
+                    error=err_fetch,
+                    returncode=rc_fetch,
+                )
+                return
+            set_last_registry_auto_fetch_status(
+                repo_root,
+                status_ok(remote=rname, step="fetch"),
             )
-    else:
-        meta["integration_branch_ref"] = None
-
-    refs = list_remote_feature_rm_refs(repo_root, rm)[: _max_refs()]
-
-    for ref in refs:
-        if time.monotonic() - t0 > budget:
-            break
-        remain = budget - (time.monotonic() - t0)
-        timeout = min(PER_SHOW_TIMEOUT_S, max(0.5, remain))
-        doc = read_registry_at_ref(repo_root, ref, timeout)
-        meta["remote_refs_scanned"] += 1
-        if doc is None:
-            meta["skipped_refs"] += 1
-            continue
-        meta["merged_remote_entries"] += _append_remote_registry_entries(
-            doc, head_ids, merged_entries, seen_remote_nodes
-        )
-
-    out_doc: dict[str, Any] = {
-        "version": 1,
-        "entries": merged_entries,
-    }
-    return out_doc, meta
-
-
-def roadmap_fingerprint_with_remote_refs(repo_root: Path, base_fp: int) -> int:
-    """Combine packaged roadmap fingerprint with remote-ref tip hash."""
-    return base_fp + remote_feature_refs_fingerprint_addendum(repo_root)
+        except subprocess.TimeoutExpired as exc:
+            _record_and_log_fetch_failure(
+                repo_root,
+                remote=rname,
+                reason="timeout",
+                error=str(exc),
+            )
+        except OSError as exc:
+            _record_and_log_fetch_failure(
+                repo_root,
+                remote=rname,
+                reason="os_error",
+                error=str(exc),
+            )

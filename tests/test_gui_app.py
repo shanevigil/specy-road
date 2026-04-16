@@ -175,6 +175,48 @@ def test_api_roadmap_includes_registry_overlay_when_enabled(
     assert "remote_refs_scanned" in ov
 
 
+def test_api_roadmap_includes_last_auto_fetch_attempt_in_overlay_meta(
+    dogfood_copy: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood_copy))
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.registry_remote_overlay_enabled",
+        lambda _r: True,
+    )
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.merge_registry_with_remote_overlay",
+        lambda _head, _root: (
+            {"version": 1, "entries": []},
+            {"enabled": True, "remote_refs_scanned": 0},
+        ),
+    )
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.maybe_auto_git_fetch",
+        lambda *_a, **_kw: None,
+    )
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_core.last_registry_auto_fetch_status",
+        lambda _r: {
+            "ok": False,
+            "reason": "non_zero_exit",
+            "step": "fetch",
+            "remote": "origin",
+        },
+    )
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r = client.get("/api/roadmap")
+    assert r.status_code == 200
+    ov = r.json().get("registry_overlay")
+    assert isinstance(ov, dict)
+    last = ov.get("last_auto_fetch_attempt")
+    assert isinstance(last, dict)
+    assert last.get("ok") is False
+    assert last.get("reason") == "non_zero_exit"
+
+
 def test_api_git_workflow_status(api_client: TestClient) -> None:
     r = api_client.get("/api/git-workflow-status")
     assert r.status_code == 200

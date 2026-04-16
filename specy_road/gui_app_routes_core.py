@@ -27,6 +27,7 @@ from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import build_git_workflow_status
 from specy_road.registry_remote_overlay import (
     describe_integration_branch_auto_ff,
+    last_registry_auto_fetch_status,
     merge_registry_with_remote_overlay,
     maybe_auto_git_fetch,
     maybe_auto_integration_ff,
@@ -99,6 +100,10 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
         "git_workflow": gw,
     }
     if registry_overlay_meta is not None:
+        fetch_status = last_registry_auto_fetch_status(root)
+        if fetch_status is not None:
+            registry_overlay_meta = dict(registry_overlay_meta)
+            registry_overlay_meta["last_auto_fetch_attempt"] = fetch_status
         out["registry_overlay"] = registry_overlay_meta
     ibaff = describe_integration_branch_auto_ff(root)
     if ibaff.get("enabled") is True:
