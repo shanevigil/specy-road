@@ -118,9 +118,12 @@ def maybe_auto_integration_ff(repo_root: Path) -> None:
     now = time.monotonic()
     rname = (remote or "").strip() or "origin"
     with _GIT_SYNC_LOCK:
-        last = _LAST_INTEGRATION_FF_MONO.get(key, 0.0)
-        if now - last < interval:
-            return
+        # Do not default last to 0.0: monotonic() may be < interval (e.g. fresh OS
+        # uptime), which would incorrectly suppress the first run.
+        if key in _LAST_INTEGRATION_FF_MONO:
+            last = _LAST_INTEGRATION_FF_MONO[key]
+            if now - last < interval:
+                return
         _LAST_INTEGRATION_FF_MONO[key] = now
         try:
             subprocess.run(
@@ -160,9 +163,10 @@ def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
     now = time.monotonic()
     rname = (remote or "").strip() or "origin"
     with _GIT_SYNC_LOCK:
-        last = _LAST_FETCH_MONO.get(key, 0.0)
-        if now - last < interval:
-            return
+        if key in _LAST_FETCH_MONO:
+            last = _LAST_FETCH_MONO[key]
+            if now - last < interval:
+                return
         _LAST_FETCH_MONO[key] = now
         try:
             subprocess.run(
