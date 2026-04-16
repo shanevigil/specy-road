@@ -475,6 +475,9 @@ function SortableRow({
           />
         ) : (
           <div className="outline-title-row">
+            <div className="outline-title-text-wrap">
+              <div>{node.title}</div>
+            </div>
             {titleEditLocked ? (
               <span
                 className="outline-pm-lock"
@@ -509,9 +512,6 @@ function SortableRow({
                 </svg>
               </span>
             ) : null}
-            <div className="outline-title-text-wrap">
-              <div>{node.title}</div>
-            </div>
           </div>
         )}
         {meta ? <div className="outline-meta">{meta}</div> : null}
@@ -630,9 +630,8 @@ export function OutlineTable({
     }
     if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
       const assignees = g.assignees as string[] | undefined;
-      const author = g.author as string | undefined;
+      // PR/MR author is omitted; Dev column shows the same via devLabel().
       const bits = [
-        author ? `@${author}` : "",
         assignees?.length ? `A: ${assignees.join(", ")}` : "",
       ].filter(Boolean);
       return bits.join(" · ") || (g.hint_line as string) || "";
