@@ -98,6 +98,8 @@ def test_specy_road_do_next_available_task_help() -> None:
     assert "actionable leaf task" in r.stdout
     assert "--no-sync" not in r.stdout
     assert "--no-push-registry" not in r.stdout
+    assert "--milestone-subtree" in r.stdout
+    assert "--under" in r.stdout
 
 
 def test_specy_road_abort_task_pickup_help() -> None:
@@ -239,6 +241,42 @@ def test_specy_road_finish_this_task_help() -> None:
     )
     assert "--push" in r.stdout
     assert "--no-cleanup-work" in r.stdout
+    assert "--no-milestone-rollup" in r.stdout
+
+
+def test_specy_road_start_milestone_session_help() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "start-milestone-session",
+            "--help",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "PARENT_NODE_ID" in r.stdout
+    assert ".milestone-session.yaml" in r.stdout or "milestone-session" in r.stdout
+
+
+def test_specy_road_open_milestone_pr_help() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "open-milestone-pr",
+            "--help",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "rollup" in r.stdout.lower() or "PR" in r.stdout
 
 
 def test_specy_road_mark_implementation_reviewed_help() -> None:

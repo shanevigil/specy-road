@@ -29,7 +29,14 @@ specy-road do-next-available-task --interactive   # choose task by number (same 
 specy-road do-next-available-task --no-ci-skip-in-message   # registration commit without CI-skip tokens
 specy-road abort-task-pickup --force   # abandon pickup when the feature branch has local-only commits (destructive)
 
+# Milestone rollup (one PR to integration after many leaves under a parent):
+specy-road start-milestone-session <PARENT_NODE_ID>   # requires parent `codename`; ensures feature/rm-<parent-codename>
+specy-road do-next-available-task --milestone-subtree # or: --under <PARENT_NODE_ID>
+specy-road finish-this-task          # with session: lands bookkeeping on integration, merges leaf into rollup branch
+specy-road open-milestone-pr         # print gh/glab one-liner (rollup head → integration base)
+
 ```
+
 
 ```text
 # IDE slash commands (after specyrd init --role dev)
@@ -94,6 +101,25 @@ specy-road do-next-available-task
 ```
 
 Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
+
+### Milestone-scoped execution (rollup branch)
+
+Use this when you want **one integration PR** for **all leaf work under a parent milestone** (e.g. `M7`), instead of opening a PR per leaf.
+
+1. **Parent must have a `codename`** in the roadmap JSON (kebab-case, same pattern as leaf codenames). Phases/milestones without a codename cannot start a rollup session until the PM sets one.
+2. **`specy-road start-milestone-session <PARENT_NODE_ID>`** — syncs the integration branch, creates or fast-forwards **`feature/rm-<parent-codename>`** from the remote integration tip, and writes **`work/.milestone-session.yaml`** (parent id, rollup branch, integration branch, remote).
+3. **Pick work** — from a clean tree on the integration branch:
+   - **`specy-road do-next-available-task --milestone-subtree`** (uses the session file), or
+   - **`specy-road do-next-available-task --under <PARENT_NODE_ID>`** (one-shot filter; must match the session file if one exists).
+   Claims still **register and push on the integration branch** as usual.
+4. **Finish each leaf** — on **`feature/rm-<leaf-codename>`**, run **`specy-road finish-this-task`** as usual. When the session file is present and the leaf is **under** the session parent, the tool:
+   - pushes the leaf branch;
+   - **cherry-picks** the bookkeeping commit onto the integration branch (so `registry.yaml` and roadmap status stay visible on **`remote/<integration-branch>`** without merging implementation files there);
+   - **merges** the full leaf branch into **`feature/rm-<parent-codename>`** and pushes the rollup branch.
+   Normal **`on_complete`** (`pr` / `merge` / `auto`) is **not** used for that leaf when this path runs. Use **`specy-road finish-this-task --no-milestone-rollup`** to force the standard finish behavior instead.
+5. **Final PR** — when the subtree is done, open **one** PR/MR: **base** = integration branch, **head** = **`feature/rm-<parent-codename>`**. **`specy-road open-milestone-pr`** prints a ready-made `gh pr create` line (and notes for GitLab).
+
+Do **not** rely on editing the parent milestone’s JSON `status` to “Complete” until the subtree is actually done; the PM Gantt already derives **In Progress** from children. Optional: set the parent to **Complete** once all descendant leaves are **Complete** (same as any other manual status edit).
 
 ### Abort pickup (`abort-task-pickup`)
 

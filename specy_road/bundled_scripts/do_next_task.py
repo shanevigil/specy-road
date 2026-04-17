@@ -28,11 +28,16 @@ from roadmap_load import load_roadmap
 from do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
+from specy_road.do_next_milestone_pickup import (
+    exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
+    resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
+)
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
 )
+from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.on_complete_session import (
     write_on_complete_session,
@@ -289,12 +294,17 @@ def main(argv: list[str] | None = None) -> None:
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
 
+    parent_filter = _resolve_milestone_parent_filter(WORK_DIR, args)
+
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
     enrich = _load_branch_enrichment(ROOT)
     available = _available(nodes, reg, enrich)
-
+    if parent_filter:
+        available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
+        if parent_filter:
+            _exit_no_leaves_under_parent(parent_filter, after_sync=False)
         _exit_no_actionable_leaves(nodes, reg, after_sync=False)
 
     _sync_integration_branch(base, remote)
@@ -317,7 +327,11 @@ def main(argv: list[str] | None = None) -> None:
         status_overrides=status_overrides or None,
         virtual_complete_keys=virtual_keys or None,
     )
+    if parent_filter:
+        available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
+        if parent_filter:
+            _exit_no_leaves_under_parent(parent_filter, after_sync=True)
         _exit_no_actionable_leaves(nodes, reg, after_sync=True)
 
     _assert_current_branch_equals(base)

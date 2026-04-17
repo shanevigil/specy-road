@@ -55,10 +55,13 @@ remote: origin
 | Kind | Pattern | Example |
 |------|---------|---------|
 | Roadmap-driven feature | `feature/rm-<codename>` | `feature/rm-roadmap-ci` |
+| Milestone rollup (parent container) | `feature/rm-<parent-codename>` | Same pattern; parent node must have `codename` set |
 | Non-roadmap fix | `fix/<slug>` | `fix/validator-path` |
 | Non-roadmap feature | `feature/<slug>` | `feature/docs-index` |
 
 `<codename>` must match the milestone codename in the roadmap graph (JSON chunks under `roadmap/`; see [`roadmap/manifest.json`](../specy_road/templates/project/roadmap/manifest.json) in a scaffolded project) — kebab-case, globally unique.
+
+**Milestone rollup workflow:** `specy-road start-milestone-session`, `do-next-available-task --milestone-subtree`, and `finish-this-task` with **`work/.milestone-session.yaml`** land **bookkeeping** on the integration branch via cherry-pick and accumulate **full implementation** on **`feature/rm-<parent-codename>`** for a single final PR to integration — see [dev-workflow.md](dev-workflow.md#milestone-scoped-execution-rollup-branch).
 
 ## Before implementation
 

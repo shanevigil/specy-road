@@ -19,6 +19,7 @@ from specy_road.git_workflow_config import (
     resolve_on_complete,
     should_cleanup_work_artifacts_on_finish,
 )
+from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.on_complete_session import (
@@ -191,6 +192,15 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
         ),
     )
+    p.add_argument(
+        "--no-milestone-rollup",
+        action="store_true",
+        help=(
+            "Skip milestone dual-land (cherry-pick bookkeeping to integration + merge "
+            "leaf into rollup) when work/.milestone-session.yaml exists; use normal "
+            "on_complete instead."
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -288,6 +298,19 @@ def main(argv: list[str] | None = None) -> None:
         explicit_remote=None,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
+
+    if try_milestone_rollup_finish(
+        ROOT,
+        args,
+        work_dir=work_dir,
+        node_id=node_id,
+        nodes=nodes,
+        branch=branch,
+        sess_path=sess_path,
+        ib=ib,
+        gw_remote=gw_remote,
+    ):
+        return
 
     apply_on_complete_mode(
         ROOT,

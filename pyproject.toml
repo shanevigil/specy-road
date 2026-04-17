@@ -60,4 +60,4 @@ specy_road = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["specy_road/bundled_scripts"]
+pythonpath = [".", "specy_road/bundled_scripts"]

@@ -65,4 +65,21 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "See roadmap/git-workflow.yaml on_complete and docs/git-workflow.md."
         ),
     )
+    p.add_argument(
+        "--milestone-subtree",
+        action="store_true",
+        help=(
+            "Limit pickup to leaves under the parent from work/.milestone-session.yaml "
+            "(run specy-road start-milestone-session first)."
+        ),
+    )
+    p.add_argument(
+        "--under",
+        default=None,
+        metavar="PARENT_NODE_ID",
+        help=(
+            "Limit pickup to actionable leaves under this roadmap parent id "
+            "(e.g. M7). If work/.milestone-session.yaml exists, it must match this parent."
+        ),
+    )
     return p.parse_args(argv if argv is not None else sys.argv[1:])

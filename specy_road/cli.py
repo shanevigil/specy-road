@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.runtime_paths import bundled_scripts_dir
+from specy_road.runtime_paths import bundled_scripts_dir, specy_road_package_dir
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -47,13 +47,16 @@ _USAGE_TEXT = (
     "Dev task loop:\n"
     "  do-next-available-task  — sync base, pick actionable leaf, brief, register on base, push base, branch, prompt\n"
     "    (optional: --base BRANCH --remote NAME | --interactive | "
-    "--no-ci-skip-in-message)\n"
+    "--no-ci-skip-in-message | --milestone-subtree | --under PARENT_NODE_ID)\n"
     "  abort-task-pickup       — undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/\n"
     "    (optional: --base BRANCH --remote NAME | --force)\n"
     "  mark-implementation-reviewed — human gate: record review after implementation-summary\n"
     "    (optional: --yes | --allow-missing-summary)\n"
     "  finish-this-task        — complete task, validate, commit; land pr|merge|auto\n"
-    "    (optional: --push [--remote NAME] | --no-cleanup-work)\n"
+    "    (optional: --push [--remote NAME] | --no-cleanup-work | --no-milestone-rollup)\n"
+    "  start-milestone-session <PARENT_NODE_ID> — sync base, ensure rollup branch, write work/.milestone-session.yaml\n"
+    "    (optional: --base BRANCH --remote NAME --repo-root DIR)\n"
+    "  open-milestone-pr       — print gh/glab one-line PR from rollup branch to integration\n"
 )
 
 
@@ -129,7 +132,11 @@ def _run(script: str, args: list[str]) -> None:
     env = os.environ.copy()
     sep = os.pathsep
     prev = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = str(d) + (sep + prev if prev else "")
+    # Parent of the `specy_road` package dir so `import specy_road` works for
+    # bundled scripts; `d` keeps flat imports (do_next_available, …).
+    repo_or_site = str(specy_road_package_dir().parent)
+    prefix = f"{repo_or_site}{sep}{d}"
+    env["PYTHONPATH"] = prefix + (sep + prev if prev else "")
     cmd = [sys.executable, str(script_path), *args]
     subprocess.check_call(cmd, env=env)
 
@@ -256,6 +263,10 @@ def main(argv: list[str] | None = None) -> None:
         _run("mark_implementation_reviewed.py", rest)
     elif cmd == "finish-this-task":
         _run("finish_task.py", rest)
+    elif cmd == "start-milestone-session":
+        _run("start_milestone_session.py", rest)
+    elif cmd == "open-milestone-pr":
+        _run("open_milestone_pr.py", rest)
     elif cmd == "sync":
         _run("pm_sync.py", rest)
     elif cmd in (
