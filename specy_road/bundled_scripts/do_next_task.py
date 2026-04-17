@@ -31,6 +31,10 @@ from do_next_task_leaf_guards import (
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
 from registration_pickup_commit import registration_commit_message
+from work_dir_stash import (
+    restore_work_dir_changes as _restore_work,
+    stash_work_dir_changes as _stash_work,
+)
 from roadmap_load import load_roadmap
 from do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
@@ -180,6 +184,14 @@ def _assert_current_branch_equals(base: str) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+
+
+def _stash_work_dir_changes() -> bool:
+    return _stash_work(ROOT, "registry commit")
+
+
+def _restore_work_dir_changes(stashed: bool) -> None:
+    _restore_work(ROOT, stashed)
 
 
 def _sync_integration_branch(base: str, remote: str) -> None:
@@ -363,18 +375,24 @@ def main(argv: list[str] | None = None) -> None:
     parent_filter = _resolve_milestone_parent_filter(WORK_DIR, args)
     _validate_or_exit()
     _check_pre_sync_availability(remote, parent_filter)
-    nodes, reg, available, integration_statuses = _resync_and_select(
-        base, remote, parent_filter
-    )
-    _assert_current_branch_equals(base)
-    node = _pick_node(args, nodes, reg, available, integration_statuses)
-    branch = f"feature/rm-{node['codename']}"
-    on_complete = prompt_on_complete(ROOT, args.on_complete)
-    _finalize_pickup(
-        node, nodes, branch,
-        base=base, remote=remote, push_registry=True,
-        include_ci_skip=include_ci_skip, on_complete=on_complete,
-    )
+    # F-011: stash any in-progress work/ changes so the integration-branch
+    # registry commit is clean; restore onto the new feature branch.
+    stashed = _stash_work_dir_changes()
+    try:
+        nodes, reg, available, integration_statuses = _resync_and_select(
+            base, remote, parent_filter
+        )
+        _assert_current_branch_equals(base)
+        node = _pick_node(args, nodes, reg, available, integration_statuses)
+        branch = f"feature/rm-{node['codename']}"
+        on_complete = prompt_on_complete(ROOT, args.on_complete)
+        _finalize_pickup(
+            node, nodes, branch,
+            base=base, remote=remote, push_registry=True,
+            include_ci_skip=include_ci_skip, on_complete=on_complete,
+        )
+    finally:
+        _restore_work_dir_changes(stashed)
 
 
 if __name__ == "__main__":
