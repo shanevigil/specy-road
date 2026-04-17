@@ -126,6 +126,15 @@ specy-road mark-implementation-reviewed
 specy-road finish-this-task --on-complete merge
 ```
 
+When `--on-complete pr` (or `auto`) is used, `finish-this-task` also
+writes a snapshot **PR body** to `work/pr-body-<NODE_ID>.md` containing
+your implementation summary (visible up top) and the original
+work-packet brief (in a collapsible `<details>` block) — see F-015. The
+printed `gh pr create` / `glab mr create` command already references
+the file via `--body-file` / `--description-file`, so reviewers see
+both narratives without leaving the PR view. The snapshot does **not**
+update if the roadmap evolves later; that's the point.
+
 When something goes wrong mid-pickup, specy-road auto-rolls-back the stale
 registry claim (F-014). If the auto-rollback itself fails, follow the
 printed instructions or run `specy-road abort-task-pickup --force`.

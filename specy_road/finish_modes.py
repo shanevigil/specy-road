@@ -19,6 +19,7 @@ def print_finish_tail(
     integration_branch: str,
     mr_manual: bool,
     heading_merge_pending: bool = False,
+    pr_body_path: Path | None = None,
 ) -> None:
     title = f"[{node_id}] {node.get('title', '')}"
     print()
@@ -34,13 +35,27 @@ def print_finish_tail(
         print(f"  git push -u {args.remote} {branch}")
     else:
         print("Branch pushed. Open a PR/MR:")
+    # F-015: pass --body-file (gh) / --description-file (glab) so the PR
+    # opens with the impl-summary + work-packet brief snapshot inlined.
+    body_arg_gh = ""
+    body_arg_glab = ""
+    if pr_body_path is not None:
+        body_arg_gh = f' --body-file "{pr_body_path}"'
+        body_arg_glab = f' --description-file "{pr_body_path}"'
     print(
         f'  gh pr create --base {integration_branch} --head {branch} '
-        f'--title "{title}"'
+        f'--title "{title}"{body_arg_gh}'
     )
     print(
-        "  (GitLab: `glab mr create` or web UI — same idea as a GitHub PR.)",
+        "  (GitLab: `glab mr create --target-branch "
+        f"{integration_branch} --source-branch {branch} "
+        f'--title "{title}"{body_arg_glab}`)',
     )
+    if pr_body_path is not None:
+        print(
+            f"  (Body snapshot: {pr_body_path} — F-015. The roadmap may "
+            "evolve after the PR opens; this snapshot does not.)"
+        )
     if mr_manual:
         print(
             "  Merge requests require manual approval — wait for review, "
@@ -61,6 +76,7 @@ def apply_on_complete_mode(
     mr_manual: bool,
     node_id: str,
     node: dict,
+    pr_body_path: Path | None = None,
 ) -> None:
     """PR tail, or merge/auto land integration (exit 1 on merge failure)."""
     if on_mode == "pr":
@@ -71,6 +87,7 @@ def apply_on_complete_mode(
             branch=branch,
             integration_branch=ib,
             mr_manual=mr_manual,
+            pr_body_path=pr_body_path,
         )
         remove_on_complete_session(sess_path)
         return
@@ -117,5 +134,6 @@ def apply_on_complete_mode(
         integration_branch=ib,
         mr_manual=mr_manual,
         heading_merge_pending=True,
+        pr_body_path=pr_body_path,
     )
     raise SystemExit(1)
