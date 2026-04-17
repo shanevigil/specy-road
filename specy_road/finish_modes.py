@@ -91,22 +91,19 @@ def apply_on_complete_mode(
         file=sys.stderr,
     )
     if on_mode == "merge":
+        # F-012: --on-complete merge means MERGE. Do NOT print PR
+        # instructions as a fallback — that's exactly the bug being fixed.
+        # Exit hard so the user investigates the integration-branch issue.
         print(
-            "\nMerge pending — resolve conflicts or integration issues, then push, "
-            "or open a PR/MR.",
+            "\n--on-complete merge cannot fall back to PR instructions. "
+            "Fix the integration branch (see error above) and re-run, or "
+            "rerun finish-this-task with --on-complete pr if you intend to "
+            "open a PR instead.",
             file=sys.stderr,
-        )
-        print_finish_tail(
-            args,
-            node_id=node_id,
-            node=node,
-            branch=branch,
-            integration_branch=ib,
-            mr_manual=mr_manual,
-            heading_merge_pending=True,
         )
         raise SystemExit(1)
 
+    # on_mode == "auto": fall back to PR tail only here.
     print(
         "\n(auto) Merge to integration failed — use PR/MR or fix locally "
         "(merge pending).",
