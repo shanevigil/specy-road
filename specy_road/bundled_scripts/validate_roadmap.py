@@ -29,6 +29,7 @@ from validate_roadmap_checks import (
     warn_phase_status_when_all_descendants_complete,
 )
 from validate_roadmap_gates import validate_gates
+from validate_self_heal import auto_heal_roadmap
 
 __all__ = [
     "cycle_check",
@@ -79,8 +80,14 @@ def validate_at(
     no_overlap_warn: bool = False,
     require_registry: bool = True,
     no_phase_status_warn: bool = False,
+    auto_heal: bool = True,
 ) -> None:
-    """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``)."""
+    """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
+
+    F-006/F-008: self-heal pass runs first (silent fixes for missing
+    codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
+    e.g. in a read-only CI drift check.
+    """
     reg_path = root / "roadmap" / "registry.yaml"
     if require_registry and not reg_path.is_file():
         print(f"missing {reg_path}", file=sys.stderr)
@@ -89,6 +96,13 @@ def validate_at(
     validate_roadmap_line_limits(root)
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
+
+    if auto_heal:
+        changed, _logs = auto_heal_roadmap(root)
+        if changed:
+            # Re-check line limits after healing in case a chunk grew.
+            validate_roadmap_line_limits(root)
+
     mdoc = load_manifest_mapping(root)
     mschema = root / "schemas" / "manifest.schema.json"
     validate_schema(mdoc, load_schema(mschema), "manifest.schema")

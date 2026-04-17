@@ -44,6 +44,7 @@ from specy_road.on_complete_session import (
     on_complete_session_path,
 )
 from specy_road.runtime_paths import default_user_repo_root
+from validate_roadmap import validate_at
 
 ROOT = Path.cwd()
 REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
@@ -53,6 +54,59 @@ WORK_DIR = ROOT / "work"
 # ---------------------------------------------------------------------------
 # Roadmap queries
 # ---------------------------------------------------------------------------
+
+
+def _resync_and_select(
+    base: str,
+    remote: str,
+    parent_filter,
+) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
+    """Sync integration branch, recompute availability, exit if empty."""
+    _sync_integration_branch(base, remote)
+    reg = _load_registry()
+    nodes = load_roadmap(ROOT)["nodes"]
+    enrich = _load_branch_enrichment(ROOT)
+    integration_statuses = _statuses_by_node_key(nodes)
+    virtual_keys, virtual_logs = _virtual_complete_from_registry(
+        reg,
+        repo_root=ROOT,
+        remote=remote,
+    )
+    for line in virtual_logs:
+        print(line)
+    status_overrides = {nk: "complete" for nk in virtual_keys}
+    available = _available(
+        nodes,
+        reg,
+        enrich,
+        status_overrides=status_overrides or None,
+        virtual_complete_keys=virtual_keys or None,
+    )
+    if parent_filter:
+        available = filter_available_under_parent(available, parent_filter, nodes)
+    if not available:
+        if parent_filter:
+            _exit_no_leaves_under_parent(parent_filter, after_sync=True)
+        _exit_no_actionable_leaves(nodes, reg, after_sync=True)
+    return nodes, reg, available, integration_statuses
+
+
+def _validate_or_exit() -> None:
+    """F-006/F-008: run self-healing validate before pickup."""
+    # Skip in test scenarios where load_roadmap is monkeypatched and there's
+    # no real manifest on disk under ROOT.
+    if not (ROOT / "roadmap" / "manifest.json").is_file():
+        return
+    try:
+        validate_at(ROOT, no_overlap_warn=True, require_registry=True)
+    except SystemExit as e:
+        if e.code not in (0, None):
+            print(
+                "error: roadmap validation failed; fix the issues above, "
+                "then re-run specy-road do-next-available-task.",
+                file=sys.stderr,
+            )
+            raise
 
 
 def _load_registry() -> dict:
@@ -296,6 +350,8 @@ def main(argv: list[str] | None = None) -> None:
 
     parent_filter = _resolve_milestone_parent_filter(WORK_DIR, args)
 
+    _validate_or_exit()
+
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
     enrich = _load_branch_enrichment(ROOT)
@@ -307,32 +363,9 @@ def main(argv: list[str] | None = None) -> None:
             _exit_no_leaves_under_parent(parent_filter, after_sync=False)
         _exit_no_actionable_leaves(nodes, reg, after_sync=False)
 
-    _sync_integration_branch(base, remote)
-    reg = _load_registry()
-    nodes = load_roadmap(ROOT)["nodes"]
-    enrich = _load_branch_enrichment(ROOT)
-    integration_statuses = _statuses_by_node_key(nodes)
-    virtual_keys, virtual_logs = _virtual_complete_from_registry(
-        reg,
-        repo_root=ROOT,
-        remote=remote,
+    nodes, reg, available, integration_statuses = _resync_and_select(
+        base, remote, parent_filter
     )
-    for line in virtual_logs:
-        print(line)
-    status_overrides = {nk: "complete" for nk in virtual_keys}
-    available = _available(
-        nodes,
-        reg,
-        enrich,
-        status_overrides=status_overrides or None,
-        virtual_complete_keys=virtual_keys or None,
-    )
-    if parent_filter:
-        available = filter_available_under_parent(available, parent_filter, nodes)
-    if not available:
-        if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=True)
-        _exit_no_actionable_leaves(nodes, reg, after_sync=True)
 
     _assert_current_branch_equals(base)
 
