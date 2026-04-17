@@ -19,6 +19,7 @@ from specy_road.git_workflow_config import (
     resolve_on_complete,
     should_cleanup_work_artifacts_on_finish,
 )
+from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
@@ -222,12 +223,66 @@ def _impl_review_or_exit(entry: dict, node_id: str) -> None:
     raise SystemExit(1)
 
 
+def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
+    """Resolve all main-time context in one call (keeps main() under cap)."""
+    codename, reg, entry, nodes = _resolve_context(branch)
+    node_id = entry["node_id"]
+    node = next(n for n in nodes if n["id"] == node_id)
+    work_dir = ROOT / "work"
+    sess_path = on_complete_session_path(work_dir, node_id)
+    session_oc = read_on_complete_session(
+        sess_path, node_id=node_id, codename=codename,
+    )
+    on_mode = resolve_on_complete(
+        ROOT, cli=args.on_complete, session=session_oc,
+    )
+    _impl_review_or_exit(entry, node_id)
+    print(f"Finishing [{node_id}] {node.get('title', '')}")
+    print(f"Branch:   {branch}")
+    print(f"on_complete: {on_mode}\n")
+    ib, gw_remote, _gw = resolve_integration_defaults(
+        ROOT, explicit_base=None, explicit_remote=None,
+    )
+    return {
+        "codename": codename, "reg": reg, "entry": entry, "nodes": nodes,
+        "node": node, "node_id": node_id, "work_dir": work_dir,
+        "sess_path": sess_path, "on_mode": on_mode, "ib": ib,
+        "gw_remote": gw_remote,
+    }
+
+
+def _maybe_write_pr_body(
+    *,
+    on_mode: str,
+    work_dir: Path,
+    node_id: str,
+    node: dict,
+    codename: str,
+    branch: str,
+    integration_branch: str,
+) -> Path | None:
+    """F-015: snapshot the impl-summary + brief into work/pr-body-<NODE>.md
+    BEFORE cleanup runs. Skip for on_mode=='merge' (no PR is opened)."""
+    if on_mode not in pr_body_modes():
+        return None
+    return write_pr_body(
+        work_dir=work_dir,
+        node_id=node_id,
+        title=node.get("title", ""),
+        codename=codename,
+        branch=branch,
+        integration_branch=integration_branch,
+    )
+
+
 def _bookkeeping_commit_phase(
     args: argparse.Namespace,
     codename: str,
     node_id: str,
     branch: str,
     reg: dict,
+    *,
+    pr_body_path: Path | None = None,
 ) -> None:
     changed_files = _update_chunk_status(node_id)
     changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
@@ -237,6 +292,10 @@ def _bookkeeping_commit_phase(
     print("-> specy-road validate")
     print("-> specy-road export")
     _validate_and_export()
+    if pr_body_path is not None:
+        # Print AFTER export so the dev sees a clean post-commit pointer.
+        rel = pr_body_path.relative_to(ROOT)
+        print(f"[ok] wrote {rel} (snapshot for PR/MR body, F-015)")
     work_tracked_removals: list[str] = []
     if should_cleanup_work_artifacts_on_finish(
         ROOT,
@@ -267,35 +326,26 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(1)
 
-    codename, reg, entry, nodes = _resolve_context(branch)
-    node_id = entry["node_id"]
-    node = next(n for n in nodes if n["id"] == node_id)
+    ctx = _resolve_main_context(args, branch)
+    codename, reg, entry, nodes, node, node_id = ctx["codename"], ctx["reg"], ctx["entry"], ctx["nodes"], ctx["node"], ctx["node_id"]
+    work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
+    ib, gw_remote = ctx["ib"], ctx["gw_remote"]
 
-    work_dir = ROOT / "work"
-    sess_path = on_complete_session_path(work_dir, node_id)
-    session_oc = read_on_complete_session(
-        sess_path,
+    # F-015: snapshot the work-packet brief + impl-summary into a PR body
+    # markdown BEFORE the cleanup pass deletes the source files. Only when
+    # a PR/MR is actually expected (on_mode == 'pr' or 'auto').
+    pr_body_path = _maybe_write_pr_body(
+        on_mode=on_mode,
+        work_dir=work_dir,
         node_id=node_id,
+        node=node,
         codename=codename,
-    )
-    on_mode = resolve_on_complete(
-        ROOT,
-        cli=args.on_complete,
-        session=session_oc,
+        branch=branch,
+        integration_branch=ib,
     )
 
-    _impl_review_or_exit(entry, node_id)
-
-    print(f"Finishing [{node_id}] {node.get('title', '')}")
-    print(f"Branch:   {branch}")
-    print(f"on_complete: {on_mode}\n")
-
-    _bookkeeping_commit_phase(args, codename, node_id, branch, reg)
-
-    ib, gw_remote, _gw = resolve_integration_defaults(
-        ROOT,
-        explicit_base=None,
-        explicit_remote=None,
+    _bookkeeping_commit_phase(
+        args, codename, node_id, branch, reg, pr_body_path=pr_body_path,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
 
@@ -323,6 +373,7 @@ def main(argv: list[str] | None = None) -> None:
         mr_manual=mr_manual,
         node_id=node_id,
         node=node,
+        pr_body_path=pr_body_path,
     )
 
 

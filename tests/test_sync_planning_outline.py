@@ -13,15 +13,6 @@ from sync_planning_artifacts import sync_planning_artifacts
 from tests.helpers import REPO, SCHEMAS
 from validate_roadmap import validate_at
 
-_AGENTIC = {
-    "artifact_action": "a",
-    "contract_citation": "shared/README.md",
-    "interface_contract": "i",
-    "constraints_note": "c",
-    "dependency_note": "d",
-}
-
-
 def _minimal_repo(dest: Path) -> tuple[str, str, str]:
     shutil.copytree(SCHEMAS, dest / "schemas")
     shutil.copytree(REPO / "constraints", dest / "constraints")
@@ -64,8 +55,6 @@ def _minimal_repo(dest: Path) -> tuple[str, str, str]:
             "codename": "one",
             "planning_dir": f"planning/M0.1_one_{nk1}.md",
             "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": _AGENTIC,
             "status": "Not Started",
             "touch_zones": [],
             "dependencies": [],
@@ -81,8 +70,6 @@ def _minimal_repo(dest: Path) -> tuple[str, str, str]:
             "codename": "two",
             "planning_dir": f"planning/M0.2_two_{nk2}.md",
             "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": _AGENTIC,
             "status": "Not Started",
             "touch_zones": [],
             "dependencies": [nk1],

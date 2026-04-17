@@ -1,19 +1,35 @@
 #!/usr/bin/env python3
-"""Emit a bounded brief for a roadmap node (ancestors, deps, touch zones)."""
+"""Generate a comprehensive work-packet brief for a roadmap node.
+
+F-004: ``specy-road brief`` is a deterministic agent-handoff document that
+inlines all the context an implementer needs (no separate file-opening):
+
+* node metadata (id, codename, title, status, rollup, touch zones)
+* ancestor context chain (program -> phase -> milestone -> task)
+* every ancestor planning sheet body, in chain order
+* this node's planning sheet body
+* every cited shared contract under shared/ (full body, deterministic order)
+* dependency list (resolved from node_key UUIDs to display ids)
+* an explicit touch-zone instruction for the implementing agent
+
+Determinism: same chunks + same planning files + same shared/*.md set =>
+byte-identical output. No timestamps, no host info.
+
+Output: stdout by default; ``-o PATH`` writes to a file.
+"""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from roadmap_load import load_roadmap
 from planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,
 )
+from roadmap_load import load_roadmap
 from roadmap_node_keys import build_key_to_node
-
 from specy_road.runtime_paths import default_user_repo_root
 
 
@@ -40,91 +56,196 @@ def ancestors(nid: str, by_id: dict[str, dict]) -> list[dict]:
     return list(reversed(out))
 
 
-def _brief_deps_and_contracts(
-    _n: dict, deps: list, root: Path, by_id: dict[str, dict]
-) -> list[str]:
-    # dependencies[] stores node_key UUIDs, not display ids — resolve via key map
-    by_key = build_key_to_node(list(by_id.values()))
-    lines: list[str] = [
+# ---------------------------------------------------------------------------
+# Section renderers
+# ---------------------------------------------------------------------------
+
+
+def _section_header(node_id: str, title: str, codename: str | None) -> list[str]:
+    cn = f" `{codename}`" if codename else ""
+    return [
+        f"# Work-packet brief: `{node_id}` — {title}{cn}",
         "",
-        "## Dependencies (must complete first)",
+        "_This is a deterministic compilation of every artifact the "
+        "implementer needs. Read top to bottom._",
         "",
     ]
-    if deps:
-        for d in deps:
-            if not isinstance(d, str):
-                continue
-            dep_node = by_key.get(d)
-            if dep_node:
-                did = dep_node.get("id", d)
-                ttl = dep_node.get("title", "(no title)")
-                lines.append(f"- **{did}** — {ttl}")
-            else:
-                lines.append(f"- **{d}** — (missing node for node_key)")
-    else:
-        lines.append("- _none_")
-    lines.extend(
-        [
-            "",
-            "## Contracts (read selectively)",
-            "",
-            "Load only what you need from `shared/` (see `shared/README.md`).",
-            "",
-        ]
-    )
-    shared = root / "shared"
-    if shared.is_dir():
-        for f in sorted(shared.glob("*.md")):
-            lines.append(f"- `{f.relative_to(root)}`")
-    else:
-        lines.append("- _(no shared/*.md yet)_")
+
+
+def _section_metadata(node: dict) -> list[str]:
+    nid = node["id"]
+    rollup = node.get("rollup_status") or node.get("status")
+    tz = node.get("touch_zones") or []
+    tz_str = ", ".join(tz) if tz else "_(unspecified — discover via codebase scan; see Touch zones section below)_"
+    return [
+        "## 1. Execution target",
+        "",
+        f"- **Node id:** `{nid}`",
+        f"- **Title:** {node.get('title', '')}",
+        f"- **Codename:** `{node.get('codename') or '—'}`",
+        f"- **Type:** {node.get('type', '')}",
+        f"- **Status (own):** {node.get('status')}",
+        f"- **Status (rollup):** {rollup}",
+        f"- **Execution (milestone hint):** {node.get('execution_milestone') or '—'}",
+        f"- **Touch zones:** {tz_str}",
+        "",
+    ]
+
+
+def _section_ancestor_chain(chain: list[dict]) -> list[str]:
+    """Render the ancestor chain as a 1-line bullet per ancestor."""
+    if len(chain) <= 1:
+        return ["## 2. Ancestor context chain", "", "_(no ancestors — this is a root node)_", ""]
+    lines = ["## 2. Ancestor context chain", ""]
+    for item in chain[:-1]:
+        tid = item["id"]
+        typ = item.get("type", "")
+        ttl = item.get("title", "")
+        status = item.get("rollup_status") or item.get("status")
+        lines.append(f"- **{tid}** ({typ}) — {ttl} _(rollup: {status})_")
+    lines.append("")
     return lines
 
 
-def _agentic_checklist_lines(n: dict) -> list[str]:
-    ac = n.get("agentic_checklist")
-    if not isinstance(ac, dict):
-        return []
-    lines = ["", "## Agentic checklist", ""]
-    for key in (
-        "artifact_action",
-        "contract_citation",
-        "interface_contract",
-        "constraints_note",
-        "dependency_note",
-    ):
-        lines.append(f"- **{key}:** {ac.get(key, '—')}")
-    return lines
-
-
-def _planning_dir_artifact_lines(
-    n: dict, root: Path, by_id: dict[str, dict]
-) -> list[str]:
-    nid = n["id"]
-    lines: list[str] = ["", "## Planning feature sheets", ""]
-    anc = ancestor_planning_paths(nid, by_id, root)
-    if anc:
-        lines.append("Read **ancestor** sheets first (program → phase → milestone), then this node.")
-        lines.append("")
-        for rel, p in anc:
-            state = "present" if p.is_file() else "missing"
-            lines.append(f"- **Ancestor:** `{rel}` ({state})")
-        lines.append("")
-    pd = n.get("planning_dir")
-    if not isinstance(pd, str) or not pd.strip():
-        if not anc:
-            lines.append("- _(no planning_dir on this node)_")
-        return lines
+def _read_text_safely(path: Path) -> tuple[str, bool]:
+    """Read a file; return (text, ok). Missing/unreadable files yield ('', False)."""
+    if not path.is_file():
+        return "", False
     try:
-        norm = normalize_planning_dir(pd.strip())
-        paths = planning_artifact_paths(root, norm)
-        p = paths["sheet"]
-        rel = p.relative_to(root)
-        state = "present" if p.is_file() else "missing"
-        lines.append(f"- **This node:** `{rel}` ({state})")
-    except ValueError as e:
-        lines.append(f"- _(invalid planning_dir: {e})_")
-    return lines
+        return path.read_text(encoding="utf-8"), True
+    except (OSError, UnicodeDecodeError):
+        return "", False
+
+
+def _inline_planning(
+    node: dict, root: Path, by_id: dict[str, dict]
+) -> list[str]:
+    """Section 3: inline every relevant planning sheet body verbatim."""
+    nid = node["id"]
+    out = ["## 3. Planning context (inlined)", ""]
+    anc = ancestor_planning_paths(nid, by_id, root)
+    for rel, p in anc:
+        text, ok = _read_text_safely(p)
+        out.append(f"### Ancestor planning sheet: `{rel}`")
+        out.append("")
+        if ok:
+            out.append(text.rstrip())
+        else:
+            out.append(f"_(not present on disk: `{rel}`)_")
+        out.append("")
+    pd = node.get("planning_dir")
+    if isinstance(pd, str) and pd.strip():
+        try:
+            norm = normalize_planning_dir(pd.strip())
+            paths = planning_artifact_paths(root, norm)
+            p = paths["sheet"]
+            rel = p.relative_to(root)
+            text, ok = _read_text_safely(p)
+            out.append(f"### This node's planning sheet: `{rel}`")
+            out.append("")
+            if ok:
+                out.append(text.rstrip())
+            else:
+                out.append(f"_(not present on disk: `{rel}`)_")
+            out.append("")
+        except ValueError as e:
+            out.append(f"_(invalid planning_dir on this node: {e})_")
+            out.append("")
+    if not anc and not pd:
+        out.append("_(no planning sheets in the chain)_")
+        out.append("")
+    return out
+
+
+def _inline_shared_contracts(root: Path) -> list[str]:
+    """Section 4: inline every shared/*.md body in deterministic (sorted) order."""
+    out = ["## 4. Shared contracts (inlined, deterministic order)", ""]
+    shared = root / "shared"
+    if not shared.is_dir():
+        out.append("_(no `shared/` directory in this repo)_")
+        out.append("")
+        return out
+    files = sorted(shared.glob("*.md"))
+    if not files:
+        out.append("_(no `shared/*.md` files yet)_")
+        out.append("")
+        return out
+    for f in files:
+        rel = f.relative_to(root)
+        text, ok = _read_text_safely(f)
+        out.append(f"### `{rel}`")
+        out.append("")
+        if ok:
+            out.append(text.rstrip())
+        else:
+            out.append("_(unreadable)_")
+        out.append("")
+    return out
+
+
+def _section_dependencies(node: dict, by_id: dict[str, dict]) -> list[str]:
+    out = ["## 5. Dependencies (must complete first)", ""]
+    deps = node.get("dependencies") or []
+    if not deps:
+        out.append("- _none_")
+        out.append("")
+        return out
+    by_key = build_key_to_node(list(by_id.values()))
+    for d in deps:
+        if not isinstance(d, str):
+            continue
+        dep = by_key.get(d)
+        if dep:
+            out.append(f"- **{dep.get('id', d)}** — {dep.get('title', '(no title)')}")
+        else:
+            out.append(f"- **{d}** — _(missing node for this node_key)_")
+    out.append("")
+    return out
+
+
+def _section_touch_zone_instruction(node: dict) -> list[str]:
+    """F-009: explicit instruction to the implementing agent."""
+    tz = node.get("touch_zones") or []
+    out = ["## 6. Touch zones — implementing agent instruction", ""]
+    if tz:
+        out.append(
+            "The PM listed these touch zones: "
+            + ", ".join(f"`{z}`" for z in tz)
+            + "."
+        )
+        out.append("")
+        out.append(
+            "**TODO (DEV agent):** confirm these touch zones are accurate by "
+            "scanning the codebase. Add or remove zones as appropriate, then "
+            "report the final list in your implementation summary."
+        )
+    else:
+        out.append(
+            "**TODO (DEV agent):** the PM did not specify touch zones. "
+            "Scan the codebase to identify the files this work packet will "
+            "touch, propose a `touch_zones` list (sorted, lowest-common-"
+            "ancestor paths), and include it in your implementation summary."
+        )
+    out.append("")
+    return out
+
+
+def _section_rollup_semantics() -> list[str]:
+    return [
+        "## 7. Rollup semantics (reference)",
+        "",
+        "- Ancestor `rollup_status` is computed from leaf descendants.",
+        "- A non-leaf is `Complete` only when every leaf descendant is `Complete`.",
+        "- Otherwise the ancestor inherits the most pressing non-complete status "
+        "(`Blocked` > `In Progress` > `Not Started`).",
+        "- Pickup targets actionable leaves; ancestors are context-only.",
+        "",
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Top-level render
+# ---------------------------------------------------------------------------
 
 
 def render_brief(
@@ -133,67 +254,18 @@ def render_brief(
     root = repo_root or default_user_repo_root()
     n = by_id[node_id]
     chain = ancestors(node_id, by_id) + [n]
-    deps = n.get("dependencies") or []
 
-    head = [
-        f"# Brief: `{node_id}` — {n.get('title', '')}",
-        "",
-        "## Execution Target",
-        "",
-        f"- **Leaf node:** `{node_id}`",
-        f"- **Codename:** {n.get('codename')}",
-        f"- **Title:** {n.get('title', '')}",
-        "",
-        "## Ancestor Context Chain",
-        "",
+    parts: list[list[str]] = [
+        _section_header(node_id, n.get("title", ""), n.get("codename")),
+        _section_metadata(n),
+        _section_ancestor_chain(chain),
+        _inline_planning(n, root, by_id),
+        _inline_shared_contracts(root),
+        _section_dependencies(n, by_id),
+        _section_touch_zone_instruction(n),
+        _section_rollup_semantics(),
     ]
-    for item in chain[:-1]:
-        tid = item["id"]
-        typ = item.get("type")
-        ttl = item.get("title", "")
-        status = item.get("status")
-        head.append(
-            f"- **{tid}** ({typ}) — {ttl} "
-            f"_(objective context; status: {status})_"
-        )
-    head.extend(
-        [
-            "",
-            "## Leaf Action Details",
-            "",
-            f"- **Status:** {n.get('status')}",
-            f"- **Execution (milestone):** {n.get('execution_milestone')}",
-            f"- **Execution (sub-task):** {n.get('execution_subtask')}",
-            f"- **Codename:** {n.get('codename')}",
-            (
-                "- **Touch zones:** "
-                f"{', '.join(n.get('touch_zones') or []) or '—'}"
-            ),
-        ]
-    )
-    head.extend(
-        [
-            "",
-            "## Derived Rollup Semantics",
-            "",
-            (
-                "- Ancestors are context containers and are not execution "
-                "pickup targets."
-            ),
-            (
-                "- Ancestor in-progress state is derived from active "
-                "descendant claims."
-            ),
-            (
-                "- Complete ancestor status rolls up from descendant "
-                "completion semantics."
-            ),
-        ]
-    )
-    head.extend(_agentic_checklist_lines(n))
-    head.extend(_planning_dir_artifact_lines(n, root, by_id))
-    tail = _brief_deps_and_contracts(n, deps, root, by_id)
-    return "\n".join(head + tail) + "\n"
+    return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
 
 
 def main() -> None:

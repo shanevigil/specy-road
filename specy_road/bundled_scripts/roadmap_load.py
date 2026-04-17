@@ -17,6 +17,95 @@ from roadmap_chunk_utils import (
 from specy_road.runtime_paths import default_user_repo_root
 
 
+# Status precedence used to aggregate non-leaf rollup status. Higher rank =
+# "more progressed" / "worth showing first" on mixed subtrees.
+#
+# Policy from F-013:
+#   - Leaf rollup_status == the leaf's own status.
+#   - Non-leaf rollup_status == "Complete" iff every leaf descendant rolls up
+#     to "Complete"; otherwise the highest-precedence status among leaf
+#     descendants. "Blocked" beats "In Progress" so blocked work is visible.
+_STATUS_PRECEDENCE = {
+    "Not Started": 0,
+    "In Progress": 1,
+    "Blocked": 2,
+    "Complete": 3,
+}
+_UNKNOWN_STATUS_RANK = -1
+
+
+def _rank(status: str | None) -> int:
+    if not isinstance(status, str):
+        return _UNKNOWN_STATUS_RANK
+    return _STATUS_PRECEDENCE.get(status, _UNKNOWN_STATUS_RANK)
+
+
+def _children_map(nodes: list[dict]) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = {}
+    for n in nodes:
+        pid = n.get("parent_id")
+        if isinstance(pid, str) and pid:
+            out.setdefault(pid, []).append(n["id"])
+    return out
+
+
+def compute_rollup_status(nodes: list[dict]) -> dict[str, str]:
+    """
+    Return ``{node_id: rollup_status}`` for every node.
+
+    Leaf rollup is the node's own ``status``. Non-leaf rollup is ``Complete``
+    when every leaf descendant is ``Complete``, else the highest-precedence
+    status among leaf descendants (``Blocked`` > ``In Progress`` >
+    ``Not Started``). Nodes with unknown/invalid status contribute as
+    ``Not Started``.
+    """
+    by_id = {n["id"]: n for n in nodes if isinstance(n.get("id"), str)}
+    children = _children_map(nodes)
+    cache: dict[str, str] = {}
+
+    def leaf_statuses(nid: str) -> list[str]:
+        kids = children.get(nid, [])
+        if not kids:
+            s = by_id.get(nid, {}).get("status")
+            return [s if isinstance(s, str) else "Not Started"]
+        out: list[str] = []
+        for k in kids:
+            out.extend(leaf_statuses(k))
+        return out
+
+    for nid in by_id:
+        kids = children.get(nid, [])
+        if not kids:
+            s = by_id[nid].get("status")
+            cache[nid] = s if isinstance(s, str) else "Not Started"
+            continue
+        descendants = leaf_statuses(nid)
+        if descendants and all(s == "Complete" for s in descendants):
+            cache[nid] = "Complete"
+            continue
+        # Pick the highest-precedence status among leaf descendants, excluding
+        # the "Complete" pile (since not all are Complete, mark with the most
+        # pressing not-yet-Complete status).
+        non_complete = [s for s in descendants if s != "Complete"]
+        if not non_complete:
+            # Shouldn't happen given the previous branch, but defensive.
+            cache[nid] = "Complete"
+            continue
+        best = max(non_complete, key=_rank)
+        cache[nid] = best
+    return cache
+
+
+def annotate_rollup_status(nodes: list[dict]) -> list[dict]:
+    """Attach ``rollup_status`` in place on every node and return the list."""
+    rs = compute_rollup_status(nodes)
+    for n in nodes:
+        nid = n.get("id")
+        if isinstance(nid, str) and nid in rs:
+            n["rollup_status"] = rs[nid]
+    return nodes
+
+
 def line_count(path: Path) -> int:
     text = path.read_text(encoding="utf-8", errors="replace")
     if not text:
@@ -47,6 +136,7 @@ def _merge_includes(root: Path, version: object, includes: list) -> dict:
     all_nodes: list[dict] = []
     for rel in includes:
         all_nodes.extend(_read_chunk_nodes(base, rel))
+    annotate_rollup_status(all_nodes)
     return {"version": version, "nodes": all_nodes}
 
 

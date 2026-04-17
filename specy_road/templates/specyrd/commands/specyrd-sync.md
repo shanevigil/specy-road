@@ -11,4 +11,4 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road sync
 ```
 
-Use `specy-road sync --no-git` to only validate and export. See `docs/pm-workflow.md`.
+specy-road requires git and a configured remote (origin). See `docs/install-and-usage.md`.

@@ -17,12 +17,12 @@ Before using any prompt in this file:
   - (optional) `[YOUR_DEPENDENCY_INSTALL_CMD]`
   - (optional) `[YOUR_SECURITY_SCAN_CMD]`
 
-**specy-road toolkit (this repository):** canonical commands live in `docs/setup.md` (see **Dependency and security checks** and **CI**); supply-chain policy and tool mapping are in `docs/supply-chain-security.md`. Typical substitutions when running prompts here:
+**specy-road toolkit (this repository):** canonical commands live in `docs/contributor-guide.md` (see **Local CI parity** and **Supply-chain & dependency audits**); supply-chain policy and tool mapping are in `docs/supply-chain-security.md`. Typical substitutions when running prompts here:
 
 | Placeholder | specy-road toolkit command |
 |-------------|----------------------------|
 | `[YOUR_DEPENDENCY_INSTALL_CMD]` | `pip install -r requirements-ci.txt` (frozen lock matching CI; regenerate with `pip-compile` — see `docs/supply-chain-security.md`) |
-| `[YOUR_SECURITY_SCAN_CMD]` | `python -m pip install --upgrade 'pip>=25.3'` then `pip install pip-audit && pip-audit` (same venv; optional `PIPAPI_PYTHON_LOCATION="$(command -v python)"` if pip-audit warns). Gantt UI: `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. CI also runs OSV-Scanner on `requirements-ci.txt` + `package-lock.json` and lockfile-lint — see `docs/setup.md` (**CI**). |
+| `[YOUR_SECURITY_SCAN_CMD]` | `python -m pip install --upgrade 'pip>=25.3'` then `pip install pip-audit && pip-audit` (same venv; optional `PIPAPI_PYTHON_LOCATION="$(command -v python)"` if pip-audit warns). Gantt UI: `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. CI also runs OSV-Scanner on `requirements-ci.txt` + `package-lock.json` and lockfile-lint — see `docs/contributor-guide.md` (**Local CI parity**). |
 | `[YOUR_TEST_CMD]` | `pytest` |
 | `[YOUR_STATIC_ANALYSIS_CMD]` | **Python / roadmap (always):** `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`. **PM Gantt frontend (`gui/pm-gantt/`, when relevant):** `cd gui/pm-gantt && npm ci && npm run lint` — ESLint 10 flat config with `@eslint-react/eslint-plugin` (replaces `eslint-plugin-react-hooks` for ESLint 10 compatibility); see [`gui/pm-gantt/eslint.config.js`](../gui/pm-gantt/eslint.config.js). |
 

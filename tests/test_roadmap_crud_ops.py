@@ -19,16 +19,10 @@ def _sheet_stub(nid: str, _nk: str) -> str:
 
 
 def _m99_ops_nodes() -> tuple[str, str, str, list[dict]]:
+    # Post F-003/F-007: every leaf is agentic by design; no per-node checklist.
     nk99 = "10000000-0000-4000-8000-000000009901"
     nk991 = "10000000-0000-4000-8000-000000009902"
     nk992 = "10000000-0000-4000-8000-000000009903"
-    ac = {
-        "artifact_action": "a",
-        "contract_citation": "shared/README.md",
-        "interface_contract": "i",
-        "constraints_note": "c",
-        "dependency_note": "d",
-    }
     nodes: list[dict] = [
         {
             "id": "M99",
@@ -53,8 +47,6 @@ def _m99_ops_nodes() -> tuple[str, str, str, list[dict]]:
             "codename": "one",
             "planning_dir": f"planning/M99.1_one_{nk991}.md",
             "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": ac,
             "status": "Not Started",
             "touch_zones": [],
             "dependencies": [],
@@ -69,8 +61,6 @@ def _m99_ops_nodes() -> tuple[str, str, str, list[dict]]:
             "codename": "two",
             "planning_dir": f"planning/M99.2_two_{nk992}.md",
             "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": ac,
             "status": "Not Started",
             "touch_zones": [],
             "dependencies": [nk991],
@@ -108,23 +98,6 @@ def _fixture_repo(dest: Path) -> None:
     write_json_chunk(dest / "roadmap" / "phases" / "T.json", nodes)
 
 
-def test_parse_checklist_flags_partial_rejected() -> None:
-    ns = SimpleNamespace(
-        artifact_action="build x",
-        contract_citation=None,
-        interface_contract="i",
-        constraints_note="c",
-        dependency_note="d",
-    )
-    with pytest.raises(SystemExit):
-        ops.parse_checklist_flags(ns)
-
-
-def test_checklist_json_requires_all_fields() -> None:
-    with pytest.raises(SystemExit):
-        ops._checklist_from_json(json.dumps({"artifact_action": "a"}))
-
-
 def test_edit_node_set_pairs_updates_status_direct(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     ops.edit_node_set_pairs(tmp_path, "M99.1", [("status", "Complete")])
@@ -150,54 +123,33 @@ def test_cmd_add_direct_rejects_invalid_codename(tmp_path: Path) -> None:
         codename="Not Kebab",
         status="Not Started",
         execution_milestone=None,
-        execution_subtask=None,
         parallel_tracks=None,
         touch_zone=[],
         dependency=[],
         chunk="phases/T.json",
-        checklist_json=None,
-        artifact_action=None,
-        contract_citation=None,
-        interface_contract=None,
-        constraints_note=None,
-        dependency_note=None,
     )
     with pytest.raises(SystemExit):
         ops.cmd_add(args)
 
 
-def test_cmd_add_direct_agentic_with_json_checklist(tmp_path: Path) -> None:
+def test_cmd_add_direct_auto_derives_codename(tmp_path: Path) -> None:
+    """F-006: when --codename is not supplied on a task, derive from --title."""
     _fixture_repo(tmp_path)
     args = SimpleNamespace(
         repo_root=tmp_path,
         id="M99.3",
         type="task",
-        title="Three",
+        title="Three Slug",
         parent_id="M99",
-        codename="three",
+        codename=None,
         status="Not Started",
         execution_milestone=None,
-        execution_subtask="agentic",
         parallel_tracks=None,
         touch_zone=[],
         dependency=[],
         chunk="phases/T.json",
-        checklist_json=json.dumps(
-            {
-                "artifact_action": "a",
-                "contract_citation": "shared/README.md",
-                "interface_contract": "i",
-                "constraints_note": "c",
-                "dependency_note": "d",
-            }
-        ),
-        artifact_action=None,
-        contract_citation=None,
-        interface_contract=None,
-        constraints_note=None,
-        dependency_note=None,
     )
     ops.cmd_add(args)
     nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
     added = next(n for n in nodes if n["id"] == "M99.3")
-    assert added["codename"] == "three"
+    assert added["codename"] == "three-slug"

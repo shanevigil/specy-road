@@ -90,11 +90,6 @@ def main(argv: list[str] | None = None) -> None:
         ),
     )
     p.add_argument(
-        "--no-git",
-        action="store_true",
-        help="Skip git; only run validate and export (offline).",
-    )
-    p.add_argument(
         "--repo-root",
         type=Path,
         default=None,
@@ -113,8 +108,9 @@ def main(argv: list[str] | None = None) -> None:
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
 
-    if not args.no_git:
-        _sync_integration_branch(base, remote)
+    # F-010: git + a configured remote are a hard dependency. No --no-git
+    # opt-out; teams that are offline must use a local bare remote.
+    _sync_integration_branch(base, remote)
 
     print("-> specy-road validate")
     print("-> specy-road export")

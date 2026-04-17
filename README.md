@@ -1,4 +1,17 @@
+<!--
+TODO(post-release): wire automated PyPI build-and-publish on every tagged
+release (v*.*.*), then replace the install-from-source block below with a
+single `pip install specy-road` line.
+-->
+
 # specy-road
+
+> ## ⚠️ Pre-release notice
+> The first tagged release is pending. **There is no `specy-road` package on
+> PyPI yet.** Install from source as shown in the [Install](#install) section
+> until v0.1 ships. The contributor / developer guide
+> (`docs/contributor-guide.md`) — including release process and PyPI
+> publish workflow — will be linked here post-release.
 
 **Roadmap-first coordination** for teams and coding agents.
 
@@ -17,12 +30,20 @@ Spec-Kit helped popularize disciplined specs and context hygiene. **specy-road**
 
 ## Install
 
-Requires **Python 3.11+**.
+Requires **Python 3.11+** and **git** (with a configured remote — `origin` by
+default).
+
+> No PyPI package yet. Install from source from the `dev` branch until the
+> first tagged release. The full install + everyday usage guide is at
+> **[docs/install-and-usage.md](docs/install-and-usage.md)**.
 
 ```bash
-pip install specy-road
-# optional: pip install "specy-road[gui-next]" for the PM Gantt UI (`specy-road gui`)
-# optional: pip install "specy-road[review]" for `specy-road review-node`
+git clone https://github.com/shanevigil/specy-road.git
+cd specy-road
+git switch dev               # main is reserved for tagged releases
+python3 -m venv .venv
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -e ".[dev,gui-next]"   # add ',review' for the optional LLM review-node feature
 ```
 
 How the PM Gantt UI is packaged (FastAPI + built frontend): [docs/pm-gui.md](docs/pm-gui.md).
@@ -76,11 +97,11 @@ pytest
 #   cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build
 ```
 
-**Dependency and supply-chain:** see [docs/supply-chain-security.md](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. More detail: [docs/setup.md](docs/setup.md#dependency-and-security-checks).
+**Dependency and supply-chain:** see [docs/supply-chain-security.md](docs/supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. More detail: [docs/contributor-guide.md](docs/contributor-guide.md#supply-chain--dependency-audits).
 
 **Trying `specy-road init project`:** With no path, the CLI uses the git worktree root—in **this** repo that would scaffold into the toolkit tree. Prefer an explicit directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [playground/](playground/README.md).
 
-Optional git hooks: `pip install pre-commit && pre-commit install` — runs part of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [docs/setup.md](docs/setup.md#install-the-pre-commit-hook).
+Optional git hooks: `pip install pre-commit && pre-commit install` — runs part of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [docs/contributor-guide.md](docs/contributor-guide.md#pre-commit-hook).
 
 ## specyrd (optional IDE command stubs)
 

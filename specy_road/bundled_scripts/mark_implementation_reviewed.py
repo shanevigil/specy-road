@@ -14,6 +14,10 @@ import yaml
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.runtime_paths import default_user_repo_root
+from work_dir_stash import (
+    restore_work_dir_changes as _restore_work,
+    stash_work_dir_changes as _stash_work,
+)
 
 ROOT = Path.cwd()
 REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
@@ -53,6 +57,14 @@ def _working_tree_clean() -> bool:
         check=True,
     )
     return not r.stdout.strip()
+
+
+def _stash_work_dir_changes() -> bool:
+    return _stash_work(ROOT, "mark-implementation-reviewed")
+
+
+def _restore_work_dir_changes(stashed: bool) -> None:
+    _restore_work(ROOT, stashed)
 
 
 def _resolve_context(branch: str) -> tuple[str, dict, dict]:
@@ -291,14 +303,20 @@ def main(argv: list[str] | None = None) -> None:
         print("Aborted (registry unchanged).")
         raise SystemExit(0)
 
-    if not _working_tree_clean():
-        print(
-            "error: working tree is not clean (commit, stash, or discard changes first).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-    _commit_registry_approved(codename, reg)
+    # F-011: stash any work/ changes so the registry commit is clean,
+    # then restore on top of the feature branch (where they belong).
+    stashed = _stash_work_dir_changes()
+    try:
+        if not _working_tree_clean():
+            print(
+                "error: working tree is not clean (commit, stash, or "
+                "discard changes outside work/ first).",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        _commit_registry_approved(codename, reg)
+    finally:
+        _restore_work_dir_changes(stashed)
 
 
 if __name__ == "__main__":

@@ -11,34 +11,27 @@ import yaml
 
 from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
-from specy_road.git_workflow_config import (
-    integration_refs_present,
-    is_git_worktree,
-    load_git_workflow_config,
-)
+from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import default_user_repo_root
 from validate_roadmap_checks import (
     cycle_check,
     load_schema,
     run_validation,
     validate_schema,
-    validate_agentic_checklists,
     validate_codenames,
-    validate_contract_citations,
     validate_required_planning_dirs,
     validate_unique_title_slugs,
     validate_unique_titles,
     warn_phase_status_when_all_descendants_complete,
 )
 from validate_roadmap_gates import validate_gates
+from validate_self_heal import auto_heal_roadmap
 
 __all__ = [
     "cycle_check",
     "run_validation",
-    "validate_agentic_checklists",
     "validate_at",
     "validate_codenames",
-    "validate_contract_citations",
     "validate_gates",
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
@@ -48,33 +41,26 @@ __all__ = [
 
 
 def validate_git_workflow_contract(root: Path) -> None:
-    """Validate ``roadmap/git-workflow.yaml`` if present; warn on missing refs."""
+    """Validate ``roadmap/git-workflow.yaml`` if present.
+
+    F-005: do NOT warn about missing remote-tracking refs for the
+    integration branch. specy-road only cares that ``integration_branch`` is
+    declared. How the application team organises branches (and what their
+    local clone has fetched) is outside specy-road's scope.
+    """
     gw = root / "roadmap" / "git-workflow.yaml"
     if not gw.is_file():
         print(
-            "warning: missing roadmap/git-workflow.yaml — add the template from "
-            "`specy-road init project` so CLI and PM GUI share your integration branch.",
+            "warning: missing roadmap/git-workflow.yaml — add the template "
+            "from `specy-road init project` so CLI and PM GUI share your "
+            "integration branch.",
             file=sys.stderr,
         )
         return
-    data, err = load_git_workflow_config(root)
+    _data, err = load_git_workflow_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
-    assert data is not None
-    if is_git_worktree(root):
-        ok, _ = integration_refs_present(
-            root,
-            str(data["remote"]),
-            str(data["integration_branch"]),
-        )
-        if not ok:
-            print(
-                "warning: no local git ref for "
-                f"{data['remote']}/{data['integration_branch']} — "
-                f"run: git fetch {data['remote']}",
-                file=sys.stderr,
-            )
 
 
 def validate_at(
@@ -83,8 +69,14 @@ def validate_at(
     no_overlap_warn: bool = False,
     require_registry: bool = True,
     no_phase_status_warn: bool = False,
+    auto_heal: bool = True,
 ) -> None:
-    """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``)."""
+    """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
+
+    F-006/F-008: self-heal pass runs first (silent fixes for missing
+    codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
+    e.g. in a read-only CI drift check.
+    """
     reg_path = root / "roadmap" / "registry.yaml"
     if require_registry and not reg_path.is_file():
         print(f"missing {reg_path}", file=sys.stderr)
@@ -93,6 +85,13 @@ def validate_at(
     validate_roadmap_line_limits(root)
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
+
+    if auto_heal:
+        changed, _logs = auto_heal_roadmap(root)
+        if changed:
+            # Re-check line limits after healing in case a chunk grew.
+            validate_roadmap_line_limits(root)
+
     mdoc = load_manifest_mapping(root)
     mschema = root / "schemas" / "manifest.schema.json"
     validate_schema(mdoc, load_schema(mschema), "manifest.schema")

@@ -26,7 +26,7 @@ _USAGE_TEXT = (
     "\n"
     "PM workflow:\n"
     "  sync                 — fetch/merge integration branch, validate, export\n"
-    "    (optional: --base BRANCH --remote NAME | --no-git)\n"
+    "    (optional: --base BRANCH --remote NAME)\n"
     "  list-nodes           — list nodes and chunk paths (pass-through to roadmap CRUD)\n"
     "  show-node <NODE_ID>\n"
     "  add-node ...         — see: python specy_road/bundled_scripts/roadmap_crud.py add-node -h\n"

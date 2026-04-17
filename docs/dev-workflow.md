@@ -3,7 +3,7 @@
 This document is for the developer (or coding agent) who picks up `Agentic-led` work,
 implements it against contracts, and merges back.
 
-For setup (install, pre-commit hook, IDE stubs) see [setup.md](setup.md).
+For end-user install + everyday usage see [install-and-usage.md](install-and-usage.md). For toolkit-contributor topics (pre-commit hook, IDE stubs, branching/tagging/release) see [contributor-guide.md](contributor-guide.md).
 For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 
 Canonical model: **execute leaves, contextualize with ancestors, roll up progress upward**.

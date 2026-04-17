@@ -44,10 +44,8 @@ def test_assert_current_branch_equals_detached_fails(
         dnt._assert_current_branch_equals("main")
 
 
-def test_validate_touch_zones_empty_exits(monkeypatch: pytest.MonkeyPatch) -> None:
-    node = {"id": "M1.1", "codename": "x", "touch_zones": []}
-    with pytest.raises(SystemExit):
-        dnt._validate_touch_zones(node)
+# F-009: _validate_touch_zones was removed (touch_zones are optional; the
+# agent prompt instructs the implementer to discover them). Test deleted.
 
 
 def test_working_tree_clean_true() -> None:
