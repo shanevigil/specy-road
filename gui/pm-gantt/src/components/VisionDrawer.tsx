@@ -25,8 +25,21 @@ export function VisionDrawer({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
 
-  const lastSnap = useRef({ vision: "" });
-  const canAutosave = useRef(false);
+  const lastSnapRef = useRef({ vision: "" });
+  const canAutosaveRef = useRef(false);
+  const persistClearTimeoutRef = useRef<number | null>(null);
+  const messageClearTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (persistClearTimeoutRef.current != null) {
+        window.clearTimeout(persistClearTimeoutRef.current);
+      }
+      if (messageClearTimeoutRef.current != null) {
+        window.clearTimeout(messageClearTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -34,30 +47,30 @@ export function VisionDrawer({ open, onClose }: Props) {
     setMsg(null);
     setPersistMsg(null);
     setLoading(true);
-    canAutosave.current = false;
+    canAutosaveRef.current = false;
     /* eslint-enable @eslint-react/set-state-in-effect */
     const load = async () => {
       try {
         const r = await fetchPlanningFile(VISION_PATH);
         setContent(r.content);
         setMissing(false);
-        lastSnap.current = { vision: r.content };
+        lastSnapRef.current = { vision: r.content };
       } catch {
         setContent("");
         setMissing(true);
-        lastSnap.current = { vision: "" };
+        lastSnapRef.current = { vision: "" };
       }
       setLoading(false);
       queueMicrotask(() => {
-        canAutosave.current = true;
+        canAutosaveRef.current = true;
       });
     };
     void load();
   }, [open]);
 
   useEffect(() => {
-    if (!open || !canAutosave.current || loading) return;
-    if (content === lastSnap.current.vision) return;
+    if (!open || !canAutosaveRef.current || loading) return;
+    if (content === lastSnapRef.current.vision) return;
     if (missing) return;
 
     /* eslint-disable-next-line @eslint-react/set-state-in-effect -- autosave status */
@@ -65,10 +78,16 @@ export function VisionDrawer({ open, onClose }: Props) {
     const t = window.setTimeout(() => {
       savePlanningFile(VISION_PATH, content)
         .then(() => {
-          lastSnap.current = { vision: content };
+          lastSnapRef.current = { vision: content };
           setMissing(false);
           setPersistMsg("Saved.");
-          window.setTimeout(() => setPersistMsg(null), 2000);
+          if (persistClearTimeoutRef.current != null) {
+            window.clearTimeout(persistClearTimeoutRef.current);
+          }
+          persistClearTimeoutRef.current = window.setTimeout(
+            () => setPersistMsg(null),
+            2000,
+          );
         })
         .catch((e: unknown) => {
           if (e instanceof PmGuiConcurrencyError) {
@@ -94,10 +113,16 @@ export function VisionDrawer({ open, onClose }: Props) {
       await savePlanningFile(VISION_PATH, VISION_STARTER);
       setContent(VISION_STARTER);
       setMissing(false);
-      lastSnap.current = { vision: VISION_STARTER };
-      canAutosave.current = true;
+      lastSnapRef.current = { vision: VISION_STARTER };
+      canAutosaveRef.current = true;
       setMsg("Created vision.md. Edits save automatically.");
-      window.setTimeout(() => setMsg(null), 4000);
+      if (messageClearTimeoutRef.current != null) {
+        window.clearTimeout(messageClearTimeoutRef.current);
+      }
+      messageClearTimeoutRef.current = window.setTimeout(
+        () => setMsg(null),
+        4000,
+      );
     } catch (e: unknown) {
       if (e instanceof PmGuiConcurrencyError) {
         void onConcurrencyConflict();

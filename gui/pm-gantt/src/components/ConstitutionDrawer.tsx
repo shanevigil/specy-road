@@ -28,8 +28,21 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
 
-  const lastSnap = useRef({ purpose: "", principles: "" });
-  const canAutosave = useRef(false);
+  const lastSnapRef = useRef({ purpose: "", principles: "" });
+  const canAutosaveRef = useRef(false);
+  const persistClearTimeoutRef = useRef<number | null>(null);
+  const messageClearTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (persistClearTimeoutRef.current != null) {
+        window.clearTimeout(persistClearTimeoutRef.current);
+      }
+      if (messageClearTimeoutRef.current != null) {
+        window.clearTimeout(messageClearTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +50,7 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
     setMsg(null);
     setPersistMsg(null);
     setLoading(true);
-    canAutosave.current = false;
+    canAutosaveRef.current = false;
     /* eslint-enable @eslint-react/set-state-in-effect */
     const load = async () => {
       let p = "";
@@ -60,20 +73,20 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
       setPrinciples(pr);
       setPurposeMissing(pMiss);
       setPrinciplesMissing(prMiss);
-      lastSnap.current = { purpose: p, principles: pr };
+      lastSnapRef.current = { purpose: p, principles: pr };
       setLoading(false);
       queueMicrotask(() => {
-        canAutosave.current = true;
+        canAutosaveRef.current = true;
       });
     };
     void load();
   }, [open]);
 
   useEffect(() => {
-    if (!open || !canAutosave.current || loading) return;
+    if (!open || !canAutosaveRef.current || loading) return;
     if (
-      purpose === lastSnap.current.purpose &&
-      principles === lastSnap.current.principles
+      purpose === lastSnapRef.current.purpose &&
+      principles === lastSnapRef.current.principles
     ) {
       return;
     }
@@ -87,11 +100,17 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
         savePlanningFile(PRINCIPLES_PATH, principles),
       ])
         .then(() => {
-          lastSnap.current = { purpose, principles };
+          lastSnapRef.current = { purpose, principles };
           setPurposeMissing(false);
           setPrinciplesMissing(false);
           setPersistMsg("Saved.");
-          window.setTimeout(() => setPersistMsg(null), 2000);
+          if (persistClearTimeoutRef.current != null) {
+            window.clearTimeout(persistClearTimeoutRef.current);
+          }
+          persistClearTimeoutRef.current = window.setTimeout(
+            () => setPersistMsg(null),
+            2000,
+          );
         })
         .catch((e: unknown) => {
           if (e instanceof PmGuiConcurrencyError) {
@@ -133,13 +152,19 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
       ]);
       setPurpose(rp.content);
       setPrinciples(rpr.content);
-      lastSnap.current = {
+      lastSnapRef.current = {
         purpose: rp.content,
         principles: rpr.content,
       };
-      canAutosave.current = true;
+      canAutosaveRef.current = true;
       setMsg("Starter files created. Edits save automatically.");
-      window.setTimeout(() => setMsg(null), 4000);
+      if (messageClearTimeoutRef.current != null) {
+        window.clearTimeout(messageClearTimeoutRef.current);
+      }
+      messageClearTimeoutRef.current = window.setTimeout(
+        () => setMsg(null),
+        4000,
+      );
     } catch (e: unknown) {
       if (e instanceof PmGuiConcurrencyError) {
         void onConcurrencyConflict();

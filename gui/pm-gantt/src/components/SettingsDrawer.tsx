@@ -195,11 +195,20 @@ export function SettingsDrawer({
   /** True after the user changes the overlay toggle (until a successful save). */
   const pmGuiOverlayDirtyRef = useRef(false);
 
-  const skipAutosave = useRef(true);
+  const skipAutosaveRef = useRef(true);
+  const persistClearTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (persistClearTimeoutRef.current != null) {
+        window.clearTimeout(persistClearTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
-    skipAutosave.current = true;
+    skipAutosaveRef.current = true;
     /* eslint-disable @eslint-react/set-state-in-effect -- reset when opening */
     setMsg(null);
     setPersistMsg(null);
@@ -218,7 +227,7 @@ export function SettingsDrawer({
         setRegistryRemoteOverlay(pmGuiOverlayPersistedRef.current && tested);
         setIntegrationBranchAutoFf(pm.integration_branch_auto_ff === true);
         const root = typeof s.repo_root === "string" ? s.repo_root : "";
-        setRepoLabel(root ? root : "");
+        setRepoLabel(root);
         setLlm(
           Object.fromEntries(
             Object.entries(l).map(([k, v]) => [k, v == null ? "" : String(v)]),
@@ -233,13 +242,13 @@ export function SettingsDrawer({
       .catch((e: unknown) => setMsg(String(e)))
       .finally(() => {
         queueMicrotask(() => {
-          skipAutosave.current = false;
+          skipAutosaveRef.current = false;
         });
       });
   }, [open]);
 
   useEffect(() => {
-    if (!open || skipAutosave.current) return;
+    if (!open || skipAutosaveRef.current) return;
     /* eslint-disable-next-line @eslint-react/set-state-in-effect -- autosave status */
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
@@ -266,7 +275,13 @@ export function SettingsDrawer({
           pmGuiOverlayPersistedRef.current = overlayOutbound;
           pmGuiOverlayDirtyRef.current = false;
           setPersistMsg("Saved.");
-          window.setTimeout(() => setPersistMsg(null), 2000);
+          if (persistClearTimeoutRef.current != null) {
+            window.clearTimeout(persistClearTimeoutRef.current);
+          }
+          persistClearTimeoutRef.current = window.setTimeout(
+            () => setPersistMsg(null),
+            2000,
+          );
         })
         .catch((e: unknown) => {
           setMsg(String(e));

@@ -36,8 +36,21 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
   const [msg, setMsg] = useState<string | null>(null);
   const [persistMsg, setPersistMsg] = useState<string | null>(null);
 
-  const lastSnap = useRef({ content: "" });
-  const canAutosave = useRef(false);
+  const lastSnapRef = useRef({ content: "" });
+  const canAutosaveRef = useRef(false);
+  const persistClearTimeoutRef = useRef<number | null>(null);
+  const messageClearTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (persistClearTimeoutRef.current != null) {
+        window.clearTimeout(persistClearTimeoutRef.current);
+      }
+      if (messageClearTimeoutRef.current != null) {
+        window.clearTimeout(messageClearTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const refreshList = useCallback(async () => {
     setLoadingList(true);
@@ -62,12 +75,12 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
     setPersistMsg(null);
     setSelectedPath(null);
     setContent("");
-    lastSnap.current = { content: "" };
-    canAutosave.current = false;
+    lastSnapRef.current = { content: "" };
+    canAutosaveRef.current = false;
     void (async () => {
       const mds = await refreshList();
       queueMicrotask(() => {
-        canAutosave.current = true;
+        canAutosaveRef.current = true;
       });
       if (mds.length > 0) {
         const first = mds[0].path;
@@ -76,7 +89,7 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
         try {
           const r = await fetchPlanningFile(first);
           setContent(r.content);
-          lastSnap.current = { content: r.content };
+          lastSnapRef.current = { content: r.content };
         } catch (e: unknown) {
           setMsg(String(e));
         } finally {
@@ -93,7 +106,7 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
       try {
         const r = await fetchPlanningFile(path);
         setContent(r.content);
-        lastSnap.current = { content: r.content };
+        lastSnapRef.current = { content: r.content };
       } catch (e: unknown) {
         setMsg(String(e));
       } finally {
@@ -106,12 +119,12 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
   const selectPath = useCallback(
     async (path: string) => {
       if (path === selectedPath) return;
-      if (selectedPath && canAutosave.current) {
+      if (selectedPath && canAutosaveRef.current) {
         const cur = content;
-        if (cur !== lastSnap.current.content) {
+        if (cur !== lastSnapRef.current.content) {
           try {
             await savePlanningFile(selectedPath, cur);
-            lastSnap.current = { content: cur };
+            lastSnapRef.current = { content: cur };
           } catch (e: unknown) {
             if (e instanceof PmGuiConcurrencyError) {
               void onConcurrencyConflict();
@@ -139,10 +152,16 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
       await refreshList();
       setSelectedPath(path);
       setContent(NEW_NOTE_TEMPLATE);
-      lastSnap.current = { content: NEW_NOTE_TEMPLATE };
-      canAutosave.current = true;
+      lastSnapRef.current = { content: NEW_NOTE_TEMPLATE };
+      canAutosaveRef.current = true;
       setMsg("New note created.");
-      window.setTimeout(() => setMsg(null), 2500);
+      if (messageClearTimeoutRef.current != null) {
+        window.clearTimeout(messageClearTimeoutRef.current);
+      }
+      messageClearTimeoutRef.current = window.setTimeout(
+        () => setMsg(null),
+        2500,
+      );
     } catch (e: unknown) {
       if (e instanceof PmGuiConcurrencyError) {
         void onConcurrencyConflict();
@@ -156,18 +175,24 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
   }, [refreshList, onConcurrencyConflict]);
 
   useEffect(() => {
-    if (!open || !canAutosave.current || loadingFile || !selectedPath) {
+    if (!open || !canAutosaveRef.current || loadingFile || !selectedPath) {
       return;
     }
-    if (content === lastSnap.current.content) return;
+    if (content === lastSnapRef.current.content) return;
 
     setPersistMsg("Saving…");
     const t = window.setTimeout(() => {
       savePlanningFile(selectedPath, content)
         .then(() => {
-          lastSnap.current = { content };
+          lastSnapRef.current = { content };
           setPersistMsg("Saved.");
-          window.setTimeout(() => setPersistMsg(null), 2000);
+          if (persistClearTimeoutRef.current != null) {
+            window.clearTimeout(persistClearTimeoutRef.current);
+          }
+          persistClearTimeoutRef.current = window.setTimeout(
+            () => setPersistMsg(null),
+            2000,
+          );
         })
         .catch((e: unknown) => {
           if (e instanceof PmGuiConcurrencyError) {
