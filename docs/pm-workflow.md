@@ -249,10 +249,13 @@ specy-road edit-node M0.1.1 --set status=Complete
 
 ```bash
 specy-road sync
-specy-road sync --no-git    # validate + export only, no git fetch/merge
 ```
 
 Also: `--base <branch>`, `--remote <name>` if your integration branch or remote name is non-default.
+
+> **Required:** specy-road needs git and a configured remote (`origin` by
+> default). There is no offline / `--no-git` mode. For purely-local trials,
+> point `origin` at a local bare repo (`git init --bare /tmp/<slug>.git`).
 
 ### Optional: LLM review from the terminal
 

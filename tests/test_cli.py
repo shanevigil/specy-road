@@ -25,8 +25,9 @@ def test_specy_road_validate() -> None:
     )
 
 
-def test_specy_road_sync_no_git() -> None:
-    subprocess.run(
+def test_specy_road_sync_rejects_no_git_flag() -> None:
+    """F-010: --no-git is not an option; specy-road requires git + remote."""
+    r = subprocess.run(
         [
             sys.executable,
             "-m",
@@ -37,8 +38,12 @@ def test_specy_road_sync_no_git() -> None:
             str(DOGFOOD),
         ],
         cwd=REPO,
-        check=True,
+        capture_output=True,
+        text=True,
     )
+    assert r.returncode != 0
+    err = (r.stderr or "") + (r.stdout or "")
+    assert "--no-git" in err or "unrecognized" in err
 
 
 def test_specy_road_list_nodes() -> None:

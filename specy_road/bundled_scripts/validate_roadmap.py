@@ -11,11 +11,7 @@ import yaml
 
 from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
-from specy_road.git_workflow_config import (
-    integration_refs_present,
-    is_git_worktree,
-    load_git_workflow_config,
-)
+from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import default_user_repo_root
 from validate_roadmap_checks import (
     cycle_check,
@@ -45,33 +41,26 @@ __all__ = [
 
 
 def validate_git_workflow_contract(root: Path) -> None:
-    """Validate ``roadmap/git-workflow.yaml`` if present; warn on missing refs."""
+    """Validate ``roadmap/git-workflow.yaml`` if present.
+
+    F-005: do NOT warn about missing remote-tracking refs for the
+    integration branch. specy-road only cares that ``integration_branch`` is
+    declared. How the application team organises branches (and what their
+    local clone has fetched) is outside specy-road's scope.
+    """
     gw = root / "roadmap" / "git-workflow.yaml"
     if not gw.is_file():
         print(
-            "warning: missing roadmap/git-workflow.yaml — add the template from "
-            "`specy-road init project` so CLI and PM GUI share your integration branch.",
+            "warning: missing roadmap/git-workflow.yaml — add the template "
+            "from `specy-road init project` so CLI and PM GUI share your "
+            "integration branch.",
             file=sys.stderr,
         )
         return
-    data, err = load_git_workflow_config(root)
+    _data, err = load_git_workflow_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
-    assert data is not None
-    if is_git_worktree(root):
-        ok, _ = integration_refs_present(
-            root,
-            str(data["remote"]),
-            str(data["integration_branch"]),
-        )
-        if not ok:
-            print(
-                "warning: no local git ref for "
-                f"{data['remote']}/{data['integration_branch']} — "
-                f"run: git fetch {data['remote']}",
-                file=sys.stderr,
-            )
 
 
 def validate_at(
