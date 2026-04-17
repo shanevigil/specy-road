@@ -10,10 +10,17 @@ The supported **PM dashboard** is a **FastAPI** server plus a **prebuilt React**
 
 ## How to use it and install it
 
-- **Day-to-day PM usage** (browser workflow, what you see in the UI): [pm-workflow.md](pm-workflow.md).
-- **First-time install, rebuild, and security checks** (including `specy-road init gui --install-gui`): [setup.md](setup.md) (section *Optional: Gantt PM GUI*).
+- **End-user install + everyday usage** (consumer-side; `specy-road gui`):
+  [install-and-usage.md](install-and-usage.md).
+- **Day-to-day PM usage** (browser workflow, what you see in the UI):
+  [pm-workflow.md](pm-workflow.md).
+- **Rebuilding the SPA from source** (toolkit contributors only): see
+  [contributor-guide.md](contributor-guide.md) (section *PM Gantt UI build
+  & install*).
 
-Contributors editing React code: rebuild from `gui/pm-gantt/` or use the Vite dev server with a separate Uvicorn process; details are in [pm-workflow.md](pm-workflow.md) under the Gantt PM UI sections.
+Contributors editing React code: rebuild from `gui/pm-gantt/` or use the
+Vite dev server with a separate Uvicorn process; details are in
+[contributor-guide.md](contributor-guide.md).
 
 ## Historical note
 

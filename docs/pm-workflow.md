@@ -2,7 +2,7 @@
 
 This guide is for **product managers, program leads, and tech leads** who shape what gets built and in what order. You do not need to be a developer; you need a copy of the project on your machine and a way to run a few commands (or use the visual dashboard).
 
-Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [setup.md](setup.md).
+Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [install-and-usage.md](install-and-usage.md).
 
 What ships for the browser dashboard (FastAPI, static build, package layout): [pm-gui.md](pm-gui.md).
 
@@ -83,7 +83,7 @@ specy-road gui
 
 If the Python stack is corrupted, use **`specy-road init gui --reinstall-gui`**. To upgrade Python deps **without** running npm (faster), use **`specy-road init gui --install-gui --skip-npm-build`**. To **only** rebuild the frontend, **`specy-road init gui --build-gui`** (requires Node.js).
 
-For a full developer install (tests, editable package), see [setup.md](setup.md).
+For a full developer install (tests, editable package), see [contributor-guide.md](contributor-guide.md).
 
 ---
 

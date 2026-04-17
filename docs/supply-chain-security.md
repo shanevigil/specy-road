@@ -49,7 +49,7 @@ For each dependency, the audit should:
 | Tier | What | Notes |
 |------|------|--------|
 | **CI** | `pip-audit` on the **frozen** install from `requirements-ci.txt`; `npm ci` + `npm audit --omit=dev` + `npm run lint` (Gantt); optional OSV-Scanner on lockfiles; lockfile-lint for npm | Gates merges to protected branches |
-| **Local** | Same commands as [setup.md](setup.md#dependency-and-security-checks) | Run before release or when changing dependencies |
+| **Local** | Same commands as [contributor-guide.md](contributor-guide.md#supply-chain--dependency-audits) | Run before release or when changing dependencies |
 | **Periodic / release** | Human review using the checklist below | Typosquatting, maintainer churn, script review, rumors before CVEs |
 | **Optional vendor** | Socket, Phylum, etc. | Org policy |
 
@@ -70,7 +70,7 @@ pip-compile requirements-ci.in -o requirements-ci.txt
 pip install -r requirements-ci.txt
 ```
 
-Then run `pip-audit` (see [setup.md](setup.md#dependency-and-security-checks)).
+Then run `pip-audit` (see [contributor-guide.md](contributor-guide.md#supply-chain--dependency-audits)).
 
 ## Reporting discipline: repo-scoped first
 
@@ -139,6 +139,7 @@ Use when dependencies change little but calendar time passes, or after industry 
 
 ## See also
 
-- [setup.md](setup.md) — install and exact audit commands  
+- [install-and-usage.md](install-and-usage.md) — end-user install
+- [contributor-guide.md](contributor-guide.md) — exact local audit commands
 - [README.md](../README.md) — maintainer verification summary  
 - [`.github/workflows/validate.yml`](../.github/workflows/validate.yml) — CI steps and artifacts  
