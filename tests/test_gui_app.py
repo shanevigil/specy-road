@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -32,6 +33,12 @@ def api_client(
     from specy_road.gui_app import create_app
 
     return TestClient(create_app())
+
+
+def _mutation_headers(client: TestClient) -> dict[str, str]:
+    r = client.get("/api/roadmap")
+    assert r.status_code == 200
+    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
 
 
 def test_api_repo_follows_cwd_when_env_unset(
@@ -294,7 +301,14 @@ def test_api_workspace_upload_shared_ok(
         "path": "shared/pytest-gui-upload.bin",
         "content_base64": base64.b64encode(b"hello-gui").decode("ascii"),
     }
-    r = api_client.post("/api/workspace/upload", json=payload)
+    r = api_client.post(
+        "/api/workspace/upload",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
     assert r.status_code == 200
     out = dogfood_copy / "shared" / "pytest-gui-upload.bin"
     assert out.read_bytes() == b"hello-gui"
@@ -307,7 +321,14 @@ def test_api_workspace_upload_rejects_non_shared(
         "path": "work/oops.bin",
         "content_base64": base64.b64encode(b"x").decode("ascii"),
     }
-    r = api_client.post("/api/workspace/upload", json=payload)
+    r = api_client.post(
+        "/api/workspace/upload",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
     assert r.status_code == 400
 
 
@@ -316,5 +337,12 @@ def test_api_workspace_upload_rejects_invalid_base64(
 ) -> None:
     bad = "not!!!valid-base64"
     payload = {"path": "shared/bad.bin", "content_base64": bad}
-    r = api_client.post("/api/workspace/upload", json=payload)
+    r = api_client.post(
+        "/api/workspace/upload",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
     assert r.status_code == 400

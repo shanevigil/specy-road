@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchPlanningFile,
   fetchWorkspaceFiles,
+  PmGuiConcurrencyError,
   savePlanningFile,
   type WorkspaceFileEntry,
 } from "../api";
+import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
@@ -25,6 +27,7 @@ type Props = {
 };
 
 export function WorkNotesDrawer({ open, onClose }: Props) {
+  const { onConcurrencyConflict } = usePmGuiHandlers();
   const [mdFiles, setMdFiles] = useState<WorkspaceFileEntry[]>([]);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [content, setContent] = useState("");
@@ -110,6 +113,13 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
             await savePlanningFile(selectedPath, cur);
             lastSnap.current = { content: cur };
           } catch (e: unknown) {
+            if (e instanceof PmGuiConcurrencyError) {
+              void onConcurrencyConflict();
+              setMsg(
+                "Files changed elsewhere; refreshed. Retry your save if needed.",
+              );
+              return;
+            }
             setMsg(String(e));
             return;
           }
@@ -118,7 +128,7 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
       setSelectedPath(path);
       await loadPath(path);
     },
-    [selectedPath, content, loadPath],
+    [selectedPath, content, loadPath, onConcurrencyConflict],
   );
 
   const addNote = useCallback(async () => {
@@ -134,9 +144,16 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
       setMsg("New note created.");
       window.setTimeout(() => setMsg(null), 2500);
     } catch (e: unknown) {
+      if (e instanceof PmGuiConcurrencyError) {
+        void onConcurrencyConflict();
+        setMsg(
+          "Files changed elsewhere; refreshed. Retry create if needed.",
+        );
+        return;
+      }
       setMsg(String(e));
     }
-  }, [refreshList]);
+  }, [refreshList, onConcurrencyConflict]);
 
   useEffect(() => {
     if (!open || !canAutosave.current || loadingFile || !selectedPath) {
@@ -153,12 +170,20 @@ export function WorkNotesDrawer({ open, onClose }: Props) {
           window.setTimeout(() => setPersistMsg(null), 2000);
         })
         .catch((e: unknown) => {
+          if (e instanceof PmGuiConcurrencyError) {
+            void onConcurrencyConflict();
+            setMsg(
+              "Files changed elsewhere; refreshed. Retry your save if needed.",
+            );
+            setPersistMsg(null);
+            return;
+          }
           setMsg(String(e));
           setPersistMsg(null);
         });
     }, 600);
     return () => window.clearTimeout(t);
-  }, [open, content, loadingFile, selectedPath]);
+  }, [open, content, loadingFile, selectedPath, onConcurrencyConflict]);
 
   if (!open) return null;
 

@@ -15,6 +15,12 @@ _M02_PLANNING = (
 )
 
 
+def _mutation_headers(client: TestClient) -> dict[str, str]:
+    r = client.get("/api/roadmap")
+    assert r.status_code == 200
+    return {"X-PM-Gui-Fingerprint": str(r.json()["fingerprint"])}
+
+
 @pytest.fixture()
 def dogfood_copy(tmp_path: Path) -> Path:
     dest = tmp_path / "dogfood"
@@ -44,6 +50,7 @@ def test_api_planning_put_success_updates_file(
     r = api_client.put(
         "/api/planning/file",
         params={"path": path},
+        headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
         json={"content": updated},
     )
     assert r.status_code == 200
@@ -61,6 +68,7 @@ def test_api_planning_put_orphan_file_unlinked_on_validation_failure(
     r = api_client.put(
         "/api/planning/file",
         params={"path": rel},
+        headers={**_mutation_headers(api_client), "Content-Type": "application/json"},
         json={"content": "# orphan\n"},
     )
     assert r.status_code == 400
@@ -89,6 +97,7 @@ def test_api_planning_put_restores_content_when_validate_fails(
     r = client.put(
         "/api/planning/file",
         params={"path": path},
+        headers={**_mutation_headers(client), "Content-Type": "application/json"},
         json={"content": before + "\n# pytest touch\n"},
     )
     assert r.status_code == 400
@@ -102,11 +111,19 @@ def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
     orig = node["title"]
     r1 = api_client.patch(
         "/api/nodes/M0.2",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
         json={"pairs": [{"key": "title", "value": f"{orig} [pytest]"}]},
     )
     assert r1.status_code == 200
     r2 = api_client.patch(
         "/api/nodes/M0.2",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
         json={"pairs": [{"key": "title", "value": orig}]},
     )
     assert r2.status_code == 200
@@ -115,6 +132,10 @@ def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:
 def test_api_patch_node_rejects_disallowed_key(api_client: TestClient) -> None:
     r = api_client.patch(
         "/api/nodes/M0.2",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
         json={"pairs": [{"key": "not_whitelisted", "value": "x"}]},
     )
     assert r.status_code == 400
@@ -125,6 +146,10 @@ def test_api_outline_reorder_rejects_incomplete_child_set(
 ) -> None:
     r = api_client.post(
         "/api/outline/reorder",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
         json={"parent_id": "M0", "ordered_child_ids": ["M0.1"]},
     )
     assert r.status_code == 400
@@ -135,6 +160,10 @@ def test_api_outline_move_rejects_unknown_node_key(
 ) -> None:
     r = api_client.post(
         "/api/outline/move",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
         json={
             "node_key": "00000000-0000-0000-0000-000000000001",
             "new_parent_id": None,
@@ -147,6 +176,10 @@ def test_api_outline_move_rejects_unknown_node_key(
 def test_api_post_nodes_add_task(api_client: TestClient) -> None:
     r = api_client.post(
         "/api/nodes/add",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
         json={
             "reference_node_id": "M0.1",
             "position": "below",
@@ -161,6 +194,9 @@ def test_api_post_nodes_add_task(api_client: TestClient) -> None:
 
 
 def test_api_delete_leaf_node(api_client: TestClient) -> None:
-    r = api_client.delete("/api/nodes/M2")
+    r = api_client.delete(
+        "/api/nodes/M2",
+        headers=_mutation_headers(api_client),
+    )
     assert r.status_code == 200
     assert r.json().get("node_id") == "M2"

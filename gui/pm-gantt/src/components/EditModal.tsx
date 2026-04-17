@@ -12,10 +12,12 @@ import {
   fetchPlanningFile,
   getSettings,
   patchNode,
+  PmGuiConcurrencyError,
   postLlmReview,
   savePlanningFile,
   scaffoldPlanning,
 } from "../api";
+import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { hasLlmConfigured } from "../llmConfigured";
 import { getDefaultEditModalRect, type ModalRect } from "../modalRect";
 import { pmDisplayStatus } from "../pmDisplayStatus";
@@ -189,6 +191,7 @@ export function EditModal({
   onRectCommit,
   readOnlyCheckout = false,
 }: Props) {
+  const { onConcurrencyConflict } = usePmGuiHandlers();
   const [title, setTitle] = useState("");
   /** Repo-relative paths of ancestor feature sheets (read-only context); not editable in this dialog. */
   const [ancestorFiles, setAncestorFiles] = useState<
@@ -340,6 +343,14 @@ export function EditModal({
           window.setTimeout(() => setPersistMsg(null), 2000);
         })
         .catch((e: unknown) => {
+          if (e instanceof PmGuiConcurrencyError) {
+            void onConcurrencyConflict();
+            setErr(
+              "Roadmap changed elsewhere; refreshed. Re-apply your title if needed.",
+            );
+            setPersistMsg(null);
+            return;
+          }
           setErr(String(e));
           setPersistMsg(null);
         });
@@ -353,6 +364,7 @@ export function EditModal({
     onPersisted,
     titleConflict.hasConflict,
     readOnlyCheckout,
+    onConcurrencyConflict,
   ]);
 
   useEffect(() => {
@@ -378,12 +390,29 @@ export function EditModal({
           window.setTimeout(() => setPersistMsg(null), 2000);
         })
         .catch((e: unknown) => {
+          if (e instanceof PmGuiConcurrencyError) {
+            void onConcurrencyConflict();
+            setErr(
+              "Roadmap changed elsewhere; refreshed. Re-apply your planning edits if needed.",
+            );
+            setPersistMsg(null);
+            return;
+          }
           setErr(String(e));
           setPersistMsg(null);
         });
     }, 600);
     return () => window.clearTimeout(t);
-  }, [content, sheetPath, hydrated, node, loading, onPersisted, readOnlyCheckout]);
+  }, [
+    content,
+    sheetPath,
+    hydrated,
+    node,
+    loading,
+    onPersisted,
+    readOnlyCheckout,
+    onConcurrencyConflict,
+  ]);
 
   const depItems = useMemo(
     () =>
@@ -606,7 +635,16 @@ export function EditModal({
           setHydrated(true);
         }
       })
-      .catch((e: unknown) => setErr(String(e)))
+      .catch((e: unknown) => {
+        if (e instanceof PmGuiConcurrencyError) {
+          void onConcurrencyConflict();
+          setErr(
+            "Roadmap changed elsewhere; refreshed. Retry planning scaffold if needed.",
+          );
+          return;
+        }
+        setErr(String(e));
+      })
       .finally(() => setScaffolding(false));
   };
 

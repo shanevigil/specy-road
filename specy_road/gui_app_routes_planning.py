@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from roadmap_crud_ops import run_validate_raise
 from roadmap_load import load_roadmap
@@ -29,10 +29,12 @@ from specy_road.gui_app_models import (
     PlanningScaffoldBody,
     PutFileBody,
 )
+from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 
 def api_constitution_scaffold(
     body: ConstitutionScaffoldBody = Body(default_factory=ConstitutionScaffoldBody),
+    _pm: None = Depends(require_pm_gui_write_header),
 ) -> dict[str, Any]:
     root = get_repo_root()
     force = bool(body.force)
@@ -52,6 +54,7 @@ def api_constitution_scaffold(
 def api_planning_scaffold(
     node_id: str,
     body: PlanningScaffoldBody = Body(default_factory=PlanningScaffoldBody),
+    _pm: None = Depends(require_pm_gui_write_header),
 ) -> dict[str, Any]:
     root = get_repo_root()
     try:
@@ -120,6 +123,7 @@ def api_planning_get(path: str = Query(..., description="Repo-relative path")) -
 def api_planning_put(
     path: str = Query(...),
     body: PutFileBody = Body(...),
+    _pm: None = Depends(require_pm_gui_write_header),
 ) -> dict[str, str]:
     root = get_repo_root()
     p = safe_rel_path(root, path)

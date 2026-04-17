@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   fetchWorkspaceFiles,
+  PmGuiConcurrencyError,
   uploadSharedFile,
   type WorkspaceFileEntry,
 } from "../api";
+import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { ModalFrame } from "./ModalFrame";
 
 function fmtBytes(n: number): string {
@@ -18,6 +20,7 @@ type Props = {
 };
 
 export function SharedDocsDrawer({ open, onClose }: Props) {
+  const { onConcurrencyConflict } = usePmGuiHandlers();
   const [files, setFiles] = useState<WorkspaceFileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -59,7 +62,14 @@ export function SharedDocsDrawer({ open, onClose }: Props) {
       window.setTimeout(() => setMsg(null), 3500);
       await refresh();
     } catch (err: unknown) {
-      setMsg(String(err));
+      if (err instanceof PmGuiConcurrencyError) {
+        void onConcurrencyConflict().then(() => refresh());
+        setMsg(
+          "Repo changed elsewhere; refreshing. Retry upload if needed.",
+        );
+      } else {
+        setMsg(String(err));
+      }
     } finally {
       setUploading(false);
       e.target.value = "";

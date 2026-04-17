@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchPlanningFile, savePlanningFile } from "../api";
+import {
+  fetchPlanningFile,
+  PmGuiConcurrencyError,
+  savePlanningFile,
+} from "../api";
+import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
@@ -13,6 +18,7 @@ type Props = {
 };
 
 export function VisionDrawer({ open, onClose }: Props) {
+  const { onConcurrencyConflict } = usePmGuiHandlers();
   const [content, setContent] = useState("");
   const [missing, setMissing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -65,12 +71,20 @@ export function VisionDrawer({ open, onClose }: Props) {
           window.setTimeout(() => setPersistMsg(null), 2000);
         })
         .catch((e: unknown) => {
+          if (e instanceof PmGuiConcurrencyError) {
+            void onConcurrencyConflict();
+            setMsg(
+              "Files changed elsewhere; refreshed. Retry your save if needed.",
+            );
+            setPersistMsg(null);
+            return;
+          }
           setMsg(String(e));
           setPersistMsg(null);
         });
     }, 600);
     return () => window.clearTimeout(t);
-  }, [open, content, loading, missing]);
+  }, [open, content, loading, missing, onConcurrencyConflict]);
 
   if (!open) return null;
 
@@ -85,6 +99,13 @@ export function VisionDrawer({ open, onClose }: Props) {
       setMsg("Created vision.md. Edits save automatically.");
       window.setTimeout(() => setMsg(null), 4000);
     } catch (e: unknown) {
+      if (e instanceof PmGuiConcurrencyError) {
+        void onConcurrencyConflict();
+        setMsg(
+          "Files changed elsewhere; refreshed. Retry create or save if needed.",
+        );
+        return;
+      }
       setMsg(String(e));
     }
   };

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import shutil
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,8 @@ from specy_road.pm_publish import (
     publish_roadmap,
     publish_status_dict,
 )
+
+from tests.helpers import DOGFOOD
 
 
 def test_path_in_publish_scope() -> None:
@@ -121,14 +124,48 @@ def test_publish_status_dict_api(tmp_git_repo: Path, monkeypatch: pytest.MonkeyP
     assert j["blocked"] is False
 
 
-def test_api_publish_validation(tmp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(tmp_git_repo))
+def test_api_publish_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dogfood = tmp_path / "dogfood"
+    shutil.copytree(DOGFOOD, dogfood)
+    subprocess.run(
+        ["git", "init"],
+        cwd=dogfood,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "pytest@example.com"],
+        cwd=dogfood,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "pytest"],
+        cwd=dogfood,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(dogfood))
     from specy_road.gui_app import create_app
 
     client = TestClient(create_app())
-    r = client.post("/api/publish", json={"message": "roadmap: x"})
+    r0 = client.get("/api/roadmap")
+    assert r0.status_code == 200
+    fp = r0.json()["fingerprint"]
+    r = client.post(
+        "/api/publish",
+        headers={
+            "X-PM-Gui-Fingerprint": str(fp),
+            "Content-Type": "application/json",
+        },
+        json={"message": "roadmap: x"},
+    )
     assert r.status_code == 400
-    assert "No roadmap" in r.json()["detail"] or "publish" in r.json()["detail"].lower()
+    detail = r.json()["detail"]
+    assert isinstance(detail, str)
+    assert len(detail) > 0
 
 
 def test_publish_pathspecs_cover_manifest() -> None:

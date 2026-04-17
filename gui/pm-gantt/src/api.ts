@@ -2,6 +2,79 @@ import type { PublishStatusPayload, RoadmapResponse } from "./types";
 
 const API = "/api";
 
+/** Must match server [`specy_road.pm_gui_concurrency.PM_GUI_FINGERPRINT_HEADER`]. */
+export const PM_GUI_FINGERPRINT_HEADER = "X-PM-Gui-Fingerprint";
+
+let getPmGuiFingerprint: () => number | null = () => null;
+
+/** Called from App after roadmap load so mutations can send the current token. */
+export function setPmGuiFingerprintGetter(fn: () => number | null): void {
+  getPmGuiFingerprint = fn;
+}
+
+function fingerprintForMutation(): number {
+  const fp = getPmGuiFingerprint();
+  if (fp == null) {
+    throw new Error("Roadmap fingerprint not loaded; wait for sync.");
+  }
+  return fp;
+}
+
+function pmGuiMutationHeaders(
+  base: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    ...base,
+    [PM_GUI_FINGERPRINT_HEADER]: String(fingerprintForMutation()),
+  };
+}
+
+export class PmGuiConcurrencyError extends Error {
+  readonly httpStatus: number;
+  readonly currentFingerprint?: number;
+
+  constructor(
+    message: string,
+    httpStatus: number,
+    currentFingerprint?: number,
+  ) {
+    super(message);
+    this.name = "PmGuiConcurrencyError";
+    this.httpStatus = httpStatus;
+    this.currentFingerprint = currentFingerprint;
+  }
+}
+
+function throwFromMutationFailure(status: number, text: string): never {
+  let message = text || `HTTP ${status}`;
+  let currentFingerprint: number | undefined;
+  try {
+    const j = JSON.parse(text) as { detail?: unknown };
+    const d = j.detail;
+    if (typeof d === "string") {
+      message = d;
+    } else if (d != null && typeof d === "object") {
+      const o = d as { message?: string; current_fingerprint?: number };
+      if (typeof o.message === "string") message = o.message;
+      if (typeof o.current_fingerprint === "number") {
+        currentFingerprint = o.current_fingerprint;
+      }
+    }
+  } catch {
+    /* keep message */
+  }
+  if (status === 412 || status === 428) {
+    throw new PmGuiConcurrencyError(message, status, currentFingerprint);
+  }
+  throw new Error(message);
+}
+
+async function throwIfMutationFailed(r: Response): Promise<void> {
+  if (r.ok) return;
+  const text = await r.text();
+  throwFromMutationFailure(r.status, text);
+}
+
 export async function fetchRoadmap(): Promise<RoadmapResponse> {
   const r = await fetch(`${API}/roadmap`);
   if (!r.ok) throw new Error(`roadmap: ${r.status}`);
@@ -28,26 +101,19 @@ export async function postPublish(message: string): Promise<{
 }> {
   const r = await fetch(`${API}/publish`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ message }),
   });
-  const raw = (await r.json()) as {
+  const text = await r.text();
+  if (!r.ok) {
+    throwFromMutationFailure(r.status, text);
+  }
+  const raw = JSON.parse(text) as {
     ok?: boolean;
     commit_sha?: string | null;
     pushed?: boolean;
     branch?: string | null;
-    detail?: unknown;
   };
-  if (!r.ok) {
-    const d = raw.detail;
-    const msg =
-      typeof d === "string"
-        ? d
-        : d != null
-          ? JSON.stringify(d)
-          : JSON.stringify(raw);
-    throw new Error(msg);
-  }
   return {
     ok: Boolean(raw.ok),
     commit_sha: raw.commit_sha,
@@ -74,17 +140,18 @@ export async function patchNode(
 ): Promise<void> {
   const r = await fetch(`${API}/nodes/${encodeURIComponent(nodeId)}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ pairs }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export async function deleteNode(nodeId: string): Promise<void> {
   const r = await fetch(`${API}/nodes/${encodeURIComponent(nodeId)}`, {
     method: "DELETE",
+    headers: pmGuiMutationHeaders(),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export async function reorderOutline(
@@ -93,13 +160,13 @@ export async function reorderOutline(
 ): Promise<void> {
   const r = await fetch(`${API}/outline/reorder`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       parent_id: parentId,
       ordered_child_ids: orderedChildIds,
     }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export async function moveOutline(
@@ -109,28 +176,30 @@ export async function moveOutline(
 ): Promise<void> {
   const r = await fetch(`${API}/outline/move`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       node_key: nodeKey,
       new_parent_id: newParentId,
       new_index: newIndex,
     }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export async function indentNode(nodeId: string): Promise<void> {
   const r = await fetch(`${API}/nodes/${encodeURIComponent(nodeId)}/indent`, {
     method: "POST",
+    headers: pmGuiMutationHeaders(),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export async function outdentNode(nodeId: string): Promise<void> {
   const r = await fetch(`${API}/nodes/${encodeURIComponent(nodeId)}/outdent`, {
     method: "POST",
+    headers: pmGuiMutationHeaders(),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export async function addNode(
@@ -141,7 +210,7 @@ export async function addNode(
 ): Promise<string> {
   const r = await fetch(`${API}/nodes/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       reference_node_id: referenceNodeId,
       position,
@@ -149,8 +218,11 @@ export async function addNode(
       type,
     }),
   });
-  if (!r.ok) throw new Error(await r.text());
-  const j = (await r.json()) as { id: string };
+  const addText = await r.text();
+  if (!r.ok) {
+    throwFromMutationFailure(r.status, addText);
+  }
+  const j = JSON.parse(addText) as { id: string };
   return j.id;
 }
 
@@ -174,14 +246,14 @@ export async function scaffoldPlanning(
     `${API}/planning/${encodeURIComponent(nodeId)}/scaffold`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         planning_dir: opts?.planning_dir ?? null,
         force: opts?.force ?? false,
       }),
     },
   );
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
   return r.json() as Promise<{
     planning_dir: string;
     written: string[];
@@ -201,11 +273,11 @@ export async function savePlanningFile(path: string, content: string) {
     `${API}/planning/file?${new URLSearchParams({ path })}`,
     {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ content }),
     },
   );
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
 }
 
 export type WorkspaceFileEntry = {
@@ -253,10 +325,10 @@ export async function uploadSharedFile(
   const content_base64 = await fileToBase64(file);
   const r = await fetch(`${API}/workspace/upload`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ path, content_base64 }),
   });
-  if (!r.ok) throw new Error(await r.text());
+  await throwIfMutationFailed(r);
   return r.json() as Promise<{ ok: string; path: string }>;
 }
 
@@ -266,22 +338,22 @@ export async function scaffoldConstitution(force = false): Promise<{
 }> {
   const r = await fetch(`${API}/constitution/scaffold`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ force }),
   });
-  const raw = (await r.json().catch(() => ({}))) as {
+  const cText = await r.text();
+  let raw: {
     detail?: unknown;
     written?: string[];
     skipped_existing?: string[];
   };
+  try {
+    raw = JSON.parse(cText) as typeof raw;
+  } catch {
+    raw = {};
+  }
   if (!r.ok) {
-    const d = raw.detail;
-    let msg: string;
-    if (typeof d === "string") msg = d;
-    else if (d != null && typeof d === "object" && "message" in d)
-      msg = String((d as { message?: string }).message);
-    else msg = JSON.stringify(raw);
-    throw new Error(msg);
+    throwFromMutationFailure(r.status, cText);
   }
   return {
     written: raw.written ?? [],

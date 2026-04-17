@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
   fetchPlanningFile,
+  PmGuiConcurrencyError,
   savePlanningFile,
   scaffoldConstitution,
 } from "../api";
+import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
@@ -17,6 +19,7 @@ type Props = {
 };
 
 export function ConstitutionDrawer({ open, onClose }: Props) {
+  const { onConcurrencyConflict } = usePmGuiHandlers();
   const [purpose, setPurpose] = useState("");
   const [principles, setPrinciples] = useState("");
   const [purposeMissing, setPurposeMissing] = useState(false);
@@ -91,12 +94,28 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
           window.setTimeout(() => setPersistMsg(null), 2000);
         })
         .catch((e: unknown) => {
+          if (e instanceof PmGuiConcurrencyError) {
+            void onConcurrencyConflict();
+            setMsg(
+              "Files changed elsewhere; refreshed. Retry your save if needed.",
+            );
+            setPersistMsg(null);
+            return;
+          }
           setMsg(String(e));
           setPersistMsg(null);
         });
     }, 600);
     return () => window.clearTimeout(t);
-  }, [open, purpose, principles, loading, purposeMissing, principlesMissing]);
+  }, [
+    open,
+    purpose,
+    principles,
+    loading,
+    purposeMissing,
+    principlesMissing,
+    onConcurrencyConflict,
+  ]);
 
   if (!open) return null;
 
@@ -122,6 +141,13 @@ export function ConstitutionDrawer({ open, onClose }: Props) {
       setMsg("Starter files created. Edits save automatically.");
       window.setTimeout(() => setMsg(null), 4000);
     } catch (e: unknown) {
+      if (e instanceof PmGuiConcurrencyError) {
+        void onConcurrencyConflict();
+        setMsg(
+          "Files changed elsewhere; refreshed. Retry scaffold or save if needed.",
+        );
+        return;
+      }
       setMsg(String(e));
     }
   };

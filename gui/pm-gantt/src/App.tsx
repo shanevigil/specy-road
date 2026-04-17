@@ -18,7 +18,9 @@ import {
   indentNode,
   outdentNode,
   patchNode,
+  PmGuiConcurrencyError,
   postPublish,
+  setPmGuiFingerprintGetter,
 } from "./api";
 import {
   computeSpawnRect,
@@ -62,6 +64,7 @@ import {
   readLegacyBrowserPref,
   writeBrowserPref,
 } from "./repoBrowserPrefs";
+import { PmGuiHandlersProvider } from "./pmGuiContext";
 import { useRoadmapActionQueue } from "./roadmapSync";
 
 const EditModal = lazy(() =>
@@ -332,6 +335,7 @@ export default function App() {
         fetch("/api/repo").then((x) => x.json()),
       ]);
       setData(r);
+      lastFingerprintRef.current = r.fingerprint;
       const rr = repoRes as { repo_root?: string; repo_id?: string };
       setRepo(rr.repo_root || "");
       setRepoId(typeof rr.repo_id === "string" ? rr.repo_id : null);
@@ -343,7 +347,7 @@ export default function App() {
         const fp = await fetchRoadmapFingerprint();
         lastFingerprintRef.current = fp;
       } catch {
-        /* fingerprint is optional for sync */
+        /* polling endpoint optional when roadmap payload has fingerprint */
       }
       void refreshGovernanceCompletion();
       void refreshPublishStatus();
@@ -353,7 +357,14 @@ export default function App() {
   }, [refreshGovernanceCompletion, refreshPublishStatus]);
 
   const handlePublishRoadmap = useCallback(async (message: string) => {
-    await postPublish(message);
+    try {
+      await postPublish(message);
+    } catch (e: unknown) {
+      if (e instanceof PmGuiConcurrencyError) {
+        await loadSnapshot();
+      }
+      throw e;
+    }
     await loadSnapshot();
   }, [loadSnapshot]);
 
@@ -363,11 +374,31 @@ export default function App() {
   const performRoadmapMutation = useCallback(
     (label: string, mutation: () => Promise<void>) =>
       runRoadmapAction(label, async () => {
-        await mutation();
+        try {
+          await mutation();
+        } catch (e: unknown) {
+          if (e instanceof PmGuiConcurrencyError) {
+            await loadSnapshot();
+            setErr(
+              "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
+            );
+            return;
+          }
+          throw e;
+        }
         await loadSnapshot();
       }),
     [runRoadmapAction, loadSnapshot],
   );
+
+  const pmGuiHandlers = useMemo(
+    () => ({ onConcurrencyConflict: loadSnapshot }),
+    [loadSnapshot],
+  );
+
+  useEffect(() => {
+    setPmGuiFingerprintGetter(() => lastFingerprintRef.current);
+  }, []);
 
   useEffect(() => {
     void loadSnapshot();
@@ -447,15 +478,14 @@ export default function App() {
     const val = [...depDraftKeysRef.current].sort().join(" ");
     try {
       setErr(null);
-      await runRoadmapAction("Saving dependencies…", async () => {
+      await performRoadmapMutation("Saving dependencies…", async () => {
         await patchNode(nid, [{ key: "dependencies", value: val }]);
         cancelDepEdit();
-        await loadSnapshot();
       });
     } catch (e: unknown) {
       setErr(String(e));
     }
-  }, [runRoadmapAction, loadSnapshot, cancelDepEdit]);
+  }, [performRoadmapMutation, cancelDepEdit]);
 
   const repoFolderLabel = useMemo(
     () => repoRootFolderDisplayName(repo),
@@ -782,15 +812,13 @@ export default function App() {
         e.preventDefault();
         if (e.shiftKey) {
           if (!outdentDisabled) {
-            void runRoadmapAction("Updating outline…", async () => {
+            void performRoadmapMutation("Updating outline…", async () => {
               await outdentNode(selectedId);
-              await loadSnapshot();
             }).catch((err: unknown) => setErr(String(err)));
           }
         } else if (!indentDisabled) {
-          void runRoadmapAction("Updating outline…", async () => {
+          void performRoadmapMutation("Updating outline…", async () => {
             await indentNode(selectedId);
-            await loadSnapshot();
           }).catch((err: unknown) => setErr(String(err)));
         }
       }
@@ -806,8 +834,7 @@ export default function App() {
     selectedId,
     indentDisabled,
     outdentDisabled,
-    runRoadmapAction,
-    loadSnapshot,
+    performRoadmapMutation,
     cancelDepEdit,
     applyDepEdit,
   ]);
@@ -852,9 +879,8 @@ export default function App() {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void runRoadmapAction("Adding task…", async () => {
+    void performRoadmapMutation("Adding task…", async () => {
       await addNode(selectedId, "above", t, "task");
-      await loadSnapshot();
     }).catch((e) => setErr(String(e)));
   };
 
@@ -862,9 +888,8 @@ export default function App() {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void runRoadmapAction("Adding task…", async () => {
+    void performRoadmapMutation("Adding task…", async () => {
       await addNode(selectedId, "below", t, "task");
-      await loadSnapshot();
     }).catch((e) => setErr(String(e)));
   };
 
@@ -872,18 +897,16 @@ export default function App() {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void runRoadmapAction("Inserting gate…", async () => {
+    void performRoadmapMutation("Inserting gate…", async () => {
       await addNode(selectedId, "above", t, "gate");
-      await loadSnapshot();
     }).catch((e) => setErr(String(e)));
   };
 
   const onGapInsert = (referenceNodeId: string) => {
     const t = promptNewTaskTitle();
     if (!t) return;
-    void runRoadmapAction("Adding task…", async () => {
+    void performRoadmapMutation("Adding task…", async () => {
       await addNode(referenceNodeId, "above", t, "task");
-      await loadSnapshot();
     }).catch((e) => setErr(String(e)));
   };
 
@@ -898,9 +921,8 @@ export default function App() {
       return;
     }
     setErr(null);
-    void runRoadmapAction("Removing task…", async () => {
+    void performRoadmapMutation("Removing task…", async () => {
       await deleteNode(selectedId);
-      await loadSnapshot();
     }).catch((e) => setErr(String(e)));
   };
 
@@ -912,6 +934,7 @@ export default function App() {
     );
 
   return (
+    <PmGuiHandlersProvider value={pmGuiHandlers}>
     <div className="app-shell">
       {roadmapBusy ? (
         <div
@@ -1058,9 +1081,8 @@ export default function App() {
                 aria-label="Indent"
                 onClick={() => {
                   if (!selectedId) return;
-                  void runRoadmapAction("Updating outline…", async () => {
+                  void performRoadmapMutation("Updating outline…", async () => {
                     await indentNode(selectedId);
-                    await loadSnapshot();
                   }).catch((e) => setErr(String(e)));
                 }}
               >
@@ -1074,9 +1096,8 @@ export default function App() {
                 aria-label="Outdent"
                 onClick={() => {
                   if (!selectedId) return;
-                  void runRoadmapAction("Updating outline…", async () => {
+                  void performRoadmapMutation("Updating outline…", async () => {
                     await outdentNode(selectedId);
-                    await loadSnapshot();
                   }).catch((e) => setErr(String(e)));
                 }}
               >
@@ -1403,5 +1424,6 @@ export default function App() {
       </Suspense>
       </div>
     </div>
+    </PmGuiHandlersProvider>
   );
 }

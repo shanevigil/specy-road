@@ -12,7 +12,6 @@ from roadmap_gui_lib import (
     load_settings,
     registry_by_node_id,
     repo_settings_id,
-    roadmap_fingerprint,
 )
 from roadmap_gui_remote import build_pr_hints, build_registry_enrichment
 from roadmap_gui_tree import can_indent_outline, can_outdent_outline
@@ -25,6 +24,7 @@ from roadmap_layout import (
 from roadmap_load import load_roadmap
 
 from specy_road.git_workflow_config import build_git_workflow_status
+from specy_road.pm_gui_fingerprint import pm_gui_mutation_fingerprint
 from specy_road.registry_remote_overlay import (
     describe_integration_branch_auto_ff,
     last_registry_auto_fetch_status,
@@ -33,7 +33,6 @@ from specy_road.registry_remote_overlay import (
     maybe_auto_integration_ff,
     registry_remote_overlay_enabled,
     resolve_git_remote,
-    roadmap_fingerprint_with_remote_refs,
 )
 from specy_road.governance_completion import (
     constitution_needs_completion,
@@ -108,6 +107,7 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     ibaff = describe_integration_branch_auto_ff(root)
     if ibaff.get("enabled") is True:
         out["integration_branch_auto_ff"] = ibaff
+    out["fingerprint"] = pm_gui_mutation_fingerprint(root)
     return out
 
 
@@ -139,10 +139,7 @@ def register_core(api: APIRouter) -> None:
         if registry_remote_overlay_enabled(root):
             maybe_auto_git_fetch(root, resolve_git_remote(root))
         maybe_auto_integration_ff(root)
-        base = roadmap_fingerprint(root)
-        return {
-            "fingerprint": roadmap_fingerprint_with_remote_refs(root, base),
-        }
+        return {"fingerprint": pm_gui_mutation_fingerprint(root)}
 
     @api.get("/governance-completion")
     def api_governance_completion() -> dict[str, bool]:

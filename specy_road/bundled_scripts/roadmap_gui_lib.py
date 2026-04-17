@@ -150,3 +150,40 @@ def roadmap_fingerprint(root: Path) -> int:
     except OSError:
         pass
     return h
+
+
+def iter_pm_gui_extra_fingerprint_files(root: Path) -> list[Path]:
+    """Paths whose edits should invalidate the PM GUI mutation token (planning, vision, constitution, shared)."""
+    root = root.resolve()
+    out: list[Path] = []
+    planning = root / "planning"
+    if planning.is_dir():
+        for p in sorted(planning.rglob("*.md")):
+            if p.is_file():
+                out.append(p)
+    constitution = root / "constitution"
+    if constitution.is_dir():
+        for p in sorted(constitution.rglob("*.md")):
+            if p.is_file():
+                out.append(p)
+    vision = root / "vision.md"
+    if vision.is_file():
+        out.append(vision)
+    shared = root / "shared"
+    if shared.is_dir():
+        for p in sorted(shared.rglob("*")):
+            if not p.is_file() or p.name.startswith("."):
+                continue
+            out.append(p)
+    return sorted(set(out), key=lambda x: str(x))
+
+
+def pm_gui_mutation_fingerprint_base(root: Path) -> int:
+    """Roadmap fingerprint plus PM-edited paths outside ``roadmap/`` (for optimistic concurrency)."""
+    h = roadmap_fingerprint(root)
+    for p in iter_pm_gui_extra_fingerprint_files(root):
+        try:
+            h += p.stat().st_mtime_ns
+        except OSError:
+            continue
+    return h

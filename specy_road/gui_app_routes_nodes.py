@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from roadmap_chunk_utils import find_chunk_path, roadmap_dir
 from roadmap_crud_ops import (
@@ -32,6 +32,7 @@ from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
+from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 
 def _canonical_ids_after_add(
@@ -50,9 +51,87 @@ def _canonical_ids_after_add(
     )
 
 
+def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
+    nodes = load_roadmap(root)["nodes"]
+    by_id = {n["id"]: n for n in nodes}
+    ref = body.reference_node_id
+    if ref not in by_id:
+        raise HTTPException(status_code=404, detail="reference node not found")
+    ref_node = by_id[ref]
+    parent_id: str | None = ref_node.get("parent_id")
+    if body.type == "gate" and parent_id in (None, ""):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "gate requires a parent vision or phase; select a row under "
+                "a phase (not a top-level row)"
+            ),
+        )
+    chunk_path = find_chunk_path(root, ref)
+    if not chunk_path:
+        raise HTTPException(status_code=500, detail="chunk for reference not found")
+    chunk_arg = str(chunk_path.relative_to(roadmap_dir(root)))
+
+    siblings = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
+    siblings.sort(key=lambda nid: sibling_sort_key(nid, by_id))
+    if ref not in siblings:
+        raise HTTPException(status_code=400, detail="reference not in sibling list")
+
+    ix = siblings.index(ref)
+    insert_at = ix if body.position == "above" else ix + 1
+
+    new_id = next_child_id(nodes, parent_id)
+    if new_id in merged_ids(root):
+        raise HTTPException(status_code=409, detail="generated id already exists")
+
+    new_node: dict[str, Any] = {
+        "id": new_id,
+        "node_key": new_node_key(),
+        "parent_id": parent_id,
+        "type": body.type,
+        "title": body.title,
+        "status": "Not Started",
+        "dependencies": [],
+        "touch_zones": [],
+    }
+
+    ensure_planning_sheet_for_new_node(root, new_node)
+    inserted_key = new_node["node_key"]
+
+    try:
+        append_node_to_chunk(root, chunk_arg, new_node)
+        run_validate_raise(root)
+    except (SystemExit, OSError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    nodes2 = load_roadmap(root)["nodes"]
+    by_id2 = {n["id"]: n for n in nodes2}
+    sib = [n["id"] for n in nodes2 if n.get("parent_id") == parent_id]
+    sib.sort(key=lambda nid: sibling_sort_key(nid, by_id2))
+    if new_id not in sib:
+        raise HTTPException(status_code=500, detail="new node missing after add")
+    sib.remove(new_id)
+    sib.insert(insert_at, new_id)
+    try:
+        for i, nid in enumerate(sib):
+            edit_node_set_pairs(root, nid, [("sibling_order", str(i))])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    try:
+        final_id = _canonical_ids_after_add(root, new_id, inserted_key)
+    except (SystemExit, OSError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": "true", "id": final_id}
+
+
 def register_node_mutations(api: APIRouter) -> None:
     @api.patch("/nodes/{node_id}")
-    def api_patch_node(node_id: str, body: PatchBody) -> dict[str, str]:
+    def api_patch_node(
+        node_id: str,
+        body: PatchBody,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, str]:
         root = get_repo_root()
         pairs = [(p.key, p.value) for p in body.pairs]
         try:
@@ -62,7 +141,10 @@ def register_node_mutations(api: APIRouter) -> None:
         return {"ok": "true", "node_id": node_id}
 
     @api.delete("/nodes/{node_id}")
-    def api_delete_node(node_id: str) -> dict[str, str]:
+    def api_delete_node(
+        node_id: str,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, str]:
         root = get_repo_root()
         try:
             delete_roadmap_node_hard(root, node_id)
@@ -71,7 +153,10 @@ def register_node_mutations(api: APIRouter) -> None:
         return {"ok": "true", "node_id": node_id}
 
     @api.post("/outline/reorder")
-    def api_reorder(body: ReorderBody) -> dict[str, str]:
+    def api_reorder(
+        body: ReorderBody,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, str]:
         root = get_repo_root()
         pid: str | None = body.parent_id
         try:
@@ -81,7 +166,10 @@ def register_node_mutations(api: APIRouter) -> None:
         return {"ok": "true"}
 
     @api.post("/outline/move")
-    def api_outline_move(body: MoveOutlineBody) -> dict[str, str]:
+    def api_outline_move(
+        body: MoveOutlineBody,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, str]:
         root = get_repo_root()
         try:
             move_node_outline(
@@ -95,7 +183,10 @@ def register_node_mutations(api: APIRouter) -> None:
         return {"ok": "true"}
 
     @api.post("/nodes/{node_id}/indent")
-    def api_indent(node_id: str) -> dict[str, Any]:
+    def api_indent(
+        node_id: str,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, Any]:
         root = get_repo_root()
         try:
             changed = apply_indent(root, node_id)
@@ -104,7 +195,10 @@ def register_node_mutations(api: APIRouter) -> None:
         return {"ok": True, "changed": changed}
 
     @api.post("/nodes/{node_id}/outdent")
-    def api_outdent(node_id: str) -> dict[str, Any]:
+    def api_outdent(
+        node_id: str,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, Any]:
         root = get_repo_root()
         try:
             changed = apply_outdent(root, node_id)
@@ -115,76 +209,8 @@ def register_node_mutations(api: APIRouter) -> None:
 
 def register_add_node(api: APIRouter) -> None:
     @api.post("/nodes/add")
-    def api_add_node(body: AddNodeBody) -> dict[str, Any]:
-        root = get_repo_root()
-        nodes = load_roadmap(root)["nodes"]
-        by_id = {n["id"]: n for n in nodes}
-        ref = body.reference_node_id
-        if ref not in by_id:
-            raise HTTPException(status_code=404, detail="reference node not found")
-        ref_node = by_id[ref]
-        parent_id: str | None = ref_node.get("parent_id")
-        if body.type == "gate" and parent_id in (None, ""):
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "gate requires a parent vision or phase; select a row under "
-                    "a phase (not a top-level row)"
-                ),
-            )
-        chunk_path = find_chunk_path(root, ref)
-        if not chunk_path:
-            raise HTTPException(status_code=500, detail="chunk for reference not found")
-        chunk_arg = str(chunk_path.relative_to(roadmap_dir(root)))
-
-        siblings = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
-        siblings.sort(key=lambda nid: sibling_sort_key(nid, by_id))
-        if ref not in siblings:
-            raise HTTPException(status_code=400, detail="reference not in sibling list")
-
-        ix = siblings.index(ref)
-        insert_at = ix if body.position == "above" else ix + 1
-
-        new_id = next_child_id(nodes, parent_id)
-        if new_id in merged_ids(root):
-            raise HTTPException(status_code=409, detail="generated id already exists")
-
-        new_node: dict[str, Any] = {
-            "id": new_id,
-            "node_key": new_node_key(),
-            "parent_id": parent_id,
-            "type": body.type,
-            "title": body.title,
-            "status": "Not Started",
-            "dependencies": [],
-            "touch_zones": [],
-        }
-
-        ensure_planning_sheet_for_new_node(root, new_node)
-        inserted_key = new_node["node_key"]
-
-        try:
-            append_node_to_chunk(root, chunk_arg, new_node)
-            run_validate_raise(root)
-        except (SystemExit, OSError, ValueError) as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-
-        nodes2 = load_roadmap(root)["nodes"]
-        by_id2 = {n["id"]: n for n in nodes2}
-        sib = [n["id"] for n in nodes2 if n.get("parent_id") == parent_id]
-        sib.sort(key=lambda nid: sibling_sort_key(nid, by_id2))
-        if new_id not in sib:
-            raise HTTPException(status_code=500, detail="new node missing after add")
-        sib.remove(new_id)
-        sib.insert(insert_at, new_id)
-        try:
-            for i, nid in enumerate(sib):
-                edit_node_set_pairs(root, nid, [("sibling_order", str(i))])
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-
-        try:
-            final_id = _canonical_ids_after_add(root, new_id, inserted_key)
-        except (SystemExit, OSError, ValueError) as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true", "id": final_id}
+    def api_add_node(
+        body: AddNodeBody,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, Any]:
+        return _api_add_node_impl(get_repo_root(), body)

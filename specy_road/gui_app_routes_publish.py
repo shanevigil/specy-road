@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.gui_app_models import PublishRoadmapBody
+from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 from specy_road.pm_publish import publish_roadmap, publish_status_dict
 
 
@@ -16,7 +17,10 @@ def register_publish_routes(api: APIRouter) -> None:
         return publish_status_dict(get_repo_root())
 
     @api.post("/publish")
-    def api_publish(body: PublishRoadmapBody) -> dict:
+    def api_publish(
+        body: PublishRoadmapBody,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict:
         """Stage publish-scope paths, commit, and push to upstream."""
         root = get_repo_root()
         try:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from pm_gui_git_remote_verify import set_git_remote_tested_ok
 
@@ -23,6 +23,7 @@ from specy_road.gui_app_helpers import (
     get_repo_root,
     safe_rel_path,
 )
+from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 from specy_road.gui_app_models import (
     GitTestBody,
     GuiSettingsPutBody,
@@ -63,7 +64,10 @@ def register_workspace_routes(api: APIRouter) -> None:
         return {"prefix": prefix, "files": files_out}
 
     @api.post("/workspace/upload")
-    def api_workspace_upload(body: SharedUploadBody) -> dict[str, str]:
+    def api_workspace_upload(
+        body: SharedUploadBody,
+        _pm: None = Depends(require_pm_gui_write_header),
+    ) -> dict[str, str]:
         root = get_repo_root()
         raw = body.path.strip().replace("\\", "/").lstrip("/")
         if not raw.startswith("shared/"):

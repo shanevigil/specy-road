@@ -96,6 +96,8 @@ export type PublishStatusPayload = {
 
 export type RoadmapResponse = {
   version: number;
+  /** Optimistic concurrency token; must be sent as X-PM-Gui-Fingerprint on mutating requests. */
+  fingerprint: number;
   nodes: RoadmapNode[];
   registry: Record<string, unknown>;
   /** Registry entry keyed by display node id (when present). */
