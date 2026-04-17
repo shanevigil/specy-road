@@ -9,7 +9,7 @@ You are helping adopt **specy-road** in an **existing** project. The project alr
 ## Authoritative references (read if available)
 
 1. **Installed scaffold:** From `[REPO_ROOT]`, run `specy-road init project --dry-run` and treat every listed path as the canonical file set. To inspect templates without installing, the same tree ships in the `specy-road` package as `templates/project/` (e.g. under `site-packages/specy_road/templates/project/`).
-2. **Maintainer documentation** (for exact rules): `docs/roadmap-authoring.md`, `docs/git-workflow.md`, and the project `README.md` (install, `init project`, optional `specyrd`).
+2. **Maintainer documentation** (for exact rules): `docs/roadmap-authoring.md`, `docs/git-workflow.md`, and **`docs/install.md`** (PyPI install, `init project`, optional `specyrd`); the project `README` summarizes the kit.
 
 ## Concepts you must not confuse
 

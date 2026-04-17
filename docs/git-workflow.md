@@ -2,6 +2,12 @@
 
 This document is product-agnostic. Adapt branch names (`main` / `dev`) to your org; the **invariants** are registration, touch zones, and non-overlapping active claims.
 
+## Scope and distinction
+
+- This document describes the **consumer-repo workflow contract** used by `specy-road` commands and scaffolded project docs.
+- Consumer repos choose their own integration branch and remote via `roadmap/git-workflow.yaml`.
+- The `specy-road` toolkit repository can use a different maintainer policy for package development and release promotion. That maintainer policy is local to this repository and is not the canonical default for consumer app repos.
+
 ## Machine-readable contract (`roadmap/git-workflow.yaml`)
 
 The scaffold includes **`roadmap/git-workflow.yaml`**: your team’s **integration branch** (daily trunk) and **remote** name. The specy-road CLI (`specy-road sync`, `do-next-available-task`, `abort-task-pickup`) and the **PM Gantt** read this file unless you override with `--base` / `--remote` or optional environment variables (`SPECY_ROAD_INTEGRATION_BRANCH`, `SPECY_ROAD_REMOTE`). If the file is missing, tools fall back to `main` / `origin` and may warn.

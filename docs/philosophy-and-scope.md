@@ -26,7 +26,7 @@ Optional patterns for teams that *want* IDE rules, `CLAUDE.md`, MCP servers, or 
 
 ## Agent load order (keep context small)
 
-Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md); consumer scaffold paths match [`specy-road init project`](../README.md#new-project-consumer)):
+Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md); consumer scaffold paths match [`specy-road init project`](install.md#new-project-consumer)):
 
 1. [`constitution/purpose.md`](../specy_road/templates/project/constitution/purpose.md)
 2. [`constitution/principles.md`](../specy_road/templates/project/constitution/principles.md)

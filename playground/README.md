@@ -1,6 +1,6 @@
 # Playground (local only)
 
-Use this directory as a **fake consumer project** while you work in the **specy-road** repository: run `init project` here so the full bundled layout (roadmap JSON, `AGENTS.md`, `constitution/`, `constraints/`, `planning/`, `shared/`, `docs/supply-chain-security.md`, `work/`, …) lands under `playground/` instead of beside `pyproject.toml`. That matches what [`specy-road init project`](../README.md#new-project-consumer) writes for a real app repo.
+Use this directory as a **fake consumer project** while you work in the **specy-road** repository: run `init project` here so the full bundled layout (roadmap JSON, `AGENTS.md`, `constitution/`, `constraints/`, `planning/`, `shared/`, `docs/supply-chain-security.md`, `work/`, …) lands under `playground/` instead of beside `pyproject.toml`. That matches what [`specy-road init project`](../docs/install.md#new-project-consumer) writes for a real app repo.
 
 **Maintainers:** automated validation and export checks in this repository use the dogfood tree [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) (see root [`AGENTS.md`](../AGENTS.md)). **Playground** is for interactive trials of the **consumer** scaffold and the PM GUI, not the canonical toolkit roadmap.
 
