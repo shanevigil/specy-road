@@ -30,11 +30,7 @@ def _print_interactive_rows(
         print()
 
     for i, (kind, n) in enumerate(rows, 1):
-        gate = (
-            n.get("execution_milestone")
-            or n.get("execution_subtask")
-            or "—"
-        )
+        gate = n.get("execution_milestone") or "—"
         deps_raw = n.get("dependencies") or []
         dep_labels = [key_to_id.get(k, k) for k in deps_raw]
         deps = ", ".join(dep_labels) or "none"

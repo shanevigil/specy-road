@@ -81,22 +81,6 @@ def _brief_deps_and_contracts(
     return lines
 
 
-def _agentic_checklist_lines(n: dict) -> list[str]:
-    ac = n.get("agentic_checklist")
-    if not isinstance(ac, dict):
-        return []
-    lines = ["", "## Agentic checklist", ""]
-    for key in (
-        "artifact_action",
-        "contract_citation",
-        "interface_contract",
-        "constraints_note",
-        "dependency_note",
-    ):
-        lines.append(f"- **{key}:** {ac.get(key, '—')}")
-    return lines
-
-
 def _planning_dir_artifact_lines(
     n: dict, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
@@ -163,7 +147,6 @@ def render_brief(
             "",
             f"- **Status:** {n.get('status')}",
             f"- **Execution (milestone):** {n.get('execution_milestone')}",
-            f"- **Execution (sub-task):** {n.get('execution_subtask')}",
             f"- **Codename:** {n.get('codename')}",
             (
                 "- **Touch zones:** "
@@ -190,7 +173,6 @@ def render_brief(
             ),
         ]
     )
-    head.extend(_agentic_checklist_lines(n))
     head.extend(_planning_dir_artifact_lines(n, root, by_id))
     tail = _brief_deps_and_contracts(n, deps, root, by_id)
     return "\n".join(head + tail) + "\n"

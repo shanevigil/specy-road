@@ -45,10 +45,6 @@
           "type": ["string", "null"],
           "enum": [null, "Human-led", "Agentic-led", "Mixed"]
         },
-        "execution_subtask": {
-          "type": ["string", "null"],
-          "enum": [null, "human", "agentic", "human-gate"]
-        },
         "status": {
           "type": "string",
           "enum": ["Not Started", "In Progress", "Complete", "Blocked"]
@@ -111,38 +107,10 @@
             }
           }
         },
-        "agentic_checklist": {
-          "type": ["object", "null"],
-          "additionalProperties": false,
-          "description": "Required when execution_subtask is agentic. Five required elements (completeness standard) plus two optional signals.",
-          "properties": {
-            "artifact_action": { "type": "string", "minLength": 1 },
-            "contract_citation": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Which contract doc, section, or entity to conform to."
-            },
-            "interface_contract": { "type": "string", "minLength": 1 },
-            "constraints_note": { "type": "string", "minLength": 1 },
-            "dependency_note": { "type": "string", "minLength": 1 },
-            "success_signal": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Observable test or behavior that confirms the task is done correctly."
-            },
-            "forbidden_patterns": {
-              "type": "string",
-              "minLength": 1,
-              "description": "Patterns explicitly prohibited in this task (e.g. 'do not call live service — use stub')."
-            }
-          },
-          "required": [
-            "artifact_action",
-            "contract_citation",
-            "interface_contract",
-            "constraints_note",
-            "dependency_note"
-          ]
+        "rollup_status": {
+          "type": ["string", "null"],
+          "enum": [null, "Not Started", "In Progress", "Complete", "Blocked"],
+          "description": "Derived status rolled up from descendant leaves. Computed on load; never edited directly. Same as 'status' for leaves; for non-leaves, 'Complete' only when all leaf descendants are 'Complete'."
         }
       }
     }

@@ -32,7 +32,6 @@ EDIT_WHITELIST = frozenset({
     "parent_id",
     "codename",
     "execution_milestone",
-    "execution_subtask",
     "parallel_tracks",
     "sibling_order",
     "notes",
@@ -44,19 +43,11 @@ EDIT_WHITELIST = frozenset({
     "decision.status",
     "decision.decided_date",
     "decision.adr_ref",
-    "agentic_checklist.artifact_action",
-    "agentic_checklist.contract_citation",
-    "agentic_checklist.interface_contract",
-    "agentic_checklist.constraints_note",
-    "agentic_checklist.dependency_note",
-    "agentic_checklist.success_signal",
-    "agentic_checklist.forbidden_patterns",
     "planning_dir",
 })
 
 NODE_TYPES = frozenset({"vision", "phase", "milestone", "task", "gate"})
 EXEC_MILESTONES = frozenset({"Human-led", "Agentic-led", "Mixed"})
-EXEC_SUBTASKS = frozenset({"human", "agentic", "human-gate"})
 DECISION_STATUS = frozenset({"pending", "decided"})
 
 
@@ -182,17 +173,6 @@ def _set_optional_line_list(node: dict, key: str, raw_val: str) -> None:
         node[key] = _nonempty_lines(raw_val)
 
 
-def _set_exec_subtask(node: dict, raw_val: str) -> None:
-    if raw_val.lower() in ("null", "~", ""):
-        node["execution_subtask"] = None
-    elif raw_val not in EXEC_SUBTASKS:
-        raise ValueError(
-            f"execution_subtask must be one of {sorted(EXEC_SUBTASKS)} or empty",
-        )
-    else:
-        node["execution_subtask"] = raw_val
-
-
 def _apply_scalar_top_level(
     node: dict,
     key: str,
@@ -234,8 +214,6 @@ def _apply_scalar_top_level(
         _set_codename(node, raw_val)
     elif key == "execution_milestone":
         _set_exec_milestone(node, raw_val)
-    elif key == "execution_subtask":
-        _set_exec_subtask(node, raw_val)
     else:
         node[key] = raw_val
 
@@ -253,17 +231,6 @@ def _apply_decision(node: dict, sub: str, raw_val: str) -> None:
         dec["status"] = raw_val
     else:
         dec[sub] = raw_val
-
-
-def _apply_agentic_sub(node: dict, sub: str, raw_val: str) -> None:
-    ac = node.get("agentic_checklist")
-    if not isinstance(ac, dict):
-        ac = {}
-        node["agentic_checklist"] = ac
-    if sub in ("success_signal", "forbidden_patterns") and not raw_val.strip():
-        ac.pop(sub, None)
-    else:
-        ac[sub] = raw_val
 
 
 def apply_set(
@@ -294,8 +261,5 @@ def apply_set(
         return
     if parts[0] == "decision" and len(parts) == 2:
         _apply_decision(node, parts[1], raw_val)
-        return
-    if parts[0] == "agentic_checklist" and len(parts) == 2:
-        _apply_agentic_sub(node, parts[1], raw_val)
         return
     raise ValueError(f"unsupported nested key: {dotted_key!r}")

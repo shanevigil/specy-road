@@ -34,15 +34,7 @@
       "type": "milestone"
     },
     {
-      "agentic_checklist": {
-        "artifact_action": "Add shared/api-contract.md with resource list and error shape",
-        "constraints_note": "No secrets in repo; PII fields marked N/A in stub",
-        "contract_citation": "shared/README.md — Contracts section; link to ADR when added",
-        "dependency_note": "After M0.1 milestone scaffolding exists",
-        "interface_contract": "HTTP JSON: request/response envelope; error codes enum"
-      },
       "dependencies": [],
-      "execution_subtask": "agentic",
       "id": "M0.3",
       "node_key": "cd44fef1-715a-5b8d-b03f-1752a61a47cc",
       "parent_id": "M0",

@@ -163,77 +163,9 @@ def test_validate_required_planning_dirs_ok_when_set() -> None:
     vr.validate_required_planning_dirs(nodes)
 
 
-def test_validate_agentic_requires_checklist() -> None:
-    nodes = [
-        {
-            "id": "M0.1.1",
-            "execution_subtask": "agentic",
-        },
-    ]
-    with pytest.raises(SystemExit):
-        vr.validate_agentic_checklists(nodes)
-
-
-def test_validate_agentic_rejects_checklist_when_not_agentic() -> None:
-    nodes = [
-        {
-            "id": "M1",
-            "execution_subtask": None,
-            "agentic_checklist": {
-                "artifact_action": "x",
-                "contract_citation": "x",
-                "interface_contract": "x",
-                "constraints_note": "x",
-                "dependency_note": "x",
-            },
-        },
-    ]
-    with pytest.raises(SystemExit):
-        vr.validate_agentic_checklists(nodes)
-
-
-def test_validate_contract_citations_warns_on_unknown_prefix(capsys) -> None:
-    nodes = [
-        {
-            "id": "M1.1.1",
-            "execution_subtask": "agentic",
-            "agentic_checklist": {
-                "artifact_action": "x",
-                "contract_citation": "internal note without path",
-                "interface_contract": "x",
-                "constraints_note": "x",
-                "dependency_note": "x",
-            },
-        },
-    ]
-    vr.validate_contract_citations(nodes)
-    captured = capsys.readouterr()
-    assert "warning" in captured.err
-    assert "M1.1.1" in captured.err
-    assert "contract_citation" in captured.err
-
-
-def test_validate_contract_citations_silent_on_known_prefix(capsys) -> None:
-    known = ("shared/api.md", "docs/adr/ADR-001.md", "specs/x.md", "adr/y.md")
-    for prefix in known:
-        nodes = [
-            {
-                "id": "M1.1.1",
-                "execution_subtask": "agentic",
-                "agentic_checklist": {
-                    "artifact_action": "x",
-                    "contract_citation": prefix,
-                    "interface_contract": "x",
-                    "constraints_note": "x",
-                    "dependency_note": "x",
-                },
-            },
-        ]
-        vr.validate_contract_citations(nodes)
-        captured = capsys.readouterr()
-        assert "warning" not in captured.err, (
-            f"unexpected warning for prefix {prefix}"
-        )
+# F-003/F-007: agentic_checklist / execution_subtask / contract_citation
+# validators were removed (all leaves are agentic by design). Their tests
+# used to live here and have been deleted together with the features.
 
 
 def test_validate_script_exits_zero_on_repo() -> None:
