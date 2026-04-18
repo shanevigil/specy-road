@@ -38,6 +38,8 @@ type Props = {
   /** Rows to emphasize: full transitive prerequisite closure (explicit + inherited-from-ancestor deps). */
   highlightRowIds?: ReadonlySet<string> | null;
   onSelect: (id: string) => void;
+  /** Double-click a row’s bar to open the same title + planning modal as outline double-click. */
+  onBarDoubleClick?: (id: string) => void;
   /** Clicks on empty chart area (not bars) save dependency edit when active. */
   onChartBackgroundMouseDown?: () => void;
 };
@@ -69,6 +71,7 @@ export function GanttPane({
   selectedId,
   highlightRowIds = null,
   onSelect,
+  onBarDoubleClick,
   onChartBackgroundMouseDown,
 }: Props) {
   const n = orderedIds.length;
@@ -238,7 +241,19 @@ export function GanttPane({
             style={{ cursor: "pointer", pointerEvents: "all" }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => onSelect(id)}
-          />
+            onDoubleClick={
+              onBarDoubleClick
+                ? (e) => {
+                    e.preventDefault();
+                    onBarDoubleClick(id);
+                  }
+                : undefined
+            }
+          >
+            {onBarDoubleClick ? (
+              <title>Double-click to open title and planning editor</title>
+            ) : null}
+          </rect>
         );
       })}
       {visibleEdges.map(({ from: dep, to: tgt, kind }) => {

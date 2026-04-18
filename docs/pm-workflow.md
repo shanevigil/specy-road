@@ -89,7 +89,7 @@ For a full developer install (tests, editable package), see [contributor-guide.m
 
 ## Open and use the roadmap dashboard
 
-Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click planning editor and markdown workspace).
+Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click a row in the outline **or** its bar in the Gantt chart to open the planning editor and markdown workspace).
 
 ### Gantt PM UI (FastAPI + React)
 

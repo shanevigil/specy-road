@@ -1489,6 +1489,10 @@ export default function App() {
               selectedId={selectedId}
               highlightRowIds={highlightDepRowIds}
               onSelect={setSelectedId}
+              onBarDoubleClick={(id) => {
+                setSelectedId(id);
+                openEditNode(id);
+              }}
               onChartBackgroundMouseDown={
                 depEditId ? () => void applyDepEdit() : undefined
               }
