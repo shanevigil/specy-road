@@ -81,15 +81,21 @@ def autoff_grace_enabled() -> bool:
 def guard_pm_gui_write_with_autoff_grace(
     repo_root: Path, x_pm_gui_fingerprint: str | None
 ) -> None:
-    """Like :func:`guard_pm_gui_write`, but absorbs the auto-FF/fetch race.
+    """Like :func:`guard_pm_gui_write`, but tags 412s as ``retryable: true``.
 
-    When the on-disk fingerprint disagrees with the client's token, run the
-    same auto-fetch / auto-FF side effects that the GET endpoints run, then
-    re-check. If the client's token matches either the pre- or post-side-effect
-    snapshot from inside this request, accept it: the only thing that
-    changed was the server's own background sync. Otherwise raise 412 with
-    ``retryable: true`` so the client can transparently retry once with the
-    fresh token.
+    The auto-FF race in production has the form: GET #1 captures token A;
+    GET #2 (e.g. polling refresh, or a sibling tab) runs ``maybe_auto_git_fetch``
+    + ``maybe_auto_integration_ff`` and returns token B; user drags using
+    token A; POST arrives with A but disk now matches B (or even C). The
+    on-disk snapshot is canonical; we cannot accept token A. What we *can*
+    do is tell the client this 412 is transient ("retryable") so the
+    client retries exactly once with the fresh token before showing the
+    user-visible banner.
+
+    This guard always recomputes via the GET-side helper so that the
+    ``current_fingerprint`` returned to the client is the same value
+    ``GET /api/roadmap/fingerprint`` would return *right now* — letting
+    the client's transparent retry succeed without an extra round-trip.
     """
     expected = parse_pm_gui_fingerprint_header(x_pm_gui_fingerprint)
     current = pm_gui_mutation_fingerprint(repo_root)
@@ -107,10 +113,6 @@ def guard_pm_gui_write_with_autoff_grace(
         maybe_auto_git_fetch(repo_root, resolve_git_remote(repo_root))
     maybe_auto_integration_ff(repo_root)
     refreshed = pm_gui_mutation_fingerprint(repo_root)
-    if expected in (current, refreshed):
-        # Token tracks one of the snapshots observed inside this request;
-        # the only delta is the server's own background sync — accept.
-        return
     raise HTTPException(
         status_code=412,
         detail={
