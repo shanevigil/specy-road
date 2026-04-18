@@ -98,6 +98,14 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "deterministic index" in review_node.SYSTEM_PROMPT
 
 
+def test_anthropic_max_tokens_requires_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", raising=False)
+    with pytest.raises(review_node.ReviewError, match="SPECY_ROAD_ANTHROPIC_MAX_TOKENS"):
+        review_node._anthropic_max_completion_tokens()
+
+
 def test_normalize_review_strips_markdown_fence() -> None:
     raw = "```markdown\n## Intent\n\nx\n```"
     assert review_node._normalize_review_markdown_output(raw) == "## Intent\n\nx"

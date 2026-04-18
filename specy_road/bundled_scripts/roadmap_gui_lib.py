@@ -85,6 +85,10 @@ def _apply_anthropic_llm_env(llm: dict[str, Any]) -> None:
     m = (llm.get("anthropic_model") or "").strip()
     if m:
         os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] = m
+    # Anthropic Messages API requires max_tokens; map saved GUI value to env.
+    mt = str(llm.get("anthropic_max_output_tokens") or "").strip()
+    if mt:
+        os.environ["SPECY_ROAD_ANTHROPIC_MAX_TOKENS"] = mt
 
 
 def apply_llm_env_from_settings(llm: dict[str, Any]) -> None:

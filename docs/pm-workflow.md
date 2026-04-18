@@ -207,7 +207,7 @@ If your company already set **environment variables** for the CLI reviewer, thos
 
 - **Azure OpenAI:** `SPECY_ROAD_AZURE_OPENAI_ENDPOINT`, `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`, and optionally `SPECY_ROAD_OPENAI_API_VERSION` (default `2024-02-15-preview`).
 - **OpenAI or compatible:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`). Use a compatible **base URL** for OpenAI-shaped proxies (for example OpenRouter or a gateway); for Anthropic’s direct API, use the **Anthropic** backend below instead.
-- **Anthropic (Claude):** `SPECY_ROAD_ANTHROPIC_API_KEY`, optional `SPECY_ROAD_ANTHROPIC_MODEL` (default in the reviewer is `claude-sonnet-4-20250514` when unset).
+- **Anthropic (Claude):** `SPECY_ROAD_ANTHROPIC_API_KEY`, optional `SPECY_ROAD_ANTHROPIC_MODEL` (default in the reviewer is `claude-sonnet-4-20250514` when unset), and **`SPECY_ROAD_ANTHROPIC_MAX_TOKENS`** (required integer: Anthropic’s Messages API always needs a completion budget). You can set the env var in your shell or use **Max output tokens** under the Anthropic backend in PM Gantt Settings (saved settings inject the same env name when you run review from the GUI).
 
 Do not commit API keys into the repository. Review any data-handling policy before sending content to an external model.
 

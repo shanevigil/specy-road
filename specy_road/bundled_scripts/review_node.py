@@ -419,12 +419,38 @@ def _anthropic_text(resp: object) -> str:
     return "".join(parts)
 
 
+def _anthropic_max_completion_tokens() -> int:
+    """
+    Anthropic's Messages API requires ``max_tokens`` (completion budget).
+
+    The toolkit does not choose a default cap; set
+    ``SPECY_ROAD_ANTHROPIC_MAX_TOKENS`` to the maximum completion tokens you
+    want per request (see Anthropic docs for model limits).
+    """
+    raw = os.environ.get("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", "").strip()
+    if not raw:
+        raise ReviewError(
+            "Anthropic requires SPECY_ROAD_ANTHROPIC_MAX_TOKENS (completion "
+            "token budget for the Messages API). Set it in the environment or "
+            "your shell profile; see docs/pm-workflow.md.",
+        )
+    try:
+        n = int(raw)
+    except ValueError as e:
+        raise ReviewError(
+            f"SPECY_ROAD_ANTHROPIC_MAX_TOKENS must be an integer, got {raw!r}",
+        ) from e
+    if n < 1:
+        raise ReviewError("SPECY_ROAD_ANTHROPIC_MAX_TOKENS must be at least 1")
+    return n
+
+
 def _complete_anthropic(client: object, user_content: str) -> str:
     default_m = "claude-sonnet-4-20250514"
     model = os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL", default_m)
     resp = client.messages.create(  # type: ignore[union-attr]
         model=model,
-        max_tokens=4096,
+        max_tokens=_anthropic_max_completion_tokens(),
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
@@ -462,7 +488,7 @@ def ping_llm() -> None:
         model = os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL", default_m)
         r = client.messages.create(  # type: ignore[union-attr]
             model=model,
-            max_tokens=3,
+            max_tokens=_anthropic_max_completion_tokens(),
             messages=[{"role": "user", "content": "ping"}],
         )
         _ = _anthropic_text(r)
@@ -476,7 +502,6 @@ def ping_llm() -> None:
     resp = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": "ping"}],
-        max_tokens=3,
     )
     _ = resp.choices[0].message.content
 

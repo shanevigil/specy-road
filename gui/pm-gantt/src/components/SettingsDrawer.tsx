@@ -164,6 +164,7 @@ function buildLlmPayload(llm: Record<string, string>) {
     azure_api_version: llm.azure_api_version || "",
     anthropic_api_key: llm.anthropic_api_key || "",
     anthropic_model: llm.anthropic_model || "",
+    anthropic_max_output_tokens: llm.anthropic_max_output_tokens || "",
   };
 }
 
@@ -556,6 +557,20 @@ export function SettingsDrawer({
                 setLlm({ ...llm, anthropic_model: e.target.value })
               }
               placeholder="claude-sonnet-4-20250514"
+            />
+          </label>
+          <label>
+            Max output tokens
+            <input
+              inputMode="numeric"
+              value={llm.anthropic_max_output_tokens || ""}
+              onChange={(e) =>
+                setLlm({
+                  ...llm,
+                  anthropic_max_output_tokens: e.target.value,
+                })
+              }
+              placeholder="e.g. 8192 (required by Anthropic API)"
             />
           </label>
         </>

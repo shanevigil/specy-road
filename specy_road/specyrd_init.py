@@ -19,7 +19,8 @@ DEFAULT_GUI_SETTINGS_JSON = (
     '    "openai_model": "gpt-4o-mini",\n    "openai_base_url": "",\n'
     '    "azure_endpoint": "",\n    "azure_api_key": "",\n'
     '    "azure_deployment": "",\n    "azure_api_version": "2024-02-15-preview",\n'
-    '    "anthropic_api_key": "",\n    "anthropic_model": ""\n'
+    '    "anthropic_api_key": "",\n    "anthropic_model": "",\n'
+    '    "anthropic_max_output_tokens": ""\n'
     "  },\n"
     '  "git_remote": {\n    "provider": "github",\n    "repo": "",\n'
     '    "token": "",\n    "base_url": ""\n  }\n}\n'
