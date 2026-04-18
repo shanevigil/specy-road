@@ -657,6 +657,16 @@ type Props = {
     label: string,
     mutation: () => Promise<void>,
   ) => Promise<void>;
+  /** Optimistic-UI mutation runner for outline reorder / move; supplied
+   *  by App.tsx so the row can snap to its new position immediately
+   *  while the network call is in flight. */
+  performOptimisticMutation: (
+    label: string,
+    op: import("../optimisticOutline").OptimisticOp | null,
+    ids: string[],
+    kind: import("../pendingMutations").PendingKind,
+    mutation: () => Promise<void>,
+  ) => Promise<void>;
   onMutationError: (message: string) => void;
   onGapInsert: (referenceNodeId: string) => void;
   displayStatusById?: Record<string, string>;
@@ -689,6 +699,7 @@ export function OutlineTable({
   onSelect,
   onDoubleClick,
   performRoadmapMutation,
+  performOptimisticMutation,
   onMutationError,
   onGapInsert,
   displayStatusById,
@@ -895,8 +906,12 @@ export function OutlineTable({
       const next = siblingOrderInsertBefore(P, aid, oid, orderedIds, nodesById);
       if (!next?.length) return;
       try {
-        await performRoadmapMutation("Updating outline…", () =>
-          reorderOutline(P, next),
+        await performOptimisticMutation(
+          "Updating outline…",
+          { kind: "reorder", parentId: P, orderedChildIds: next },
+          next,
+          "reorder",
+          () => reorderOutline(P, next),
         );
       } catch (err: unknown) {
         console.error(err);
@@ -907,8 +922,12 @@ export function OutlineTable({
     }
 
     try {
-      await performRoadmapMutation("Updating outline…", () =>
-        moveOutline(na.node_key, P, newIndex),
+      await performOptimisticMutation(
+        "Updating outline…",
+        { kind: "move", nodeKey: na.node_key, newParentId: P, newIndex },
+        [aid],
+        "move",
+        () => moveOutline(na.node_key, P, newIndex),
       );
     } catch (err: unknown) {
       console.error(err);
@@ -938,8 +957,12 @@ export function OutlineTable({
       const next = siblingOrderInsertAfter(P, aid, oid, orderedIds, nodesById);
       if (!next?.length) return;
       try {
-        await performRoadmapMutation("Updating outline…", () =>
-          reorderOutline(P, next),
+        await performOptimisticMutation(
+          "Updating outline…",
+          { kind: "reorder", parentId: P, orderedChildIds: next },
+          next,
+          "reorder",
+          () => reorderOutline(P, next),
         );
       } catch (err: unknown) {
         console.error(err);
@@ -950,8 +973,12 @@ export function OutlineTable({
     }
 
     try {
-      await performRoadmapMutation("Updating outline…", () =>
-        moveOutline(na.node_key, P, newIndex),
+      await performOptimisticMutation(
+        "Updating outline…",
+        { kind: "move", nodeKey: na.node_key, newParentId: P, newIndex },
+        [aid],
+        "move",
+        () => moveOutline(na.node_key, P, newIndex),
       );
     } catch (err: unknown) {
       console.error(err);
@@ -993,8 +1020,17 @@ export function OutlineTable({
       );
       const newIndex = others.length;
       try {
-        await performRoadmapMutation("Updating outline…", () =>
-          moveOutline(na.node_key, parentDisplay, newIndex),
+        await performOptimisticMutation(
+          "Updating outline…",
+          {
+            kind: "move",
+            nodeKey: na.node_key,
+            newParentId: parentDisplay,
+            newIndex,
+          },
+          [aid],
+          "move",
+          () => moveOutline(na.node_key, parentDisplay, newIndex),
         );
       } catch (err: unknown) {
         console.error(err);

@@ -13,7 +13,6 @@ import {
   createPendingStore,
   type PendingKind,
   type PendingMutationsApi,
-  type PendingPhase,
   type PendingStore,
 } from "./pendingMutationsCore";
 
