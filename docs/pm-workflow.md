@@ -91,6 +91,14 @@ For a full developer install (tests, editable package), see [contributor-guide.m
 
 Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click a row in the outline **or** its bar in the Gantt chart to open the planning editor and markdown workspace).
 
+### Gate rows (`type`: `gate`)
+
+**Gates** are **PM hold points**: they document why work is paused, what clears the hold, and what was decided—see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate) for graph rules (leaf under `vision` or `phase`, list the gate’s `node_key` on a phase or ancestor’s `dependencies` to block downstream leaves until the gate is **Complete**).
+
+- **Not dev pickup** — `do-next-available-task` does not claim gates; **`roadmap/registry.yaml` must not** reference a gate’s `node_id`.
+- **Same editor as tasks** — Double-click the gate row (outline or Gantt bar) to open title + planning. **Create planning file** / `specy-road scaffold-planning` use a **gate-specific** Markdown template (why the gate exists, criteria to clear, decisions, resolution, references) instead of the full feature-sheet outline.
+- **LLM Review** — When the selected node is a gate, the model is asked to follow the **gate** section outline (not Intent / Approach / Tasks).
+
 ### Gantt PM UI (FastAPI + React)
 
 **Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/`). The UI discovers that root the same way as other CLI commands (git worktree from the current directory, or the current directory if not in git). If that resolves to the wrong tree—nested checkouts, monorepos—pass `--repo-root /path/to/repo` or set `SPECY_ROAD_REPO_ROOT`.

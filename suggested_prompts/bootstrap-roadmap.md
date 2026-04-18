@@ -81,7 +81,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 
 For every `planning_dir` you reference:
 
-1. Create `planning/<id>_<slug>_<node_key>.md` with content derived from existing docs (or run **`specy-road scaffold-planning <NODE_ID>`** to create from the package template).
+1. Create `planning/<id>_<slug>_<node_key>.md` with content derived from existing docs (or run **`specy-road scaffold-planning <NODE_ID>`** to create from the package template: **feature-sheet** sections for most types, **gate-sheet** sections for `type: gate`).
 2. Ensure the planning file name matches `<id>_<codename_slug>_<node_key>.md` (see `planning/README.md`).
 
 ## Phase 5 — Export and limits

@@ -15,8 +15,9 @@ from urllib.parse import urlparse
 
 from generate_brief import index as make_index, render_brief
 from planning_sheet_bootstrap import (
-    feature_sheet_expected_shape_block,
     feature_sheet_structure_instruction_for_llm,
+    gate_sheet_structure_instruction_for_llm,
+    planning_review_expected_shape_block,
 )
 from roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_ok
@@ -51,39 +52,80 @@ class ReviewError(Exception):
     """LLM review failed (missing config, missing package, or API error)."""
 
 
-# Concise: model returns a replacement feature sheet, not a narrative review.
-# Section list matches templates/planning-node/feature-sheet.md.template via
-# planning_sheet_bootstrap.feature_sheet_structure_instruction_for_llm().
-SYSTEM_PROMPT = (
-    "You revise the Markdown feature sheet for one roadmap item.\n\n"
-    "Output rules (strict):\n"
-    "- Return ONLY the full revised feature sheet as Markdown. No preamble, "
-    "title line, or closing commentary.\n"
-    "- Do not wrap the document in a fenced code block.\n"
-    "- Be concise: short paragraphs, tight bullets, minimal words per line.\n"
-    "- "
-    + feature_sheet_structure_instruction_for_llm()
-    + "\n"
-    "- Do not repeat the roadmap node id, display id, title, or node_key in "
-    "the body—they belong in the roadmap JSON and filename.\n"
-    "- Do not duplicate roadmap structure in prose: remove or rewrite "
-    "sentences that name other milestones by display id (e.g. M6, M9.1), "
-    "narrate parent/child relationships, or use phrases like \"gated on\" or "
-    "\"blocked by\" a roadmap item—dependencies and ordering live in the graph "
-    "and brief. Intent and Approach should describe what to build and how, "
-    "not restate the dependency list.\n"
-    "- Keep legitimate technical prerequisites (e.g. requires a shipped API, "
-    "after a DB migration) when they are not the same as roadmap milestone "
-    "references.\n"
-    "- Do not explain what you changed; the UI will diff against the previous "
-    "sheet.\n\n"
-    "Context below includes the roadmap brief, a deterministic index of files "
-    "under shared/ (one-line descriptions each), constraints, cited contracts, "
-    "and the current feature sheet. Treat the shared/ index as optional "
-    "references when improving the sheet (including ## References); it does not "
-    "replace cited contract bodies. Improve clarity, checklist completeness, "
-    "and alignment with constraints and citations—not generic advice."
-)
+def _feature_sheet_system_prompt() -> str:
+    """LLM system prompt for task/milestone/phase-style feature sheets."""
+    return (
+        "You revise the Markdown feature sheet for one roadmap item.\n\n"
+        "Output rules (strict):\n"
+        "- Return ONLY the full revised feature sheet as Markdown. No preamble, "
+        "title line, or closing commentary.\n"
+        "- Do not wrap the document in a fenced code block.\n"
+        "- Be concise: short paragraphs, tight bullets, minimal words per line.\n"
+        "- "
+        + feature_sheet_structure_instruction_for_llm()
+        + "\n"
+        "- Do not repeat the roadmap node id, display id, title, or node_key in "
+        "the body—they belong in the roadmap JSON and filename.\n"
+        "- Do not duplicate roadmap structure in prose: remove or rewrite "
+        "sentences that name other milestones by display id (e.g. M6, M9.1), "
+        "narrate parent/child relationships, or use phrases like \"gated on\" or "
+        "\"blocked by\" a roadmap item—dependencies and ordering live in the graph "
+        "and brief. Intent and Approach should describe what to build and how, "
+        "not restate the dependency list.\n"
+        "- Keep legitimate technical prerequisites (e.g. requires a shipped API, "
+        "after a DB migration) when they are not the same as roadmap milestone "
+        "references.\n"
+        "- Do not explain what you changed; the UI will diff against the previous "
+        "sheet.\n\n"
+        "Context below includes the roadmap brief, a deterministic index of files "
+        "under shared/ (one-line descriptions each), constraints, cited contracts, "
+        "and the current planning sheet. Treat the shared/ index as optional "
+        "references when improving the sheet (including ## References); it does not "
+        "replace cited contract bodies. Improve clarity, checklist completeness, "
+        "and alignment with constraints and citations—not generic advice."
+    )
+
+
+def _gate_planning_system_prompt() -> str:
+    """LLM system prompt for ``type: gate`` planning sheets (PM hold, not dev work)."""
+    return (
+        "You revise the Markdown planning sheet for one roadmap **gate** "
+        "(a PM hold or approval point, not an implementation task).\n\n"
+        "Output rules (strict):\n"
+        "- Return ONLY the full revised planning sheet as Markdown. No preamble, "
+        "title line, or closing commentary.\n"
+        "- Do not wrap the document in a fenced code block.\n"
+        "- Be concise: short paragraphs, tight bullets, minimal words per line.\n"
+        "- "
+        + gate_sheet_structure_instruction_for_llm()
+        + "\n"
+        "- Do not repeat the roadmap node id, display id, title, or node_key in "
+        "the body—they belong in the roadmap JSON and filename.\n"
+        "- Do not duplicate roadmap structure in prose: remove or rewrite "
+        "sentences that name other milestones by display id, narrate parent/child "
+        "relationships, or restate dependency edges—those live in the graph and "
+        "brief. Focus on why the gate exists, criteria to clear it, decisions, and "
+        "resolution—not implementation task lists.\n"
+        "- Do not explain what you changed; the UI will diff against the previous "
+        "sheet.\n\n"
+        "Context below includes the roadmap brief, a deterministic index of files "
+        "under shared/ (one-line descriptions each), constraints, cited contracts, "
+        "and the current planning sheet. Treat the shared/ index as optional "
+        "references when improving the sheet (including ## References); it does not "
+        "replace cited contract bodies. Improve clarity and alignment with constraints "
+        "and citations—not generic advice."
+    )
+
+
+def system_prompt_for_planning_review(node_type: str | None = None) -> str:
+    """System prompt for LLM planning review: gate sheet vs feature sheet."""
+    if str(node_type or "").strip().lower() == "gate":
+        return _gate_planning_system_prompt()
+    return _feature_sheet_system_prompt()
+
+
+# Default feature-sheet prompt (tests and callers that expect ``SYSTEM_PROMPT``).
+SYSTEM_PROMPT = system_prompt_for_planning_review(None)
 
 
 def _repo_root(ns: argparse.Namespace) -> Path:
@@ -630,22 +672,32 @@ def _anthropic_max_completion_tokens() -> int:
     return n
 
 
-def _complete_anthropic(client: object, user_content: str) -> str:
+def _complete_anthropic(
+    client: object,
+    user_content: str,
+    *,
+    system_prompt: str,
+) -> str:
     default_m = "claude-sonnet-4-20250514"
     model = os.environ.get("SPECY_ROAD_ANTHROPIC_MODEL", default_m)
     resp = client.messages.create(  # type: ignore[union-attr]
         model=model,
         max_tokens=_anthropic_max_completion_tokens(),
-        system=SYSTEM_PROMPT,
+        system=system_prompt,
         messages=[{"role": "user", "content": user_content}],
     )
     return _anthropic_text(resp)
 
 
-def _complete(client, user_content: str) -> str:
+def _complete(
+    client,
+    user_content: str,
+    *,
+    system_prompt: str,
+) -> str:
     cls_mod = type(client).__module__
     if cls_mod.startswith("anthropic"):
-        return _complete_anthropic(client, user_content)
+        return _complete_anthropic(client, user_content, system_prompt=system_prompt)
 
     from openai import AzureOpenAI
 
@@ -659,7 +711,7 @@ def _complete(client, user_content: str) -> str:
         client,
         model=model,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ],
         **extra,
@@ -706,10 +758,11 @@ def run_review(
 ) -> str:
     """
     Build context (brief, shared/ index, constraints, cited docs, current
-    sheet) and return the revised feature sheet Markdown from the LLM.
+    sheet) and return the revised planning Markdown from the LLM (feature-sheet
+    or gate-sheet shape, depending on ``node.type``).
 
     ``planning_body`` — when not ``None`` (including empty string), used as the
-    current feature sheet instead of reading ``planning_dir`` from disk (live
+    current planning sheet instead of reading ``planning_dir`` from disk (live
     editor in the GUI).
 
     Raises ``ReviewError`` on configuration or API failure, ``ValueError`` if
@@ -726,18 +779,24 @@ def run_review(
     constraints = _constraints_text(root)
     cited = _cited_snippets(root, node)
     sheet = _feature_sheet_for_prompt(root, node, planning_body)
+    nt = node.get("type")
+    system_prompt = system_prompt_for_planning_review(
+        nt if isinstance(nt, str) else None,
+    )
     user_content = "\n\n".join(
         [
             "## Brief\n\n" + brief,
             "## shared/ index (possible references)\n\n" + shared_index,
             "## constraints/README.md\n\n" + constraints,
             "## Cited documents (from contract_citation)\n\n" + cited,
-            "## Current feature sheet\n\n" + sheet,
-            "## Expected shape\n\n" + feature_sheet_expected_shape_block(),
+            "## Current planning sheet\n\n" + sheet,
+            "## Expected shape\n\n" + planning_review_expected_shape_block(
+                nt if isinstance(nt, str) else None,
+            ),
         ],
     )
     client = _make_client()
-    raw = _complete(client, user_content)
+    raw = _complete(client, user_content, system_prompt=system_prompt)
     return _normalize_review_markdown_output(raw)
 
 

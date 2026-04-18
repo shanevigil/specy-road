@@ -69,7 +69,12 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
     captured: list[str] = []
 
-    def fake_complete(_client: object, user_content: str) -> str:
+    def fake_complete(
+        _client: object,
+        user_content: str,
+        *,
+        system_prompt: str,
+    ) -> str:
         captured.append(user_content)
         return "## Review\nok"
 
@@ -92,7 +97,7 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert msg.index("`shared/asset.bin`") < msg.index("`shared/nested/note.md`")
     assert "constraints/README.md" in msg
     assert "shared/README.md" in msg
-    assert "Current feature sheet" in msg
+    assert "Current planning sheet" in msg
     assert "Expected shape" in msg
     assert "scaffold-planning" in msg
     assert "deterministic index" in review_node.SYSTEM_PROMPT
@@ -145,6 +150,13 @@ def test_normalize_review_strips_markdown_fence() -> None:
     assert review_node._normalize_review_markdown_output(raw) == "## Intent\n\nx"
 
 
+def test_system_prompt_for_planning_review_gate() -> None:
+    sp = review_node.system_prompt_for_planning_review("gate")
+    assert "roadmap **gate**" in sp
+    assert "Why this gate exists" in sp
+    assert sp != review_node.system_prompt_for_planning_review("task")
+
+
 def test_run_review_planning_body_override(
     tiny_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -152,7 +164,12 @@ def test_run_review_planning_body_override(
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
     captured: list[str] = []
 
-    def fake_complete(_client: object, user_content: str) -> str:
+    def fake_complete(
+        _client: object,
+        user_content: str,
+        *,
+        system_prompt: str,
+    ) -> str:
         captured.append(user_content)
         return "## OK\n"
 
@@ -165,7 +182,11 @@ def test_run_review_planning_body_override(
 def test_run_review_returns_markdown(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(review_node, "_make_client", lambda: object())
-    monkeypatch.setattr(review_node, "_complete", lambda _c, _u: "## OK\n")
+    monkeypatch.setattr(
+        review_node,
+        "_complete",
+        lambda _c, _u, *, system_prompt: "## OK\n",
+    )
     out = review_node.run_review("M99.1", tiny_repo)
     assert out.startswith("## OK")
 
@@ -180,7 +201,12 @@ def test_shared_catalog_sorts_lexicographically(
     monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
     captured: list[str] = []
 
-    def fake_complete(_client: object, user_content: str) -> str:
+    def fake_complete(
+        _client: object,
+        user_content: str,
+        *,
+        system_prompt: str,
+    ) -> str:
         captured.append(user_content)
         return "## OK\n"
 

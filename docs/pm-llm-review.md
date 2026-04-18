@@ -8,7 +8,7 @@ It is **not** a legal or security sign-off: your organization’s policies on AI
 
 ## What LLM Review is (and is not)
 
-**LLM Review** asks a configured **large language model** to return a **full revised copy** of the **feature sheet** (planning Markdown) for the roadmap item you are editing. You can compare that proposal to what you had before, optionally merge it in section by section, then save the sheet through the normal editor flow.
+**LLM Review** asks a configured **large language model** to return a **full revised copy** of the **planning Markdown** for the roadmap item you are editing (the **feature-sheet** outline for most node types, and a **gate-specific** outline for `type: gate`). You can compare that proposal to what you had before, optionally merge it in section by section, then save the sheet through the normal editor flow.
 
 - **Advisory only** — The model does **not** write to disk by itself. Nothing in the roadmap JSON or planning files changes until **you** accept edits and the app persists them.
 - **Not a substitute for validation** — After you change a sheet, your team should still run **`specy-road validate`** (and your usual review process) before treating the spec as authoritative.
@@ -34,7 +34,7 @@ Supported backends in the reviewer match the docs: **OpenAI**, **Azure OpenAI**,
 1. The app takes a **snapshot** of the **current editor text** (what you see in the planning Markdown editor), even if you have not saved to disk yet.
 2. It sends your **saved LLM settings** for this repository to the **local FastAPI server**, which temporarily copies the relevant values into **process environment variables** the reviewer reads (same names as the CLI — see [pm-workflow.md](pm-workflow.md)).
 3. The server builds a **structured prompt**: fixed **instructions** (system message) plus a **single user message** made of labeled sections (brief, shared index, constraints, cited files, your sheet, expected headings). Details are in the next section.
-4. The model returns **Markdown** only — intended to be a **replacement feature sheet** with the same canonical `##` sections as `specy-road scaffold-planning` (Intent, Approach, Tasks / checklist, References).
+4. The model returns **Markdown** only — intended as a **replacement planning sheet** with the same canonical `##` sections as `specy-road scaffold-planning` for that node type (**feature sheet**: Intent, Approach, Tasks / checklist, References; **gate**: Why this gate exists, Criteria to clear, Decisions and notes, Resolution, References).
 5. The UI shows that result in **review mode**: a **diff** view by default, with extra actions described below.
 
 If the request fails (network, auth, quota, invalid Anthropic max tokens, etc.), you see an **error string** in the planning toolbar area; your sheet is left unchanged.
@@ -50,7 +50,7 @@ Think of two layers: **instructions** (what role the model is in and how it must
 The server sends a fixed block of text that tells the model, in short:
 
 - Output **only** the revised Markdown sheet — **no** preamble, **no** “here is what I changed,” and **no** wrapping the whole answer in a fenced code block.
-- Follow the **canonical `##` section order** for a feature sheet (same outline as scaffolding).
+- Follow the **canonical `##` section order** for that node type (same outline as scaffolding: feature sheet vs gate sheet).
 - Stay concise; do **not** repeat node id, title, or roadmap dependency prose in the sheet (those belong in the roadmap graph and brief).
 - Treat the **`shared/` index** as **optional pointers**; it does **not** replace the **cited contract** snippets when those exist.
 
@@ -62,8 +62,8 @@ The user message is built on the server from your **resolved repository root** (
 2. **`## shared/ index (possible references)`** — A **sorted** list of files under **`shared/`** (including subfolders), each with a **short, deterministic one-line description** derived from a small prefix of the file (so the model knows what else exists without rereading the whole tree). Very large trees are **capped** (file count and total characters) with a short footer so the request stays bounded.
 3. **`## constraints/README.md`** — The full **`constraints/README.md`** file if it exists, or a placeholder if it does not.
 4. **`## Cited documents (from contract_citation)`** — Parsed from the node’s **`agentic_checklist.contract_citation`** field in the roadmap JSON. Only repo-relative paths starting with **`shared/`**, **`docs/`**, **`specs/`**, or **`adr/`** are included; each file is inlined up to a **per-file size cap** (very long files are truncated with a marker).
-5. **`## Current feature sheet`** — The **snapshot from the editor** when you clicked the button (not necessarily what is on disk).
-6. **`## Expected shape`** — A short bullet list of the canonical `##` headings so the model stays aligned with your scaffold.
+5. **`## Current planning sheet`** — The **snapshot from the editor** when you clicked the button (not necessarily what is on disk).
+6. **`## Expected shape`** — A short bullet list of the canonical `##` headings for that node type so the model stays aligned with your scaffold.
 
 **Caching (performance):** The **`shared/` index** text may be **reused** across repeated reviews in the same server process when the tool detects that nothing relevant under **`shared/`** changed (using **git** state when possible, otherwise file metadata). The **brief** and the rest of the message are still rebuilt each time so they stay current.
 

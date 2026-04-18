@@ -69,7 +69,7 @@
         "notes": { "type": "string" },
         "planning_dir": {
           "type": ["string", "null"],
-          "description": "Repo-relative path to a single feature sheet under planning/, e.g. planning/M1.1_slug_<node_key>.md; required for types vision, phase, milestone, and task (enforced in validate_roadmap.py). See planning/README.md."
+          "description": "Repo-relative path to a single Markdown planning sheet under planning/, e.g. planning/M1.1_slug_<node_key>.md; required for types vision, phase, milestone, task, and gate (enforced in validate_roadmap.py). Gate nodes use the gate planning scaffold; other types use the feature-sheet scaffold. See planning/README.md."
         },
         "goal": {
           "type": "string",

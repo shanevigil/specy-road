@@ -190,7 +190,7 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 
 ### Gate (`type: gate`)
 
-A **Gate** is a **leaf-only** human hold point: it has a feature sheet (`planning_dir`) for PM notes, but it is **not** claimed via `do-next-available-task`, and **`roadmap/registry.yaml` must not** reference a Gate’s `node_id`.
+A **Gate** is a **leaf-only** human hold point: it has a **planning sheet** (`planning_dir`) for PM notes (scaffolded with the **gate** template—why the hold exists, criteria to clear, decisions, resolution—not the full feature-sheet task outline), but it is **not** claimed via `do-next-available-task`, and **`roadmap/registry.yaml` must not** reference a Gate’s `node_id`.
 
 - **Placement:** Parent must be **`vision` or `phase`** only (not `milestone` or `task`). A Gate cannot have child rows.
 - **Scoped dev hold:** List the Gate’s **`node_key`** in `dependencies` on the **phase** (or an ancestor milestone) that covers the work you want to pause. Descendant agentic leaves **inherit** that prerequisite; until the Gate is **`Complete`**, those leaves are not actionable for automated pickup. Clear the hold by setting the Gate to **Complete** (or remove the Gate node if you must unwind the freeze — not preferred).
