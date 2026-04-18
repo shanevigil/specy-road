@@ -100,62 +100,6 @@ def merged_ids(root: Path) -> set[str]:
     return {n["id"] for n in load_roadmap(root)["nodes"]}
 
 
-def _checklist_citation(ns: object) -> str | None:
-    cc = getattr(ns, "contract_citation", None)
-    if cc is not None and str(cc).strip():
-        return str(cc).strip()
-    return None
-
-
-def parse_checklist_flags(ns: object) -> dict | None:
-    cite = _checklist_citation(ns)
-    fields = (
-        ns.artifact_action,
-        cite,
-        ns.interface_contract,
-        ns.constraints_note,
-        ns.dependency_note,
-    )
-    if all(x is None for x in fields):
-        return None
-    if any(x is None or not str(x).strip() for x in fields):
-        print(
-            "error: agentic checklist requires all five of: "
-            "--artifact-action, --contract-citation, "
-            "--interface-contract, --constraints-note, --dependency-note",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    return {
-        "artifact_action": ns.artifact_action.strip(),
-        "contract_citation": cite or "",
-        "interface_contract": ns.interface_contract.strip(),
-        "constraints_note": ns.constraints_note.strip(),
-        "dependency_note": ns.dependency_note.strip(),
-    }
-
-
-def _checklist_from_json(raw: str) -> dict:
-    try:
-        checklist = json.loads(raw)
-    except json.JSONDecodeError as e:
-        print(f"error: invalid --checklist-json: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
-    cite = checklist.get("contract_citation")
-    merged = {
-        "artifact_action": checklist.get("artifact_action"),
-        "contract_citation": cite,
-        "interface_contract": checklist.get("interface_contract"),
-        "constraints_note": checklist.get("constraints_note"),
-        "dependency_note": checklist.get("dependency_note"),
-    }
-    for k, v in merged.items():
-        if not v or not str(v).strip():
-            print(f"error: checklist missing or empty {k!r}", file=sys.stderr)
-            raise SystemExit(1)
-    return merged
-
-
 def _resolve_parent(args: object, root: Path) -> object:
     pid = args.parent_id
     if pid in ("null", ""):
@@ -169,20 +113,30 @@ def _resolve_parent(args: object, root: Path) -> object:
     return pid
 
 
-def _resolve_checklist_for_add(args: object) -> dict | None:
-    if args.checklist_json:
-        return _checklist_from_json(args.checklist_json)
-    if args.execution_subtask == "agentic":
-        cl = parse_checklist_flags(args)
-        if cl is None:
-            print(
-                "error: execution_subtask agentic requires full checklist "
-                "(five flags or --checklist-json)",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
-        return cl
-    return None
+def _derive_codename_with_collision_suffix(
+    title: str, node_key: str, existing: set[str]
+) -> str | None:
+    """
+    Derive a kebab-case codename from ``title``; if a collision exists,
+    append ``-<last 4 hex of node_key>`` to disambiguate (F-006).
+
+    Returns ``None`` when no valid codename can be derived from the title
+    (e.g. empty or all-punctuation titles); callers may leave the node
+    unnamed so ``validate`` can re-visit it later.
+    """
+    from roadmap_edit_fields import title_to_codename
+
+    slug = title_to_codename(title)
+    if not slug:
+        return None
+    if slug not in existing:
+        return slug
+    tail = (node_key or "").replace("-", "")[-4:] or "x"
+    cand = f"{slug}-{tail}"
+    # Very defensive: extend the tail if still colliding.
+    if cand in existing and node_key:
+        cand = f"{slug}-{(node_key or '').replace('-', '')[-6:] or 'xx'}"
+    return cand
 
 
 def cmd_add(args: object) -> None:
@@ -199,30 +153,42 @@ def cmd_add(args: object) -> None:
         print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
         raise SystemExit(1)
 
-    checklist = _resolve_checklist_for_add(args)
-    if checklist is not None and args.execution_subtask != "agentic":
-        print(
-            "error: checklist only allowed with --execution-subtask agentic",
-            file=sys.stderr,
+    node_key = new_node_key()
+
+    # F-006: auto-derive codename from title when not supplied. Codenames are
+    # required by downstream pickup and registry logic; forcing users to
+    # supply them manually creates the F-006/F-007 friction we are removing.
+    codename = args.codename
+    if codename is None and args.type == "task":
+        existing_codenames = {
+            n.get("codename")
+            for n in load_roadmap(root)["nodes"]
+            if n.get("codename")
+        }
+        derived = _derive_codename_with_collision_suffix(
+            args.title or "", node_key, existing_codenames
         )
-        raise SystemExit(1)
+        if derived:
+            codename = derived
+            print(
+                f"[heal] node {nid}: codename auto-derived as {derived!r} "
+                "from title (see validate for collision rules)",
+                file=sys.stderr,
+            )
 
     node: dict = {
         "id": nid,
-        "node_key": new_node_key(),
+        "node_key": node_key,
         "parent_id": parent_val,
         "type": args.type,
         "title": args.title,
-        "codename": args.codename,
+        "codename": codename,
         "execution_milestone": args.execution_milestone,
-        "execution_subtask": args.execution_subtask,
         "status": args.status,
         "touch_zones": list(args.touch_zone or []),
         "dependencies": list(args.dependency or []),
         "parallel_tracks": args.parallel_tracks,
     }
-    if checklist is not None:
-        node["agentic_checklist"] = checklist
     node = {k: v for k, v in node.items() if v is not None}
     if node.get("touch_zones") == []:
         node["touch_zones"] = []

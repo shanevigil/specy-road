@@ -18,13 +18,8 @@ def _sheet_stub(nid: str, _nk: str) -> str:
 
 
 def _m99_crud_nodes(nk99: str, nk991: str, nk992: str) -> list[dict]:
-    ac = {
-        "artifact_action": "a",
-        "contract_citation": "shared/README.md",
-        "interface_contract": "i",
-        "constraints_note": "c",
-        "dependency_note": "d",
-    }
+    # Post F-003/F-007: execution_subtask/agentic_checklist are gone.
+    # Every leaf is agentic by design; no per-node opt-in.
     return [
         {
             "id": "M99",
@@ -49,8 +44,6 @@ def _m99_crud_nodes(nk99: str, nk991: str, nk992: str) -> list[dict]:
             "codename": "one",
             "planning_dir": f"planning/M99.1_one_{nk991}.md",
             "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": ac,
             "status": "Not Started",
             "touch_zones": [],
             "dependencies": [],
@@ -65,8 +58,6 @@ def _m99_crud_nodes(nk99: str, nk991: str, nk992: str) -> list[dict]:
             "codename": "two",
             "planning_dir": f"planning/M99.2_two_{nk992}.md",
             "execution_milestone": "Agentic-led",
-            "execution_subtask": "agentic",
-            "agentic_checklist": ac,
             "status": "Not Started",
             "touch_zones": [],
             "dependencies": [nk991],
@@ -130,14 +121,6 @@ def test_append_node_validate(tmp_path: Path) -> None:
         "codename": "three",
         "planning_dir": f"planning/M99.3_three_{nk}.md",
         "execution_milestone": "Agentic-led",
-        "execution_subtask": "agentic",
-        "agentic_checklist": {
-            "artifact_action": "x",
-            "contract_citation": "shared/README.md",
-            "interface_contract": "x",
-            "constraints_note": "x",
-            "dependency_note": "x",
-        },
         "status": "Not Started",
         "touch_zones": [],
         "dependencies": [],
@@ -298,7 +281,8 @@ def test_add_node_cli_rejects_unknown_parent(tmp_path: Path) -> None:
     assert "parent_id 'M404' not found in roadmap" in r.stderr
 
 
-def test_add_node_agentic_requires_checklist(tmp_path: Path) -> None:
+def test_add_node_rejects_removed_execution_subtask_flag(tmp_path: Path) -> None:
+    """Per F-003/F-007 the --execution-subtask flag was removed."""
     _fixture_repo(tmp_path)
     r = _run_crud(
         tmp_path,
@@ -320,21 +304,13 @@ def test_add_node_agentic_requires_checklist(tmp_path: Path) -> None:
         "--execution-subtask",
         "agentic",
     )
-    assert r.returncode == 1
-    assert "execution_subtask agentic requires full checklist" in r.stderr
+    assert r.returncode != 0
+    assert "unrecognized arguments" in r.stderr or "--execution-subtask" in r.stderr
 
 
-def test_add_node_agentic_checklist_json_success(tmp_path: Path) -> None:
+def test_add_node_no_codename_auto_derives(tmp_path: Path) -> None:
+    """F-006: when --codename is omitted on a task, it's auto-derived from --title."""
     _fixture_repo(tmp_path)
-    checklist = json.dumps(
-        {
-            "artifact_action": "a",
-            "contract_citation": "shared/README.md",
-            "interface_contract": "i",
-            "constraints_note": "c",
-            "dependency_note": "d",
-        }
-    )
     r = _run_crud(
         tmp_path,
         "--repo-root",
@@ -347,18 +323,11 @@ def test_add_node_agentic_checklist_json_success(tmp_path: Path) -> None:
         "--type",
         "task",
         "--title",
-        "Three",
+        "Three Slug",
         "--parent-id",
         "M99",
-        "--codename",
-        "three",
-        "--execution-subtask",
-        "agentic",
-        "--checklist-json",
-        checklist,
     )
     assert r.returncode == 0, r.stderr
     nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
     node = next(n for n in nodes if n["id"] == "M99.3")
-    assert node["execution_subtask"] == "agentic"
-    assert node["agentic_checklist"]["contract_citation"] == "shared/README.md"
+    assert node["codename"] == "three-slug"

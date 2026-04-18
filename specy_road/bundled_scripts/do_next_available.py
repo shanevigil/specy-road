@@ -124,9 +124,13 @@ def _effective_deps_met(
 
 
 def _agentic_execution_ok(n: dict) -> bool:
-    exec_m = n.get("execution_milestone", "")
-    exec_s = n.get("execution_subtask", "")
-    return exec_m in ("Agentic-led", "Mixed") or exec_s == "agentic"
+    """
+    Post-F-003/F-007: all leaf tasks are considered agentic by design.
+    This function is kept as a trivial pass-through for call-site stability
+    (do-next-available queue logic still calls it); it no longer gates pickup.
+    """
+    _ = n  # not used
+    return True
 
 
 def _base_agentic_candidate(
@@ -199,6 +203,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
         nid = n["id"]
         status = (n.get("status") or "Not Started").lower()
         if n.get("type") == "gate":
+            # Gate nodes are human-review markers, never pickable leaves.
             non_agentic_leaf_ids.append(nid)
             continue
         if nid in claimed:
@@ -206,9 +211,6 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
             continue
         if not n.get("codename"):
             missing_codename_leaf_ids.append(nid)
-            continue
-        if not _agentic_execution_ok(n):
-            non_agentic_leaf_ids.append(nid)
             continue
         if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
             deps_blocked_leaf_ids.append(nid)

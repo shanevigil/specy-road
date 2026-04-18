@@ -29,17 +29,18 @@ def sort_key(nid: str) -> tuple[int, ...]:
 
 
 def gate_display(node: dict) -> str:
-    sub = node.get("execution_subtask")
-    if sub == "human-gate":
-        return "Human gate"
-    if sub == "agentic":
-        return "Agentic"
-    if sub == "human":
-        return "Human"
     em = node.get("execution_milestone")
     if em:
         return str(em)
     return "—"
+
+
+def _status_display(node: dict) -> str:
+    """Prefer rollup_status (computed from descendants) over raw status."""
+    rs = node.get("rollup_status")
+    if isinstance(rs, str) and rs:
+        return rs
+    return str(node.get("status", ""))
 
 
 def render_index(nodes: list[dict]) -> str:
@@ -48,8 +49,12 @@ def render_index(nodes: list[dict]) -> str:
         "",
         BANNER.rstrip(),
         "",
-        "Gate maps milestone/task execution: **Human-led** / **Agentic-led** / **Mixed**, or sub-task "
-        "**Human** / **Agentic** / **Human gate** when `execution_subtask` is set.",
+        "Gate maps milestone execution: **Human-led** / **Agentic-led** / **Mixed**. "
+        "All leaf tasks are agentic by design.",
+        "",
+        "Status shown is the **computed rollup status**: for leaves, the node's own status; "
+        "for non-leaves, the roll-up over leaf descendants (Complete when every leaf descendant "
+        "is Complete; otherwise the most-pressing non-complete status).",
         "",
         "| ID | Title | Type | Gate | Status |",
         "|----|-------|------|------|--------|",
@@ -59,7 +64,7 @@ def render_index(nodes: list[dict]) -> str:
         title = str(n.get("title", "")).replace("|", "\\|")
         typ = n.get("type", "")
         gate = gate_display(n).replace("|", "\\|")
-        st = n.get("status", "")
+        st = _status_display(n)
         lines.append(f"| `{tid}` | {title} | {typ} | {gate} | {st} |")
     lines.append("")
     lines.append(

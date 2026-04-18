@@ -15,17 +15,6 @@ from specy_road.runtime_paths import default_user_repo_root
 
 from validate_roadmap_gates import validate_gates
 
-AGENTIC_KEYS = (
-    "artifact_action",
-    "contract_citation",
-    "interface_contract",
-    "constraints_note",
-    "dependency_note",
-)
-
-# Known documentation path prefixes — project-agnostic.
-CONTRACT_PATH_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
-
 
 def load_schema(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
@@ -164,38 +153,6 @@ def validate_parents(nodes: list[dict]) -> None:
             raise SystemExit(1)
 
 
-def validate_agentic_checklists(nodes: list[dict]) -> None:
-    """Require agentic_checklist for agentic nodes; forbid it otherwise."""
-    for n in nodes:
-        nid = n["id"]
-        sub = n.get("execution_subtask")
-        ac = n.get("agentic_checklist")
-        if sub == "agentic":
-            if not isinstance(ac, dict):
-                msg = (
-                    f"roadmap: node {nid} has execution_subtask agentic "
-                    "but missing agentic_checklist object"
-                )
-                print(msg, file=sys.stderr)
-                raise SystemExit(1)
-            for key in AGENTIC_KEYS:
-                val = ac.get(key)
-                if not val or not str(val).strip():
-                    msg = (
-                        f"roadmap: node {nid} agentic_checklist.{key} "
-                        "must be a non-empty string"
-                    )
-                    print(msg, file=sys.stderr)
-                    raise SystemExit(1)
-        elif ac is not None:
-            msg = (
-                f"roadmap: node {nid} has agentic_checklist but "
-                "execution_subtask is not agentic"
-            )
-            print(msg, file=sys.stderr)
-            raise SystemExit(1)
-
-
 def validate_unique_titles(nodes: list[dict]) -> None:
     """No two nodes may share the same non-empty title (after strip)."""
     seen: dict[str, str] = {}
@@ -269,23 +226,6 @@ def validate_required_planning_dirs(nodes: list[dict]) -> None:
         raise SystemExit(1)
 
 
-def validate_contract_citations(nodes: list[dict]) -> None:
-    """Warn when contract_citation lacks a known documentation path prefix."""
-    for n in nodes:
-        if n.get("execution_subtask") != "agentic":
-            continue
-        ac = n.get("agentic_checklist") or {}
-        citation = ac.get("contract_citation", "")
-        if not any(citation.startswith(p) for p in CONTRACT_PATH_PREFIXES):
-            nid = n["id"]
-            prefixes = ", ".join(CONTRACT_PATH_PREFIXES)
-            print(
-                f"roadmap: warning — node {nid} contract_citation does not "
-                f"reference a known doc path ({prefixes}): \"{citation}\"",
-                file=sys.stderr,
-            )
-
-
 def touch_zone_overlap(entries: list[dict]) -> None:
     """Warn if entries share a touch zone path (heuristic)."""
     for i, a in enumerate(entries):
@@ -338,8 +278,6 @@ def run_validation(
     validate_gates(nodes)
     validate_dependency_ids(nodes)
     cycle_check(nodes)
-    validate_agentic_checklists(nodes)
-    validate_contract_citations(nodes)
     validate_unique_titles(nodes)
     validate_unique_title_slugs(nodes)
     validate_codenames(nodes)

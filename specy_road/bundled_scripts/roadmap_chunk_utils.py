@@ -42,10 +42,20 @@ def load_manifest_mapping(root: Path) -> dict:
     return doc
 
 
+# Keys that are computed in-memory and must never be persisted to chunk JSON.
+_DERIVED_NODE_KEYS = frozenset({"rollup_status"})
+
+
+def _strip_derived(node: dict) -> dict:
+    """Return a shallow copy with computed-only keys removed."""
+    return {k: v for k, v in node.items() if k not in _DERIVED_NODE_KEYS}
+
+
 def write_json_chunk(path: Path, nodes: list[dict]) -> None:
     """Write roadmap nodes as canonical ``{"nodes": [...]}`` (stable key order for diffs)."""
+    cleaned = [_strip_derived(n) for n in nodes]
     body = json.dumps(
-        {"nodes": nodes},
+        {"nodes": cleaned},
         indent=2,
         sort_keys=True,
         ensure_ascii=False,

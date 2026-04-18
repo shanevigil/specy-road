@@ -109,7 +109,8 @@ def test_load_roadmap_rejects_top_level_nodes(tmp_path) -> None:
         rl.load_roadmap(tmp_path)
 
 
-def test_load_preserves_contract_citation_in_chunks(tmp_path) -> None:
+def test_load_annotates_rollup_status_for_leaf(tmp_path) -> None:
+    """F-013: load_roadmap injects rollup_status; for leaves it equals status."""
     r = tmp_path / "roadmap"
     _write_manifest_json(r, ["a.json"])
     nodes = [
@@ -118,13 +119,7 @@ def test_load_preserves_contract_citation_in_chunks(tmp_path) -> None:
             "parent_id": None,
             "type": "phase",
             "title": "P",
-            "agentic_checklist": {
-                "artifact_action": "a",
-                "contract_citation": "shared/README.md",
-                "interface_contract": "i",
-                "constraints_note": "c",
-                "dependency_note": "d",
-            },
+            "status": "Not Started",
         },
     ]
     (r / "a.json").write_text(
@@ -132,5 +127,40 @@ def test_load_preserves_contract_citation_in_chunks(tmp_path) -> None:
         encoding="utf-8",
     )
     doc = rl.load_roadmap(tmp_path)
-    ac = doc["nodes"][0]["agentic_checklist"]
-    assert ac.get("contract_citation") == "shared/README.md"
+    assert doc["nodes"][0]["rollup_status"] == "Not Started"
+
+
+def test_load_rollup_status_complete_when_all_leaves_complete(tmp_path) -> None:
+    """F-013: a non-leaf rolls up to Complete iff every leaf descendant is Complete."""
+    r = tmp_path / "roadmap"
+    _write_manifest_json(r, ["a.json"])
+    nodes = [
+        {"id": "M0", "parent_id": None, "type": "phase", "title": "P", "status": "Not Started"},
+        {"id": "M0.1", "parent_id": "M0", "type": "task", "title": "T1", "status": "Complete"},
+        {"id": "M0.2", "parent_id": "M0", "type": "task", "title": "T2", "status": "Complete"},
+    ]
+    (r / "a.json").write_text(
+        json.dumps({"nodes": nodes}, indent=2),
+        encoding="utf-8",
+    )
+    doc = rl.load_roadmap(tmp_path)
+    by_id = {n["id"]: n for n in doc["nodes"]}
+    assert by_id["M0"]["rollup_status"] == "Complete"
+    assert by_id["M0.1"]["rollup_status"] == "Complete"
+
+
+def test_load_rollup_status_picks_blocked_over_in_progress(tmp_path) -> None:
+    r = tmp_path / "roadmap"
+    _write_manifest_json(r, ["a.json"])
+    nodes = [
+        {"id": "M0", "parent_id": None, "type": "phase", "title": "P", "status": "Not Started"},
+        {"id": "M0.1", "parent_id": "M0", "type": "task", "title": "T1", "status": "Blocked"},
+        {"id": "M0.2", "parent_id": "M0", "type": "task", "title": "T2", "status": "In Progress"},
+    ]
+    (r / "a.json").write_text(
+        json.dumps({"nodes": nodes}, indent=2),
+        encoding="utf-8",
+    )
+    doc = rl.load_roadmap(tmp_path)
+    by_id = {n["id"]: n for n in doc["nodes"]}
+    assert by_id["M0"]["rollup_status"] == "Blocked"

@@ -27,7 +27,7 @@ pytest
 
 ## Dependency and supply-chain
 
-See [supply-chain-security.md](supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. More detail: [setup.md](setup.md#dependency-and-security-checks).
+See [supply-chain-security.md](supply-chain-security.md). Quick checks: after `pip install -r requirements-ci.txt`, run `pip install pip-audit && pip-audit`; for the Gantt UI tree, `cd gui/pm-gantt && npm ci && npm audit --omit=dev`. More detail: [contributor-guide.md](contributor-guide.md#supply-chain--dependency-audits).
 
 ## `specy-road init project` in this repo
 
@@ -35,7 +35,7 @@ With no path, the CLI uses the git worktree root—in **this** repo that would s
 
 ## Optional: pre-commit
 
-`pip install pre-commit && pre-commit install` — runs part of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [setup.md](setup.md#install-the-pre-commit-hook).
+`pip install pre-commit && pre-commit install` — runs part of CI (roadmap validate, export `--check`, file limits), not supply-chain audits or `pytest`. See [contributor-guide.md](contributor-guide.md#pre-commit-hook).
 
 ## Maintainer workflow vs consumer workflow
 

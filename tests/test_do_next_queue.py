@@ -72,6 +72,9 @@ def test_available_excludes_complete() -> None:
 
 
 def test_available_excludes_unmet_deps() -> None:
+    # The dependent leaf (M1.1) is blocked because its dependency (M1.0) is
+    # not yet Complete. M1.0 itself is eligible (all leaves are agentic per
+    # F-003/F-007); the assertion is that M1.1 is NOT returned.
     dep = {
         "id": "M1.0",
         "node_key": _NK_PREREQ,
@@ -82,7 +85,8 @@ def test_available_excludes_unmet_deps() -> None:
         "dependencies": [],
     }
     node = {**_BASE_NODE, "dependencies": [_NK_PREREQ]}
-    assert dnt._available([dep, node], _reg(), {}) == []
+    result = dnt._available([dep, node], _reg(), {})
+    assert "M1.1" not in [n["id"] for n in result]
 
 
 def test_available_includes_when_deps_complete() -> None:
@@ -100,22 +104,17 @@ def test_available_includes_when_deps_complete() -> None:
     assert len(result) == 1
 
 
-def test_available_excludes_human_led_no_agentic_subtask() -> None:
+def test_available_includes_human_led_now_that_all_leaves_are_agentic() -> None:
+    # Per F-003/F-007, every leaf is considered agentic by design regardless
+    # of execution_milestone. This used to be excluded; now it's included.
     node = {**_BASE_NODE, "execution_milestone": "Human-led"}
-    assert dnt._available([node], _reg(), {}) == []
-
-
-def test_available_includes_agentic_subtask() -> None:
-    node = {
-        **_BASE_NODE,
-        "execution_milestone": None,
-        "execution_subtask": "agentic",
-    }
     result = dnt._available([node], _reg(), {})
-    assert len(result) == 1
+    assert [n["id"] for n in result] == ["M1.1"]
 
 
 def test_available_excludes_no_codename() -> None:
+    # A leaf without a codename is still not eligible (validate auto-heals,
+    # but if a node slips through without one, do-next will not pick it).
     node = {**_BASE_NODE, "codename": None}
     assert dnt._available([node], _reg(), {}) == []
 

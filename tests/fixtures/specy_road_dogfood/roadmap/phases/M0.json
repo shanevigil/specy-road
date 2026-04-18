@@ -22,8 +22,8 @@
       "id": "M0.1",
       "node_key": "44ef4a9d-923f-545c-8187-eaabc7ca86ba",
       "parallel_tracks": 1,
-      "planning_dir": "planning/M0.1_contracts-bootstrap_44ef4a9d-923f-545c-8187-eaabc7ca86ba.md",
       "parent_id": "M0",
+      "planning_dir": "planning/M0.1_contracts-bootstrap_44ef4a9d-923f-545c-8187-eaabc7ca86ba.md",
       "sibling_order": 0,
       "status": "Complete",
       "title": "Establish shared contracts and ADR skeleton",
@@ -34,38 +34,32 @@
       "type": "milestone"
     },
     {
-      "agentic_checklist": {
-        "artifact_action": "Add shared/api-contract.md with resource list and error shape",
-        "constraints_note": "No secrets in repo; PII fields marked N/A in stub",
-        "contract_citation": "shared/README.md — Contracts section; link to ADR when added",
-        "dependency_note": "After M0.1 milestone scaffolding exists",
-        "interface_contract": "HTTP JSON: request/response envelope; error codes enum"
-      },
+      "codename": "api-contract-outline",
       "dependencies": [],
-      "execution_subtask": "agentic",
       "id": "M0.3",
       "node_key": "cd44fef1-715a-5b8d-b03f-1752a61a47cc",
       "parent_id": "M0",
+      "planning_dir": "planning/M0.3_api-contract-outline_cd44fef1-715a-5b8d-b03f-1752a61a47cc.md",
       "sibling_order": 2,
       "status": "Complete",
       "title": "Define API contract outline in shared/",
       "touch_zones": [
         "shared/"
       ],
-      "type": "task",
-      "planning_dir": "planning/M0.3_unnamed_cd44fef1-715a-5b8d-b03f-1752a61a47cc.md"
+      "type": "task"
     },
     {
+      "codename": "testing",
       "dependencies": [],
       "id": "M2",
       "node_key": "4c1d98f2-2bdc-4a7d-81b9-c6f7e96e95f0",
       "parent_id": null,
+      "planning_dir": "planning/M2_testing_4c1d98f2-2bdc-4a7d-81b9-c6f7e96e95f0.md",
       "sibling_order": 2,
       "status": "Not Started",
       "title": "testing",
       "touch_zones": [],
-      "type": "task",
-      "planning_dir": "planning/M2_unnamed_4c1d98f2-2bdc-4a7d-81b9-c6f7e96e95f0.md"
+      "type": "task"
     }
   ]
 }

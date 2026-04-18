@@ -42,9 +42,29 @@ from specy_road.governance_completion import (
 from specy_road.gui_app_helpers import get_repo_root
 
 
+def _apply_rollup_on_wire(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    F-013: single source of truth for rollup status.
+
+    ``load_roadmap`` attaches ``rollup_status`` to every node. For the GUI wire
+    payload, substitute each node's ``status`` with its ``rollup_status`` so
+    the UI never shows a parent as "Not Started" while its leaves are all
+    "Complete". Leaves are unchanged (rollup == own status). Keeps both
+    fields on the wire so new UI code can be explicit if it wants.
+    """
+    out: list[dict[str, Any]] = []
+    for n in nodes:
+        copy = dict(n)
+        rs = copy.get("rollup_status")
+        if isinstance(rs, str) and rs:
+            copy["status"] = rs
+        out.append(copy)
+    return out
+
+
 def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
-    nodes = doc.get("nodes") or []
+    nodes = _apply_rollup_on_wire(doc.get("nodes") or [])
     head_reg = load_registry(root)
     reg = head_reg
     registry_overlay_meta: dict[str, Any] | None = None

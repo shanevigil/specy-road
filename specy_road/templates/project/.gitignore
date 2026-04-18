@@ -1,0 +1,8 @@
+# Session-scoped work artifacts created by specy-road do-next-available-task.
+# These are regenerated each pickup; tracking them adds noise to feature
+# branches. Briefs (work/brief-*.md) and implementation summaries
+# (work/implementation-summary-*.md) are intentionally NOT ignored — they
+# document the work and belong on the feature branch.
+work/.on-complete-*.yaml
+work/prompt-*.md
+work/.milestone-session.yaml

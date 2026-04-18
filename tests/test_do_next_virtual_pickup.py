@@ -72,14 +72,18 @@ def test_status_overrides_unblock_dependent_leaf() -> None:
         "touch_zones": ["x"],
     }
     reg = {"version": 1, "entries": []}
-    assert dnt._available([dep, leaf], reg, {}) == []
+    # Without the status override, M1.1 is blocked on M1.0. Post-F-007
+    # the human-led dep is itself eligible (all leaves are agentic), but
+    # M1.1 must still not appear until M1.0 is complete.
+    before = [n["id"] for n in dnt._available([dep, leaf], reg, {})]
+    assert "M1.1" not in before
     out = dnt._available(
         [dep, leaf],
         reg,
         {},
         status_overrides={_NK_PREREQ: "complete"},
     )
-    assert [n["id"] for n in out] == ["M1.1"]
+    assert "M1.1" in [n["id"] for n in out]
 
 
 def test_virtual_complete_keys_order_dependent_before_outline_peer() -> None:
@@ -140,7 +144,11 @@ def test_virtual_complete_keys_order_dependent_before_outline_peer() -> None:
         status_overrides={_NK_PREREQ: "complete"},
         virtual_complete_keys={_NK_PREREQ},
     )
-    assert [n["id"] for n in result] == ["M6.2", "M7.1"]
+    result_ids = [n["id"] for n in result]
+    # rest_dependent tier precedes rest_other: M6.2 (depends on virtually-
+    # complete M1.0) must appear before M7.1 (the outline peer).
+    assert "M6.2" in result_ids and "M7.1" in result_ids
+    assert result_ids.index("M6.2") < result_ids.index("M7.1")
 
 
 def test_interactive_deps_blocked_entries_excludes_ready() -> None:
@@ -198,12 +206,14 @@ def test_interactive_deps_blocked_entries_lists_integration_blocked() -> None:
     reg = {"version": 1, "entries": []}
     integration = dna._statuses_by_node_key([dep, leaf])
     ready = dnt._available([dep, leaf], reg, {})
-    assert ready == []
+    ready_ids = {n["id"] for n in ready}
+    # M1.1 is blocked by unmet dep M1.0 (not Complete on integration).
+    assert "M1.1" not in ready_ids
     blocked = dna.interactive_deps_blocked_entries(
         [dep, leaf],
         reg,
         integration_statuses=integration,
-        ready_ids=set(),
+        ready_ids=ready_ids,
     )
     assert len(blocked) == 1
     assert blocked[0][0]["id"] == "M1.1"

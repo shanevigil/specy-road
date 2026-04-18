@@ -112,7 +112,7 @@ specyrd init --here --ai cursor
 specyrd init --here --ai claude-code
 ```
 
-These install **stub** markdown commands that delegate to **`specy-road`** CLI—they do not redefine validation logic. See **`docs/install.md`** (or the project `README`) for `specyrd` options (`--dry-run`, `--force`, `--role`, generic `--ai-commands-dir`).
+These install **stub** markdown commands that delegate to **`specy-road`** CLI—they do not redefine validation logic. See **`docs/contributor-guide.md`** (IDE stubs section) or the project `README` for `specyrd` options (`--dry-run`, `--force`, `--role`, generic `--ai-commands-dir`).
 
 If stubs already exist under `.cursor/commands/` or `.claude/commands/`, do not duplicate; ensure they still point at the same CLI workflows.
 

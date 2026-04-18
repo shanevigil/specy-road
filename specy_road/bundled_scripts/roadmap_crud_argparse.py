@@ -38,18 +38,19 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         required=True,
         help="Parent id, or 'null' for phase roots",
     )
-    sp.add_argument("--codename", default=None)
+    sp.add_argument(
+        "--codename",
+        default=None,
+        help=(
+            "Kebab-case codename. Optional: if omitted for a task, validate "
+            "auto-derives one from --title (collisions get a short suffix)."
+        ),
+    )
     sp.add_argument("--status", default="Not Started")
     sp.add_argument(
         "--execution-milestone",
         dest="execution_milestone",
         default=None,
-    )
-    sp.add_argument(
-        "--execution-subtask",
-        dest="execution_subtask",
-        default=None,
-        choices=["human", "agentic", "human-gate"],
     )
     sp.add_argument(
         "--parallel-tracks",
@@ -59,17 +60,7 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     )
     sp.add_argument("--touch-zone", action="append", default=[])
     sp.add_argument("--dependency", action="append", default=[])
-    _add_agentic_cli_flags(sp)
     sp.set_defaults(func=cmd_add)
-
-
-def _add_agentic_cli_flags(sp: argparse.ArgumentParser) -> None:
-    sp.add_argument("--checklist-json", default=None)
-    sp.add_argument("--artifact-action", dest="artifact_action", default=None)
-    sp.add_argument("--contract-citation", dest="contract_citation", default=None)
-    sp.add_argument("--interface-contract", dest="interface_contract", default=None)
-    sp.add_argument("--constraints-note", dest="constraints_note", default=None)
-    sp.add_argument("--dependency-note", dest="dependency_note", default=None)
 
 
 def _p_edit(sub: argparse._SubParsersAction) -> None:
