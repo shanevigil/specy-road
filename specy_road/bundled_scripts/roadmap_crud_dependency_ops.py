@@ -1,4 +1,4 @@
-"""Dependency-focused roadmap CRUD subcommands (CLI; same backend as PM GUI patch)."""
+"""Roadmap dependency CRUD for the CLI (same edit path as the PM GUI patch)."""
 
 from __future__ import annotations
 
