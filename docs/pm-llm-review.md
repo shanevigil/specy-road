@@ -71,7 +71,7 @@ The user message is built on the server from your **resolved repository root** (
 
 - The app does **not** show a token counter. **Total size** depends on your brief, how many files are under **`shared/`**, how large cited contracts are, and how long the current sheet is.
 - **Billing and limits** are entirely between **you** and **your model provider** (OpenAI, Azure, Anthropic, or your compatible gateway). Large briefs can approach **context window** limits; if that happens, the provider returns an error like any other API failure.
-- **OpenAI / Azure OpenAI** chat completions: the reviewer does **not** set a `max_tokens` cap on the **completion** in code — the provider’s defaults apply.
+- **OpenAI / Azure OpenAI** chat completions: by default the reviewer does **not** set `max_tokens` / `max_completion_tokens` (provider defaults). For **Azure** deployments that require `max_completion_tokens`, you can opt in via environment variables documented in [pm-workflow.md](pm-workflow.md) (`SPECY_ROAD_AZURE_CHAT_USE_MAX_COMPLETION_TOKENS` and related).
 - **Anthropic:** you must supply a **completion budget** via **`SPECY_ROAD_ANTHROPIC_MAX_TOKENS`** (Settings **Max output tokens** or environment), because their API **requires** that parameter.
 
 ---

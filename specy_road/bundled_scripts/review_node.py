@@ -6,10 +6,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import sys
 import threading
 from collections import OrderedDict
 from pathlib import Path
+from urllib.parse import urlparse
 
 from generate_brief import index as make_index, render_brief
 from planning_sheet_bootstrap import (
@@ -361,6 +363,159 @@ def _cited_snippets(root: Path, node: dict) -> str:
     return "\n".join(parts)
 
 
+def _normalize_azure_endpoint(raw: str) -> str:
+    """
+    Reduce pasted portal URLs to the resource root ``https://<resource>.openai.azure.com``.
+
+    Drops path, query, and fragment so the OpenAI SDK builds
+    ``.../openai/deployments/...`` without duplicated path segments.
+    """
+    s = raw.strip()
+    if not s:
+        return s
+    if "://" not in s:
+        s = "https://" + s
+    p = urlparse(s)
+    scheme = p.scheme or "https"
+    netloc = p.netloc
+    if not netloc:
+        return raw.strip()
+    return f"{scheme}://{netloc}".rstrip("/")
+
+
+def _env_first_nonempty(specy_key: str, azure_aliases: tuple[str, ...]) -> str:
+    v = os.environ.get(specy_key, "").strip()
+    if v:
+        return v
+    for k in azure_aliases:
+        t = os.environ.get(k, "").strip()
+        if t:
+            return t
+    return ""
+
+
+def _azure_openai_settings_from_env() -> tuple[str, str, str, str]:
+    """(endpoint_raw, api_key, deployment, api_version); SPECY_ vars win over AZURE_*."""
+    ep = _env_first_nonempty(
+        "SPECY_ROAD_AZURE_OPENAI_ENDPOINT",
+        ("AZURE_OPENAI_ENDPOINT",),
+    )
+    key = _env_first_nonempty(
+        "SPECY_ROAD_AZURE_OPENAI_API_KEY",
+        ("AZURE_OPENAI_API_KEY",),
+    )
+    dep = _env_first_nonempty(
+        "SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT",
+        ("AZURE_OPENAI_DEPLOYMENT_NAME", "AZURE_OPENAI_DEPLOYMENT"),
+    )
+    ver = (
+        os.environ.get("SPECY_ROAD_OPENAI_API_VERSION", "").strip()
+        or os.environ.get("AZURE_OPENAI_API_VERSION", "").strip()
+        or "2024-02-15-preview"
+    )
+    return ep, key, dep, ver
+
+
+def _azure_openai_client_timeout() -> object | None:
+    """Long read timeout for Azure chat (default 300s); ``None`` if httpx missing."""
+    try:
+        import httpx
+    except ImportError:
+        return None
+    raw = os.environ.get("SPECY_ROAD_AZURE_OPENAI_TIMEOUT_S", "").strip()
+    try:
+        total = float(raw) if raw else 300.0
+    except ValueError:
+        total = 300.0
+    total = max(total, 1.0)
+    return httpx.Timeout(total, connect=10.0)
+
+
+def _azure_chat_completion_extra_params() -> dict[str, int]:
+    """
+    Optional ``max_completion_tokens`` for newer Azure chat deployments.
+
+    Set ``SPECY_ROAD_AZURE_CHAT_USE_MAX_COMPLETION_TOKENS`` to ``1``/``true``
+    and ``SPECY_ROAD_AZURE_MAX_COMPLETION_TOKENS`` (or ``AZURE_OPENAI_MAX_TOKENS``)
+    to a positive integer. Omit both ``max_tokens`` and ``max_completion_tokens``
+    when the flag is unset (provider defaults).
+    """
+    flag = os.environ.get(
+        "SPECY_ROAD_AZURE_CHAT_USE_MAX_COMPLETION_TOKENS",
+        "",
+    ).strip().lower() in ("1", "true", "yes")
+    if not flag:
+        return {}
+    raw = (
+        os.environ.get("SPECY_ROAD_AZURE_MAX_COMPLETION_TOKENS", "").strip()
+        or os.environ.get("AZURE_OPENAI_MAX_TOKENS", "").strip()
+    )
+    if not raw:
+        raise ReviewError(
+            "SPECY_ROAD_AZURE_CHAT_USE_MAX_COMPLETION_TOKENS is enabled but "
+            "SPECY_ROAD_AZURE_MAX_COMPLETION_TOKENS (or AZURE_OPENAI_MAX_TOKENS) "
+            "is not set.",
+        )
+    try:
+        n = int(raw)
+    except ValueError as e:
+        raise ReviewError(
+            f"SPECY_ROAD_AZURE_MAX_COMPLETION_TOKENS must be an integer, got {raw!r}",
+        ) from e
+    if n < 1:
+        raise ReviewError("SPECY_ROAD_AZURE_MAX_COMPLETION_TOKENS must be at least 1")
+    return {"max_completion_tokens": n}
+
+
+def _openai_safe_error_message(exc: BaseException) -> str:
+    """Trim provider errors; redact obvious secret-like substrings."""
+    msg = str(exc).strip()
+    msg = re.sub(r"sk-[A-Za-z0-9_-]{8,}", "[REDACTED]", msg)
+    msg = re.sub(
+        r"(api[_-]?key|apikey)\s*[:=]\s*\S+",
+        r"\1: [REDACTED]",
+        msg,
+        flags=re.IGNORECASE,
+    )
+    if len(msg) > 400:
+        msg = msg[:400] + "…"
+    return msg or type(exc).__name__
+
+
+def _openai_chat_completions_create(client: object, **kwargs: object) -> object:
+    try:
+        return client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
+    except ReviewError:
+        raise
+    except Exception as e:
+        raise ReviewError(_openai_safe_error_message(e)) from e
+
+
+def _chat_completion_message_content(resp: object) -> str:
+    choices = getattr(resp, "choices", None)
+    if not choices:
+        raise ReviewError("LLM returned no choices (empty completion).")
+    ch0 = choices[0]
+    message = getattr(ch0, "message", None)
+    content = getattr(message, "content", None) if message is not None else None
+    if content is None:
+        raise ReviewError("LLM returned no message content.")
+    return str(content)
+
+
+def _azure_deployment_for_request() -> str:
+    d = _env_first_nonempty(
+        "SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT",
+        ("AZURE_OPENAI_DEPLOYMENT_NAME", "AZURE_OPENAI_DEPLOYMENT"),
+    )
+    if not d:
+        raise ReviewError(
+            "Azure deployment is not configured "
+            "(SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT or AZURE_OPENAI_DEPLOYMENT_NAME).",
+        )
+    return d
+
+
 def _make_client():
     try:
         from openai import AzureOpenAI, OpenAI
@@ -370,24 +525,25 @@ def _make_client():
             "'specy-road[review]' or 'specy-road[gui]'",
         ) from e
 
-    ep = os.environ.get("SPECY_ROAD_AZURE_OPENAI_ENDPOINT", "").strip()
-    if ep:
-        key = os.environ.get("SPECY_ROAD_AZURE_OPENAI_API_KEY", "").strip()
-        dep = os.environ.get("SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT", "").strip()
-        ver = os.environ.get(
-            "SPECY_ROAD_OPENAI_API_VERSION",
-            "2024-02-15-preview",
-        ).strip()
+    ep_raw, key, dep, ver = _azure_openai_settings_from_env()
+    if ep_raw.strip():
+        ep = _normalize_azure_endpoint(ep_raw)
         if not key or not dep:
             raise ReviewError(
-                "Azure mode needs SPECY_ROAD_AZURE_OPENAI_API_KEY and "
-                "SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT",
+                "Azure mode needs API key and deployment name "
+                "(SPECY_ROAD_AZURE_OPENAI_API_KEY / SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT "
+                "or AZURE_OPENAI_API_KEY / AZURE_OPENAI_DEPLOYMENT_NAME; see "
+                "docs/pm-workflow.md).",
             )
-        return AzureOpenAI(
-            azure_endpoint=ep,
-            api_key=key,
-            api_version=ver,
-        )
+        client_kw: dict[str, object] = {
+            "azure_endpoint": ep,
+            "api_key": key,
+            "api_version": ver,
+        }
+        t = _azure_openai_client_timeout()
+        if t is not None:
+            client_kw["timeout"] = t
+        return AzureOpenAI(**client_kw)
 
     ak = os.environ.get("SPECY_ROAD_ANTHROPIC_API_KEY", "").strip()
     if ak:
@@ -465,18 +621,21 @@ def _complete(client, user_content: str) -> str:
     from openai import AzureOpenAI
 
     if isinstance(client, AzureOpenAI):
-        model = os.environ["SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"]
+        model = _azure_deployment_for_request()
+        extra = _azure_chat_completion_extra_params()
     else:
         model = os.environ.get("SPECY_ROAD_OPENAI_MODEL", "gpt-4o-mini")
-    resp = client.chat.completions.create(
+        extra = {}
+    resp = _openai_chat_completions_create(
+        client,
         model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
         ],
+        **extra,
     )
-    choice = resp.choices[0].message.content
-    return choice or ""
+    return _chat_completion_message_content(resp) or ""
 
 
 def ping_llm() -> None:
@@ -496,14 +655,18 @@ def ping_llm() -> None:
     from openai import AzureOpenAI
 
     if isinstance(client, AzureOpenAI):
-        model = os.environ["SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT"]
+        model = _azure_deployment_for_request()
+        extra = _azure_chat_completion_extra_params()
     else:
         model = os.environ.get("SPECY_ROAD_OPENAI_MODEL", "gpt-4o-mini")
-    resp = client.chat.completions.create(
+        extra = {}
+    resp = _openai_chat_completions_create(
+        client,
         model=model,
         messages=[{"role": "user", "content": "ping"}],
+        **extra,
     )
-    _ = resp.choices[0].message.content
+    _ = _chat_completion_message_content(resp)
 
 
 def run_review(

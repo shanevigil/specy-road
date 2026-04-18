@@ -98,6 +98,40 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "deterministic index" in review_node.SYSTEM_PROMPT
 
 
+def test_normalize_azure_endpoint_strips_path_and_query() -> None:
+    raw = (
+        "https://myresource.openai.azure.com/openai/responses?api-version=2024-08-01"
+    )
+    assert review_node._normalize_azure_endpoint(raw) == (
+        "https://myresource.openai.azure.com"
+    )
+
+
+def test_normalize_azure_endpoint_adds_https() -> None:
+    assert (
+        review_node._normalize_azure_endpoint("myresource.openai.azure.com")
+        == "https://myresource.openai.azure.com"
+    )
+
+
+def test_azure_settings_prefers_specy_over_azure_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://azure-only.example.com")
+    monkeypatch.setenv("SPECY_ROAD_AZURE_OPENAI_ENDPOINT", "https://specy.example.com")
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "k-azure")
+    monkeypatch.setenv("SPECY_ROAD_AZURE_OPENAI_API_KEY", "k-specy")
+    monkeypatch.setenv("AZURE_OPENAI_DEPLOYMENT_NAME", "dep-azure")
+    monkeypatch.setenv("SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT", "dep-specy")
+    monkeypatch.delenv("SPECY_ROAD_OPENAI_API_VERSION", raising=False)
+    monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+    ep, key, dep, ver = review_node._azure_openai_settings_from_env()
+    assert ep == "https://specy.example.com"
+    assert key == "k-specy"
+    assert dep == "dep-specy"
+    assert ver == "2024-08-01-preview"
+
+
 def test_anthropic_max_tokens_requires_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
