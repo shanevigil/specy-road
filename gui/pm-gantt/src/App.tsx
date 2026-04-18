@@ -43,6 +43,7 @@ import {
 } from "./parentStatusRollup";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
+import { minDependencyDepth } from "./ganttDepthOffset";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
@@ -546,6 +547,12 @@ export default function App() {
     }
     return out;
   }, [data?.ordered_ids, data?.row_depths, hideCompleteActive, effectiveDisplayById]);
+
+  /** Crop leading empty chart columns when hiding complete (min step among visible rows). */
+  const ganttDepthOffset = useMemo(() => {
+    if (!hideCompleteActive || !data?.dependency_depths) return 0;
+    return minDependencyDepth(visibleOrderedIds, data.dependency_depths);
+  }, [hideCompleteActive, data?.dependency_depths, visibleOrderedIds]);
 
   /** When hiding complete rows, move selection off hidden ids and exit dependency edit if its row is hidden. */
   /* eslint-disable @eslint-react/set-state-in-effect -- derive selection / dep-edit from filtered outline */
@@ -1313,6 +1320,7 @@ export default function App() {
               registryByNode={data.registry_by_node}
               gitEnrichment={data.git_enrichment}
               stackHeaderPx={ganttStackHeaderPx}
+              depthOffset={ganttDepthOffset}
               depths={data.dependency_depths}
               spans={data.dependency_spans}
               edges={data.edges}
