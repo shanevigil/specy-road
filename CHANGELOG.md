@@ -86,6 +86,30 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Removed
 
+## [v0.1.0-rc3] - 2026-04-18
+
+Third prerelease (TestPyPI). CLI polish and roadmap dependency commands.
+
+### Added
+
+- CLI: `list-dependencies`, `set-dependencies` (`--clear` / `--deps`),
+  `add-dependency`, and `remove-dependency`, using the same
+  `edit_node_set_pairs` / validation path as the PM GUI
+  `PATCH /api/nodes/{id}` dependency updates.
+
+### Fixed
+
+- Top-level `specy-road` no longer prints a `CalledProcessError` traceback
+  when a pass-through bundled script exits non-zero (for example
+  `archive-node` for an unknown id); the child script’s stderr message
+  and exit code remain the contract.
+
+### Changed
+
+- Tests: `script_subprocess_env` prepends the repository root on
+  `PYTHONPATH` so subprocess invocations of bundled scripts resolve
+  `import specy_road` the same way the packaged CLI wrapper does.
+
 ## [v0.1.0-rc2] - 2026-04-18
 
 Second prerelease (TestPyPI). Unifies `dev` with `main` for promotion PRs,
@@ -186,6 +210,7 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc2...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc3...HEAD
+[v0.1.0-rc3]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc3
 [v0.1.0-rc2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc2
 [v0.1.0-rc1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc1

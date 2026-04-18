@@ -143,6 +143,21 @@ def test_append_node_validate(tmp_path: Path) -> None:
     assert v.returncode == 0, v.stderr
 
 
+def test_archive_node_unknown_id_message(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "archive-node",
+        "M404.1",
+        "--hard-remove",
+    )
+    assert r.returncode == 1
+    assert "no roadmap node" in r.stderr
+    assert "M404.1" in r.stderr
+
+
 def test_hard_remove_blocked_by_dependency(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     r = _run_crud(

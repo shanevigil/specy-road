@@ -242,6 +242,11 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
 | `specy-road archive-node M0.1.1 --hard-remove`    | Remove the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema).                      |
+| `specy-road list-dependencies M0.1.1`            | Print this node’s **explicit** `dependencies` as **node_key** values (with id/title); same field the PM GUI edits.                         |
+| `specy-road set-dependencies M0.1.1 --clear`      | Clear explicit dependencies on that node (runs validate after save).                                                                       |
+| `specy-road set-dependencies M0.1.1 --deps "…"`   | Replace explicit dependencies with a space/comma-separated list of **node_key** strings (same rules as `edit-node … dependencies=…`).       |
+| `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
+| `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
 | `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks).                                                                |
 
 

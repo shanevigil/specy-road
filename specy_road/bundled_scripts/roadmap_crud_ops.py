@@ -32,6 +32,11 @@ def repo_root(ns: object) -> Path:
     return Path(r).resolve() if r else default_user_repo_root()
 
 
+def unknown_node_msg(node_id: str) -> str:
+    """User-facing text when a node id is not present in the merged roadmap."""
+    return f"no roadmap node with id {node_id!r} (not found in any chunk)"
+
+
 def run_validate_raise(root: Path) -> None:
     """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure."""
     err = io.StringIO()
@@ -80,7 +85,7 @@ def cmd_show(args: object) -> None:
     nid = args.node_id
     chunk = find_chunk_path(root, nid)
     if not chunk:
-        print(f"error: no chunk contains node {nid!r}", file=sys.stderr)
+        print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
         raise SystemExit(1)
     print(f"# chunk: {chunk.relative_to(root)}\n")
     if chunk.suffix.lower() == ".json":
@@ -221,7 +226,7 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
     """
     chunk = find_chunk_path(root, node_id)
     if not chunk:
-        raise ValueError(f"no chunk contains node {node_id!r}")
+        raise ValueError(unknown_node_msg(node_id))
     if chunk.suffix.lower() == ".json":
         nodes = load_json_chunk(chunk)
         idx = node_index_in_chunk(nodes, node_id)
@@ -272,7 +277,7 @@ def cmd_edit(args: object) -> None:
         edit_node_set_pairs(root, nid, pairs)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+        raise SystemExit(1) from None
     chunk = find_chunk_path(root, nid)
     assert chunk is not None
     print(f"[ok] updated {nid} in {chunk.relative_to(root)}")
@@ -297,7 +302,7 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     """Remove a node from its JSON chunk. Raises ``ValueError`` if not found or not removable."""
     chunk = find_chunk_path(root, node_id)
     if not chunk:
-        raise ValueError(f"no chunk contains node {node_id!r}")
+        raise ValueError(unknown_node_msg(node_id))
     if chunk.suffix.lower() != ".json":
         raise ValueError(f"unsupported chunk type {chunk.suffix}")
     nodes = load_json_chunk(chunk)
@@ -322,7 +327,7 @@ def cmd_archive(args: object) -> None:
             delete_roadmap_node_hard(root, nid)
         except ValueError as e:
             print(f"error: {e}", file=sys.stderr)
-            raise SystemExit(1) from e
+            raise SystemExit(1) from None
         print(f"[ok] removed {nid}")
         return
     print(

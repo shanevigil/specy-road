@@ -64,6 +64,69 @@ def test_specy_road_list_nodes() -> None:
     assert "M0" in r.stdout
 
 
+def test_specy_road_archive_unknown_node_no_traceback(tmp_path: Path) -> None:
+    """Bundled script stderr is enough; top-level CLI must not chain CalledProcessError."""
+    import shutil
+
+    from tests.helpers import SCHEMAS
+
+    dest = tmp_path / "proj"
+    shutil.copytree(SCHEMAS, dest / "schemas")
+    shutil.copytree(REPO / "constraints", dest / "constraints")
+    (dest / "roadmap" / "phases").mkdir(parents=True)
+    (dest / "shared").mkdir(parents=True)
+    (dest / "shared" / "README.md").write_text("# Shared\n", encoding="utf-8")
+    (dest / "roadmap" / "registry.yaml").write_text(
+        "version: 1\nentries: []\n",
+        encoding="utf-8",
+    )
+    (dest / "roadmap" / "manifest.json").write_text(
+        '{"version": 1, "includes": ["phases/T.json"]}\n',
+        encoding="utf-8",
+    )
+    (dest / "roadmap" / "phases" / "T.json").write_text("[]\n", encoding="utf-8")
+
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "archive-node",
+            "M0.1.1",
+            "--hard-remove",
+            "--repo-root",
+            str(dest),
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 1
+    err = (r.stderr or "") + (r.stdout or "")
+    assert "Traceback" not in err
+    assert "CalledProcessError" not in err
+    assert "no roadmap node" in err
+
+
+def test_specy_road_list_dependencies() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "list-dependencies",
+            "M0.1",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr
+
+
 def test_specy_road_show_node() -> None:
     r = subprocess.run(
         [

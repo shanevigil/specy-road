@@ -5,6 +5,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from roadmap_crud_dependency_ops import (
+    cmd_add_dependency,
+    cmd_list_dependencies,
+    cmd_remove_dependency,
+    cmd_set_dependencies,
+)
 from roadmap_crud_ops import cmd_add, cmd_archive, cmd_edit, cmd_list, cmd_show
 
 
@@ -76,6 +82,56 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
     sp.set_defaults(func=cmd_edit)
 
 
+def _p_list_dependencies(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "list-dependencies",
+        help="Print explicit dependency node_keys for a node (tab: node_key, id, title)",
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    sp.set_defaults(func=cmd_list_dependencies)
+
+
+def _p_set_dependencies(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "set-dependencies",
+        help="Replace explicit dependencies (node_keys); same validation as PM GUI patch",
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    mx = sp.add_mutually_exclusive_group(required=True)
+    mx.add_argument(
+        "--clear",
+        action="store_true",
+        help="Remove all explicit dependencies on this node",
+    )
+    mx.add_argument(
+        "--deps",
+        dest="deps_raw",
+        metavar="KEYS",
+        help="Space/comma/semicolon-separated dependency node_keys (same as edit-node dependencies=…)",
+    )
+    sp.set_defaults(func=cmd_set_dependencies)
+
+
+def _p_add_dependency(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "add-dependency",
+        help="Append one dependency node_key if missing (uses edit_node_set_pairs / validate)",
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    sp.add_argument("dep_node_key", metavar="DEP_NODE_KEY")
+    sp.set_defaults(func=cmd_add_dependency)
+
+
+def _p_remove_dependency(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "remove-dependency",
+        help="Remove one dependency node_key if present",
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    sp.add_argument("dep_node_key", metavar="DEP_NODE_KEY")
+    sp.set_defaults(func=cmd_remove_dependency)
+
+
 def _p_archive(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "archive-node",
@@ -105,5 +161,9 @@ def build_parser() -> argparse.ArgumentParser:
     _p_show(sub)
     _p_add(sub)
     _p_edit(sub)
+    _p_list_dependencies(sub)
+    _p_set_dependencies(sub)
+    _p_add_dependency(sub)
+    _p_remove_dependency(sub)
     _p_archive(sub)
     return p
