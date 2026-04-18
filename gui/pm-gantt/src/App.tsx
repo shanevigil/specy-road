@@ -374,17 +374,32 @@ export default function App() {
   const performRoadmapMutation = useCallback(
     (label: string, mutation: () => Promise<void>) =>
       runRoadmapAction(label, async () => {
-        try {
-          await mutation();
-        } catch (e: unknown) {
-          if (e instanceof PmGuiConcurrencyError) {
-            await loadSnapshot();
-            setErr(
-              "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
-            );
-            return;
+        let attempted = false;
+        // Loop runs at most twice: the original try, plus one transparent
+        // retry when the server marks the 412 ``retryable: true`` (see
+        // ``guard_pm_gui_write_with_autoff_grace`` on the server: the only
+        // delta was the in-server auto-FF/fetch the GET endpoint ran).
+        while (true) {
+          try {
+            await mutation();
+            break;
+          } catch (e: unknown) {
+            if (e instanceof PmGuiConcurrencyError) {
+              if (e.retryable && !attempted) {
+                attempted = true;
+                // Refresh ``lastFingerprintRef.current`` from the freshest
+                // GET, then re-issue the same mutation once.
+                await loadSnapshot();
+                continue;
+              }
+              await loadSnapshot();
+              setErr(
+                "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
+              );
+              return;
+            }
+            throw e;
           }
-          throw e;
         }
         await loadSnapshot();
       }),
