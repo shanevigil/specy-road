@@ -13,28 +13,45 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `GET /api/roadmap` and `GET /api/roadmap/fingerprint` now return both
+  `fingerprint` (the narrow outline-mutation token, used by mutating
+  POSTs as `X-PM-Gui-Fingerprint`) and `view_fingerprint` (the broader
+  change-detection token used by the polling refresh hook). Existing
+  consumers that read `fingerprint` continue to work unchanged.
+  (`fix/drag_and_drop`)
+
 ### Changed
 
-- PM GUI mutation guard: every 412 from a mutating route now includes
-  `retryable: true` and a `current_fingerprint` value freshly recomputed
-  *after* re-running the same auto-fetch / `merge --ff-only` side
-  effects the GET endpoints run. This lets the bundled PM Gantt UI
-  transparently retry the mutation exactly once with the fresh token
-  before showing the "Roadmap or workspace changed elsewhere" banner.
-  Behavior is on by default — drag-and-drop reorder/move now "just
-  works" when several PMs are editing concurrently, without any env
-  flag or operator action. (`fix/drag_and_drop`)
+- PM GUI mutation guard now validates a **narrow** fingerprint that
+  only includes files whose change can actually invalidate the
+  requested mutation: `roadmap/manifest.json`, every included roadmap
+  chunk file, and `roadmap/registry.yaml`. Activity in `planning/`,
+  `constitution/`, `shared/`, `vision.md`, git HEAD, or remote refs no
+  longer shifts the token, so noise from IDE autosave, our own agents
+  writing planning sheets, background `git fetch` / `merge --ff-only`,
+  or files outside the user's window of attention can no longer reject
+  a legitimate PM edit. The broad fingerprint is still emitted as
+  `view_fingerprint` for the polling refresh hook (informational only —
+  never causes 412). (`fix/drag_and_drop`)
+
+- Every 412 from a mutating route still includes `retryable: true` and
+  a `current_fingerprint`, so the bundled UI's transparent one-shot
+  retry continues to absorb true conflicts (someone else actually
+  modified a roadmap chunk) without showing the user a banner.
 
 ### Fixed
 
-- PM Gantt drag-and-drop reorder (`POST /api/outline/reorder` and
-  `POST /api/outline/move`): no longer fails spuriously when the
-  toolkit's own background `git fetch` + `merge --ff-only` happens to
-  run between the GET that issued the client's token and the POST
-  that uses it. Both `GET /api/roadmap` and `GET /api/roadmap/fingerprint`
-  now go through a shared `_pm_gui_finalize_state` helper so the
-  invariant "auto-FF runs before fingerprint is computed" cannot
-  drift. (`fix/drag_and_drop`)
+- PM Gantt drag-and-drop reorder, dependency edits, add/delete, and
+  cross-parent move (`POST /api/outline/reorder`, `POST /api/outline/move`,
+  `PATCH /api/nodes/{id}`, `POST /api/nodes/add`, etc.) no longer fail
+  with the "Roadmap or workspace changed elsewhere" banner during
+  ordinary IDE use. Field reproduction (saviwrite/dev) showed every
+  mutation 412'ing because Cursor / IDE autosave was touching files in
+  `shared/` and `planning/` faster than the GET-POST round-trip,
+  shifting the broad fingerprint between the GET that issued the
+  client's token and the POST that used it. With the narrow fingerprint
+  contract, 8/8 mutations land cleanly under a 3x/sec autosave storm
+  on `shared/` (was 0/5 before). (`fix/drag_and_drop`)
 
 ### Removed
 
