@@ -15,3 +15,15 @@ export const PendingMutationsContext =
 export function usePendingMutations(): PendingMutationsApi {
   return useContext(PendingMutationsContext) ?? EMPTY_API;
 }
+
+/**
+ * True if ``id`` is currently mid-mutation (server hasn't acked yet).
+ * The brief post-success ``settling`` window does NOT count as locked
+ * — the server has already returned, the row is safe to act on. The
+ * post-failure ``fail`` window doesn't count either; the row has
+ * reverted and the user can retry immediately.
+ */
+export function isRowLocked(api: PendingMutationsApi, id: string): boolean {
+  const p = api.pendingFor(id);
+  return p?.phase === "active";
+}

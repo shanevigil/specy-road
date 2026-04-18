@@ -143,10 +143,12 @@ button {
 
 .roadmap-sync-banner--inline .roadmap-sync-label {
   /* Truncate gracefully if the label and the git status box ever crowd
-   * each other on a narrow window. */
+   * each other on a narrow window. The wait-message suffix can push
+   * the label past 40ch ("Saving N changes… — saves pending - please
+   * wait."), so allow a generous max-width before clipping. */
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 22ch;
+  max-width: 56ch;
 }
 
 .roadmap-sync-banner--inline .roadmap-sync-spinner {

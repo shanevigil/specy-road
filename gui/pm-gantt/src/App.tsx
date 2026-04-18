@@ -70,6 +70,7 @@ import { useRoadmapActionQueue } from "./roadmapSync";
 import { runMutationWithAutoffRetry } from "./runMutationWithAutoffRetry";
 import { PendingMutationsProvider } from "./pendingMutations";
 import { usePendingMutationsState } from "./usePendingMutationsState";
+import { isRowLocked } from "./pendingMutationsContext";
 import {
   nextPendingToken,
   type PendingKind,
@@ -77,6 +78,7 @@ import {
 import {
   applyOptimistic,
   buildAddPlaceholder,
+  isPendingPlaceholderId,
   type OptimisticOp,
 } from "./optimisticOutline";
 
@@ -383,12 +385,77 @@ export default function App() {
     await loadSnapshot();
   }, [loadSnapshot]);
 
-  const { busy: roadmapBusy, busyLabel, runRoadmapAction } =
-    useRoadmapActionQueue();
+  const {
+    busy: roadmapBusy,
+    busyDepth,
+    busyLabel,
+    queueOverloaded,
+    runRoadmapAction,
+  } = useRoadmapActionQueue();
+
+  /**
+   * One-shot informational suffix shown after ``busyLabel`` when the
+   * user attempts an action that's blocked because the row's previous
+   * mutation hasn't settled yet, or because the queue is overloaded.
+   * Cleared automatically when the queue empties or after 2 seconds —
+   * whichever comes first.
+   */
+  const [lockReason, setLockReason] = useState<string | null>(null);
+  const lockReasonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const triggerWaitMessage = useCallback((reason: string) => {
+    setLockReason(reason);
+    if (lockReasonTimerRef.current != null) {
+      clearTimeout(lockReasonTimerRef.current);
+    }
+    lockReasonTimerRef.current = setTimeout(() => {
+      setLockReason(null);
+      lockReasonTimerRef.current = null;
+    }, 2000);
+  }, []);
+  // Clear the wait-message immediately the moment the queue empties,
+  // even if the 2 s timer hasn't fired yet — the warning is stale.
+  useEffect(() => {
+    if (!roadmapBusy && lockReason != null) setLockReason(null);
+  }, [roadmapBusy, lockReason]);
 
   // Pending-row state machine (drives the blue pulse on rows whose
   // mutations are in flight). See pendingMutations.tsx.
   const pendingMutations = usePendingMutationsState();
+
+  /** True if ``id`` is mid-mutation (placeholder ids count too). */
+  const isLockedTarget = useCallback(
+    (id: string | null | undefined): boolean => {
+      if (id == null) return false;
+      if (isPendingPlaceholderId(id)) return true;
+      return isRowLocked(pendingMutations, id);
+    },
+    [pendingMutations],
+  );
+
+  /** Wait-message text appended after the busy label when blocked. */
+  const WAIT_MESSAGE = "saves pending - please wait.";
+
+  /**
+   * Run ``fn`` only if neither the queue is overloaded nor ``id`` is
+   * mid-mutation. Otherwise fire the inline wait message and bail.
+   * Used in click handlers for buttons that target a specific row.
+   */
+  const guardRowAction = useCallback(
+    (id: string | null | undefined, fn: () => void): void => {
+      if (queueOverloaded) {
+        triggerWaitMessage(WAIT_MESSAGE);
+        return;
+      }
+      if (isLockedTarget(id)) {
+        triggerWaitMessage(WAIT_MESSAGE);
+        return;
+      }
+      fn();
+    },
+    [queueOverloaded, isLockedTarget, triggerWaitMessage],
+  );
 
   // Optimistic-op registry. The render path applies these on top of
   // the server-truth `data` so OutlineTable / GanttPane see the
@@ -1103,7 +1170,10 @@ export default function App() {
       <div
         className="app-chrome"
         aria-busy={roadmapBusy}
-        inert={roadmapBusy ? true : undefined}
+        // Sticky overload lock: only inert the whole chrome when we're
+        // backed up. Below the threshold the user can keep working;
+        // individual buttons gate themselves per-row.
+        inert={queueOverloaded ? true : undefined}
       >
       <header ref={headerRef} className="app-header">
         <div className="app-header-row1">
@@ -1140,7 +1210,12 @@ export default function App() {
                   aria-hidden="true"
                 />
                 <span className="roadmap-sync-label">
-                  {busyLabel ?? "Working…"}
+                  {/* "Saving N changes — …" once the queue is overloaded;
+                      otherwise the per-action label as before. */}
+                  {queueOverloaded
+                    ? `Saving ${busyDepth} changes…`
+                    : busyLabel ?? "Working…"}
+                  {lockReason ? ` — ${lockReason}` : ""}
                 </span>
               </div>
             ) : null}
@@ -1155,7 +1230,7 @@ export default function App() {
               type="button"
               className="app-header-icon-btn app-header-tile-btn"
               aria-pressed={hideCompleteActive}
-              disabled={roadmapBusy}
+              disabled={queueOverloaded}
               title={
                 hideCompleteActive
                   ? "Show all roadmap rows, including completed work"
@@ -1173,7 +1248,7 @@ export default function App() {
                 type="button"
                 className="app-header-icon-btn app-header-tile-btn"
                 aria-pressed={editTileMode}
-                disabled={roadmapBusy}
+                disabled={queueOverloaded}
                 title={
                   editTileMode
                     ? "Restore task dialogs to their positions before tiling"
@@ -1192,7 +1267,7 @@ export default function App() {
               className="app-header-icon-btn"
               aria-label="Settings"
               title="Settings"
-              disabled={roadmapBusy}
+              disabled={queueOverloaded}
               onClick={() => setSettingsOpen(true)}
             >
               <IconGear />
@@ -1228,72 +1303,73 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={
-                  roadmapBusy || !selectedId || selectedPlanningReadOnly
-                }
+                disabled={queueOverloaded || !selectedId || selectedPlanningReadOnly}
                 title={
                   selectedPlanningReadOnly
                     ? "Editing is disabled while this task is in active development (in progress, MR state, or checkout matches the registered branch)"
                     : "Edit selected task"
                 }
                 aria-label="Edit selected task"
-                onClick={() => {
-                  if (!selectedId) return;
-                  openEditNode(selectedId);
-                }}
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) openEditNode(selectedId);
+                  })
+                }
               >
                 <IconPencil />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || indentDisabled}
+                disabled={queueOverloaded || indentDisabled}
                 title="Indent"
                 aria-label="Indent"
-                onClick={() => {
-                  if (!selectedId) return;
-                  void triggerIndent(selectedId);
-                }}
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) void triggerIndent(selectedId);
+                  })
+                }
               >
                 <IconIndent />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || outdentDisabled}
+                disabled={queueOverloaded || outdentDisabled}
                 title="Outdent"
                 aria-label="Outdent"
-                onClick={() => {
-                  if (!selectedId) return;
-                  void triggerOutdent(selectedId);
-                }}
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) void triggerOutdent(selectedId);
+                  })
+                }
               >
                 <IconOutdent />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId}
+                disabled={queueOverloaded || !selectedId}
                 title="Add task above selection"
                 aria-label="Add task above selection"
-                onClick={addAbove}
+                onClick={() => guardRowAction(selectedId, addAbove)}
               >
                 <IconRowAbove />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId}
+                disabled={queueOverloaded || !selectedId}
                 title="Add task below selection"
                 aria-label="Add task below selection"
-                onClick={addBelow}
+                onClick={() => guardRowAction(selectedId, addBelow)}
               >
                 <IconRowBelow />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId || gateInsertDisabled}
+                disabled={queueOverloaded || !selectedId || gateInsertDisabled}
                 title={
                   !selectedId
                     ? "Select a row first"
@@ -1302,7 +1378,7 @@ export default function App() {
                       : "Insert gate at selection (above this row); display ids renumber. PM hold, not dev pickup"
                 }
                 aria-label="Insert gate at selection"
-                onClick={insertGateAtSelection}
+                onClick={() => guardRowAction(selectedId, insertGateAtSelection)}
               >
                 <span className="toolbar-gate-icon" aria-hidden="true">
                   G
@@ -1311,10 +1387,10 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn toolbar-icon-btn-danger"
-                disabled={roadmapBusy || !selectedId}
+                disabled={queueOverloaded || !selectedId}
                 title="Delete selected row"
                 aria-label="Delete selected row"
-                onClick={onDeleteSelected}
+                onClick={() => guardRowAction(selectedId, onDeleteSelected)}
               >
                 <IconTrash />
               </button>
@@ -1431,7 +1507,7 @@ export default function App() {
               outlineStatusById={outlineStatusById}
               rowDepths={visibleRowDepths}
               reorderLocked={hideCompleteActive}
-              interactionLocked={roadmapBusy}
+              interactionLocked={queueOverloaded}
               selectedId={selectedId}
               prHints={displayData.pr_hints}
               gitEnrichment={displayData.git_enrichment}
@@ -1458,6 +1534,7 @@ export default function App() {
               performRoadmapMutation={performRoadmapMutation}
               performOptimisticMutation={performOptimisticMutation}
               onMutationError={(msg) => setErr(msg)}
+              onWaitMessage={triggerWaitMessage}
               onGapInsert={onGapInsert}
             />
           </div>

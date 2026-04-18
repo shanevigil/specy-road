@@ -681,6 +681,9 @@ type Props = {
     mutation: () => Promise<void>,
   ) => Promise<void>;
   onMutationError: (message: string) => void;
+  /** Fires the inline wait-message banner when the user attempts a
+   *  drag/move on a row whose previous mutation is still in flight. */
+  onWaitMessage: (reason: string) => void;
   onGapInsert: (referenceNodeId: string) => void;
   displayStatusById?: Record<string, string>;
   /** Status column: MR lifecycle labels on top of {@link displayStatusById}. */
@@ -714,12 +717,14 @@ export function OutlineTable({
   performRoadmapMutation,
   performOptimisticMutation,
   onMutationError,
+  onWaitMessage,
   onGapInsert,
   displayStatusById,
   outlineStatusById,
   reorderLocked = false,
   interactionLocked = false,
 }: Props) {
+  const pendingMutationsApi = usePendingMutations();
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -1018,6 +1023,16 @@ export function OutlineTable({
     const overStr = String(over.id);
     const na = nodesById[aid];
     if (!na) return;
+    // Drag of a row whose previous mutation is still in flight (or an
+    // add-task placeholder with no real server id yet) is refused —
+    // the surface signals via the inline wait-message banner.
+    if (
+      isPendingPlaceholderId(aid) ||
+      pendingMutationsApi.pendingFor(aid)?.phase === "active"
+    ) {
+      onWaitMessage("saves pending - please wait.");
+      return;
+    }
 
     if (overStr.startsWith("into:")) {
       const raw = overStr.slice("into:".length);
