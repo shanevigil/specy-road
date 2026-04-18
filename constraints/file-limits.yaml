@@ -8,5 +8,12 @@ applies_to_globs:
   - "tests/**/*.py"
   - "docs/**/*.md"
 
+# Advisory LLM review: brief assembly, shared/ catalog, and provider clients in one script.
+override_limits:
+  - name: review_node_advisory_llm
+    file_globs:
+      - "specy_road/bundled_scripts/review_node.py"
+    max_lines_per_file: 900
+
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500

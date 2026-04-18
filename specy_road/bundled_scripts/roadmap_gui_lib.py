@@ -61,6 +61,11 @@ def _apply_azure_llm_env(llm: dict[str, Any]) -> None:
     ver = (llm.get("azure_api_version") or "").strip()
     if ver and not os.environ.get("SPECY_ROAD_OPENAI_API_VERSION"):
         os.environ["SPECY_ROAD_OPENAI_API_VERSION"] = ver
+    # Rolling-window throttle caps (GUI defaults match common Azure quotas).
+    rpm = (llm.get("azure_max_requests_per_minute") or "").strip() or "250"
+    tpm = (llm.get("azure_max_tokens_per_minute") or "").strip() or "250000"
+    os.environ["AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE"] = rpm
+    os.environ["AZURE_OPENAI_MAX_TOKENS_PER_MINUTE"] = tpm
 
 
 def _apply_openai_llm_env(llm: dict[str, Any], backend: str) -> None:
@@ -104,8 +109,12 @@ def apply_llm_env_from_settings(llm: dict[str, Any]) -> None:
         _apply_azure_llm_env(llm)
     elif backend == "anthropic":
         _apply_anthropic_llm_env(llm)
+        os.environ.pop("AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE", None)
+        os.environ.pop("AZURE_OPENAI_MAX_TOKENS_PER_MINUTE", None)
     else:
         _apply_openai_llm_env(llm, backend)
+        os.environ.pop("AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE", None)
+        os.environ.pop("AZURE_OPENAI_MAX_TOKENS_PER_MINUTE", None)
 
 
 def load_registry(root: Path) -> dict[str, Any]:

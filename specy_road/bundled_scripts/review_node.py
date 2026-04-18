@@ -483,12 +483,41 @@ def _openai_safe_error_message(exc: BaseException) -> str:
 
 
 def _openai_chat_completions_create(client: object, **kwargs: object) -> object:
+    from llm_throughput import (
+        ThroughputExceeded,
+        estimate_openai_chat_request_tokens,
+        get_openai_chat_throughput_gate,
+        parse_openai_chat_throughput_limits,
+    )
+
     try:
-        return client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
+        rpm, tpm = parse_openai_chat_throughput_limits()
+    except ValueError as e:
+        raise ReviewError(str(e)) from e
+    throttled = rpm is not None or tpm is not None
+    if throttled:
+        est = estimate_openai_chat_request_tokens(**kwargs)
+        try:
+            get_openai_chat_throughput_gate().reserve(
+                rpm_max=rpm,
+                tpm_max=tpm,
+                token_estimate=est,
+            )
+        except ThroughputExceeded as e:
+            raise ReviewError(str(e)) from e
+    try:
+        resp = client.chat.completions.create(**kwargs)  # type: ignore[union-attr]
     except ReviewError:
         raise
     except Exception as e:
         raise ReviewError(_openai_safe_error_message(e)) from e
+    if throttled:
+        usage = getattr(resp, "usage", None)
+        total = getattr(usage, "total_tokens", None) if usage is not None else None
+        get_openai_chat_throughput_gate().adjust_last_reservation(
+            int(total) if total is not None else None,
+        )
+    return resp
 
 
 def _chat_completion_message_content(resp: object) -> str:
