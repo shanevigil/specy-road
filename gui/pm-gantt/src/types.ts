@@ -96,8 +96,20 @@ export type PublishStatusPayload = {
 
 export type RoadmapResponse = {
   version: number;
-  /** Optimistic concurrency token; must be sent as X-PM-Gui-Fingerprint on mutating requests. */
-  fingerprint: number;
+  /**
+   * Optimistic concurrency token; must be sent verbatim as
+   * X-PM-Gui-Fingerprint on mutating requests. **String** because the
+   * raw integer routinely exceeds 2**53 and would lose precision when
+   * round-tripped through ``Number`` (IEEE 754 float64). The server
+   * accepts string-formatted base-10 integers.
+   */
+  fingerprint: string;
+  /**
+   * Broader change-detection token used by the polling refresh hook to
+   * notice "something changed elsewhere; refresh the view." Never sent
+   * back to the server. Same string-encoding rationale as ``fingerprint``.
+   */
+  view_fingerprint?: string;
   nodes: RoadmapNode[];
   registry: Record<string, unknown>;
   /** Registry entry keyed by display node id (when present). */

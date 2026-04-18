@@ -36,6 +36,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
+import { usePendingMutations } from "../pendingMutationsContext";
+import { isPendingPlaceholderId } from "../optimisticOutline";
 import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
 import { phaseRollupDerivedComplete } from "../parentStatusRollup";
 import {
@@ -328,7 +330,9 @@ function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
       onDoubleClick={onRowDoubleClick}
     >
       <td className="outline-id" onClick={isPreview ? undefined : onIdClick}>
-        <span className="outline-id-text">{node.id}</span>
+        <span className="outline-id-text">
+          {isPendingPlaceholderId(node.id) ? "…" : node.id}
+        </span>
         {isPreview ? null : <IntoDropBadge nodeId={node.id} />}
       </td>
       <td
@@ -569,12 +573,21 @@ function SortableRow({
     }
   };
 
+  const pending = usePendingMutations().pendingFor(id);
+  const pendingClass = pending
+    ? pending.phase === "fail"
+      ? "outline-row-pending outline-row-pending--fail"
+      : pending.phase === "settling"
+        ? "outline-row-pending outline-row-pending--settling"
+        : "outline-row-pending"
+    : "";
   const rowClass = [
     selected ? "selected" : "",
     depEditId === id ? "dep-edit-row" : "",
     isDepCandidate ? "dep-candidate-row" : "",
     isGitCheckoutRow ? "outline-row-git-current" : "",
     node.type === "gate" ? "outline-row-gate" : "",
+    pendingClass,
   ]
     .filter(Boolean)
     .join(" ");
@@ -657,6 +670,16 @@ type Props = {
     label: string,
     mutation: () => Promise<void>,
   ) => Promise<void>;
+  /** Optimistic-UI mutation runner for outline reorder / move; supplied
+   *  by App.tsx so the row can snap to its new position immediately
+   *  while the network call is in flight. */
+  performOptimisticMutation: (
+    label: string,
+    op: import("../optimisticOutline").OptimisticOp | null,
+    ids: string[],
+    kind: import("../pendingMutationsCore").PendingKind,
+    mutation: () => Promise<void>,
+  ) => Promise<void>;
   onMutationError: (message: string) => void;
   onGapInsert: (referenceNodeId: string) => void;
   displayStatusById?: Record<string, string>;
@@ -689,6 +712,7 @@ export function OutlineTable({
   onSelect,
   onDoubleClick,
   performRoadmapMutation,
+  performOptimisticMutation,
   onMutationError,
   onGapInsert,
   displayStatusById,
@@ -895,8 +919,12 @@ export function OutlineTable({
       const next = siblingOrderInsertBefore(P, aid, oid, orderedIds, nodesById);
       if (!next?.length) return;
       try {
-        await performRoadmapMutation("Updating outline…", () =>
-          reorderOutline(P, next),
+        await performOptimisticMutation(
+          "Updating outline…",
+          { kind: "reorder", parentId: P, orderedChildIds: next },
+          next,
+          "reorder",
+          () => reorderOutline(P, next),
         );
       } catch (err: unknown) {
         console.error(err);
@@ -907,8 +935,12 @@ export function OutlineTable({
     }
 
     try {
-      await performRoadmapMutation("Updating outline…", () =>
-        moveOutline(na.node_key, P, newIndex),
+      await performOptimisticMutation(
+        "Updating outline…",
+        { kind: "move", nodeKey: na.node_key, newParentId: P, newIndex },
+        [aid],
+        "move",
+        () => moveOutline(na.node_key, P, newIndex),
       );
     } catch (err: unknown) {
       console.error(err);
@@ -938,8 +970,12 @@ export function OutlineTable({
       const next = siblingOrderInsertAfter(P, aid, oid, orderedIds, nodesById);
       if (!next?.length) return;
       try {
-        await performRoadmapMutation("Updating outline…", () =>
-          reorderOutline(P, next),
+        await performOptimisticMutation(
+          "Updating outline…",
+          { kind: "reorder", parentId: P, orderedChildIds: next },
+          next,
+          "reorder",
+          () => reorderOutline(P, next),
         );
       } catch (err: unknown) {
         console.error(err);
@@ -950,8 +986,12 @@ export function OutlineTable({
     }
 
     try {
-      await performRoadmapMutation("Updating outline…", () =>
-        moveOutline(na.node_key, P, newIndex),
+      await performOptimisticMutation(
+        "Updating outline…",
+        { kind: "move", nodeKey: na.node_key, newParentId: P, newIndex },
+        [aid],
+        "move",
+        () => moveOutline(na.node_key, P, newIndex),
       );
     } catch (err: unknown) {
       console.error(err);
@@ -993,8 +1033,17 @@ export function OutlineTable({
       );
       const newIndex = others.length;
       try {
-        await performRoadmapMutation("Updating outline…", () =>
-          moveOutline(na.node_key, parentDisplay, newIndex),
+        await performOptimisticMutation(
+          "Updating outline…",
+          {
+            kind: "move",
+            nodeKey: na.node_key,
+            newParentId: parentDisplay,
+            newIndex,
+          },
+          [aid],
+          "move",
+          () => moveOutline(na.node_key, parentDisplay, newIndex),
         );
       } catch (err: unknown) {
         console.error(err);
@@ -1194,7 +1243,9 @@ export function OutlineTable({
       onTitleKeyDown,
       titleInputRef,
       onBeginTitleEdit: () => beginTitleEdit(rowId),
-      dragDisabled,
+      // Pending-placeholder rows have no real server id yet; they
+      // can't be dragged or title-edited until they settle.
+      dragDisabled: dragDisabled || isPendingPlaceholderId(rowId),
       onSelectRow: () => onSelect(rowId),
       onOpenModal: () => onDoubleClick(rowId),
       onDepRowBodyClick: () => {

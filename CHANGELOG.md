@@ -13,6 +13,17 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- PM Gantt: optimistic UI for outline mutations. The dragged row snaps
+  to its new position immediately and pulses blue while the server
+  write completes; on success the pulse gracefully fades, on failure
+  the row reverts and a brief red flash plays. Covers reorder,
+  cross-parent move, indent/outdent, dependency-edit save, add-task
+  (placeholder row appears with a `…` ID until the server assigns the
+  real one), and delete. Visual treatment mirrors the existing
+  `governance-pulse` styling on red-outlined header doc buttons,
+  recolored to the accent blue. `prefers-reduced-motion` falls back to
+  a static blue inset border. (`feature/optimistic-pm-ui`)
+
 - `GET /api/roadmap` and `GET /api/roadmap/fingerprint` now return both
   `fingerprint` (the narrow outline-mutation token, used by mutating
   POSTs as `X-PM-Gui-Fingerprint`) and `view_fingerprint` (the broader
@@ -42,16 +53,36 @@ body. Keep section bodies focused; link to PRs for detail.
 ### Fixed
 
 - PM Gantt drag-and-drop reorder, dependency edits, add/delete, and
-  cross-parent move (`POST /api/outline/reorder`, `POST /api/outline/move`,
-  `PATCH /api/nodes/{id}`, `POST /api/nodes/add`, etc.) no longer fail
-  with the "Roadmap or workspace changed elsewhere" banner during
-  ordinary IDE use. Field reproduction (saviwrite/dev) showed every
-  mutation 412'ing because Cursor / IDE autosave was touching files in
-  `shared/` and `planning/` faster than the GET-POST round-trip,
-  shifting the broad fingerprint between the GET that issued the
-  client's token and the POST that used it. With the narrow fingerprint
-  contract, 8/8 mutations land cleanly under a 3x/sec autosave storm
-  on `shared/` (was 0/5 before). (`fix/drag_and_drop`)
+  cross-parent move no longer fail with the "Roadmap or workspace
+  changed elsewhere" banner. Field-reproduced root causes (both fixed):
+
+  1. **JS Number precision on the fingerprint.** The optimistic-
+     concurrency token routinely exceeds `2**53` (it's a sum of
+     `mtime_ns` values, ~1e19). The server emitted it as a JSON
+     number, so the browser's `JSON.parse` rounded to the nearest
+     IEEE 754 `Number` and forwarded a slightly different value back
+     as `X-PM-Gui-Fingerprint`. The server's exact int never matched
+     → every mutation 412'd. Fix: `GET /api/roadmap`,
+     `GET /api/roadmap/fingerprint`, and the 412 detail body now emit
+     `fingerprint` (and `view_fingerprint`) as JSON strings; the
+     bundled UI parses them as strings, stores as strings, and sends
+     verbatim as the header. No precision involved end-to-end.
+
+  2. **`rollup_status` rejected by older consumer schemas.**
+     `load_roadmap` annotates each in-memory node with a derived
+     `rollup_status` field. The on-disk chunk JSON never carries it,
+     but `run_validation` was passing the in-memory document straight
+     to schema validation. Older consumer schemas don't list
+     `rollup_status` as an allowed property, so post-mutation
+     validation rejected the document with "Additional properties
+     are not allowed (`rollup_status` was unexpected)". Fix: strip
+     derived per-node keys (mirrors `roadmap_chunk_utils._DERIVED_NODE_KEYS`)
+     before schema validation.
+
+  Plus: under-the-hood narrow-fingerprint redesign (mutating routes
+  guard against only manifest+chunks+registry, not planning/shared/
+  vision/git-HEAD) so noise from IDE autosave can no longer reject
+  legitimate edits. (`fix/drag_and_drop`)
 
 ### Removed
 
