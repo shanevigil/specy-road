@@ -11,6 +11,62 @@ own application repos) should read
 
 ---
 
+## Project stewardship
+
+`specy-road` is maintained by [@shanevigil](https://github.com/shanevigil).
+The maintainer reserves the **right of refusal**: any PR may be closed
+for any reason, with or without explanation. Out-of-scope changes,
+contested architecture, undisclosed conflicts of interest, or low-effort
+contributions are all valid grounds for closure. Don't take it
+personally; it's a small project and direction matters.
+
+### Issues come first
+
+Before opening a non-trivial PR, **open or reference an existing
+issue**. The PR body must include a closing-keyword link:
+
+```
+Closes #123
+Fixes #45
+Refs #67
+```
+
+This is enforced by [`pr-conventions.yml`](../.github/workflows/pr-conventions.yml).
+Two exemptions exist:
+
+1. **`chore/<...>` branches** — housekeeping (typo fixes, lint cleanup,
+   doc tidying, dependency bumps) does not require an issue.
+2. **The `no-issue-required` label** — applied at the maintainer's
+   discretion when a contribution warrants an exception (e.g. emergency
+   security fix).
+
+### Malicious code policy
+
+specy-road is a coordination tool that runs on contributor laptops and
+in CI environments. Any pull request found to contain **malicious code**
+— including but not limited to: cryptominers, data-exfiltration shims,
+backdoor commits, supply-chain attacks (typosquatting in
+`requirements-ci.txt` or `package-lock.json`, lockfile substitution,
+post-install hooks that fetch arbitrary code, tampering with the
+trusted-publisher config, attempts to weaken the validate / file-limits
+/ audit pipeline) — will result in:
+
+1. Immediate closure of the PR.
+2. Permanent ban of the contributor from this repository.
+3. **Reporting** to GitHub Trust & Safety
+   (`https://github.com/contact/report-abuse`) and, where applicable,
+   to PyPI (security@pypi.org), npm (security@npmjs.com), CISA, and
+   any downstream consumer the maintainer can identify.
+4. Public audit-trail preservation — the offending commits and PR
+   metadata remain available so other maintainers can recognize the
+   pattern.
+
+By submitting a PR you accept this policy. If you spot suspicious
+activity in someone else's PR, please report it privately to the
+maintainer rather than commenting publicly on the PR thread.
+
+---
+
 ## Branching, tagging, and release process
 
 ### Default branch is `dev`
@@ -18,48 +74,117 @@ own application repos) should read
 - All feature work targets **`dev`**.
 - The **`main`** branch is reserved for tagged releases. The
   [`main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml)
-  workflow rejects pushes to `main` that aren't annotated tags.
-- `main` is intentionally minimal (README + the gate workflow) until v0.1.
+  workflow rejects pushes to `main` that aren't release-marker PRs and
+  auto-tags merge commits.
+- `main` is intentionally minimal (README + workflows) until v0.1.
 
-### Feature branches
+### Branch-naming convention (enforced)
 
-Use `feature/<short-slug>` off `dev` for changes that aren't a roadmap
-node, and `feature/refine_<area>` for sweeping refactors.
+Branch names **must** match one of these prefixes followed by a kebab-case
+description:
 
-For roadmap-driven work picked up via `specy-road do-next-available-task`,
-the CLI creates `feature/rm-<codename>` automatically and registers the
-claim on the integration branch first. See
-[git-workflow.md](git-workflow.md) for the full ceremony (registry rows,
-touch zones, PR vs merge, etc.).
+```
+feature/<kebab-description>     # new functionality
+fix/<kebab-description>          # bug fix
+chore/<kebab-description>        # housekeeping (no issue link required)
+```
+
+The regex enforced by
+[`pr-conventions.yml`](../.github/workflows/pr-conventions.yml) is:
+
+```
+^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$
+```
+
+CI-managed branches (`cursor/...`, `dependabot/...`, `ci/...`) are
+exempt. Roadmap-driven `feature/rm-<codename>` branches created by
+`specy-road do-next-available-task` automatically satisfy the
+`feature/...` prefix.
 
 ### Tagging convention
 
-Semver: `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`, `v0.2.0-rc1`). Tags are cut
-from `dev` and merged to `main`. The `main-release-tag-gate.yml` workflow
-verifies the tag matches `v\d+\.\d+\.\d+(-[A-Za-z0-9.]+)?`.
+Semver tags with a `v` prefix:
 
-### PR workflow
+- Final releases: `v0.1.0`, `v1.2.3`.
+- Pre-releases: `v0.1.0-rc1`, `v0.2.0-beta1`. PEP 440 normalization is
+  handled automatically (`-rc1` ↔ `rc1`).
 
-- Open PRs against `dev`. Drafts welcome.
-- Keep PRs small and focused — one cluster of related findings or one
-  feature.
-- Squash on merge unless the commit history is meaningful (rare).
-- Every PR should keep `pytest -q`, `specy-road validate`,
-  `specy-road export --check`, and `specy-road file-limits` green
-  against `tests/fixtures/specy_road_dogfood/`.
+You **don't tag manually**. Instead, open a PR from `dev` to `main` with
+the title `release: v0.1.0` (or apply the `release:v0.1.0` label). The
+[main-release-tag-gate.yml](../.github/workflows/main-release-tag-gate.yml)
+workflow:
 
-### Release process
+1. Validates the marker on the PR.
+2. On merge to `main`, auto-creates the `vX.Y.Z` tag at the merge
+   commit.
+3. The tag push triggers
+   [release-publish.yml](../.github/workflows/release-publish.yml),
+   which publishes to PyPI (final tags) or TestPyPI (prerelease tags)
+   via OIDC trusted publishing.
 
-1. Land all required PRs on `dev`.
-2. Run the full local check (see *Local CI parity* below).
-3. Cut a tag: `git tag -a v0.1.0 -m "v0.1.0"` from `dev`'s tip.
-4. Merge `dev` into `main` (fast-forward) and push the tag.
-5. **TODO (post-release):** automate PyPI build-and-publish on every
-   tagged release. The README's top-of-file `TODO(post-release)` comment
-   tracks this.
+### Automated release process (what humans do, what machines do)
 
-Until PyPI publish is automated, the canonical way to install is from
-source on the `dev` branch (see [install-and-usage.md](install-and-usage.md)).
+**Humans:**
+
+1. Bump `pyproject.toml`'s `project.version` on `dev`.
+2. Update `CHANGELOG.md` — add a `## [vX.Y.Z]` section with the body
+   that should appear on the GitHub Release.
+3. Open a release PR from `dev` to `main` with title
+   `release: vX.Y.Z`. Body explains what's in the release.
+4. Get the PR reviewed; merge it.
+
+**Machines (no further human action required):**
+
+5. `main-release-tag-gate.yml` validates the marker and (on merge)
+   creates the tag `vX.Y.Z` on the merge commit.
+6. `release-publish.yml` is triggered by the tag push and:
+   - Reuses [`validate.yml`](../.github/workflows/validate.yml) as a
+     prereq job to re-run the full validation pipeline against the
+     tagged commit.
+   - Builds sdist + wheel; runs
+     [`scripts/check_release_version.py`](../scripts/check_release_version.py)
+     to assert pyproject's version matches the tag.
+   - Runs
+     [`scripts/verify_wheel_contents.py`](../scripts/verify_wheel_contents.py)
+     to assert the wheel contains the bundled PM Gantt UI assets.
+   - Smoke-installs the wheel in a fresh venv and runs
+     `specy-road --help` + `validate` + `export --check` against
+     the dogfood fixture.
+   - Publishes to **TestPyPI** (prerelease tags) or **PyPI** (final
+     tags) via OIDC trusted publishing — no API tokens. Sigstore
+     attestations are emitted (PEP 740).
+   - Creates a GitHub Release using the `## [vX.Y.Z]` section of
+     `CHANGELOG.md` as the body, with the sdist + wheel attached.
+   - On the **first PyPI publish only**, opens a follow-up PR
+     (`chore/readme-post-release-X.Y.Z`) that strips the README's
+     pre-release notice + TODO and swaps the install-from-source
+     block for `pip install specy-road`.
+
+The PyPI Trusted Publisher OIDC trust is bound to **this exact workflow
+file** (`release-publish.yml`) and **these exact environments**
+(`pypi` and `testpypi`). Renaming the file or environments will break
+publishing until you update the trust on `pypi.org` and
+`test.pypi.org`.
+
+### Trust & environment setup (one-time, off-repo)
+
+1. **PyPI:** at `https://pypi.org/manage/account/publishing/` add a
+   pending trusted publisher with owner `shanevigil`, repo `specy-road`,
+   workflow `release-publish.yml`, environment `pypi`.
+2. **TestPyPI:** same thing at
+   `https://test.pypi.org/manage/account/publishing/` with environment
+   `testpypi`.
+3. **GitHub:** Settings → Environments → create `pypi` (deployment tag
+   rule `v[0-9]+.[0-9]+.[0-9]+`; required reviewer optional but
+   recommended) and `testpypi` (tag rule
+   `v[0-9]+.[0-9]+.[0-9]+-*`; no reviewers).
+
+### Manual smoke (no publish)
+
+The release workflow accepts a `workflow_dispatch` trigger with
+`dry_run: true`. This builds the package and runs all verification but
+does NOT publish or create a release. Useful when refactoring the
+workflow itself.
 
 ---
 

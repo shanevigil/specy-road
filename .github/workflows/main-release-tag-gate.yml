@@ -1,5 +1,16 @@
 name: Main Release Tag Gate
 
+# Enforces release-marker discipline for PRs to main, and creates the
+# corresponding v-prefixed tag on merge. The release-publish workflow
+# (.github/workflows/release-publish.yml) listens for those tags and
+# routes finals to PyPI, prereleases to TestPyPI.
+#
+# Accepted release-marker syntaxes:
+#   PR title:  "release: v0.1.0" or "release: v0.1.0-rc1"
+#   PR label:  "release:v0.1.0"   or "release:v0.1.0-rc1"
+#
+# Created tag (always v-prefixed):  v0.1.0  /  v0.1.0-rc1
+
 on:
   pull_request:
     branches: [main]
@@ -11,21 +22,37 @@ permissions:
   contents: write
   pull-requests: read
 
+env:
+  # Final semver: vX.Y.Z. Prerelease: vX.Y.Z-<alphanum-or-dot>+
+  # The capture group returns the version WITHOUT the leading 'v' so
+  # downstream code can compare against pyproject.toml.
+  RELEASE_TITLE_RE: '(?:^|\s)release:\s*v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)(?:\s|$)'
+  RELEASE_LABEL_RE: '^release:v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)$'
+  VERSION_RE: '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'
+
 jobs:
   validate-release-intent:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Validate semver release marker on PR to main
+      - name: Validate release marker on PR to main
         uses: actions/github-script@v7
+        env:
+          TITLE_RE: ${{ env.RELEASE_TITLE_RE }}
+          LABEL_RE: ${{ env.RELEASE_LABEL_RE }}
+          VERSION_RE: ${{ env.VERSION_RE }}
         with:
           script: |
             const title = context.payload.pull_request.title || "";
             const labels = (context.payload.pull_request.labels || []).map((l) => l.name);
 
-            const titleMatch = title.match(/(?:^|\s)release:\s*([0-9]+\.[0-9]+\.[0-9]+)(?:\s|$)/i);
+            const titleRe = new RegExp(process.env.TITLE_RE, "i");
+            const labelRe = new RegExp(process.env.LABEL_RE, "i");
+            const versionRe = new RegExp(process.env.VERSION_RE);
+
+            const titleMatch = title.match(titleRe);
             const labelMatches = labels
-              .map((name) => name.match(/^release:([0-9]+\.[0-9]+\.[0-9]+)$/i))
+              .map((name) => name.match(labelRe))
               .filter(Boolean);
 
             const versions = new Set();
@@ -34,7 +61,8 @@ jobs:
 
             if (versions.size !== 1) {
               core.setFailed(
-                "PRs targeting main must declare exactly one release version via title 'release: x.x.x' or label 'release:x.x.x'."
+                "PRs targeting main must declare exactly one release version via " +
+                "title 'release: vX.Y.Z[-suffix]' or label 'release:vX.Y.Z[-suffix]'."
               );
               return;
             }
@@ -42,25 +70,26 @@ jobs:
             const [version] = Array.from(versions);
             core.info(`Detected release version: ${version}`);
 
-            // Enforce clean x.x.x semantic version shape.
-            if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(version)) {
-              core.setFailed(`Invalid release version '${version}'. Expected x.x.x`);
+            if (!versionRe.test(version)) {
+              core.setFailed(`Invalid release version '${version}'. Expected X.Y.Z or X.Y.Z-suffix.`);
               return;
             }
 
-            // Ensure this version tag does not already exist.
+            const tagRef = `v${version}`;
             const { data: refs } = await github.rest.git.listMatchingRefs({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: `tags/${version}`,
+              ref: `tags/${tagRef}`,
             });
-            if (refs.length > 0) {
-              core.setFailed(`Tag '${version}' already exists. Choose a new version.`);
+            if (refs.some((r) => r.ref === `refs/tags/${tagRef}`)) {
+              core.setFailed(`Tag '${tagRef}' already exists. Choose a new version.`);
               return;
             }
 
+            const isPrerelease = version.includes("-");
             core.notice(
-              `Release version '${version}' validated. Merge to main will auto-tag the merge commit with this version.`
+              `Release version '${version}' validated (${isPrerelease ? "prerelease → TestPyPI" : "final → PyPI"}). ` +
+              `Merge to main will auto-tag the merge commit as '${tagRef}'.`
             );
 
   tag-main-commit:
@@ -69,11 +98,19 @@ jobs:
     steps:
       - name: Resolve release version from merged PR and create tag
         uses: actions/github-script@v7
+        env:
+          TITLE_RE: ${{ env.RELEASE_TITLE_RE }}
+          LABEL_RE: ${{ env.RELEASE_LABEL_RE }}
+          VERSION_RE: ${{ env.VERSION_RE }}
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const sha = context.sha;
+
+            const titleRe = new RegExp(process.env.TITLE_RE, "i");
+            const labelRe = new RegExp(process.env.LABEL_RE, "i");
+            const versionRe = new RegExp(process.env.VERSION_RE);
 
             const pullsResp = await github.request(
               "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls",
@@ -82,7 +119,7 @@ jobs:
             const pulls = pullsResp.data || [];
             if (pulls.length === 0) {
               core.setFailed(
-                `No PR found for commit ${sha}. main requires PR-based release merges with semver markers.`
+                `No PR found for commit ${sha}. main requires PR-based release merges with release markers.`
               );
               return;
             }
@@ -91,9 +128,9 @@ jobs:
             const title = pr.title || "";
             const labels = (pr.labels || []).map((l) => l.name);
 
-            const titleMatch = title.match(/(?:^|\s)release:\s*([0-9]+\.[0-9]+\.[0-9]+)(?:\s|$)/i);
+            const titleMatch = title.match(titleRe);
             const labelMatches = labels
-              .map((name) => name.match(/^release:([0-9]+\.[0-9]+\.[0-9]+)$/i))
+              .map((name) => name.match(labelRe))
               .filter(Boolean);
 
             const versions = new Set();
@@ -102,31 +139,34 @@ jobs:
 
             if (versions.size !== 1) {
               core.setFailed(
-                `Merged PR #${pr.number} must contain exactly one release marker: title 'release: x.x.x' or label 'release:x.x.x'.`
+                `Merged PR #${pr.number} must contain exactly one release marker: ` +
+                `title 'release: vX.Y.Z[-suffix]' or label 'release:vX.Y.Z[-suffix]'.`
               );
               return;
             }
 
             const [version] = Array.from(versions);
-            if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(version)) {
-              core.setFailed(`Invalid release version '${version}'. Expected x.x.x`);
+            if (!versionRe.test(version)) {
+              core.setFailed(`Invalid release version '${version}'. Expected X.Y.Z or X.Y.Z-suffix.`);
               return;
             }
 
+            const tagRef = `v${version}`;
             const existing = await github.rest.git.listMatchingRefs({
               owner,
               repo,
-              ref: `tags/${version}`,
+              ref: `tags/${tagRef}`,
             });
 
-            if (existing.data.length > 0) {
-              const existingSha = existing.data[0]?.object?.sha;
+            const exact = existing.data.find((r) => r.ref === `refs/tags/${tagRef}`);
+            if (exact) {
+              const existingSha = exact.object?.sha;
               if (existingSha === sha) {
-                core.notice(`Tag '${version}' already points at ${sha}.`);
+                core.notice(`Tag '${tagRef}' already points at ${sha}.`);
                 return;
               }
               core.setFailed(
-                `Tag '${version}' already exists on ${existingSha}; refusing to retarget to ${sha}.`
+                `Tag '${tagRef}' already exists on ${existingSha}; refusing to retarget to ${sha}.`
               );
               return;
             }
@@ -134,10 +174,12 @@ jobs:
             await github.rest.git.createRef({
               owner,
               repo,
-              ref: `refs/tags/${version}`,
+              ref: `refs/tags/${tagRef}`,
               sha,
             });
 
+            const isPrerelease = version.includes("-");
             core.notice(
-              `Created release tag '${version}' for commit ${sha} from merged PR #${pr.number}.`
+              `Created release tag '${tagRef}' for commit ${sha} from merged PR #${pr.number}. ` +
+              `release-publish.yml will publish to ${isPrerelease ? "TestPyPI" : "PyPI"}.`
             );
