@@ -7,11 +7,13 @@ single `pip install specy-road` line.
 # specy-road
 
 > ## ⚠️ Pre-release notice
-> The first tagged release is pending. **There is no `specy-road` package on
-> PyPI yet.** Install from source as shown in the [Install](#install) section
-> until v0.1 ships. The contributor guide
-> ([`docs/contributor-guide.md`](docs/contributor-guide.md)) — including
-> release process and publish workflow — is the detailed reference.
+> **Stable PyPI** does not list `specy-road` yet (`pip install specy-road` from
+> pypi.org). **Prerelease** tags (for example `v0.1.0-rc1`) publish to
+> **TestPyPI** for smoke installs — see
+> [`docs/contributor-guide.md`](docs/contributor-guide.md). For day-to-day work
+> on **this** repository, keep using an **editable install from `dev`** as in
+> [Install](#install). The TODO comment above is removed after **v0.1.0**
+> ships to PyPI and the install block switches to `pip install`.
 
 **One roadmap for the whole team**—so product, engineering, and coding agents share the same plan.
 
@@ -51,7 +53,9 @@ More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review**
 
 Requires **Python 3.11+** and **git** (with a configured remote — `origin` by default).
 
-> **No PyPI package yet.** Install from source from the `dev` branch until the first tagged release. The full install and everyday usage guide is **[docs/install-and-usage.md](docs/install-and-usage.md)**.
+> **Stable PyPI pending.** Install from source on the `dev` branch (below). The
+> end-user guide is **[docs/install-and-usage.md](docs/install-and-usage.md)**;
+> prerelease/TestPyPI details live in **[docs/contributor-guide.md](docs/contributor-guide.md)**.
 
 ```bash
 git clone https://github.com/shanevigil/specy-road.git
