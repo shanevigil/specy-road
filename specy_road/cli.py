@@ -138,7 +138,11 @@ def _run(script: str, args: list[str]) -> None:
     prefix = f"{repo_or_site}{sep}{d}"
     env["PYTHONPATH"] = prefix + (sep + prev if prev else "")
     cmd = [sys.executable, str(script_path), *args]
-    subprocess.check_call(cmd, env=env)
+    proc = subprocess.run(cmd, env=env)
+    if proc.returncode != 0:
+        # Avoid chaining from CalledProcessError: bundled scripts already print
+        # stderr messages; surfacing subprocess.check_call adds a noisy traceback.
+        raise SystemExit(proc.returncode) from None
 
 
 def _cmd_scaffold_constitution(rest: list[str]) -> None:

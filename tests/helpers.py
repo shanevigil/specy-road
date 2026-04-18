@@ -15,5 +15,7 @@ def script_subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
     sep = os.pathsep
     prev = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = str(BUNDLED_SCRIPTS) + (sep + prev if prev else "")
+    # Repo root so `import specy_road` works; bundled_scripts for flat imports.
+    prefix = f"{REPO}{sep}{BUNDLED_SCRIPTS}"
+    env["PYTHONPATH"] = prefix + (sep + prev if prev else "")
     return env
