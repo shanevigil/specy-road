@@ -86,6 +86,24 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Removed
 
+## [v0.1.0-rc2] - 2026-04-18
+
+Second prerelease (TestPyPI). Unifies `dev` with `main` for promotion PRs,
+rolls up Dependabot bumps (#36), and updates README / install guidance for
+stable PyPI vs TestPyPI.
+
+### Changed
+
+- CI workflows: `actions/download-artifact` v8, `actions/github-script` v9,
+  `softprops/action-gh-release` v3, `peter-evans/create-pull-request` v8.
+- `requirements-ci.txt`: FastAPI 0.136.0.
+- `gui/pm-gantt` devDependencies: ESLint patch, TypeScript patch.
+
+### Documentation
+
+- README and `docs/install-and-usage.md`: clarify stable PyPI vs TestPyPI
+  prereleases.
+
 ## [v0.1.0-rc1] - TBD
 
 First public release candidate. Published to TestPyPI for rehearsal.
@@ -166,5 +184,6 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc1...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc2...HEAD
+[v0.1.0-rc2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc2
 [v0.1.0-rc1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc1
