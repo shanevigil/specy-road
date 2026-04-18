@@ -13,31 +13,28 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
-- PM GUI: opt-in env `SPECY_ROAD_GUI_PM_AUTO_RETRY_AUTOFF=1` makes
-  mutating routes mark spurious 412s as `retryable: true` (with a
-  fresh `current_fingerprint`) when the only delta between the
-  client's token and the on-disk fingerprint was the auto-fetch /
-  `merge --ff-only` the GET endpoints performed in the same session.
-  The bundled PM Gantt UI then transparently retries the mutation
-  exactly once with the fresh token before showing the
-  "Roadmap or workspace changed elsewhere" banner. Default behavior
-  is unchanged when the env var is unset; existing pytest contracts
-  in `tests/test_pm_gui_fingerprint.py` continue to pass.
-  (`fix/drag_and_drop`)
-
 ### Changed
+
+- PM GUI mutation guard: every 412 from a mutating route now includes
+  `retryable: true` and a `current_fingerprint` value freshly recomputed
+  *after* re-running the same auto-fetch / `merge --ff-only` side
+  effects the GET endpoints run. This lets the bundled PM Gantt UI
+  transparently retry the mutation exactly once with the fresh token
+  before showing the "Roadmap or workspace changed elsewhere" banner.
+  Behavior is on by default — drag-and-drop reorder/move now "just
+  works" when several PMs are editing concurrently, without any env
+  flag or operator action. (`fix/drag_and_drop`)
 
 ### Fixed
 
 - PM Gantt drag-and-drop reorder (`POST /api/outline/reorder` and
-  `POST /api/outline/move`): with the new opt-in flag enabled,
-  drag-reorder no longer fails spuriously when the toolkit's own
-  background `git fetch` + `merge --ff-only` happens to run between
-  the GET that issued the client's token and the POST that uses it.
-  Both `GET /api/roadmap` and `GET /api/roadmap/fingerprint` now go
-  through a shared `_pm_gui_finalize_state` helper so the invariant
-  "auto-FF runs before fingerprint is computed" cannot drift.
-  (`fix/drag_and_drop`)
+  `POST /api/outline/move`): no longer fails spuriously when the
+  toolkit's own background `git fetch` + `merge --ff-only` happens to
+  run between the GET that issued the client's token and the POST
+  that uses it. Both `GET /api/roadmap` and `GET /api/roadmap/fingerprint`
+  now go through a shared `_pm_gui_finalize_state` helper so the
+  invariant "auto-FF runs before fingerprint is computed" cannot
+  drift. (`fix/drag_and_drop`)
 
 ### Removed
 

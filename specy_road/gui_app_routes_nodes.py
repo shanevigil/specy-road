@@ -32,7 +32,7 @@ from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
-from specy_road.pm_gui_concurrency import require_pm_gui_write_header_env_aware
+from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 
 def _canonical_ids_after_add(
@@ -130,7 +130,7 @@ def register_node_mutations(api: APIRouter) -> None:
     def api_patch_node(
         node_id: str,
         body: PatchBody,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, str]:
         root = get_repo_root()
         pairs = [(p.key, p.value) for p in body.pairs]
@@ -143,7 +143,7 @@ def register_node_mutations(api: APIRouter) -> None:
     @api.delete("/nodes/{node_id}")
     def api_delete_node(
         node_id: str,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, str]:
         root = get_repo_root()
         try:
@@ -155,7 +155,7 @@ def register_node_mutations(api: APIRouter) -> None:
     @api.post("/outline/reorder")
     def api_reorder(
         body: ReorderBody,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, str]:
         root = get_repo_root()
         pid: str | None = body.parent_id
@@ -168,7 +168,7 @@ def register_node_mutations(api: APIRouter) -> None:
     @api.post("/outline/move")
     def api_outline_move(
         body: MoveOutlineBody,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, str]:
         root = get_repo_root()
         try:
@@ -185,7 +185,7 @@ def register_node_mutations(api: APIRouter) -> None:
     @api.post("/nodes/{node_id}/indent")
     def api_indent(
         node_id: str,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, Any]:
         root = get_repo_root()
         try:
@@ -197,7 +197,7 @@ def register_node_mutations(api: APIRouter) -> None:
     @api.post("/nodes/{node_id}/outdent")
     def api_outdent(
         node_id: str,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, Any]:
         root = get_repo_root()
         try:
@@ -211,6 +211,6 @@ def register_add_node(api: APIRouter) -> None:
     @api.post("/nodes/add")
     def api_add_node(
         body: AddNodeBody,
-        _pm: None = Depends(require_pm_gui_write_header_env_aware),
+        _pm: None = Depends(require_pm_gui_write_header),
     ) -> dict[str, Any]:
         return _api_add_node_impl(get_repo_root(), body)
