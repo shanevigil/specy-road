@@ -41,7 +41,7 @@ With no path, the CLI uses the git worktree root—in **this** repo that would s
 
 **Application repositories** set `integration_branch` and `remote` in `roadmap/git-workflow.yaml` after `specy-road init project`; the CLI and PM Gantt read that file unless overridden by flags or environment variables (see [git-workflow.md](git-workflow.md)). Examples elsewhere that mention `main` or `dev` are illustrative—not a default for your repo.
 
-**This toolkit repository** uses its own policy for package work: topic branches merge to **`dev`**, and **`main`** is release-facing via promotion PRs—see [CLAUDE.md](../CLAUDE.md#repository-git-workflow-policy-current). That is **not** the workflow contract for other repos using specy-road; those stay configurable via `roadmap/git-workflow.yaml`.
+**This toolkit repository** uses its own policy for package work: topic branches merge to **`dev`**, and **`main`** is release-facing via promotion PRs auto-tagged by [`main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml) and published by [`release-publish.yml`](../.github/workflows/release-publish.yml). The full branching, tagging, PR-conventions, and release process lives in [contributor-guide.md](contributor-guide.md#branching-tagging-and-release-process). That is **not** the workflow contract for other repos using specy-road; those stay configurable via `roadmap/git-workflow.yaml`.
 
 ## See also
 

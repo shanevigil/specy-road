@@ -131,6 +131,21 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+def _pm_gui_finalize_state(root: Path) -> int:
+    """Run the GET-side background sync, then return the canonical fingerprint.
+
+    Both ``GET /api/roadmap`` and ``GET /api/roadmap/fingerprint`` must run
+    these side effects *before* computing the token they hand back to the
+    client. Failing to do so lets the client capture a fingerprint that
+    becomes stale during the same request, which then makes the next
+    mutation POST 412.
+    """
+    if registry_remote_overlay_enabled(root):
+        maybe_auto_git_fetch(root, resolve_git_remote(root))
+    maybe_auto_integration_ff(root)
+    return pm_gui_mutation_fingerprint(root)
+
+
 def register_core(api: APIRouter) -> None:
     @api.get("/health")
     def health() -> dict[str, str]:
@@ -144,9 +159,10 @@ def register_core(api: APIRouter) -> None:
     @api.get("/roadmap")
     def api_roadmap() -> dict[str, Any]:
         root = get_repo_root()
-        if registry_remote_overlay_enabled(root):
-            maybe_auto_git_fetch(root, resolve_git_remote(root))
-        maybe_auto_integration_ff(root)
+        # Run auto-fetch/auto-FF before reading the roadmap; the fingerprint
+        # baked into the payload by ``_roadmap_payload`` will reflect any
+        # HEAD/refs movement caused by these side effects.
+        _pm_gui_finalize_state(root)
         try:
             doc = load_roadmap(root)
         except (OSError, SystemExit, ValueError) as e:
@@ -155,11 +171,7 @@ def register_core(api: APIRouter) -> None:
 
     @api.get("/roadmap/fingerprint")
     def api_roadmap_fingerprint() -> dict[str, int]:
-        root = get_repo_root()
-        if registry_remote_overlay_enabled(root):
-            maybe_auto_git_fetch(root, resolve_git_remote(root))
-        maybe_auto_integration_ff(root)
-        return {"fingerprint": pm_gui_mutation_fingerprint(root)}
+        return {"fingerprint": _pm_gui_finalize_state(get_repo_root())}
 
     @api.get("/governance-completion")
     def api_governance_completion() -> dict[str, bool]:

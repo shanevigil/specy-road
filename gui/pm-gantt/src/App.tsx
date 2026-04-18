@@ -67,6 +67,7 @@ import {
 } from "./repoBrowserPrefs";
 import { PmGuiHandlersProvider } from "./pmGuiContext";
 import { useRoadmapActionQueue } from "./roadmapSync";
+import { runMutationWithAutoffRetry } from "./runMutationWithAutoffRetry";
 
 const EditModal = lazy(() =>
   import("./components/EditModal").then((m) => ({ default: m.EditModal })),
@@ -375,17 +376,12 @@ export default function App() {
   const performRoadmapMutation = useCallback(
     (label: string, mutation: () => Promise<void>) =>
       runRoadmapAction(label, async () => {
-        try {
-          await mutation();
-        } catch (e: unknown) {
-          if (e instanceof PmGuiConcurrencyError) {
-            await loadSnapshot();
-            setErr(
-              "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
-            );
-            return;
-          }
-          throw e;
+        const outcome = await runMutationWithAutoffRetry(mutation, loadSnapshot);
+        if (outcome === "conflict") {
+          setErr(
+            "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
+          );
+          return;
         }
         await loadSnapshot();
       }),
