@@ -32,39 +32,50 @@ function pmGuiMutationHeaders(
 export class PmGuiConcurrencyError extends Error {
   readonly httpStatus: number;
   readonly currentFingerprint?: number;
+  /** Server hint: this 412 came from a benign in-server auto-FF/fetch race
+   *  and the client may transparently retry once with the new token. */
+  readonly retryable: boolean;
 
   constructor(
     message: string,
     httpStatus: number,
     currentFingerprint?: number,
+    retryable = false,
   ) {
     super(message);
     this.name = "PmGuiConcurrencyError";
     this.httpStatus = httpStatus;
     this.currentFingerprint = currentFingerprint;
+    this.retryable = retryable;
   }
 }
 
 function throwFromMutationFailure(status: number, text: string): never {
   let message = text || `HTTP ${status}`;
   let currentFingerprint: number | undefined;
+  let retryable = false;
   try {
     const j = JSON.parse(text) as { detail?: unknown };
     const d = j.detail;
     if (typeof d === "string") {
       message = d;
     } else if (d != null && typeof d === "object") {
-      const o = d as { message?: string; current_fingerprint?: number };
+      const o = d as {
+        message?: string;
+        current_fingerprint?: number;
+        retryable?: boolean;
+      };
       if (typeof o.message === "string") message = o.message;
       if (typeof o.current_fingerprint === "number") {
         currentFingerprint = o.current_fingerprint;
       }
+      if (o.retryable === true) retryable = true;
     }
   } catch {
     /* keep message */
   }
   if (status === 412 || status === 428) {
-    throw new PmGuiConcurrencyError(message, status, currentFingerprint);
+    throw new PmGuiConcurrencyError(message, status, currentFingerprint, retryable);
   }
   throw new Error(message);
 }
