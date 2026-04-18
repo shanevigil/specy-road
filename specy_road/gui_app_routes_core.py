@@ -24,7 +24,10 @@ from roadmap_layout import (
 from roadmap_load import load_roadmap
 
 from specy_road.git_workflow_config import build_git_workflow_status
-from specy_road.pm_gui_fingerprint import pm_gui_mutation_fingerprint
+from specy_road.pm_gui_fingerprint import (
+    outline_mutation_fingerprint,
+    pm_gui_mutation_fingerprint,
+)
 from specy_road.registry_remote_overlay import (
     describe_integration_branch_auto_ff,
     last_registry_auto_fetch_status,
@@ -127,23 +130,32 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     ibaff = describe_integration_branch_auto_ff(root)
     if ibaff.get("enabled") is True:
         out["integration_branch_auto_ff"] = ibaff
-    out["fingerprint"] = pm_gui_mutation_fingerprint(root)
+    # ``fingerprint`` is the **narrow** outline fingerprint — it is what
+    # the bundled UI sends back as ``X-PM-Gui-Fingerprint`` on mutating
+    # POSTs. Do NOT include planning/constitution/shared/vision/git-HEAD
+    # here: those move constantly during normal IDE use and would reject
+    # legitimate PM edits as spurious conflicts.
+    out["fingerprint"] = outline_mutation_fingerprint(root)
+    # ``view_fingerprint`` is the broader change-detection token. Used by
+    # the polling refresh hook so the UI can spot "something changed
+    # elsewhere — refresh the view" without triggering optimistic-
+    # concurrency conflicts on writes.
+    out["view_fingerprint"] = pm_gui_mutation_fingerprint(root)
     return out
 
 
-def _pm_gui_finalize_state(root: Path) -> int:
-    """Run the GET-side background sync, then return the canonical fingerprint.
+def _pm_gui_finalize_state(root: Path) -> tuple[int, int]:
+    """Run the GET-side background sync, then return ``(narrow_fp, view_fp)``.
 
     Both ``GET /api/roadmap`` and ``GET /api/roadmap/fingerprint`` must run
     these side effects *before* computing the token they hand back to the
-    client. Failing to do so lets the client capture a fingerprint that
-    becomes stale during the same request, which then makes the next
-    mutation POST 412.
+    client. Returns a 2-tuple so callers can publish whichever token suits
+    them (mutation guard wants narrow; polling-refresh wants view).
     """
     if registry_remote_overlay_enabled(root):
         maybe_auto_git_fetch(root, resolve_git_remote(root))
     maybe_auto_integration_ff(root)
-    return pm_gui_mutation_fingerprint(root)
+    return outline_mutation_fingerprint(root), pm_gui_mutation_fingerprint(root)
 
 
 def register_core(api: APIRouter) -> None:
@@ -159,9 +171,10 @@ def register_core(api: APIRouter) -> None:
     @api.get("/roadmap")
     def api_roadmap() -> dict[str, Any]:
         root = get_repo_root()
-        # Run auto-fetch/auto-FF before reading the roadmap; the fingerprint
-        # baked into the payload by ``_roadmap_payload`` will reflect any
-        # HEAD/refs movement caused by these side effects.
+        # Run auto-fetch/auto-FF before reading the roadmap; both
+        # fingerprints baked into the payload by ``_roadmap_payload``
+        # will reflect any HEAD/refs movement caused by these side
+        # effects.
         _pm_gui_finalize_state(root)
         try:
             doc = load_roadmap(root)
@@ -171,7 +184,10 @@ def register_core(api: APIRouter) -> None:
 
     @api.get("/roadmap/fingerprint")
     def api_roadmap_fingerprint() -> dict[str, int]:
-        return {"fingerprint": _pm_gui_finalize_state(get_repo_root())}
+        narrow, view = _pm_gui_finalize_state(get_repo_root())
+        # ``fingerprint`` is the narrow outline token (mutation guard).
+        # ``view_fingerprint`` is the broad token (polling refresh).
+        return {"fingerprint": narrow, "view_fingerprint": view}
 
     @api.get("/governance-completion")
     def api_governance_completion() -> dict[str, bool]:
