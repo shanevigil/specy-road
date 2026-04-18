@@ -6,17 +6,17 @@ even when the user did nothing wrong: ``GET /api/roadmap`` invokes
 ``maybe_auto_git_fetch`` and ``maybe_auto_integration_ff``, which can
 move HEAD or update remote refs and thus shift the fingerprint
 *between* the GET that issued the client's token and the next mutation
-POST. The opt-in env var
-``SPECY_ROAD_GUI_PM_AUTO_RETRY_AUTOFF=1`` swaps in
-``guard_pm_gui_write_with_autoff_grace``: instead of a bare 412, the
-server returns 412 with ``retryable: true`` and a fresh
-``current_fingerprint``. The client's
-``performRoadmapMutation`` reissues the same mutation once with the
-fresh token, so the user's drag actually lands and no banner is shown.
+POST.
 
-Default behavior (env unset) must still produce 412 with no
-``retryable`` field — a regression guard for
-``tests/test_pm_gui_fingerprint.py``'s contract.
+The mutation guard's contract — default for every install — is:
+
+* the on-disk snapshot is canonical, so any mismatch is still 412;
+* the 412 body always includes ``retryable: true`` and a ``current_fingerprint``
+  freshly recomputed *after* re-running the same auto-fetch / auto-FF
+  side effects the GET endpoints run, so the bundled UI's transparent
+  one-shot retry can succeed without an extra round-trip;
+* a true conflict that survives the client's one retry still surfaces
+  the banner.
 """
 
 from __future__ import annotations
@@ -149,51 +149,16 @@ def _force_local_head_drift(work: Path) -> None:
     rro._LAST_INTEGRATION_FF_MONO.clear()
 
 
-def test_default_env_412_omits_retryable(
+def test_412_advertises_retryable_with_fresh_fingerprint(
     autoff_repo: tuple[Path, Path],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Regression guard: with the new env unset, 412 body has no ``retryable``."""
+    """The default mutation guard always returns 412 + retryable:true with a
+    ``current_fingerprint`` that matches what
+    ``GET /api/roadmap/fingerprint`` returns next, so the bundled UI's
+    one-shot retry can succeed without an extra round-trip."""
     work, _ = autoff_repo
     _enable_overlay_and_autoff(monkeypatch, work)
-    monkeypatch.delenv("SPECY_ROAD_GUI_PM_AUTO_RETRY_AUTOFF", raising=False)
-
-    from starlette.testclient import TestClient
-
-    from specy_road.gui_app import create_app
-
-    client = TestClient(create_app())
-    client.get("/api/roadmap")  # warm-up: lets first auto-FF settle
-    fp_stale = client.get("/api/roadmap").json()["fingerprint"]
-    _force_local_head_drift(work)
-
-    sibs = _siblings_of(work, "M0")
-    rotated = sibs[-1:] + sibs[:-1]
-    r = client.post(
-        "/api/outline/reorder",
-        headers={"X-PM-Gui-Fingerprint": str(fp_stale)},
-        json={"parent_id": "M0", "ordered_child_ids": rotated},
-    )
-    assert r.status_code == 412
-    det = r.json()["detail"]
-    assert isinstance(det, dict)
-    assert "current_fingerprint" in det
-    # Strict mode must NOT advertise retryable=True (preserves the existing
-    # client behavior of showing the banner immediately).
-    assert det.get("retryable") is not True
-
-
-def test_grace_env_412_advertises_retryable_with_fresh_fingerprint(
-    autoff_repo: tuple[Path, Path],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """With opt-in env, the lenient guard returns 412 + retryable:true and the
-    ``current_fingerprint`` it returns matches what
-    ``GET /api/roadmap/fingerprint`` returns next, so the client's one-shot
-    retry can succeed without an extra round-trip."""
-    work, _ = autoff_repo
-    _enable_overlay_and_autoff(monkeypatch, work)
-    monkeypatch.setenv("SPECY_ROAD_GUI_PM_AUTO_RETRY_AUTOFF", "1")
 
     from starlette.testclient import TestClient
 
@@ -219,8 +184,8 @@ def test_grace_env_412_advertises_retryable_with_fresh_fingerprint(
     assert det.get("retryable") is True
     assert isinstance(det.get("current_fingerprint"), int)
 
-    # The client's one-shot retry would now refresh and resend with the
-    # fresh fp. Simulate that here and assert the on-disk row identities
+    # The bundled UI's one-shot retry would now refresh and resend with
+    # the fresh fp. Simulate that and assert the on-disk row identities
     # (node_key, immutable across renumbering) actually rotated.
     fp_fresh = client.get("/api/roadmap/fingerprint").json()["fingerprint"]
     r2 = client.post(
@@ -237,14 +202,13 @@ def test_grace_env_412_advertises_retryable_with_fresh_fingerprint(
     )
 
 
-def test_grace_env_passthrough_when_token_matches(
+def test_passthrough_when_token_matches(
     autoff_repo: tuple[Path, Path],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Happy path under the lenient guard: matching token still returns 200."""
+    """Happy path under the default guard: matching token still returns 200."""
     work, _ = autoff_repo
     _enable_overlay_and_autoff(monkeypatch, work)
-    monkeypatch.setenv("SPECY_ROAD_GUI_PM_AUTO_RETRY_AUTOFF", "1")
 
     from starlette.testclient import TestClient
 
@@ -265,7 +229,7 @@ def test_grace_env_passthrough_when_token_matches(
     assert _sibling_keys_of(work, "M0") == keys_target
 
 
-def test_grace_env_outline_move_persists_after_retry(
+def test_outline_move_persists_after_retry(
     autoff_repo: tuple[Path, Path],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -275,7 +239,6 @@ def test_grace_env_outline_move_persists_after_retry(
     """
     work, _ = autoff_repo
     _enable_overlay_and_autoff(monkeypatch, work)
-    monkeypatch.setenv("SPECY_ROAD_GUI_PM_AUTO_RETRY_AUTOFF", "1")
 
     from starlette.testclient import TestClient
 
