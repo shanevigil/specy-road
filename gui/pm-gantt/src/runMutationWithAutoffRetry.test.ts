@@ -17,7 +17,7 @@ describe("runMutationWithAutoffRetry", () => {
     const mutation = vi
       .fn<() => Promise<void>>()
       .mockRejectedValueOnce(
-        new PmGuiConcurrencyError("stale", 412, 12345, true),
+        new PmGuiConcurrencyError("stale", 412, "12345", true),
       )
       .mockResolvedValueOnce(undefined);
     const loadSnapshot = vi.fn(async () => undefined);
@@ -35,7 +35,7 @@ describe("runMutationWithAutoffRetry", () => {
     const mutation = vi
       .fn<() => Promise<void>>()
       .mockRejectedValue(
-        new PmGuiConcurrencyError("stale", 412, 99999, false),
+        new PmGuiConcurrencyError("stale", 412, "99999", false),
       );
     const loadSnapshot = vi.fn(async () => undefined);
 
@@ -62,7 +62,7 @@ describe("runMutationWithAutoffRetry", () => {
     const mutation = vi
       .fn<() => Promise<void>>()
       .mockRejectedValue(
-        new PmGuiConcurrencyError("stale-twice", 412, 0, true),
+        new PmGuiConcurrencyError("stale-twice", 412, "0", true),
       );
     const loadSnapshot = vi.fn(async () => undefined);
 

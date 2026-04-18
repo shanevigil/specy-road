@@ -89,7 +89,10 @@ def test_pm_gui_mutation_stale_fingerprint_returns_412(
     det = body["detail"]
     assert isinstance(det, dict)
     assert "current_fingerprint" in det
-    assert isinstance(det["current_fingerprint"], int)
+    # String-encoded so JS Number precision can't lose digits on the
+    # round-trip — see specy_road.pm_gui_concurrency.
+    assert isinstance(det["current_fingerprint"], str)
+    assert det["current_fingerprint"].lstrip("-").isdigit()
 
 
 def test_pm_gui_mutation_missing_header_returns_428(

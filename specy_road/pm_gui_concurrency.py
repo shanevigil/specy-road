@@ -76,7 +76,10 @@ def require_pm_gui_mutation_fingerprint(repo_root: Path, expected: int) -> None:
                 "PM GUI data changed on disk since this client loaded it; "
                 "refresh and retry."
             ),
-            "current_fingerprint": current,
+            # String-encoded so the browser's float64 ``Number`` cannot
+            # lose precision when the client reuses this for the
+            # transparent retry. Mirrors GET /api/roadmap/fingerprint.
+            "current_fingerprint": str(current),
             "retryable": True,
         },
     )

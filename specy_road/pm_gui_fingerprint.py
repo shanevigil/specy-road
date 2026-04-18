@@ -20,12 +20,26 @@ Two tokens are exposed:
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import iter_roadmap_fingerprint_files
-from roadmap_gui_lib import pm_gui_mutation_fingerprint_base
+# ``roadmap_chunk_utils`` and ``roadmap_gui_lib`` live under
+# ``specy_road/bundled_scripts/`` and are imported via plain module
+# names. ``gui_app.py`` adds that directory to ``sys.path`` at server
+# startup, but if this module is imported standalone (e.g. by a one-off
+# diagnostic ``python -c`` or by tests that don't go through the FastAPI
+# app) the path bootstrap hasn't run yet. Add the directory here so the
+# module imports cleanly in any context.
+_BUNDLED = Path(__file__).resolve().parent / "bundled_scripts"
+if str(_BUNDLED) not in sys.path:
+    sys.path.insert(0, str(_BUNDLED))
 
-from specy_road.registry_remote_overlay_merge import roadmap_fingerprint_with_remote_refs
+from roadmap_chunk_utils import iter_roadmap_fingerprint_files  # noqa: E402
+from roadmap_gui_lib import pm_gui_mutation_fingerprint_base  # noqa: E402
+
+from specy_road.registry_remote_overlay_merge import (  # noqa: E402
+    roadmap_fingerprint_with_remote_refs,
+)
 
 
 def pm_gui_mutation_fingerprint(repo_root: Path) -> int:
