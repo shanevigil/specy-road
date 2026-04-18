@@ -19,8 +19,9 @@ name: Release publish
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+      # Glob (not regex): use `v*.*.*` so prerelease tags (e.g. `v0.1.0-rc2`) match;
+      # `resolve` + check_release_version still enforce a real release tag.
+      - 'v*.*.*'
   workflow_dispatch:
     # Manual smoke trigger; uses 'v0.0.0-dev' as a fake tag so we can
     # exercise the build/verify chain without publishing anything.
