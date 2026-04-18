@@ -162,8 +162,11 @@ function buildLlmPayload(llm: Record<string, string>) {
     azure_api_key: llm.azure_api_key || "",
     azure_deployment: llm.azure_deployment || "",
     azure_api_version: llm.azure_api_version || "",
+    azure_max_requests_per_minute: llm.azure_max_requests_per_minute || "",
+    azure_max_tokens_per_minute: llm.azure_max_tokens_per_minute || "",
     anthropic_api_key: llm.anthropic_api_key || "",
     anthropic_model: llm.anthropic_model || "",
+    anthropic_max_output_tokens: llm.anthropic_max_output_tokens || "",
   };
 }
 
@@ -533,6 +536,34 @@ export function SettingsDrawer({
               }
             />
           </label>
+          <label>
+            Max requests per minute (rolling 60s)
+            <input
+              inputMode="numeric"
+              value={llm.azure_max_requests_per_minute || ""}
+              placeholder="250"
+              onChange={(e) =>
+                setLlm({
+                  ...llm,
+                  azure_max_requests_per_minute: e.target.value,
+                })
+              }
+            />
+          </label>
+          <label>
+            Max tokens per minute (rolling 60s)
+            <input
+              inputMode="numeric"
+              value={llm.azure_max_tokens_per_minute || ""}
+              placeholder="250000"
+              onChange={(e) =>
+                setLlm({
+                  ...llm,
+                  azure_max_tokens_per_minute: e.target.value,
+                })
+              }
+            />
+          </label>
         </>
       ) : null}
       {backend === "anthropic" ? (
@@ -556,6 +587,20 @@ export function SettingsDrawer({
                 setLlm({ ...llm, anthropic_model: e.target.value })
               }
               placeholder="claude-sonnet-4-20250514"
+            />
+          </label>
+          <label>
+            Max output tokens
+            <input
+              inputMode="numeric"
+              value={llm.anthropic_max_output_tokens || ""}
+              onChange={(e) =>
+                setLlm({
+                  ...llm,
+                  anthropic_max_output_tokens: e.target.value,
+                })
+              }
+              placeholder="e.g. 8192 (required by Anthropic API)"
             />
           </label>
         </>

@@ -23,6 +23,11 @@ type Props = {
    * Keeps scroll-synced rows aligned with the feature list.
    */
   stackHeaderPx?: number;
+  /**
+   * Subtract from each row’s dependency depth for layout (leading column crop).
+   * Column labels still show absolute 1-based step numbers (depthOffset + column + 1).
+   */
+  depthOffset?: number;
   depths: Record<string, number>;
   /** Steps spanned per row (default 1 when missing). */
   spans?: Record<string, number>;
@@ -33,6 +38,8 @@ type Props = {
   /** Rows to emphasize: full transitive prerequisite closure (explicit + inherited-from-ancestor deps). */
   highlightRowIds?: ReadonlySet<string> | null;
   onSelect: (id: string) => void;
+  /** Double-click a row’s bar to open the same title + planning modal as outline double-click. */
+  onBarDoubleClick?: (id: string) => void;
   /** Clicks on empty chart area (not bars) save dependency edit when active. */
   onChartBackgroundMouseDown?: () => void;
 };
@@ -56,6 +63,7 @@ export function GanttPane({
   registryByNode,
   gitEnrichment,
   stackHeaderPx = 52,
+  depthOffset = 0,
   depths,
   spans = {},
   edges,
@@ -63,14 +71,18 @@ export function GanttPane({
   selectedId,
   highlightRowIds = null,
   onSelect,
+  onBarDoubleClick,
   onChartBackgroundMouseDown,
 }: Props) {
   const n = orderedIds.length;
   if (n === 0) return null;
 
+  const visDepth = (id: string) =>
+    Math.max(0, (depths[id] ?? 0) - depthOffset);
+
   let maxExtent = 0;
   for (const id of orderedIds) {
-    const start = depths[id] ?? 0;
+    const start = visDepth(id);
     const span = spans[id] ?? 1;
     maxExtent = Math.max(maxExtent, start + span);
   }
@@ -149,7 +161,7 @@ export function GanttPane({
             fontSize={10}
             fill="var(--muted)"
           >
-            {c + 1}
+            {depthOffset + c + 1}
           </text>
         </g>
       ))}
@@ -195,7 +207,7 @@ export function GanttPane({
         : null}
       {orderedIds.map((id, i) => {
         const node = nodesById[id];
-        const d = depths[id] ?? 0;
+        const d = visDepth(id);
         const span = spans[id] ?? 1;
         const bw = barWidthPx(span);
         const y = dataStartY + i * ROW_H;
@@ -229,15 +241,27 @@ export function GanttPane({
             style={{ cursor: "pointer", pointerEvents: "all" }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => onSelect(id)}
-          />
+            onDoubleClick={
+              onBarDoubleClick
+                ? (e) => {
+                    e.preventDefault();
+                    onBarDoubleClick(id);
+                  }
+                : undefined
+            }
+          >
+            {onBarDoubleClick ? (
+              <title>Double-click to open title and planning editor</title>
+            ) : null}
+          </rect>
         );
       })}
       {visibleEdges.map(({ from: dep, to: tgt, kind }) => {
         const yi = rowOf[dep];
         const yj = rowOf[tgt];
         if (yi === undefined || yj === undefined) return null;
-        const d0 = depths[dep] ?? 0;
-        const d1 = depths[tgt] ?? 0;
+        const d0 = visDepth(dep);
+        const d1 = visDepth(tgt);
         const w0 = barWidthPx(spans[dep] ?? 1);
         const x0 = PAD_L + d0 * UNIT + w0;
         const x1 = PAD_L + d1 * UNIT;

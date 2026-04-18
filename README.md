@@ -40,7 +40,7 @@ Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install
 1. Prefer **`specy-road gui`** for the dashboard, or edit `roadmap/` and `planning/` directly ([docs/pm-gui.md](docs/pm-gui.md)).
 2. Run **`specy-road export`** and **`specy-road validate`** before you commit.
 
-More detail: [docs/pm-workflow.md](docs/pm-workflow.md).
+More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review** in the Gantt UI: [docs/pm-llm-review.md](docs/pm-llm-review.md).
 
 ### For developers
 

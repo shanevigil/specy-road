@@ -5,14 +5,22 @@ const API = "/api";
 /** Must match server [`specy_road.pm_gui_concurrency.PM_GUI_FINGERPRINT_HEADER`]. */
 export const PM_GUI_FINGERPRINT_HEADER = "X-PM-Gui-Fingerprint";
 
-let getPmGuiFingerprint: () => number | null = () => null;
+/**
+ * Fingerprints are 64-bit-ish integers (sums of file ``mtime_ns``) that
+ * routinely exceed 2**53, so they cannot survive a round-trip through
+ * ``Number`` (IEEE 754 float64) without losing precision. The server
+ * emits them as JSON strings; we keep them as strings end-to-end.
+ */
+export type Fingerprint = string;
+
+let getPmGuiFingerprint: () => Fingerprint | null = () => null;
 
 /** Called from App after roadmap load so mutations can send the current token. */
-export function setPmGuiFingerprintGetter(fn: () => number | null): void {
+export function setPmGuiFingerprintGetter(fn: () => Fingerprint | null): void {
   getPmGuiFingerprint = fn;
 }
 
-function fingerprintForMutation(): number {
+function fingerprintForMutation(): Fingerprint {
   const fp = getPmGuiFingerprint();
   if (fp == null) {
     throw new Error("Roadmap fingerprint not loaded; wait for sync.");
@@ -25,46 +33,62 @@ function pmGuiMutationHeaders(
 ): Record<string, string> {
   return {
     ...base,
-    [PM_GUI_FINGERPRINT_HEADER]: String(fingerprintForMutation()),
+    [PM_GUI_FINGERPRINT_HEADER]: fingerprintForMutation(),
   };
+}
+
+/** Coerce server-sent fingerprint values (string today, number historically) to string. */
+function coerceFingerprint(raw: unknown): Fingerprint | undefined {
+  if (typeof raw === "string" && raw.length > 0) return raw;
+  if (typeof raw === "number" && Number.isFinite(raw)) return String(raw);
+  return undefined;
 }
 
 export class PmGuiConcurrencyError extends Error {
   readonly httpStatus: number;
-  readonly currentFingerprint?: number;
+  readonly currentFingerprint?: Fingerprint;
+  /** Server hint: this 412 came from a benign in-server auto-FF/fetch race
+   *  and the client may transparently retry once with the new token. */
+  readonly retryable: boolean;
 
   constructor(
     message: string,
     httpStatus: number,
-    currentFingerprint?: number,
+    currentFingerprint?: Fingerprint,
+    retryable = false,
   ) {
     super(message);
     this.name = "PmGuiConcurrencyError";
     this.httpStatus = httpStatus;
     this.currentFingerprint = currentFingerprint;
+    this.retryable = retryable;
   }
 }
 
 function throwFromMutationFailure(status: number, text: string): never {
   let message = text || `HTTP ${status}`;
-  let currentFingerprint: number | undefined;
+  let currentFingerprint: Fingerprint | undefined;
+  let retryable = false;
   try {
     const j = JSON.parse(text) as { detail?: unknown };
     const d = j.detail;
     if (typeof d === "string") {
       message = d;
     } else if (d != null && typeof d === "object") {
-      const o = d as { message?: string; current_fingerprint?: number };
+      const o = d as {
+        message?: string;
+        current_fingerprint?: unknown;
+        retryable?: boolean;
+      };
       if (typeof o.message === "string") message = o.message;
-      if (typeof o.current_fingerprint === "number") {
-        currentFingerprint = o.current_fingerprint;
-      }
+      currentFingerprint = coerceFingerprint(o.current_fingerprint);
+      if (o.retryable === true) retryable = true;
     }
   } catch {
     /* keep message */
   }
   if (status === 412 || status === 428) {
-    throw new PmGuiConcurrencyError(message, status, currentFingerprint);
+    throw new PmGuiConcurrencyError(message, status, currentFingerprint, retryable);
   }
   throw new Error(message);
 }
@@ -412,19 +436,23 @@ export async function testLlmSettings(
   };
 }
 
-export async function fetchRoadmapFingerprint(): Promise<number> {
+export async function fetchRoadmapFingerprint(): Promise<Fingerprint> {
   const r = await fetch(`${API}/roadmap/fingerprint`);
-  const raw = (await r.json()) as { fingerprint?: number; detail?: unknown };
+  const raw = (await r.json()) as {
+    fingerprint?: unknown;
+    detail?: unknown;
+  };
   if (!r.ok) {
     const d = raw.detail;
     throw new Error(
       typeof d === "string" ? d : JSON.stringify(raw),
     );
   }
-  if (typeof raw.fingerprint !== "number") {
+  const fp = coerceFingerprint(raw.fingerprint);
+  if (fp == null) {
     throw new Error("invalid fingerprint response");
   }
-  return raw.fingerprint;
+  return fp;
 }
 
 /** LLM settings object as stored in gui-settings / API (values may be strings). */

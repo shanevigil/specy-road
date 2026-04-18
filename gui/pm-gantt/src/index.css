@@ -127,6 +127,38 @@ button {
   flex-shrink: 0;
 }
 
+/* Inline variant — lives in the title row (right of the title, left of
+ * the git status box) so the page does not shift down when the banner
+ * activates. No row background, no bottom border; just the spinner +
+ * status label sitting next to the existing chrome. */
+.roadmap-sync-banner--inline {
+  padding: 0.15rem 0.5rem;
+  border-bottom: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: var(--muted);
+  white-space: nowrap;
+  /* Keep the label readable but secondary to the title / git status. */
+}
+
+.roadmap-sync-banner--inline .roadmap-sync-label {
+  /* Truncate gracefully if the label and the git status box ever crowd
+   * each other on a narrow window. The wait-message suffix can push
+   * the label past 40ch ("Saving N changes… — saves pending - please
+   * wait."), so allow a generous max-width before clipping. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56ch;
+}
+
+.roadmap-sync-banner--inline .roadmap-sync-spinner {
+  /* Slightly smaller in the title row so it sits comfortably with the
+   * other inline icon-buttons. */
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 2px;
+}
+
 .roadmap-sync-spinner {
   box-sizing: border-box;
   width: 1.1rem;
@@ -537,6 +569,119 @@ button {
   color: #ffcdd2;
   border-color: rgba(239, 83, 80, 0.75);
   animation-name: governance-pulse-dark;
+}
+
+/* ---------------------------------------------------------------------
+ * Optimistic-UI: per-row pending pulse for in-flight outline mutations.
+ *
+ * The PM Gantt now snaps the affected row to its post-mutation position
+ * the moment the user acts; a pulsing blue outline tells them the
+ * change is still being saved. On success the pulse gracefully fades
+ * (``--settling``); on failure a single red flash plays before the
+ * row reverts (``--fail``).
+ *
+ * Visual treatment mirrors the ``governance-pulse`` keyframe used for
+ * the red header doc buttons (``app-header-doc-btn--incomplete``),
+ * recolored to the accent blue.
+ * ------------------------------------------------------------------- */
+.outline-row-pending td {
+  background: rgba(25, 118, 210, 0.06);
+  animation: outline-pending-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes outline-pending-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 2px 0 0 0 rgba(25, 118, 210, 0.55),
+      inset 0 0 8px 0 rgba(25, 118, 210, 0.1);
+  }
+  50% {
+    box-shadow:
+      inset 3px 0 0 0 rgba(25, 118, 210, 0.85),
+      inset 0 0 14px 0 rgba(25, 118, 210, 0.25);
+  }
+}
+
+/* Settling: post-success graceful fade-out (250ms, single pass). */
+.outline-row-pending--settling td {
+  animation: outline-pending-settle 250ms ease-out forwards;
+}
+
+@keyframes outline-pending-settle {
+  from {
+    background: rgba(25, 118, 210, 0.06);
+    box-shadow:
+      inset 3px 0 0 0 rgba(25, 118, 210, 0.85),
+      inset 0 0 14px 0 rgba(25, 118, 210, 0.25);
+  }
+  to {
+    background: transparent;
+    box-shadow:
+      inset 0 0 0 0 rgba(25, 118, 210, 0),
+      inset 0 0 0 0 rgba(25, 118, 210, 0);
+  }
+}
+
+/* Fail: single 400ms red flash before the row reverts. */
+.outline-row-pending--fail td {
+  animation: outline-pending-fail 400ms ease-out forwards;
+}
+
+@keyframes outline-pending-fail {
+  0% {
+    background: rgba(211, 47, 47, 0.12);
+    box-shadow: inset 3px 0 0 0 rgba(211, 47, 47, 0.9);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 0 rgba(211, 47, 47, 0);
+  }
+}
+
+/* Dark theme: lift opacity for visibility on dark surfaces. */
+@keyframes outline-pending-pulse-dark {
+  0%,
+  100% {
+    box-shadow:
+      inset 2px 0 0 0 rgba(100, 181, 246, 0.55),
+      inset 0 0 8px 0 rgba(100, 181, 246, 0.12);
+  }
+  50% {
+    box-shadow:
+      inset 3px 0 0 0 rgba(100, 181, 246, 0.9),
+      inset 0 0 14px 0 rgba(100, 181, 246, 0.3);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"])
+    .outline-row-pending td {
+    background: rgba(100, 181, 246, 0.08);
+    animation-name: outline-pending-pulse-dark;
+  }
+}
+
+:root[data-theme="dark"] .outline-row-pending td {
+  background: rgba(100, 181, 246, 0.08);
+  animation-name: outline-pending-pulse-dark;
+}
+
+/* Reduced motion: replace the pulse with a static blue inset border so
+ * the in-flight state is still visible without animating. */
+@media (prefers-reduced-motion: reduce) {
+  .outline-row-pending td,
+  .outline-row-pending--settling td,
+  .outline-row-pending--fail td {
+    animation: none;
+    box-shadow: inset 3px 0 0 0 rgba(25, 118, 210, 0.7);
+    background: rgba(25, 118, 210, 0.05);
+  }
+
+  .outline-row-pending--fail td {
+    box-shadow: inset 3px 0 0 0 rgba(211, 47, 47, 0.85);
+    background: rgba(211, 47, 47, 0.08);
+  }
 }
 
 .app-header-toolbar {
@@ -1613,6 +1758,18 @@ button {
 
 .modal-edit-planning-ancestor-path--missing {
   opacity: 0.65;
+}
+
+.modal-edit-planning-roadmap-hint {
+  margin: 0.35rem 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--muted) 92%, var(--fg));
+}
+
+.modal-edit-planning-roadmap-hint--review {
+  flex-shrink: 0;
+  margin-top: 0;
 }
 
 .modal-edit-llm-review-btn {

@@ -89,7 +89,15 @@ For a full developer install (tests, editable package), see [contributor-guide.m
 
 ## Open and use the roadmap dashboard
 
-Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click planning editor and markdown workspace).
+Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling reorder, double-click a row in the outline **or** its bar in the Gantt chart to open the planning editor and markdown workspace).
+
+### Gate rows (`type`: `gate`)
+
+**Gates** are **PM hold points**: they document why work is paused, what clears the hold, and what was decided—see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate) for graph rules (leaf under `vision` or `phase`, list the gate’s `node_key` on a phase or ancestor’s `dependencies` to block downstream leaves until the gate is **Complete**).
+
+- **Not dev pickup** — `do-next-available-task` does not claim gates; **`roadmap/registry.yaml` must not** reference a gate’s `node_id`.
+- **Same editor as tasks** — Double-click the gate row (outline or Gantt bar) to open title + planning. **Create planning file** / `specy-road scaffold-planning` use a **gate-specific** Markdown template (why the gate exists, criteria to clear, decisions, resolution, references) instead of the full feature-sheet outline.
+- **LLM Review** — When the selected node is a gate, the model is asked to follow the **gate** section outline (not Intent / Approach / Tasks).
 
 ### Gantt PM UI (FastAPI + React)
 
@@ -172,6 +180,8 @@ In the detail panel, choose a **status** from the dropdown and click **Save stat
 
 Configure credentials in **Settings** (gear area in the sidebar) under the **LLM** tab, or set the same **environment variables** your team documents (see below). Use **Test LLM** before relying on it.
 
+For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-llm-review.md](pm-llm-review.md)**.
+
 ---
 
 ## Optional dashboard settings (sidebar → Settings)
@@ -205,9 +215,10 @@ If your company already set **environment variables** for the CLI reviewer, thos
 
 **LLM environment variables (CLI and GUI):**
 
-- **Azure OpenAI:** `SPECY_ROAD_AZURE_OPENAI_ENDPOINT`, `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`, and optionally `SPECY_ROAD_OPENAI_API_VERSION` (default `2024-02-15-preview`).
-- **OpenAI or compatible:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`). Use a compatible **base URL** for OpenAI-shaped proxies (for example OpenRouter or a gateway); for Anthropic’s direct API, use the **Anthropic** backend below instead.
-- **Anthropic (Claude):** `SPECY_ROAD_ANTHROPIC_API_KEY`, optional `SPECY_ROAD_ANTHROPIC_MODEL` (default in the reviewer is `claude-sonnet-4-20250514` when unset).
+- **Azure OpenAI:** Prefer **`SPECY_ROAD_`** names: `SPECY_ROAD_AZURE_OPENAI_ENDPOINT` (resource root only, e.g. `https://<resource>.openai.azure.com` — portal paste paths are normalized automatically), `SPECY_ROAD_AZURE_OPENAI_API_KEY`, `SPECY_ROAD_AZURE_OPENAI_DEPLOYMENT`. API version: `SPECY_ROAD_OPENAI_API_VERSION` or **`AZURE_OPENAI_API_VERSION`** (default `2024-02-15-preview` if neither is set). **Aliases** (used when the matching `SPECY_ROAD_*` value is unset): `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_DEPLOYMENT_NAME` or `AZURE_OPENAI_DEPLOYMENT`. Optional **`SPECY_ROAD_AZURE_OPENAI_TIMEOUT_S`**: HTTP read timeout in seconds for the Azure client (default **300**). Optional newer-chat flags: **`SPECY_ROAD_AZURE_CHAT_USE_MAX_COMPLETION_TOKENS`** (`1`/`true`/`yes`) plus **`SPECY_ROAD_AZURE_MAX_COMPLETION_TOKENS`** or **`AZURE_OPENAI_MAX_TOKENS`** (integer) to send `max_completion_tokens` instead of relying on the service default.
+- **Azure throughput (LLM review / Test LLM, OpenAI chat completions only):** In PM Gantt **Settings → LLM** with backend **azure**, **Max requests per minute** and **Max tokens per minute** apply a **process-local** limiter using **rolling 60-second** windows (not calendar clock minutes). Values are stored like other LLM fields and injected as **`AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE`** and **`AZURE_OPENAI_MAX_TOKENS_PER_MINUTE`**. If you leave a field blank, defaults are **250** requests/min and **250000** tokens/min. To tune from the shell instead, set those env vars or use **`SPECY_ROAD_LLM_RPM_MAX`** / **`SPECY_ROAD_LLM_TPM_MAX`** (when non-empty, they **override** the Azure-named values for the same axis). **`0`** on an axis means unlimited for that axis. Switching the saved backend away from **azure** clears the two `AZURE_OPENAI_MAX_*` throttle variables from the running server process so they do not affect OpenAI or Anthropic sessions.
+- **OpenAI or compatible:** `SPECY_ROAD_OPENAI_API_KEY`, optional `SPECY_ROAD_OPENAI_BASE_URL`, optional `SPECY_ROAD_OPENAI_MODEL` (default `gpt-4o-mini`). Use a compatible **base URL** for OpenAI-shaped proxies (for example OpenRouter or a gateway); for Anthropic’s direct API, use the **Anthropic** backend below instead. Optional throughput caps for the same chat path as above: **`SPECY_ROAD_LLM_RPM_MAX`** and **`SPECY_ROAD_LLM_TPM_MAX`** (or **`AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE`** / **`AZURE_OPENAI_MAX_TOKENS_PER_MINUTE`** if you reuse those names in the environment).
+- **Anthropic (Claude):** `SPECY_ROAD_ANTHROPIC_API_KEY`, optional `SPECY_ROAD_ANTHROPIC_MODEL` (default in the reviewer is `claude-sonnet-4-20250514` when unset), and **`SPECY_ROAD_ANTHROPIC_MAX_TOKENS`** (required integer: Anthropic’s Messages API always needs a completion budget). You can set the env var in your shell or use **Max output tokens** under the Anthropic backend in PM Gantt Settings (saved settings inject the same env name when you run review from the GUI).
 
 Do not commit API keys into the repository. Review any data-handling policy before sending content to an external model.
 

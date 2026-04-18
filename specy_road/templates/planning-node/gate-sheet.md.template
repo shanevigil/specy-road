@@ -1,0 +1,23 @@
+## Why this gate exists
+
+What you are pausing or proving before work continues. Keep this short; do not restate the roadmap dependency graph (that lives in JSON and the brief).
+
+## Criteria to clear
+
+What must be true before the gate is marked **Complete** (sign-off, policy, external dependency, release window, etc.).
+
+## Decisions and notes
+
+Capture decisions, owners, dates, and links (tickets, ADRs, meeting notes).
+
+## Resolution
+
+When the gate is cleared: what changed, who approved, and any follow-ups left to milestones or tasks.
+
+### Tasks (if any)
+
+- [ ] Task Description
+
+## References
+
+- Roadmap chunk for `{{NODE_ID}}`

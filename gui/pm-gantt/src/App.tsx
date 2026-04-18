@@ -43,6 +43,7 @@ import {
 } from "./parentStatusRollup";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
+import { minDependencyDepth } from "./ganttDepthOffset";
 import { GitWorkflowStatusLabel } from "./components/GitWorkflowStatusLabel";
 import { GanttPane } from "./components/GanttPane";
 import { OutlineTable } from "./components/OutlineTable";
@@ -66,6 +67,20 @@ import {
 } from "./repoBrowserPrefs";
 import { PmGuiHandlersProvider } from "./pmGuiContext";
 import { useRoadmapActionQueue } from "./roadmapSync";
+import { runMutationWithAutoffRetry } from "./runMutationWithAutoffRetry";
+import { PendingMutationsProvider } from "./pendingMutations";
+import { usePendingMutationsState } from "./usePendingMutationsState";
+import { isRowLocked } from "./pendingMutationsContext";
+import {
+  nextPendingToken,
+  type PendingKind,
+} from "./pendingMutationsCore";
+import {
+  applyOptimistic,
+  buildAddPlaceholder,
+  isPendingPlaceholderId,
+  type OptimisticOp,
+} from "./optimisticOutline";
 
 const EditModal = lazy(() =>
   import("./components/EditModal").then((m) => ({ default: m.EditModal })),
@@ -172,7 +187,9 @@ export default function App() {
     return 5;
   });
 
-  const lastFingerprintRef = useRef<number | null>(null);
+  // Fingerprint is a string end-to-end (server emits base-10 strings to
+  // dodge JS Number precision loss for values > 2**53).
+  const lastFingerprintRef = useRef<string | null>(null);
 
   const [splitPct, setSplitPct] = useState(() => {
     const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.splitPct);
@@ -368,32 +385,202 @@ export default function App() {
     await loadSnapshot();
   }, [loadSnapshot]);
 
-  const { busy: roadmapBusy, busyLabel, runRoadmapAction } =
-    useRoadmapActionQueue();
+  const {
+    busy: roadmapBusy,
+    busyDepth,
+    busyLabel,
+    queueOverloaded,
+    runRoadmapAction,
+  } = useRoadmapActionQueue();
+
+  /**
+   * One-shot informational suffix shown after ``busyLabel`` when the
+   * user attempts an action that's blocked because the row's previous
+   * mutation hasn't settled yet, or because the queue is overloaded.
+   * Cleared automatically when the queue empties or after 2 seconds —
+   * whichever comes first.
+   */
+  const [lockReason, setLockReason] = useState<string | null>(null);
+  const lockReasonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const triggerWaitMessage = useCallback((reason: string) => {
+    setLockReason(reason);
+    if (lockReasonTimerRef.current != null) {
+      clearTimeout(lockReasonTimerRef.current);
+    }
+    lockReasonTimerRef.current = setTimeout(() => {
+      setLockReason(null);
+      lockReasonTimerRef.current = null;
+    }, 2000);
+  }, []);
+  // Clear the wait-message immediately the moment the queue empties,
+  // even if the 2 s timer hasn't fired yet — the warning is stale.
+  useEffect(() => {
+    if (!roadmapBusy && lockReason != null) setLockReason(null);
+  }, [roadmapBusy, lockReason]);
+
+  // Pending-row state machine (drives the blue pulse on rows whose
+  // mutations are in flight). See pendingMutations.tsx.
+  const pendingMutations = usePendingMutationsState();
+
+  /** True if ``id`` is mid-mutation (placeholder ids count too). */
+  const isLockedTarget = useCallback(
+    (id: string | null | undefined): boolean => {
+      if (id == null) return false;
+      if (isPendingPlaceholderId(id)) return true;
+      return isRowLocked(pendingMutations, id);
+    },
+    [pendingMutations],
+  );
+
+  /** Wait-message text appended after the busy label when blocked. */
+  const WAIT_MESSAGE = "saves pending - please wait.";
+
+  /**
+   * Run ``fn`` only if neither the queue is overloaded nor ``id`` is
+   * mid-mutation. Otherwise fire the inline wait message and bail.
+   * Used in click handlers for buttons that target a specific row.
+   */
+  const guardRowAction = useCallback(
+    (id: string | null | undefined, fn: () => void): void => {
+      if (queueOverloaded) {
+        triggerWaitMessage(WAIT_MESSAGE);
+        return;
+      }
+      if (isLockedTarget(id)) {
+        triggerWaitMessage(WAIT_MESSAGE);
+        return;
+      }
+      fn();
+    },
+    [queueOverloaded, isLockedTarget, triggerWaitMessage],
+  );
+
+  // Optimistic-op registry. The render path applies these on top of
+  // the server-truth `data` so OutlineTable / GanttPane see the
+  // post-mutation tree immediately, before the server's ack arrives.
+  // Refs (vs state) so writes are synchronous; ``optimisticTick``
+  // forces a re-render after every mutation.
+  const optimisticOpsRef = useRef<Map<string, OptimisticOp>>(new Map());
+  const [optimisticTick, setOptimisticTick] = useState(0);
+  const bumpOptimistic = useCallback(
+    () => setOptimisticTick((t) => (t + 1) | 0),
+    [],
+  );
 
   const performRoadmapMutation = useCallback(
     (label: string, mutation: () => Promise<void>) =>
       runRoadmapAction(label, async () => {
-        try {
-          await mutation();
-        } catch (e: unknown) {
-          if (e instanceof PmGuiConcurrencyError) {
-            await loadSnapshot();
-            setErr(
-              "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
-            );
-            return;
-          }
-          throw e;
+        const outcome = await runMutationWithAutoffRetry(mutation, loadSnapshot);
+        if (outcome === "conflict") {
+          setErr(
+            "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
+          );
+          return;
         }
         await loadSnapshot();
       }),
     [runRoadmapAction, loadSnapshot],
   );
 
+  /**
+   * Like {@link performRoadmapMutation} but also registers an
+   * optimistic-UI overlay so the affected row(s) snap to their new
+   * position immediately and pulse blue while the network call
+   * completes. On success the pulse fades out; on failure the row
+   * reverts and a brief red flash plays.
+   *
+   * Pass ``op = null`` for mutations that don't change tree shape
+   * (e.g. title / status edits) — only the pending-pulse hint runs.
+   */
+  /**
+   * Server-truth + optimistic overlay merged into the snapshot the UI
+   * actually renders. ``data`` remains the canonical post-loadSnapshot
+   * value (writes ``lastFingerprintRef`` etc.); everything in the
+   * render path reads from ``displayData`` instead.
+   */
+  const displayData = useMemo(() => {
+    if (!data) return data;
+    if (optimisticOpsRef.current.size === 0) return data;
+    void optimisticTick; // dependency: re-run when ops change
+    return applyOptimistic(data, [...optimisticOpsRef.current.values()]);
+  }, [data, optimisticTick]);
+
+  const performOptimisticMutation = useCallback(
+    (
+      label: string,
+      op: OptimisticOp | null,
+      ids: string[],
+      kind: PendingKind,
+      mutation: () => Promise<void>,
+    ) => {
+      const token = nextPendingToken();
+      pendingMutations.begin(token, ids, kind);
+      if (op) {
+        optimisticOpsRef.current.set(token, op);
+        bumpOptimistic();
+      }
+      const cleanup = (success: boolean) => {
+        if (optimisticOpsRef.current.delete(token)) bumpOptimistic();
+        if (success) pendingMutations.end(token);
+        else pendingMutations.fail(token);
+      };
+      return runRoadmapAction(label, async () => {
+        try {
+          const outcome = await runMutationWithAutoffRetry(
+            mutation,
+            loadSnapshot,
+          );
+          if (outcome === "conflict") {
+            setErr(
+              "Roadmap or workspace changed elsewhere; the view was refreshed. Retry if needed.",
+            );
+            cleanup(false);
+            return;
+          }
+          await loadSnapshot();
+          cleanup(true);
+        } catch (e) {
+          cleanup(false);
+          throw e;
+        }
+      });
+    },
+    [runRoadmapAction, loadSnapshot, pendingMutations, bumpOptimistic],
+  );
+
   const pmGuiHandlers = useMemo(
     () => ({ onConcurrencyConflict: loadSnapshot }),
     [loadSnapshot],
+  );
+
+  /** Convenience wrappers used by indent/outdent buttons + keyboard. */
+  const triggerIndent = useCallback(
+    (nodeId: string) =>
+      performOptimisticMutation(
+        "Updating outline…",
+        { kind: "indent", nodeId },
+        [nodeId],
+        "indent",
+        async () => {
+          await indentNode(nodeId);
+        },
+      ).catch((e: unknown) => setErr(String(e))),
+    [performOptimisticMutation],
+  );
+  const triggerOutdent = useCallback(
+    (nodeId: string) =>
+      performOptimisticMutation(
+        "Updating outline…",
+        { kind: "outdent", nodeId },
+        [nodeId],
+        "outdent",
+        async () => {
+          await outdentNode(nodeId);
+        },
+      ).catch((e: unknown) => setErr(String(e))),
+    [performOptimisticMutation],
   );
 
   useEffect(() => {
@@ -475,17 +662,24 @@ export default function App() {
   const applyDepEdit = useCallback(async () => {
     const nid = depEditIdRef.current;
     if (!nid) return;
-    const val = [...depDraftKeysRef.current].sort().join(" ");
+    const draft = [...depDraftKeysRef.current];
+    const val = [...draft].sort().join(" ");
     try {
       setErr(null);
-      await performRoadmapMutation("Saving dependencies…", async () => {
-        await patchNode(nid, [{ key: "dependencies", value: val }]);
-        cancelDepEdit();
-      });
+      await performOptimisticMutation(
+        "Saving dependencies…",
+        { kind: "dep", nodeId: nid, explicitNodeKeys: draft },
+        [nid],
+        "dep",
+        async () => {
+          await patchNode(nid, [{ key: "dependencies", value: val }]);
+          cancelDepEdit();
+        },
+      );
     } catch (e: unknown) {
       setErr(String(e));
     }
-  }, [performRoadmapMutation, cancelDepEdit]);
+  }, [performOptimisticMutation, cancelDepEdit]);
 
   const repoFolderLabel = useMemo(
     () => repoRootFolderDisplayName(repo),
@@ -493,8 +687,8 @@ export default function App() {
   );
 
   const byId = useMemo(
-    () => (data ? nodesByIdFrom(data.nodes) : {}),
-    [data],
+    () => (displayData ? nodesByIdFrom(displayData.nodes) : {}),
+    [displayData],
   );
 
   /** Gates must be under vision/phase; root-level rows have no parent_id. */
@@ -505,59 +699,65 @@ export default function App() {
   }, [selectedId, byId]);
 
   const displayStatusById = useMemo(() => {
-    if (!data?.ordered_ids) return {} as Record<string, string>;
+    if (!displayData?.ordered_ids) return {} as Record<string, string>;
     return buildDisplayStatusWithPhaseRollup(
-      data.ordered_ids,
+      displayData.ordered_ids,
       byId,
-      data.registry_by_node,
+      displayData.registry_by_node,
     );
-  }, [data, byId]);
+  }, [displayData, byId]);
 
   /** Full bottom-up effective status (for hiding complete subtrees). */
   const effectiveDisplayById = useMemo(() => {
-    if (!data?.ordered_ids) return {} as Record<string, string>;
+    if (!displayData?.ordered_ids) return {} as Record<string, string>;
     return computeEffectiveDisplayForAllNodes(
-      data.ordered_ids,
+      displayData.ordered_ids,
       byId,
-      data.registry_by_node,
+      displayData.registry_by_node,
     );
-  }, [data, byId]);
+  }, [displayData, byId]);
 
   const visibleOrderedIds = useMemo(() => {
-    if (!data?.ordered_ids) return [] as string[];
-    if (!hideCompleteActive) return data.ordered_ids;
-    return data.ordered_ids.filter(
+    if (!displayData?.ordered_ids) return [] as string[];
+    if (!hideCompleteActive) return displayData.ordered_ids;
+    return displayData.ordered_ids.filter(
       (id) =>
         (effectiveDisplayById[id] ?? "").trim().toLowerCase() !== "complete",
     );
-  }, [data?.ordered_ids, hideCompleteActive, effectiveDisplayById]);
+  }, [displayData?.ordered_ids, hideCompleteActive, effectiveDisplayById]);
 
   const visibleRowDepths = useMemo(() => {
-    if (!data?.ordered_ids || !data.row_depths) return [] as number[];
-    if (!hideCompleteActive) return data.row_depths;
+    if (!displayData?.ordered_ids || !displayData.row_depths) return [] as number[];
+    if (!hideCompleteActive) return displayData.row_depths;
     const out: number[] = [];
-    for (let i = 0; i < data.ordered_ids.length; i++) {
-      const id = data.ordered_ids[i];
+    for (let i = 0; i < displayData.ordered_ids.length; i++) {
+      const id = displayData.ordered_ids[i];
       if (
         (effectiveDisplayById[id] ?? "").trim().toLowerCase() !== "complete"
       ) {
-        out.push(data.row_depths[i] ?? 0);
+        out.push(displayData.row_depths[i] ?? 0);
       }
     }
     return out;
-  }, [data?.ordered_ids, data?.row_depths, hideCompleteActive, effectiveDisplayById]);
+  }, [displayData?.ordered_ids, displayData?.row_depths, hideCompleteActive, effectiveDisplayById]);
+
+  /** Crop leading empty chart columns when hiding complete (min step among visible rows). */
+  const ganttDepthOffset = useMemo(() => {
+    if (!hideCompleteActive || !displayData?.dependency_depths) return 0;
+    return minDependencyDepth(visibleOrderedIds, displayData.dependency_depths);
+  }, [hideCompleteActive, displayData?.dependency_depths, visibleOrderedIds]);
 
   /** When hiding complete rows, move selection off hidden ids and exit dependency edit if its row is hidden. */
   /* eslint-disable @eslint-react/set-state-in-effect -- derive selection / dep-edit from filtered outline */
   useEffect(() => {
-    if (!hideCompleteActive || !data?.ordered_ids?.length) return;
+    if (!hideCompleteActive || !displayData?.ordered_ids?.length) return;
     const hidden = (id: string) =>
       (effectiveDisplayById[id] ?? "").trim().toLowerCase() === "complete";
     setSelectedId((cur) => {
       if (cur && !hidden(cur)) return cur;
-      return data.ordered_ids.find((id) => !hidden(id)) ?? null;
+      return displayData.ordered_ids.find((id) => !hidden(id)) ?? null;
     });
-  }, [hideCompleteActive, data?.ordered_ids, effectiveDisplayById]);
+  }, [hideCompleteActive, displayData?.ordered_ids, effectiveDisplayById]);
 
   useEffect(() => {
     if (!hideCompleteActive || !depEditId) return;
@@ -568,11 +768,11 @@ export default function App() {
   /* eslint-enable @eslint-react/set-state-in-effect */
 
   const outlineStatusById = useMemo(() => {
-    if (!data?.ordered_ids) return {} as Record<string, string>;
-    const reg = data.registry_by_node ?? {};
-    const enr = data.git_enrichment ?? {};
+    if (!displayData?.ordered_ids) return {} as Record<string, string>;
+    const reg = displayData.registry_by_node ?? {};
+    const enr = displayData.git_enrichment ?? {};
     const out: Record<string, string> = {};
-    for (const id of data.ordered_ids) {
+    for (const id of displayData.ordered_ids) {
       out[id] = pmOutlineDisplayStatus(
         byId[id],
         reg[id],
@@ -581,14 +781,14 @@ export default function App() {
       );
     }
     return out;
-  }, [data, byId, displayStatusById]);
+  }, [displayData, byId, displayStatusById]);
 
   const gitCheckoutById = useMemo(() => {
-    if (!data?.ordered_ids) return {} as Record<string, boolean>;
-    const reg = data.registry_by_node ?? {};
-    const cur = data.git_workflow?.resolved?.git_branch_current ?? null;
+    if (!displayData?.ordered_ids) return {} as Record<string, boolean>;
+    const reg = displayData.registry_by_node ?? {};
+    const cur = displayData.git_workflow?.resolved?.git_branch_current ?? null;
     const out: Record<string, boolean> = {};
-    for (const id of data.ordered_ids) {
+    for (const id of displayData.ordered_ids) {
       out[id] = rowMatchesRegisteredBranch(id, reg, cur);
     }
     return out;
@@ -614,9 +814,9 @@ export default function App() {
   ]);
 
   const keyToDisplayId = useMemo(() => {
-    if (!data?.nodes) return {} as Record<string, string>;
+    if (!displayData?.nodes) return {} as Record<string, string>;
     return Object.fromEntries(
-      data.nodes.map((n) => [n.node_key, n.id] as const),
+      displayData.nodes.map((n) => [n.node_key, n.id] as const),
     );
   }, [data]);
 
@@ -627,12 +827,12 @@ export default function App() {
 
   const startDepEdit = useCallback(
     (nodeId: string) => {
-      const node = data?.nodes.find((n) => n.id === nodeId);
+      const node = displayData?.nodes.find((n) => n.id === nodeId);
       if (!node) return;
       setDepEditId(nodeId);
       setDepDraftKeys(new Set(node.dependencies ?? []));
     },
-    [data?.nodes],
+    [displayData?.nodes],
   );
 
   const onDepCellActivate = useCallback(
@@ -712,13 +912,13 @@ export default function App() {
   }, []);
 
   const toggleTileLayout = useCallback(() => {
-    if (!data || editOpenIds.length === 0) return;
+    if (!displayData || editOpenIds.length === 0) return;
     if (!editTileMode) {
       preTileRectsRef.current = { ...editRectsRef.current };
       const sorted = sortOpenIdsByDependencyOrder(
         editOpenIds,
         byId,
-        data.ordered_ids,
+        displayData.ordered_ids,
       );
       setTileRects(computeTileRects(sorted, headerBottomPx));
       setEditTileMode(true);
@@ -730,7 +930,7 @@ export default function App() {
         requestAnimationFrame(() => setResumeAfterUntile(null));
       });
     }
-  }, [data, editOpenIds, byId, editTileMode, headerBottomPx]);
+  }, [displayData, editOpenIds, byId, editTileMode, headerBottomPx]);
 
   /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open stack changes */
   useEffect(() => {
@@ -756,26 +956,26 @@ export default function App() {
 
   /* eslint-disable @eslint-react/set-state-in-effect -- recompute tiled window positions from graph order */
   useEffect(() => {
-    if (!editTileMode || !data || editOpenIds.length === 0) return;
+    if (!editTileMode || !displayData || editOpenIds.length === 0) return;
     const sorted = sortOpenIdsByDependencyOrder(
       editOpenIds,
       byId,
-      data.ordered_ids,
+      displayData.ordered_ids,
     );
     setTileRects(computeTileRects(sorted, headerBottomPx));
-  }, [editTileMode, data, editOpenIds, byId, headerBottomPx]);
+  }, [editTileMode, displayData, editOpenIds, byId, headerBottomPx]);
   /* eslint-enable @eslint-react/set-state-in-effect */
 
   const indentDisabled =
     !selectedId ||
-    (data?.outline_actions != null &&
+    (displayData?.outline_actions != null &&
       selectedId != null &&
-      data.outline_actions[selectedId]?.can_indent === false);
+      displayData.outline_actions[selectedId]?.can_indent === false);
   const outdentDisabled =
     !selectedId ||
-    (data?.outline_actions != null &&
+    (displayData?.outline_actions != null &&
       selectedId != null &&
-      data.outline_actions[selectedId]?.can_outdent === false);
+      displayData.outline_actions[selectedId]?.can_outdent === false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -811,15 +1011,9 @@ export default function App() {
         }
         e.preventDefault();
         if (e.shiftKey) {
-          if (!outdentDisabled) {
-            void performRoadmapMutation("Updating outline…", async () => {
-              await outdentNode(selectedId);
-            }).catch((err: unknown) => setErr(String(err)));
-          }
+          if (!outdentDisabled) void triggerOutdent(selectedId);
         } else if (!indentDisabled) {
-          void performRoadmapMutation("Updating outline…", async () => {
-            await indentNode(selectedId);
-          }).catch((err: unknown) => setErr(String(err)));
+          void triggerIndent(selectedId);
         }
       }
     };
@@ -834,7 +1028,8 @@ export default function App() {
     selectedId,
     indentDisabled,
     outdentDisabled,
-    performRoadmapMutation,
+    triggerIndent,
+    triggerOutdent,
     cancelDepEdit,
     applyDepEdit,
   ]);
@@ -875,39 +1070,68 @@ export default function App() {
     window.addEventListener("pointerup", onUp);
   };
 
+  /** Optimistic add-task: insert a placeholder row immediately, swap to
+   *  real id after the server returns and ``loadSnapshot`` re-fetches. */
+  const triggerAddNode = useCallback(
+    (
+      referenceNodeId: string,
+      position: "above" | "below",
+      title: string,
+      type: string,
+      label: string,
+    ) => {
+      const refNode = byId[referenceNodeId];
+      const parentId = refNode?.parent_id ?? null;
+      const token = nextPendingToken();
+      const placeholder = buildAddPlaceholder({
+        token,
+        title,
+        type,
+        parentId,
+      });
+      void performOptimisticMutation(
+        label,
+        {
+          kind: "add",
+          placeholder,
+          referenceNodeId,
+          position,
+        },
+        [placeholder.id],
+        "add",
+        async () => {
+          await addNode(referenceNodeId, position, title, type);
+        },
+      ).catch((e) => setErr(String(e)));
+    },
+    [byId, performOptimisticMutation],
+  );
+
   const addAbove = () => {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void performRoadmapMutation("Adding task…", async () => {
-      await addNode(selectedId, "above", t, "task");
-    }).catch((e) => setErr(String(e)));
+    triggerAddNode(selectedId, "above", t, "task", "Adding task…");
   };
 
   const addBelow = () => {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void performRoadmapMutation("Adding task…", async () => {
-      await addNode(selectedId, "below", t, "task");
-    }).catch((e) => setErr(String(e)));
+    triggerAddNode(selectedId, "below", t, "task", "Adding task…");
   };
 
   const insertGateAtSelection = () => {
     if (!selectedId) return;
     const t = promptNewTaskTitle();
     if (!t) return;
-    void performRoadmapMutation("Inserting gate…", async () => {
-      await addNode(selectedId, "above", t, "gate");
-    }).catch((e) => setErr(String(e)));
+    triggerAddNode(selectedId, "above", t, "gate", "Inserting gate…");
   };
 
   const onGapInsert = (referenceNodeId: string) => {
     const t = promptNewTaskTitle();
     if (!t) return;
-    void performRoadmapMutation("Adding task…", async () => {
-      await addNode(referenceNodeId, "above", t, "task");
-    }).catch((e) => setErr(String(e)));
+    triggerAddNode(referenceNodeId, "above", t, "task", "Adding task…");
   };
 
   const onDeleteSelected = () => {
@@ -921,9 +1145,15 @@ export default function App() {
       return;
     }
     setErr(null);
-    void performRoadmapMutation("Removing task…", async () => {
-      await deleteNode(selectedId);
-    }).catch((e) => setErr(String(e)));
+    void performOptimisticMutation(
+      "Removing task…",
+      { kind: "delete", nodeId: selectedId },
+      [selectedId],
+      "delete",
+      async () => {
+        await deleteNode(selectedId);
+      },
+    ).catch((e) => setErr(String(e)));
   };
 
   const publishReady =
@@ -935,22 +1165,15 @@ export default function App() {
 
   return (
     <PmGuiHandlersProvider value={pmGuiHandlers}>
+    <PendingMutationsProvider api={pendingMutations}>
     <div className="app-shell">
-      {roadmapBusy ? (
-        <div
-          className="roadmap-sync-banner"
-          role="status"
-          aria-live="polite"
-          aria-label={busyLabel ?? "Working"}
-        >
-          <span className="roadmap-sync-spinner" aria-hidden="true" />
-          <span>{busyLabel ?? "Working…"}</span>
-        </div>
-      ) : null}
       <div
         className="app-chrome"
         aria-busy={roadmapBusy}
-        inert={roadmapBusy ? true : undefined}
+        // Sticky overload lock: only inert the whole chrome when we're
+        // backed up. Below the threshold the user can keep working;
+        // individual buttons gate themselves per-row.
+        inert={queueOverloaded ? true : undefined}
       >
       <header ref={headerRef} className="app-header">
         <div className="app-header-row1">
@@ -975,16 +1198,39 @@ export default function App() {
             </h1>
           </div>
           <div className="app-header-row1-actions">
+            {roadmapBusy ? (
+              <div
+                className="roadmap-sync-banner roadmap-sync-banner--inline"
+                role="status"
+                aria-live="polite"
+                aria-label={busyLabel ?? "Working"}
+              >
+                <span
+                  className="roadmap-sync-spinner"
+                  aria-hidden="true"
+                />
+                <span className="roadmap-sync-label">
+                  {/* "Saving N changes — …" once the queue is overloaded;
+                      otherwise the per-action label as before. */}
+                  {queueOverloaded
+                    ? `Saving ${busyDepth} changes…`
+                    : busyLabel ?? "Working…"}
+                  {lockReason ? ` — ${lockReason}` : ""}
+                </span>
+              </div>
+            ) : null}
             <GitWorkflowStatusLabel
-              gitWorkflow={data?.git_workflow}
-              integrationBranchAutoFf={data?.integration_branch_auto_ff}
-              registryRemoteOverlay={data?.registry_overlay?.enabled === true}
+              gitWorkflow={displayData?.git_workflow}
+              integrationBranchAutoFf={displayData?.integration_branch_auto_ff}
+              registryRemoteOverlay={
+                displayData?.registry_overlay?.enabled === true
+              }
             />
             <button
               type="button"
               className="app-header-icon-btn app-header-tile-btn"
               aria-pressed={hideCompleteActive}
-              disabled={roadmapBusy}
+              disabled={queueOverloaded}
               title={
                 hideCompleteActive
                   ? "Show all roadmap rows, including completed work"
@@ -1002,7 +1248,7 @@ export default function App() {
                 type="button"
                 className="app-header-icon-btn app-header-tile-btn"
                 aria-pressed={editTileMode}
-                disabled={roadmapBusy}
+                disabled={queueOverloaded}
                 title={
                   editTileMode
                     ? "Restore task dialogs to their positions before tiling"
@@ -1021,7 +1267,7 @@ export default function App() {
               className="app-header-icon-btn"
               aria-label="Settings"
               title="Settings"
-              disabled={roadmapBusy}
+              disabled={queueOverloaded}
               onClick={() => setSettingsOpen(true)}
             >
               <IconGear />
@@ -1057,76 +1303,73 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={
-                  roadmapBusy || !selectedId || selectedPlanningReadOnly
-                }
+                disabled={queueOverloaded || !selectedId || selectedPlanningReadOnly}
                 title={
                   selectedPlanningReadOnly
                     ? "Editing is disabled while this task is in active development (in progress, MR state, or checkout matches the registered branch)"
                     : "Edit selected task"
                 }
                 aria-label="Edit selected task"
-                onClick={() => {
-                  if (!selectedId) return;
-                  openEditNode(selectedId);
-                }}
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) openEditNode(selectedId);
+                  })
+                }
               >
                 <IconPencil />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || indentDisabled}
+                disabled={queueOverloaded || indentDisabled}
                 title="Indent"
                 aria-label="Indent"
-                onClick={() => {
-                  if (!selectedId) return;
-                  void performRoadmapMutation("Updating outline…", async () => {
-                    await indentNode(selectedId);
-                  }).catch((e) => setErr(String(e)));
-                }}
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) void triggerIndent(selectedId);
+                  })
+                }
               >
                 <IconIndent />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || outdentDisabled}
+                disabled={queueOverloaded || outdentDisabled}
                 title="Outdent"
                 aria-label="Outdent"
-                onClick={() => {
-                  if (!selectedId) return;
-                  void performRoadmapMutation("Updating outline…", async () => {
-                    await outdentNode(selectedId);
-                  }).catch((e) => setErr(String(e)));
-                }}
+                onClick={() =>
+                  guardRowAction(selectedId, () => {
+                    if (selectedId) void triggerOutdent(selectedId);
+                  })
+                }
               >
                 <IconOutdent />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId}
+                disabled={queueOverloaded || !selectedId}
                 title="Add task above selection"
                 aria-label="Add task above selection"
-                onClick={addAbove}
+                onClick={() => guardRowAction(selectedId, addAbove)}
               >
                 <IconRowAbove />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId}
+                disabled={queueOverloaded || !selectedId}
                 title="Add task below selection"
                 aria-label="Add task below selection"
-                onClick={addBelow}
+                onClick={() => guardRowAction(selectedId, addBelow)}
               >
                 <IconRowBelow />
               </button>
               <button
                 type="button"
                 className="toolbar-icon-btn"
-                disabled={roadmapBusy || !selectedId || gateInsertDisabled}
+                disabled={queueOverloaded || !selectedId || gateInsertDisabled}
                 title={
                   !selectedId
                     ? "Select a row first"
@@ -1135,7 +1378,7 @@ export default function App() {
                       : "Insert gate at selection (above this row); display ids renumber. PM hold, not dev pickup"
                 }
                 aria-label="Insert gate at selection"
-                onClick={insertGateAtSelection}
+                onClick={() => guardRowAction(selectedId, insertGateAtSelection)}
               >
                 <span className="toolbar-gate-icon" aria-hidden="true">
                   G
@@ -1144,10 +1387,10 @@ export default function App() {
               <button
                 type="button"
                 className="toolbar-icon-btn toolbar-icon-btn-danger"
-                disabled={roadmapBusy || !selectedId}
+                disabled={queueOverloaded || !selectedId}
                 title="Delete selected row"
                 aria-label="Delete selected row"
-                onClick={onDeleteSelected}
+                onClick={() => guardRowAction(selectedId, onDeleteSelected)}
               >
                 <IconTrash />
               </button>
@@ -1249,7 +1492,7 @@ export default function App() {
       {err ? (
         <p style={{ padding: "0 0.75rem", color: "crimson" }}>{err}</p>
       ) : null}
-      {data ? (
+      {displayData ? (
         <div className="split" ref={splitRef}>
           <div
             className="outline-wrap"
@@ -1264,17 +1507,17 @@ export default function App() {
               outlineStatusById={outlineStatusById}
               rowDepths={visibleRowDepths}
               reorderLocked={hideCompleteActive}
-              interactionLocked={roadmapBusy}
+              interactionLocked={queueOverloaded}
               selectedId={selectedId}
-              prHints={data.pr_hints}
-              gitEnrichment={data.git_enrichment}
-              dependencyInheritance={data.dependency_inheritance}
-              registryByNode={data.registry_by_node}
+              prHints={displayData.pr_hints}
+              gitEnrichment={displayData.git_enrichment}
+              dependencyInheritance={displayData.dependency_inheritance}
+              registryByNode={displayData.registry_by_node}
               gitBranchCurrent={
-                data.git_workflow?.resolved?.git_branch_current ?? null
+                displayData.git_workflow?.resolved?.git_branch_current ?? null
               }
               gitUserName={
-                data.git_workflow?.resolved?.git_user_name ?? null
+                displayData.git_workflow?.resolved?.git_user_name ?? null
               }
               depEditId={depEditId}
               depDraftKeys={depDraftKeys}
@@ -1289,7 +1532,9 @@ export default function App() {
                 openEditNode(id);
               }}
               performRoadmapMutation={performRoadmapMutation}
+              performOptimisticMutation={performOptimisticMutation}
               onMutationError={(msg) => setErr(msg)}
+              onWaitMessage={triggerWaitMessage}
               onGapInsert={onGapInsert}
             />
           </div>
@@ -1310,16 +1555,21 @@ export default function App() {
               nodesById={byId}
               displayStatusById={displayStatusById}
               gitCheckoutById={gitCheckoutById}
-              registryByNode={data.registry_by_node}
-              gitEnrichment={data.git_enrichment}
+              registryByNode={displayData.registry_by_node}
+              gitEnrichment={displayData.git_enrichment}
               stackHeaderPx={ganttStackHeaderPx}
-              depths={data.dependency_depths}
-              spans={data.dependency_spans}
-              edges={data.edges}
+              depthOffset={ganttDepthOffset}
+              depths={displayData.dependency_depths}
+              spans={displayData.dependency_spans}
+              edges={displayData.edges}
               showInheritedEdges={showInheritedDeps}
               selectedId={selectedId}
               highlightRowIds={highlightDepRowIds}
               onSelect={setSelectedId}
+              onBarDoubleClick={(id) => {
+                setSelectedId(id);
+                openEditNode(id);
+              }}
               onChartBackgroundMouseDown={
                 depEditId ? () => void applyDepEdit() : undefined
               }
@@ -1330,7 +1580,7 @@ export default function App() {
         <p style={{ padding: "1rem" }}>Loading roadmap…</p>
       )}
       <Suspense fallback={null}>
-        {data
+        {displayData
           ? editOpenIds.map((nodeId, index) => {
               const emNode = byId[nodeId];
               if (!emNode) return null;
@@ -1350,7 +1600,7 @@ export default function App() {
                   key={nodeId}
                   node={emNode}
                   pmDisplayStatusResolved={displayStatusById[nodeId]}
-                  allNodes={data.nodes}
+                  allNodes={displayData.nodes}
                   modalStorageKey={nodeId}
                   stackZIndex={50 + index}
                   backdropPassThrough={passThrough}
@@ -1363,10 +1613,10 @@ export default function App() {
                   titleBarActive={focusedEditNodeId === nodeId}
                   onActivate={() => focusEditNode(nodeId)}
                   onRectCommit={(r) => handleEditRectCommit(nodeId, r)}
-                  dependencyInheritance={data.dependency_inheritance?.[nodeId]}
-                  registryByNode={data.registry_by_node}
-                  gitEnrichment={data.git_enrichment}
-                  prHints={data.pr_hints}
+                  dependencyInheritance={displayData.dependency_inheritance?.[nodeId]}
+                  registryByNode={displayData.registry_by_node}
+                  gitEnrichment={displayData.git_enrichment}
+                  prHints={displayData.pr_hints}
                   onClose={() => closeEditNode(nodeId)}
                   onOpenNode={openEditNode}
                   onPersisted={() =>
@@ -1424,6 +1674,7 @@ export default function App() {
       </Suspense>
       </div>
     </div>
+    </PendingMutationsProvider>
     </PmGuiHandlersProvider>
   );
 }

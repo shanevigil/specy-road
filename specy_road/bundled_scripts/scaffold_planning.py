@@ -15,7 +15,7 @@ from planning_artifacts import (
     normalize_planning_dir,
     resolve_planning_path,
 )
-from planning_sheet_bootstrap import render_feature_sheet_template
+from planning_sheet_bootstrap import render_planning_sheet_template
 from specy_road.runtime_paths import default_user_repo_root
 
 
@@ -70,7 +70,7 @@ def scaffold_planning_for_node(
         edit_node_set_pairs(root, nid, [("planning_dir", norm)])
         run_validate_raise(root)
         return {"planning_dir": norm, "written": []}
-    content = render_feature_sheet_template(nid)
+    content = render_planning_sheet_template(nid, node_type=node.get("type"))
     dest.write_text(content, encoding="utf-8")
     rel = str(dest.relative_to(root)).replace("\\", "/")
     written = [rel]

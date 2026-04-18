@@ -15,15 +15,18 @@ import roadmap_gui_settings as st
 def test_apply_llm_env_anthropic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_MODEL", raising=False)
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", raising=False)
     m.apply_llm_env_from_settings(
         {
             "backend": "anthropic",
             "anthropic_api_key": "sk-ant-test",
             "anthropic_model": "claude-3-haiku-20240307",
+            "anthropic_max_output_tokens": "4096",
         },
     )
     assert os.environ["SPECY_ROAD_ANTHROPIC_API_KEY"] == "sk-ant-test"
     assert os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] == "claude-3-haiku-20240307"
+    assert os.environ["SPECY_ROAD_ANTHROPIC_MAX_TOKENS"] == "4096"
 
 
 def test_apply_llm_env_anthropic_env_wins(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -43,15 +46,43 @@ def test_apply_llm_env_anthropic_model_refreshes(
 ) -> None:
     """Switching models in the GUI must not leave the first model in os.environ."""
     monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", raising=False)
     monkeypatch.setenv("SPECY_ROAD_ANTHROPIC_MODEL", "first-model")
     m.apply_llm_env_from_settings(
         {
             "backend": "anthropic",
             "anthropic_api_key": "k",
             "anthropic_model": "second-model",
+            "anthropic_max_output_tokens": "8192",
         },
     )
     assert os.environ["SPECY_ROAD_ANTHROPIC_MODEL"] == "second-model"
+    assert os.environ["SPECY_ROAD_ANTHROPIC_MAX_TOKENS"] == "8192"
+
+
+def test_apply_llm_env_anthropic_max_output_tokens_refreshes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_MAX_TOKENS", raising=False)
+    m.apply_llm_env_from_settings(
+        {
+            "backend": "anthropic",
+            "anthropic_api_key": "k",
+            "anthropic_model": "m",
+            "anthropic_max_output_tokens": "1000",
+        },
+    )
+    assert os.environ["SPECY_ROAD_ANTHROPIC_MAX_TOKENS"] == "1000"
+    m.apply_llm_env_from_settings(
+        {
+            "backend": "anthropic",
+            "anthropic_api_key": "k",
+            "anthropic_model": "m",
+            "anthropic_max_output_tokens": "2000",
+        },
+    )
+    assert os.environ["SPECY_ROAD_ANTHROPIC_MAX_TOKENS"] == "2000"
 
 
 def test_save_settings_obfuscates_anthropic_key(

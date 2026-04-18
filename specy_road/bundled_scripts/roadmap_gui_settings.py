@@ -37,8 +37,11 @@ def default_settings() -> dict[str, Any]:
             "azure_api_key": "",
             "azure_deployment": "",
             "azure_api_version": "2024-02-15-preview",
+            "azure_max_requests_per_minute": "250",
+            "azure_max_tokens_per_minute": "250000",
             "anthropic_api_key": "",
             "anthropic_model": "",
+            "anthropic_max_output_tokens": "",
         },
         "git_remote": {
             "provider": "github",
