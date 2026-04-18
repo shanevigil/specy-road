@@ -162,7 +162,7 @@ jobs:
       name: testpypi
       url: https://test.pypi.org/p/specy-road
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
@@ -183,7 +183,7 @@ jobs:
       name: pypi
       url: https://pypi.org/p/specy-road
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
@@ -204,7 +204,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist
@@ -233,7 +233,7 @@ jobs:
             echo '__NOTES_EOF__'
           } >> "${GITHUB_OUTPUT}"
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.resolve.outputs.tag }}
           name: ${{ needs.resolve.outputs.tag }}
@@ -262,7 +262,7 @@ jobs:
           set -euo pipefail
           python scripts/post_release_readme_cleanup.py "${{ needs.resolve.outputs.version }}"
       - name: Open follow-up PR if README changed
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/readme-post-release-${{ needs.resolve.outputs.version }}
           base: dev
