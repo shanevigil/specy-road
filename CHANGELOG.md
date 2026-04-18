@@ -13,6 +13,17 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- PM Gantt: optimistic UI for outline mutations. The dragged row snaps
+  to its new position immediately and pulses blue while the server
+  write completes; on success the pulse gracefully fades, on failure
+  the row reverts and a brief red flash plays. Covers reorder,
+  cross-parent move, indent/outdent, dependency-edit save, add-task
+  (placeholder row appears with a `…` ID until the server assigns the
+  real one), and delete. Visual treatment mirrors the existing
+  `governance-pulse` styling on red-outlined header doc buttons,
+  recolored to the accent blue. `prefers-reduced-motion` falls back to
+  a static blue inset border. (`feature/optimistic-pm-ui`)
+
 - `GET /api/roadmap` and `GET /api/roadmap/fingerprint` now return both
   `fingerprint` (the narrow outline-mutation token, used by mutating
   POSTs as `X-PM-Gui-Fingerprint`) and `view_fingerprint` (the broader
