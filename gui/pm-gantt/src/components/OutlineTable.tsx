@@ -36,7 +36,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
-import { usePendingMutations } from "../pendingMutations";
+import { usePendingMutations } from "../pendingMutationsContext";
 import { isPendingPlaceholderId } from "../optimisticOutline";
 import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
 import { phaseRollupDerivedComplete } from "../parentStatusRollup";
@@ -677,7 +677,7 @@ type Props = {
     label: string,
     op: import("../optimisticOutline").OptimisticOp | null,
     ids: string[],
-    kind: import("../pendingMutations").PendingKind,
+    kind: import("../pendingMutationsCore").PendingKind,
     mutation: () => Promise<void>,
   ) => Promise<void>;
   onMutationError: (message: string) => void;

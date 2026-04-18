@@ -68,12 +68,12 @@ import {
 import { PmGuiHandlersProvider } from "./pmGuiContext";
 import { useRoadmapActionQueue } from "./roadmapSync";
 import { runMutationWithAutoffRetry } from "./runMutationWithAutoffRetry";
+import { PendingMutationsProvider } from "./pendingMutations";
+import { usePendingMutationsState } from "./usePendingMutationsState";
 import {
-  PendingMutationsProvider,
-  usePendingMutationsState,
   nextPendingToken,
   type PendingKind,
-} from "./pendingMutations";
+} from "./pendingMutationsCore";
 import {
   applyOptimistic,
   buildAddPlaceholder,
