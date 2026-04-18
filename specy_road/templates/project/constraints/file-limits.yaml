@@ -7,5 +7,25 @@ applies_to_globs:
   - "tests/**/*.py"
   - "**/*.md"
 
+# Merged with legacy `exclude_globs` (same Path.glob semantics as `applies_to_globs`).
+# exclude_path_globs:
+#   - "**/node_modules/**"
+#   - "**/Generated/**"
+
+# Later entries override earlier ones for paths matched by `file_globs`.
+# override_limits:
+#   - name: example-overlay
+#     file_globs:
+#       - "src/Legacy/**/*.cs"
+#     max_lines_per_file: 800
+#     rationale: Legacy surface; tighten over time.
+
+# Advisory stderr warnings (non-fatal unless `specy-road file-limits --strict-hard-alerts`).
+# `max_lines_per_function` here is Python-only (same as enforcement).
+# hard_alerts:
+#   max_lines_per_file: 600
+#   max_lines_per_function: 80
+#   rationale: Prefer smaller units for reviewability.
+
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500
