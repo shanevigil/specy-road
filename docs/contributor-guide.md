@@ -97,9 +97,7 @@ The regex enforced by
 ```
 
 CI-managed branches (`cursor/...`, `dependabot/...`, `ci/...`) are
-exempt, as are integration trunks (`dev`, `main`) and `promote/...`
-branches used for release smoke runs. Roadmap-driven
-`feature/rm-<codename>` branches created by
+exempt. Roadmap-driven `feature/rm-<codename>` branches created by
 `specy-road do-next-available-task` automatically satisfy the
 `feature/...` prefix.
 
