@@ -1,0 +1,283 @@
+name: Release publish
+
+# Triggered by tags created by .github/workflows/main-release-tag-gate.yml
+# (which auto-tags merge commits on main from PRs carrying a 'release:'
+# marker). Routes finals (vX.Y.Z) to PyPI and prereleases (vX.Y.Z-suffix)
+# to TestPyPI via OIDC trusted publishing — no API tokens.
+#
+# Required setup (one-time, off-repo):
+#   - PyPI:     https://pypi.org/manage/account/publishing/
+#               trusted publisher: shanevigil/specy-road, workflow=release-publish.yml,
+#               environment=pypi
+#   - TestPyPI: https://test.pypi.org/manage/account/publishing/
+#               trusted publisher: shanevigil/specy-road, workflow=release-publish.yml,
+#               environment=testpypi
+#   - GitHub:   Settings -> Environments -> create 'pypi' (deployment tag rule
+#               'v[0-9]+.[0-9]+.[0-9]+'; required reviewer optional) and 'testpypi'
+#               (tag rule 'v[0-9]+.[0-9]+.[0-9]+-*'; no reviewers).
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+  workflow_dispatch:
+    # Manual smoke trigger; uses 'v0.0.0-dev' as a fake tag so we can
+    # exercise the build/verify chain without publishing anything.
+    inputs:
+      dry_run:
+        description: 'Build only (skip publish + release).'
+        required: false
+        default: 'true'
+
+# Prevent two tag pushes from racing.
+concurrency:
+  group: release-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: write       # creating GitHub Release + tag refs for follow-up PR
+  pull-requests: write  # opening the post-publish README cleanup PR
+  id-token: write       # OIDC -> PyPI trusted publishing
+  attestations: write   # sigstore PEP 740 provenance
+
+jobs:
+  # 1. Re-run the same gates the PR did before publishing the tagged commit.
+  validate:
+    name: Validate (reusable)
+    uses: ./.github/workflows/validate.yml
+
+  # 2. Resolve the version + intended target (PyPI / TestPyPI / dry-run).
+  resolve:
+    name: Resolve release context
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.ctx.outputs.tag }}
+      version: ${{ steps.ctx.outputs.version }}
+      pep440_version: ${{ steps.ctx.outputs.pep440_version }}
+      is_prerelease: ${{ steps.ctx.outputs.is_prerelease }}
+      target: ${{ steps.ctx.outputs.target }}
+      dry_run: ${{ steps.ctx.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Compute release context
+        id: ctx
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="v0.0.0-dev"
+            dry="${{ github.event.inputs.dry_run }}"
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+            dry="false"
+          fi
+          version="${tag#v}"
+          # Convert X.Y.Z-rc1 -> X.Y.Zrc1 for PEP 440 comparison.
+          pep440_version="$(echo "${version}" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-([A-Za-z]+[0-9]*)$/\1\2/')"
+          if [[ "${version}" == *-* ]]; then
+            is_prerelease="true"
+            target="testpypi"
+          else
+            is_prerelease="false"
+            target="pypi"
+          fi
+          if [[ "${dry}" == "true" ]]; then
+            target="dry-run"
+          fi
+          echo "tag=${tag}"               | tee -a "${GITHUB_OUTPUT}"
+          echo "version=${version}"       | tee -a "${GITHUB_OUTPUT}"
+          echo "pep440_version=${pep440_version}" | tee -a "${GITHUB_OUTPUT}"
+          echo "is_prerelease=${is_prerelease}"   | tee -a "${GITHUB_OUTPUT}"
+          echo "target=${target}"         | tee -a "${GITHUB_OUTPUT}"
+          echo "dry_run=${dry}"           | tee -a "${GITHUB_OUTPUT}"
+
+  # 3. Build sdist + wheel; verify pyproject version + wheel contents.
+  build:
+    name: Build distribution
+    needs: [validate, resolve]
+    runs-on: ubuntu-latest
+    outputs:
+      sdist_name: ${{ steps.find.outputs.sdist_name }}
+      wheel_name: ${{ steps.find.outputs.wheel_name }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: gui/pm-gantt/package-lock.json
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade 'pip>=25.3' build
+      - name: Build PM Gantt SPA (npm)
+        working-directory: gui/pm-gantt
+        run: |
+          npm ci
+          npm run build
+      - name: Verify SPA bundled into the package tree
+        run: test -f specy_road/pm_gantt_static/index.html
+      - name: Verify pyproject version matches tag
+        run: python scripts/check_release_version.py "${{ needs.resolve.outputs.tag }}"
+      - name: Build sdist + wheel
+        run: python -m build
+      - name: Verify wheel contains PM Gantt UI assets
+        run: |
+          set -euo pipefail
+          wheel="$(ls dist/*.whl)"
+          python scripts/verify_wheel_contents.py "${wheel}"
+      - name: Capture artifact names
+        id: find
+        run: |
+          sdist=$(basename "$(ls dist/*.tar.gz)")
+          wheel=$(basename "$(ls dist/*.whl)")
+          echo "sdist_name=${sdist}" | tee -a "${GITHUB_OUTPUT}"
+          echo "wheel_name=${wheel}" | tee -a "${GITHUB_OUTPUT}"
+      - name: Smoke-install the wheel in a fresh venv
+        run: |
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/pip install --upgrade 'pip>=25.3'
+          /tmp/smoke/bin/pip install dist/*.whl
+          /tmp/smoke/bin/specy-road --help
+          /tmp/smoke/bin/specy-road validate --repo-root tests/fixtures/specy_road_dogfood
+          /tmp/smoke/bin/specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
+      - name: Upload built distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/*
+
+  # 4a. Publish to TestPyPI (prereleases only).
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: needs.resolve.outputs.target == 'testpypi'
+    needs: [build, resolve]
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/specy-road
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: dist
+          path: dist
+      - name: Publish to TestPyPI (OIDC trusted publisher)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          attestations: true
+
+  # 4b. Publish to PyPI (finals only). The 'pypi' GitHub environment can
+  # require a human reviewer; that is configured in repo Settings, not here.
+  publish-pypi:
+    name: Publish to PyPI
+    if: needs.resolve.outputs.target == 'pypi'
+    needs: [build, resolve]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/specy-road
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: dist
+          path: dist
+      - name: Publish to PyPI (OIDC trusted publisher)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
+
+  # 5. After a successful publish (PyPI or TestPyPI), create a GitHub
+  # Release with the changelog section as the body and the artifacts
+  # attached. Skipped on dry-run.
+  github-release:
+    name: GitHub Release
+    needs: [resolve, build, publish-testpypi, publish-pypi]
+    # always() so this runs even though one of the two publish jobs was
+    # skipped by its `if`; succeed only when at least one publish landed.
+    if: ${{ always() && needs.resolve.outputs.target != 'dry-run' && (needs.publish-pypi.result == 'success' || needs.publish-testpypi.result == 'success') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v6
+        with:
+          name: dist
+          path: dist
+      - name: Extract changelog section
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.resolve.outputs.tag }}"
+          # Extract the section under '## [<tag>]' up to the next '## [' heading.
+          if [[ -f CHANGELOG.md ]]; then
+            awk -v target="## [${tag}]" '
+              $0 ~ "^## \\[" {
+                if ($0 ~ "^## \\[" target "\\]" || index($0, target) == 1) { capture=1; next }
+                else if (capture) { exit }
+              }
+              capture { print }
+            ' CHANGELOG.md > /tmp/release-notes.md
+          fi
+          if [[ ! -s /tmp/release-notes.md ]]; then
+            printf "Release %s — see CHANGELOG.md for details.\n" "${tag}" > /tmp/release-notes.md
+          fi
+          {
+            echo 'body<<__NOTES_EOF__'
+            cat /tmp/release-notes.md
+            echo '__NOTES_EOF__'
+          } >> "${GITHUB_OUTPUT}"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: ${{ needs.resolve.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
+          prerelease: ${{ needs.resolve.outputs.is_prerelease == 'true' }}
+          files: dist/*
+
+  # 6. After the FIRST PyPI publish, open a follow-up PR that strips the
+  # README pre-release notice + TODO comment + swaps the install-from-
+  # source block with a real `pip install specy-road`. Only fires for
+  # finals (the prerelease run does not edit the README).
+  followup-readme-cleanup:
+    name: Open follow-up README cleanup PR
+    if: needs.resolve.outputs.target == 'pypi' && needs.publish-pypi.result == 'success'
+    needs: [resolve, publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: Strip pre-release notice + TODO; swap install block
+        id: edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/post_release_readme_cleanup.py "${{ needs.resolve.outputs.version }}"
+      - name: Open follow-up PR if README changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: chore/readme-post-release-${{ needs.resolve.outputs.version }}
+          base: dev
+          title: 'chore(readme): post-release cleanup for v${{ needs.resolve.outputs.version }}'
+          body: |
+            Auto-opened by `release-publish.yml` after the successful
+            PyPI publish of `v${{ needs.resolve.outputs.version }}`.
+
+            Removes the pre-release notice block and the
+            `TODO(post-release)` comment from `README.md`, and swaps the
+            install-from-source block for the standard
+            `pip install specy-road` instructions.
+
+            Review and merge to `dev`; the next release PR will pick
+            this up automatically.
+          commit-message: 'chore(readme): post-release cleanup for v${{ needs.resolve.outputs.version }}'
+          delete-branch: true
+          draft: true
