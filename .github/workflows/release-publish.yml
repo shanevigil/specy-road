@@ -262,7 +262,7 @@ jobs:
           set -euo pipefail
           python scripts/post_release_readme_cleanup.py "${{ needs.resolve.outputs.version }}"
       - name: Open follow-up PR if README changed
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/readme-post-release-${{ needs.resolve.outputs.version }}
           base: dev
