@@ -37,6 +37,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
 import { usePendingMutations } from "../pendingMutations";
+import { isPendingPlaceholderId } from "../optimisticOutline";
 import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
 import { phaseRollupDerivedComplete } from "../parentStatusRollup";
 import {
@@ -329,7 +330,9 @@ function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
       onDoubleClick={onRowDoubleClick}
     >
       <td className="outline-id" onClick={isPreview ? undefined : onIdClick}>
-        <span className="outline-id-text">{node.id}</span>
+        <span className="outline-id-text">
+          {isPendingPlaceholderId(node.id) ? "…" : node.id}
+        </span>
         {isPreview ? null : <IntoDropBadge nodeId={node.id} />}
       </td>
       <td
@@ -1240,7 +1243,9 @@ export function OutlineTable({
       onTitleKeyDown,
       titleInputRef,
       onBeginTitleEdit: () => beginTitleEdit(rowId),
-      dragDisabled,
+      // Pending-placeholder rows have no real server id yet; they
+      // can't be dragged or title-edited until they settle.
+      dragDisabled: dragDisabled || isPendingPlaceholderId(rowId),
       onSelectRow: () => onSelect(rowId),
       onOpenModal: () => onDoubleClick(rowId),
       onDepRowBodyClick: () => {
