@@ -1,0 +1,10 @@
+---
+description: do-next-available-task and abort-task-pickup publish registry changes to the remote
+alwaysApply: true
+---
+
+## `do-next-available-task` and remote registration
+
+- `specy-road do-next-available-task` **always** syncs the integration branch and **pushes** the registration commit so teammates can see `roadmap/registry.yaml` on the remote integration branch.
+- `specy-road abort-task-pickup` **pushes** the integration branch after removing the registry row (same coordination contract; no `--no-push`).
+- Prefer a **failed `git push`** with a clear error over stopping before push — fix network/auth and retry, or push manually with `git push <remote> <integration-branch>` per `docs/dev-workflow.md`.

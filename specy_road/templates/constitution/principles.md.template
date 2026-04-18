@@ -1,0 +1,8 @@
+# Principles
+
+**Replace with your team's decision heuristics** — how people (and agents) should choose approaches when tradeoffs appear.
+
+These are **judgment cues**, not automated pass/fail rules. Operational caps and checks live in `constraints/` and contracts under `shared/`.
+
+- **Example:** Prefer the smallest change that satisfies the roadmap item; avoid drive-by refactors.
+- **Example:** When in doubt, cite a contract under `shared/` instead of duplicating intent in chat.

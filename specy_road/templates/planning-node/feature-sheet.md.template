@@ -1,0 +1,16 @@
+## Intent
+
+What this slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key` here.
+
+## Approach
+
+Constraints, major steps, and how you will verify done.
+
+## Tasks / checklist
+
+- [ ] …
+
+## References
+
+- Roadmap chunk for `{{NODE_ID}}`
+- `shared/` contracts (read selectively)

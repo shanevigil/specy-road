@@ -1,0 +1,381 @@
+#!/usr/bin/env python3
+"""Close the current roadmap feature branch: update status, deregister, validate, commit."""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+import yaml
+from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from roadmap_load import load_roadmap
+from specy_road.git_workflow_config import (
+    ON_COMPLETE_MODES,
+    merge_request_requires_manual_approval,
+    require_implementation_review_before_finish,
+    resolve_integration_defaults,
+    resolve_on_complete,
+    should_cleanup_work_artifacts_on_finish,
+)
+from specy_road.finish_pr_body import pr_body_modes, write_pr_body
+from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
+from specy_road.finish_modes import apply_on_complete_mode
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.on_complete_session import (
+    on_complete_session_path,
+    read_on_complete_session,
+)
+from specy_road.runtime_paths import default_user_repo_root
+
+ROOT = Path.cwd()
+REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+
+
+# ---------------------------------------------------------------------------
+# Git helpers
+# ---------------------------------------------------------------------------
+
+
+def _current_branch() -> str:
+    r = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=True,
+    )
+    return r.stdout.strip()
+
+
+def _git(*args: str) -> None:
+    subprocess.check_call(["git", *args], cwd=ROOT)
+
+
+# ---------------------------------------------------------------------------
+# Registry helpers
+# ---------------------------------------------------------------------------
+
+
+def _load_registry() -> dict:
+    with REGISTRY_PATH.open(encoding="utf-8") as f:
+        return yaml.safe_load(f) or {"version": 1, "entries": []}
+
+
+def _save_registry(doc: dict) -> None:
+    with REGISTRY_PATH.open("w", encoding="utf-8") as f:
+        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
+# ---------------------------------------------------------------------------
+# Main (split into focused helpers to stay within line limits)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
+    """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
+    return resolve_feature_rm_registry_context(ROOT, branch)
+
+
+def _update_chunk_status(node_id: str) -> list[str]:
+    """Patch status in JSON chunk file; return list of changed file paths."""
+    chunk = find_chunk_path(ROOT, node_id)
+    if not chunk:
+        print(f"[warn] chunk file not found for {node_id} — set status manually.")
+        return []
+    if chunk.suffix.lower() != ".json":
+        print(
+            f"[warn] chunk {chunk.relative_to(ROOT)} is not .json — set status manually.",
+            file=sys.stderr,
+        )
+        return []
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n.get("id") == node_id:
+            n["status"] = "Complete"
+            write_json_chunk(chunk, nodes)
+            print(f"[ok] status -> Complete  ({chunk.relative_to(ROOT)})")
+            return [str(chunk.relative_to(ROOT))]
+    print(f"[warn] node {node_id} not found in {chunk.relative_to(ROOT)}")
+    return []
+
+
+def _validate_and_export() -> None:
+    rr = ["--repo-root", str(ROOT)]
+    subprocess.check_call(
+        [sys.executable, "-m", "specy_road.cli", "validate", *rr], cwd=ROOT
+    )
+    subprocess.check_call(
+        [sys.executable, "-m", "specy_road.cli", "export", *rr], cwd=ROOT
+    )
+
+
+def _work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:
+    return (
+        f"work/brief-{node_id}.md",
+        f"work/prompt-{node_id}.md",
+        f"work/implementation-summary-{node_id}.md",
+    )
+
+
+def _is_git_tracked(repo_root: Path, rel: str) -> bool:
+    r = subprocess.run(
+        ["git", "ls-files", "--", rel],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return bool((r.stdout or "").strip())
+
+
+def _cleanup_work_artifacts(repo_root: Path, node_id: str) -> list[str]:
+    """Remove toolkit session files under work/; return tracked paths to stage as deletions."""
+    need_add: list[str] = []
+    root_r = repo_root.resolve()
+    for rel in _work_artifact_rel_paths(node_id):
+        path = (root_r / rel).resolve()
+        if not path.is_file():
+            continue
+        try:
+            path.relative_to(root_r)
+        except ValueError:
+            continue
+        tracked = _is_git_tracked(root_r, rel)
+        path.unlink()
+        if tracked:
+            need_add.append(rel)
+            print(f"[ok] removed {rel} (tracked — staging deletion)")
+        else:
+            print(f"[ok] removed {rel}")
+    return need_add
+
+
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(
+        description="Mark the current roadmap task complete, validate, export, commit.",
+    )
+    p.add_argument(
+        "--push",
+        action="store_true",
+        help="After bookkeeping commit, run git push -u <remote> <branch>.",
+    )
+    p.add_argument(
+        "--remote",
+        default="origin",
+        metavar="NAME",
+        help="Remote for --push (default: origin).",
+    )
+    p.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Repository root (default: git root or cwd).",
+    )
+    p.add_argument(
+        "--no-cleanup-work",
+        action="store_true",
+        help=(
+            "Keep work/brief-, work/prompt-, and work/implementation-summary- for this node "
+            "(default: delete after successful validate/export)."
+        ),
+    )
+    p.add_argument(
+        "--on-complete",
+        choices=sorted(ON_COMPLETE_MODES),
+        default=None,
+        metavar="MODE",
+        help=(
+            "Override completion workflow: pr, merge, or auto. "
+            "Default: session file from do-next-available-task, then "
+            "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
+        ),
+    )
+    p.add_argument(
+        "--no-milestone-rollup",
+        action="store_true",
+        help=(
+            "Skip milestone dual-land (cherry-pick bookkeeping to integration + merge "
+            "leaf into rollup) when work/.milestone-session.yaml exists; use normal "
+            "on_complete instead."
+        ),
+    )
+    return p.parse_args(argv)
+
+
+def _impl_review_or_exit(entry: dict, node_id: str) -> None:
+    if not require_implementation_review_before_finish(ROOT):
+        return
+    if entry.get("implementation_review") == "approved":
+        return
+    print(
+        "error: implementation review is required before finish-this-task.",
+        file=sys.stderr,
+    )
+    print(
+        "  Run: specy-road mark-implementation-reviewed "
+        "(after work/implementation-summary-"
+        f"{node_id}.md is written and you reviewed it).",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
+    """Resolve all main-time context in one call (keeps main() under cap)."""
+    codename, reg, entry, nodes = _resolve_context(branch)
+    node_id = entry["node_id"]
+    node = next(n for n in nodes if n["id"] == node_id)
+    work_dir = ROOT / "work"
+    sess_path = on_complete_session_path(work_dir, node_id)
+    session_oc = read_on_complete_session(
+        sess_path, node_id=node_id, codename=codename,
+    )
+    on_mode = resolve_on_complete(
+        ROOT, cli=args.on_complete, session=session_oc,
+    )
+    _impl_review_or_exit(entry, node_id)
+    print(f"Finishing [{node_id}] {node.get('title', '')}")
+    print(f"Branch:   {branch}")
+    print(f"on_complete: {on_mode}\n")
+    ib, gw_remote, _gw = resolve_integration_defaults(
+        ROOT, explicit_base=None, explicit_remote=None,
+    )
+    return {
+        "codename": codename, "reg": reg, "entry": entry, "nodes": nodes,
+        "node": node, "node_id": node_id, "work_dir": work_dir,
+        "sess_path": sess_path, "on_mode": on_mode, "ib": ib,
+        "gw_remote": gw_remote,
+    }
+
+
+def _maybe_write_pr_body(
+    *,
+    on_mode: str,
+    work_dir: Path,
+    node_id: str,
+    node: dict,
+    codename: str,
+    branch: str,
+    integration_branch: str,
+) -> Path | None:
+    """F-015: snapshot the impl-summary + brief into work/pr-body-<NODE>.md
+    BEFORE cleanup runs. Skip for on_mode=='merge' (no PR is opened)."""
+    if on_mode not in pr_body_modes():
+        return None
+    return write_pr_body(
+        work_dir=work_dir,
+        node_id=node_id,
+        title=node.get("title", ""),
+        codename=codename,
+        branch=branch,
+        integration_branch=integration_branch,
+    )
+
+
+def _bookkeeping_commit_phase(
+    args: argparse.Namespace,
+    codename: str,
+    node_id: str,
+    branch: str,
+    reg: dict,
+    *,
+    pr_body_path: Path | None = None,
+) -> None:
+    changed_files = _update_chunk_status(node_id)
+    changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
+    reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
+    _save_registry(reg)
+    print(f"[ok] removed registry entry for '{codename}'\n")
+    print("-> specy-road validate")
+    print("-> specy-road export")
+    _validate_and_export()
+    if pr_body_path is not None:
+        # Print AFTER export so the dev sees a clean post-commit pointer.
+        rel = pr_body_path.relative_to(ROOT)
+        print(f"[ok] wrote {rel} (snapshot for PR/MR body, F-015)")
+    work_tracked_removals: list[str] = []
+    if should_cleanup_work_artifacts_on_finish(
+        ROOT,
+        no_cleanup_work_cli=args.no_cleanup_work,
+    ):
+        work_tracked_removals = _cleanup_work_artifacts(ROOT, node_id)
+    changed_files.append("roadmap.md")
+    changed_files.extend(work_tracked_removals)
+    _git("add", *changed_files)
+    _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
+    print("\n[ok] bookkeeping committed")
+    if args.push:
+        print(f"-> git push -u {args.remote} {branch}")
+        _git("push", "-u", args.remote, branch)
+
+
+def main(argv: list[str] | None = None) -> None:
+    global ROOT, REGISTRY_PATH
+    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    ROOT = (args.repo_root or default_user_repo_root()).resolve()
+    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    branch = _current_branch()
+    if not branch.startswith("feature/rm-"):
+        print(
+            f"error: current branch '{branch}' is not a roadmap feature branch "
+            "(expected feature/rm-<codename>).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    ctx = _resolve_main_context(args, branch)
+    codename, reg, entry, nodes, node, node_id = ctx["codename"], ctx["reg"], ctx["entry"], ctx["nodes"], ctx["node"], ctx["node_id"]
+    work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
+    ib, gw_remote = ctx["ib"], ctx["gw_remote"]
+
+    # F-015: snapshot the work-packet brief + impl-summary into a PR body
+    # markdown BEFORE the cleanup pass deletes the source files. Only when
+    # a PR/MR is actually expected (on_mode == 'pr' or 'auto').
+    pr_body_path = _maybe_write_pr_body(
+        on_mode=on_mode,
+        work_dir=work_dir,
+        node_id=node_id,
+        node=node,
+        codename=codename,
+        branch=branch,
+        integration_branch=ib,
+    )
+
+    _bookkeeping_commit_phase(
+        args, codename, node_id, branch, reg, pr_body_path=pr_body_path,
+    )
+    mr_manual = merge_request_requires_manual_approval(ROOT)
+
+    if try_milestone_rollup_finish(
+        ROOT,
+        args,
+        work_dir=work_dir,
+        node_id=node_id,
+        nodes=nodes,
+        branch=branch,
+        sess_path=sess_path,
+        ib=ib,
+        gw_remote=gw_remote,
+    ):
+        return
+
+    apply_on_complete_mode(
+        ROOT,
+        args,
+        on_mode=on_mode,
+        branch=branch,
+        sess_path=sess_path,
+        ib=ib,
+        gw_remote=gw_remote,
+        mr_manual=mr_manual,
+        node_id=node_id,
+        node=node,
+        pr_body_path=pr_body_path,
+    )
+
+
+if __name__ == "__main__":
+    main()

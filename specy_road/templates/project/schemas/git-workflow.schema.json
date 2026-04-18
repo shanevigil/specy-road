@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/git-workflow.schema.json",
+  "title": "specy-road git workflow contract",
+  "type": "object",
+  "required": ["version", "integration_branch", "remote"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "integration_branch": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._/-]+$",
+      "description": "Daily integration trunk (e.g. main, dev)."
+    },
+    "remote": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "description": "Git remote name (usually origin)."
+    },
+    "merge_request_requires_manual_approval": {
+      "type": "boolean",
+      "description": "When true, merge requests require human approval before merge; CLI may print reminders."
+    },
+    "require_implementation_review_before_finish": {
+      "type": "boolean",
+      "description": "When true, finish-this-task requires a human-approved implementation review in registry.yaml and work/implementation-summary-<NODE_ID>.md before closing the task."
+    },
+    "cleanup_work_artifacts_on_finish": {
+      "type": "boolean",
+      "description": "When true (default if omitted), finish-this-task removes work/brief-, work/prompt-, and work/implementation-summary- for the node after validate/export."
+    },
+    "on_complete": {
+      "type": "string",
+      "enum": ["auto", "merge", "pr"],
+      "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
+    }
+  }
+}

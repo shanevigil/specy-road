@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-Dw2cE7zH.js";import{m as t}from"./dnd-stack-Bjh9ZQ0p.js";import{c as n}from"./markdown-stack-BGy33aUx.js";var r=e(t(),1),i=n(),a=(0,r.createContext)(null);function o({children:e,value:t}){return(0,i.jsx)(a.Provider,{value:t,children:e})}export{o as n,a as t};

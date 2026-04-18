@@ -1,0 +1,5 @@
+# Active roadmap claims (codename, branch, touch zones). Empty when nothing is in progress.
+# See docs/git-workflow.md: register on the integration branch, then feature/rm-<codename>.
+
+version: 1
+entries: []

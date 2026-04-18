@@ -1,0 +1,19 @@
+# Line limits for the specy-road toolkit source (not consumer app repos).
+
+max_lines_per_file: 400
+max_lines_per_function: 80
+applies_to_globs:
+  - "specy_road/bundled_scripts/**/*.py"
+  - "specy_road/*.py"
+  - "tests/**/*.py"
+  - "docs/**/*.md"
+
+# Advisory LLM review: brief assembly, shared/ catalog, and provider clients in one script.
+override_limits:
+  - name: review_node_advisory_llm
+    file_globs:
+      - "specy_road/bundled_scripts/review_node.py"
+    max_lines_per_file: 900
+
+roadmap_manifest_max_lines: 500
+roadmap_json_chunk_max_lines: 500

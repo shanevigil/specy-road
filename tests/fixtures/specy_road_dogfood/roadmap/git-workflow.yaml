@@ -1,0 +1,4 @@
+# Test fixture — git workflow contract for dogfood sample tree
+version: 1
+integration_branch: main
+remote: origin
