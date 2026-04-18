@@ -243,7 +243,7 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         print(_USAGE_TEXT)
-        raise SystemExit(0 if not argv else 2)
+        raise SystemExit(0)
     cmd, *rest = argv
     if cmd == "validate":
         _run("validate_roadmap.py", rest)

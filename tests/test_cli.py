@@ -127,6 +127,17 @@ def test_specy_road_abort_task_pickup_help() -> None:
     assert "do-next-available-task" in r.stdout or "pickup" in r.stdout
 
 
+def test_specy_road_root_help_exits_zero() -> None:
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "--help"],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0
+    assert "validate" in r.stdout
+
+
 def test_specy_road_init_requires_subcommand() -> None:
     r = subprocess.run(
         [sys.executable, "-m", "specy_road.cli", "init"],

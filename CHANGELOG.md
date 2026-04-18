@@ -94,6 +94,8 @@ stable PyPI vs TestPyPI.
 
 ### Changed
 
+- CLI: `specy-road --help` exits 0 so release smoke-install (`set -e`) runs
+  `validate` / `export` after `--help`.
 - CI workflows: `actions/download-artifact` v8, `actions/github-script` v9,
   `softprops/action-gh-release` v3, `peter-evans/create-pull-request` v8.
 - `requirements-ci.txt`: FastAPI 0.136.0.
