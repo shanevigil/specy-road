@@ -32,6 +32,10 @@ _USAGE_TEXT = (
     "  add-node ...         — see: python specy_road/bundled_scripts/roadmap_crud.py add-node -h\n"
     "  edit-node ...\n"
     "  archive-node ...\n"
+    "  list-dependencies <NODE_ID>\n"
+    "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
+    "  add-dependency <NODE_ID> <DEP_NODE_KEY>\n"
+    "  remove-dependency <NODE_ID> <DEP_NODE_KEY>\n"
     "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
     "  scaffold-planning <NODE_ID> — create planning/<id>_<slug>_<node_key>.md; set planning_dir\n"
     "    (optional: --planning-dir PATH --force; see specy_road/bundled_scripts/scaffold_planning.py -h)\n"
@@ -279,6 +283,10 @@ def main(argv: list[str] | None = None) -> None:
         "add-node",
         "edit-node",
         "archive-node",
+        "list-dependencies",
+        "set-dependencies",
+        "add-dependency",
+        "remove-dependency",
     ):
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
     elif cmd == "review-node":

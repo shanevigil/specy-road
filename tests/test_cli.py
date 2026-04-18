@@ -108,6 +108,25 @@ def test_specy_road_archive_unknown_node_no_traceback(tmp_path: Path) -> None:
     assert "no roadmap node" in err
 
 
+def test_specy_road_list_dependencies() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "list-dependencies",
+            "M0.1",
+            "--repo-root",
+            str(DOGFOOD),
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr
+
+
 def test_specy_road_show_node() -> None:
     r = subprocess.run(
         [
