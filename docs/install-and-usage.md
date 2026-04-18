@@ -6,9 +6,11 @@ build, supply-chain audits) see [contributor-guide.md](contributor-guide.md).
 That guide will be linked from the README **post-release**; until then,
 read it from the source tree.
 
-> **No PyPI release yet.** Install from source from the `dev` branch. The
-> first tagged release is pending; once it ships, `pip install specy-road`
-> will work and this document will reference both paths.
+> **Stable PyPI pending.** Install from source from the `dev` branch (below).
+> **Prerelease** tags publish to **TestPyPI**; once **v0.1.0** is on PyPI,
+> `pip install specy-road` will work from the default index and this guide will
+> call that out. See **[contributor-guide.md](contributor-guide.md)** for
+> release flow and TestPyPI install notes.
 
 ---
 
