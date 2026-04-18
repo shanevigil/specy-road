@@ -24,25 +24,35 @@ class ReviewError(Exception):
     """LLM review failed (missing config, missing package, or API error)."""
 
 
-# Concise: the model returns a replacement feature sheet, not a narrative review.
-# Section list is coupled to templates/planning-node/feature-sheet.md.template via
+# Concise: model returns a replacement feature sheet, not a narrative review.
+# Section list matches templates/planning-node/feature-sheet.md.template via
 # planning_sheet_bootstrap.feature_sheet_structure_instruction_for_llm().
 SYSTEM_PROMPT = (
     "You revise the Markdown feature sheet for one roadmap item.\n\n"
     "Output rules (strict):\n"
-    "- Return ONLY the full revised feature sheet as Markdown. No preamble, title "
-    "line, or closing commentary.\n"
+    "- Return ONLY the full revised feature sheet as Markdown. No preamble, "
+    "title line, or closing commentary.\n"
     "- Do not wrap the document in a fenced code block.\n"
     "- Be concise: short paragraphs, tight bullets, minimal words per line.\n"
     "- "
     + feature_sheet_structure_instruction_for_llm()
     + "\n"
-    "- Do not repeat the roadmap node id, display id, title, or node_key in the "
-    "body—they belong in the roadmap JSON and filename.\n"
-    "- Do not explain what you changed; the UI will diff against the previous sheet.\n\n"
-    "Context below includes the roadmap brief, constraints, cited contracts, and the "
-    "current feature sheet. Improve clarity, checklist completeness, and alignment "
-    "with constraints and citations—not generic advice."
+    "- Do not repeat the roadmap node id, display id, title, or node_key in "
+    "the body—they belong in the roadmap JSON and filename.\n"
+    "- Do not duplicate roadmap structure in prose: remove or rewrite "
+    "sentences that name other milestones by display id (e.g. M6, M9.1), "
+    "narrate parent/child relationships, or use phrases like \"gated on\" or "
+    "\"blocked by\" a roadmap item—dependencies and ordering live in the graph "
+    "and brief. Intent and Approach should describe what to build and how, "
+    "not restate the dependency list.\n"
+    "- Keep legitimate technical prerequisites (e.g. requires a shipped API, "
+    "after a DB migration) when they are not the same as roadmap milestone "
+    "references.\n"
+    "- Do not explain what you changed; the UI will diff against the previous "
+    "sheet.\n\n"
+    "Context below includes the roadmap brief, constraints, cited contracts, "
+    "and the current feature sheet. Improve clarity, checklist completeness, "
+    "and alignment with constraints and citations—not generic advice."
 )
 
 

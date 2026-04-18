@@ -166,6 +166,10 @@ function gitWorkSummary(
   return line || null;
 }
 
+/** Roadmap deps belong in the graph and Dependencies field, not repeated in markdown. */
+const PLANNING_ROADMAP_DEPENDENCY_HINT =
+  "Use the Dependencies field above and roadmap ordering on the main view for roadmap structure. Avoid restating milestones or gating in this sheet—they go stale when work moves. LLM Review suggests removing that kind of prose.";
+
 export function EditModal({
   node,
   allNodes = [],
@@ -808,6 +812,12 @@ export function EditModal({
               {reviewBusy ? "Running…" : "LLM Review"}
             </button>
           </div>
+          <p
+            className="modal-edit-planning-roadmap-hint outline-meta"
+            role="note"
+          >
+            {PLANNING_ROADMAP_DEPENDENCY_HINT}
+          </p>
           {ancestorFiles.length > 0 ? (
             <p className="modal-edit-planning-ancestors outline-meta">
               <span className="modal-edit-planning-ancestors-label">
@@ -860,6 +870,12 @@ export function EditModal({
                 />
               </div>
               <div className="modal-edit-raw-proposed-panel">
+                <p
+                  className="modal-edit-planning-roadmap-hint modal-edit-planning-roadmap-hint--review outline-meta"
+                  role="note"
+                >
+                  {PLANNING_ROADMAP_DEPENDENCY_HINT}
+                </p>
                 <div className="modal-edit-review-actions modal-edit-review-actions--raw">
                   <button
                     type="button"
@@ -995,6 +1011,12 @@ export function EditModal({
             </div>
           ) : (
             <div className="modal-edit-review-diff-full">
+              <p
+                className="modal-edit-planning-roadmap-hint modal-edit-planning-roadmap-hint--review outline-meta"
+                role="note"
+              >
+                {PLANNING_ROADMAP_DEPENDENCY_HINT}
+              </p>
               <div className="modal-edit-review-actions modal-edit-review-actions--diff">
                 <button type="button" onClick={() => dismissReview()}>
                   Close LLM Review
