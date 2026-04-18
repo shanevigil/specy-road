@@ -9,6 +9,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from tests.helpers import DOGFOOD
+from tests.test_set_gate_status import repo_with_gate
 
 _M02_PLANNING = (
     "planning/M0.2_roadmap-ci_e7fcdb23-5d23-5bbf-a9b5-aaa0140ff208.md"
@@ -102,6 +103,42 @@ def test_api_planning_put_restores_content_when_validate_fails(
     )
     assert r.status_code == 400
     assert sheet.read_text(encoding="utf-8") == before
+
+
+def test_api_patch_gate_status_roundtrip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_with_gate(tmp_path)
+    monkeypatch.setenv("SPECY_ROAD_REPO_ROOT", str(tmp_path))
+    from specy_road.gui_app import create_app
+
+    client = TestClient(create_app())
+    r0 = client.get("/api/roadmap")
+    assert r0.status_code == 200
+    gate = next(n for n in r0.json()["nodes"] if n["id"] == "M99.4")
+    assert gate["status"] == "Not Started"
+    r1 = client.patch(
+        "/api/nodes/M99.4",
+        headers={
+            **_mutation_headers(client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "status", "value": "Complete"}]},
+    )
+    assert r1.status_code == 200
+    r2 = client.get("/api/roadmap")
+    gate2 = next(n for n in r2.json()["nodes"] if n["id"] == "M99.4")
+    assert gate2["status"] == "Complete"
+    r3 = client.patch(
+        "/api/nodes/M99.4",
+        headers={
+            **_mutation_headers(client),
+            "Content-Type": "application/json",
+        },
+        json={"pairs": [{"key": "status", "value": "Not Started"}]},
+    )
+    assert r3.status_code == 200
 
 
 def test_api_patch_node_title_roundtrip(api_client: TestClient) -> None:

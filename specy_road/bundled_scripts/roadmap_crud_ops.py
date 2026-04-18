@@ -283,6 +283,31 @@ def cmd_edit(args: object) -> None:
     print(f"[ok] updated {nid} in {chunk.relative_to(root)}")
 
 
+def cmd_set_gate_status(args: object) -> None:
+    root = repo_root(args)
+    nid = args.node_id
+    nodes = load_roadmap(root)["nodes"]
+    target = next((n for n in nodes if n.get("id") == nid), None)
+    if target is None:
+        print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
+        raise SystemExit(1)
+    if target.get("type") != "gate":
+        print(
+            "error: set-gate-status only applies to type gate "
+            f"(node {nid!r} is {target.get('type')!r})",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    try:
+        edit_node_set_pairs(root, nid, [("status", args.status)])
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from None
+    chunk = find_chunk_path(root, nid)
+    assert chunk is not None
+    print(f"[ok] gate {nid} status -> {args.status} ({chunk.relative_to(root)})")
+
+
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
     nodes = load_roadmap(root)["nodes"]
     target_key: str | None = None
