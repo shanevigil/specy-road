@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -172,3 +173,95 @@ def test_shared_catalog_empty_directory(tmp_path: Path) -> None:
     (tmp_path / "shared").mkdir()
     out = review_node._shared_catalog(tmp_path)
     assert "empty" in out.lower()
+
+
+def test_shared_catalog_memoizes_when_unchanged(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    review_node._shared_catalog_cache_clear()
+    (tmp_path / "shared").mkdir()
+    (tmp_path / "shared" / "x.md").write_text("# X\n", encoding="utf-8")
+    calls = {"n": 0}
+    real_build = review_node._shared_catalog_build
+
+    def counting_build(r: Path) -> str:
+        calls["n"] += 1
+        return real_build(r)
+
+    monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
+    assert review_node._shared_catalog(tmp_path) == review_node._shared_catalog(tmp_path)
+    assert calls["n"] == 1
+
+
+def test_shared_catalog_cache_invalidates_after_file_change(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    review_node._shared_catalog_cache_clear()
+    (tmp_path / "shared").mkdir()
+    p = tmp_path / "shared" / "x.md"
+    p.write_text("# X\n", encoding="utf-8")
+    calls = {"n": 0}
+    real_build = review_node._shared_catalog_build
+
+    def counting_build(r: Path) -> str:
+        calls["n"] += 1
+        return real_build(r)
+
+    monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
+    review_node._shared_catalog(tmp_path)
+    p.write_text("# Y\n", encoding="utf-8")
+    review_node._shared_catalog(tmp_path)
+    assert calls["n"] == 2
+
+
+def test_shared_catalog_memoizes_with_git_head_tree(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    review_node._shared_catalog_cache_clear()
+    (tmp_path / "shared").mkdir()
+    (tmp_path / "shared" / "a.md").write_text("# Git doc\n", encoding="utf-8")
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "t@example.com"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "test"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "add", "shared/a.md"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "init"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    calls = {"n": 0}
+    real_build = review_node._shared_catalog_build
+
+    def counting_build(r: Path) -> str:
+        calls["n"] += 1
+        return real_build(r)
+
+    monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
+    assert review_node._shared_catalog(tmp_path) == review_node._shared_catalog(tmp_path)
+    assert calls["n"] == 1
+    key = review_node._shared_catalog_cache_key(tmp_path.resolve())
+    assert "\0git:" in key

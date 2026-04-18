@@ -4,9 +4,21 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import sys
+import threading
+from collections import OrderedDict
 from pathlib import Path
+
+from generate_brief import index as make_index, render_brief
+from planning_sheet_bootstrap import (
+    feature_sheet_expected_shape_block,
+    feature_sheet_structure_instruction_for_llm,
+)
+from roadmap_load import load_roadmap
+from specy_road.git_subprocess import git_ok
+from specy_road.runtime_paths import default_user_repo_root
 
 # Deterministic `shared/` index for LLM review: bounded reads, sorted paths.
 _TEXT_SUFFIXES = frozenset(
@@ -25,15 +37,10 @@ _SHARED_CATALOG_SAMPLE_BYTES = 2048
 _SHARED_CATALOG_MAX_BLURB_CHARS = 120
 _SHARED_CATALOG_MAX_FILES = 400
 _SHARED_CATALOG_MAX_CHARS = 28_000
+_SHARED_CATALOG_CACHE_MAX_ENTRIES = 32
 
-from generate_brief import index as make_index, render_brief
-from planning_sheet_bootstrap import (
-    feature_sheet_expected_shape_block,
-    feature_sheet_structure_instruction_for_llm,
-)
-from roadmap_load import load_roadmap
-
-from specy_road.runtime_paths import default_user_repo_root
+_SHARED_CATALOG_CACHE: OrderedDict[str, str] = OrderedDict()
+_SHARED_CATALOG_CACHE_LOCK = threading.Lock()
 
 ALLOWED_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
 
@@ -138,20 +145,17 @@ def _file_blurb_for_catalog(path: Path, size: int) -> str:
     return _blurb_from_decoded_text(decoded)
 
 
-def _shared_catalog(root: Path) -> str:
-    """
-    Sorted recursive listing under ``shared/`` with deterministic one-line blurbs.
+def _shared_catalog_cache_clear() -> None:
+    """Drop all cached ``shared/`` catalog strings (tests / rare tooling only)."""
+    with _SHARED_CATALOG_CACHE_LOCK:
+        _SHARED_CATALOG_CACHE.clear()
 
-    Truncation: if there are more than ``_SHARED_CATALOG_MAX_FILES`` paths, only
-    the first paths in sorted order are listed and the rest are counted in a
-    footer. If the section would exceed ``_SHARED_CATALOG_MAX_CHARS``, listing
-    stops early with a footer (sorted order, earliest paths win).
-    """
-    root_res = root.resolve()
+
+def _iter_shared_repo_relative_paths(root_res: Path) -> list[str]:
+    """Sorted repo-relative POSIX paths for regular files under ``shared/``."""
     shared = root_res / "shared"
     if not shared.is_dir():
-        return "_(`shared/` directory not present — nothing to index)_\n"
-
+        return []
     rel_posix: list[str] = []
     for p in shared.rglob("*"):
         if not p.is_file():
@@ -162,8 +166,66 @@ def _shared_catalog(root: Path) -> str:
         except ValueError:
             continue
         rel_posix.append(resolved.relative_to(root_res).as_posix())
-
     rel_posix.sort()
+    return rel_posix
+
+
+def _stat_fingerprint_shared_paths(root_res: Path) -> str:
+    """Stable hash from path + mtime + size (no file reads)."""
+    parts: list[str] = []
+    for rel in _iter_shared_repo_relative_paths(root_res):
+        p = root_res / rel
+        try:
+            st = p.stat()
+            parts.append(f"{rel}\t{st.st_mtime_ns}\t{st.st_size}")
+        except OSError:
+            parts.append(f"{rel}\t\t")
+    raw = "\n".join(parts).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _shared_catalog_cache_key(root_res: Path) -> str:
+    """
+    Cache key when ``shared/`` is unchanged.
+
+    Prefer ``git rev-parse HEAD:shared`` when the worktree matches HEAD for
+    everything under ``shared/`` (including untracked and ignored — otherwise
+    we fall back to a stat fingerprint so the catalog cannot go stale).
+    """
+    root_key = str(root_res)
+    shared = root_res / "shared"
+    if not shared.is_dir():
+        return f"{root_key}\0missing"
+
+    ok_stat, porcelain = git_ok(
+        ["status", "--porcelain=v1", "--ignored", "--", "shared"],
+        root_res,
+        3.0,
+    )
+    if ok_stat and not porcelain.strip():
+        ok_tree, tree_out = git_ok(["rev-parse", "HEAD:shared"], root_res, 2.0)
+        if ok_tree and tree_out.strip():
+            tree_id = tree_out.strip().splitlines()[0]
+            if tree_id:
+                return f"{root_key}\0git:{tree_id}"
+
+    return f"{root_key}\0stat:{_stat_fingerprint_shared_paths(root_res)}"
+
+
+def _shared_catalog_build(root_res: Path) -> str:
+    """
+    Sorted recursive listing under ``shared/`` with deterministic one-line blurbs.
+
+    Truncation: if there are more than ``_SHARED_CATALOG_MAX_FILES`` paths, only
+    the first paths in sorted order are listed and the rest are counted in a
+    footer. If the section would exceed ``_SHARED_CATALOG_MAX_CHARS``, listing
+    stops early with a footer (sorted order, earliest paths win).
+    """
+    shared = root_res / "shared"
+    if not shared.is_dir():
+        return "_(`shared/` directory not present — nothing to index)_\n"
+
+    rel_posix = _iter_shared_repo_relative_paths(root_res)
     total_files = len(rel_posix)
     if total_files == 0:
         body = "- _(empty `shared/` directory — no files to index)_\n"
@@ -211,6 +273,26 @@ def _shared_catalog(root: Path) -> str:
         body += "".join(footers)
 
     return body + "\nUse this index only for optional references; cited contracts appear in their own section.\n"
+
+
+def _shared_catalog(root: Path) -> str:
+    """Like :func:`_shared_catalog_build` but memoized while ``shared/`` is stable."""
+    root_res = root.resolve()
+    key = _shared_catalog_cache_key(root_res)
+    with _SHARED_CATALOG_CACHE_LOCK:
+        hit = _SHARED_CATALOG_CACHE.get(key)
+        if hit is not None:
+            _SHARED_CATALOG_CACHE.move_to_end(key)
+            return hit
+
+    text = _shared_catalog_build(root_res)
+
+    with _SHARED_CATALOG_CACHE_LOCK:
+        _SHARED_CATALOG_CACHE[key] = text
+        _SHARED_CATALOG_CACHE.move_to_end(key)
+        while len(_SHARED_CATALOG_CACHE) > _SHARED_CATALOG_CACHE_MAX_ENTRIES:
+            _SHARED_CATALOG_CACHE.popitem(last=False)
+    return text
 
 
 def _normalize_review_markdown_output(text: str) -> str:
