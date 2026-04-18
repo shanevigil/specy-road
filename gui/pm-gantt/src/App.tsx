@@ -1100,17 +1100,6 @@ export default function App() {
     <PmGuiHandlersProvider value={pmGuiHandlers}>
     <PendingMutationsProvider api={pendingMutations}>
     <div className="app-shell">
-      {roadmapBusy ? (
-        <div
-          className="roadmap-sync-banner"
-          role="status"
-          aria-live="polite"
-          aria-label={busyLabel ?? "Working"}
-        >
-          <span className="roadmap-sync-spinner" aria-hidden="true" />
-          <span>{busyLabel ?? "Working…"}</span>
-        </div>
-      ) : null}
       <div
         className="app-chrome"
         aria-busy={roadmapBusy}
@@ -1139,6 +1128,22 @@ export default function App() {
             </h1>
           </div>
           <div className="app-header-row1-actions">
+            {roadmapBusy ? (
+              <div
+                className="roadmap-sync-banner roadmap-sync-banner--inline"
+                role="status"
+                aria-live="polite"
+                aria-label={busyLabel ?? "Working"}
+              >
+                <span
+                  className="roadmap-sync-spinner"
+                  aria-hidden="true"
+                />
+                <span className="roadmap-sync-label">
+                  {busyLabel ?? "Working…"}
+                </span>
+              </div>
+            ) : null}
             <GitWorkflowStatusLabel
               gitWorkflow={displayData?.git_workflow}
               integrationBranchAutoFf={displayData?.integration_branch_auto_ff}

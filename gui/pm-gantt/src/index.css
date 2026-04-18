@@ -127,6 +127,36 @@ button {
   flex-shrink: 0;
 }
 
+/* Inline variant — lives in the title row (right of the title, left of
+ * the git status box) so the page does not shift down when the banner
+ * activates. No row background, no bottom border; just the spinner +
+ * status label sitting next to the existing chrome. */
+.roadmap-sync-banner--inline {
+  padding: 0.15rem 0.5rem;
+  border-bottom: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: var(--muted);
+  white-space: nowrap;
+  /* Keep the label readable but secondary to the title / git status. */
+}
+
+.roadmap-sync-banner--inline .roadmap-sync-label {
+  /* Truncate gracefully if the label and the git status box ever crowd
+   * each other on a narrow window. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 22ch;
+}
+
+.roadmap-sync-banner--inline .roadmap-sync-spinner {
+  /* Slightly smaller in the title row so it sits comfortably with the
+   * other inline icon-buttons. */
+  width: 0.9rem;
+  height: 0.9rem;
+  border-width: 2px;
+}
+
 .roadmap-sync-spinner {
   box-sizing: border-box;
   width: 1.1rem;
