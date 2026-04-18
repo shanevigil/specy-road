@@ -111,6 +111,8 @@ Semver tags with a `v` prefix:
 
 You **don't tag manually**. Instead, open a PR from `dev` to `main` with
 the title `release: v0.1.0` (or apply the `release:v0.1.0` label). The
+leading `v` is **required** — the bare `0.1.0` form is rejected so the
+project carries exactly one canonical version representation. The
 [main-release-tag-gate.yml](../.github/workflows/main-release-tag-gate.yml)
 workflow:
 
@@ -130,7 +132,8 @@ workflow:
 2. Update `CHANGELOG.md` — add a `## [vX.Y.Z]` section with the body
    that should appear on the GitHub Release.
 3. Open a release PR from `dev` to `main` with title
-   `release: vX.Y.Z`. Body explains what's in the release.
+   `release: vX.Y.Z` (the leading `v` is required). Body explains what's
+   in the release.
 4. Get the PR reviewed; merge it.
 
 **Machines (no further human action required):**

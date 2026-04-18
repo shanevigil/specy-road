@@ -5,11 +5,13 @@ name: Main Release Tag Gate
 # (.github/workflows/release-publish.yml) listens for those tags and
 # routes finals to PyPI, prereleases to TestPyPI.
 #
-# Accepted release-marker syntaxes:
-#   PR title:  "release: v0.1.0" or "release: v0.1.0-rc1"
-#   PR label:  "release:v0.1.0"   or "release:v0.1.0-rc1"
+# Required release-marker syntax (the leading `v` is mandatory; the
+# bare `0.1.0` form is intentionally rejected so there is exactly one
+# canonical version representation):
+#   PR title:  "release: v0.1.0"   or  "release: v0.1.0-rc1"
+#   PR label:  "release:v0.1.0"     or  "release:v0.1.0-rc1"
 #
-# Created tag (always v-prefixed):  v0.1.0  /  v0.1.0-rc1
+# Created tag:  v0.1.0  /  v0.1.0-rc1
 
 on:
   pull_request:
@@ -23,11 +25,13 @@ permissions:
   pull-requests: read
 
 env:
-  # Final semver: vX.Y.Z. Prerelease: vX.Y.Z-<alphanum-or-dot>+
-  # The capture group returns the version WITHOUT the leading 'v' so
-  # downstream code can compare against pyproject.toml.
-  RELEASE_TITLE_RE: '(?:^|\s)release:\s*v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)(?:\s|$)'
-  RELEASE_LABEL_RE: '^release:v?([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)$'
+  # Final: vX.Y.Z. Prerelease: vX.Y.Z-<alphanum-or-dot>+. The leading
+  # `v` is REQUIRED — bare `0.1.0` is rejected so the project carries
+  # exactly one canonical version string. The capture group returns
+  # the version without the leading 'v' so downstream code can compare
+  # against pyproject.toml directly.
+  RELEASE_TITLE_RE: '(?:^|\s)release:\s*v([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)(?:\s|$)'
+  RELEASE_LABEL_RE: '^release:v([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)$'
   VERSION_RE: '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'
 
 jobs:
@@ -61,8 +65,10 @@ jobs:
 
             if (versions.size !== 1) {
               core.setFailed(
-                "PRs targeting main must declare exactly one release version via " +
-                "title 'release: vX.Y.Z[-suffix]' or label 'release:vX.Y.Z[-suffix]'."
+                "PRs targeting main must declare exactly one release version. " +
+                "Use a title like 'release: v0.1.0' (or 'release: v0.1.0-rc1' " +
+                "for a prerelease), or a label 'release:v0.1.0'. The leading " +
+                "`v` is required."
               );
               return;
             }
@@ -71,7 +77,7 @@ jobs:
             core.info(`Detected release version: ${version}`);
 
             if (!versionRe.test(version)) {
-              core.setFailed(`Invalid release version '${version}'. Expected X.Y.Z or X.Y.Z-suffix.`);
+              core.setFailed(`Invalid release version 'v${version}'. Expected vX.Y.Z or vX.Y.Z-suffix.`);
               return;
             }
 
@@ -139,15 +145,16 @@ jobs:
 
             if (versions.size !== 1) {
               core.setFailed(
-                `Merged PR #${pr.number} must contain exactly one release marker: ` +
-                `title 'release: vX.Y.Z[-suffix]' or label 'release:vX.Y.Z[-suffix]'.`
+                `Merged PR #${pr.number} must contain exactly one release marker — ` +
+                "title 'release: v0.1.0' (or 'release: v0.1.0-rc1' for a " +
+                "prerelease) or label 'release:v0.1.0'. The leading `v` is required."
               );
               return;
             }
 
             const [version] = Array.from(versions);
             if (!versionRe.test(version)) {
-              core.setFailed(`Invalid release version '${version}'. Expected X.Y.Z or X.Y.Z-suffix.`);
+              core.setFailed(`Invalid release version 'v${version}'. Expected vX.Y.Z or vX.Y.Z-suffix.`);
               return;
             }
 
