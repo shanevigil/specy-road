@@ -65,6 +65,33 @@ def _apply_rollup_on_wire(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def _outline_actions_for(nodes: list[dict[str, Any]]) -> dict[str, dict[str, bool]]:
+    by_id = {n["id"]: n for n in nodes}
+    return {
+        n["id"]: {
+            "can_indent": can_indent_outline(nodes, by_id, n["id"]),
+            "can_outdent": can_outdent_outline(by_id, n["id"]),
+        }
+        for n in nodes
+    }
+
+
+def _stringified_fingerprints(root: Path) -> dict[str, str]:
+    """Both fingerprints, JSON-string encoded.
+
+    ``fingerprint`` is the **narrow** outline token sent back as
+    ``X-PM-Gui-Fingerprint`` on mutating POSTs. ``view_fingerprint`` is
+    the broader change-detection token used by the polling refresh hook.
+    Both are emitted as strings: the underlying integer routinely exceeds
+    ``2**53`` and would lose precision when round-tripped through the
+    browser's IEEE 754 ``Number`` type, producing spurious 412s.
+    """
+    return {
+        "fingerprint": str(outline_mutation_fingerprint(root)),
+        "view_fingerprint": str(pm_gui_mutation_fingerprint(root)),
+    }
+
+
 def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
     nodes = _apply_rollup_on_wire(doc.get("nodes") or [])
@@ -92,15 +119,7 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     row_depths = [d for _, d in tree_rows]
     dep_starts, dep_spans = compute_dependency_steps(nodes)
     edges = dependency_edges_detailed(nodes)
-    by_id = {n["id"]: n for n in nodes}
     dep_inheritance = dependency_inheritance_display(nodes)
-    outline_actions: dict[str, dict[str, bool]] = {}
-    for n in nodes:
-        nid = n["id"]
-        outline_actions[nid] = {
-            "can_indent": can_indent_outline(nodes, by_id, nid),
-            "can_outdent": can_outdent_outline(by_id, nid),
-        }
     out: dict[str, Any] = {
         "version": doc.get("version"),
         "nodes": nodes,
@@ -118,7 +137,7 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
         "pr_hints": pr_hints,
         "git_enrichment": git_enrichment,
         "dependency_inheritance": dep_inheritance,
-        "outline_actions": outline_actions,
+        "outline_actions": _outline_actions_for(nodes),
         "git_workflow": gw,
     }
     if registry_overlay_meta is not None:
@@ -130,32 +149,21 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     ibaff = describe_integration_branch_auto_ff(root)
     if ibaff.get("enabled") is True:
         out["integration_branch_auto_ff"] = ibaff
-    # ``fingerprint`` is the **narrow** outline fingerprint — it is what
-    # the bundled UI sends back as ``X-PM-Gui-Fingerprint`` on mutating
-    # POSTs. Do NOT include planning/constitution/shared/vision/git-HEAD
-    # here: those move constantly during normal IDE use and would reject
-    # legitimate PM edits as spurious conflicts.
-    out["fingerprint"] = outline_mutation_fingerprint(root)
-    # ``view_fingerprint`` is the broader change-detection token. Used by
-    # the polling refresh hook so the UI can spot "something changed
-    # elsewhere — refresh the view" without triggering optimistic-
-    # concurrency conflicts on writes.
-    out["view_fingerprint"] = pm_gui_mutation_fingerprint(root)
+    out.update(_stringified_fingerprints(root))
     return out
 
 
-def _pm_gui_finalize_state(root: Path) -> tuple[int, int]:
-    """Run the GET-side background sync, then return ``(narrow_fp, view_fp)``.
+def _pm_gui_finalize_state(root: Path) -> None:
+    """Run the GET-side background sync (auto-fetch + auto-FF).
 
-    Both ``GET /api/roadmap`` and ``GET /api/roadmap/fingerprint`` must run
-    these side effects *before* computing the token they hand back to the
-    client. Returns a 2-tuple so callers can publish whichever token suits
-    them (mutation guard wants narrow; polling-refresh wants view).
+    Callers (``GET /api/roadmap`` and ``GET /api/roadmap/fingerprint``)
+    must invoke this *before* computing the fingerprints they hand back
+    to the client, so the values they emit reflect any HEAD/refs
+    movement caused by the background sync.
     """
     if registry_remote_overlay_enabled(root):
         maybe_auto_git_fetch(root, resolve_git_remote(root))
     maybe_auto_integration_ff(root)
-    return outline_mutation_fingerprint(root), pm_gui_mutation_fingerprint(root)
 
 
 def register_core(api: APIRouter) -> None:
@@ -183,11 +191,12 @@ def register_core(api: APIRouter) -> None:
         return _roadmap_payload(root, doc)
 
     @api.get("/roadmap/fingerprint")
-    def api_roadmap_fingerprint() -> dict[str, int]:
-        narrow, view = _pm_gui_finalize_state(get_repo_root())
-        # ``fingerprint`` is the narrow outline token (mutation guard).
-        # ``view_fingerprint`` is the broad token (polling refresh).
-        return {"fingerprint": narrow, "view_fingerprint": view}
+    def api_roadmap_fingerprint() -> dict[str, str]:
+        root = get_repo_root()
+        # Run the same auto-fetch / auto-FF the GET /roadmap endpoint runs
+        # so the polling refresh hook sees a coherent token.
+        _pm_gui_finalize_state(root)
+        return _stringified_fingerprints(root)
 
     @api.get("/governance-completion")
     def api_governance_completion() -> dict[str, bool]:

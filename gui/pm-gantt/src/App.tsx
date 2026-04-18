@@ -174,7 +174,9 @@ export default function App() {
     return 5;
   });
 
-  const lastFingerprintRef = useRef<number | null>(null);
+  // Fingerprint is a string end-to-end (server emits base-10 strings to
+  // dodge JS Number precision loss for values > 2**53).
+  const lastFingerprintRef = useRef<string | null>(null);
 
   const [splitPct, setSplitPct] = useState(() => {
     const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.splitPct);

@@ -240,15 +240,19 @@ def test_outline_reorder_412_when_chunk_actually_changed(
     det = r.json()["detail"]
     assert isinstance(det, dict)
     assert det.get("retryable") is True
-    assert isinstance(det.get("current_fingerprint"), int)
+    # Fingerprints are string-encoded end-to-end (see
+    # specy_road.pm_gui_concurrency for rationale: JS Number precision).
+    assert isinstance(det.get("current_fingerprint"), str)
+    assert det["current_fingerprint"].lstrip("-").isdigit()
     # The fp returned matches what GET /api/roadmap/fingerprint returns now.
     fresh = client.get("/api/roadmap/fingerprint").json()["fingerprint"]
+    assert isinstance(fresh, str)
     assert det["current_fingerprint"] == fresh
 
     # And the retry with the fresh fp succeeds.
     r2 = client.post(
         "/api/outline/reorder",
-        headers={"X-PM-Gui-Fingerprint": str(fresh)},
+        headers={"X-PM-Gui-Fingerprint": fresh},
         json={"parent_id": "M0", "ordered_child_ids": rotated},
     )
     assert r2.status_code == 200, r2.text

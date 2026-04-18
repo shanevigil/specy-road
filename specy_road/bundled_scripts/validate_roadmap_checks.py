@@ -250,6 +250,46 @@ def touch_zone_overlap(entries: list[dict]) -> None:
                         print(warn, file=sys.stderr)
 
 
+#: Per-node fields computed in-memory by ``load_roadmap`` (e.g. by
+#: ``annotate_rollup_status``) that must be stripped before validating
+#: against the roadmap schema. Older consumer-side schemas may not list
+#: these as allowed properties; we don't want a derived field to make
+#: validation reject an otherwise-valid roadmap. Mirrors the
+#: ``_DERIVED_NODE_KEYS`` set in :mod:`roadmap_chunk_utils`.
+_DERIVED_NODE_KEYS_FOR_SCHEMA = frozenset({"rollup_status"})
+
+
+def _roadmap_for_schema_validation(roadmap: dict) -> dict:
+    """Shallow-copy ``roadmap`` with derived per-node keys stripped."""
+    nodes = roadmap.get("nodes") or []
+    cleaned_nodes = [
+        {k: v for k, v in n.items() if k not in _DERIVED_NODE_KEYS_FOR_SCHEMA}
+        for n in nodes
+    ]
+    out = dict(roadmap)
+    out["nodes"] = cleaned_nodes
+    return out
+
+
+def _validate_roadmap_and_registry_schemas(
+    roadmap: dict, registry: dict, repo_root: Path
+) -> None:
+    """Schema-validate the in-memory roadmap (sans derived keys) and registry."""
+    roadmap_schema = repo_root / "schemas" / "roadmap.schema.json"
+    registry_schema = repo_root / "schemas" / "registry.schema.json"
+    # ``load_roadmap`` annotates each node with ``rollup_status`` (a
+    # derived field). The on-disk chunk JSON never carries it (see
+    # ``roadmap_chunk_utils._strip_derived``) but in-memory roadmaps do,
+    # so strip it before schema validation — older consumer schemas may
+    # not list it as an allowed property and would reject the document.
+    validate_schema(
+        _roadmap_for_schema_validation(roadmap),
+        load_schema(roadmap_schema),
+        "roadmap.schema",
+    )
+    validate_schema(registry, load_schema(registry_schema), "registry.schema")
+
+
 def run_validation(
     roadmap: dict,
     registry: dict,
@@ -259,10 +299,7 @@ def run_validation(
     no_phase_status_warn: bool = False,
 ) -> None:
     r = repo_root or default_user_repo_root()
-    roadmap_schema = r / "schemas" / "roadmap.schema.json"
-    registry_schema = r / "schemas" / "registry.schema.json"
-    validate_schema(roadmap, load_schema(roadmap_schema), "roadmap.schema")
-    validate_schema(registry, load_schema(registry_schema), "registry.schema")
+    _validate_roadmap_and_registry_schemas(roadmap, registry, r)
 
     nodes = roadmap["nodes"]
     ids = [n["id"] for n in nodes]
