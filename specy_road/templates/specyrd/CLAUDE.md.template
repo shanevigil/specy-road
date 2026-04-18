@@ -1,0 +1,50 @@
+# specy-road (local agent guide)
+
+This repo is a **roadmap-first coordination kit**. Follow the repo’s contracts; don’t invent new workflows.
+
+## Start here (required load order)
+
+Read `AGENTS.md` first. It defines the load order and coordination rules.
+
+For any roadmap-linked task, keep context small:
+- `constitution/purpose.md`
+- `constitution/principles.md`
+- `constraints/README.md`
+- **Roadmap graph** (`roadmap/manifest.json` manifest + chunk files from `includes`): your node + parents + `dependencies`
+- `shared/README.md`, then open **only** cited contract files
+
+## Roadmap model (do not confuse with registry)
+
+- **Merged graph (source of truth):** `roadmap/manifest.json` lists ordered `includes` of **JSON** chunk files under `roadmap/` (e.g. `phases/M1.json`). That is the roadmap data model — not YAML.
+- **Registration overlay:** `roadmap/registry.yaml` records who claimed which node and touch zones; it is **not** a merge chunk and does not replace the graph. See `docs/roadmap-authoring.md` for authoring rules; `roadmap.md` at the repo root is a **generated** index (`specy-road export`).
+
+Generate a focused brief when possible:
+
+```bash
+specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
+```
+
+## Non-negotiables
+
+- **Docs win**: if instructions conflict, prefer tracked repo docs (not chat history).
+- **No scope creep**: don’t refactor or reorganize unrelated code “for cleanliness”.
+- **Search before adding**: prefer reusing existing scripts/validators over creating new ones.
+- **Roadmap-linked implementation**: follow `docs/git-workflow.md` and the registry protocol in `roadmap/registry.yaml` (register on the integration branch, then `feature/rm-*`).
+
+## Common commands (repo root)
+
+```bash
+# Roadmap + exports + limits
+specy-road validate
+specy-road export --check
+specy-road file-limits
+
+# Optional: tests (if dev extras installed)
+pytest
+```
+
+## Where to look (pointers)
+
+- Agent entrypoint: `AGENTS.md`
+- Optional AI tooling patterns: `docs/optional-ai-tooling-patterns.md`
+- Branching + registry workflow: `docs/git-workflow.md` and `roadmap/registry.yaml`

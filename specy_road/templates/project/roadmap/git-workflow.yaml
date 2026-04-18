@@ -1,0 +1,14 @@
+# Machine-readable git defaults for specy-road CLI and PM Gantt.
+# Edit integration_branch to match your team's daily trunk (e.g. dev instead of main).
+# Precedence: CLI --base / --remote overrides this file; see docs/git-workflow.md
+
+version: 1
+integration_branch: main
+remote: origin
+# Human must review implementation (summary + optional walkthrough) before finish-this-task.
+require_implementation_review_before_finish: true
+# Remove session files under work/ when closing a task (brief, prompt, implementation-summary).
+# Omit or set true for default; set false to keep those files (CLI --no-cleanup-work also skips).
+cleanup_work_artifacts_on_finish: true
+# Optional: merge_request_requires_manual_approval: true
+# Optional: on_complete: pr   # pr | merge | auto — how finish-this-task lands work (default pr); see docs/git-workflow.md

@@ -1,0 +1,44 @@
+## Intent
+
+What problem this slice solves; cite the roadmap and `shared/` contracts where relevant.
+
+## User-visible behavior
+
+-
+
+## Out of scope
+
+-
+
+## Approach
+
+-
+
+## Files / modules (expected)
+
+-
+
+## Risks
+
+-
+
+## Human gate (if any)
+
+Record decisions before implementation proceeds.
+
+## Tasks / checklist
+
+Ordered checklist. Mark `[ ]` / `[x]` as you go.
+
+- [ ] Task 1 …
+- [ ] Task 2 …
+
+### Verification
+
+- [ ] `specy-road validate` (if roadmap changed)
+- [ ] Tests / CI per project conventions
+
+## References
+
+- Roadmap: `roadmap/manifest.json` (`includes`) → chunk file for `M0`
+- Contracts (read selectively): `shared/`

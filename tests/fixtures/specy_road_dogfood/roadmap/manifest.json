@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "includes": [
+    "phases/M0.json",
+    "phases/M1.json"
+  ]
+}

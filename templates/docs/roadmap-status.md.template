@@ -1,0 +1,19 @@
+# Roadmap status (in-app / product repo)
+
+Copy to your application repository as `docs/roadmap-status.md` (or similar). Tracks **in-flight** work; the canonical graph stays under `roadmap/` (manifest + chunk files).
+
+## Active
+
+| Branch | Owner | Node | Touch zones | Notes |
+|--------|-------|------|-------------|-------|
+| _(empty)_ | | | | |
+
+## Recently merged
+
+| PR | Node | Codename |
+|----|------|----------|
+| _(empty)_ | | |
+
+---
+
+In a **specy-road** kit repo, registration uses `roadmap/registry.yaml` on the feature branch; this file is optional human-facing parity for teams that want a visible status doc in an app repository.

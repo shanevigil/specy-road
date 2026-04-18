@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "specy-road"
+# Canonical version: `specy_road.__version__` reads this via importlib.metadata.
+version = "0.1.0"
+description = "Roadmap-first coordination kit for humans and AI agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "PyYAML>=6.0",
+  "jsonschema>=4.20",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "fastapi>=0.115",
+  # Required by starlette.testclient.TestClient (tests/test_gui_app.py); not a transitive install.
+  "httpx>=0.27",
+  "requests>=2.31",
+]
+review = [
+  "openai>=1.40",
+  "anthropic>=0.40",
+]
+gui = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "requests>=2.31",
+  "openai>=1.40",
+  "anthropic>=0.40",
+]
+gui-next = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "requests>=2.31",
+  "openai>=1.40",
+  "anthropic>=0.40",
+]
+
+[project.scripts]
+specy-road = "specy_road.cli:main"
+specyrd = "specy_road.specyrd_cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["specy_road*"]
+
+[tool.setuptools.package-data]
+specy_road = [
+  "templates/**/*",
+  "templates/project/**/*",
+  "pm_gantt_static/**/*",
+  "bundled_scripts/*.py",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "specy_road/bundled_scripts"]

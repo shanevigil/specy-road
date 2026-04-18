@@ -1,0 +1,10 @@
+---
+description: Consumer boundary for optional nested specy-road toolkit clone
+alwaysApply: true
+---
+
+## specy-road consumer boundary
+
+- Treat `specy-road/` as **read-only** for agents attempting to fix toolkit CLI, GUI, or validation behavior; upstream fixes belong in the specy-road repository or via package upgrade.
+- For suspected toolkit bugs, produce **assessment/handoff** output (repro steps, `pip show specy-road` or equivalent version, relevant logs, suspected upstream area) instead of patching files under `specy-road/`.
+- If `specy-road/` exists only as a local reference clone, consider listing `specy-road/` in **`.cursorignore`** to reduce noisy indexing; explicitly opened files still work.

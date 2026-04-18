@@ -1,0 +1,41 @@
+# Ephemeral / local work (see work/README.md)
+/work/*
+!/work/.gitkeep
+!/work/README.md
+
+# Throwaway consumer scaffold trials (see playground/README.md)
+/playground/*
+!/playground/.gitkeep
+!/playground/README.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.conda/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# AI / agents (local-only)
+.cursor/
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+CLAUDE.*.local.md
+
+# Other common agent artifacts (conservative)
+.aider*
+.continue/
+.cody/
+.windsurf/
+.roo/
+agent-transcripts/
+sample-apps/
