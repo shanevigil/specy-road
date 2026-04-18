@@ -20,6 +20,12 @@ def tiny_repo(tmp_path: Path) -> Path:
     (tmp_path / "roadmap" / "phases").mkdir(parents=True)
     (tmp_path / "shared").mkdir(parents=True)
     (tmp_path / "shared" / "README.md").write_text("# S\n", encoding="utf-8")
+    (tmp_path / "shared" / "nested").mkdir(parents=True)
+    (tmp_path / "shared" / "nested" / "note.md").write_text(
+        "## Deep title\n\nbody\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "shared" / "asset.bin").write_bytes(b"\x00\x01\xff")
     (tmp_path / "roadmap" / "registry.yaml").write_text(
         "version: 1\nentries: []\n",
         encoding="utf-8",
@@ -70,12 +76,25 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(review_node, "_complete", fake_complete)
     review_node.main(["M99.1", "--repo-root", str(tiny_repo)])
     assert len(captured) == 1
-    assert "Brief" in captured[0]
-    assert "constraints/README.md" in captured[0]
-    assert "shared/README.md" in captured[0]
-    assert "Current feature sheet" in captured[0]
-    assert "Expected shape" in captured[0]
-    assert "scaffold-planning" in captured[0]
+    msg = captured[0]
+    assert "Brief" in msg
+    assert "## shared/ index (possible references)" in msg
+    assert msg.index("## Brief") < msg.index("## shared/ index (possible references)")
+    assert msg.index("## shared/ index (possible references)") < msg.index(
+        "## constraints/README.md",
+    )
+    assert "`shared/README.md`" in msg
+    assert "`shared/asset.bin`" in msg
+    assert "`shared/nested/note.md`" in msg
+    assert "Deep title" in msg
+    assert msg.index("`shared/README.md`") < msg.index("`shared/asset.bin`")
+    assert msg.index("`shared/asset.bin`") < msg.index("`shared/nested/note.md`")
+    assert "constraints/README.md" in msg
+    assert "shared/README.md" in msg
+    assert "Current feature sheet" in msg
+    assert "Expected shape" in msg
+    assert "scaffold-planning" in msg
+    assert "deterministic index" in review_node.SYSTEM_PROMPT
 
 
 def test_normalize_review_strips_markdown_fence() -> None:
@@ -106,3 +125,50 @@ def test_run_review_returns_markdown(tiny_repo: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr(review_node, "_complete", lambda _c, _u: "## OK\n")
     out = review_node.run_review("M99.1", tiny_repo)
     assert out.startswith("## OK")
+
+
+def test_shared_catalog_sorts_lexicographically(
+    tiny_repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Paths are sorted by string, not filesystem creation order."""
+    (tiny_repo / "shared" / "b.md").write_text("# B\n", encoding="utf-8")
+    (tiny_repo / "shared" / "a.md").write_text("# A\n", encoding="utf-8")
+    monkeypatch.setenv("SPECY_ROAD_OPENAI_API_KEY", "test-key")
+    captured: list[str] = []
+
+    def fake_complete(_client: object, user_content: str) -> str:
+        captured.append(user_content)
+        return "## OK\n"
+
+    monkeypatch.setattr(review_node, "_make_client", lambda: object())
+    monkeypatch.setattr(review_node, "_complete", fake_complete)
+    review_node.run_review("M99.1", tiny_repo)
+    msg = captured[0]
+    assert msg.index("`shared/a.md`") < msg.index("`shared/b.md`")
+
+
+def test_shared_catalog_max_files_footer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(review_node, "_SHARED_CATALOG_MAX_FILES", 2)
+    (tmp_path / "shared").mkdir()
+    for i in range(4):
+        (tmp_path / "shared" / f"z{i}.md").write_text("# t\n", encoding="utf-8")
+    out = review_node._shared_catalog(tmp_path)
+    assert "`shared/z0.md`" in out
+    assert "`shared/z1.md`" in out
+    assert "`shared/z2.md`" not in out
+    assert "2 more path(s)" in out
+
+
+def test_shared_catalog_no_shared_directory(tmp_path: Path) -> None:
+    out = review_node._shared_catalog(tmp_path)
+    assert "not present" in out
+
+
+def test_shared_catalog_empty_directory(tmp_path: Path) -> None:
+    (tmp_path / "shared").mkdir()
+    out = review_node._shared_catalog(tmp_path)
+    assert "empty" in out.lower()
