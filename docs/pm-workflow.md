@@ -172,6 +172,8 @@ In the detail panel, choose a **status** from the dropdown and click **Save stat
 
 Configure credentials in **Settings** (gear area in the sidebar) under the **LLM** tab, or set the same **environment variables** your team documents (see below). Use **Test LLM** before relying on it.
 
+For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-llm-review.md](pm-llm-review.md)**.
+
 ---
 
 ## Optional dashboard settings (sidebar → Settings)
