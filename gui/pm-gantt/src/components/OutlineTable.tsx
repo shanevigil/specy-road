@@ -36,6 +36,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
+import { usePendingMutations } from "../pendingMutations";
 import { pmPlanningTitleReadOnlyFromRow } from "../pmDisplayStatus";
 import { phaseRollupDerivedComplete } from "../parentStatusRollup";
 import {
@@ -569,12 +570,21 @@ function SortableRow({
     }
   };
 
+  const pending = usePendingMutations().pendingFor(id);
+  const pendingClass = pending
+    ? pending.phase === "fail"
+      ? "outline-row-pending outline-row-pending--fail"
+      : pending.phase === "settling"
+        ? "outline-row-pending outline-row-pending--settling"
+        : "outline-row-pending"
+    : "";
   const rowClass = [
     selected ? "selected" : "",
     depEditId === id ? "dep-edit-row" : "",
     isDepCandidate ? "dep-candidate-row" : "",
     isGitCheckoutRow ? "outline-row-git-current" : "",
     node.type === "gate" ? "outline-row-gate" : "",
+    pendingClass,
   ]
     .filter(Boolean)
     .join(" ");
