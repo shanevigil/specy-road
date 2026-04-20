@@ -30,8 +30,11 @@ _USAGE_TEXT = (
     "  list-nodes           — list nodes and chunk paths (pass-through to roadmap CRUD)\n"
     "  show-node <NODE_ID>\n"
     "  add-node ...         — see: python specy_road/bundled_scripts/roadmap_crud.py add-node -h\n"
+    "    (--chunk is now optional; specy-road auto-routes to a valid chunk)\n"
     "  edit-node ...\n"
     "  archive-node ...\n"
+    "  rebalance-chunks     — power-user: re-pack roadmap chunks deterministically\n"
+    "    (optional: --repo-root DIR --dry-run)\n"
     "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
     "  scaffold-planning <NODE_ID> — create planning/<id>_<slug>_<node_key>.md; set planning_dir\n"
     "    (optional: --planning-dir PATH --force; see specy_road/bundled_scripts/scaffold_planning.py -h)\n"
@@ -277,6 +280,8 @@ def main(argv: list[str] | None = None) -> None:
         "archive-node",
     ):
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
+    elif cmd == "rebalance-chunks":
+        _run("roadmap_rebalance.py", rest)
     elif cmd == "review-node":
         _run("review_node.py", rest)
     elif cmd == "scaffold-planning":
