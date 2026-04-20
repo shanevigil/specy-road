@@ -12,7 +12,6 @@ from roadmap_chunk_utils import (
     build_node_chunk_map,
     find_chunk_path,
     load_json_chunk,
-    resolve_chunk_file,
     write_json_chunk,
 )
 from planning_rename import rename_planning_file_if_path_changed
@@ -197,20 +196,28 @@ def cmd_add(args: object) -> None:
 
     ensure_planning_sheet_for_new_node(root, node)
 
-    chunk_path = append_node_to_chunk(root, args.chunk, node)
+    try:
+        chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     print(f"[ok] appended node {nid} to {chunk_path.relative_to(root)}")
-    run_validate(root)
 
 
-def append_node_to_chunk(root: Path, chunk_arg: str, node: dict) -> Path:
-    chunk_path = resolve_chunk_file(root, chunk_arg)
-    if chunk_path.suffix.lower() == ".json":
-        nodes = load_json_chunk(chunk_path)
-        nodes.append(node)
-        write_json_chunk(chunk_path, nodes)
-        return chunk_path
-    print("error: chunk must be a .json file", file=sys.stderr)
-    raise SystemExit(1)
+def append_node_to_chunk(root: Path, chunk_arg: str | None, node: dict) -> Path:
+    """Append ``node`` to a roadmap chunk, auto-routing if the hint chunk would overflow.
+
+    ``chunk_arg`` is treated as a *hint*: if supplied and the chunk has room,
+    the node lands there (today's behavior). If no hint or the hint is full,
+    the chunk router picks a same-phase chunk, then any chunk, then auto-creates
+    a new chunk and updates the manifest. Atomic: rolls back on any validation
+    failure.
+    """
+    from roadmap_chunk_router import write_with_routing
+
+    parent_id_raw = node.get("parent_id")
+    parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
+    return write_with_routing(root, parent_id, chunk_arg, node)
 
 
 def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) -> None:
@@ -253,7 +260,15 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
                 new_pd = new_pd.strip() or None
             rename_planning_file_if_path_changed(root, old_pd, new_pd)
         write_json_chunk(chunk, nodes)
-        run_validate_raise(root)
+        # Auto-relocate the edited node if its growth pushed the chunk over
+        # the line cap. relocate_node_if_overflow is atomic and runs validation
+        # internally; if relocation happens we skip the redundant validate call
+        # below.
+        from roadmap_chunk_router import relocate_node_if_overflow
+
+        relocated = relocate_node_if_overflow(root, node_id, chunk)
+        if relocated is None:
+            run_validate_raise(root)
         return
     raise ValueError(f"unsupported chunk type {chunk.suffix} (expected .json)")
 

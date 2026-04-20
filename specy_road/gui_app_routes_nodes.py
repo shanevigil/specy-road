@@ -70,6 +70,8 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     chunk_path = find_chunk_path(root, ref)
     if not chunk_path:
         raise HTTPException(status_code=500, detail="chunk for reference not found")
+    # The reference row's chunk is a *hint*. The chunk router will fall back
+    # to a sibling / new chunk when this one is full.
     chunk_arg = str(chunk_path.relative_to(roadmap_dir(root)))
 
     siblings = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
@@ -99,8 +101,10 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     inserted_key = new_node["node_key"]
 
     try:
+        # append_node_to_chunk delegates to the chunk router, which validates
+        # internally inside an atomic plan (rolls back on failure). Avoid the
+        # double validation that used to live here.
         append_node_to_chunk(root, chunk_arg, new_node)
-        run_validate_raise(root)
     except (SystemExit, OSError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
