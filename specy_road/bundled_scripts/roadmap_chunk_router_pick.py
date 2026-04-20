@@ -172,19 +172,21 @@ def derive_new_chunk_path(root: Path, base_chunk_rel: str | None, new_node: dict
 
 
 def default_chunk_for_parent(root: Path, parent_id: str | None) -> str | None:
-    """Find the chunk path (relative to ``roadmap/``) for the parent's phase chunk."""
+    """Find a base chunk path for routing decisions.
+
+    Preference order:
+    1. The phase ancestor's own chunk (so overflow chunks accumulate near
+       their phase, e.g. ``M3.json`` → ``M3__abc123.json``).
+    2. The parent's own chunk (if no phase ancestor — e.g. when the parent
+       is itself a phase or a top-level orphan).
+    3. The first manifest include (last-resort default).
+    """
     merged = load_merged_nodes(root)
     chunk_map = build_node_chunk_map(root)
     base = roadmap_dir(root)
     if parent_id is None:
         includes = manifest_includes(root)
         return includes[0] if includes else None
-    parent_chunk = chunk_map.get(parent_id)
-    if parent_chunk:
-        try:
-            return parent_chunk.relative_to(base).as_posix()
-        except ValueError:
-            pass
     phase_id = phase_ancestor_id(merged, parent_id)
     if phase_id:
         ph_chunk = chunk_map.get(phase_id)
@@ -193,6 +195,12 @@ def default_chunk_for_parent(root: Path, parent_id: str | None) -> str | None:
                 return ph_chunk.relative_to(base).as_posix()
             except ValueError:
                 pass
+    parent_chunk = chunk_map.get(parent_id)
+    if parent_chunk:
+        try:
+            return parent_chunk.relative_to(base).as_posix()
+        except ValueError:
+            pass
     includes = manifest_includes(root)
     return includes[0] if includes else None
 
@@ -284,11 +292,19 @@ def pick_target_chunk(
 ) -> RoutingDecision:
     """Choose the chunk that should receive ``new_node``.
 
-    Priority order:
+    Priority order (tuned for locality + concurrency-friendliness):
+
     1. Hint chunk if it still fits.
-    2. Smallest valid chunk in the same phase subtree (manifest order tie-break).
-    3. Smallest valid chunk anywhere.
-    4. Auto-create a new chunk.
+    2. Smallest valid chunk in the same phase subtree (manifest-order tie-break).
+    3. **Auto-create a new chunk in the same phase** when same-phase chunks
+       are full. Locality matters: scattering siblings of one phase across
+       unrelated phase chunks made parallel-PM merges noisier and made the
+       graph less reviewable. The new chunk's filename derives from the new
+       node's ``node_key`` so two PMs adding overflow nodes on parallel
+       branches generate different filenames and never collide on a chunk
+       file (only the manifest gets a clean two-line addition).
+    4. Only when there is no phase ancestor (e.g. authoring a vision/phase
+       row), fall back to smallest-valid-anywhere then auto-create.
     """
     if max_lines is None:
         max_lines = chunk_max_lines(root)
@@ -305,13 +321,21 @@ def pick_target_chunk(
         )
         if decision is not None:
             return decision
+        # No same-phase chunk fits → create a new chunk for this phase.
+        return _build_new_chunk_decision(root, parent_id, new_node)
 
+    # No phase ancestor: scan all chunks, then create.
     decision = _route_via_existing_chunks(
         root, all_chunks_in_manifest_order(root), new_node, max_lines
     )
     if decision is not None:
         return decision
+    return _build_new_chunk_decision(root, parent_id, new_node)
 
+
+def _build_new_chunk_decision(
+    root: Path, parent_id: str | None, new_node: dict
+) -> RoutingDecision:
     base = roadmap_dir(root)
     base_rel = default_chunk_for_parent(root, parent_id)
     new_rel = derive_new_chunk_path(root, base_rel, new_node)

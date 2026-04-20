@@ -183,6 +183,27 @@ def test_pick_target_chunk_falls_back_when_hint_full(tmp_path: Path) -> None:
     assert decision.is_new_chunk is False
 
 
+def test_pick_target_chunk_does_not_scatter_across_phases(tmp_path: Path) -> None:
+    """Locality: when same-phase chunks are full, the router auto-creates a
+    NEW chunk in the same phase rather than scattering the new node into
+    some unrelated phase's chunk that happens to have room."""
+    fat = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
+    other_phase = [_node("M1", None, type_="phase", title="phase1", n_index=200)]
+    chunks = {
+        "phases/M0.json": fat,
+        "phases/M1.json": other_phase,  # has plenty of room
+    }
+    _seed_repo(tmp_path, chunks)
+    (tmp_path / "constraints" / "file-limits.yaml").write_text(
+        "roadmap_json_chunk_max_lines: 215\n", encoding="utf-8"
+    )
+    new = _task("M0.99", "M0", n_index=99)
+    decision = pick_target_chunk(tmp_path, "M0", "phases/M0.json", new)
+    # New chunk auto-created with M0 stem (locality), NOT routed into M1.json.
+    assert decision.is_new_chunk is True
+    assert decision.chunk_rel.startswith("phases/M0__")
+
+
 def test_pick_target_chunk_creates_new_chunk_when_none_fit(tmp_path: Path) -> None:
     fat = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 16)]
     _seed_repo(tmp_path, {"phases/M0.json": fat})
