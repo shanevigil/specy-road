@@ -193,6 +193,41 @@ def test_api_post_nodes_add_task(api_client: TestClient) -> None:
     assert "id" in body
 
 
+def test_api_post_nodes_add_auto_routes_when_reference_chunk_full(
+    dogfood_copy: Path, api_client: TestClient
+) -> None:
+    """F-AUTO: GUI add-node falls back to a new chunk when the reference chunk is full."""
+    # Tighten the cap below the current size of M0.json so any append would
+    # overflow it; the router must auto-create a new chunk.
+    chunk = dogfood_copy / "roadmap" / "phases" / "M0.json"
+    cur_lines = sum(1 for _ in chunk.read_text(encoding="utf-8").splitlines())
+    (dogfood_copy / "constraints" / "file-limits.yaml").write_text(
+        f"roadmap_json_chunk_max_lines: {cur_lines + 5}\n", encoding="utf-8"
+    )
+    r = api_client.post(
+        "/api/nodes/add",
+        headers={
+            **_mutation_headers(api_client),
+            "Content-Type": "application/json",
+        },
+        json={
+            "reference_node_id": "M0.1",
+            "position": "below",
+            "title": "GUI overflow",
+            "type": "task",
+        },
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    new_id = body["id"]
+    # The new node lives outside M0.json (auto-routed).
+    from roadmap_chunk_utils import find_chunk_path
+
+    chunk_path = find_chunk_path(dogfood_copy, new_id)
+    assert chunk_path is not None
+    assert chunk_path.name != "M0.json"
+
+
 def test_api_delete_leaf_node(api_client: TestClient) -> None:
     r = api_client.delete(
         "/api/nodes/M2",
