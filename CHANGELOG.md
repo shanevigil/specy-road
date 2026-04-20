@@ -13,6 +13,31 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- **Automatic JSON chunk management.** Every roadmap write path
+  (`specy-road add-node`, the PM Gantt's add-task action, and
+  `edit-node` when growth would overflow) now goes through a
+  deterministic chunk router. PMs and devs no longer have to pick a
+  chunk file or split full chunks by hand: when the target chunk
+  would exceed `roadmap_json_chunk_max_lines`, the router auto-routes
+  to the smallest valid chunk in the same phase subtree, then
+  anywhere in the manifest, then auto-creates a new chunk whose
+  filename is derived from the new node's `node_key`
+  (`<base-stem>__<6hex>.json`). Two PMs creating overflow chunks on
+  parallel branches therefore never collide on chunk filenames —
+  only the manifest gets a clean two-line addition. All chunk +
+  manifest writes are snapshotted and rolled back atomically if
+  validation rejects the result. `--chunk` on `add-node` is now
+  optional (still honored when supplied). Backward compatible:
+  repos that never overflow are byte-identical.
+  (`feature/automat-json-chunking`)
+
+- **`specy-road rebalance-chunks`** (optional power-user command).
+  Re-packs chunks deterministically: groups nodes by phase ancestor
+  in tree order, first-fit packs them into chunks of
+  `<= roadmap_json_chunk_max_lines`, and applies the result
+  atomically through the same plan/rollback machinery. Idempotent
+  and not required for routine authoring. Supports `--dry-run`.
+
 - PM Gantt: optimistic UI for outline mutations. The dragged row snaps
   to its new position immediately and pulses blue while the server
   write completes; on success the pulse gracefully fades, on failure
