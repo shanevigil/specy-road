@@ -1,4 +1,6 @@
 import { Link } from "@tiptap/extension-link";
+import { TaskItem } from "@tiptap/extension-task-item";
+import { TaskList } from "@tiptap/extension-task-list";
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
@@ -50,6 +52,8 @@ export function MarkdownWorkspace({
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
       Markdown.configure({
         markedOptions: { gfm: true },
       }),

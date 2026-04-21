@@ -85,10 +85,13 @@ export function IconPencil() {
   );
 }
 
+const indentToolbarGlyphPath =
+  "M2 2h12v1.5H2V2zm0 3.25h7v1.5H2v-1.5zm0 3.25h7v1.5H2v-1.5zm0 3.25h12V13H2v-1.25zm11-6.5v5l3-2.5-3-2.5z";
+
 export function IconIndent() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-      <path d="M2 2h12v1.5H2V2zm0 3.25h7v1.5H2v-1.5zm0 3.25h7v1.5H2v-1.5zm0 3.25h12V13H2v-1.25zm11-6.5v5l3-2.5-3-2.5z" />
+      <path d={indentToolbarGlyphPath} />
     </svg>
   );
 }
@@ -96,7 +99,9 @@ export function IconIndent() {
 export function IconOutdent() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-      <path d="M2 2h12v1.5H2V2zm3 3.25h9v1.5H5v-1.5zm0 3.25h9v1.5H5v-1.5zm-3 3.25h12V13H2v-1.25zm3-6.5v5L2 7.75l3-2.5z" />
+      <g transform="matrix(-1 0 0 1 16 0)">
+        <path d={indentToolbarGlyphPath} />
+      </g>
     </svg>
   );
 }
