@@ -3,6 +3,8 @@
 from pathlib import Path
 import sys
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "specy_road" / "bundled_scripts"
 if str(SCRIPTS) not in sys.path:
@@ -23,6 +25,64 @@ def test_ordered_tree_rows_sibling_order() -> None:
     rows = ordered_tree_rows(nodes)
     ids = [t[0]["id"] for t in rows]
     assert ids == ["M0", "M1"]
+
+
+def test_ordered_tree_rows_natural_id_tiebreak_same_sibling_order() -> None:
+    """Lexical would order M1.10 before M1.2; natural order uses numeric segments."""
+    parent = "M1"
+    nodes = [
+        {"id": parent, "type": "phase", "parent_id": None, "sibling_order": 0},
+        {"id": "M1.10", "type": "task", "parent_id": parent, "sibling_order": 0},
+        {"id": "M1.2", "type": "task", "parent_id": parent, "sibling_order": 0},
+        {"id": "M1.1", "type": "task", "parent_id": parent, "sibling_order": 0},
+        {"id": "M1.9", "type": "task", "parent_id": parent, "sibling_order": 0},
+    ]
+    rows = ordered_tree_rows(nodes)
+    ids = [t[0]["id"] for t in rows]
+    assert ids[:5] == [parent, "M1.1", "M1.2", "M1.9", "M1.10"]
+
+
+def test_ordered_tree_rows_natural_nested_segments() -> None:
+    root = "M2"
+    nodes = [
+        {"id": root, "type": "phase", "parent_id": None, "sibling_order": 0},
+        {"id": "M2.1.10", "type": "task", "parent_id": root, "sibling_order": 0},
+        {"id": "M2.1.2", "type": "task", "parent_id": root, "sibling_order": 0},
+        {"id": "M2.1.1", "type": "task", "parent_id": root, "sibling_order": 0},
+    ]
+    rows = ordered_tree_rows(nodes)
+    ids = [t[0]["id"] for t in rows]
+    assert ids == [root, "M2.1.1", "M2.1.2", "M2.1.10"]
+
+
+def test_ordered_tree_rows_sibling_order_overrides_natural_id() -> None:
+    """Explicit reorder (sibling_order) wins over natural display id order."""
+    parent = "M1"
+    nodes = [
+        {"id": parent, "type": "phase", "parent_id": None, "sibling_order": 0},
+        {"id": "M1.12", "type": "task", "parent_id": parent, "sibling_order": 1},
+        {"id": "M1.23", "type": "task", "parent_id": parent, "sibling_order": 0},
+    ]
+    rows = ordered_tree_rows(nodes)
+    ids = [t[0]["id"] for t in rows]
+    assert ids == [parent, "M1.23", "M1.12"]
+
+
+def test_natural_id_sort_key_fallback_lexical(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If digit parsing fails, fall back to lexical whole-id key."""
+
+    def boom(run: str) -> int:
+        if run == "99":
+            raise ValueError("forced")
+        return int(run, 10)
+
+    import roadmap_layout as rl
+
+    monkeypatch.setattr(rl, "_digit_run_to_int", boom)
+    nid = "M99"
+    assert rl.natural_id_sort_key(nid) == ((1, nid),)
 
 
 def test_dependency_edges_detailed_marks_inherited() -> None:

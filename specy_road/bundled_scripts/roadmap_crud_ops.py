@@ -22,6 +22,7 @@ from planning_sheet_bootstrap import (
 )
 from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
 from roadmap_node_keys import new_node_key
+from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
 from specy_road.runtime_paths import default_user_repo_root
@@ -69,7 +70,7 @@ def cmd_list(args: object) -> None:
     root = repo_root(args)
     merged = load_roadmap(root)["nodes"]
     chunk_map = build_node_chunk_map(root)
-    for n in sorted(merged, key=lambda x: x["id"]):
+    for n in sorted(merged, key=lambda x: natural_id_sort_key(x["id"])):
         nid = n["id"]
         ch = chunk_map.get(nid)
         rel = ch.relative_to(root) if ch else "(unknown)"

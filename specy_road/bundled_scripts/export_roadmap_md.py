@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from roadmap_chunk_utils import discover_manifest_path
+from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap
 
 from specy_road.runtime_paths import default_user_repo_root
@@ -20,12 +21,6 @@ BANNER = (
     "<!-- specy-road: generated index from merged roadmap (manifest.json + chunk files) "
     "— do not edit by hand -->\n"
 )
-
-
-def sort_key(nid: str) -> tuple[int, ...]:
-    """Sort M0 < M0.1 < M0.1.1 < M1."""
-    parts = nid[1:].split(".") if nid.startswith("M") else nid.split(".")
-    return tuple(int(p) for p in parts if p.isdigit())
 
 
 def gate_display(node: dict) -> str:
@@ -59,7 +54,7 @@ def render_index(nodes: list[dict]) -> str:
         "| ID | Title | Type | Gate | Status |",
         "|----|-------|------|------|--------|",
     ]
-    for n in sorted(nodes, key=lambda x: sort_key(x["id"])):
+    for n in sorted(nodes, key=lambda x: natural_id_sort_key(x["id"])):
         tid = n["id"].replace("|", "\\|")
         title = str(n.get("title", "")).replace("|", "\\|")
         typ = n.get("type", "")

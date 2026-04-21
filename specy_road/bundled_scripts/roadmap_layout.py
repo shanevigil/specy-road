@@ -2,6 +2,38 @@
 
 from __future__ import annotations
 
+import re
+
+
+def _digit_run_to_int(run: str) -> int:
+    """Parse an ASCII digit run for natural id ordering (hook for tests / rare bases)."""
+    return int(run, 10)
+
+
+def natural_id_sort_key(nid: str) -> tuple[tuple[int, int | str], ...]:
+    """
+    Sort key for a display ``id``: digit runs compare numerically; other runs compare
+    as strings. If a digit run cannot be parsed (e.g. some Unicode digits), fall back
+    to a single-string lexical key ``((1, nid),)`` so ordering matches plain ``nid``.
+    """
+    if not isinstance(nid, str):
+        return ((1, str(nid)),)
+    if not nid:
+        return ((1, nid),)
+    parts = re.findall(r"\d+|\D+", nid)
+    if not parts:
+        return ((1, nid),)
+    out: list[tuple[int, int | str]] = []
+    for p in parts:
+        if p.isdigit():
+            try:
+                out.append((0, _digit_run_to_int(p)))
+            except ValueError:
+                return ((1, nid),)
+        else:
+            out.append((1, p))
+    return tuple(out)
+
 
 def effective_dependency_keys(nodes: list[dict]) -> dict[str, set[str]]:
     """
@@ -58,7 +90,7 @@ def _outline_post_order_ids(nodes: list[dict]) -> list[str]:
     for rid in children.get(None, []):
         dfs(rid)
     placed = set(post)
-    for n in sorted(nodes, key=lambda x: x["id"]):
+    for n in sorted(nodes, key=lambda x: natural_id_sort_key(x["id"])):
         if n["id"] not in placed:
             post.append(n["id"])
     return post
@@ -123,19 +155,21 @@ def compute_depths(nodes: list[dict]) -> dict[str, int]:
     return starts
 
 
-def sibling_sort_key(nid: str, by_id: dict[str, dict]) -> tuple[int, str]:
+def sibling_sort_key(
+    nid: str, by_id: dict[str, dict]
+) -> tuple[int, tuple[tuple[int, int | str], ...]]:
+    """Siblings sort by ``(sibling_order, natural_id_sort_key(id))``."""
     n = by_id[nid]
     o = n.get("sibling_order")
-    if isinstance(o, int):
-        return (o, nid)
-    return (0, nid)
+    orderv = o if isinstance(o, int) else 0
+    return (orderv, natural_id_sort_key(nid))
 
 
 def ordered_tree_rows(nodes: list[dict]) -> list[tuple[dict, int]]:
     """
     Parent/child order: roots first, then DFS children.
-    Siblings sort by (sibling_order, id). Returns (node, depth) with depth 0 for roots.
-    Orphans attach at end.
+    Siblings sort by ``(sibling_order, natural numeric id)``; tie-break digit segments
+    numerically (not raw string order). Orphans attach at end.
     """
     by_id = {n["id"]: n for n in nodes}
     children: dict[str | None, list[str]] = {}
@@ -157,7 +191,7 @@ def ordered_tree_rows(nodes: list[dict]) -> list[tuple[dict, int]]:
     for rid in children.get(None, []):
         dfs(rid, 0)
     placed = {t[0]["id"] for t in out}
-    for n in sorted(nodes, key=lambda x: x["id"]):
+    for n in sorted(nodes, key=lambda x: natural_id_sort_key(x["id"])):
         if n["id"] not in placed:
             out.append((n, 0))
     return out
@@ -212,7 +246,13 @@ def dependency_inheritance_display(
         inherited_keys = eff.get(nk, set()) - explicit_keys
         nid = n["id"]
         out[nid] = {
-            "explicit": sorted(key_to_id[k] for k in explicit_keys if k in key_to_id),
-            "inherited": sorted(key_to_id[k] for k in inherited_keys if k in key_to_id),
+            "explicit": sorted(
+                (key_to_id[k] for k in explicit_keys if k in key_to_id),
+                key=natural_id_sort_key,
+            ),
+            "inherited": sorted(
+                (key_to_id[k] for k in inherited_keys if k in key_to_id),
+                key=natural_id_sort_key,
+            ),
         }
     return out
