@@ -47,6 +47,10 @@ EDIT_WHITELIST = frozenset({
 })
 
 NODE_TYPES = frozenset({"vision", "phase", "milestone", "task", "gate"})
+# Matches schemas/roadmap.schema.json node.status enum.
+ROADMAP_NODE_STATUSES = frozenset(
+    {"Not Started", "In Progress", "Complete", "Blocked"},
+)
 EXEC_MILESTONES = frozenset({"Human-led", "Agentic-led", "Mixed"})
 DECISION_STATUS = frozenset({"pending", "decided"})
 
@@ -173,6 +177,16 @@ def _set_optional_line_list(node: dict, key: str, raw_val: str) -> None:
         node[key] = _nonempty_lines(raw_val)
 
 
+def _set_roadmap_status(node: dict, raw_val: str) -> None:
+    v = raw_val.strip()
+    if v not in ROADMAP_NODE_STATUSES:
+        raise ValueError(
+            "status must be one of "
+            f"{sorted(ROADMAP_NODE_STATUSES)} (got {raw_val!r})",
+        )
+    node["status"] = v
+
+
 def _apply_scalar_top_level(
     node: dict,
     key: str,
@@ -214,6 +228,8 @@ def _apply_scalar_top_level(
         _set_codename(node, raw_val)
     elif key == "execution_milestone":
         _set_exec_milestone(node, raw_val)
+    elif key == "status":
+        _set_roadmap_status(node, raw_val)
     else:
         node[key] = raw_val
 

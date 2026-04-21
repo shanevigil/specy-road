@@ -11,7 +11,16 @@ from roadmap_crud_dependency_ops import (
     cmd_remove_dependency,
     cmd_set_dependencies,
 )
-from roadmap_crud_ops import cmd_add, cmd_archive, cmd_edit, cmd_list, cmd_show
+from roadmap_edit_fields import ROADMAP_NODE_STATUSES
+
+from roadmap_crud_ops import (
+    cmd_add,
+    cmd_archive,
+    cmd_edit,
+    cmd_list,
+    cmd_set_gate_status,
+    cmd_show,
+)
 
 
 def _p_list(sub: argparse._SubParsersAction) -> None:
@@ -80,6 +89,21 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         metavar="KEY=VALUE",
     )
     sp.set_defaults(func=cmd_edit)
+
+
+def _p_set_gate_status(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "set-gate-status",
+        help="Set roadmap status on a type gate node only",
+    )
+    sp.add_argument("node_id", metavar="NODE_ID")
+    sp.add_argument(
+        "--status",
+        required=True,
+        choices=sorted(ROADMAP_NODE_STATUSES),
+        help="Roadmap status (same enum as other node types).",
+    )
+    sp.set_defaults(func=cmd_set_gate_status)
 
 
 def _p_list_dependencies(sub: argparse._SubParsersAction) -> None:
@@ -161,6 +185,7 @@ def build_parser() -> argparse.ArgumentParser:
     _p_show(sub)
     _p_add(sub)
     _p_edit(sub)
+    _p_set_gate_status(sub)
     _p_list_dependencies(sub)
     _p_set_dependencies(sub)
     _p_add_dependency(sub)

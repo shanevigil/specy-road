@@ -215,6 +215,21 @@ def test_edit_node_cli(tmp_path: Path) -> None:
     assert r.returncode == 0, r.stderr
 
 
+def test_edit_node_cli_rejects_invalid_status(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "edit-node",
+        "M99.1",
+        "--set",
+        "status=Bad",
+    )
+    assert r.returncode == 1
+    assert "status must be one of" in r.stderr
+
+
 def test_list_nodes_cli(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes")

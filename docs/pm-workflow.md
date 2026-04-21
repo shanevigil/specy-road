@@ -247,7 +247,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road set-dependencies M0.1.1 --deps "…"`   | Replace explicit dependencies with a space/comma-separated list of **node_key** strings (same rules as `edit-node … dependencies=…`).       |
 | `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
 | `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
-| `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks).                                                                |
+| `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
 
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.

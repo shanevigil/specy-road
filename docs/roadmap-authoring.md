@@ -250,7 +250,7 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
 | `contract_citation` | Which doc, section, entity, or contract to conform to. |
 | `interface_contract` | Inputs → outputs (API body, DB fields, component props, files). |
 | `constraints_note` | Security, logging, performance, UX rules that bind the work. |
-| `dependency_note` | Prior sub-task, stub, or merged milestone required first. |
+| `dependency_note` | Prior sub-task, stub, or merged milestone required first. **Reference by codename or display id** — do not paraphrase the prerequisite's intent here; `specy-road brief` inlines each effective dependency's `## Intent` under section 6. |
 
 **Optional fields:**
 
@@ -260,6 +260,8 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
 | `forbidden_patterns` | Patterns explicitly prohibited (e.g. "do not call live service — use stub"). |
 
 **Contract traceability:** Each `agentic` task should map to at least one contract doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the contract write-up may be missing — flag before writing the task. Validation emits a warning when `contract_citation` does not reference a known path prefix. Use `contract_citation` in `agentic_checklist` (not alternate keys).
+
+**Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Use `dependency_note` for *what must exist* (cited by codename or display id), and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
 
 **Example (JSON node excerpt):**
 

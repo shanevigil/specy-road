@@ -26,6 +26,7 @@ import {
   mergeBySectionChoices,
   splitByH2,
 } from "../planningSectionUtils";
+import { ROADMAP_NODE_STATUS_ORDERED } from "../roadmapNodeStatuses";
 import { MarkdownWorkspace } from "./MarkdownWorkspace";
 import { ModalFrame } from "./ModalFrame";
 import { PlanningSheetDiffPane } from "./PlanningSheetDiffPane";
@@ -224,9 +225,12 @@ export function EditModal({
   >([]);
   /** Bumps when the user changes selection in the review textarea (for Append selection). */
   const [reviewSelectionTick, setReviewSelectionTick] = useState(0);
+  /** Gate roadmap status (gates only); persisted via debounced patchNode. */
+  const [gateStatusDraft, setGateStatusDraft] = useState("Not Started");
 
   const reviewTextareaRef = useRef<HTMLTextAreaElement>(null);
   const sectionScrollRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lastSavedGateStatusRef = useRef("");
 
   const titleConflict = useMemo(() => {
     if (!node) {
@@ -329,6 +333,52 @@ export function EditModal({
       });
     // eslint-disable-next-line @eslint-react/exhaustive-deps
   }, [sheetPath, node?.id]);
+
+  useEffect(() => {
+    if (!node || node.type !== "gate") return;
+    const s = (node.status as string)?.trim() || "Not Started";
+    setGateStatusDraft(s);
+    lastSavedGateStatusRef.current = s;
+    // eslint-disable-next-line @eslint-react/exhaustive-deps -- reset draft when switching rows; avoid clobbering in-progress edits on status-only server refresh
+  }, [node?.id, node?.type]);
+
+  useEffect(() => {
+    if (!hydrated || !node || loading) return;
+    if (node.type !== "gate") return;
+    if (readOnlyCheckout) return;
+    if (gateStatusDraft === lastSavedGateStatusRef.current) return;
+    setPersistMsg("Saving…");
+    const t = window.setTimeout(() => {
+      patchNode(node.id, [{ key: "status", value: gateStatusDraft }])
+        .then(() => {
+          lastSavedGateStatusRef.current = gateStatusDraft;
+          setPersistMsg("Saved.");
+          onPersisted?.();
+          window.setTimeout(() => setPersistMsg(null), 2000);
+        })
+        .catch((e: unknown) => {
+          if (e instanceof PmGuiConcurrencyError) {
+            void onConcurrencyConflict();
+            setErr(
+              "Roadmap changed elsewhere; refreshed. Re-apply gate status if needed.",
+            );
+            setPersistMsg(null);
+            return;
+          }
+          setErr(String(e));
+          setPersistMsg(null);
+        });
+    }, 500);
+    return () => window.clearTimeout(t);
+  }, [
+    gateStatusDraft,
+    hydrated,
+    node,
+    loading,
+    onPersisted,
+    readOnlyCheckout,
+    onConcurrencyConflict,
+  ]);
 
   useEffect(() => {
     if (!hydrated || !node || loading) return;
@@ -742,6 +792,23 @@ export function EditModal({
             </p>
           ) : null}
         </label>
+        {node.type === "gate" ? (
+          <label className="modal-edit-title-wrap">
+            Status
+            <select
+              value={gateStatusDraft}
+              disabled={readOnlyCheckout}
+              aria-label="Gate roadmap status"
+              onChange={(e) => setGateStatusDraft(e.target.value)}
+            >
+              {ROADMAP_NODE_STATUS_ORDERED.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {workLine ? (
           <p className="modal-edit-work-line" title={workLine}>
             {workLine}
@@ -756,9 +823,10 @@ export function EditModal({
         ) : null}
         {readOnlyCheckout ? (
           <p className="outline-meta" role="status">
-            The title and planning sheet are read-only while this task is in active development
-            (in progress, open or merged merge request, or this checkout matches the registered
-            branch).
+            The title and planning sheet
+            {node.type === "gate" ? " and gate status" : ""} are read-only while this task is in
+            active development (in progress, open or merged merge request, or this checkout matches
+            the registered branch).
           </p>
         ) : null}
       </div>

@@ -31,6 +31,7 @@ _USAGE_TEXT = (
     "  show-node <NODE_ID>\n"
     "  add-node ...         — see: python specy_road/bundled_scripts/roadmap_crud.py add-node -h\n"
     "  edit-node ...\n"
+    "  set-gate-status <NODE_ID> --status … — gate nodes only (Not Started|In Progress|Complete|Blocked)\n"
     "  archive-node ...\n"
     "  list-dependencies <NODE_ID>\n"
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
@@ -282,6 +283,7 @@ def main(argv: list[str] | None = None) -> None:
         "show-node",
         "add-node",
         "edit-node",
+        "set-gate-status",
         "archive-node",
         "list-dependencies",
         "set-dependencies",
