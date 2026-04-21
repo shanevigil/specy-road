@@ -10,6 +10,9 @@ inlines all the context an implementer needs (no separate file-opening):
 * this node's planning sheet body
 * every cited shared contract under shared/ (full body, deterministic order)
 * dependency list (resolved from node_key UUIDs to display ids)
+* **dependency context: each effective dependency's ``## Intent`` block
+  inlined verbatim** (so PMs do not have to paraphrase upstream work in
+  this task's own planning sheet — see ``brief_dependency_context``)
 * an explicit touch-zone instruction for the implementing agent
 
 Determinism: same chunks + same planning files + same shared/*.md set =>
@@ -23,6 +26,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from brief_dependency_context import render_dependency_context_section
 from planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
@@ -206,7 +210,7 @@ def _section_dependencies(node: dict, by_id: dict[str, dict]) -> list[str]:
 def _section_touch_zone_instruction(node: dict) -> list[str]:
     """F-009: explicit instruction to the implementing agent."""
     tz = node.get("touch_zones") or []
-    out = ["## 6. Touch zones — implementing agent instruction", ""]
+    out = ["## 7. Touch zones — implementing agent instruction", ""]
     if tz:
         out.append(
             "The PM listed these touch zones: "
@@ -232,7 +236,7 @@ def _section_touch_zone_instruction(node: dict) -> list[str]:
 
 def _section_rollup_semantics() -> list[str]:
     return [
-        "## 7. Rollup semantics (reference)",
+        "## 8. Rollup semantics (reference)",
         "",
         "- Ancestor `rollup_status` is computed from leaf descendants.",
         "- A non-leaf is `Complete` only when every leaf descendant is `Complete`.",
@@ -262,6 +266,7 @@ def render_brief(
         _inline_planning(n, root, by_id),
         _inline_shared_contracts(root),
         _section_dependencies(n, by_id),
+        render_dependency_context_section(n, by_id, root),
         _section_touch_zone_instruction(n),
         _section_rollup_semantics(),
     ]

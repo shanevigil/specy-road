@@ -18,7 +18,10 @@ def test_render_brief_m02_contains_title() -> None:
     assert "M0.2" in text
     assert "## 1. Execution target" in text
     assert "## 2. Ancestor context chain" in text
-    assert "## 7. Rollup semantics (reference)" in text
+    # New section 6 inserted between deps and touch zones; rollup is now 8.
+    assert "## 6. Dependency context (intent of upstream work)" in text
+    assert "## 7. Touch zones — implementing agent instruction" in text
+    assert "## 8. Rollup semantics (reference)" in text
 
 
 def test_render_brief_dependencies_use_display_ids_not_raw_node_keys() -> None:
@@ -57,8 +60,37 @@ def test_render_brief_includes_touch_zone_instruction() -> None:
     nodes = gb.load_nodes(DOGFOOD)
     by_id = gb.index(nodes)
     text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
-    assert "## 6. Touch zones — implementing agent instruction" in text
+    # Renumbered to 7 after the new ## 6. Dependency context section landed.
+    assert "## 7. Touch zones — implementing agent instruction" in text
     assert "TODO (DEV agent)" in text
+
+
+def test_render_brief_dependency_context_inlines_dep_intent() -> None:
+    """New ## 6 inlines each effective dependency's ## Intent block.
+
+    M1 in the dogfood fixture depends on M0.1 (whose planning sheet ships
+    with a canonical '## Intent' section). The brief must surface that
+    Intent body verbatim under '## 6. Dependency context …'.
+    """
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M1", by_id, repo_root=DOGFOOD)
+    assert "## 6. Dependency context (intent of upstream work)" in text
+    # The dep is identified by display id + title under a level-3 heading.
+    assert "### `M0.1` — Establish shared contracts and ADR skeleton" in text
+    assert "**Intent (from this dependency's planning sheet):**" in text
+    # Body of M0.1's Intent block (from the dogfood scaffold).
+    assert "What problem this slice solves" in text
+
+
+def test_render_brief_dependency_context_empty_when_no_deps() -> None:
+    """Section is always present; body explicitly notes 'no effective dependencies'."""
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    # M0 is a phase root with no dependencies (and no inherited deps).
+    text = gb.render_brief("M0", by_id, repo_root=DOGFOOD)
+    assert "## 6. Dependency context (intent of upstream work)" in text
+    assert "_no effective dependencies_" in text
 
 
 def test_render_brief_is_deterministic() -> None:

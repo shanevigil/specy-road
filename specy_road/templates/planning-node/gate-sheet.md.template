@@ -1,6 +1,6 @@
 ## Why this gate exists
 
-What you are pausing or proving before work continues. Keep this short; do not restate the roadmap dependency graph (that lives in JSON and the brief).
+What you are pausing or proving before work continues. Keep this short; do not restate the roadmap dependency graph (that lives in JSON and the brief). Do not paraphrase the criteria of upstream gates — `specy-road brief` inlines each dependency's intent block under section 6.
 
 ## Criteria to clear
 

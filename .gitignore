@@ -39,3 +39,4 @@ CLAUDE.*.local.md
 .roo/
 agent-transcripts/
 sample-apps/
+/playground-dev/

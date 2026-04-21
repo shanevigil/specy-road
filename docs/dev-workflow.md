@@ -353,7 +353,7 @@ the brief or roadmap chunk.
 | `contract_citation` | Which doc/section to conform to — **read it** |
 | `interface_contract` | Inputs → outputs (API shape, file format, component props) |
 | `constraints_note` | Security, performance, or UX rules that bind you |
-| `dependency_note` | What must exist before you start |
+| `dependency_note` | What must exist before you start (cited by codename or display id; see brief section 6 for each dep's own Intent) |
 
 Optional:
 
@@ -361,6 +361,8 @@ Optional:
 | --- | --- |
 | `success_signal` | Observable behavior or test confirming done |
 | `forbidden_patterns` | Explicit prohibitions |
+
+**Upstream context comes pre-inlined.** Read `## 6. Dependency context (intent of upstream work)` in the brief for each effective dependency's `## Intent` block (or `## Why this gate exists` for upstream gates). You should rarely need to open a dependency's planning sheet directly — the brief already carries what the PM declared as that dep's intent.
 
 ---
 
