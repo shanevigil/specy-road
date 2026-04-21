@@ -242,7 +242,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
 | `specy-road archive-node M0.1.1 --hard-remove`    | Remove the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema).                      |
-| `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks).                                                                |
+| `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
 
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.

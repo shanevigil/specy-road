@@ -13,6 +13,24 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- **Dependency-aware brief + LLM-review prompt.** `specy-road brief`
+  now ships a new section, **`## 6. Dependency context (intent of
+  upstream work)`**, that inlines each effective dependency's
+  `## Intent` block (or `## Why this gate exists` for upstream
+  gates) verbatim. Section numbers shift: Touch zones is now `## 7.`
+  and Rollup semantics is now `## 8.`. Both LLM-review system
+  prompts (feature sheet + gate sheet) are updated to scan section
+  6 first and **drop sentences** in the revised planning sheet
+  that paraphrase a dep's intent, allowing only a one-line
+  clarification under `## Approach` (or `## Decisions and notes`
+  for gates) when the dep's own intent doesn't cover something
+  specific to this task. Workflow docs (`roadmap-authoring`,
+  `dev-workflow`, `pm-workflow`, `pm-llm-review`, the consumer-
+  scaffold `AGENTS.md`, and the planning-sheet templates) are
+  updated to nudge authors away from duplicating dependency prose
+  inside their planning sheets.
+  (`feature/dependency-prompt-enhancement`)
+
 - PM Gantt: optimistic UI for outline mutations. The dragged row snaps
   to its new position immediately and pulses blue while the server
   write completes; on success the pulse gracefully fades, on failure

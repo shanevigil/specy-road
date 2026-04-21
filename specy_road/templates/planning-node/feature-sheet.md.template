@@ -1,6 +1,6 @@
 ## Intent
 
-What this slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key` here.
+What **this** slice delivers and how it fits the parent phase or vision. Do not repeat the node title, display id, or `node_key`. Do not paraphrase what dependencies deliver — `specy-road brief` inlines each dependency's own `## Intent` under section 6.
 
 ## Approach
 
