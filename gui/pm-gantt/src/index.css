@@ -2520,9 +2520,9 @@ button {
   outline: none;
 }
 
-.markdown-workspace-editor-wrap .ProseMirror:focus-visible {
-  border-radius: 3px;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
+/* Ring on the scroll/flex wrapper so it matches the full .md-preview surface (ProseMirror height alone can fall short). */
+.markdown-workspace-editor-wrap:has(.ProseMirror:focus-visible) {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .md-preview {
