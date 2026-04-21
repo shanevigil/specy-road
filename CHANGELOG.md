@@ -11,6 +11,18 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- **Milestone delivery and PM lock:** roadmap nodes may carry
+  **`milestone_execution`** (written by `start-milestone-session`). While
+  `state` is `active` or `pending_mr`, the PM API blocks outline and field
+  edits under that subtree (**409**). **`specy-road reconcile-milestone-status`**
+  (dry-run by default; `--apply`, optional `--fallback-head-delivery`) closes
+  the milestone when the rollup branch is merged into integration
+  (`git merge-base`), syncing parent `status`. `finish-this-task` on the
+  milestone rollup path may promote `active` → `pending_mr` when all subtree
+  leaves are complete.
+
 ### Changed
 
 - `specy_road.__version__`: when the package is loaded from a tree that

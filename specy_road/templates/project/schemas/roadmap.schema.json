@@ -111,6 +111,23 @@
           "type": ["string", "null"],
           "enum": [null, "Not Started", "In Progress", "Complete", "Blocked"],
           "description": "Derived status rolled up from descendant leaves. Computed on load; never edited directly. Same as 'status' for leaves; for non-leaves, 'Complete' only when all leaf descendants are 'Complete'."
+        },
+        "milestone_execution": {
+          "type": ["object", "null"],
+          "description": "Committed milestone rollup mode: PM subtree lock while active or pending_mr; closed after integration delivery (MR merge or reconcile fallback).",
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": ["active", "pending_mr", "closed"]
+            },
+            "rollup_branch": { "type": "string", "minLength": 1 },
+            "integration_branch": { "type": "string", "minLength": 1 },
+            "remote": { "type": "string", "minLength": 1 },
+            "opened_at": { "type": "string" },
+            "closed_at": { "type": "string" }
+          },
+          "required": ["state", "rollup_branch", "integration_branch", "remote"]
         }
       }
     }

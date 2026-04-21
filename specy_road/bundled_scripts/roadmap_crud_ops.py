@@ -266,6 +266,14 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
 def cmd_edit(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
+    nodes = load_roadmap(root)["nodes"]
+    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
+
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, nid)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     pairs: list[tuple[str, str]] = []
     for pair in args.set:
         if "=" not in pair:
@@ -287,6 +295,13 @@ def cmd_set_gate_status(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
     nodes = load_roadmap(root)["nodes"]
+    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
+
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, nid)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     target = next((n for n in nodes if n.get("id") == nid), None)
     if target is None:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
