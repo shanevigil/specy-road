@@ -6,4 +6,4 @@ try:
     __version__ = version("specy-road")
 except PackageNotFoundError:
     # Editable/dev without metadata (e.g. partial PYTHONPATH)
-    __version__ = "0.1.0rc3"
+    __version__ = "0.1.0rc4"

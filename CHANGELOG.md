@@ -11,6 +11,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.0-rc4] - 2026-04-20
+
+Fourth prerelease (TestPyPI). Adds dependency-aware briefs + LLM-review
+prompt updates, gate status from the PM GUI + `set-gate-status` CLI,
+PM Gantt focus-ring fix, optimistic-UI work for outline mutations,
+narrow-fingerprint redesign for the GUI mutation guard (rooted in real
+field repros), plus a Dependabot batch for `gui/pm-gantt/` (#40-#45).
+
 ### Added
 
 - **Dependency-aware brief + LLM-review prompt.** `specy-road brief`
@@ -30,6 +38,10 @@ body. Keep section bodies focused; link to PRs for detail.
   updated to nudge authors away from duplicating dependency prose
   inside their planning sheets.
   (`feature/dependency-prompt-enhancement`)
+
+- **Gate status from the PM Gantt UI** plus a new
+  `specy-road set-gate-status <NODE_ID> --status <STATUS>` CLI for
+  driving `type: gate` lifecycle from outside the dashboard.
 
 - PM Gantt: optimistic UI for outline mutations. The dragged row snaps
   to its new position immediately and pulses blue while the server
@@ -102,7 +114,17 @@ body. Keep section bodies focused; link to PRs for detail.
   vision/git-HEAD) so noise from IDE autosave can no longer reject
   legitimate edits. (`fix/drag_and_drop`)
 
-### Removed
+  Plus: PM Gantt planning markdown focus ring now aligns with the
+  editor wrap (`fix(pm-gantt): align planning markdown focus ring
+  with editor wrap`).
+
+### Maintenance
+
+- Batched Dependabot updates for `gui/pm-gantt/` (#40-#45):
+  `vite` 8.0.8 → 8.0.9, `typescript-eslint` 8.58.2 → 8.59.0,
+  `@tiptap/markdown` / `@tiptap/extension-link` / `@tiptap/react` /
+  `@tiptap/starter-kit` 3.22.3 → 3.22.4. PM Gantt static assets
+  rebuilt; bundle entry chunk 81 KB (well under the 900 KB budget).
 
 ## [v0.1.0-rc3] - 2026-04-18
 
