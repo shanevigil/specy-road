@@ -1,0 +1,27 @@
+---
+description: Change discipline (scope, verification, no surprise refactors)
+alwaysApply: true
+---
+
+## Scope rules
+
+- Roadmap graph changes belong in `roadmap/manifest.json` and included JSON chunks — not a single merged YAML roadmap file.
+- Make the smallest change that satisfies the task.
+- Don’t rename/reformat/move files unless the task requires it.
+- Don’t introduce new tools/scripts when existing ones can be extended.
+
+## Adoption prompts (`suggested_prompts/`)
+
+- Significant changes to schemas, `specy-road init project` templates, or documented roadmap/registry contracts usually require updating [`suggested_prompts/*.md`](suggested_prompts/) so bootstrap prompts stay accurate (new required fields, renamed paths, new validation rules, replaced commands). Trivial typo fixes that do not affect behavior may skip prompt updates.
+
+## Verification (use documented commands)
+
+Prefer the repo’s documented verification commands in [`README.md`](../../README.md) (maintainers / dogfood), for example:
+- `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`
+- `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`
+- `specy-road file-limits`
+- `pytest`
+- When changing [`gui/pm-gantt/`](../../gui/pm-gantt/): `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` (ESLint 10 + `@eslint-react/eslint-plugin`; see [`gui/pm-gantt/eslint.config.js`](../../gui/pm-gantt/eslint.config.js) and [`.cursor/rules/025-pm-gantt-eslint.mdc`](025-pm-gantt-eslint.mdc))
+
+Equivalent direct script entrypoints live under `specy_road/bundled_scripts/` (see [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml)); there is no top-level `scripts/` directory in this repository.
+

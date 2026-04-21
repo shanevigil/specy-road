@@ -128,7 +128,13 @@ workflow:
 
 **Humans:**
 
-1. Bump `pyproject.toml`'s `project.version` on `dev`.
+1. Bump `pyproject.toml`'s `project.version` on `dev`. This is the
+   canonical version: `specy_road.__version__` prefers that field when the
+   package is imported from a checkout (sibling `pyproject.toml` with
+   `name = "specy-road"`), otherwise uses installed package metadata.
+   **`specyrd init`** command stubs and `.specyrd/manifest.json`
+   (`specyrd_version`) substitute that runtime version — do not add a second
+   hardcoded package version string elsewhere.
 2. Update `CHANGELOG.md` — add a `## [vX.Y.Z]` section with the body
    that should appear on the GitHub Release.
 3. Open a release PR from `dev` to `main` with title

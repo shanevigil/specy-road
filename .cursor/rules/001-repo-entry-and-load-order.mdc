@@ -1,0 +1,15 @@
+---
+description: Repo entrypoint + required load order (specy-road)
+alwaysApply: true
+---
+
+## Entry point
+
+- Read `AGENTS.md` first and follow its **load order**.
+- Treat tracked docs as the **source of truth**; chat history is not authoritative.
+
+## Context hygiene (required)
+
+- Prefer generating a focused brief (toolkit dogfood tree): `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood` (equivalent script: `specy_road/bundled_scripts/generate_brief.py`; there is no top-level `scripts/` directory — see `.cursor/rules/020-change-discipline.mdc`).
+- Don’t load or edit large unrelated areas of the repo.
+

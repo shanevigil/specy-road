@@ -24,10 +24,11 @@ dist/
 .idea/
 .vscode/
 
-# AI / agents (local-only)
-.cursor/
+# AI / agents — ignore IDE state; version policy under .cursor/rules/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 .claude/
-CLAUDE.md
 CLAUDE.local.md
 CLAUDE.*.local.md
 

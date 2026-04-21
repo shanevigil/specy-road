@@ -1,0 +1,42 @@
+## Git workflow discipline (repo policy)
+
+This repository uses **`dev`** as the day-to-day integration branch and **`main`** as the release branch.
+
+## Sync-first hygiene (required)
+
+Before making workflow-sensitive recommendations or actions:
+
+- Run `git fetch --all --prune`.
+- Confirm local branch tracking/behind/ahead state.
+- Confirm default branch and `main` protection rules when relevant.
+
+Do not assume local refs are current.
+
+## Branch strategy (required)
+
+- Use short-lived topic branches off `dev`:
+  - `feature/<slug>`
+  - `chore/<slug>`
+  - `fix/<slug>` / `hotfix/<slug>`
+  - `docs/<slug>`
+- Prefer PRs from topic branches into `dev`.
+- Avoid direct commits to `dev` and `main` unless explicitly requested for repository administration.
+
+## Promotion rules
+
+- Standard promotion path: `dev` -> PR -> `main`.
+- Treat `main` as release-facing; avoid routine feature/chore direct commits to `main`.
+
+## Release-tag gate for `main`
+
+- A PR targeting `main` must include exactly one release marker:
+  - title: `release: x.x.x`, or
+  - label: `release:x.x.x`
+- Semantic version meaning:
+  - first `x`: major/breaking or major directional shift
+  - second `x`: improvements/features
+  - third `x`: patch/hotfix
+- Keep `main` protection enforcing required status check:
+  - `Main Release Tag Gate / validate-release-intent`
+
+If protections are temporarily changed for bootstrap/maintenance, restore strict protections immediately afterward.
