@@ -2381,22 +2381,33 @@ button {
 }
 
 .constitution-md-section {
-  flex: 1;
-  min-height: 10rem;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
 
 .constitution-md-section .markdown-workspace {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
 
 .constitution-md-section .markdown-workspace-editor-wrap {
-  flex: 1;
+  flex: none;
+  min-height: 12rem;
+  overflow: visible;
+}
+
+.constitution-md-section .markdown-workspace-editor-wrap .markdown-workspace-tiptap-root {
+  flex: none;
+  display: block;
   min-height: 0;
+}
+
+.constitution-md-section .markdown-workspace-editor-wrap .ProseMirror {
+  flex: none;
+  min-height: 10rem;
+  outline: none;
 }
 
 .modal-window .modal-body h2 {
