@@ -235,12 +235,15 @@ def render_dependency_context_section(
         "## 6. Dependency context (intent of upstream work)",
         "",
         (
-            "_Each effective dependency below is **part of the brief on purpose** — "
-            "do not ask the PM to repeat any of this prose inside this task's "
-            "planning sheet. If something here is unclear or insufficient for "
-            "this specific task, add a one-line clarification under "
-            "`## Approach` (or `## Decisions and notes` for gates) citing the "
-            "dep by display id._"
+            "_**Effective** dependencies below — this node's explicit "
+            "`dependencies` plus every dependency inherited from an ancestor "
+            "(same set the do-next-available-task picker uses). Each is "
+            "**part of the brief on purpose** — do not ask the PM to repeat "
+            "any of this prose inside this task's planning sheet. If "
+            "something here is unclear or insufficient for this specific "
+            "task, add a one-line clarification under `## Approach` (or "
+            "`## Decisions and notes` for gates) citing the dep by display "
+            "id._"
         ),
         "",
     ]
