@@ -157,6 +157,29 @@ def test_system_prompt_for_planning_review_gate() -> None:
     assert sp != review_node.system_prompt_for_planning_review("task")
 
 
+def test_feature_sheet_prompt_references_brief_dependency_section() -> None:
+    """Feature-sheet prompt must steer the model to brief section 6 and
+    forbid duplicating dep-intent prose in the revised sheet."""
+    sp = review_node.system_prompt_for_planning_review("task")
+    # Names the new brief section explicitly so the model has a landmark.
+    assert "## 6. Dependency context" in sp
+    assert "intent of upstream work" in sp
+    # Tells the model to scan it before paraphrasing a dep.
+    assert "scan brief section 6" in sp
+    # Allows a one-line clarification only when something is missing.
+    assert "one-line clarification" in sp
+    assert "`## Approach`" in sp
+
+
+def test_gate_planning_prompt_references_brief_dependency_section() -> None:
+    """Gate-sheet prompt has the same dep-context discipline."""
+    sp = review_node.system_prompt_for_planning_review("gate")
+    assert "## 6. Dependency context" in sp
+    assert "one-line clarification" in sp
+    # Gate sheets put clarifications under Decisions and notes.
+    assert "`## Decisions and notes`" in sp
+
+
 def test_run_review_planning_body_override(
     tiny_repo: Path,
     monkeypatch: pytest.MonkeyPatch,
