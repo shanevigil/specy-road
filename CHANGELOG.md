@@ -11,28 +11,119 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.0] - 2026-04-22
+
+First **stable release** of `specy-road`. Promotes the work landed
+across `v0.1.0-rc1` … `v0.1.0-rc4` plus the post-rc4 milestone-delivery
+lifecycle, version-resolution policy, PM-Gantt UX improvements, and a
+review-driven graceful-error-handling pass. Tagged `v0.1.0` on `main`;
+the `release-publish` workflow routes the wheel to **PyPI** via OIDC.
+
 ### Added
 
-- **Milestone delivery and PM lock:** roadmap nodes may carry
-  **`milestone_execution`** (written by `start-milestone-session`). While
-  `state` is `active` or `pending_mr`, the PM API blocks outline and field
-  edits under that subtree (**409**). **`specy-road reconcile-milestone-status`**
-  (dry-run by default; `--apply`, optional `--fallback-head-delivery`) closes
-  the milestone when the rollup branch is merged into integration
-  (`git merge-base`), syncing parent `status`. `finish-this-task` on the
-  milestone rollup path may promote `active` → `pending_mr` when all subtree
-  leaves are complete.
+- **Milestone delivery lifecycle (`milestone_execution`).** Roadmap
+  parents may now carry an executable milestone state written to the
+  chunk JSON: **`active`** (rollup branch open, subtree being worked),
+  **`pending_mr`** (every structural leaf is `Complete`, awaiting the
+  rollup MR), **`closed`** (rollup branch merged into integration,
+  parent `status` synced to `Complete`). `start-milestone-session`
+  writes the `active` block on the parent chunk so the lock is
+  team-visible the moment it is committed. `finish-this-task` on the
+  milestone rollup path auto-promotes `active → pending_mr` when the
+  last leaf completes.
+
+- **PM subtree lock.** While `milestone_execution.state` is `active`
+  or `pending_mr`, both the CLI (`edit-node`, `set-gate-status`) and
+  the PM Gantt API (`PATCH /api/nodes/{id}`, `DELETE`,
+  `POST /api/outline/{reorder,move}`, `POST /api/nodes/{id}/{indent,outdent}`)
+  refuse mutations under that subtree with a clear error / **409
+  Conflict** that points the user at `specy-road reconcile-milestone-status`.
+
+- **`specy-road reconcile-milestone-status`** CLI. Dry-run by default;
+  `--apply` writes; `--fallback-head-delivery` accepts HEAD as the
+  source of truth when remote-tracking refs cannot prove the rollup
+  merge (typically: local-only merges or detached integration-branch
+  flows). Each per-node application is isolated — one failing parent
+  prints a structured warning and the loop continues; under `--apply`
+  the script exits non-zero so orchestration can detect partial
+  failure.
+
+- **PM Gantt: Tiptap task lists** in the markdown editor with a new
+  toolbar button and nested-checkbox CSS for both the editor surface
+  and the rendered preview. Constitution modal markdown editors now
+  size to content (no more 0-height collapse).
 
 ### Changed
 
-- `specy_road.__version__`: when the package is loaded from a tree that
-  contains a sibling `pyproject.toml` declaring `name = "specy-road"`, the
-  version is taken from that file (so editable checkouts and `specyrd init`
-  stubs match `project.version` even if install metadata is stale). If
-  there is no such file (e.g. a wheel-only install), use
-  `importlib.metadata`. Otherwise `0.0.0+unknown`. Maintainer docs and Cursor
-  rules now call out keeping tags, `pyproject.toml`, and `CHANGELOG.md` in
+- **`specy_road.__version__`** resolution policy: when the package is
+  loaded from a tree that contains a sibling `pyproject.toml`
+  declaring `name = "specy-road"`, the version is taken from that
+  file — so editable checkouts and `specyrd init` stubs match
+  `project.version` even when install metadata is stale. If there is
+  no such file (e.g. a wheel-only install), use
+  `importlib.metadata.version("specy-road")`. Otherwise the sentinel
+  `0.0.0+unknown`. The lookup is hardened against a malformed
+  `pyproject.toml` (catches `OSError` **and**
+  `tomllib.TOMLDecodeError` / `ValueError`); `import specy_road`
+  cannot crash on a broken file. Maintainer docs and Cursor rules now
+  call out keeping tags, `pyproject.toml`, and `CHANGELOG.md` in
   lockstep.
+
+- **Natural numeric sort for roadmap display ids.** `M1.2 < M1.10`
+  (and any nested digit run) on every surface that orders roadmap
+  rows: the export `roadmap.md` index, the `list-nodes` CLI, the PM
+  Gantt outline, and the optimistic in-browser sort. Python and
+  TypeScript implementations share the same key shape so the wire
+  ordering matches the in-process ordering exactly.
+
+### Fixed
+
+- **`POST /api/outline/move` with an unknown `node_key`** is once
+  again **400** with `unknown node_key '…'`. The
+  milestone-lock-guard pre-lookup added during rc4 had regressed it
+  to **404**; the original 400 contract (and the test that asserts
+  it) is restored.
+
+- **PM API milestone-lock guard** survives a transiently-broken
+  roadmap. If `load_roadmap` fails (corrupt chunk, missing manifest,
+  unreadable file) inside the lock-check, the route returns **409**
+  with a "run `specy-road validate`" hint instead of leaking a bare
+  500. The PM UI's transparent retry contract is wired for 4xx; a
+  500 used to halt the retry loop.
+
+- **PM Gantt mutation-fingerprint guard** survives an unreadable
+  manifest. A corrupt `roadmap/manifest.json` now produces a
+  **409** with `{message, error, retryable: false}` from the
+  optimistic-concurrency dependency; previously it raised a
+  `JSONDecodeError` and surfaced as a 500.
+
+- **`start-milestone-session` re-entry guard.** Running the script a
+  second time on a parent already in `active`/`pending_mr` refuses
+  cleanly with the documented `reconcile-milestone-status` hint
+  instead of silently overwriting the in-flight rollup metadata.
+
+### Maintenance
+
+- File-limits compliance: refactored `register_node_mutations`
+  (90 → 13 lines; per-route handlers now live at module level) and
+  `reconcile_milestone_status.main` (98 → 30 lines; per-node planner
+  + emitter helpers extracted). No behavior change.
+
+- Test suite: 480 → **495 passing**. New coverage for
+  `__version__` resolution (×3), PM API milestone lock end-to-end
+  (×5), graceful failure modes in lock-guard / fingerprint-guard
+  (×4), per-node isolation in `reconcile-milestone-status` (×2),
+  `start-milestone-session` re-entry guard (×1). Hardened the
+  `_shared_catalog` cache-invalidation test against the
+  same-nanosecond rewrite flake observed on fast tmpfs.
+
+- Repo policy: `.cursor/rules/*.mdc` (7 rules) tracked in the
+  repository — entry/load order, roadmap+registry discipline,
+  do-next-available registry publish, change discipline, PM-Gantt
+  ESLint stack, release/version/tag sync, and git-workflow
+  management. `CLAUDE.md` is now tracked at the repo root; the
+  `.gitignore` carve-out keeps IDE/agent state ignored while the
+  policy remains version-controlled.
 
 ## [v0.1.0-rc4] - 2026-04-20
 
@@ -273,7 +364,8 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc4...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0...HEAD
+[v0.1.0]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0
 [v0.1.0-rc4]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc4
 [v0.1.0-rc3]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc3
 [v0.1.0-rc2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc2
