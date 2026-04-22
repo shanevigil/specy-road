@@ -37,10 +37,27 @@ from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 
 def _pm_milestone_lock_guard(root: Path, *node_ids: str | None) -> None:
+    """Refuse a mutation that would touch a node under an active milestone.
+
+    Wraps ``load_roadmap`` so a transiently-broken roadmap (corrupt chunk,
+    missing manifest, unreadable file) surfaces as a clear **409 Conflict**
+    with a hint to re-validate, rather than as a bare FastAPI 500. The PM
+    UI already retries 412/409, so a 409 here is the right way to ask the
+    user to fix the tree before retrying.
+    """
     ids = [x for x in node_ids if isinstance(x, str) and x.strip()]
     if not ids:
         return
-    nodes = load_roadmap(root)["nodes"]
+    try:
+        nodes = load_roadmap(root)["nodes"]
+    except (OSError, ValueError, RuntimeError, KeyError) as e:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "roadmap unreadable; cannot verify milestone lock — "
+                f"re-run `specy-road validate` and retry: {e}"
+            ),
+        ) from e
     try:
         assert_pm_nodes_not_milestone_locked(nodes, *ids)
     except ValueError as e:
