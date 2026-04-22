@@ -18,6 +18,12 @@ override_limits:
     file_globs:
       - "tests/test_set_gate_status.py"
     max_lines_per_function: 120
+  # Canonical release playbook. Single-file by design so operators can
+  # Ctrl+F during a release rather than navigate cross-doc links.
+  - name: release_runbook
+    file_globs:
+      - "docs/release-runbook.md"
+    max_lines_per_file: 800
 
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500

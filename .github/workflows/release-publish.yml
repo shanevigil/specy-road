@@ -263,6 +263,18 @@ jobs:
           set -euo pipefail
           python scripts/post_release_readme_cleanup.py "${{ needs.resolve.outputs.version }}"
       - name: Open follow-up PR if README changed
+        id: cleanup_pr
+        # NOTE: this step is allowed to fail. Some repos disable
+        # 'Allow GitHub Actions to create and approve pull requests'
+        # in Settings → Actions → Workflow permissions, in which case
+        # peter-evans/create-pull-request fails with 'GitHub Actions
+        # is not permitted to create or approve pull requests.' The
+        # branch is still pushed; the fallback step below prints the
+        # exact 'gh pr create' command in the run summary so the
+        # operator can open the PR with one click. The whole release
+        # MUST NOT go red just because this housekeeping PR could not
+        # be auto-opened.
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v8
         with:
           branch: chore/readme-post-release-${{ needs.resolve.outputs.version }}
@@ -282,3 +294,33 @@ jobs:
           commit-message: 'chore(readme): post-release cleanup for v${{ needs.resolve.outputs.version }}'
           delete-branch: true
           draft: true
+      - name: Step-summary fallback if PR-create was blocked
+        if: always() && steps.cleanup_pr.outcome == 'failure'
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH="chore/readme-post-release-${VERSION}"
+          TITLE="chore(readme): post-release cleanup for v${VERSION}"
+          COMPARE_URL="https://github.com/${REPO}/compare/dev...${BRANCH}?expand=1"
+          {
+            echo "## ⚠️ README cleanup PR could not be auto-opened"
+            echo ""
+            echo "The repo blocks GitHub Actions from creating PRs"
+            echo "(Settings → Actions → Workflow permissions). The cleanup"
+            echo "branch \`${BRANCH}\` was pushed successfully; open the"
+            echo "PR manually with one of:"
+            echo ""
+            echo '```bash'
+            echo "gh pr create \\"
+            echo "  --base dev \\"
+            echo "  --head '${BRANCH}' \\"
+            echo "  --title '${TITLE}' \\"
+            echo "  --body 'Auto-opened by release-publish.yml after the v${VERSION} PyPI publish. Strips the pre-release notice and TODO from README.md and swaps the install block for pip install specy-road.'"
+            echo '```'
+            echo ""
+            echo "Or click: ${COMPARE_URL}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          echo "::notice::README cleanup PR not auto-opened (repo policy); see workflow run summary for the gh pr create command."
