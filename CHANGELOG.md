@@ -39,6 +39,25 @@ body. Keep section bodies focused; link to PRs for detail.
   and not required for routine authoring. Supports `--dry-run`.
   (`feature/automat-json-chunking`)
 
+### Changed
+
+- **Milestone-lock awareness for chunk routing.** `specy-road add-node`
+  now refuses to add a child under a parent that lives inside an
+  `active` or `pending_mr` milestone subtree (matches the existing
+  `cmd_edit` / `cmd_set_gate_status` / API guards — adding new work
+  mid-milestone is a silent scope expansion). `specy-road rebalance-chunks`
+  refuses with exit 1 when ANY milestone is in-flight (the cross-chunk
+  reorganization is functionally a mutation under any locked subtree).
+  Both errors point at `specy-road reconcile-milestone-status --apply`.
+  (`fix/automat-chunking-finish`)
+
+- **`specy-road add-node` lock-guard centralization.** The duplicated
+  `assert_pm_nodes_not_milestone_locked → SystemExit(1)` block in
+  `cmd_add` / `cmd_edit` / `cmd_set_gate_status` is consolidated
+  into one helper (`_refuse_if_milestone_locked`) so the lock contract
+  has one place to maintain. No behavior change for the existing
+  guards.
+
 ## [v0.1.0] - 2026-04-22
 
 First **stable release** of `specy-road`. Promotes the work landed
