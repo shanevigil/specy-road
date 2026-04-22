@@ -129,6 +129,21 @@ export function MarkdownToolbar({ editor, disabled = false }: Props) {
         <button
           type="button"
           className={
+            editor.isActive("taskList")
+              ? "markdown-workspace-mode is-active"
+              : "markdown-workspace-mode"
+          }
+          disabled={disabled}
+          onClick={() =>
+            run(() => editor.chain().focus().toggleTaskList().run())
+          }
+          title="Task list"
+        >
+          ☐ Tasks
+        </button>
+        <button
+          type="button"
+          className={
             editor.isActive("blockquote")
               ? "markdown-workspace-mode is-active"
               : "markdown-workspace-mode"

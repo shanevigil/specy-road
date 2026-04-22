@@ -61,6 +61,7 @@ _USAGE_TEXT = (
     "    (optional: --push [--remote NAME] | --no-cleanup-work | --no-milestone-rollup)\n"
     "  start-milestone-session <PARENT_NODE_ID> — sync base, ensure rollup branch, write work/.milestone-session.yaml\n"
     "    (optional: --base BRANCH --remote NAME --repo-root DIR)\n"
+    "  reconcile-milestone-status — dry-run milestone delivery vs git; --apply to close/sync (see -h)\n"
     "  open-milestone-pr       — print gh/glab one-line PR from rollup branch to integration\n"
 )
 
@@ -276,6 +277,8 @@ def main(argv: list[str] | None = None) -> None:
         _run("start_milestone_session.py", rest)
     elif cmd == "open-milestone-pr":
         _run("open_milestone_pr.py", rest)
+    elif cmd == "reconcile-milestone-status":
+        _run("reconcile_milestone_status.py", rest)
     elif cmd == "sync":
         _run("pm_sync.py", rest)
     elif cmd in (

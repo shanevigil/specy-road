@@ -1,0 +1,15 @@
+---
+description: Keep package version, tags, CHANGELOG, and specyrd stubs aligned
+alwaysApply: true
+---
+
+## Canonical version
+
+- Treat [`pyproject.toml`](../../pyproject.toml) **`[project] version`** as the single declared semver for the toolkit (PEP 440; prereleases use forms like `0.1.0rc1`, not `0.1.0-rc1` in pyproject).
+- `specy_road.__version__` prefers **`project.version`** from a sibling `pyproject.toml` that declares `name = "specy-road"` (typical editable checkout), else **`importlib.metadata`** for wheel installs, else `0.0.0+unknown`. Do not introduce duplicate hardcoded release strings in code or docs.
+
+## Every release tag (including prereleases)
+
+- The change set that will be tagged on `main` must already bump **`project.version`**, add or update the matching **`## [vX.Y.Z]`** block in [`CHANGELOG.md`](../../CHANGELOG.md) (release workflow uses it for GitHub Release bodies), and refresh any maintainer-facing prose that cites the “current” toolkit version.
+- CI runs [`scripts/check_release_version.py`](../../scripts/check_release_version.py) so the Git tag and `project.version` cannot drift.
+- If **`specyrd init`** stubs or `.specyrd/manifest.json` show the wrong version, fix packaging or `project.version` / reinstall — templates use `{{SPECYRD_VERSION}}` and are not the source of truth.

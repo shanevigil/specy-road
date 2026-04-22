@@ -6,12 +6,18 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.runtime_paths import bundled_scripts_dir
+
+if str(bundled_scripts_dir()) not in sys.path:
+    sys.path.insert(0, str(bundled_scripts_dir()))
+
 from specy_road.milestone_rollup_git import (
     cherry_pick_bookkeeping_to_integration,
     merge_leaf_into_rollup,
     push_branch,
     rev_parse_head,
 )
+from specy_road.milestone_chunk_io import maybe_promote_milestone_to_pending_mr
 from specy_road.milestone_session import MilestoneSession, milestone_session_path, read_milestone_session
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.on_complete_session import remove_on_complete_session
@@ -98,6 +104,20 @@ def try_milestone_rollup_finish(
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
     remove_on_complete_session(sess_path)
+    try:
+        from roadmap_load import load_roadmap
+
+        nodes2 = load_roadmap(repo)["nodes"]
+        if maybe_promote_milestone_to_pending_mr(repo, ms.parent_node_id, nodes2):
+            print(
+                "[milestone] parent milestone_execution -> pending_mr "
+                "(all subtree leaves complete; land rollup MR when ready).",
+            )
+    except Exception as exc:
+        print(
+            f"[warn] could not refresh milestone_execution: {exc}",
+            file=sys.stderr,
+        )
     print("\n[ok] Milestone rollup: integration branch updated; rollup branch merged.")
     print(f"     You are on {ib!r}. Next: specy-road do-next-available-task --milestone-subtree")
     print("     When the subtree is done: specy-road open-milestone-pr")

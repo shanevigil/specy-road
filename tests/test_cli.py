@@ -341,6 +341,24 @@ def test_specy_road_start_milestone_session_help() -> None:
     assert ".milestone-session.yaml" in r.stdout or "milestone-session" in r.stdout
 
 
+def test_specy_road_reconcile_milestone_status_help() -> None:
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "specy_road.cli",
+            "reconcile-milestone-status",
+            "--help",
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "--apply" in r.stdout
+    assert "--fallback-head-delivery" in r.stdout
+
+
 def test_specy_road_open_milestone_pr_help() -> None:
     r = subprocess.run(
         [

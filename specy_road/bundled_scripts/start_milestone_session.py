@@ -11,6 +11,10 @@ from pathlib import Path
 
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.milestone_chunk_io import (
+    build_active_milestone_execution,
+    write_milestone_execution,
+)
 from specy_road.milestone_session import (
     milestone_session_path,
     write_milestone_session,
@@ -173,6 +177,19 @@ def main(argv: list[str] | None = None) -> None:
     nodes = data["nodes"]
     _validate_parent(nodes, args.parent_node_id)
     parent = next(n for n in nodes if n.get("id") == args.parent_node_id)
+    existing = parent.get("milestone_execution")
+    if isinstance(existing, dict) and existing.get("state") in (
+        "active",
+        "pending_mr",
+    ):
+        print(
+            "error: parent already has milestone_execution in "
+            f"{existing.get('state')!r} — close it with "
+            "`specy-road reconcile-milestone-status --apply` after delivery, "
+            "or clear milestone_execution manually before restarting.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     codename = str(parent["codename"]).strip()
     rollup = f"feature/rm-{codename}"
 
@@ -188,6 +205,19 @@ def main(argv: list[str] | None = None) -> None:
         remote=remote,
     )
     print(f"\n[ok] wrote {milestone_session_path(work_dir).relative_to(ROOT)}")
+    chunk = write_milestone_execution(
+        ROOT,
+        args.parent_node_id,
+        build_active_milestone_execution(
+            rollup_branch=rollup,
+            integration_branch=base,
+            remote=remote,
+        ),
+    )
+    print(
+        f"[ok] wrote milestone_execution on {args.parent_node_id!r} in "
+        f"{chunk.relative_to(ROOT)} (commit this with your roadmap change).",
+    )
     print(f"     rollup branch: {rollup}")
     print(f"     integration:   {base} @ {remote}")
     print("\nNext:")

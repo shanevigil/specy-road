@@ -22,6 +22,7 @@ from planning_sheet_bootstrap import (
 )
 from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
 from roadmap_node_keys import new_node_key
+from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
 from specy_road.runtime_paths import default_user_repo_root
@@ -69,7 +70,7 @@ def cmd_list(args: object) -> None:
     root = repo_root(args)
     merged = load_roadmap(root)["nodes"]
     chunk_map = build_node_chunk_map(root)
-    for n in sorted(merged, key=lambda x: x["id"]):
+    for n in sorted(merged, key=lambda x: natural_id_sort_key(x["id"])):
         nid = n["id"]
         ch = chunk_map.get(nid)
         rel = ch.relative_to(root) if ch else "(unknown)"
@@ -266,6 +267,14 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
 def cmd_edit(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
+    nodes = load_roadmap(root)["nodes"]
+    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
+
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, nid)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     pairs: list[tuple[str, str]] = []
     for pair in args.set:
         if "=" not in pair:
@@ -287,6 +296,13 @@ def cmd_set_gate_status(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
     nodes = load_roadmap(root)["nodes"]
+    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
+
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, nid)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     target = next((n for n in nodes if n.get("id") == nid), None)
     if target is None:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
