@@ -97,6 +97,54 @@ jobs:
               `Release version '${version}' validated (${isPrerelease ? "prerelease → TestPyPI" : "final → PyPI"}). ` +
               `Merge to main will auto-tag the merge commit as '${tagRef}'.`
             );
+            core.exportVariable("RELEASE_VERSION", version);
+
+  # Pre-merge guard: assert pyproject.toml's project.version matches the PR
+  # title's release marker BEFORE the merge happens. Without this, a stale
+  # commit (e.g. PR re-targeted, branch out-of-sync with the version bump)
+  # could land on main with a mismatched version, and `release-publish.yml`
+  # would have to refuse the publish AFTER the merge — leaving main in a
+  # state where the next release has to clean up. Running the same check
+  # here means the PR is red before merge and the operator fixes it on the
+  # source branch.
+  check-version-vs-marker:
+    if: github.event_name == 'pull_request'
+    needs: [validate-release-intent]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract release version from PR title
+        id: ver
+        env:
+          TITLE_RE: ${{ env.RELEASE_TITLE_RE }}
+          LABEL_RE: ${{ env.RELEASE_LABEL_RE }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Re-extract the version client-side so we don't depend on the
+          # github-script env var leaking across jobs.
+          version="$(printf '%s\n' "${PR_TITLE}" | grep -oiE 'release:[[:space:]]*v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?' | head -1 | sed -E 's/^release:[[:space:]]*v//I' | sed -E 's/[[:space:]]+$//' || true)"
+          if [[ -z "${version}" ]]; then
+            # Fall back to label form (release:vX.Y.Z[-suffix]).
+            version="$(printf '%s\n' "${PR_LABELS_JSON}" | grep -oiE 'release:v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?' | head -1 | sed -E 's/^release:v//I' || true)"
+          fi
+          if [[ -z "${version}" ]]; then
+            echo "error: could not extract a release version from PR title or labels" >&2
+            exit 1
+          fi
+          echo "version=${version}" | tee -a "${GITHUB_OUTPUT}"
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Verify pyproject version matches PR title
+        run: |
+          set -euo pipefail
+          python scripts/check_release_version.py "v${{ steps.ver.outputs.version }}"
 
   tag-main-commit:
     if: github.event_name == 'push'
@@ -118,14 +166,39 @@ jobs:
             const labelRe = new RegExp(process.env.LABEL_RE, "i");
             const versionRe = new RegExp(process.env.VERSION_RE);
 
-            const pullsResp = await github.request(
-              "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls",
-              { owner, repo, commit_sha: sha }
-            );
-            const pulls = pullsResp.data || [];
+            // Retry the commit→PR association lookup. GitHub's API can lag
+            // 10–30s after a merge before the association is indexed; that
+            // race has bitten this gate twice (rc4 and v0.1.0). Try up to
+            // 3 times with 30s sleep, then give up with a clear message.
+            const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+            let pulls = [];
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              const resp = await github.request(
+                "GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls",
+                { owner, repo, commit_sha: sha }
+              );
+              pulls = resp.data || [];
+              if (pulls.length > 0) {
+                if (attempt > 1) {
+                  core.notice(`Found PR association for ${sha} on attempt ${attempt}.`);
+                }
+                break;
+              }
+              if (attempt < 3) {
+                core.warning(
+                  `No PR association for ${sha} yet (attempt ${attempt}/3); ` +
+                  `sleeping 30s for the API to catch up.`
+                );
+                await sleep(30000);
+              }
+            }
             if (pulls.length === 0) {
               core.setFailed(
-                `No PR found for commit ${sha}. main requires PR-based release merges with release markers.`
+                `No PR found for commit ${sha} after 3 attempts (90s). ` +
+                `main requires PR-based release merges with release markers. ` +
+                `If this is a real release merge, re-run this workflow from ` +
+                `the Actions UI; the API association usually settles within a ` +
+                `minute or two.`
               );
               return;
             }
