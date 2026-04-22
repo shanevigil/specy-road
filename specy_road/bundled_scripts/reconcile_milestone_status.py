@@ -50,104 +50,154 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
+def _node_milestone_fields(
+    n: dict, default_remote: str
+) -> tuple[str, dict, str | None, str, str, str] | None:
+    """Return ``(pid, me, state, remote, rollup_branch, integration_branch)`` or None to skip."""
+    if not isinstance(n, dict):
+        return None
+    me = n.get("milestone_execution")
+    if not isinstance(me, dict):
+        return None
+    pid = n.get("id")
+    if not isinstance(pid, str):
+        return None
+    rb = me.get("rollup_branch")
+    ib = me.get("integration_branch")
+    if not isinstance(rb, str) or not isinstance(ib, str):
+        return None
+    rem = me.get("remote") or default_remote
+    return pid, me, me.get("state"), rem, rb, ib
+
+
+def _plan_closed_state(
+    root: Path, pid: str, n: dict, *, rollup_ok: bool, apply: bool
+) -> list[str]:
+    if not rollup_ok or n.get("status") == "Complete":
+        return []
+    line = (
+        f"sync parent {pid!r} status -> Complete "
+        "(milestone_execution closed, rollup complete)"
+    )
+    if apply:
+        edit_node_set_pairs(root, pid, [("status", "Complete")])
+    return [line]
+
+
+def _plan_open_state(
+    root: Path,
+    pid: str,
+    *,
+    state: str | None,
+    remote: str,
+    rollup_branch: str,
+    integration_branch: str,
+    rollup_ok: bool,
+    fallback_head_delivery: bool,
+    apply: bool,
+) -> list[str]:
+    out: list[str] = []
+    merged = rollup_merged_into_integration(
+        root,
+        remote=remote,
+        rollup_branch=rollup_branch,
+        integration_branch=integration_branch,
+    )
+    delivery = merged is True or (fallback_head_delivery and rollup_ok)
+    if delivery:
+        if merged is None and fallback_head_delivery:
+            out.append(
+                f"note: {pid!r}: using --fallback-head-delivery "
+                "(git merge proof unavailable)"
+            )
+        out.append(
+            f"close milestone {pid!r}: set milestone_execution closed + status Complete"
+        )
+        if apply:
+            patch_milestone_execution_state(root, pid, state="closed")
+            edit_node_set_pairs(root, pid, [("status", "Complete")])
+        return out
+
+    if merged is False and rollup_ok:
+        out.append(
+            f"pending: {pid!r}: rollup complete but {rollup_branch!r} not merged "
+            f"into {integration_branch!r} on {remote!r} "
+            "(open MR via `specy-road open-milestone-pr`, merge, then re-run; "
+            "or use --fallback-head-delivery if appropriate)."
+        )
+    elif merged is None and rollup_ok and not fallback_head_delivery:
+        out.append(
+            f"hint: {pid!r}: could not resolve {remote}/{rollup_branch} or "
+            f"{remote}/{integration_branch} — git fetch {remote}, "
+            "or use --fallback-head-delivery if work is already on integration."
+        )
+
+    if rollup_ok and state == "active":
+        out.append(
+            f"promote: {pid!r}: milestone_execution active -> pending_mr "
+            "(all leaves complete)"
+        )
+        if apply:
+            maybe_promote_milestone_to_pending_mr(
+                root, pid, load_roadmap(root)["nodes"]
+            )
+    return out
+
+
+def _plan_for_node(
+    root: Path, n: dict, *, default_remote: str, args: argparse.Namespace
+) -> list[str]:
+    parsed = _node_milestone_fields(n, default_remote)
+    if parsed is None:
+        return []
+    pid, _me, state, remote, rb, ib = parsed
+    rollup_ok = n.get("rollup_status") == "Complete"
+    if state == "closed":
+        return _plan_closed_state(root, pid, n, rollup_ok=rollup_ok, apply=args.apply)
+    return _plan_open_state(
+        root,
+        pid,
+        state=state,
+        remote=remote,
+        rollup_branch=rb,
+        integration_branch=ib,
+        rollup_ok=rollup_ok,
+        fallback_head_delivery=args.fallback_head_delivery,
+        apply=args.apply,
+    )
+
+
+def _emit_planned(planned: list[str], *, apply: bool) -> None:
+    if not planned:
+        print("Nothing to reconcile (no milestone_execution rows needing action).")
+        return
+    for line in planned:
+        print(line)
+    if not apply:
+        print("\n(dry-run: re-run with --apply to write changes)")
+    else:
+        print(
+            "\n[ok] reconcile-milestone-status: applied changes "
+            "(each step re-validated)."
+        )
+
+
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
-    data = load_roadmap(root)
-    nodes = data["nodes"]
+    nodes = load_roadmap(root)["nodes"]
     _, default_remote, warns = resolve_integration_defaults(
-        root,
-        explicit_base=None,
-        explicit_remote=None,
+        root, explicit_base=None, explicit_remote=None
     )
     for w in warns:
         print(f"warning: {w}", file=sys.stderr)
 
     planned: list[str] = []
-
     for n in nodes:
-        if not isinstance(n, dict):
-            continue
-        me = n.get("milestone_execution")
-        if not isinstance(me, dict):
-            continue
-        pid = n.get("id")
-        if not isinstance(pid, str):
-            continue
-        st = me.get("state")
-        rem = me.get("remote") or default_remote
-        rb = me.get("rollup_branch")
-        ib = me.get("integration_branch")
-        if not isinstance(rb, str) or not isinstance(ib, str):
-            continue
-
-        rollup_ok = n.get("rollup_status") == "Complete"
-
-        if st == "closed":
-            if rollup_ok and n.get("status") != "Complete":
-                planned.append(
-                    f"sync parent {pid!r} status -> Complete (milestone_execution closed, rollup complete)",
-                )
-                if args.apply:
-                    edit_node_set_pairs(root, pid, [("status", "Complete")])
-            continue
-
-        merged = rollup_merged_into_integration(
-            root,
-            remote=rem,
-            rollup_branch=rb,
-            integration_branch=ib,
+        planned.extend(
+            _plan_for_node(root, n, default_remote=default_remote, args=args)
         )
-        delivery = False
-        if merged is True:
-            delivery = True
-        elif args.fallback_head_delivery and rollup_ok:
-            delivery = True
-            if merged is None:
-                planned.append(
-                    f"note: {pid!r}: using --fallback-head-delivery (git merge proof unavailable)",
-                )
-
-        if delivery:
-            planned.append(
-                f"close milestone {pid!r}: set milestone_execution closed + status Complete",
-            )
-            if args.apply:
-                patch_milestone_execution_state(root, pid, state="closed")
-                edit_node_set_pairs(root, pid, [("status", "Complete")])
-            continue
-
-        if merged is False and rollup_ok:
-            planned.append(
-                f"pending: {pid!r}: rollup complete but {rb!r} not merged into {ib!r} on {rem!r} "
-                f"(open MR via `specy-road open-milestone-pr`, merge, then re-run; "
-                f"or use --fallback-head-delivery if appropriate).",
-            )
-        elif merged is None and rollup_ok and not args.fallback_head_delivery:
-            planned.append(
-                f"hint: {pid!r}: could not resolve {rem}/{rb} or {rem}/{ib} — git fetch {rem}, "
-                f"or use --fallback-head-delivery if work is already on integration.",
-            )
-
-        if rollup_ok and st == "active":
-            planned.append(
-                f"promote: {pid!r}: milestone_execution active -> pending_mr (all leaves complete)",
-            )
-            if args.apply:
-                maybe_promote_milestone_to_pending_mr(
-                    root, pid, load_roadmap(root)["nodes"],
-                )
-
-    if not planned:
-        print("Nothing to reconcile (no milestone_execution rows needing action).")
-        return
-
-    for line in planned:
-        print(line)
-    if not args.apply:
-        print("\n(dry-run: re-run with --apply to write changes)")
-    else:
-        print("\n[ok] reconcile-milestone-status: applied changes (each step re-validated).")
+    _emit_planned(planned, apply=args.apply)
 
 
 if __name__ == "__main__":
