@@ -11,6 +11,100 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.1] - 2026-04-22
+
+Patch release. Adds **automatic JSON chunk routing** so PMs and devs no
+longer have to pick a chunk file by hand, plus the
+**`specy-road rebalance-chunks`** power-user command for deterministic
+re-packing. Backward compatible: repos that never overflow are
+byte-identical. Includes README polish (post-PyPI install language) and
+a small dead-code cleanup. Routes to **PyPI** via OIDC trusted publisher.
+
+### Added
+
+- **Automatic JSON chunk management.** Every roadmap write path
+  (`specy-road add-node`, the PM Gantt's add-task action, and
+  `edit-node` when growth would overflow) now goes through a
+  deterministic chunk router. PMs and devs no longer have to pick a
+  chunk file or split full chunks by hand: when the target chunk
+  would exceed `roadmap_json_chunk_max_lines`, the router auto-routes
+  to the smallest valid chunk in the same phase subtree, then
+  anywhere in the manifest, then auto-creates a new chunk whose
+  filename is derived from the new node's `node_key`
+  (`<base-stem>__<6hex>.json`). Two PMs creating overflow chunks on
+  parallel branches therefore never collide on chunk filenames —
+  only the manifest gets a clean two-line addition. All chunk +
+  manifest writes are snapshotted and rolled back atomically if
+  validation rejects the result. `--chunk` on `add-node` is now
+  optional (still honored when supplied). Backward compatible:
+  repos that never overflow are byte-identical.
+  (`feature/automat-json-chunking`)
+
+- **`specy-road rebalance-chunks`** (optional power-user command).
+  Re-packs chunks deterministically: groups nodes by phase ancestor
+  in tree order, first-fit packs them into chunks of
+  `<= roadmap_json_chunk_max_lines`, and applies the result
+  atomically through the same plan/rollback machinery. Idempotent
+  and not required for routine authoring. Supports `--dry-run`.
+  (`feature/automat-json-chunking`)
+
+### Changed
+
+- **Milestone-lock awareness for chunk routing.** `specy-road add-node`
+  now refuses to add a child under a parent that lives inside an
+  `active` or `pending_mr` milestone subtree (matches the existing
+  `cmd_edit` / `cmd_set_gate_status` / API guards — adding new work
+  mid-milestone is a silent scope expansion). `specy-road rebalance-chunks`
+  refuses with exit 1 when ANY milestone is in-flight (the cross-chunk
+  reorganization is functionally a mutation under any locked subtree).
+  Both errors point at `specy-road reconcile-milestone-status --apply`.
+  (`fix/automat-chunking-finish`)
+
+- **`specy-road add-node` lock-guard centralization.** The duplicated
+  `assert_pm_nodes_not_milestone_locked → SystemExit(1)` block in
+  `cmd_add` / `cmd_edit` / `cmd_set_gate_status` is consolidated
+  into one helper (`_refuse_if_milestone_locked`) so the lock contract
+  has one place to maintain. No behavior change for the existing
+  guards.
+
+### Fixed
+
+- **`specy-road rebalance-chunks` idempotency** now reports
+  `(repo is already balanced; nothing to do)` correctly in **both**
+  dry-run and apply paths. Previous behavior fired the no-op message
+  only when `plan.chunk_writes` was empty, but `build_pack_plan`
+  always populates `chunk_writes` from scratch — so a balanced repo
+  printed the per-chunk plan with `(N nodes, unchanged)` markers but
+  not the no-op footer. Replaced with a content-equality check
+  (`_is_noop_plan`) that compares each staged chunk write against the
+  on-disk bytes plus the manifest ordering. Caught by Phase C.2 of
+  the v0.1.1 e2e walk.
+
+- **README post-PyPI staleness.** The "Getting started" sentence
+  (line 23) still pointed at the clone+editable-install path even
+  after v0.1.0 published the package to PyPI. The
+  `post_release_readme_cleanup` script swapped the dedicated
+  `## Install` block but missed this conversational sentence above
+  it. Now reads: "follow `[Install](#install)` and
+  `docs/install-and-usage.md` to `pip install specy-road` and run
+  `specy-road init project` …"
+
+### Maintenance
+
+- Test suite: 513 → **534 passing** (+19 from the chunk-routing /
+  rebalance feature, +2 from the milestone-lock gap audit).
+- File-limits: one new override (`roadmap_crud_tests` to 600 lines)
+  for `tests/test_roadmap_crud.py` — the 17 tests share helpers and
+  splitting would force duplicating `_fixture_repo` / `_run_crud`
+  across files. The runbook override (`release_runbook` at 800
+  lines) from v0.1.0's Layer 1 is unchanged.
+- Removed dead `run_validate()` in `roadmap_crud_ops.py` (its only
+  caller was the cmd_add overhaul; the new `cmd_add` validates
+  through the chunk router).
+- `docs/roadmap-authoring.md` cross-references the chunk router and
+  the milestone-lock interaction so the connection is discoverable
+  the moment a PM reads about routing.
+
 ## [v0.1.0] - 2026-04-22
 
 First **stable release** of `specy-road`. Promotes the work landed
@@ -364,7 +458,8 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.1...HEAD
+[v0.1.1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.1
 [v0.1.0]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0
 [v0.1.0-rc4]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc4
 [v0.1.0-rc3]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc3

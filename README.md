@@ -1,19 +1,4 @@
-<!--
-TODO(post-release): wire automated PyPI build-and-publish on every tagged
-release (v*.*.*), then replace the install-from-source block below with a
-single `pip install specy-road` line.
--->
-
 # specy-road
-
-> ## ⚠️ Pre-release notice
-> **Stable PyPI** does not list `specy-road` yet (`pip install specy-road` from
-> pypi.org). **Prerelease** tags (for example `v0.1.0-rc1`) publish to
-> **TestPyPI** for smoke installs — see
-> [`docs/contributor-guide.md`](docs/contributor-guide.md). For day-to-day work
-> on **this** repository, keep using an **editable install from `dev`** as in
-> [Install](#install). The TODO comment above is removed after **v0.1.0**
-> ships to PyPI and the install block switches to `pip install`.
 
 **One roadmap for the whole team**—so product, engineering, and coding agents share the same plan.
 
@@ -35,7 +20,7 @@ single `pip install specy-road` line.
 
 ## Getting started
 
-Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install)** and **[docs/install-and-usage.md](docs/install-and-usage.md)** for cloning, editable install, and **`specy-road init project`** in an application repo. After that, everyday use boils down to:
+Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install)** and **[docs/install-and-usage.md](docs/install-and-usage.md)** to **`pip install specy-road`** and run **`specy-road init project`** in an application repo. After that, everyday use boils down to:
 
 ### For PMs
 
@@ -51,20 +36,20 @@ More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review**
 
 ## Install
 
-Requires **Python 3.11+** and **git** (with a configured remote — `origin` by default).
-
-> **Stable PyPI pending.** Install from source on the `dev` branch (below). The
-> end-user guide is **[docs/install-and-usage.md](docs/install-and-usage.md)**;
-> prerelease/TestPyPI details live in **[docs/contributor-guide.md](docs/contributor-guide.md)**.
+Requires **Python 3.11+** and **git** (with a configured remote — `origin`
+by default).
 
 ```bash
-git clone https://github.com/shanevigil/specy-road.git
-cd specy-road
-git switch dev               # main is reserved for tagged releases
-python3 -m venv .venv
-source .venv/bin/activate    # Windows: .venv\Scripts\activate
-pip install -e ".[dev,gui-next]"   # add ',review' for optional review-node
+pip install specy-road
+# optional extras:
+#   pip install "specy-road[gui-next]"  # PM Gantt UI deps
+#   pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
+
+The full install + everyday usage guide is at
+**[docs/install-and-usage.md](docs/install-and-usage.md)**. Building from
+source is documented in
+**[docs/contributor-guide.md](docs/contributor-guide.md)**.
 
 Consumer **`init project`**, `roadmap/git-workflow.yaml`, optional **`specyrd`** stubs, and bootstrap prompts are covered in **[docs/install-and-usage.md](docs/install-and-usage.md)**. Toolkit contributors (tests, pre-commit, releases): **[docs/contributor-guide.md](docs/contributor-guide.md)**.
 

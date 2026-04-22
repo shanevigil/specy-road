@@ -338,6 +338,68 @@ def test_add_node_rejects_removed_execution_subtask_flag(tmp_path: Path) -> None
     assert "unrecognized arguments" in r.stderr or "--execution-subtask" in r.stderr
 
 
+def test_add_node_chunk_arg_optional(tmp_path: Path) -> None:
+    """F-AUTO: ``--chunk`` is no longer required; the router auto-routes."""
+    _fixture_repo(tmp_path)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.3",
+        "--type",
+        "task",
+        "--title",
+        "No chunk arg",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode == 0, r.stderr
+    nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    assert any(n["id"] == "M99.3" for n in nodes)
+
+
+def test_add_node_auto_creates_chunk_when_target_full(tmp_path: Path) -> None:
+    """F-AUTO: when the hint chunk is full the router auto-creates a new chunk."""
+    _fixture_repo(tmp_path)
+    # Tighten the cap so the existing 3-node chunk fits but adding any
+    # non-trivial node would push it over the limit.
+    cur = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    from roadmap_chunk_router_pick import simulate_chunk_lines
+
+    current_lines = simulate_chunk_lines(cur)
+    cap = current_lines + 5  # tight: another node won't fit
+    (tmp_path / "constraints" / "file-limits.yaml").write_text(
+        f"roadmap_json_chunk_max_lines: {cap}\n", encoding="utf-8"
+    )
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.5",
+        "--type",
+        "task",
+        "--title",
+        "Overflow",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode == 0, r.stderr
+    # The new node landed in a new chunk; the original chunk is unchanged.
+    src = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
+    assert all(n["id"] != "M99.5" for n in src)
+    new_chunks = sorted(
+        p for p in (tmp_path / "roadmap" / "phases").iterdir()
+        if p.suffix == ".json" and p.name != "T.json"
+    )
+    assert len(new_chunks) == 1
+    new_nodes = load_json_chunk(new_chunks[0])
+    assert any(n["id"] == "M99.5" for n in new_nodes)
+
+
 def test_add_node_no_codename_auto_derives(tmp_path: Path) -> None:
     """F-006: when --codename is omitted on a task, it's auto-derived from --title."""
     _fixture_repo(tmp_path)
@@ -361,3 +423,48 @@ def test_add_node_no_codename_auto_derives(tmp_path: Path) -> None:
     nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
     node = next(n for n in nodes if n["id"] == "M99.3")
     assert node["codename"] == "three-slug"
+
+
+def test_add_node_refuses_when_parent_in_locked_milestone(tmp_path: Path) -> None:
+    """v0.1.1 gap fix: cmd_add must refuse adding a child under an active milestone parent.
+
+    Mirrors the cmd_edit / cmd_set_gate_status milestone-lock guards. Without
+    this check, a PM could silently expand the scope of an in-flight milestone
+    by adding new tasks under the locked parent. The API path
+    (POST /api/nodes/add) already enforces this via _pm_milestone_lock_guard;
+    this test pins the same behavior on the CLI path.
+    """
+    _fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n.get("id") == "M99":
+            n["milestone_execution"] = {
+                "state": "active",
+                "rollup_branch": "feature/rm-tmp",
+                "integration_branch": "dev",
+                "remote": "origin",
+            }
+    write_json_chunk(chunk, nodes)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.4",
+        "--type",
+        "task",
+        "--title",
+        "Locked Add",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode != 0
+    err = (r.stderr or "") + (r.stdout or "")
+    assert "milestone subtree" in err
+    assert "M99" in err
+    assert "Traceback" not in err
+    # Node was NOT added.
+    nodes_after = load_json_chunk(chunk)
+    assert all(n["id"] != "M99.4" for n in nodes_after)

@@ -101,81 +101,29 @@ exempt. Roadmap-driven `feature/rm-<codename>` branches created by
 `specy-road do-next-available-task` automatically satisfy the
 `feature/...` prefix.
 
-### Tagging convention
+### Releases — see the canonical runbook
 
-Semver tags with a `v` prefix:
+Cutting a release (RC or final) is documented end-to-end in
+**[`docs/release-runbook.md`](release-runbook.md)** — the canonical
+playbook for both humans and the autonomous coding agent. The runbook
+covers:
 
-- Final releases: `v0.1.0`, `v1.2.3`.
-- Pre-releases: `v0.1.0-rc1`, `v0.2.0-beta1`. PEP 440 normalization is
-  handled automatically (`-rc1` ↔ `rc1`).
-
-You **don't tag manually**. Instead, open a PR from `dev` to `main` with
-the title `release: v0.1.0` (or apply the `release:v0.1.0` label). The
-leading `v` is **required** — the bare `0.1.0` form is rejected so the
-project carries exactly one canonical version representation. The
-[main-release-tag-gate.yml](../.github/workflows/main-release-tag-gate.yml)
-workflow:
-
-1. Validates the marker on the PR.
-2. On merge to `main`, auto-creates the `vX.Y.Z` tag at the merge
-   commit.
-3. The tag push triggers
-   [release-publish.yml](../.github/workflows/release-publish.yml),
-   which publishes to PyPI (final tags) or TestPyPI (prerelease tags)
-   via OIDC trusted publishing.
-
-### Automated release process (what humans do, what machines do)
-
-**Humans:**
-
-1. Bump `pyproject.toml`'s `project.version` on `dev`. This is the
-   canonical version: `specy_road.__version__` prefers that field when the
-   package is imported from a checkout (sibling `pyproject.toml` with
-   `name = "specy-road"`), otherwise uses installed package metadata.
-   **`specyrd init`** command stubs and `.specyrd/manifest.json`
-   (`specyrd_version`) substitute that runtime version — do not add a second
-   hardcoded package version string elsewhere.
-2. Update `CHANGELOG.md` — add a `## [vX.Y.Z]` section with the body
-   that should appear on the GitHub Release.
-3. Open a release PR from `dev` to `main` with title
-   `release: vX.Y.Z` (the leading `v` is required). Body explains what's
-   in the release.
-4. Get the PR reviewed; merge it.
-
-**Machines (no further human action required):**
-
-5. `main-release-tag-gate.yml` validates the marker and (on merge)
-   creates the tag `vX.Y.Z` on the merge commit.
-6. `release-publish.yml` is triggered by the tag push and:
-   - Reuses [`validate.yml`](../.github/workflows/validate.yml) as a
-     prereq job to re-run the full validation pipeline against the
-     tagged commit.
-   - Builds sdist + wheel; runs
-     [`scripts/check_release_version.py`](../scripts/check_release_version.py)
-     to assert pyproject's version matches the tag.
-   - Runs
-     [`scripts/verify_wheel_contents.py`](../scripts/verify_wheel_contents.py)
-     to assert the wheel contains the bundled PM Gantt UI assets.
-   - Smoke-installs the wheel in a fresh venv and runs
-     `specy-road --help` + `validate` + `export --check` against
-     the dogfood fixture.
-   - Publishes to **TestPyPI** (prerelease tags) or **PyPI** (final
-     tags) via OIDC trusted publishing — no API tokens. Sigstore
-     attestations are emitted (PEP 740).
-   - Creates a GitHub Release using the `## [vX.Y.Z]` section of
-     `CHANGELOG.md` as the body, with the sdist + wheel attached.
-   - On the **first PyPI publish only**, opens a follow-up PR
-     (`chore/readme-post-release-X.Y.Z`) that strips the README's
-     pre-release notice + TODO and swaps the install-from-source
-     block for `pip install specy-road`.
+- The **two flows**: RC (`vX.Y.Z-rcN`, routes to TestPyPI) and final
+  (`vX.Y.Z`, routes to PyPI).
+- The **agent-vs-human matrix**: which steps the agent runs, which two
+  steps the user owns (manual tag re-push, final live confirmation).
+- The **command catalogue**: verbatim PR titles, branch names,
+  `pyproject.toml` version forms, CHANGELOG headings, tag formats —
+  any mismatch will fail CI.
+- A **recovery section** documenting every observed failure mode with
+  its root cause and fix, including the GitHub anti-recursion guard
+  that prevents `GITHUB_TOKEN`-created tags from triggering downstream
+  workflows.
 
 The PyPI Trusted Publisher OIDC trust is bound to **this exact workflow
-file** (`release-publish.yml`) and **these exact environments**
-(`pypi` and `testpypi`). Renaming the file or environments will break
-publishing until you update the trust on `pypi.org` and
-`test.pypi.org`.
-
-### Trust & environment setup (one-time, off-repo)
+file** ([`release-publish.yml`](../.github/workflows/release-publish.yml))
+and **these exact environments** (`pypi` and `testpypi`). One-time
+maintainer setup:
 
 1. **PyPI:** at `https://pypi.org/manage/account/publishing/` add a
    pending trusted publisher with owner `shanevigil`, repo `specy-road`,
@@ -188,7 +136,14 @@ publishing until you update the trust on `pypi.org` and
    recommended) and `testpypi` (tag rule
    `v[0-9]+.[0-9]+.[0-9]+-*`; no reviewers).
 
-### Manual smoke (no publish)
+Renaming the workflow file or the environments will break publishing
+until the trust on `pypi.org` and `test.pypi.org` is updated. The
+[`tests/test_release_harness.py`](../tests/test_release_harness.py)
+suite asserts the workflow names and env names are stable; if a
+maintainer renames any of them, those tests will fail before the
+release does.
+
+#### Manual smoke (no publish)
 
 The release workflow accepts a `workflow_dispatch` trigger with
 `dry_run: true`. This builds the package and runs all verification but
