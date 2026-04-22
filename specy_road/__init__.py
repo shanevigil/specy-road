@@ -12,6 +12,11 @@ def _version_from_adjacent_pyproject() -> str | None:
 
     Prefer this over ``importlib.metadata`` when both exist so editable checkouts
     stay aligned with ``pyproject.toml`` even if install metadata was not refreshed.
+
+    Hardened against malformed input: any I/O error (``OSError``) **or** TOML
+    parse error (``tomllib.TOMLDecodeError``, which subclasses ``ValueError``)
+    falls through to the next resolution step rather than crashing
+    ``import specy_road``.
     """
     repo_root = Path(__file__).resolve().parent.parent
     path = repo_root / "pyproject.toml"
@@ -20,10 +25,13 @@ def _version_from_adjacent_pyproject() -> str | None:
     try:
         with path.open("rb") as f:
             data = tomllib.load(f)
-    except OSError:
+    except (OSError, ValueError):
+        # ValueError covers tomllib.TOMLDecodeError (PEP 8 / stdlib hierarchy).
         return None
-    project = data.get("project", {})
-    if project.get("name") != "specy-road":
+    if not isinstance(data, dict):
+        return None
+    project = data.get("project")
+    if not isinstance(project, dict) or project.get("name") != "specy-road":
         return None
     raw = project.get("version")
     return raw.strip() if isinstance(raw, str) and raw.strip() else None
