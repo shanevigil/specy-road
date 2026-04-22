@@ -198,7 +198,14 @@ def register_node_mutations(api: APIRouter) -> None:
         nodes0 = load_roadmap(root)["nodes"]
         moved_id = _node_id_for_key(nodes0, body.node_key)
         if not moved_id:
-            raise HTTPException(status_code=404, detail="node_key not found")
+            # Pre-existing contract (still asserted by tests) is 400 for an
+            # unknown node_key — ``move_node_outline`` previously raised
+            # ``ValueError("unknown node_key …")`` and the route mapped it to
+            # 400. Keep that semantic now that we resolve the key early so the
+            # milestone lock guard can check the moved id.
+            raise HTTPException(
+                status_code=400, detail=f"unknown node_key {body.node_key!r}"
+            )
         _pm_milestone_lock_guard(root, moved_id, body.new_parent_id)
         try:
             move_node_outline(
