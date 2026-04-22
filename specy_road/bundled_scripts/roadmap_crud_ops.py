@@ -37,6 +37,22 @@ def unknown_node_msg(node_id: str) -> str:
     return f"no roadmap node with id {node_id!r} (not found in any chunk)"
 
 
+def _refuse_if_milestone_locked(root: Path, node_id: str) -> None:
+    """Print the lock error and raise SystemExit(1) if ``node_id`` is locked.
+
+    Centralizes the cmd_add / cmd_edit / cmd_set_gate_status pre-mutation
+    guard so the lock contract has one place to maintain.
+    """
+    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
+
+    nodes = load_roadmap(root)["nodes"]
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, node_id)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
+
+
 def run_validate_raise(root: Path) -> None:
     """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure."""
     err = io.StringIO()
@@ -48,14 +64,6 @@ def run_validate_raise(root: Path) -> None:
             if e.code not in (0, None):
                 msg = err.getvalue().strip()
                 raise ValueError(msg or "validation failed") from e
-
-
-def run_validate(root: Path) -> None:
-    try:
-        run_validate_raise(root)
-    except ValueError as e:
-        print(f"error: validation failed:\n{e}", file=sys.stderr)
-        raise SystemExit(1) from e
 
 
 def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
@@ -154,6 +162,13 @@ def cmd_add(args: object) -> None:
         print(f"error: duplicate node id {nid!r}", file=sys.stderr)
         raise SystemExit(1)
     parent_val = _resolve_parent(args, root)
+    # Refuse to add a node under a parent that lives inside an active or
+    # pending_mr milestone subtree — adding new work mid-milestone is a
+    # silent scope expansion. Mirrors the cmd_edit / cmd_set_gate_status
+    # guards. The check fires only when the parent is a real node (root
+    # phases pass through with parent_val=None).
+    if isinstance(parent_val, str) and parent_val.strip():
+        _refuse_if_milestone_locked(root, parent_val)
     if args.codename and not CODENAME_PATTERN.match(args.codename):
         print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
         raise SystemExit(1)
@@ -282,14 +297,7 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
 def cmd_edit(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
-    nodes = load_roadmap(root)["nodes"]
-    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
-
-    try:
-        assert_pm_nodes_not_milestone_locked(nodes, nid)
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    _refuse_if_milestone_locked(root, nid)
     pairs: list[tuple[str, str]] = []
     for pair in args.set:
         if "=" not in pair:
@@ -310,14 +318,8 @@ def cmd_edit(args: object) -> None:
 def cmd_set_gate_status(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
+    _refuse_if_milestone_locked(root, nid)
     nodes = load_roadmap(root)["nodes"]
-    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
-
-    try:
-        assert_pm_nodes_not_milestone_locked(nodes, nid)
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
     target = next((n for n in nodes if n.get("id") == nid), None)
     if target is None:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)

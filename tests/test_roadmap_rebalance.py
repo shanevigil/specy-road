@@ -94,3 +94,41 @@ def test_rebalance_idempotent(tmp_path: Path) -> None:
     manifest_after_second = (repo / "roadmap" / "manifest.json").read_bytes()
     assert state_after_first == state_after_second
     assert manifest_after_first == manifest_after_second
+
+
+def test_rebalance_refuses_when_milestone_active(tmp_path: Path) -> None:
+    """v0.1.1 gap fix: rebalance must refuse while any milestone is in-flight.
+
+    A live ``active`` or ``pending_mr`` milestone subtree means the PM lock
+    is enforced on cmd_edit / cmd_set_gate_status / the PM Gantt API.
+    Rebalance silently moving nodes between chunks under that subtree
+    would bypass the lock semantically (the chunk reorganization IS a
+    mutation under the locked parent). Force the operator to reconcile
+    + close the milestone first.
+    """
+    import json as _json
+
+    repo = _copy_dogfood(tmp_path / "df")
+    # Tag M0 with an active milestone_execution. The dogfood schema
+    # accepts this field (added in v0.1.0).
+    chunk = repo / "roadmap" / "phases" / "M0.json"
+    doc = _json.loads(chunk.read_text(encoding="utf-8"))
+    nodes = doc["nodes"] if isinstance(doc, dict) else doc
+    for n in nodes:
+        if isinstance(n, dict) and n.get("id") == "M0":
+            n["milestone_execution"] = {
+                "state": "active",
+                "rollup_branch": "feature/rm-tmp",
+                "integration_branch": "dev",
+                "remote": "origin",
+            }
+    chunk.write_text(_json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+
+    r = _run_rebal(repo)
+    assert r.returncode == 1, (
+        f"expected exit 1, got {r.returncode}\n--stdout--\n{r.stdout}\n--stderr--\n{r.stderr}"
+    )
+    assert "milestone subtree" in r.stderr or "milestone" in r.stderr
+    assert "M0" in r.stderr
+    assert "reconcile-milestone-status" in r.stderr
+    assert "Traceback" not in r.stderr

@@ -270,6 +270,30 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
+    # Refuse to rebalance while any milestone is in-flight: rebalance
+    # rewrites which chunk every node lives in, which is functionally a
+    # mutation under any active or pending_mr milestone subtree. Silent
+    # cross-chunk movement during a live rollout would confuse the PM
+    # GUI's optimistic-concurrency fingerprint and the milestone-lock
+    # enforcement on cmd_edit / cmd_set_gate_status. Force the operator
+    # to close the milestone (specy-road reconcile-milestone-status
+    # --apply) first.
+    from specy_road.milestone_lock import milestone_lock_parent_ids
+    from roadmap_load import load_roadmap
+
+    nodes = load_roadmap(root)["nodes"]
+    locked_parents = milestone_lock_parent_ids(nodes)
+    if locked_parents:
+        import sys
+
+        print(
+            f"error: refusing to rebalance — {len(locked_parents)} milestone "
+            f"subtree(s) are active or pending_mr: {locked_parents!r}. Close "
+            "them with `specy-road reconcile-milestone-status --apply` after "
+            "delivery, then re-run.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     plan = build_pack_plan(root)
     summary = _diff_summary(plan, root)
     print("rebalance-chunks plan:")

@@ -423,3 +423,48 @@ def test_add_node_no_codename_auto_derives(tmp_path: Path) -> None:
     nodes = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
     node = next(n for n in nodes if n["id"] == "M99.3")
     assert node["codename"] == "three-slug"
+
+
+def test_add_node_refuses_when_parent_in_locked_milestone(tmp_path: Path) -> None:
+    """v0.1.1 gap fix: cmd_add must refuse adding a child under an active milestone parent.
+
+    Mirrors the cmd_edit / cmd_set_gate_status milestone-lock guards. Without
+    this check, a PM could silently expand the scope of an in-flight milestone
+    by adding new tasks under the locked parent. The API path
+    (POST /api/nodes/add) already enforces this via _pm_milestone_lock_guard;
+    this test pins the same behavior on the CLI path.
+    """
+    _fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n.get("id") == "M99":
+            n["milestone_execution"] = {
+                "state": "active",
+                "rollup_branch": "feature/rm-tmp",
+                "integration_branch": "dev",
+                "remote": "origin",
+            }
+    write_json_chunk(chunk, nodes)
+    r = _run_crud(
+        tmp_path,
+        "--repo-root",
+        str(tmp_path),
+        "add-node",
+        "--id",
+        "M99.4",
+        "--type",
+        "task",
+        "--title",
+        "Locked Add",
+        "--parent-id",
+        "M99",
+    )
+    assert r.returncode != 0
+    err = (r.stderr or "") + (r.stdout or "")
+    assert "milestone subtree" in err
+    assert "M99" in err
+    assert "Traceback" not in err
+    # Node was NOT added.
+    nodes_after = load_json_chunk(chunk)
+    assert all(n["id"] != "M99.4" for n in nodes_after)
