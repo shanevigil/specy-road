@@ -21,6 +21,7 @@ Do not assume local refs are current.
   - `docs/<slug>`
 - Prefer PRs from topic branches into `dev`.
 - Avoid direct commits to `dev` and `main` unless explicitly requested for repository administration.
+- **`main` is protected**: direct pushes are rejected. Every change to `main` lands via a PR — and that PR must carry a release marker (see below).
 
 ## Promotion rules
 
@@ -29,14 +30,39 @@ Do not assume local refs are current.
 
 ## Release-tag gate for `main`
 
-- A PR targeting `main` must include exactly one release marker:
-  - title: `release: x.x.x`, or
-  - label: `release:x.x.x`
-- Semantic version meaning:
-  - first `x`: major/breaking or major directional shift
-  - second `x`: improvements/features
-  - third `x`: patch/hotfix
-- Keep `main` protection enforcing required status check:
-  - `Main Release Tag Gate / validate-release-intent`
+A PR targeting `main` MUST declare exactly one release marker, in either of these two forms:
+
+- **Title:** `release: vX.Y.Z` for finals, or `release: vX.Y.Z-rcN` for prereleases.
+- **Label:** `release:vX.Y.Z` (no space) or `release:vX.Y.Z-rcN`.
+
+The leading **`v` is mandatory**. The bare form (`release: 0.1.0`) is **rejected** — the regex in [`main-release-tag-gate.yml`](../../.github/workflows/main-release-tag-gate.yml) is `(?:^|\s)release:\s*v([0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.]+)?)(?:\s|$)`. The toolkit deliberately carries one canonical version representation (`v` + PEP 440); enforcing the prefix at the marker level keeps tags, GitHub Releases, and the CHANGELOG in lockstep.
+
+Semantic version meaning (matches `vX.Y.Z`):
+
+- first `X`: major/breaking or major directional shift
+- second `Y`: improvements/features
+- third `Z`: patch/hotfix
+- optional `-rcN` (or other PEP 440 suffix): prerelease — routes the publish to **TestPyPI** instead of PyPI.
+
+Required status check on `main`: `Main Release Tag Gate / validate-release-intent`. If protections are temporarily relaxed for bootstrap/maintenance, restore them immediately afterward.
+
+## Branch naming for release PRs (load-bearing)
+
+Use **`chore/release-vX-Y-Z[-rcN]`** for the release PR's head branch (kebab-cased version, e.g. `chore/release-v0-2-0-rc1`). Two reasons this is mandatory and not just a convention:
+
+1. The `chore/` prefix auto-exempts the PR from the `issue-link` check in [`pr-conventions.yml`](../../.github/workflows/pr-conventions.yml) — release PRs are tracked by their release marker, not by an issue link.
+2. The pattern makes the release branch grep-friendly during cleanup.
+
+Cutting a release from a `cursor/...`, `feature/...`, or unprefixed branch will fail CI on `issue-link` even though everything else is correct.
+
+## Cutting a release (RC or final)
+
+The full step-by-step playbook lives in **[`docs/release-runbook.md`](../../docs/release-runbook.md)**. That document is the canonical source of truth for:
+
+- The two flows (RC → TestPyPI; final → PyPI).
+- The agent-vs-human matrix (which steps the agent runs autonomously and which steps require the user to act — most notably the **manual tag re-push** required to trigger `release-publish.yml`, because GitHub policy does not fire downstream workflows for tags created by `GITHUB_TOKEN`).
+- The recovery section listing every observed failure mode with its fix.
+
+When the user asks the agent to cut a release, the agent follows the runbook verbatim. Do **not** improvise the release process.
 
 If protections are temporarily changed for bootstrap/maintenance, restore strict protections immediately afterward.
