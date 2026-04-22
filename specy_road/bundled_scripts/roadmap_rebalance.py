@@ -298,14 +298,36 @@ def main(argv: list[str] | None = None) -> None:
     summary = _diff_summary(plan, root)
     print("rebalance-chunks plan:")
     print(summary or "  (no changes)")
+    # Idempotency: a true no-op rebalance has (a) no deletions queued, (b)
+    # every staged chunk write is byte-identical to what's already on disk,
+    # AND (c) the manifest order matches what's already in manifest.json.
+    # Detecting this in both dry-run and apply paths means orchestration
+    # can grep for one stable string ('already balanced') instead of parsing
+    # the per-chunk diff summary above.
+    if _is_noop_plan(plan, root):
+        print("\n(repo is already balanced; nothing to do)")
+        return
     if args.dry_run:
         print("\n(dry-run; no files written)")
         return
-    if not plan.chunk_writes and not plan.deletes:
-        print("\n(repo is already balanced; nothing to do)")
-        return
     apply_pack_plan(root, plan)
     print("\nrebalance-chunks: applied; specy-road validate passed.")
+
+
+def _is_noop_plan(plan: _PackPlan, root: Path) -> bool:
+    """True if applying ``plan`` would produce zero net file changes."""
+    if plan.deletes:
+        return False
+    for path, nodes in plan.chunk_writes.items():
+        if not path.is_file():
+            return False
+        if path.read_text(encoding="utf-8") != render_json_chunk(nodes):
+            return False
+    current_manifest = load_manifest_mapping(root)
+    current_includes = list(current_manifest.get("includes") or [])
+    if current_includes != list(plan.new_includes):
+        return False
+    return True
 
 
 if __name__ == "__main__":
