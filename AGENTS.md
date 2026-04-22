@@ -25,3 +25,12 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures
 For roadmap-linked implementation in this repo, read [`docs/git-workflow.md`](docs/git-workflow.md) and register in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) (registration commit on the integration branch, then `feature/rm-<codename>`).
 
 If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.
+
+## Cutting a release
+
+When the user asks to publish (RC or final), follow [`docs/release-runbook.md`](docs/release-runbook.md) verbatim. Do **not** improvise. Two examples:
+
+- *"Publish v0.2.0-rc1 to TestPyPI"* → runbook §A (RC flow). Tag form `v0.2.0-rc1`; pyproject `0.2.0rc1`; routes to TestPyPI.
+- *"Publish v0.2.0 to PyPI"* → runbook §B (final flow). Tag form `v0.2.0`; pyproject `0.2.0`; routes to PyPI; back-merge to `dev` is mandatory.
+
+The user owns two steps explicitly (runbook §2 matrix): the **manual tag re-push** that fires `release-publish.yml` (footgun ④ — GitHub policy), and the **final live-on-(Test)PyPI confirmation**. The agent prints the exact commands and waits.
