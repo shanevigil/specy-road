@@ -20,7 +20,7 @@
 
 ## Getting started
 
-Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install)** and **[docs/install-and-usage.md](docs/install-and-usage.md)** for cloning, editable install, and **`specy-road init project`** in an application repo. After that, everyday use boils down to:
+Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install)** and **[docs/install-and-usage.md](docs/install-and-usage.md)** to **`pip install specy-road`** and run **`specy-road init project`** in an application repo. After that, everyday use boils down to:
 
 ### For PMs
 

@@ -12,7 +12,6 @@ from roadmap_chunk_utils import (
     build_node_chunk_map,
     find_chunk_path,
     load_json_chunk,
-    resolve_chunk_file,
     write_json_chunk,
 )
 from planning_rename import rename_planning_file_if_path_changed
@@ -38,6 +37,22 @@ def unknown_node_msg(node_id: str) -> str:
     return f"no roadmap node with id {node_id!r} (not found in any chunk)"
 
 
+def _refuse_if_milestone_locked(root: Path, node_id: str) -> None:
+    """Print the lock error and raise SystemExit(1) if ``node_id`` is locked.
+
+    Centralizes the cmd_add / cmd_edit / cmd_set_gate_status pre-mutation
+    guard so the lock contract has one place to maintain.
+    """
+    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
+
+    nodes = load_roadmap(root)["nodes"]
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, node_id)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
+
+
 def run_validate_raise(root: Path) -> None:
     """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure."""
     err = io.StringIO()
@@ -49,14 +64,6 @@ def run_validate_raise(root: Path) -> None:
             if e.code not in (0, None):
                 msg = err.getvalue().strip()
                 raise ValueError(msg or "validation failed") from e
-
-
-def run_validate(root: Path) -> None:
-    try:
-        run_validate_raise(root)
-    except ValueError as e:
-        print(f"error: validation failed:\n{e}", file=sys.stderr)
-        raise SystemExit(1) from e
 
 
 def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
@@ -155,6 +162,13 @@ def cmd_add(args: object) -> None:
         print(f"error: duplicate node id {nid!r}", file=sys.stderr)
         raise SystemExit(1)
     parent_val = _resolve_parent(args, root)
+    # Refuse to add a node under a parent that lives inside an active or
+    # pending_mr milestone subtree — adding new work mid-milestone is a
+    # silent scope expansion. Mirrors the cmd_edit / cmd_set_gate_status
+    # guards. The check fires only when the parent is a real node (root
+    # phases pass through with parent_val=None).
+    if isinstance(parent_val, str) and parent_val.strip():
+        _refuse_if_milestone_locked(root, parent_val)
     if args.codename and not CODENAME_PATTERN.match(args.codename):
         print(f"error: invalid codename: {args.codename!r}", file=sys.stderr)
         raise SystemExit(1)
@@ -203,20 +217,28 @@ def cmd_add(args: object) -> None:
 
     ensure_planning_sheet_for_new_node(root, node)
 
-    chunk_path = append_node_to_chunk(root, args.chunk, node)
+    try:
+        chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
     print(f"[ok] appended node {nid} to {chunk_path.relative_to(root)}")
-    run_validate(root)
 
 
-def append_node_to_chunk(root: Path, chunk_arg: str, node: dict) -> Path:
-    chunk_path = resolve_chunk_file(root, chunk_arg)
-    if chunk_path.suffix.lower() == ".json":
-        nodes = load_json_chunk(chunk_path)
-        nodes.append(node)
-        write_json_chunk(chunk_path, nodes)
-        return chunk_path
-    print("error: chunk must be a .json file", file=sys.stderr)
-    raise SystemExit(1)
+def append_node_to_chunk(root: Path, chunk_arg: str | None, node: dict) -> Path:
+    """Append ``node`` to a roadmap chunk, auto-routing if the hint chunk would overflow.
+
+    ``chunk_arg`` is treated as a *hint*: if supplied and the chunk has room,
+    the node lands there (today's behavior). If no hint or the hint is full,
+    the chunk router picks a same-phase chunk, then any chunk, then auto-creates
+    a new chunk and updates the manifest. Atomic: rolls back on any validation
+    failure.
+    """
+    from roadmap_chunk_router import write_with_routing
+
+    parent_id_raw = node.get("parent_id")
+    parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
+    return write_with_routing(root, parent_id, chunk_arg, node)
 
 
 def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) -> None:
@@ -259,7 +281,15 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
                 new_pd = new_pd.strip() or None
             rename_planning_file_if_path_changed(root, old_pd, new_pd)
         write_json_chunk(chunk, nodes)
-        run_validate_raise(root)
+        # Auto-relocate the edited node if its growth pushed the chunk over
+        # the line cap. relocate_node_if_overflow is atomic and runs validation
+        # internally; if relocation happens we skip the redundant validate call
+        # below.
+        from roadmap_chunk_router import relocate_node_if_overflow
+
+        relocated = relocate_node_if_overflow(root, node_id, chunk)
+        if relocated is None:
+            run_validate_raise(root)
         return
     raise ValueError(f"unsupported chunk type {chunk.suffix} (expected .json)")
 
@@ -267,14 +297,7 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
 def cmd_edit(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
-    nodes = load_roadmap(root)["nodes"]
-    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
-
-    try:
-        assert_pm_nodes_not_milestone_locked(nodes, nid)
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    _refuse_if_milestone_locked(root, nid)
     pairs: list[tuple[str, str]] = []
     for pair in args.set:
         if "=" not in pair:
@@ -295,14 +318,8 @@ def cmd_edit(args: object) -> None:
 def cmd_set_gate_status(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
+    _refuse_if_milestone_locked(root, nid)
     nodes = load_roadmap(root)["nodes"]
-    from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
-
-    try:
-        assert_pm_nodes_not_milestone_locked(nodes, nid)
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
     target = next((n for n in nodes if n.get("id") == nid), None)
     if target is None:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
