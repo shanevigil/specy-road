@@ -113,3 +113,44 @@ def test_outline_move_unknown_node_key_is_400_not_404(
     assert r.status_code == 400
     detail = r.json().get("detail", "")
     assert "node_key" in detail
+
+
+def test_pm_gui_fingerprint_returns_409_when_manifest_unreadable(
+    api_client: TestClient,
+    dogfood_copy: Path,
+) -> None:
+    """Corrupt manifest must surface as **409**, not 500.
+
+    Reproduces a real Phase 3 e2e finding: when the roadmap manifest is
+    transiently broken (mid-edit save, conflict marker, partial write),
+    ``outline_mutation_fingerprint`` raises ``json.JSONDecodeError``
+    inside the FastAPI dependency. Without a guard, this leaks as a
+    bare 500 and stops the bundled UI's transparent retry loop. The
+    fix wraps the fingerprint computation in
+    ``require_pm_gui_mutation_fingerprint`` and returns 409 with a
+    structured ``{message, error, retryable: false}`` body that points
+    the user at ``specy-road validate``.
+    """
+    headers = _mutation_headers(api_client)
+    manifest = dogfood_copy / "roadmap" / "manifest.json"
+    saved = manifest.read_text(encoding="utf-8")
+    try:
+        manifest.write_text("@@@ broken json @@@\n", encoding="utf-8")
+        r = api_client.patch(
+            "/api/nodes/M1",
+            headers={**headers, "Content-Type": "application/json"},
+            json={"pairs": [{"key": "notes", "value": "x"}]},
+        )
+    finally:
+        manifest.write_text(saved, encoding="utf-8")
+
+    assert r.status_code == 409, (
+        f"expected 409, got {r.status_code}: {r.text}"
+    )
+    detail = r.json().get("detail", {})
+    if isinstance(detail, dict):
+        assert "specy-road validate" in detail.get("message", "")
+        assert "JSONDecodeError" in detail.get("error", "")
+        assert detail.get("retryable") is False
+    else:  # legacy string detail still acceptable, must mention validate
+        assert "specy-road validate" in detail

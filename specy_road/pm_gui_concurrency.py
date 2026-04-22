@@ -65,8 +65,28 @@ def require_pm_gui_mutation_fingerprint(repo_root: Path, expected: int) -> None:
     chunks + registry, so it does not shift in response to autosaves,
     git fetches, HEAD movement, or any activity outside the roadmap's
     own data files.
+
+    If the fingerprint cannot be computed because the roadmap is
+    transiently broken on disk (corrupt manifest, missing chunk,
+    unreadable file), surface a **409 Conflict** with a human-readable
+    hint pointing at ``specy-road validate``, instead of leaking a
+    bare 500. The PM UI's transparent retry is wired for 4xx; a 500
+    halts retries and confuses the user.
     """
-    current = outline_mutation_fingerprint(repo_root)
+    try:
+        current = outline_mutation_fingerprint(repo_root)
+    except (OSError, ValueError, RuntimeError, KeyError) as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": (
+                    "Roadmap data is currently unreadable; cannot validate "
+                    "the mutation token. Run `specy-road validate` and retry."
+                ),
+                "error": f"{type(e).__name__}: {e}",
+                "retryable": False,
+            },
+        ) from e
     if current == expected:
         return
     raise HTTPException(
