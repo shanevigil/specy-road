@@ -21,11 +21,18 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from tests.helpers import DOGFOOD
+
+_ROOT = Path(__file__).resolve().parent.parent
+_SCRIPTS = _ROOT / "specy_road" / "bundled_scripts"
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+from roadmap_layout import natural_id_sort_key  # noqa: E402
 
 
 def _git(args: list[str], cwd: Path) -> str:
@@ -100,7 +107,7 @@ def _siblings_of(work: Path, parent: str) -> list[str]:
         for n in doc.get("nodes") or []:
             if n.get("parent_id") == parent:
                 out.append((int(n.get("sibling_order", 0)), str(n["id"])))
-    out.sort()
+    out.sort(key=lambda t: (t[0], natural_id_sort_key(t[1])))
     return [k for _, k in out]
 
 

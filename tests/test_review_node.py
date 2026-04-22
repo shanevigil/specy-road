@@ -302,7 +302,11 @@ def test_shared_catalog_cache_invalidates_after_file_change(
 
     monkeypatch.setattr(review_node, "_shared_catalog_build", counting_build)
     review_node._shared_catalog(tmp_path)
-    p.write_text("# Y\n", encoding="utf-8")
+    # _stat_fingerprint_shared_paths keys on (mtime_ns, size). On fast tmpfs
+    # both writes can land in the same nanosecond; rewrite with a different
+    # size so the size component alone forces a cache miss even when mtime
+    # collides.
+    p.write_text("# Y (longer content to force size change)\n", encoding="utf-8")
     review_node._shared_catalog(tmp_path)
     assert calls["n"] == 2
 

@@ -11,6 +11,29 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- **Milestone delivery and PM lock:** roadmap nodes may carry
+  **`milestone_execution`** (written by `start-milestone-session`). While
+  `state` is `active` or `pending_mr`, the PM API blocks outline and field
+  edits under that subtree (**409**). **`specy-road reconcile-milestone-status`**
+  (dry-run by default; `--apply`, optional `--fallback-head-delivery`) closes
+  the milestone when the rollup branch is merged into integration
+  (`git merge-base`), syncing parent `status`. `finish-this-task` on the
+  milestone rollup path may promote `active` → `pending_mr` when all subtree
+  leaves are complete.
+
+### Changed
+
+- `specy_road.__version__`: when the package is loaded from a tree that
+  contains a sibling `pyproject.toml` declaring `name = "specy-road"`, the
+  version is taken from that file (so editable checkouts and `specyrd init`
+  stubs match `project.version` even if install metadata is stale). If
+  there is no such file (e.g. a wheel-only install), use
+  `importlib.metadata`. Otherwise `0.0.0+unknown`. Maintainer docs and Cursor
+  rules now call out keeping tags, `pyproject.toml`, and `CHANGELOG.md` in
+  lockstep.
+
 ## [v0.1.0-rc4] - 2026-04-20
 
 Fourth prerelease (TestPyPI). Adds dependency-aware briefs + LLM-review
@@ -250,7 +273,8 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc3...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.0-rc4...HEAD
+[v0.1.0-rc4]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc4
 [v0.1.0-rc3]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc3
 [v0.1.0-rc2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc2
 [v0.1.0-rc1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc1

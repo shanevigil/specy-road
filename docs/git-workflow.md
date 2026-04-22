@@ -69,6 +69,8 @@ remote: origin
 
 **Milestone rollup workflow:** `specy-road start-milestone-session`, `do-next-available-task --milestone-subtree`, and `finish-this-task` with **`work/.milestone-session.yaml`** land **bookkeeping** on the integration branch via cherry-pick and accumulate **full implementation** on **`feature/rm-<parent-codename>`** for a single final PR to integration — see [dev-workflow.md](dev-workflow.md#milestone-scoped-execution-rollup-branch).
 
+**Committed milestone state:** `start-milestone-session` also writes **`milestone_execution`** on the parent roadmap node (JSON chunk). That is the **team-visible** lock the PM Gantt uses: while `state` is `active` or `pending_mr`, outline and status edits under that subtree return **409**. **Rollup-complete** (all structural leaves `Complete`) is not the same as **delivery-complete** (rollup branch merged into the integration branch): the default closure path is the rollup **MR** (`open-milestone-pr`). Use **`specy-road reconcile-milestone-status`** (dry-run by default; `--apply` writes) to align `milestone_execution` and parent `status` after merge, or **`--fallback-head-delivery`** when work reached integration without that MR.
+
 ## Before implementation
 
 1. Confirm **gates** and dependencies for your actionable leaf target (see root/index or generated tables).

@@ -107,7 +107,7 @@ Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, co
 Use this when you want **one integration PR** for **all leaf work under a parent milestone** (e.g. `M7`), instead of opening a PR per leaf.
 
 1. **Parent must have a `codename`** in the roadmap JSON (kebab-case, same pattern as leaf codenames). Phases/milestones without a codename cannot start a rollup session until the PM sets one.
-2. **`specy-road start-milestone-session <PARENT_NODE_ID>`** — syncs the integration branch, creates or fast-forwards **`feature/rm-<parent-codename>`** from the remote integration tip, and writes **`work/.milestone-session.yaml`** (parent id, rollup branch, integration branch, remote).
+2. **`specy-road start-milestone-session <PARENT_NODE_ID>`** — syncs the integration branch, creates or fast-forwards **`feature/rm-<parent-codename>`** from the remote integration tip, writes **`work/.milestone-session.yaml`**, and records **`milestone_execution`** on the parent roadmap node (commit that chunk change with the session so the PM UI can enforce the subtree lock).
 3. **Pick work** — from a clean tree on the integration branch:
    - **`specy-road do-next-available-task --milestone-subtree`** (uses the session file), or
    - **`specy-road do-next-available-task --under <PARENT_NODE_ID>`** (one-shot filter; must match the session file if one exists).
@@ -118,6 +118,8 @@ Use this when you want **one integration PR** for **all leaf work under a parent
    - **merges** the full leaf branch into **`feature/rm-<parent-codename>`** and pushes the rollup branch.
    Normal **`on_complete`** (`pr` / `merge` / `auto`) is **not** used for that leaf when this path runs. Use **`specy-road finish-this-task --no-milestone-rollup`** to force the standard finish behavior instead.
 5. **Final PR** — when the subtree is done, open **one** PR/MR: **base** = integration branch, **head** = **`feature/rm-<parent-codename>`**. **`specy-road open-milestone-pr`** prints a ready-made `gh pr create` line (and notes for GitLab).
+
+6. **After the PR merges** — run **`specy-road reconcile-milestone-status`** (dry-run) then **`--apply`** so `milestone_execution` becomes **`closed`** and the parent `status` matches delivery. If your team landed leaf merges on integration **without** that rollup PR, use **`--fallback-head-delivery`** only when you accept HEAD as the source of truth.
 
 Do **not** rely on editing the parent milestone’s JSON `status` to “Complete” until the subtree is actually done; the PM Gantt already derives **In Progress** from children. Optional: set the parent to **Complete** once all descendant leaves are **Complete** (same as any other manual status edit).
 

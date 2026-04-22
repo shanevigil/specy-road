@@ -1,1 +1,0 @@
-import{c as e}from"./markdown-stack-CVY9cKoz.js";var t=e();function n({msg:e,persistMsg:n}){return(0,t.jsxs)(`div`,{className:`modal-persist-status-footer`,children:[(0,t.jsx)(`span`,{className:`modal-persist-status-footer__msg`,children:e??``}),(0,t.jsx)(`span`,{className:`modal-persist-status-footer__persist`,"aria-live":`polite`,children:n??``})]})}export{n as t};

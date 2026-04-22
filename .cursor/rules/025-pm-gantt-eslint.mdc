@@ -1,0 +1,21 @@
+---
+description: PM Gantt frontend — ESLint 10 and React lint stack (gui/pm-gantt)
+globs: gui/pm-gantt/**/*
+alwaysApply: false
+---
+
+## Stack
+
+- **ESLint 10** with flat config: [`gui/pm-gantt/eslint.config.js`](../../gui/pm-gantt/eslint.config.js).
+- React rules come from **`@eslint-react/eslint-plugin`** (`recommended-typescript` preset). Do **not** add `eslint-plugin-react-hooks` for ESLint 10 — it only peers through ESLint 9.
+- Inline disables for hook/exhaustive-deps style rules use **`@eslint-react/...`** rule ids (not `react-hooks/...`).
+
+## Verification
+
+After changing files under `gui/pm-gantt/`:
+
+```bash
+cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build
+```
+
+Also run the Python dogfood gates from the repo root when the change touches shared contracts (see [`.cursor/rules/020-change-discipline.mdc`](020-change-discipline.mdc)).

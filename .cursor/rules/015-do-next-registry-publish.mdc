@@ -1,0 +1,10 @@
+---
+description: do-next-available-task and abort-task-pickup sync/push registry to remote
+alwaysApply: true
+---
+
+## `do-next-available-task` and remote registration
+
+- The CLI **always** runs integration-branch sync (`git fetch`, checkout, `merge --ff-only`) and **pushes** the registration commit — there is no `--no-sync` or `--no-push-registry`.
+- `specy-road abort-task-pickup` **pushes** the integration branch after removing the registry row (no `--no-push`).
+- Prefer a **failed `git push`** with a clear error over giving up before the claim is on **`remote/<integration-branch>`**; fix auth/network and retry, or push manually per `docs/dev-workflow.md`.

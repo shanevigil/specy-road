@@ -32,7 +32,44 @@ from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
+from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
+
+
+def _pm_milestone_lock_guard(root: Path, *node_ids: str | None) -> None:
+    """Refuse a mutation that would touch a node under an active milestone.
+
+    Wraps ``load_roadmap`` so a transiently-broken roadmap (corrupt chunk,
+    missing manifest, unreadable file) surfaces as a clear **409 Conflict**
+    with a hint to re-validate, rather than as a bare FastAPI 500. The PM
+    UI already retries 412/409, so a 409 here is the right way to ask the
+    user to fix the tree before retrying.
+    """
+    ids = [x for x in node_ids if isinstance(x, str) and x.strip()]
+    if not ids:
+        return
+    try:
+        nodes = load_roadmap(root)["nodes"]
+    except (OSError, ValueError, RuntimeError, KeyError) as e:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "roadmap unreadable; cannot verify milestone lock — "
+                f"re-run `specy-road validate` and retry: {e}"
+            ),
+        ) from e
+    try:
+        assert_pm_nodes_not_milestone_locked(nodes, *ids)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+def _node_id_for_key(nodes: list[dict[str, Any]], node_key: str) -> str | None:
+    for n in nodes:
+        if n.get("node_key") == node_key:
+            sid = n.get("id")
+            return sid if isinstance(sid, str) else None
+    return None
 
 
 def _canonical_ids_after_add(
@@ -55,6 +92,7 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     nodes = load_roadmap(root)["nodes"]
     by_id = {n["id"]: n for n in nodes}
     ref = body.reference_node_id
+    _pm_milestone_lock_guard(root, ref)
     if ref not in by_id:
         raise HTTPException(status_code=404, detail="reference node not found")
     ref_node = by_id[ref]
@@ -125,86 +163,116 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     return {"ok": "true", "id": final_id}
 
 
+def _api_patch_node(
+    node_id: str,
+    body: PatchBody,
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, str]:
+    root = get_repo_root()
+    _pm_milestone_lock_guard(root, node_id)
+    pairs = [(p.key, p.value) for p in body.pairs]
+    try:
+        edit_node_set_pairs(root, node_id, pairs)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": "true", "node_id": node_id}
+
+
+def _api_delete_node(
+    node_id: str,
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, str]:
+    root = get_repo_root()
+    _pm_milestone_lock_guard(root, node_id)
+    try:
+        delete_roadmap_node_hard(root, node_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": "true", "node_id": node_id}
+
+
+def _api_reorder(
+    body: ReorderBody,
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, str]:
+    root = get_repo_root()
+    _pm_milestone_lock_guard(root, *body.ordered_child_ids)
+    pid: str | None = body.parent_id
+    try:
+        reorder_siblings(root, pid, body.ordered_child_ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": "true"}
+
+
+def _api_outline_move(
+    body: MoveOutlineBody,
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, str]:
+    root = get_repo_root()
+    nodes0 = load_roadmap(root)["nodes"]
+    moved_id = _node_id_for_key(nodes0, body.node_key)
+    if not moved_id:
+        # Pre-existing contract (still asserted by tests) is 400 for an
+        # unknown node_key — ``move_node_outline`` previously raised
+        # ``ValueError("unknown node_key …")`` and the route mapped it to 400.
+        # Keep that semantic now that we resolve the key early so the milestone
+        # lock guard can check the moved id.
+        raise HTTPException(
+            status_code=400, detail=f"unknown node_key {body.node_key!r}"
+        )
+    _pm_milestone_lock_guard(root, moved_id, body.new_parent_id)
+    try:
+        move_node_outline(
+            root,
+            body.node_key,
+            body.new_parent_id,
+            body.new_index,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": "true"}
+
+
+def _api_indent(
+    node_id: str,
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, Any]:
+    root = get_repo_root()
+    _pm_milestone_lock_guard(root, node_id)
+    try:
+        changed = apply_indent(root, node_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": True, "changed": changed}
+
+
+def _api_outdent(
+    node_id: str,
+    _pm: None = Depends(require_pm_gui_write_header),
+) -> dict[str, Any]:
+    root = get_repo_root()
+    _pm_milestone_lock_guard(root, node_id)
+    try:
+        changed = apply_outdent(root, node_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": True, "changed": changed}
+
+
 def register_node_mutations(api: APIRouter) -> None:
-    @api.patch("/nodes/{node_id}")
-    def api_patch_node(
-        node_id: str,
-        body: PatchBody,
-        _pm: None = Depends(require_pm_gui_write_header),
-    ) -> dict[str, str]:
-        root = get_repo_root()
-        pairs = [(p.key, p.value) for p in body.pairs]
-        try:
-            edit_node_set_pairs(root, node_id, pairs)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true", "node_id": node_id}
+    """Register node CRUD + outline mutation routes on ``api``.
 
-    @api.delete("/nodes/{node_id}")
-    def api_delete_node(
-        node_id: str,
-        _pm: None = Depends(require_pm_gui_write_header),
-    ) -> dict[str, str]:
-        root = get_repo_root()
-        try:
-            delete_roadmap_node_hard(root, node_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true", "node_id": node_id}
-
-    @api.post("/outline/reorder")
-    def api_reorder(
-        body: ReorderBody,
-        _pm: None = Depends(require_pm_gui_write_header),
-    ) -> dict[str, str]:
-        root = get_repo_root()
-        pid: str | None = body.parent_id
-        try:
-            reorder_siblings(root, pid, body.ordered_child_ids)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true"}
-
-    @api.post("/outline/move")
-    def api_outline_move(
-        body: MoveOutlineBody,
-        _pm: None = Depends(require_pm_gui_write_header),
-    ) -> dict[str, str]:
-        root = get_repo_root()
-        try:
-            move_node_outline(
-                root,
-                body.node_key,
-                body.new_parent_id,
-                body.new_index,
-            )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": "true"}
-
-    @api.post("/nodes/{node_id}/indent")
-    def api_indent(
-        node_id: str,
-        _pm: None = Depends(require_pm_gui_write_header),
-    ) -> dict[str, Any]:
-        root = get_repo_root()
-        try:
-            changed = apply_indent(root, node_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": True, "changed": changed}
-
-    @api.post("/nodes/{node_id}/outdent")
-    def api_outdent(
-        node_id: str,
-        _pm: None = Depends(require_pm_gui_write_header),
-    ) -> dict[str, Any]:
-        root = get_repo_root()
-        try:
-            changed = apply_outdent(root, node_id)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        return {"ok": True, "changed": changed}
+    Handlers are defined at module level (so this registrar stays under the
+    file-limits per-function cap and the handlers stay individually testable);
+    we attach them with ``add_api_route`` for the verb-specific ones.
+    """
+    api.add_api_route("/nodes/{node_id}", _api_patch_node, methods=["PATCH"])
+    api.add_api_route("/nodes/{node_id}", _api_delete_node, methods=["DELETE"])
+    api.add_api_route("/outline/reorder", _api_reorder, methods=["POST"])
+    api.add_api_route("/outline/move", _api_outline_move, methods=["POST"])
+    api.add_api_route("/nodes/{node_id}/indent", _api_indent, methods=["POST"])
+    api.add_api_route("/nodes/{node_id}/outdent", _api_outdent, methods=["POST"])
 
 
 def register_add_node(api: APIRouter) -> None:

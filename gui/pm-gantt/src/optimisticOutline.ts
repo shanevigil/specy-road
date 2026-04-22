@@ -1,3 +1,4 @@
+import { compareRoadmapIds } from "./roadmapIdSort";
 import type { RoadmapNode, RoadmapResponse } from "./types";
 
 /**
@@ -86,7 +87,7 @@ function siblingsOf(
     if (a.sibling_order !== b.sibling_order) {
       return a.sibling_order - b.sibling_order;
     }
-    return a.id.localeCompare(b.id);
+    return compareRoadmapIds(a.id, b.id);
   });
   return out;
 }
@@ -260,7 +261,7 @@ function orderedTreeRows(
       const sa = Number(a.sibling_order ?? 0);
       const sb = Number(b.sibling_order ?? 0);
       if (sa !== sb) return sa - sb;
-      return a.id.localeCompare(b.id);
+      return compareRoadmapIds(a.id, b.id);
     });
   }
   const out: { node: RoadmapNode; depth: number }[] = [];
