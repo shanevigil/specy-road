@@ -51,8 +51,9 @@ def _strip_derived(node: dict) -> dict:
     return {k: v for k, v in node.items() if k not in _DERIVED_NODE_KEYS}
 
 
-def write_json_chunk(path: Path, nodes: list[dict]) -> None:
-    """Write roadmap nodes as canonical ``{"nodes": [...]}`` (stable key order for diffs)."""
+def render_json_chunk(nodes: list[dict]) -> str:
+    """Canonical chunk text (used by both ``write_json_chunk`` and the chunk
+    router for line-count prediction without touching disk)."""
     cleaned = [_strip_derived(n) for n in nodes]
     body = json.dumps(
         {"nodes": cleaned},
@@ -62,7 +63,30 @@ def write_json_chunk(path: Path, nodes: list[dict]) -> None:
     )
     if not body.endswith("\n"):
         body += "\n"
-    path.write_text(body, encoding="utf-8")
+    return body
+
+
+def write_json_chunk(path: Path, nodes: list[dict]) -> None:
+    """Write roadmap nodes as canonical ``{"nodes": [...]}`` (stable key order for diffs)."""
+    path.write_text(render_json_chunk(nodes), encoding="utf-8")
+
+
+def render_manifest(doc: dict) -> str:
+    """Canonical manifest text (stable key order, indent=2, trailing newline).
+
+    Used by the chunk router whenever the manifest is rewritten (auto-routing
+    or rebalance). Existing manifests that are never modified keep their
+    original on-disk format because the loader is format-agnostic.
+    """
+    body = json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False)
+    if not body.endswith("\n"):
+        body += "\n"
+    return body
+
+
+def write_manifest(path: Path, doc: dict) -> None:
+    """Write ``manifest.json`` using :func:`render_manifest` (canonical form)."""
+    path.write_text(render_manifest(doc), encoding="utf-8")
 
 
 def load_json_chunk(path: Path) -> list[dict]:

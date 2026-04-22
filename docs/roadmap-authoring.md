@@ -99,6 +99,10 @@ Use the `notes` field (markdown string) for short context in the graph. **Vision
 
 Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load.py`](../specy_road/bundled_scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) in **your** project (or the toolkit’s [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) when working on this repository).
 
+### Automatic chunk routing (no daily commands)
+
+Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth pushes a chunk over the cap) go through an **automatic chunk router**. PMs no longer pick a chunk or split full chunks. Routing (deterministic): hint chunk if it fits → smallest valid chunk in the same phase subtree (manifest-order tie-break) → smallest valid chunk anywhere → auto-create a new chunk named `<base-stem>__<6hex>.json` where `<6hex>` is the new node's `node_key` prefix (same key → same filename; different keys → different filenames, so concurrent PMs never collide on chunk files — only the manifest gets a trivially-mergeable add). All mutations run in an atomic plan that snapshots every affected file and rolls back on validation failure. `--chunk` on `add-node` is now optional (still accepted as a hint). Existing repos stay byte-identical until the next mutation triggers an auto-create. Power-user maintenance: `specy-road rebalance-chunks [--dry-run]` re-packs chunks deterministically (idempotent; not required for routine authoring).
+
 ---
 
 ## Reordering and reparenting

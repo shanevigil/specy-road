@@ -18,6 +18,14 @@ override_limits:
     file_globs:
       - "tests/test_set_gate_status.py"
     max_lines_per_function: 120
+  # CRUD CLI tests share fixtures (`_fixture_repo`, `_run_crud`); splitting
+  # for the file cap would force duplicating those helpers across multiple
+  # test files. Adding chunk-routing CRUD tests in v0.1.1 took the file
+  # past the 400-line cap.
+  - name: roadmap_crud_tests
+    file_globs:
+      - "tests/test_roadmap_crud.py"
+    max_lines_per_file: 600
   # Canonical release playbook. Single-file by design so operators can
   # Ctrl+F during a release rather than navigate cross-doc links.
   - name: release_runbook

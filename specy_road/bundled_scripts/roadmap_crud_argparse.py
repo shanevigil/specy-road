@@ -38,8 +38,13 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser("add-node", help="Append a node to a chunk file")
     sp.add_argument(
         "--chunk",
-        required=True,
-        help="Chunk path under roadmap/ (e.g. phases/M1.json)",
+        required=False,
+        default=None,
+        help=(
+            "Optional chunk hint under roadmap/ (e.g. phases/M1.json). "
+            "If omitted or full, specy-road auto-routes to a valid chunk in "
+            "the same phase (creating one if needed)."
+        ),
     )
     sp.add_argument("--id", required=True, help="Node id, e.g. M1.2.1")
     sp.add_argument(
