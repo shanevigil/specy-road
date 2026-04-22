@@ -182,6 +182,15 @@ def _emit_planned(planned: list[str], *, apply: bool) -> None:
         )
 
 
+def _node_pid(n: object) -> str:
+    """Best-effort id label for warning messages (graceful when ``n`` is not a dict)."""
+    if isinstance(n, dict):
+        nid = n.get("id")
+        if isinstance(nid, str):
+            return nid
+    return "<unknown>"
+
+
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
@@ -193,11 +202,25 @@ def main(argv: list[str] | None = None) -> None:
         print(f"warning: {w}", file=sys.stderr)
 
     planned: list[str] = []
+    failures = 0
     for n in nodes:
-        planned.extend(
-            _plan_for_node(root, n, default_remote=default_remote, args=args)
-        )
+        try:
+            planned.extend(
+                _plan_for_node(root, n, default_remote=default_remote, args=args)
+            )
+        except Exception as exc:  # noqa: BLE001 — per-node isolation is the point
+            failures += 1
+            print(
+                f"warning: could not reconcile {_node_pid(n)!r}: "
+                f"{type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
     _emit_planned(planned, apply=args.apply)
+    if failures and args.apply:
+        # Surface partial failure on --apply so CI / orchestration scripts can
+        # detect it. Dry-run keeps exit 0 — the warning lines already document
+        # what could not even be planned.
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
