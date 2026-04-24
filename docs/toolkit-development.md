@@ -2,6 +2,8 @@
 
 This guide is for **maintainers and contributors** working on the `specy-road` package, validators, and optional PM UI in **this** repository. It does **not** apply to application repositories that use `specy-road init project`.
 
+The dogfood tree under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) is the repository's **test-fixture roadmap**: it keeps validators, exports, briefs, and GUI flows exercised against a consumer-shaped project. It is not the canonical product roadmap for the `specy-road` toolkit; a first-class toolkit roadmap is intentionally not defined here yet.
+
 To participate in development, contact the **repository owner** (or maintainers) before investing significant time; they can confirm priorities and access.
 
 ## Environment
@@ -14,7 +16,7 @@ pip install -r requirements-ci.txt
 
 `requirements-ci.txt` is a compiled lock matching CI; regenerate with `pip-compile` — see [supply-chain-security.md](supply-chain-security.md). The short [requirements.txt](../requirements.txt) at the repo root mirrors core runtime deps from `pyproject.toml` for reference only.
 
-## Validate and test (dogfood)
+## Validate and test (dogfood fixture)
 
 ```bash
 specy-road validate --repo-root tests/fixtures/specy_road_dogfood
@@ -32,6 +34,8 @@ See [supply-chain-security.md](supply-chain-security.md). Quick checks: after `p
 ## `specy-road init project` in this repo
 
 With no path, the CLI uses the git worktree root—in **this** repo that would scaffold into the toolkit tree. Prefer an explicit directory (for example `specy-road init project /tmp/specy-consumer-sandbox`) or the gitignored [playground/](../playground/README.md).
+
+Use `playground/` when you want to pretend this clone contains a separate consumer app. Keep the dogfood fixture for tests and sample data.
 
 ## Optional: pre-commit
 

@@ -10,11 +10,11 @@ Root `constitution/` here describes the **toolkit**; consumer application repos 
 2. [`constitution/principles.md`](constitution/principles.md)
 3. [`constraints/README.md`](constraints/README.md) — limits for **this** repo (package + tests)
 4. [`docs/supply-chain-security.md`](docs/supply-chain-security.md) — dependency verification policy and CI mapping
-5. Dogfood merged graph — [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) (`manifest.json` + chunk files) for maintainer validation only
-6. **[Flat `planning/*.md` feature sheets](tests/fixtures/specy_road_dogfood/planning/README.md)** under the dogfood fixture when relevant (read ancestor sheets for context)
-7. [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) in the fixture, then only cited contracts
+5. Dogfood test-fixture graph — [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) (`manifest.json` + chunk files) for validation, fixtures, and CLI dogfooding only
+6. **[Flat `planning/*.md` feature sheets](tests/fixtures/specy_road_dogfood/planning/README.md)** under the dogfood test fixture when validating or updating fixture data
+7. [`shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md) in the fixture, then only cited contracts, when working on fixture behavior
 
-Focused brief (against the dogfood tree):
+Focused brief (against the dogfood test fixture):
 
 ```bash
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood
@@ -22,7 +22,9 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures
 
 ## Coordination
 
-For roadmap-linked implementation in this repo, read [`docs/git-workflow.md`](docs/git-workflow.md) and register in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) (registration commit on the integration branch, then `feature/rm-<codename>`).
+The dogfood tree is a **test-fixture roadmap**, not the canonical product roadmap for the `specy-road` toolkit. Do not register ordinary toolkit implementation work in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) unless the work is specifically exercising or updating the fixture.
+
+For repository branch policy, read [`docs/git-workflow.md`](docs/git-workflow.md) and the branch guidance in `CLAUDE.md`. A first-class roadmap for the toolkit itself is intentionally not defined here yet.
 
 If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.
 
