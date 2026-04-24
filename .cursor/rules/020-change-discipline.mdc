@@ -16,7 +16,7 @@ alwaysApply: true
 
 ## Verification (use documented commands)
 
-Prefer the repo’s documented verification commands in [`README.md`](../../README.md) (maintainers / dogfood), for example:
+Prefer the repo’s documented verification commands in [`README.md`](../../README.md). Dogfood commands below validate the test-fixture roadmap, for example:
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`
 - `specy-road file-limits`

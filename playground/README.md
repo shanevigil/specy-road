@@ -2,7 +2,7 @@
 
 Use this directory as a **fake consumer project** while you work in the **specy-road** repository: run `init project` here so the full bundled layout (roadmap JSON, `AGENTS.md`, `constitution/`, `constraints/`, `planning/`, `shared/`, `docs/supply-chain-security.md`, `work/`, …) lands under `playground/` instead of beside `pyproject.toml`. That matches what [`specy-road init project`](../docs/install-and-usage.md#initialize-a-new-consumer-project) writes for a real app repo.
 
-**Maintainers:** automated validation and export checks in this repository use the dogfood tree [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) (see root [`AGENTS.md`](../AGENTS.md)). **Playground** is for interactive trials of the **consumer** scaffold and the PM GUI, not the canonical toolkit roadmap.
+**Maintainers:** automated validation and export checks in this repository use the dogfood test fixture [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) (see root [`AGENTS.md`](../AGENTS.md)). **Playground** is for interactive trials of the **consumer** scaffold and the PM GUI. Neither directory is the canonical toolkit product roadmap; that roadmap is intentionally not defined here yet.
 
 **Git:** Everything under `playground/` is ignored except this file and [`.gitkeep`](.gitkeep). Scaffold output, briefs, and exports stay local. Remove contents when finished, or delete the whole folder; nothing here ships with the package.
 
