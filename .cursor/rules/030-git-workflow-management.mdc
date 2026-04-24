@@ -18,12 +18,20 @@ Do not assume local refs are current.
   improvements toward the next release or release candidate (`x.y.z`).
   Keep each logical change on a short-lived topic branch first, then merge
   those topic branches into the WIP branch for batch integration.
-- Use short-lived topic branches off `dev`:
+- **Topic branch base (load-bearing):** when an active
+  `WIP/improvements-x-y-z` exists for the work you are joining, **create the
+  topic branch from that WIP branch** (e.g. `git checkout WIP/improvements-0-1-2`
+  then `git pull` then `git checkout -b feature/<slug>`), not from `dev` in
+  isolation—so the branch includes WIP-only commits (docs, batch integration)
+  and avoids spurious merge-back steps. If **no** such WIP branch is in use for
+  the change, branch from `dev` as usual.
+- Use short-lived topic branches with the usual name prefixes:
   - `feature/<slug>`
   - `chore/<slug>`
   - `fix/<slug>` / `hotfix/<slug>`
   - `docs/<slug>`
-- Prefer PRs from topic branches into `dev`.
+- Prefer PRs from topic branches into `dev` (or into the WIP batch branch when
+  that is the agreed integration line for the release train).
 - Avoid direct commits to `dev` and `main` unless explicitly requested for repository administration.
 - **`main` is protected**: direct pushes are rejected. Every change to `main` lands via a PR — and that PR must carry a release marker (see below).
 
