@@ -57,6 +57,7 @@ pytest
 - [`AGENTS.md`](AGENTS.md) — entry and coordination
 - [`README.md`](README.md) — install (`pip install` vs editable), `init project`, layout
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branches and registry
+- [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow) — maintainer workflow, including the `WIP/improvements-x-y-z` batch line
 
 ## Repository git workflow policy (current)
 
@@ -70,12 +71,19 @@ pytest
   the next set of improvements toward release or release-candidate `x.y.z`.
   Keep individual changes on short-lived topic branches, then merge them into
   the WIP branch for integration before promoting through `dev`.
+- **Topic branch base:** When that batch line is active, **start new topic
+  branches from the WIP** (`git checkout WIP/improvements-x-y-z`, `git pull`,
+  then `git checkout -b feature/<slug>` and so on) so each branch includes the
+  same integration and docs that the rest of the batch is built on. When there
+  is no active WIP for your work, start from `dev` instead. This is also stated
+  in `AGENTS.md` under Coordination.
 - Do day-to-day work on short-lived topic branches, for example:
   - `feature/<slug>` for net-new features
   - `chore/<slug>` for maintenance/tooling/refactors
   - `fix/<slug>` or `hotfix/<slug>` for bug fixes/patches
   - `docs/<slug>` for documentation-only updates
-- Prefer opening PRs from topic branches into `dev`.
+- Prefer opening PRs from topic branches into `dev`, or into the WIP when that
+  is the agreed integration line for the current release train.
 - Avoid direct commits to `dev` or `main` unless explicitly requested by a maintainer for one-off repository administration.
 
 ### Promotion model

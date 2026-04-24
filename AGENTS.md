@@ -24,7 +24,9 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures
 
 The dogfood tree is a **test-fixture roadmap**, not the canonical product roadmap for the `specy-road` toolkit. Do not register ordinary toolkit implementation work in [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) unless the work is specifically exercising or updating the fixture.
 
-For repository branch policy, read [`docs/git-workflow.md`](docs/git-workflow.md) and the branch guidance in `CLAUDE.md`. A first-class roadmap for the toolkit itself is intentionally not defined here yet.
+**Toolkit branch base:** `dev` is the day-to-day integration branch. When maintainers are batching work on an active `WIP/improvements-x-y-z` line toward a release or release candidate, **create your short-lived topic branch from that WIP branch** (sync with `git fetch` first, check out the WIP, `git pull`, then `git checkout -b feature/<slug>` or equivalent)—not from `dev` in isolation, so the branch already contains WIP-only integration and docs. If there is no such active WIP for your change, branch from `dev`. The same policy is spelled out in [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow), `CLAUDE.md` (Repository git workflow), and (for Cursor) [`.cursor/rules/030-git-workflow-management.mdc`](.cursor/rules/030-git-workflow-management.mdc).
+
+For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md). A first-class roadmap for the toolkit itself is intentionally not defined here yet.
 
 If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.
 
