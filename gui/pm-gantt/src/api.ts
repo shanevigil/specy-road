@@ -304,6 +304,26 @@ export async function savePlanningFile(path: string, content: string) {
   await throwIfMutationFailed(r);
 }
 
+export async function fetchSharedFile(path: string) {
+  const r = await fetch(
+    `${API}/workspace/file?${new URLSearchParams({ path })}`,
+  );
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<{ path: string; content: string }>;
+}
+
+export async function saveSharedFile(path: string, content: string) {
+  const r = await fetch(
+    `${API}/workspace/file?${new URLSearchParams({ path })}`,
+    {
+      method: "PUT",
+      headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ content }),
+    },
+  );
+  await throwIfMutationFailed(r);
+}
+
 export type WorkspaceFileEntry = {
   path: string;
   name: string;

@@ -100,6 +100,11 @@ const SharedDocsDrawer = lazy(() =>
     default: m.SharedDocsDrawer,
   })),
 );
+const SharedDocEditModal = lazy(() =>
+  import("./components/SharedDocEditModal").then((m) => ({
+    default: m.SharedDocEditModal,
+  })),
+);
 const VisionDrawer = lazy(() =>
   import("./components/VisionDrawer").then((m) => ({ default: m.VisionDrawer })),
 );
@@ -166,6 +171,10 @@ export default function App() {
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
   const [sharedDocsOpen, setSharedDocsOpen] = useState(false);
+  /** Repo-relative `shared/...` path for the TipTap editor modal, or null when closed. */
+  const [sharedDocEditPath, setSharedDocEditPath] = useState<string | null>(
+    null,
+  );
   const [workNotesOpen, setWorkNotesOpen] = useState(false);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
@@ -1646,6 +1655,13 @@ export default function App() {
         <SharedDocsDrawer
           open={sharedDocsOpen}
           onClose={() => setSharedDocsOpen(false)}
+          onOpenSharedMarkdown={(path) => setSharedDocEditPath(path)}
+        />
+        <SharedDocEditModal
+          open={sharedDocEditPath != null}
+          filePath={sharedDocEditPath}
+          onClose={() => setSharedDocEditPath(null)}
+          minTop={headerBottomPx}
         />
         <WorkNotesDrawer
           open={workNotesOpen}

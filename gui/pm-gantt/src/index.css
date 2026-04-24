@@ -2197,6 +2197,31 @@ button {
   gap: 0.75rem;
 }
 
+.modal-body--shared-doc-edit {
+  flex: 1;
+  min-height: 0;
+}
+
+.shared-doc-edit-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 280px;
+  min-width: 0;
+}
+
+.shared-doc-edit-body .constitution-md-workspace {
+  flex: 1;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.shared-doc-edit-body .markdown-workspace-editor-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
 .workspace-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2276,6 +2301,10 @@ button {
   color: var(--muted);
   font-style: italic;
   padding: 0.75rem !important;
+}
+
+.workspace-file-row--md {
+  cursor: pointer;
 }
 
 .workspace-notes-layout {
