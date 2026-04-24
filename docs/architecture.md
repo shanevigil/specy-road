@@ -40,4 +40,4 @@ flowchart TD
 
 **Source of truth:** node definitions in chunk files under `roadmap/` (see [`roadmap-authoring.md`](roadmap-authoring.md)). `roadmap.md` at the **project** root is a generated index.
 
-**This repository** additionally keeps a maintainer sample under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) for CI (`--repo-root tests/fixtures/specy_road_dogfood`).
+**This repository** additionally keeps a dogfood test fixture under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) for CI (`--repo-root tests/fixtures/specy_road_dogfood`). It is sample data for exercising the toolkit, not the toolkit's canonical product roadmap.

@@ -156,6 +156,8 @@ workflow itself.
 
 Run these from the toolkit repo root before pushing:
 
+The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood test fixture, not a canonical toolkit product roadmap.
+
 ```bash
 source .venv/bin/activate
 pip install -e ".[dev,gui-next]"

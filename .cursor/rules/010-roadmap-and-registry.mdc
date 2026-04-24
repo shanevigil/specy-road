@@ -5,17 +5,17 @@ alwaysApply: true
 
 ## Graph vs registry
 
-- **Roadmap graph:** `roadmap/manifest.json` plus included `*.json` chunks under `roadmap/` (merged in `includes` order). Edits to the roadmap structure happen in those JSON files. In **this** repository, the maintainer sample lives under `tests/fixtures/specy_road_dogfood/roadmap/`; consumer projects keep `roadmap/` at their repo root after `specy-road init project`.
+- **Roadmap graph:** `roadmap/manifest.json` plus included `*.json` chunks under `roadmap/` (merged in `includes` order). Edits to the roadmap structure happen in those JSON files. In **this** repository, `tests/fixtures/specy_road_dogfood/roadmap/` is the dogfood **test fixture** used for validation and sample data; consumer projects keep `roadmap/` at their repo root after `specy-road init project`.
 - **`roadmap/registry.yaml`:** Active work registration (codename, branch, touch zones) only — not part of the merged graph.
 
-## Roadmap-linked work (must follow)
+## Roadmap-linked consumer/fixture work (must follow)
 
 - Before implementing, read `docs/git-workflow.md`.
 - Use branch naming `feature/rm-<codename>` for roadmap work.
-- Follow the **registration discipline** in `roadmap/registry.yaml` (or the same path under `tests/fixtures/specy_road_dogfood/` when working on this kit) — register on the integration branch, then `feature/rm-*`; remove before merge.
+- Follow the **registration discipline** in `roadmap/registry.yaml` — register on the integration branch, then `feature/rm-*`; remove before merge. Use `tests/fixtures/specy_road_dogfood/roadmap/registry.yaml` only for work that specifically exercises or updates the dogfood fixture.
 - Respect **touch zones**; avoid changing files outside them unless required.
 
 ## Prefer the repo’s native protocol
 
-This repo coordinates via `roadmap/registry.yaml` (not an ad-hoc status markdown table). For automated task pickup, see **`015-do-next-registry-publish.mdc`** — registration must reach the **remote** integration branch by default (`do-next-available-task`).
+Consumer projects coordinate via `roadmap/registry.yaml` (not an ad-hoc status markdown table). The dogfood fixture mirrors that contract for tests and samples, but it is not the canonical toolkit product roadmap. For automated task pickup, see **`015-do-next-registry-publish.mdc`** — registration must reach the **remote** integration branch by default (`do-next-available-task`).
 

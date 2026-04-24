@@ -35,7 +35,7 @@ Coding agents should read in this order (see also [`../AGENTS.md`](../AGENTS.md)
 5. **[Feature sheets under `planning/`](../specy_road/templates/project/planning/README.md)** — read **ancestor** sheets (phase/milestone) for context, then **this node’s** `planning_dir` file
 6. [`shared/README.md`](../specy_road/templates/project/shared/README.md) — then open **only** contract files cited for the task
 
-Contributors working on the **specy-road toolkit** repository follow the load order in [`AGENTS.md`](../AGENTS.md) (root `constitution/` when present, toolkit [`constraints/`](../constraints/README.md), and the dogfood graph under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/)).
+Contributors working on the **specy-road toolkit** repository follow the load order in [`AGENTS.md`](../AGENTS.md). The dogfood tree under [`tests/fixtures/specy_road_dogfood/`](../tests/fixtures/specy_road_dogfood/) is a test-fixture roadmap used for validation and sample flows, not the toolkit's canonical product roadmap.
 
 For a focused slice:
 

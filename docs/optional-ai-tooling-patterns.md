@@ -2,7 +2,7 @@
 
 **This document is not part of specy-road’s core contract.** It collects patterns some teams use when layering **coding agents** (Claude Code, Cursor, Copilot, etc.) on top of a product repository. You may adopt none, some, or all of them.
 
-For coordination **inside** this kit, prefer [`roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) (dogfood maintainer sample) and [`git-workflow.md`](git-workflow.md). Some application repos use a markdown table such as `docs/roadmap-status.md` instead—that is a **team convention**, not what this repository uses by default.
+Consumer projects coordinate through their own [`roadmap/registry.yaml`](git-workflow.md) after `specy-road init project`. In this toolkit repository, [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) belongs to the dogfood test fixture only; it is not the canonical toolkit product roadmap. Some application repos use a markdown table such as `docs/roadmap-status.md` instead—that is a **team convention**, not what specy-road requires by default.
 
 ---
 
