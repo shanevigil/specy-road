@@ -66,6 +66,10 @@ pytest
 
 ### Branching model
 
+- Use `WIP/improvements-x-y-z` as the temporary batch branch for collecting
+  the next set of improvements toward release or release-candidate `x.y.z`.
+  Keep individual changes on short-lived topic branches, then merge them into
+  the WIP branch for integration before promoting through `dev`.
 - Do day-to-day work on short-lived topic branches, for example:
   - `feature/<slug>` for net-new features
   - `chore/<slug>` for maintenance/tooling/refactors

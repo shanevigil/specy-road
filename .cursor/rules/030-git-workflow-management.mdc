@@ -1,4 +1,4 @@
-## Git workflow discipline (repo policy)
+# Git workflow discipline (repo policy)
 
 This repository uses **`dev`** as the day-to-day integration branch and **`main`** as the release branch.
 
@@ -14,6 +14,10 @@ Do not assume local refs are current.
 
 ## Branch strategy (required)
 
+- Use `WIP/improvements-x-y-z` as the temporary batch branch for collecting
+  improvements toward the next release or release candidate (`x.y.z`).
+  Keep each logical change on a short-lived topic branch first, then merge
+  those topic branches into the WIP branch for batch integration.
 - Use short-lived topic branches off `dev`:
   - `feature/<slug>`
   - `chore/<slug>`

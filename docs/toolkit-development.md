@@ -47,6 +47,8 @@ Use `playground/` when you want to pretend this clone contains a separate consum
 
 **This toolkit repository** uses its own policy for package work: topic branches merge to **`dev`**, and **`main`** is release-facing via promotion PRs auto-tagged by [`main-release-tag-gate.yml`](../.github/workflows/main-release-tag-gate.yml) and published by [`release-publish.yml`](../.github/workflows/release-publish.yml). The full branching, tagging, PR-conventions, and release process lives in [contributor-guide.md](contributor-guide.md#branching-tagging-and-release-process). That is **not** the workflow contract for other repos using specy-road; those stay configurable via `roadmap/git-workflow.yaml`.
 
+For batching toolkit improvements toward a release or release candidate, use a temporary `WIP/improvements-x-y-z` branch for the target version. Keep each logical change on its own short-lived topic branch, then merge those topic branches into the WIP branch for integration before the normal promotion path through `dev` and `main`.
+
 ## See also
 
 - [AGENTS.md](../AGENTS.md) — contributor load order and coordination
