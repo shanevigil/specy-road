@@ -1348,9 +1348,13 @@ button {
   bottom: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-end;
   gap: 0.35rem;
-  padding: 0.4rem 0.6rem;
+  /* Extra left padding keeps the bar clear of header sync status (“Saving…”) on narrow layouts */
+  padding: 0.4rem 0.6rem 0.4rem 1.5rem;
   border-top: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg) 92%, var(--muted) 8%);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
