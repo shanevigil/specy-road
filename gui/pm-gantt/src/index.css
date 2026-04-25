@@ -3224,12 +3224,12 @@ button {
 }
 
 /*
- * TipTap v3+ taskItem (nodeView): <li><label>input+span</label><div>content</div>
- * Two-column grid: checkbox column + body. Do not require `.ProseMirror` (editor class was
- * only `markdown-workspace-editor` before), so we scope by [data-tiptap-workspace] only.
+ * TipTap v3+ taskItem (nodeView): <ul data-type=taskList><li data-type=taskItem>…
+ * Target the list directly so layout rules still apply if wrapper attrs/classes differ.
+ * `display: grid` must beat the UA’s `li { display: list-item }` (see DevTools).
  */
-[data-tiptap-workspace].md-preview li[data-type="taskItem"] {
-  display: grid;
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"] {
+  display: grid !important;
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: 0.4rem;
   align-items: start;
@@ -3239,11 +3239,11 @@ button {
   margin: 0.2em 0;
 }
 
-[data-tiptap-workspace].md-preview li[data-type="taskItem"]::marker {
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"]::marker {
   content: none;
 }
 
-[data-tiptap-workspace].md-preview li[data-type="taskItem"] > label {
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"] > label {
   grid-column: 1;
   display: flex;
   flex-direction: row;
@@ -3260,8 +3260,9 @@ button {
 }
 
 /* @tiptap/extension-list: empty span next to the checkbox (styler hook) */
-[data-tiptap-workspace].md-preview
-  li[data-type="taskItem"]
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
   > label
   > span {
   flex: 0 0 0;
@@ -3276,17 +3277,19 @@ button {
   vertical-align: top;
 }
 
-[data-tiptap-workspace].md-preview li[data-type="taskItem"] > div {
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"] > div {
   grid-column: 2;
   min-width: 0;
 }
 
-[data-tiptap-workspace].md-preview
-  li[data-type="taskItem"]
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
   > div
   > p:first-child,
-[data-tiptap-workspace].md-preview
-  li[data-type="taskItem"]
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
   > div
   > p:only-of-type {
   margin-top: 0;
@@ -3329,8 +3332,9 @@ button {
 }
 
 /* TipTap task list: do not let modal form `input` rules affect checkbox layout */
-[data-tiptap-workspace].md-preview
-  li[data-type="taskItem"]
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
   > label
   > input[type="checkbox"] {
   width: auto;
