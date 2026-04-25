@@ -20,6 +20,10 @@
   --bar-mr-rejected: #c62828;
   --bar-blocked: #d32f2f;
   --bar-complete: #424242;
+  --bar-parent: #d5d5d5;
+  --bar-parent-stroke: rgba(0, 0, 0, 0.12);
+  --row-parent-bg: rgba(0, 0, 0, 0.04);
+  --row-parent-fg: var(--muted);
   --bar-gate: #7b1fa2;
   --row-gate-bg: rgba(123, 31, 162, 0.1);
   --gantt-bar-selected: var(--accent);
@@ -53,6 +57,10 @@
   --bar-checkout-active: var(--bar-in-progress);
   --bar-mr-pending: #ffa726;
   --bar-mr-rejected: #ef5350;
+  --bar-parent: #4a4a4a;
+  --bar-parent-stroke: rgba(255, 255, 255, 0.12);
+  --row-parent-bg: rgba(255, 255, 255, 0.05);
+  --row-parent-fg: var(--muted);
   --bar-gate: #ba68c8;
   --row-gate-bg: rgba(186, 104, 200, 0.14);
   --gantt-dep-chain: #ffca28;
@@ -73,6 +81,10 @@
     --bar-checkout-active: var(--bar-in-progress);
     --bar-mr-pending: #ffa726;
     --bar-mr-rejected: #ef5350;
+    --bar-parent: #4a4a4a;
+    --bar-parent-stroke: rgba(255, 255, 255, 0.12);
+    --row-parent-bg: rgba(255, 255, 255, 0.05);
+    --row-parent-fg: var(--muted);
     --bar-gate: #ba68c8;
     --row-gate-bg: rgba(186, 104, 200, 0.14);
     --gantt-dep-chain: #ffca28;
@@ -1023,6 +1035,14 @@ button {
 
 .outline-table tbody tr.outline-row-gate.selected td {
   background: color-mix(in srgb, var(--row-gate-bg) 55%, var(--sel-bg));
+}
+
+.outline-table
+  tbody
+  tr.outline-row-parent:not(.selected):not(.outline-row-gate)
+  td {
+  background: var(--row-parent-bg);
+  color: var(--row-parent-fg);
 }
 
 .outline-table tbody tr.outline-row-git-current td {

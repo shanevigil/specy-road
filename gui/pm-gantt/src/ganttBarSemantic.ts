@@ -97,6 +97,8 @@ export type GanttBarResolveContext = {
   depHighlight: boolean;
   displayStatus: string | undefined;
   node: RoadmapNode | undefined;
+  /** Container row: has at least one child in the outline `parent_id` tree. */
+  isParentNode?: boolean;
   registryByNode?: Record<string, Record<string, unknown>>;
   gitCheckoutById?: Record<string, boolean>;
   gitEnrichment?: Record<string, GitEnrichmentEntry>;
@@ -139,6 +141,13 @@ export function resolveGanttBarStyle(ctx: GanttBarResolveContext): {
     return {
       fill: "var(--bar-gate)",
       stroke: "rgba(0,0,0,0.12)",
+      strokeWidth: 1,
+    };
+  }
+  if (ctx.isParentNode) {
+    return {
+      fill: "var(--bar-parent)",
+      stroke: "var(--bar-parent-stroke)",
       strokeWidth: 1,
     };
   }

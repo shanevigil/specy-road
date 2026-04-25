@@ -260,6 +260,8 @@ type RowProps = {
   devCellTitle?: string;
   /** Inline title edit disabled (same condition as isGitCheckoutRow). */
   titleEditLocked?: boolean;
+  /** Has at least one child in the outline `parent_id` tree (container row). */
+  isParentRow?: boolean;
 };
 
 type OutlineRowTrExtra = {
@@ -467,6 +469,7 @@ function SortableRow({
   isGitCheckoutRow,
   devCellTitle,
   titleEditLocked,
+  isParentRow = false,
   rowSourceHidden,
 }: RowProps & { rowSourceHidden: boolean }) {
   const {
@@ -587,6 +590,7 @@ function SortableRow({
     isDepCandidate ? "dep-candidate-row" : "",
     isGitCheckoutRow ? "outline-row-git-current" : "",
     node.type === "gate" ? "outline-row-gate" : "",
+    isParentRow ? "outline-row-parent" : "",
     pendingClass,
   ]
     .filter(Boolean)
@@ -692,6 +696,8 @@ type Props = {
   reorderLocked?: boolean;
   /** When true, outline is non-interactive while the app saves/refreshes the roadmap. */
   interactionLocked?: boolean;
+  /** Container rows (have children in the outline tree) — muted strip styling. */
+  parentNodeIds?: ReadonlySet<string>;
 };
 
 export function OutlineTable({
@@ -723,6 +729,7 @@ export function OutlineTable({
   outlineStatusById,
   reorderLocked = false,
   interactionLocked = false,
+  parentNodeIds,
 }: Props) {
   const pendingMutationsApi = usePendingMutations();
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
@@ -1230,6 +1237,7 @@ export function OutlineTable({
       node,
       outlineDepth: rowDepths[i] ?? 0,
       selected: selectedId === rowId,
+      isParentRow: Boolean(parentNodeIds?.has(rowId)),
       meta: metaLine(rowId),
       statusText,
       statusCellTitle,
@@ -1409,6 +1417,7 @@ export function OutlineTable({
                   rp.isDepCandidate ? "dep-candidate-row" : "",
                   rp.isGitCheckoutRow ? "outline-row-git-current" : "",
                   rp.node.type === "gate" ? "outline-row-gate" : "",
+                  rp.isParentRow ? "outline-row-parent" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
