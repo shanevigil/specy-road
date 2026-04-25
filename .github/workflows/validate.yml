@@ -31,7 +31,9 @@ jobs:
         id: pip_audit
         run: |
           set +e
-          pip-audit -f json -o pip-audit-results.json
+          # CVE-2026-3219 currently affects every published pip release.
+          # Keep auditing repo dependencies while the toolchain awaits a fix.
+          pip-audit -f json -o pip-audit-results.json --ignore-vuln CVE-2026-3219
           echo $? > pip-audit.exitcode
           set -e
       - name: Upload pip-audit JSON
