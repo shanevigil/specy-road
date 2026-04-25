@@ -94,10 +94,12 @@ def _validate_reparent_target(
             raise ValueError("cannot move node under a gate")
     if moved_type == "gate":
         if new_parent_id is None:
-            raise ValueError("gate must have a vision or phase parent")
+            raise ValueError("gate must have a vision, phase, or milestone parent")
         np = by_id.get(new_parent_id)
-        if not np or np.get("type") not in ("vision", "phase"):
-            raise ValueError("gate must be a direct child of vision or phase")
+        if not np or np.get("type") not in ("vision", "phase", "milestone"):
+            raise ValueError(
+                "gate must be a direct child of vision, phase, or milestone"
+            )
 
 
 def _detach_reindex_old_parent(
