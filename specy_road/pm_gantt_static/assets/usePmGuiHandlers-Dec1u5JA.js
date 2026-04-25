@@ -1,1 +1,0 @@
-import{r as e}from"./rolldown-runtime-S-ySWqyJ.js";import{m as t}from"./dnd-stack-ChA4-iz4.js";import{t as n}from"./index-CQ9gikhv.js";var r=e(t(),1);function i(){let e=(0,r.useContext)(n);if(!e)throw Error(`usePmGuiHandlers must be used within PmGuiHandlersProvider`);return e}export{i as t};

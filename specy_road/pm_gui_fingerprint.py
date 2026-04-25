@@ -2,10 +2,13 @@
 
 Two tokens are exposed:
 
-* :func:`pm_gui_mutation_fingerprint` — broad token that bakes in
-  roadmap + planning/constitution/vision/shared + git HEAD + remote
-  overlay. Used by ``GET /api/roadmap`` and the polling refresh hook so
-  the UI can detect "something changed elsewhere" and refresh its view.
+* :func:`pm_gui_mutation_fingerprint` — broad token (``view_fingerprint`` on
+  the wire) that bakes in roadmap + planning/constitution/vision/shared +
+  ``git HEAD`` + remote overlay ref tips. The PM GUI **polling refresh** hook
+  compares this value to detect "something changed" (including after a
+  **deferred** ``git fetch`` completed). It is **not** sent on mutating
+  requests; the **narrow** outline token is used for optimistic concurrency
+  there.
 
 * :func:`outline_mutation_fingerprint` — **narrow** token that only
   includes files whose change actually affects whether an outline /

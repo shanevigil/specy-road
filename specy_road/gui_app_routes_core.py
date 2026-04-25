@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from roadmap_gui_lib import (
     load_registry,
@@ -44,6 +46,33 @@ from specy_road.governance_completion import (
 
 from specy_road.gui_app_helpers import get_repo_root
 
+# Throttle how often we queue ``BackgroundTasks`` for the same repo (burst polls).
+_DEFER_ENQUEUE_MIN_INTERVAL_S = 0.2
+_defer_last_enqueue: dict[str, float] = {}
+_defer_enqueue_lock = threading.Lock()
+
+
+def _stringified_fingerprints(root: Path) -> dict[str, str]:
+    """Both fingerprints, JSON-string encoded.
+
+    Values reflect the repository **at read time in this process** (working-tree
+    files, ``HEAD``, and any **already-fetched** remote refs). They are **not**
+    required to run after a blocking ``git fetch`` in the same HTTP request;
+    deferred sync runs in the background; the next full snapshot or poll can
+    pick up new refs and shift ``view_fingerprint`` accordingly.
+
+    ``fingerprint`` is the **narrow** outline token sent back as
+    ``X-PM-Gui-Fingerprint`` on mutating POSTs. ``view_fingerprint`` is
+    the broader change-detection token used by the polling refresh hook.
+    Both are emitted as strings: the underlying integer routinely exceeds
+    ``2**53`` and would lose precision when round-tripped through the
+    browser's IEEE 754 ``Number`` type, producing spurious 412s.
+    """
+    return {
+        "fingerprint": str(outline_mutation_fingerprint(root)),
+        "view_fingerprint": str(pm_gui_mutation_fingerprint(root)),
+    }
+
 
 def _apply_rollup_on_wire(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
@@ -76,22 +105,6 @@ def _outline_actions_for(nodes: list[dict[str, Any]]) -> dict[str, dict[str, boo
     }
 
 
-def _stringified_fingerprints(root: Path) -> dict[str, str]:
-    """Both fingerprints, JSON-string encoded.
-
-    ``fingerprint`` is the **narrow** outline token sent back as
-    ``X-PM-Gui-Fingerprint`` on mutating POSTs. ``view_fingerprint`` is
-    the broader change-detection token used by the polling refresh hook.
-    Both are emitted as strings: the underlying integer routinely exceeds
-    ``2**53`` and would lose precision when round-tripped through the
-    browser's IEEE 754 ``Number`` type, producing spurious 412s.
-    """
-    return {
-        "fingerprint": str(outline_mutation_fingerprint(root)),
-        "view_fingerprint": str(pm_gui_mutation_fingerprint(root)),
-    }
-
-
 def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
     nodes = _apply_rollup_on_wire(doc.get("nodes") or [])
@@ -99,7 +112,8 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     reg = head_reg
     registry_overlay_meta: dict[str, Any] | None = None
     if registry_remote_overlay_enabled(root):
-        maybe_auto_git_fetch(root, resolve_git_remote(root))
+        # ``git fetch`` runs in the background (see ``_schedule_pm_gui_deferred_sync``);
+        # merge uses last-known ``refs/remotes/...`` until the next fetch completes.
         reg, registry_overlay_meta = merge_registry_with_remote_overlay(
             head_reg, root
         )
@@ -154,16 +168,28 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
 
 
 def _pm_gui_finalize_state(root: Path) -> None:
-    """Run the GET-side background sync (auto-fetch + auto-FF).
+    """Run deferred sync: best-effort auto-``git fetch`` and integration auto-FF.
 
-    Callers (``GET /api/roadmap`` and ``GET /api/roadmap/fingerprint``)
-    must invoke this *before* computing the fingerprints they hand back
-    to the client, so the values they emit reflect any HEAD/refs
-    movement caused by the background sync.
+    Invoked from FastAPI ``BackgroundTasks`` so HTTP handlers return before
+    subprocess work. Throttling inside ``maybe_auto_*`` limits repeated fetches.
     """
     if registry_remote_overlay_enabled(root):
         maybe_auto_git_fetch(root, resolve_git_remote(root))
     maybe_auto_integration_ff(root)
+
+
+def _schedule_pm_gui_deferred_sync(
+    root: Path, background_tasks: BackgroundTasks
+) -> None:
+    """Queue :func:`_pm_gui_finalize_state` without blocking the response."""
+    key = str(root.resolve())
+    now = time.monotonic()
+    with _defer_enqueue_lock:
+        last = _defer_last_enqueue.get(key, 0.0)
+        if now - last < _DEFER_ENQUEUE_MIN_INTERVAL_S:
+            return
+        _defer_last_enqueue[key] = now
+    background_tasks.add_task(_pm_gui_finalize_state, root)
 
 
 def register_core(api: APIRouter) -> None:
@@ -177,25 +203,25 @@ def register_core(api: APIRouter) -> None:
         return {"repo_root": str(r), "repo_id": repo_settings_id(r)}
 
     @api.get("/roadmap")
-    def api_roadmap() -> dict[str, Any]:
+    def api_roadmap(
+        background_tasks: BackgroundTasks,
+    ) -> dict[str, Any]:
         root = get_repo_root()
-        # Run auto-fetch/auto-FF before reading the roadmap; both
-        # fingerprints baked into the payload by ``_roadmap_payload``
-        # will reflect any HEAD/refs movement caused by these side
-        # effects.
-        _pm_gui_finalize_state(root)
+        _schedule_pm_gui_deferred_sync(root, background_tasks)
         try:
             doc = load_roadmap(root)
         except (OSError, SystemExit, ValueError) as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
-        return _roadmap_payload(root, doc)
+        out = _roadmap_payload(root, doc)
+        out["sync"] = {"scheduled": True}
+        return out
 
     @api.get("/roadmap/fingerprint")
-    def api_roadmap_fingerprint() -> dict[str, str]:
+    def api_roadmap_fingerprint(
+        background_tasks: BackgroundTasks,
+    ) -> dict[str, str]:
         root = get_repo_root()
-        # Run the same auto-fetch / auto-FF the GET /roadmap endpoint runs
-        # so the polling refresh hook sees a coherent token.
-        _pm_gui_finalize_state(root)
+        _schedule_pm_gui_deferred_sync(root, background_tasks)
         return _stringified_fingerprints(root)
 
     @api.get("/governance-completion")

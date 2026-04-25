@@ -456,10 +456,22 @@ export async function testLlmSettings(
   };
 }
 
-export async function fetchRoadmapFingerprint(): Promise<Fingerprint> {
+/** Both tokens from ``GET /api/roadmap/fingerprint`` (narrow + broad view). */
+export type RoadmapFingerprints = {
+  fingerprint: Fingerprint;
+  view_fingerprint: Fingerprint;
+};
+
+/**
+ * Fetches narrow + view fingerprints. The **view** value must be used for
+ * polling-driven full reloads (remote ref / overlay changes); **fingerprint**
+ * (narrow) is the mutation guard token.
+ */
+export async function fetchRoadmapFingerprints(): Promise<RoadmapFingerprints> {
   const r = await fetch(`${API}/roadmap/fingerprint`);
   const raw = (await r.json()) as {
     fingerprint?: unknown;
+    view_fingerprint?: unknown;
     detail?: unknown;
   };
   if (!r.ok) {
@@ -469,10 +481,25 @@ export async function fetchRoadmapFingerprint(): Promise<Fingerprint> {
     );
   }
   const fp = coerceFingerprint(raw.fingerprint);
+  const vfp = coerceFingerprint(raw.view_fingerprint);
   if (fp == null) {
     throw new Error("invalid fingerprint response");
   }
-  return fp;
+  if (vfp == null) {
+    throw new Error("invalid view_fingerprint response");
+  }
+  return { fingerprint: fp, view_fingerprint: vfp };
+}
+
+/**
+ * True when a periodic poll should trigger a full roadmap reload because
+ * the broad (view) fingerprint changed (e.g. ``git fetch`` updated refs).
+ */
+export function shouldRefreshSnapshotFromViewFingerprint(
+  previousView: string | null,
+  nextView: string,
+): boolean {
+  return previousView !== null && nextView !== previousView;
 }
 
 /** LLM settings object as stored in gui-settings / API (values may be strings). */

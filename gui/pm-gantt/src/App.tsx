@@ -14,7 +14,8 @@ import {
   fetchGovernanceCompletion,
   fetchPublishStatus,
   fetchRoadmap,
-  fetchRoadmapFingerprint,
+  fetchRoadmapFingerprints,
+  shouldRefreshSnapshotFromViewFingerprint,
   indentNode,
   outdentNode,
   patchNode,
@@ -198,7 +199,12 @@ export default function App() {
 
   // Fingerprint is a string end-to-end (server emits base-10 strings to
   // dodge JS Number precision loss for values > 2**53).
+  /** Narrow outline token for X-PM-Gui-Fingerprint on mutating requests. */
   const lastFingerprintRef = useRef<string | null>(null);
+  /** Broad view token: polling compares this to detect ref/overlay catch-up. */
+  const lastViewFingerprintRef = useRef<string | null>(null);
+  /** One-shot delayed check after first snapshot (see plan: fast first paint). */
+  const firstViewCatchUpNudgeDoneRef = useRef(false);
 
   const [splitPct, setSplitPct] = useState(() => {
     const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.splitPct);
@@ -348,6 +354,7 @@ export default function App() {
       ]);
       setData(r);
       lastFingerprintRef.current = r.fingerprint;
+      lastViewFingerprintRef.current = r.view_fingerprint ?? r.fingerprint;
       const rr = repoRes as { repo_root?: string; repo_id?: string };
       setRepo(rr.repo_root || "");
       setRepoId(typeof rr.repo_id === "string" ? rr.repo_id : null);
@@ -356,8 +363,9 @@ export default function App() {
         return r.ordered_ids[0] ?? null;
       });
       try {
-        const fp = await fetchRoadmapFingerprint();
-        lastFingerprintRef.current = fp;
+        const pair = await fetchRoadmapFingerprints();
+        lastFingerprintRef.current = pair.fingerprint;
+        lastViewFingerprintRef.current = pair.view_fingerprint;
       } catch {
         /* polling endpoint optional when roadmap payload has fingerprint */
       }
@@ -630,12 +638,13 @@ export default function App() {
     const id = window.setInterval(() => {
       void (async () => {
         try {
-          const fp = await fetchRoadmapFingerprint();
-          const prev = lastFingerprintRef.current;
-          if (prev !== null && fp !== prev) {
+          const pair = await fetchRoadmapFingerprints();
+          const prevView = lastViewFingerprintRef.current;
+          if (shouldRefreshSnapshotFromViewFingerprint(prevView, pair.view_fingerprint)) {
             await runRoadmapAction("Checking for updates…", () => loadSnapshot());
           } else {
-            lastFingerprintRef.current = fp;
+            lastFingerprintRef.current = pair.fingerprint;
+            lastViewFingerprintRef.current = pair.view_fingerprint;
           }
         } catch {
           /* ignore */
@@ -644,6 +653,33 @@ export default function App() {
     }, refreshSec * 1000);
     return () => window.clearInterval(id);
   }, [refreshSec, runRoadmapAction, loadSnapshot]);
+
+  /** Re-check view fingerprint once shortly after first paint (deferred ``git fetch``). */
+  useEffect(() => {
+    if (data == null) return;
+    if (firstViewCatchUpNudgeDoneRef.current) return;
+    firstViewCatchUpNudgeDoneRef.current = true;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const pair = await fetchRoadmapFingerprints();
+          const prevView = lastViewFingerprintRef.current;
+          if (shouldRefreshSnapshotFromViewFingerprint(prevView, pair.view_fingerprint)) {
+            await runRoadmapAction("Checking for updates…", () => loadSnapshot());
+          } else {
+            lastFingerprintRef.current = pair.fingerprint;
+            lastViewFingerprintRef.current = pair.view_fingerprint;
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 1000);
+    return () => {
+      window.clearTimeout(timer);
+      firstViewCatchUpNudgeDoneRef.current = false;
+    };
+  }, [data, loadSnapshot, runRoadmapAction]);
 
   const cancelDepEdit = useCallback(() => {
     setDepEditId(null);

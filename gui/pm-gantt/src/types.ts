@@ -129,4 +129,6 @@ export type RoadmapResponse = {
   git_workflow?: GitWorkflowPayload;
   registry_overlay?: RegistryOverlayPayload;
   integration_branch_auto_ff?: IntegrationBranchAutoFfPayload;
+  /** Set when the server scheduled deferred ``git fetch`` / integration FF (non-blocking). */
+  sync?: { scheduled?: boolean };
 };

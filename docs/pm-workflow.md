@@ -125,8 +125,8 @@ The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:
 
 The PM UI does **not** take a global lock on the roadmap. Two people (or two browser tabs) can open the same repo; when you save, the server checks an **optimistic** token so a stale session cannot silently overwrite fresher work.
 
-- The dashboard loads a numeric **fingerprint** with the roadmap (`GET /api/roadmap`) and keeps it in sync with `GET /api/roadmap/fingerprint` polling.
-- Every write (outline edits, planning files, constitution, shared uploads, publish, and similar) must include the header **`X-PM-Gui-Fingerprint: <integer>`** with the last-known fingerprint.
+- The dashboard loads a **narrow** **fingerprint** (for mutating requests) and a **broad** `view_fingerprint` with the roadmap (`GET /api/roadmap`). The first response is **local-first** (it does not wait for a `git fetch` in the same request). The UI polls `GET /api/roadmap/fingerprint` and reloads the full view when **`view_fingerprint`** changes (for example after a deferred `git fetch` updates remote refs), while keeping the narrow token for optimistic concurrency.
+- Every write (outline edits, planning files, constitution, shared uploads, publish, and similar) must include the header **`X-PM-Gui-Fingerprint: <integer>`** with the last-known **narrow** fingerprint.
 - If the token is **missing**, the API responds with **428 Precondition Required**. If the value is **not a valid integer**, you may see **400 Bad Request**.
 - If the repo changed on disk since that fingerprint (another editor saved, or you edited files outside the UI), the API responds with **412 Precondition Failed** and a JSON body that includes the **current** fingerprint. The UI refreshes and shows a short message; apply your change again on the updated view if you still need it.
 

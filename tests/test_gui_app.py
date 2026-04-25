@@ -92,6 +92,7 @@ def test_api_roadmap_returns_nodes(api_client: TestClient) -> None:
     r = api_client.get("/api/roadmap")
     assert r.status_code == 200
     data = r.json()
+    assert data.get("sync") == {"scheduled": True}
     assert "nodes" in data
     assert isinstance(data["nodes"], list)
     assert len(data["nodes"]) >= 1
@@ -230,6 +231,16 @@ def test_api_git_workflow_status(api_client: TestClient) -> None:
     body = r.json()
     assert "ok" in body
     assert isinstance(body.get("issues"), list)
+
+
+def test_api_roadmap_fingerprint_narrow_and_view(
+    api_client: TestClient,
+) -> None:
+    r = api_client.get("/api/roadmap/fingerprint")
+    assert r.status_code == 200
+    d = r.json()
+    assert isinstance(d.get("fingerprint"), str) and d["fingerprint"]
+    assert isinstance(d.get("view_fingerprint"), str) and d["view_fingerprint"]
 
 
 _M02_PLANNING = (
