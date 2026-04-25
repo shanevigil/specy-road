@@ -7,7 +7,7 @@ from typing import Any
 
 
 def validate_gates(nodes: list[dict[str, Any]]) -> None:
-    """Gate nodes are leaf-only under vision or phase."""
+    """Gate nodes are leaves only; parent must be vision, phase, or milestone."""
     by_id = {n["id"]: n for n in nodes}
     for n in nodes:
         if n.get("type") != "gate":
@@ -24,7 +24,7 @@ def validate_gates(nodes: list[dict[str, Any]]) -> None:
         if pid in (None, ""):
             print(
                 f"roadmap: gate {nid} must have parent_id set to "
-                "a vision or phase node",
+                "a vision, phase, or milestone node",
                 file=sys.stderr,
             )
             raise SystemExit(1)
@@ -32,10 +32,10 @@ def validate_gates(nodes: list[dict[str, Any]]) -> None:
         if not parent:
             continue
         pt = parent.get("type")
-        if pt not in ("vision", "phase"):
+        if pt not in ("vision", "phase", "milestone"):
             print(
                 "roadmap: gate "
-                f"{nid!r} must be a direct child of vision or phase "
+                f"{nid!r} must be a direct child of vision, phase, or milestone "
                 f"(parent {pid!r} has type {pt!r})",
                 file=sys.stderr,
             )

@@ -101,8 +101,8 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
         raise HTTPException(
             status_code=400,
             detail=(
-                "gate requires a parent vision or phase; select a row under "
-                "a phase (not a top-level row)"
+                "gate requires a parent vision, phase, or milestone; select a row "
+                "under a phase or milestone (not a top-level row)"
             ),
         )
     chunk_path = find_chunk_path(root, ref)
