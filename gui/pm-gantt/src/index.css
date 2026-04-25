@@ -1139,15 +1139,6 @@ button {
   font-size: 0.65rem;
 }
 
-.modal-deps-line {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0.35rem 0;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  border-top: 1px solid var(--border);
-}
-
 .modal-deps-line-label {
   font-weight: 600;
   color: var(--muted);
@@ -1635,6 +1626,44 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.modal-edit-title-label-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-window .modal-edit-title-label {
+  display: block;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.modal-edit-deps-inline {
+  margin: 0 0 0 auto;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: min(100%, 22rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  align-content: flex-start;
+  justify-content: flex-end;
+  text-align: right;
+  border: none;
+  gap: 0 0.1rem;
 }
 
 .modal-edit-title-wrap--invalid input {

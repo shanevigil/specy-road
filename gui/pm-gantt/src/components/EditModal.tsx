@@ -511,6 +511,7 @@ export function EditModal({
   );
 
   const titleIdAttr = `edit-title-${modalStorageKey.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+  const titleInputId = `${titleIdAttr}-field`;
 
   const getDefaultRect = useCallback(
     () => getDefaultEditModalRect({ minTop: headerMinTop }),
@@ -791,15 +792,53 @@ export function EditModal({
     >
       <div className="modal-edit-fields">
         {loading ? <p className="modal-edit-loading">Loading…</p> : null}
-        <label
+        <div
           className={
             titleConflict.hasConflict
               ? "modal-edit-title-wrap modal-edit-title-wrap--invalid"
               : "modal-edit-title-wrap"
           }
         >
-          Title
+          <div className="modal-edit-title-label-row">
+            <label
+              className="modal-edit-title-label"
+              htmlFor={titleInputId}
+            >
+              Title
+            </label>
+            {dependencyInheritance != null ? (
+              <div className="modal-edit-deps-inline" role="status">
+                <span className="modal-deps-line-label">Dependencies:</span>{" "}
+                {depItems.length > 0 ? (
+                  <span className="modal-deps-line-ids">
+                    {depItems.map(({ id, inheritedOnly }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className={
+                          inheritedOnly
+                            ? "modal-dep-id-link modal-dep-id-link--inherited"
+                            : "modal-dep-id-link"
+                        }
+                        title={
+                          inheritedOnly
+                            ? `Open task ${id} (inherited from ancestors)`
+                            : `Open task ${id}`
+                        }
+                        onClick={() => onOpenNode?.(id)}
+                      >
+                        {id}
+                      </button>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="modal-deps-none">None</span>
+                )}
+              </div>
+            ) : null}
+          </div>
           <input
+            id={titleInputId}
             value={title}
             readOnly={readOnlyCheckout}
             onChange={(e) => setTitle(e.target.value)}
@@ -825,7 +864,7 @@ export function EditModal({
               or short qualifier so items stay distinct.
             </p>
           ) : null}
-        </label>
+        </div>
         {node.type === "gate" ? (
           <label className="modal-edit-title-wrap">
             Status
@@ -864,36 +903,6 @@ export function EditModal({
           </p>
         ) : null}
       </div>
-      {dependencyInheritance != null ? (
-        <div className="modal-deps-line">
-          <span className="modal-deps-line-label">Dependencies:</span>{" "}
-          {depItems.length > 0 ? (
-            <span className="modal-deps-line-ids">
-              {depItems.map(({ id, inheritedOnly }) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={
-                    inheritedOnly
-                      ? "modal-dep-id-link modal-dep-id-link--inherited"
-                      : "modal-dep-id-link"
-                  }
-                  title={
-                    inheritedOnly
-                      ? `Open task ${id} (inherited from ancestors)`
-                      : `Open task ${id}`
-                  }
-                  onClick={() => onOpenNode?.(id)}
-                >
-                  {id}
-                </button>
-              ))}
-            </span>
-          ) : (
-            <span className="modal-deps-none">None</span>
-          )}
-        </div>
-      ) : null}
       {sheetPath != null ? (
         <section className="modal-edit-planning-section">
           <div className="modal-edit-planning-toolbar">
