@@ -137,6 +137,12 @@ function dependencyLineItems(
   return out;
 }
 
+function planningFileBasename(repoRelativePath: string): string {
+  const n = repoRelativePath.replace(/\\/g, "/");
+  const i = n.lastIndexOf("/");
+  return i >= 0 ? n.slice(i + 1) : n;
+}
+
 /** One line for “active work” from registry + Git remote (same sources as the table Dev/meta columns). */
 function gitWorkSummary(
   nid: string,
@@ -891,12 +897,52 @@ export function EditModal({
       {sheetPath != null ? (
         <section className="modal-edit-planning-section">
           <div className="modal-edit-planning-toolbar">
-            <div className="modal-edit-planning-path-wrap">
-              <span className="modal-edit-planning-file-text">Planning</span>
-              <code className="modal-edit-planning-path" title={sheetPath}>
-                {sheetPath}
-              </code>
-            </div>
+            <details
+              className="modal-edit-planning-meta-details"
+              aria-label="Planning file path and ancestor sheets"
+            >
+              <summary className="modal-edit-planning-meta-summary">
+                <span className="modal-edit-planning-file-text">Planning</span>
+                <code
+                  className="modal-edit-planning-path-preview"
+                  title={sheetPath}
+                >
+                  {planningFileBasename(sheetPath)}
+                </code>
+                <span className="sr-only">
+                  {`. Expand for full path${ancestorFiles.length > 0 ? " and ancestor sheets" : ""}.`}
+                </span>
+              </summary>
+              <div className="modal-edit-planning-meta-expanded">
+                <code className="modal-edit-planning-path" title={sheetPath}>
+                  {sheetPath}
+                </code>
+                {ancestorFiles.length > 0 ? (
+                  <p className="modal-edit-planning-ancestors outline-meta">
+                    <span className="modal-edit-planning-ancestors-label">
+                      Ancestor sheets
+                    </span>
+                    {ancestorFiles.map((f) => (
+                      <span
+                        key={f.path}
+                        className="modal-edit-planning-ancestor-item"
+                      >
+                        <code
+                          className={
+                            f.exists
+                              ? "modal-edit-planning-ancestor-path"
+                              : "modal-edit-planning-ancestor-path modal-edit-planning-ancestor-path--missing"
+                          }
+                          title={f.path}
+                        >
+                          {f.path}
+                        </code>
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+              </div>
+            </details>
             <div className="modal-edit-planning-toolbar-trailing">
               <PlanningHintHelp />
               <button
@@ -911,27 +957,6 @@ export function EditModal({
               </button>
             </div>
           </div>
-          {ancestorFiles.length > 0 ? (
-            <p className="modal-edit-planning-ancestors outline-meta">
-              <span className="modal-edit-planning-ancestors-label">
-                Ancestor sheets
-              </span>
-              {ancestorFiles.map((f) => (
-                <span key={f.path} className="modal-edit-planning-ancestor-item">
-                  <code
-                    className={
-                      f.exists
-                        ? "modal-edit-planning-ancestor-path"
-                        : "modal-edit-planning-ancestor-path modal-edit-planning-ancestor-path--missing"
-                    }
-                    title={f.path}
-                  >
-                    {f.path}
-                  </code>
-                </span>
-              ))}
-            </p>
-          ) : null}
           {reviewErr ? (
             <p className="modal-review-error modal-review-error--toolbar">
               {reviewErr}

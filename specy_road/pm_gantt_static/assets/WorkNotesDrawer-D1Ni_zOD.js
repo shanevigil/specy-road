@@ -1,4 +1,4 @@
-import{r as e}from"./rolldown-runtime-S-ySWqyJ.js";import{m as t}from"./dnd-stack-ChA4-iz4.js";import{u as n}from"./markdown-stack-BzdnVZOK.js";import{a as r,d as i,l as a,p as o,y as s}from"./index-DQQ7Au4l.js";import{t as c}from"./usePmGuiHandlers-CW5wpBrV.js";import{t as l}from"./MarkdownWorkspace-6T8YVW1A.js";import{t as u}from"./ModalPersistStatusFooter-COyGYvH1.js";var d=e(t(),1),f=n(),p=`# Session
+import{r as e}from"./rolldown-runtime-S-ySWqyJ.js";import{m as t}from"./dnd-stack-ChA4-iz4.js";import{u as n}from"./markdown-stack-BzdnVZOK.js";import{a as r,d as i,l as a,p as o,y as s}from"./index-DsS8GbkD.js";import{t as c}from"./usePmGuiHandlers-C6UcxMpb.js";import{t as l}from"./MarkdownWorkspace-6T8YVW1A.js";import{t as u}from"./ModalPersistStatusFooter-COyGYvH1.js";var d=e(t(),1),f=n(),p=`# Session
 
 _Add session notes, decisions, and follow-ups._
 
