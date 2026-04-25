@@ -1683,8 +1683,7 @@ button {
 }
 
 .modal-edit-planning-section {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
@@ -1760,16 +1759,83 @@ button {
   opacity: 0.65;
 }
 
-.modal-edit-planning-roadmap-hint {
-  margin: 0.35rem 0;
+/** Compact “?” — full text in expanding panel (see .modal-edit-planning-hint-content) */
+.modal-edit-planning-hint-details {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.modal-edit-planning-hint-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  min-height: 1.5rem;
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 10%, var(--bg));
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-edit-planning-hint-summary::-webkit-details-marker {
+  display: none;
+}
+
+.modal-edit-planning-hint-details .modal-edit-planning-hint-summary {
+  list-style: none;
+}
+
+.modal-edit-planning-hint-summary:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--muted) 18%, var(--bg));
+}
+
+.modal-edit-planning-hint-content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 2;
+  min-width: min(22rem, calc(100vw - 2.5rem));
+  max-width: 28rem;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
   font-size: 0.78rem;
   line-height: 1.45;
   color: color-mix(in srgb, var(--muted) 92%, var(--fg));
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--fg) 8%, transparent);
 }
 
-.modal-edit-planning-roadmap-hint--review {
+/* Review panels: expand hint in document flow (avoids overflow clipping) */
+.modal-edit-planning-hint-details--in-flow .modal-edit-planning-hint-content {
+  position: static;
+  margin-top: 0.35rem;
+  min-width: 0;
+  max-width: none;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--muted) 6%, var(--bg));
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.modal-edit-planning-toolbar-trailing {
   flex-shrink: 0;
-  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.4rem 0.5rem;
 }
 
 .modal-edit-llm-review-btn {
@@ -1799,6 +1865,20 @@ button {
   display: flex;
   flex-direction: row;
   gap: 0.75rem;
+}
+
+/** Let modal body scroll instead of a nested TipTap scroll (default + raw-compare editor) */
+.modal-edit-review-split--body-scroll {
+  flex: 0 0 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-edit-review-split--body-scroll .modal-edit-md-column {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
 }
 
 .modal-edit-review-split--single {
@@ -2173,16 +2253,33 @@ button {
   resize: vertical;
 }
 
-.modal-markdown-fill.markdown-workspace {
-  flex: 1;
-  min-height: 0;
+/* TipTap grows with content; [`.modal-body`] scrolls (see Vision/Constitution + `.constitution-md-section`) */
+.md-workspace--modal-body-scroll.markdown-workspace {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
 
-.modal-markdown-fill .markdown-workspace-editor-wrap {
-  flex: 1;
+.md-workspace--modal-body-scroll .markdown-workspace-editor-wrap {
+  flex: none;
+  min-height: 12rem;
+  overflow: visible;
+}
+
+.md-workspace--modal-body-scroll
+  .markdown-workspace-editor-wrap
+  .markdown-workspace-tiptap-root {
+  flex: none;
+  display: block;
   min-height: 0;
+}
+
+.md-workspace--modal-body-scroll
+  .markdown-workspace-editor-wrap
+  .ProseMirror {
+  flex: none;
+  min-height: 10rem;
+  outline: none;
 }
 
 .modal-body--constitution {
@@ -2205,20 +2302,18 @@ button {
 .shared-doc-edit-body {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 280px;
+  flex: 0 0 auto;
   min-width: 0;
 }
 
 .shared-doc-edit-body .constitution-md-workspace {
-  flex: 1;
-  min-height: 200px;
   display: flex;
   flex-direction: column;
 }
 
-.shared-doc-edit-body .markdown-workspace-editor-wrap {
-  flex: 1;
+/* Modal body scrolls; label must not create a nested flex height trap */
+.shared-doc-edit-body .workspace-editor-label {
+  flex: 0 0 auto;
   min-height: 0;
 }
 

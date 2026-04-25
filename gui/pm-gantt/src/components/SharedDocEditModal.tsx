@@ -153,7 +153,7 @@ export function SharedDocEditModal({
         ) : (
           <label className="workspace-editor-label">
             <MarkdownWorkspace
-              className="constitution-md-workspace"
+              className="constitution-md-workspace md-workspace--modal-body-scroll"
               value={content}
               onChange={setContent}
               spellCheck

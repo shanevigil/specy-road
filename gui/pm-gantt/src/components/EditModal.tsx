@@ -171,6 +171,34 @@ function gitWorkSummary(
 const PLANNING_ROADMAP_DEPENDENCY_HINT =
   "Use the Dependencies field above and roadmap ordering on the main view for roadmap structure. Avoid restating milestones or gating in this sheet—they go stale when work moves. LLM Review suggests removing that kind of prose.";
 
+type PlanningHintHelpProps = {
+  /** In review panels, expand the copy in the layout instead of a flyout. */
+  inFlow?: boolean;
+};
+
+function PlanningHintHelp({ inFlow = false }: PlanningHintHelpProps) {
+  return (
+    <details
+      className={
+        inFlow
+          ? "modal-edit-planning-hint-details modal-edit-planning-hint-details--in-flow"
+          : "modal-edit-planning-hint-details"
+      }
+    >
+      <summary
+        className="modal-edit-planning-hint-summary"
+        title="Planning and roadmap: where structure belongs"
+      >
+        <span aria-hidden="true">?</span>
+        <span className="sr-only">Help: planning and roadmap in this sheet</span>
+      </summary>
+      <p className="modal-edit-planning-hint-content outline-meta" role="note">
+        {PLANNING_ROADMAP_DEPENDENCY_HINT}
+      </p>
+    </details>
+  );
+}
+
 export function EditModal({
   node,
   allNodes = [],
@@ -869,23 +897,20 @@ export function EditModal({
                 {sheetPath}
               </code>
             </div>
-            <button
-              type="button"
-              className="modal-edit-llm-review-btn"
-              disabled={llmReviewDisabled}
-              title={llmReviewTitle}
-              aria-label="LLM Review. Have an LLM provide a suggested clean up"
-              onClick={() => runLlmReview()}
-            >
-              {reviewBusy ? "Running…" : "LLM Review"}
-            </button>
+            <div className="modal-edit-planning-toolbar-trailing">
+              <PlanningHintHelp />
+              <button
+                type="button"
+                className="modal-edit-llm-review-btn"
+                disabled={llmReviewDisabled}
+                title={llmReviewTitle}
+                aria-label="LLM Review. Have an LLM provide a suggested clean up"
+                onClick={() => runLlmReview()}
+              >
+                {reviewBusy ? "Running…" : "LLM Review"}
+              </button>
+            </div>
           </div>
-          <p
-            className="modal-edit-planning-roadmap-hint outline-meta"
-            role="note"
-          >
-            {PLANNING_ROADMAP_DEPENDENCY_HINT}
-          </p>
           {ancestorFiles.length > 0 ? (
             <p className="modal-edit-planning-ancestors outline-meta">
               <span className="modal-edit-planning-ancestors-label">
@@ -913,10 +938,10 @@ export function EditModal({
             </p>
           ) : null}
           {reviewReport == null ? (
-            <div className="modal-edit-review-split modal-edit-review-split--single">
+            <div className="modal-edit-review-split modal-edit-review-split--single modal-edit-review-split--body-scroll">
               <div className="modal-edit-md-column">
                 <MarkdownWorkspace
-                  className="modal-markdown-fill constitution-md-workspace"
+                  className="md-workspace--modal-body-scroll constitution-md-workspace"
                   value={content}
                   onChange={setContent}
                   disabled={readOnlyCheckout}
@@ -926,10 +951,10 @@ export function EditModal({
               </div>
             </div>
           ) : showRawCompare ? (
-            <div className="modal-edit-review-split modal-edit-review-split--raw-compare">
+            <div className="modal-edit-review-split modal-edit-review-split--raw-compare modal-edit-review-split--body-scroll">
               <div className="modal-edit-md-column">
                 <MarkdownWorkspace
-                  className="modal-markdown-fill constitution-md-workspace"
+                  className="md-workspace--modal-body-scroll constitution-md-workspace"
                   value={content}
                   onChange={setContent}
                   disabled={readOnlyCheckout}
@@ -938,12 +963,7 @@ export function EditModal({
                 />
               </div>
               <div className="modal-edit-raw-proposed-panel">
-                <p
-                  className="modal-edit-planning-roadmap-hint modal-edit-planning-roadmap-hint--review outline-meta"
-                  role="note"
-                >
-                  {PLANNING_ROADMAP_DEPENDENCY_HINT}
-                </p>
+                <PlanningHintHelp inFlow />
                 <div className="modal-edit-review-actions modal-edit-review-actions--raw">
                   <button
                     type="button"
@@ -1079,12 +1099,7 @@ export function EditModal({
             </div>
           ) : (
             <div className="modal-edit-review-diff-full">
-              <p
-                className="modal-edit-planning-roadmap-hint modal-edit-planning-roadmap-hint--review outline-meta"
-                role="note"
-              >
-                {PLANNING_ROADMAP_DEPENDENCY_HINT}
-              </p>
+              <PlanningHintHelp inFlow />
               <div className="modal-edit-review-actions modal-edit-review-actions--diff">
                 <button type="button" onClick={() => dismissReview()}>
                   Close LLM Review
