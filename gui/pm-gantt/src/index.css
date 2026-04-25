@@ -1190,6 +1190,21 @@ button {
   pointer-events: auto;
 }
 
+/* Hidden but still mounted (minimized task dialog) */
+.modal-backdrop--minimized {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+}
+
 .modal-window {
   position: fixed;
   z-index: 51;
@@ -1226,6 +1241,148 @@ button {
 .modal-titlebar--active {
   background: var(--sel-bg);
   border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+/* macOS traffic lights (task modals) */
+.modal-titlebar--mac-task {
+  padding-left: 0.4rem;
+}
+
+.modal-tld {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.1rem;
+}
+
+.modal-tld-btn {
+  display: block;
+  width: 0.75rem;
+  min-width: 0.75rem;
+  height: 0.75rem;
+  min-height: 0.75rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modal-tld-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  filter: grayscale(0.4);
+}
+
+.modal-tld-btn--close {
+  background: #ff5f57;
+}
+.modal-tld-btn--min {
+  background: #febc2e;
+}
+.modal-tld-btn--zoom {
+  background: #28c840;
+}
+
+/* Windows / Linux: title bar right controls */
+.modal-titlebar--win-task {
+  padding-right: 0.15rem;
+}
+
+.modal-win-ctrls {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  margin-left: 0.1rem;
+}
+
+.modal-win-btn {
+  box-sizing: border-box;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 1.8rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  font: inherit;
+}
+
+.modal-win-btn:hover:enabled {
+  background: color-mix(in srgb, var(--muted) 20%, transparent);
+}
+
+.modal-win-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.modal-win-btn--close:hover:enabled {
+  background: #e81123;
+  color: #fff;
+}
+
+.modal-win-glyph {
+  display: block;
+  font-size: 0.65rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+/* Bottom strip for minimized task dialogs (below app chrome, under modals) */
+.task-minimized-dock {
+  position: fixed;
+  z-index: 45;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  /* Extra left padding keeps the bar clear of header sync status (“Saving…”) on narrow layouts */
+  padding: 0.4rem 0.6rem 0.4rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, var(--muted) 8%);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+  max-width: 100%;
+}
+
+.task-minimized-dock-btn {
+  max-width: 12rem;
+  min-height: 2.25rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-minimized-dock-btn:hover {
+  background: var(--sel-bg, color-mix(in srgb, var(--accent) 12%, var(--bg)));
+  border-color: var(--border);
 }
 
 .modal-titlebar-drag {

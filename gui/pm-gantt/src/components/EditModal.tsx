@@ -118,6 +118,9 @@ type Props = {
   tileMode?: boolean;
   /** Disable the tile / untile control (e.g. while the mutation queue is overloaded). */
   tileToggleDisabled?: boolean;
+  /** Task is reduced to the bottom strip (content stays mounted). */
+  minimized?: boolean;
+  onMinimize?: () => void;
 };
 
 type SavedSnap = {
@@ -238,6 +241,8 @@ export function EditModal({
   onTileToggle,
   tileMode = false,
   tileToggleDisabled = false,
+  minimized = false,
+  onMinimize,
 }: Props) {
   const { onConcurrencyConflict } = usePmGuiHandlers();
   const [title, setTitle] = useState("");
@@ -823,7 +828,11 @@ export function EditModal({
       bodyClassName="modal-body--edit"
       zIndex={stackZIndex}
       backdropPassThrough={backdropPassThrough}
-      closeOnEscape={closeOnEscape}
+      closeOnEscape={closeOnEscape && !minimized}
+      taskWindowChrome
+      minimized={minimized}
+      onMinimize={onMinimize}
+      maximizeConstrained={editTileMode && Boolean(tileRect)}
     >
       <div className="modal-edit-fields">
         {loading ? <p className="modal-edit-loading">Loading…</p> : null}

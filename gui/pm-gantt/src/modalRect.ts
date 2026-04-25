@@ -82,6 +82,24 @@ export function getDefaultSettingsModalRect(): ModalRect {
   };
 }
 
+/** Task dialog “full window” (viewport minus small margins, below ``minTop`` / header). */
+export function getTaskMaximizedRect(clampOpts?: ClampRectOpts): ModalRect {
+  const m = 8;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 800;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+  const minTop = clampOpts?.minTop ?? 0;
+  const top = minTop + m;
+  return clampRectToViewport(
+    {
+      left: m,
+      top,
+      width: vw - 2 * m,
+      height: vh - top - m,
+    },
+    clampOpts,
+  );
+}
+
 function isModalRect(x: unknown): x is ModalRect {
   if (typeof x !== "object" || x === null) return false;
   const o = x as Record<string, unknown>;

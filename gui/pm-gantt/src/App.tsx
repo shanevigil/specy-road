@@ -146,6 +146,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Node ids with an open edit dialog (order = stack; last is topmost). */
   const [editOpenIds, setEditOpenIds] = useState<string[]>([]);
+  /** Open task ids shown in the bottom strip; order = minimize order. */
+  const [minimizedTaskIds, setMinimizedTaskIds] = useState<string[]>([]);
   /** Which task dialog is focused (accent title bar, receives new-dialog offset anchor). */
   const [focusedEditNodeId, setFocusedEditNodeId] = useState<string | null>(
     null,
@@ -867,6 +869,7 @@ export default function App() {
   }, []);
 
   const openEditNode = useCallback((id: string) => {
+    setMinimizedTaskIds((m) => m.filter((x) => x !== id));
     setEditOpenIds((prev) => {
       const wasNew = !prev.includes(id);
       const next = prev.includes(id)
@@ -893,7 +896,14 @@ export default function App() {
     );
   }, []);
 
+  const minimizeEditNode = useCallback((id: string) => {
+    setMinimizedTaskIds((prev) =>
+      prev.includes(id) ? prev : [...prev, id],
+    );
+  }, []);
+
   const closeEditNode = useCallback((id: string) => {
+    setMinimizedTaskIds((prev) => prev.filter((x) => x !== id));
     setEditOpenIds((prev) => prev.filter((x) => x !== id));
     delete editRectsRef.current[id];
     setSpawnRects((s) => {
@@ -906,10 +916,14 @@ export default function App() {
 
   const toggleTileLayout = useCallback(() => {
     if (!displayData || editOpenIds.length === 0) return;
+    const visibleForTile = editOpenIds.filter(
+      (id) => !minimizedTaskIds.includes(id),
+    );
+    if (visibleForTile.length === 0) return;
     if (!editTileMode) {
       preTileRectsRef.current = { ...editRectsRef.current };
       const sorted = sortOpenIdsByDependencyOrder(
-        editOpenIds,
+        visibleForTile,
         byId,
         displayData.ordered_ids,
       );
@@ -923,19 +937,22 @@ export default function App() {
         requestAnimationFrame(() => setResumeAfterUntile(null));
       });
     }
-  }, [displayData, editOpenIds, byId, editTileMode]);
+  }, [displayData, editOpenIds, byId, editTileMode, minimizedTaskIds]);
 
-  /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open stack changes */
+  /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open / minimize stack changes */
   useEffect(() => {
-    if (
-      focusedEditNodeId != null &&
-      !editOpenIds.includes(focusedEditNodeId)
-    ) {
-      setFocusedEditNodeId(
-        editOpenIds.length ? editOpenIds[editOpenIds.length - 1]! : null,
-      );
+    if (focusedEditNodeId == null) return;
+    const visible = editOpenIds.filter(
+      (x) => !minimizedTaskIds.includes(x),
+    );
+    if (!editOpenIds.includes(focusedEditNodeId)) {
+      setFocusedEditNodeId(visible[visible.length - 1] ?? null);
+      return;
     }
-  }, [editOpenIds, focusedEditNodeId]);
+    if (minimizedTaskIds.includes(focusedEditNodeId)) {
+      setFocusedEditNodeId(visible[visible.length - 1] ?? null);
+    }
+  }, [editOpenIds, minimizedTaskIds, focusedEditNodeId]);
   /* eslint-enable @eslint-react/set-state-in-effect */
 
   /* eslint-disable @eslint-react/set-state-in-effect -- exit tile mode when last dialog closes */
@@ -950,14 +967,29 @@ export default function App() {
   /* eslint-disable @eslint-react/set-state-in-effect -- recompute tiled window positions from graph order */
   useEffect(() => {
     if (!editTileMode || !displayData || editOpenIds.length === 0) return;
+    const visibleForTile = editOpenIds.filter(
+      (id) => !minimizedTaskIds.includes(id),
+    );
+    if (visibleForTile.length === 0) {
+      setEditTileMode(false);
+      setTileRects(null);
+      return;
+    }
     const sorted = sortOpenIdsByDependencyOrder(
-      editOpenIds,
+      visibleForTile,
       byId,
       displayData.ordered_ids,
     );
     setTileRects(computeTileRects(sorted));
-  }, [editTileMode, displayData, editOpenIds, byId]);
+  }, [editTileMode, displayData, editOpenIds, byId, minimizedTaskIds]);
   /* eslint-enable @eslint-react/set-state-in-effect */
+
+  const editStackVisibleIds = useMemo(
+    () => editOpenIds.filter((id) => !minimizedTaskIds.includes(id)),
+    [editOpenIds, minimizedTaskIds],
+  );
+  const topVisibleEditId =
+    editStackVisibleIds[editStackVisibleIds.length - 1] ?? null;
 
   const indentDisabled =
     !selectedId ||
@@ -1568,7 +1600,7 @@ export default function App() {
                 emBaseStatus,
                 emOutlineStatus,
               );
-              const passThrough = editOpenIds.length > 1;
+              const passThrough = editStackVisibleIds.length > 1;
               return (
                 <EditModal
                   key={nodeId}
@@ -1576,9 +1608,9 @@ export default function App() {
                   pmDisplayStatusResolved={displayStatusById[nodeId]}
                   allNodes={displayData.nodes}
                   modalStorageKey={nodeId}
-                  stackZIndex={50 + index}
+                  stackZIndex={200 + index}
                   backdropPassThrough={passThrough}
-                  closeOnEscape={index === editOpenIds.length - 1}
+                  closeOnEscape={nodeId === topVisibleEditId}
                   headerMinTop={0}
                   spawnInitialRect={spawnRects[nodeId]}
                   editTileMode={editTileMode}
@@ -1596,6 +1628,8 @@ export default function App() {
                   prHints={displayData.pr_hints}
                   onClose={() => closeEditNode(nodeId)}
                   onOpenNode={openEditNode}
+                  minimized={minimizedTaskIds.includes(nodeId)}
+                  onMinimize={() => minimizeEditNode(nodeId)}
                   onPersisted={() =>
                     void runRoadmapAction("Saving task…", loadSnapshot).catch(
                       (e: unknown) => setErr(String(e)),
@@ -1656,6 +1690,31 @@ export default function App() {
           headerMinTop={0}
         />
       </Suspense>
+      {displayData && minimizedTaskIds.length > 0 ? (
+        <div
+          className="task-minimized-dock"
+          role="region"
+          aria-label="Minimized tasks"
+        >
+          {minimizedTaskIds.map((nid) => {
+            const n = byId[nid];
+            return (
+              <button
+                key={nid}
+                type="button"
+                className="task-minimized-dock-btn"
+                onClick={() => {
+                  setMinimizedTaskIds((p) => p.filter((x) => x !== nid));
+                  focusEditNode(nid);
+                }}
+                title="Restore"
+              >
+                {n?.title?.trim() || n?.id || nid}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       </div>
     </div>
     </PendingMutationsProvider>
