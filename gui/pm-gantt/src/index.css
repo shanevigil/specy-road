@@ -3225,18 +3225,12 @@ button {
   margin: 0.2em 0;
 }
 
-/*
- * TipTap task list (nodeView): <ul><li><label>input+span</label><div>…</div></li></ul>
- * Primary: `pm-tiptap-*` classes from MarkdownWorkspace (HTMLAttributes) so rules match
- * the live DOM even when [data-type] / .md-preview chains fail. Fallback: data-type.
- * `display: grid` must beat the UA’s `li { display: list-item }` (see DevTools).
- */
+/* TipTap task list: grid row (checkbox | body). `pm-tiptap-*` from TaskList/Item; `data-type` fallbacks for older content. */
 ul.pm-tiptap-task-list > li.pm-tiptap-task-item,
 .md-preview ul[data-type="taskList"] > li[data-type="taskItem"] {
   display: grid !important;
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: 0.4rem;
-  /* Center checkbox with the first line of body text (was start, which hugged the top) */
   align-items: center;
   list-style: none;
   list-style-type: none;
@@ -3292,17 +3286,11 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div,
 }
 
 ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div > p:first-child,
-ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div > p:only-of-type,
 .md-preview
   ul[data-type="taskList"]
   > li[data-type="taskItem"]
   > div
-  > p:first-child,
-.md-preview
-  ul[data-type="taskList"]
-  > li[data-type="taskItem"]
-  > div
-  > p:only-of-type {
+  > p:first-child {
   margin-top: 0;
 }
 

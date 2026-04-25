@@ -55,7 +55,6 @@ export function MarkdownWorkspace({
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
-      // Stable classes for `index.css` (layout does not depend only on data-type / .md-preview).
       TaskList.configure({
         HTMLAttributes: { class: "pm-tiptap-task-list" },
       }),
@@ -167,7 +166,6 @@ export function MarkdownWorkspace({
       ) : null}
       <div
         className="markdown-workspace-editor-wrap md-preview"
-        data-tiptap-workspace=""
         role="region"
         id={regionId}
         aria-label={editorLabel}
