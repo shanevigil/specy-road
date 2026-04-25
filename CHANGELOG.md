@@ -11,6 +11,51 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.2] - 2026-04-25
+
+Patch release. Ships the accumulated `WIP/improvements-0-1-2` work
+since `v0.1.1`: PM Gantt modal/workspace usability improvements,
+local-first roadmap refresh behavior, milestone-gate validation fixes,
+task-list layout cleanup, and maintainer workflow documentation updates.
+Routes to **PyPI** via OIDC trusted publisher.
+
+### Added
+
+- **Shared document editing from the PM Gantt UI.** Adds the shared
+  markdown editor modal plus workspace-file API plumbing so shared docs
+  can be opened and edited from the dashboard.
+- **Window-like PM Gantt modals.** Task/shared-doc modals can be tiled,
+  untiled, minimized, restored, resized from edges/corners, and use more
+  of the viewport. The task editor also collapses the planning path block
+  by default and tightens title/dependency header layout.
+- **Local-first PM Gantt refresh behavior.** Roadmap responses support
+  local-first updates and `view_fingerprint` polling so the UI can refresh
+  view state without treating unrelated activity as an edit conflict.
+- **PM Gantt remote-help affordance.** Adds Git remote help text focused
+  on least-privilege PAT setup.
+
+### Changed
+
+- **Maintainer workflow docs.** Agent/docs/rules now clarify that the
+  dogfood roadmap is a fixture and that topic work should branch from an
+  active `WIP/improvements-x-y-z` line when one is in use.
+- **PM Gantt parent-row presentation.** Parent rows use theme-aware grey
+  styling and refreshed semantic rollup helpers.
+
+### Fixed
+
+- **Milestone gate validation.** Gates are allowed under milestones again,
+  and PM API error text is aligned with the validated contract.
+- **PM Gantt modal and task-list layout.** Fixes modal body scrolling,
+  minimized dock alignment, the Untile label, and TipTap task-list checkbox
+  alignment/CSS selectors; trims now-dead task-list DOM/CSS weight.
+
+### Maintenance
+
+- Refreshes bundled PM Gantt static assets and adds/updates coverage for
+  workspace file editing, gate validation, parent status rollups, Gantt bar
+  semantics, and `view_fingerprint` refresh behavior.
+
 ## [v0.1.1] - 2026-04-22
 
 Patch release. Adds **automatic JSON chunk routing** so PMs and devs no
@@ -458,7 +503,8 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.2...HEAD
+[v0.1.2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.2
 [v0.1.1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.1
 [v0.1.0]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0
 [v0.1.0-rc4]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0-rc4
