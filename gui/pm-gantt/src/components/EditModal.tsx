@@ -798,7 +798,7 @@ export function EditModal({
         }}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        Tile
+        {tileMode ? "Untile" : "Tile"}
       </button>
     ) : null;
 
