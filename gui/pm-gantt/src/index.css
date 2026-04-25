@@ -3236,7 +3236,8 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item,
   display: grid !important;
   grid-template-columns: max-content minmax(0, 1fr);
   column-gap: 0.4rem;
-  align-items: start;
+  /* Center checkbox with the first line of body text (was start, which hugged the top) */
+  align-items: center;
   list-style: none;
   list-style-type: none;
   padding: 0;
