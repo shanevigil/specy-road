@@ -3,14 +3,6 @@
 This is the **end-user** install and everyday usage guide. For toolkit-
 contributor topics (branching, tagging, PR workflow, release gating, npm
 build, supply-chain audits) see [contributor-guide.md](contributor-guide.md).
-That guide will be linked from the README **post-release**; until then,
-read it from the source tree.
-
-> **Stable PyPI pending.** Install from source from the `dev` branch (below).
-> **Prerelease** tags publish to **TestPyPI**; once **v0.1.0** is on PyPI,
-> `pip install specy-road` will work from the default index and this guide will
-> call that out. See **[contributor-guide.md](contributor-guide.md)** for
-> release flow and TestPyPI install notes.
 
 ---
 
@@ -27,7 +19,22 @@ read it from the source tree.
 
 ---
 
-## Install (from source)
+## Install
+
+For application teams, install the published package from PyPI:
+
+```bash
+pip install specy-road
+```
+
+Optional extras:
+
+```bash
+pip install "specy-road[gui-next]"  # PM Gantt UI deps
+pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
+```
+
+## Install from source (toolkit contributors)
 
 ```bash
 git clone https://github.com/shanevigil/specy-road.git

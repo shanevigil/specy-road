@@ -11,6 +11,34 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.3] - 2026-04-25
+
+Patch release. Publishes the post-`v0.1.2` release-readiness hardening:
+the restored pre-release validation runbook, the completed three-app
+user-testing pass, and a docs cleanup found by that pass. Routes to
+**PyPI** via OIDC trusted publisher.
+
+### Changed
+
+- **Release runbook pre-release validation.** Restores the mandatory
+  `WIP/pre-release-checks` branch before any `chore/release-*` branch,
+  requires `suggested_prompts/` compliance + cleanup review before fix
+  branches, and documents the three-app user-testing harness (ToDo,
+  Calculator, personal notes) with PM CLI, dev CLI, and desktop PM GUI
+  evidence requirements.
+- **Install guide post-PyPI wording.** Removes stale "Stable PyPI
+  pending" / TODO prose and makes `pip install specy-road` the primary
+  end-user install path.
+
+### Validation
+
+- Completed the restored pre-release validation pass against the
+  `v0.1.1..v0.1.2` delta plus current `dev` process-hardening changes.
+- Exercised three disposable consumer repos with local bare remotes:
+  ToDo, Calculator, and personal notes.
+- Ran PM CLI authoring/validation flows, dev CLI pickup/finish/abort
+  flows, and desktop PM GUI editing on the moderate Calculator roadmap.
+
 ## [v0.1.2] - 2026-04-25
 
 Patch release. Ships the accumulated `WIP/improvements-0-1-2` work
@@ -503,7 +531,8 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.3...HEAD
+[v0.1.3]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.3
 [v0.1.2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.2
 [v0.1.1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.1
 [v0.1.0]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.0
