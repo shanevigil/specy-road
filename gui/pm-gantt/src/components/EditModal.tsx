@@ -112,6 +112,15 @@ type Props = {
   onRectCommit?: (r: ModalRect) => void;
   /** Current git branch matches this task's registered branch — title/planning edits disabled. */
   readOnlyCheckout?: boolean;
+  /** Toggles tiling all open task dialogs; shown in the title bar. */
+  onTileToggle?: () => void;
+  /** When true, this dialog and siblings are in tiled layout. */
+  tileMode?: boolean;
+  /** Disable the tile / untile control (e.g. while the mutation queue is overloaded). */
+  tileToggleDisabled?: boolean;
+  /** Task is reduced to the bottom strip (content stays mounted). */
+  minimized?: boolean;
+  onMinimize?: () => void;
 };
 
 type SavedSnap = {
@@ -135,6 +144,12 @@ function dependencyLineItems(
     }
   }
   return out;
+}
+
+function planningFileBasename(repoRelativePath: string): string {
+  const n = repoRelativePath.replace(/\\/g, "/");
+  const i = n.lastIndexOf("/");
+  return i >= 0 ? n.slice(i + 1) : n;
 }
 
 /** One line for “active work” from registry + Git remote (same sources as the table Dev/meta columns). */
@@ -171,6 +186,34 @@ function gitWorkSummary(
 const PLANNING_ROADMAP_DEPENDENCY_HINT =
   "Use the Dependencies field above and roadmap ordering on the main view for roadmap structure. Avoid restating milestones or gating in this sheet—they go stale when work moves. LLM Review suggests removing that kind of prose.";
 
+type PlanningHintHelpProps = {
+  /** In review panels, expand the copy in the layout instead of a flyout. */
+  inFlow?: boolean;
+};
+
+function PlanningHintHelp({ inFlow = false }: PlanningHintHelpProps) {
+  return (
+    <details
+      className={
+        inFlow
+          ? "modal-edit-planning-hint-details modal-edit-planning-hint-details--in-flow"
+          : "modal-edit-planning-hint-details"
+      }
+    >
+      <summary
+        className="modal-edit-planning-hint-summary"
+        title="Planning and roadmap: where structure belongs"
+      >
+        <span aria-hidden="true">?</span>
+        <span className="sr-only">Help: planning and roadmap in this sheet</span>
+      </summary>
+      <p className="modal-edit-planning-hint-content outline-meta" role="note">
+        {PLANNING_ROADMAP_DEPENDENCY_HINT}
+      </p>
+    </details>
+  );
+}
+
 export function EditModal({
   node,
   allNodes = [],
@@ -195,6 +238,11 @@ export function EditModal({
   onActivate,
   onRectCommit,
   readOnlyCheckout = false,
+  onTileToggle,
+  tileMode = false,
+  tileToggleDisabled = false,
+  minimized = false,
+  onMinimize,
 }: Props) {
   const { onConcurrencyConflict } = usePmGuiHandlers();
   const [title, setTitle] = useState("");
@@ -477,6 +525,7 @@ export function EditModal({
   );
 
   const titleIdAttr = `edit-title-${modalStorageKey.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+  const titleInputId = `${titleIdAttr}-field`;
 
   const getDefaultRect = useCallback(
     () => getDefaultEditModalRect({ minTop: headerMinTop }),
@@ -733,6 +782,31 @@ export function EditModal({
       ? "Have an LLM provide a suggested clean up"
       : "Configure an LLM in Settings to enable this";
 
+  const titleBarAction =
+    onTileToggle != null ? (
+      <button
+        type="button"
+        className="modal-titlebar-tile-btn"
+        aria-pressed={tileMode}
+        disabled={tileToggleDisabled}
+        title={
+          tileMode
+            ? "Restore task dialogs to their positions before tiling"
+            : "Tile open task dialogs by dependency, left to right"
+        }
+        aria-label={
+          tileMode ? "Untile task dialogs" : "Tile task dialogs"
+        }
+        onClick={(e) => {
+          e.stopPropagation();
+          onTileToggle();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {tileMode ? "Untile" : "Tile"}
+      </button>
+    ) : null;
+
   return (
     <ModalFrame
       title={titleBarText}
@@ -749,23 +823,66 @@ export function EditModal({
       titleBarActive={titleBarActive}
       onActivate={onActivate}
       onRectCommit={onRectCommit}
+      titleBarAction={titleBarAction}
       footer={footer}
       bodyClassName="modal-body--edit"
       zIndex={stackZIndex}
       backdropPassThrough={backdropPassThrough}
-      closeOnEscape={closeOnEscape}
+      closeOnEscape={closeOnEscape && !minimized}
+      taskWindowChrome
+      minimized={minimized}
+      onMinimize={onMinimize}
+      maximizeConstrained={editTileMode && Boolean(tileRect)}
     >
       <div className="modal-edit-fields">
         {loading ? <p className="modal-edit-loading">Loading…</p> : null}
-        <label
+        <div
           className={
             titleConflict.hasConflict
               ? "modal-edit-title-wrap modal-edit-title-wrap--invalid"
               : "modal-edit-title-wrap"
           }
         >
-          Title
+          <div className="modal-edit-title-label-row">
+            <label
+              className="modal-edit-title-label"
+              htmlFor={titleInputId}
+            >
+              Title
+            </label>
+            {dependencyInheritance != null ? (
+              <div className="modal-edit-deps-inline" role="status">
+                <span className="modal-deps-line-label">Dependencies:</span>{" "}
+                {depItems.length > 0 ? (
+                  <span className="modal-deps-line-ids">
+                    {depItems.map(({ id, inheritedOnly }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className={
+                          inheritedOnly
+                            ? "modal-dep-id-link modal-dep-id-link--inherited"
+                            : "modal-dep-id-link"
+                        }
+                        title={
+                          inheritedOnly
+                            ? `Open task ${id} (inherited from ancestors)`
+                            : `Open task ${id}`
+                        }
+                        onClick={() => onOpenNode?.(id)}
+                      >
+                        {id}
+                      </button>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="modal-deps-none">None</span>
+                )}
+              </div>
+            ) : null}
+          </div>
           <input
+            id={titleInputId}
             value={title}
             readOnly={readOnlyCheckout}
             onChange={(e) => setTitle(e.target.value)}
@@ -791,7 +908,7 @@ export function EditModal({
               or short qualifier so items stay distinct.
             </p>
           ) : null}
-        </label>
+        </div>
         {node.type === "gate" ? (
           <label className="modal-edit-title-wrap">
             Status
@@ -830,93 +947,79 @@ export function EditModal({
           </p>
         ) : null}
       </div>
-      {dependencyInheritance != null ? (
-        <div className="modal-deps-line">
-          <span className="modal-deps-line-label">Dependencies:</span>{" "}
-          {depItems.length > 0 ? (
-            <span className="modal-deps-line-ids">
-              {depItems.map(({ id, inheritedOnly }) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={
-                    inheritedOnly
-                      ? "modal-dep-id-link modal-dep-id-link--inherited"
-                      : "modal-dep-id-link"
-                  }
-                  title={
-                    inheritedOnly
-                      ? `Open task ${id} (inherited from ancestors)`
-                      : `Open task ${id}`
-                  }
-                  onClick={() => onOpenNode?.(id)}
-                >
-                  {id}
-                </button>
-              ))}
-            </span>
-          ) : (
-            <span className="modal-deps-none">None</span>
-          )}
-        </div>
-      ) : null}
       {sheetPath != null ? (
         <section className="modal-edit-planning-section">
           <div className="modal-edit-planning-toolbar">
-            <div className="modal-edit-planning-path-wrap">
-              <span className="modal-edit-planning-file-text">Planning</span>
-              <code className="modal-edit-planning-path" title={sheetPath}>
-                {sheetPath}
-              </code>
-            </div>
-            <button
-              type="button"
-              className="modal-edit-llm-review-btn"
-              disabled={llmReviewDisabled}
-              title={llmReviewTitle}
-              aria-label="LLM Review. Have an LLM provide a suggested clean up"
-              onClick={() => runLlmReview()}
+            <details
+              className="modal-edit-planning-meta-details"
+              aria-label="Planning file path and ancestor sheets"
             >
-              {reviewBusy ? "Running…" : "LLM Review"}
-            </button>
-          </div>
-          <p
-            className="modal-edit-planning-roadmap-hint outline-meta"
-            role="note"
-          >
-            {PLANNING_ROADMAP_DEPENDENCY_HINT}
-          </p>
-          {ancestorFiles.length > 0 ? (
-            <p className="modal-edit-planning-ancestors outline-meta">
-              <span className="modal-edit-planning-ancestors-label">
-                Ancestor sheets
-              </span>
-              {ancestorFiles.map((f) => (
-                <span key={f.path} className="modal-edit-planning-ancestor-item">
-                  <code
-                    className={
-                      f.exists
-                        ? "modal-edit-planning-ancestor-path"
-                        : "modal-edit-planning-ancestor-path modal-edit-planning-ancestor-path--missing"
-                    }
-                    title={f.path}
-                  >
-                    {f.path}
-                  </code>
+              <summary className="modal-edit-planning-meta-summary">
+                <span className="modal-edit-planning-file-text">Planning</span>
+                <code
+                  className="modal-edit-planning-path-preview"
+                  title={sheetPath}
+                >
+                  {planningFileBasename(sheetPath)}
+                </code>
+                <span className="sr-only">
+                  {`. Expand for full path${ancestorFiles.length > 0 ? " and ancestor sheets" : ""}.`}
                 </span>
-              ))}
-            </p>
-          ) : null}
+              </summary>
+              <div className="modal-edit-planning-meta-expanded">
+                <code className="modal-edit-planning-path" title={sheetPath}>
+                  {sheetPath}
+                </code>
+                {ancestorFiles.length > 0 ? (
+                  <p className="modal-edit-planning-ancestors outline-meta">
+                    <span className="modal-edit-planning-ancestors-label">
+                      Ancestor sheets
+                    </span>
+                    {ancestorFiles.map((f) => (
+                      <span
+                        key={f.path}
+                        className="modal-edit-planning-ancestor-item"
+                      >
+                        <code
+                          className={
+                            f.exists
+                              ? "modal-edit-planning-ancestor-path"
+                              : "modal-edit-planning-ancestor-path modal-edit-planning-ancestor-path--missing"
+                          }
+                          title={f.path}
+                        >
+                          {f.path}
+                        </code>
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+              </div>
+            </details>
+            <div className="modal-edit-planning-toolbar-trailing">
+              <PlanningHintHelp />
+              <button
+                type="button"
+                className="modal-edit-llm-review-btn"
+                disabled={llmReviewDisabled}
+                title={llmReviewTitle}
+                aria-label="LLM Review. Have an LLM provide a suggested clean up"
+                onClick={() => runLlmReview()}
+              >
+                {reviewBusy ? "Running…" : "LLM Review"}
+              </button>
+            </div>
+          </div>
           {reviewErr ? (
             <p className="modal-review-error modal-review-error--toolbar">
               {reviewErr}
             </p>
           ) : null}
           {reviewReport == null ? (
-            <div className="modal-edit-review-split modal-edit-review-split--single">
+            <div className="modal-edit-review-split modal-edit-review-split--single modal-edit-review-split--body-scroll">
               <div className="modal-edit-md-column">
                 <MarkdownWorkspace
-                  className="modal-markdown-fill constitution-md-workspace"
+                  className="md-workspace--modal-body-scroll constitution-md-workspace"
                   value={content}
                   onChange={setContent}
                   disabled={readOnlyCheckout}
@@ -926,10 +1029,10 @@ export function EditModal({
               </div>
             </div>
           ) : showRawCompare ? (
-            <div className="modal-edit-review-split modal-edit-review-split--raw-compare">
+            <div className="modal-edit-review-split modal-edit-review-split--raw-compare modal-edit-review-split--body-scroll">
               <div className="modal-edit-md-column">
                 <MarkdownWorkspace
-                  className="modal-markdown-fill constitution-md-workspace"
+                  className="md-workspace--modal-body-scroll constitution-md-workspace"
                   value={content}
                   onChange={setContent}
                   disabled={readOnlyCheckout}
@@ -938,12 +1041,7 @@ export function EditModal({
                 />
               </div>
               <div className="modal-edit-raw-proposed-panel">
-                <p
-                  className="modal-edit-planning-roadmap-hint modal-edit-planning-roadmap-hint--review outline-meta"
-                  role="note"
-                >
-                  {PLANNING_ROADMAP_DEPENDENCY_HINT}
-                </p>
+                <PlanningHintHelp inFlow />
                 <div className="modal-edit-review-actions modal-edit-review-actions--raw">
                   <button
                     type="button"
@@ -1079,12 +1177,7 @@ export function EditModal({
             </div>
           ) : (
             <div className="modal-edit-review-diff-full">
-              <p
-                className="modal-edit-planning-roadmap-hint modal-edit-planning-roadmap-hint--review outline-meta"
-                role="note"
-              >
-                {PLANNING_ROADMAP_DEPENDENCY_HINT}
-              </p>
+              <PlanningHintHelp inFlow />
               <div className="modal-edit-review-actions modal-edit-review-actions--diff">
                 <button type="button" onClick={() => dismissReview()}>
                   Close LLM Review

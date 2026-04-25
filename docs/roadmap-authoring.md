@@ -2,7 +2,7 @@
 
 ## Source of truth
 
-**Canonical:** the roadmap graph under [`roadmap/`](../tests/fixtures/specy_road_dogfood/roadmap/). The entry file is **required**: [`roadmap/manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
+**Canonical for a specy-road project:** the roadmap graph under that project's `roadmap/`. In this toolkit repository, the examples and links point at the dogfood **test fixture** under [`tests/fixtures/specy_road_dogfood/roadmap/`](../tests/fixtures/specy_road_dogfood/roadmap/); consumer projects keep the same structure at their own repo root. The entry file is **required**: [`roadmap/manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
 
 Display **`id`** values may be **renumbered** when outline operations rewrite the tree; stable identity is always **`node_key`** (UUID). Gaps in numbering are allowed; do not recycle or collide **`node_key`** values. (See [Display `id` vs stable `node_key`](#display-id-vs-stable-node_key) below.)
 

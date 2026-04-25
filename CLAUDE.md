@@ -6,20 +6,21 @@ This repo is the **specy-road toolkit** (Python package + validators + optional 
 
 Read [`AGENTS.md`](AGENTS.md) first.
 
-For maintainer roadmap work, keep context small:
+For toolkit work, keep context small:
 
 - [`constitution/purpose.md`](constitution/purpose.md)
 - [`constitution/principles.md`](constitution/principles.md)
 - [`constraints/README.md`](constraints/README.md)
-- **Dogfood graph:** [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) — your node + parents + `dependencies`
-- **[Feature sheets under `planning/`](tests/fixtures/specy_road_dogfood/planning/README.md)** (flat `planning/*.md` in the dogfood tree) when relevant
-- [`tests/fixtures/specy_road_dogfood/shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md), then cited contracts only
+- **Dogfood test fixture:** [`tests/fixtures/specy_road_dogfood/roadmap/`](tests/fixtures/specy_road_dogfood/roadmap/) — validation/sample data only, not the canonical toolkit product roadmap
+- **[Feature sheets under `planning/`](tests/fixtures/specy_road_dogfood/planning/README.md)** (flat `planning/*.md` in the dogfood fixture) when validating or updating fixture data
+- [`tests/fixtures/specy_road_dogfood/shared/README.md`](tests/fixtures/specy_road_dogfood/shared/README.md), then cited contracts only, when working on fixture behavior
 
 ## Roadmap model
 
-- **Merged graph:** `manifest.json` + JSON chunks under `roadmap/` inside the fixture tree.
-- **Registry:** `roadmap/registry.yaml` in that same tree.
-- **Generated index:** `roadmap.md` next to the graph (`specy-road export --repo-root tests/fixtures/specy_road_dogfood`).
+- **Dogfood fixture graph:** `manifest.json` + JSON chunks under `roadmap/` inside the fixture tree.
+- **Fixture registry:** `roadmap/registry.yaml` in that same tree; use it only for fixture/sample coordination.
+- **Generated fixture index:** `roadmap.md` next to the graph (`specy-road export --repo-root tests/fixtures/specy_road_dogfood`).
+- **Toolkit product roadmap:** intentionally not defined yet.
 
 Brief:
 
@@ -32,7 +33,7 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures
 - **Docs win** — prefer tracked repo docs over chat.
 - **No scope creep** — smallest change that satisfies the task.
 - **Reuse** — extend `specy_road/bundled_scripts/` and tests before adding new entrypoints.
-- **Roadmap-linked work** — [`docs/git-workflow.md`](docs/git-workflow.md) and registry under the dogfood path.
+- **Roadmap-linked fixture work** — [`docs/git-workflow.md`](docs/git-workflow.md) and registry under the dogfood path only when the task is specifically about the fixture.
 
 ## Maintainer hygiene
 
@@ -56,6 +57,7 @@ pytest
 - [`AGENTS.md`](AGENTS.md) — entry and coordination
 - [`README.md`](README.md) — install (`pip install` vs editable), `init project`, layout
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branches and registry
+- [`docs/toolkit-development.md`](docs/toolkit-development.md#maintainer-workflow-vs-consumer-workflow) — maintainer workflow, including the `WIP/improvements-x-y-z` batch line
 
 ## Repository git workflow policy (current)
 
@@ -65,12 +67,23 @@ pytest
 
 ### Branching model
 
+- Use `WIP/improvements-x-y-z` as the temporary batch branch for collecting
+  the next set of improvements toward release or release-candidate `x.y.z`.
+  Keep individual changes on short-lived topic branches, then merge them into
+  the WIP branch for integration before promoting through `dev`.
+- **Topic branch base:** When that batch line is active, **start new topic
+  branches from the WIP** (`git checkout WIP/improvements-x-y-z`, `git pull`,
+  then `git checkout -b feature/<slug>` and so on) so each branch includes the
+  same integration and docs that the rest of the batch is built on. When there
+  is no active WIP for your work, start from `dev` instead. This is also stated
+  in `AGENTS.md` under Coordination.
 - Do day-to-day work on short-lived topic branches, for example:
   - `feature/<slug>` for net-new features
   - `chore/<slug>` for maintenance/tooling/refactors
   - `fix/<slug>` or `hotfix/<slug>` for bug fixes/patches
   - `docs/<slug>` for documentation-only updates
-- Prefer opening PRs from topic branches into `dev`.
+- Prefer opening PRs from topic branches into `dev`, or into the WIP when that
+  is the agreed integration line for the current release train.
 - Avoid direct commits to `dev` or `main` unless explicitly requested by a maintainer for one-off repository administration.
 
 ### Promotion model

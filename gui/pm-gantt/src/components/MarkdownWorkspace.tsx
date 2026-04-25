@@ -7,6 +7,9 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 
+/** Must include `ProseMirror` so `index.css` rules and ProseMirror plugins can target the root. */
+const EDITOR_ROOT_CLASS = "ProseMirror markdown-workspace-editor";
+
 function normalizeMd(s: string): string {
   return s.replace(/\r\n/g, "\n");
 }
@@ -52,8 +55,13 @@ export function MarkdownWorkspace({
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
+      TaskList.configure({
+        HTMLAttributes: { class: "pm-tiptap-task-list" },
+      }),
+      TaskItem.configure({
+        nested: true,
+        HTMLAttributes: { class: "pm-tiptap-task-item" },
+      }),
       Markdown.configure({
         markedOptions: { gfm: true },
       }),
@@ -88,7 +96,7 @@ export function MarkdownWorkspace({
       shouldRerenderOnTransaction: true,
       editorProps: {
         attributes: {
-          class: "markdown-workspace-editor",
+          class: EDITOR_ROOT_CLASS,
           spellcheck: spellCheck ? "true" : "false",
         },
       },
@@ -120,7 +128,7 @@ export function MarkdownWorkspace({
     editor.setOptions({
       editorProps: {
         attributes: {
-          class: "markdown-workspace-editor",
+          class: EDITOR_ROOT_CLASS,
           spellcheck: spellCheck ? "true" : "false",
         },
       },

@@ -5,6 +5,7 @@ import {
   computeEffectiveDisplayById,
   computeEffectiveDisplayForAllNodes,
   DISPLAY_STATUS_COMPLETE,
+  nodeIdsWithChildren,
   phaseRollupDerivedComplete,
   postOrderIdsForForest,
 } from "./parentStatusRollup";
@@ -240,6 +241,18 @@ describe("buildDisplayStatusWithPhaseRollup", () => {
       enabled: false,
     });
     expect(map.M1).toBe("In Progress");
+  });
+});
+
+describe("nodeIdsWithChildren", () => {
+  it("returns ids that have a direct child in the forest", () => {
+    const nodes = [phase("M1", "In Progress"), milestone("M1.1", "Not Started", "M1")];
+    const byId: Record<string, RoadmapNode | undefined> = Object.fromEntries(
+      nodes.map((n) => [n.id, n]),
+    );
+    const s = nodeIdsWithChildren(["M1", "M1.1"], byId);
+    expect(s.has("M1")).toBe(true);
+    expect(s.has("M1.1")).toBe(false);
   });
 });
 

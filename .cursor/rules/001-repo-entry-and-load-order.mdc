@@ -10,6 +10,6 @@ alwaysApply: true
 
 ## Context hygiene (required)
 
-- Prefer generating a focused brief (toolkit dogfood tree): `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood` (equivalent script: `specy_road/bundled_scripts/generate_brief.py`; there is no top-level `scripts/` directory — see `.cursor/rules/020-change-discipline.mdc`).
+- Prefer generating focused briefs only from the dogfood test fixture when validating fixture behavior: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures/specy_road_dogfood` (equivalent script: `specy_road/bundled_scripts/generate_brief.py`; there is no top-level `scripts/` directory — see `.cursor/rules/020-change-discipline.mdc`).
 - Don’t load or edit large unrelated areas of the repo.
 

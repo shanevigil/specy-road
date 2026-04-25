@@ -45,7 +45,7 @@ You get two CLI commands:
 - **`specy-road`** — validate, brief, export, init project, do-next loop, GUI.
 - **`specyrd`** — optional IDE slash-command stubs (Cursor / Claude Code).
 
-Verify:
+Verify the CLI from a source checkout. The `--repo-root` path below is this repository's dogfood test fixture; consumer projects validate their own initialized repo root instead.
 
 ```bash
 specy-road --help

@@ -17,9 +17,15 @@ function fmtBytes(n: number): string {
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Open the shared-doc editor (TipTap) for a markdown path; drawer closes first. */
+  onOpenSharedMarkdown?: (path: string) => void;
 };
 
-export function SharedDocsDrawer({ open, onClose }: Props) {
+export function SharedDocsDrawer({
+  open,
+  onClose,
+  onOpenSharedMarkdown,
+}: Props) {
   const { onConcurrencyConflict } = usePmGuiHandlers();
   const [files, setFiles] = useState<WorkspaceFileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -89,7 +95,9 @@ export function SharedDocsDrawer({ open, onClose }: Props) {
     >
       <p className="outline-meta">
         Upload files into the repo <code>shared/</code> tree (contracts, assets,
-        etc.). Paths stay under <code>shared/</code> only.
+        etc.). Paths stay under <code>shared/</code> only.{" "}
+        <strong>Double-click</strong> a <code>.md</code> file to edit it in a
+        window (TipTap).
       </p>
       <div className="workspace-toolbar">
         <label className="workspace-subpath-label" htmlFor={subId}>
@@ -138,7 +146,30 @@ export function SharedDocsDrawer({ open, onClose }: Props) {
               </tr>
             ) : (
               files.map((f) => (
-                <tr key={f.path}>
+                <tr
+                  key={f.path}
+                  className={
+                    f.name.toLowerCase().endsWith(".md")
+                      ? "workspace-file-row workspace-file-row--md"
+                      : "workspace-file-row"
+                  }
+                  title={
+                    f.name.toLowerCase().endsWith(".md")
+                      ? "Double-click to edit in TipTap"
+                      : undefined
+                  }
+                  onDoubleClick={() => {
+                    if (!f.name.toLowerCase().endsWith(".md")) {
+                      setMsg(
+                        "Only markdown files can be opened in the editor. Double-click a .md file.",
+                      );
+                      window.setTimeout(() => setMsg(null), 3500);
+                      return;
+                    }
+                    onOpenSharedMarkdown?.(f.path);
+                    onClose();
+                  }}
+                >
                   <td>{f.name}</td>
                   <td>
                     <code className="workspace-path-code">{f.path}</code>

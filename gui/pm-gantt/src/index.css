@@ -20,6 +20,10 @@
   --bar-mr-rejected: #c62828;
   --bar-blocked: #d32f2f;
   --bar-complete: #424242;
+  --bar-parent: #d5d5d5;
+  --bar-parent-stroke: rgba(0, 0, 0, 0.12);
+  --row-parent-bg: rgba(0, 0, 0, 0.04);
+  --row-parent-fg: var(--muted);
   --bar-gate: #7b1fa2;
   --row-gate-bg: rgba(123, 31, 162, 0.1);
   --gantt-bar-selected: var(--accent);
@@ -53,6 +57,10 @@
   --bar-checkout-active: var(--bar-in-progress);
   --bar-mr-pending: #ffa726;
   --bar-mr-rejected: #ef5350;
+  --bar-parent: #4a4a4a;
+  --bar-parent-stroke: rgba(255, 255, 255, 0.12);
+  --row-parent-bg: rgba(255, 255, 255, 0.05);
+  --row-parent-fg: var(--muted);
   --bar-gate: #ba68c8;
   --row-gate-bg: rgba(186, 104, 200, 0.14);
   --gantt-dep-chain: #ffca28;
@@ -73,6 +81,10 @@
     --bar-checkout-active: var(--bar-in-progress);
     --bar-mr-pending: #ffa726;
     --bar-mr-rejected: #ef5350;
+    --bar-parent: #4a4a4a;
+    --bar-parent-stroke: rgba(255, 255, 255, 0.12);
+    --row-parent-bg: rgba(255, 255, 255, 0.05);
+    --row-parent-fg: var(--muted);
     --bar-gate: #ba68c8;
     --row-gate-bg: rgba(186, 104, 200, 0.14);
     --gantt-dep-chain: #ffca28;
@@ -1025,6 +1037,14 @@ button {
   background: color-mix(in srgb, var(--row-gate-bg) 55%, var(--sel-bg));
 }
 
+.outline-table
+  tbody
+  tr.outline-row-parent:not(.selected):not(.outline-row-gate)
+  td {
+  background: var(--row-parent-bg);
+  color: var(--row-parent-fg);
+}
+
 .outline-table tbody tr.outline-row-git-current td {
   box-shadow: inset 3px 0 0 0 #2e7d32;
 }
@@ -1139,15 +1159,6 @@ button {
   font-size: 0.65rem;
 }
 
-.modal-deps-line {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0.35rem 0;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  border-top: 1px solid var(--border);
-}
-
 .modal-deps-line-label {
   font-weight: 600;
   color: var(--muted);
@@ -1199,6 +1210,21 @@ button {
   pointer-events: auto;
 }
 
+/* Hidden but still mounted (minimized task dialog) */
+.modal-backdrop--minimized {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+}
+
 .modal-window {
   position: fixed;
   z-index: 51;
@@ -1215,6 +1241,8 @@ button {
 }
 
 .modal-titlebar {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -1233,6 +1261,148 @@ button {
 .modal-titlebar--active {
   background: var(--sel-bg);
   border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+/* macOS traffic lights (task modals) */
+.modal-titlebar--mac-task {
+  padding-left: 0.4rem;
+}
+
+.modal-tld {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.1rem;
+}
+
+.modal-tld-btn {
+  display: block;
+  width: 0.75rem;
+  min-width: 0.75rem;
+  height: 0.75rem;
+  min-height: 0.75rem;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border: 0.5px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modal-tld-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  filter: grayscale(0.4);
+}
+
+.modal-tld-btn--close {
+  background: #ff5f57;
+}
+.modal-tld-btn--min {
+  background: #febc2e;
+}
+.modal-tld-btn--zoom {
+  background: #28c840;
+}
+
+/* Windows / Linux: title bar right controls */
+.modal-titlebar--win-task {
+  padding-right: 0.15rem;
+}
+
+.modal-win-ctrls {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  margin-left: 0.1rem;
+}
+
+.modal-win-btn {
+  box-sizing: border-box;
+  width: 2.5rem;
+  min-width: 2.5rem;
+  min-height: 1.8rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  font: inherit;
+}
+
+.modal-win-btn:hover:enabled {
+  background: color-mix(in srgb, var(--muted) 20%, transparent);
+}
+
+.modal-win-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.modal-win-btn--close:hover:enabled {
+  background: #e81123;
+  color: #fff;
+}
+
+.modal-win-glyph {
+  display: block;
+  font-size: 0.65rem;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+/* Bottom strip for minimized task dialogs (below app chrome, under modals) */
+.task-minimized-dock {
+  position: fixed;
+  z-index: 45;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  /* Extra left padding keeps the bar clear of header sync status (“Saving…”) on narrow layouts */
+  padding: 0.4rem 0.6rem 0.4rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 92%, var(--muted) 8%);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+  max-width: 100%;
+}
+
+.task-minimized-dock-btn {
+  max-width: 12rem;
+  min-height: 2.25rem;
+  padding: 0.2rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-minimized-dock-btn:hover {
+  background: var(--sel-bg, color-mix(in srgb, var(--accent) 12%, var(--bg)));
+  border-color: var(--border);
 }
 
 .modal-titlebar-drag {
@@ -1274,20 +1444,123 @@ button {
   background: color-mix(in srgb, var(--muted) 20%, transparent);
 }
 
-.modal-resize-handle {
+.modal-titlebar-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.modal-titlebar-tile-btn {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  min-height: 1.75rem;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.modal-titlebar-tile-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--muted) 14%, var(--bg));
+}
+
+.modal-titlebar-tile-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-resize-layer {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 18px;
-  height: 18px;
-  cursor: nwse-resize;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.modal-resize-grip {
+  position: absolute;
+  pointer-events: auto;
   touch-action: none;
-  background: linear-gradient(
-    135deg,
-    transparent 50%,
-    color-mix(in srgb, var(--muted) 45%, transparent) 50%
-  );
+  box-sizing: border-box;
+}
+
+/* Edges: inset from corners so corner grips keep priority; top omits the close/title end zones. */
+.modal-resize-grip--n {
+  top: 0;
+  left: 2.75rem;
+  right: 2.75rem;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.modal-resize-grip--s {
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.modal-resize-grip--e {
+  right: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.modal-resize-grip--w {
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.modal-resize-grip--nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+  border-top-left-radius: 6px;
+}
+
+.modal-resize-grip--ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+  border-top-right-radius: 6px;
+}
+
+.modal-resize-grip--sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nesw-resize;
+  border-bottom-left-radius: 6px;
+}
+
+.modal-resize-grip--se {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
   border-bottom-right-radius: 6px;
+}
+
+.modal-resize-grip:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
 .modal-body {
@@ -1504,6 +1777,83 @@ button {
   font-size: 0.95rem;
 }
 
+.modal-body--framed .settings-section-heading-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/** Compact “?” next to “Test Git” (matches planning-sheet hint control) */
+.modal-body--framed .settings-git-help-trigger {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  min-height: 1.5rem;
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 10%, var(--bg));
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-body--framed .settings-git-help-trigger:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--muted) 18%, var(--bg));
+}
+
+.modal-body--framed .settings-git-help-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.modal-body--framed .settings-git-help {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--sel-bg);
+}
+
+.modal-body--framed .settings-git-help details + details {
+  margin-top: 0.35rem;
+}
+
+.modal-body--framed .settings-git-help summary {
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--fg);
+}
+
+.modal-body--framed .settings-git-help summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.modal-body--framed .settings-git-help-body {
+  margin-top: 0.4rem;
+}
+
+.modal-body--framed .settings-git-help-list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.modal-body--framed .settings-git-help-list li + li {
+  margin-top: 0.25rem;
+}
+
 .modal-footer {
   flex-shrink: 0;
   display: flex;
@@ -1637,6 +1987,44 @@ button {
   gap: 0.35rem;
 }
 
+.modal-edit-title-label-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-window .modal-edit-title-label {
+  display: block;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.modal-edit-deps-inline {
+  margin: 0 0 0 auto;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: min(100%, 22rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  align-content: flex-start;
+  justify-content: flex-end;
+  text-align: right;
+  border: none;
+  gap: 0 0.1rem;
+}
+
 .modal-edit-title-wrap--invalid input {
   border-color: color-mix(in srgb, crimson 75%, var(--border)) !important;
   box-shadow:
@@ -1683,8 +2071,7 @@ button {
 }
 
 .modal-edit-planning-section {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
@@ -1711,6 +2098,93 @@ button {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.5rem 0.75rem;
+}
+
+/** Collapsed by default: summary shows “Planning” + filename; full path + ancestors inside. */
+.modal-edit-planning-meta-details {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 6px;
+  padding: 0.2rem 0.45rem 0.35rem;
+  background: color-mix(in srgb, var(--muted) 4%, var(--bg));
+}
+
+.modal-edit-planning-meta-details[open] {
+  padding-bottom: 0.4rem;
+}
+
+.modal-edit-planning-meta-summary {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+  cursor: pointer;
+  user-select: none;
+  color: var(--fg);
+  font: inherit;
+}
+
+.modal-edit-planning-meta-summary::-webkit-details-marker {
+  display: none;
+}
+
+.modal-edit-planning-meta-details .modal-edit-planning-meta-summary::before {
+  content: "▶";
+  display: inline-block;
+  font-size: 0.6rem;
+  line-height: 1;
+  margin-right: 0.15rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: transform 0.1s ease;
+  transform: rotate(0deg);
+  transform-origin: 40% 50%;
+}
+
+.modal-edit-planning-meta-details[open]
+  .modal-edit-planning-meta-summary::before {
+  transform: rotate(90deg);
+}
+
+.modal-edit-planning-path-preview {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 8rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.15rem 0.25rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bg) 60%, var(--muted));
+}
+
+@media (min-width: 500px) {
+  .modal-edit-planning-path-preview {
+    max-width: min(22rem, 100%);
+  }
+}
+
+.modal-edit-planning-meta-expanded {
+  margin: 0.4rem 0 0 0.65rem;
+  min-width: 0;
+  padding: 0;
+  display: block;
+  border: none;
+}
+
+.modal-edit-planning-meta-expanded .modal-edit-planning-path {
+  display: block;
+  margin: 0;
+}
+
+.modal-edit-planning-meta-expanded .modal-edit-planning-ancestors {
+  margin: 0.4rem 0 0;
 }
 
 .modal-edit-planning-path-wrap {
@@ -1760,16 +2234,83 @@ button {
   opacity: 0.65;
 }
 
-.modal-edit-planning-roadmap-hint {
-  margin: 0.35rem 0;
+/** Compact “?” — full text in expanding panel (see .modal-edit-planning-hint-content) */
+.modal-edit-planning-hint-details {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.modal-edit-planning-hint-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  min-height: 1.5rem;
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 10%, var(--bg));
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-edit-planning-hint-summary::-webkit-details-marker {
+  display: none;
+}
+
+.modal-edit-planning-hint-details .modal-edit-planning-hint-summary {
+  list-style: none;
+}
+
+.modal-edit-planning-hint-summary:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--muted) 18%, var(--bg));
+}
+
+.modal-edit-planning-hint-content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  z-index: 2;
+  min-width: min(22rem, calc(100vw - 2.5rem));
+  max-width: 28rem;
+  margin: 0;
+  padding: 0.5rem 0.6rem;
   font-size: 0.78rem;
   line-height: 1.45;
   color: color-mix(in srgb, var(--muted) 92%, var(--fg));
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--fg) 8%, transparent);
 }
 
-.modal-edit-planning-roadmap-hint--review {
+/* Review panels: expand hint in document flow (avoids overflow clipping) */
+.modal-edit-planning-hint-details--in-flow .modal-edit-planning-hint-content {
+  position: static;
+  margin-top: 0.35rem;
+  min-width: 0;
+  max-width: none;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--muted) 6%, var(--bg));
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.modal-edit-planning-toolbar-trailing {
   flex-shrink: 0;
-  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.4rem 0.5rem;
 }
 
 .modal-edit-llm-review-btn {
@@ -1799,6 +2340,20 @@ button {
   display: flex;
   flex-direction: row;
   gap: 0.75rem;
+}
+
+/** Let modal body scroll instead of a nested TipTap scroll (default + raw-compare editor) */
+.modal-edit-review-split--body-scroll {
+  flex: 0 0 auto;
+  min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-edit-review-split--body-scroll .modal-edit-md-column {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
 }
 
 .modal-edit-review-split--single {
@@ -2173,16 +2728,33 @@ button {
   resize: vertical;
 }
 
-.modal-markdown-fill.markdown-workspace {
-  flex: 1;
-  min-height: 0;
+/* TipTap grows with content; [`.modal-body`] scrolls (see Vision/Constitution + `.constitution-md-section`) */
+.md-workspace--modal-body-scroll.markdown-workspace {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
 }
 
-.modal-markdown-fill .markdown-workspace-editor-wrap {
-  flex: 1;
+.md-workspace--modal-body-scroll .markdown-workspace-editor-wrap {
+  flex: none;
+  min-height: 12rem;
+  overflow: visible;
+}
+
+.md-workspace--modal-body-scroll
+  .markdown-workspace-editor-wrap
+  .markdown-workspace-tiptap-root {
+  flex: none;
+  display: block;
   min-height: 0;
+}
+
+.md-workspace--modal-body-scroll
+  .markdown-workspace-editor-wrap
+  .ProseMirror {
+  flex: none;
+  min-height: 10rem;
+  outline: none;
 }
 
 .modal-body--constitution {
@@ -2195,6 +2767,29 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.modal-body--shared-doc-edit {
+  flex: 1;
+  min-height: 0;
+}
+
+.shared-doc-edit-body {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.shared-doc-edit-body .constitution-md-workspace {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Modal body scrolls; label must not create a nested flex height trap */
+.shared-doc-edit-body .workspace-editor-label {
+  flex: 0 0 auto;
+  min-height: 0;
 }
 
 .workspace-toolbar {
@@ -2276,6 +2871,10 @@ button {
   color: var(--muted);
   font-style: italic;
   padding: 0.75rem !important;
+}
+
+.workspace-file-row--md {
+  cursor: pointer;
 }
 
 .workspace-notes-layout {
@@ -2421,7 +3020,7 @@ button {
   font-size: 0.85rem;
 }
 
-.modal-window input,
+.modal-window input:not([type="checkbox"]):not([type="radio"]),
 .modal-window textarea,
 .modal-window select {
   width: 100%;
@@ -2611,12 +3210,14 @@ button {
   padding-left: 1.35rem;
 }
 
-.md-preview ul[data-type="taskList"] {
+.md-preview ul[data-type="taskList"],
+.md-preview ul.pm-tiptap-task-list {
   list-style: none;
   padding-left: 0;
 }
 
-.md-preview ul[data-type="taskList"] ul[data-type="taskList"] {
+.md-preview ul[data-type="taskList"] ul[data-type="taskList"],
+.md-preview ul.pm-tiptap-task-list ul.pm-tiptap-task-list {
   margin: 0.2em 0 0.2em 0.5rem;
 }
 
@@ -2624,22 +3225,73 @@ button {
   margin: 0.2em 0;
 }
 
-.md-preview li[data-type="taskItem"] {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.35rem;
-}
-
-.md-preview li[data-type="taskItem"] > label {
-  flex-shrink: 0;
-  margin: 0;
-  display: inline-flex;
+/* TipTap task list: grid row (checkbox | body). `pm-tiptap-*` from TaskList/Item; `data-type` fallbacks for older content. */
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item,
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"] {
+  display: grid !important;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0.4rem;
   align-items: center;
+  list-style: none;
+  list-style-type: none;
+  padding: 0;
+  margin: 0.2em 0;
 }
 
-.md-preview li[data-type="taskItem"] > div {
-  flex: 1;
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item::marker,
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"]::marker {
+  content: none;
+}
+
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label,
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"] > label {
+  grid-column: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0;
   min-width: 0;
+  width: max-content;
+  max-width: none;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+/* @tiptap/extension-list: empty span next to the checkbox (styler hook) */
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > span,
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
+  > label
+  > span {
+  flex: 0 0 0;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  pointer-events: none;
+  display: inline-block;
+  vertical-align: top;
+}
+
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div,
+.md-preview ul[data-type="taskList"] > li[data-type="taskItem"] > div {
+  grid-column: 2;
+  min-width: 0;
+}
+
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div > p:first-child,
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
+  > div
+  > p:first-child {
+  margin-top: 0;
 }
 
 .md-preview blockquote {
@@ -2676,6 +3328,26 @@ button {
 .md-preview input[type="checkbox"] {
   margin-right: 0.35rem;
   vertical-align: middle;
+}
+
+/* TipTap task list: do not let modal form `input` rules affect checkbox layout */
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"],
+.md-preview
+  ul[data-type="taskList"]
+  > li[data-type="taskItem"]
+  > label
+  > input[type="checkbox"] {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin-top: 0;
+  margin-right: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .constitution-missing-banner {

@@ -14,7 +14,8 @@ import {
   fetchGovernanceCompletion,
   fetchPublishStatus,
   fetchRoadmap,
-  fetchRoadmapFingerprint,
+  fetchRoadmapFingerprints,
+  shouldRefreshSnapshotFromViewFingerprint,
   indentNode,
   outdentNode,
   patchNode,
@@ -40,6 +41,7 @@ import {
 import {
   buildDisplayStatusWithPhaseRollup,
   computeEffectiveDisplayForAllNodes,
+  nodeIdsWithChildren,
 } from "./parentStatusRollup";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
@@ -100,6 +102,11 @@ const SharedDocsDrawer = lazy(() =>
     default: m.SharedDocsDrawer,
   })),
 );
+const SharedDocEditModal = lazy(() =>
+  import("./components/SharedDocEditModal").then((m) => ({
+    default: m.SharedDocEditModal,
+  })),
+);
 const VisionDrawer = lazy(() =>
   import("./components/VisionDrawer").then((m) => ({ default: m.VisionDrawer })),
 );
@@ -141,6 +148,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Node ids with an open edit dialog (order = stack; last is topmost). */
   const [editOpenIds, setEditOpenIds] = useState<string[]>([]);
+  /** Open task ids shown in the bottom strip; order = minimize order. */
+  const [minimizedTaskIds, setMinimizedTaskIds] = useState<string[]>([]);
   /** Which task dialog is focused (accent title bar, receives new-dialog offset anchor). */
   const [focusedEditNodeId, setFocusedEditNodeId] = useState<string | null>(
     null,
@@ -158,14 +167,16 @@ export default function App() {
   > | null>(null);
   const editRectsRef = useRef<Record<string, ModalRect>>({});
   const focusedEditNodeIdRef = useRef<string | null>(null);
-  const headerBottomRef = useRef(0);
   const preTileRectsRef = useRef<Record<string, ModalRect>>({});
   const headerRef = useRef<HTMLElement>(null);
-  const [headerBottomPx, setHeaderBottomPx] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
   const [sharedDocsOpen, setSharedDocsOpen] = useState(false);
+  /** Repo-relative `shared/...` path for the TipTap editor modal, or null when closed. */
+  const [sharedDocEditPath, setSharedDocEditPath] = useState<string | null>(
+    null,
+  );
   const [workNotesOpen, setWorkNotesOpen] = useState(false);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
@@ -189,7 +200,12 @@ export default function App() {
 
   // Fingerprint is a string end-to-end (server emits base-10 strings to
   // dodge JS Number precision loss for values > 2**53).
+  /** Narrow outline token for X-PM-Gui-Fingerprint on mutating requests. */
   const lastFingerprintRef = useRef<string | null>(null);
+  /** Broad view token: polling compares this to detect ref/overlay catch-up. */
+  const lastViewFingerprintRef = useRef<string | null>(null);
+  /** One-shot delayed check after first snapshot (see plan: fast first paint). */
+  const firstViewCatchUpNudgeDoneRef = useRef(false);
 
   const [splitPct, setSplitPct] = useState(() => {
     const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.splitPct);
@@ -269,10 +285,6 @@ export default function App() {
   useEffect(() => {
     focusedEditNodeIdRef.current = focusedEditNodeId;
   }, [focusedEditNodeId]);
-  useEffect(() => {
-    headerBottomRef.current = headerBottomPx;
-  }, [headerBottomPx]);
-
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-theme", themeMode);
   }, [themeMode]);
@@ -280,16 +292,6 @@ export default function App() {
   useEffect(() => {
     writeBrowserPref(BROWSER_PREF_KEYS.themeMode, repoId, themeMode);
   }, [themeMode, repoId]);
-
-  useLayoutEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const measure = () => setHeaderBottomPx(el.getBoundingClientRect().bottom);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const measureGanttStackHeader = useCallback(() => {
     const wrap = leftRef.current;
@@ -353,6 +355,7 @@ export default function App() {
       ]);
       setData(r);
       lastFingerprintRef.current = r.fingerprint;
+      lastViewFingerprintRef.current = r.view_fingerprint ?? r.fingerprint;
       const rr = repoRes as { repo_root?: string; repo_id?: string };
       setRepo(rr.repo_root || "");
       setRepoId(typeof rr.repo_id === "string" ? rr.repo_id : null);
@@ -361,8 +364,9 @@ export default function App() {
         return r.ordered_ids[0] ?? null;
       });
       try {
-        const fp = await fetchRoadmapFingerprint();
-        lastFingerprintRef.current = fp;
+        const pair = await fetchRoadmapFingerprints();
+        lastFingerprintRef.current = pair.fingerprint;
+        lastViewFingerprintRef.current = pair.view_fingerprint;
       } catch {
         /* polling endpoint optional when roadmap payload has fingerprint */
       }
@@ -635,12 +639,13 @@ export default function App() {
     const id = window.setInterval(() => {
       void (async () => {
         try {
-          const fp = await fetchRoadmapFingerprint();
-          const prev = lastFingerprintRef.current;
-          if (prev !== null && fp !== prev) {
+          const pair = await fetchRoadmapFingerprints();
+          const prevView = lastViewFingerprintRef.current;
+          if (shouldRefreshSnapshotFromViewFingerprint(prevView, pair.view_fingerprint)) {
             await runRoadmapAction("Checking for updates…", () => loadSnapshot());
           } else {
-            lastFingerprintRef.current = fp;
+            lastFingerprintRef.current = pair.fingerprint;
+            lastViewFingerprintRef.current = pair.view_fingerprint;
           }
         } catch {
           /* ignore */
@@ -649,6 +654,33 @@ export default function App() {
     }, refreshSec * 1000);
     return () => window.clearInterval(id);
   }, [refreshSec, runRoadmapAction, loadSnapshot]);
+
+  /** Re-check view fingerprint once shortly after first paint (deferred ``git fetch``). */
+  useEffect(() => {
+    if (data == null) return;
+    if (firstViewCatchUpNudgeDoneRef.current) return;
+    firstViewCatchUpNudgeDoneRef.current = true;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const pair = await fetchRoadmapFingerprints();
+          const prevView = lastViewFingerprintRef.current;
+          if (shouldRefreshSnapshotFromViewFingerprint(prevView, pair.view_fingerprint)) {
+            await runRoadmapAction("Checking for updates…", () => loadSnapshot());
+          } else {
+            lastFingerprintRef.current = pair.fingerprint;
+            lastViewFingerprintRef.current = pair.view_fingerprint;
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    }, 1000);
+    return () => {
+      window.clearTimeout(timer);
+      firstViewCatchUpNudgeDoneRef.current = false;
+    };
+  }, [data, loadSnapshot, runRoadmapAction]);
 
   const cancelDepEdit = useCallback(() => {
     setDepEditId(null);
@@ -740,6 +772,11 @@ export default function App() {
     }
     return out;
   }, [displayData?.ordered_ids, displayData?.row_depths, hideCompleteActive, effectiveDisplayById]);
+
+  const parentNodeIds = useMemo(
+    () => nodeIdsWithChildren(visibleOrderedIds, byId),
+    [visibleOrderedIds, byId],
+  );
 
   /** Crop leading empty chart columns when hiding complete (min step among visible rows). */
   const ganttDepthOffset = useMemo(() => {
@@ -874,6 +911,7 @@ export default function App() {
   }, []);
 
   const openEditNode = useCallback((id: string) => {
+    setMinimizedTaskIds((m) => m.filter((x) => x !== id));
     setEditOpenIds((prev) => {
       const wasNew = !prev.includes(id);
       const next = prev.includes(id)
@@ -885,7 +923,7 @@ export default function App() {
         const anchorRect = anchorId
           ? editRectsRef.current[anchorId]
           : undefined;
-        const spawn = computeSpawnRect(anchorRect, headerBottomRef.current);
+        const spawn = computeSpawnRect(anchorRect, 0);
         setSpawnRects((s) => ({ ...s, [id]: spawn }));
       }
       return next;
@@ -900,7 +938,14 @@ export default function App() {
     );
   }, []);
 
+  const minimizeEditNode = useCallback((id: string) => {
+    setMinimizedTaskIds((prev) =>
+      prev.includes(id) ? prev : [...prev, id],
+    );
+  }, []);
+
   const closeEditNode = useCallback((id: string) => {
+    setMinimizedTaskIds((prev) => prev.filter((x) => x !== id));
     setEditOpenIds((prev) => prev.filter((x) => x !== id));
     delete editRectsRef.current[id];
     setSpawnRects((s) => {
@@ -913,14 +958,18 @@ export default function App() {
 
   const toggleTileLayout = useCallback(() => {
     if (!displayData || editOpenIds.length === 0) return;
+    const visibleForTile = editOpenIds.filter(
+      (id) => !minimizedTaskIds.includes(id),
+    );
+    if (visibleForTile.length === 0) return;
     if (!editTileMode) {
       preTileRectsRef.current = { ...editRectsRef.current };
       const sorted = sortOpenIdsByDependencyOrder(
-        editOpenIds,
+        visibleForTile,
         byId,
         displayData.ordered_ids,
       );
-      setTileRects(computeTileRects(sorted, headerBottomPx));
+      setTileRects(computeTileRects(sorted));
       setEditTileMode(true);
     } else {
       setResumeAfterUntile({ ...preTileRectsRef.current });
@@ -930,19 +979,22 @@ export default function App() {
         requestAnimationFrame(() => setResumeAfterUntile(null));
       });
     }
-  }, [displayData, editOpenIds, byId, editTileMode, headerBottomPx]);
+  }, [displayData, editOpenIds, byId, editTileMode, minimizedTaskIds]);
 
-  /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open stack changes */
+  /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open / minimize stack changes */
   useEffect(() => {
-    if (
-      focusedEditNodeId != null &&
-      !editOpenIds.includes(focusedEditNodeId)
-    ) {
-      setFocusedEditNodeId(
-        editOpenIds.length ? editOpenIds[editOpenIds.length - 1]! : null,
-      );
+    if (focusedEditNodeId == null) return;
+    const visible = editOpenIds.filter(
+      (x) => !minimizedTaskIds.includes(x),
+    );
+    if (!editOpenIds.includes(focusedEditNodeId)) {
+      setFocusedEditNodeId(visible[visible.length - 1] ?? null);
+      return;
     }
-  }, [editOpenIds, focusedEditNodeId]);
+    if (minimizedTaskIds.includes(focusedEditNodeId)) {
+      setFocusedEditNodeId(visible[visible.length - 1] ?? null);
+    }
+  }, [editOpenIds, minimizedTaskIds, focusedEditNodeId]);
   /* eslint-enable @eslint-react/set-state-in-effect */
 
   /* eslint-disable @eslint-react/set-state-in-effect -- exit tile mode when last dialog closes */
@@ -957,14 +1009,29 @@ export default function App() {
   /* eslint-disable @eslint-react/set-state-in-effect -- recompute tiled window positions from graph order */
   useEffect(() => {
     if (!editTileMode || !displayData || editOpenIds.length === 0) return;
+    const visibleForTile = editOpenIds.filter(
+      (id) => !minimizedTaskIds.includes(id),
+    );
+    if (visibleForTile.length === 0) {
+      setEditTileMode(false);
+      setTileRects(null);
+      return;
+    }
     const sorted = sortOpenIdsByDependencyOrder(
-      editOpenIds,
+      visibleForTile,
       byId,
       displayData.ordered_ids,
     );
-    setTileRects(computeTileRects(sorted, headerBottomPx));
-  }, [editTileMode, displayData, editOpenIds, byId, headerBottomPx]);
+    setTileRects(computeTileRects(sorted));
+  }, [editTileMode, displayData, editOpenIds, byId, minimizedTaskIds]);
   /* eslint-enable @eslint-react/set-state-in-effect */
+
+  const editStackVisibleIds = useMemo(
+    () => editOpenIds.filter((id) => !minimizedTaskIds.includes(id)),
+    [editOpenIds, minimizedTaskIds],
+  );
+  const topVisibleEditId =
+    editStackVisibleIds[editStackVisibleIds.length - 1] ?? null;
 
   const indentDisabled =
     !selectedId ||
@@ -1243,25 +1310,6 @@ export default function App() {
             >
               {hideCompleteActive ? "Show Complete" : "Hide Complete"}
             </button>
-            {editOpenIds.length > 0 ? (
-              <button
-                type="button"
-                className="app-header-icon-btn app-header-tile-btn"
-                aria-pressed={editTileMode}
-                disabled={queueOverloaded}
-                title={
-                  editTileMode
-                    ? "Restore task dialogs to their positions before tiling"
-                    : "Tile open task dialogs by dependency, left to right"
-                }
-                aria-label={
-                  editTileMode ? "Untile task dialogs" : "Tile task dialogs"
-                }
-                onClick={() => toggleTileLayout()}
-              >
-                Tile
-              </button>
-            ) : null}
             <button
               type="button"
               className="app-header-icon-btn"
@@ -1536,6 +1584,7 @@ export default function App() {
               onMutationError={(msg) => setErr(msg)}
               onWaitMessage={triggerWaitMessage}
               onGapInsert={onGapInsert}
+              parentNodeIds={parentNodeIds}
             />
           </div>
           <div
@@ -1573,6 +1622,7 @@ export default function App() {
               onChartBackgroundMouseDown={
                 depEditId ? () => void applyDepEdit() : undefined
               }
+              parentNodeIds={parentNodeIds}
             />
           </div>
         </div>
@@ -1594,7 +1644,7 @@ export default function App() {
                 emBaseStatus,
                 emOutlineStatus,
               );
-              const passThrough = editOpenIds.length > 1;
+              const passThrough = editStackVisibleIds.length > 1;
               return (
                 <EditModal
                   key={nodeId}
@@ -1602,10 +1652,10 @@ export default function App() {
                   pmDisplayStatusResolved={displayStatusById[nodeId]}
                   allNodes={displayData.nodes}
                   modalStorageKey={nodeId}
-                  stackZIndex={50 + index}
+                  stackZIndex={200 + index}
                   backdropPassThrough={passThrough}
-                  closeOnEscape={index === editOpenIds.length - 1}
-                  headerMinTop={headerBottomPx}
+                  closeOnEscape={nodeId === topVisibleEditId}
+                  headerMinTop={0}
                   spawnInitialRect={spawnRects[nodeId]}
                   editTileMode={editTileMode}
                   tileRect={tileRects?.[nodeId] ?? null}
@@ -1613,12 +1663,17 @@ export default function App() {
                   titleBarActive={focusedEditNodeId === nodeId}
                   onActivate={() => focusEditNode(nodeId)}
                   onRectCommit={(r) => handleEditRectCommit(nodeId, r)}
+                  onTileToggle={toggleTileLayout}
+                  tileMode={editTileMode}
+                  tileToggleDisabled={queueOverloaded}
                   dependencyInheritance={displayData.dependency_inheritance?.[nodeId]}
                   registryByNode={displayData.registry_by_node}
                   gitEnrichment={displayData.git_enrichment}
                   prHints={displayData.pr_hints}
                   onClose={() => closeEditNode(nodeId)}
                   onOpenNode={openEditNode}
+                  minimized={minimizedTaskIds.includes(nodeId)}
+                  onMinimize={() => minimizeEditNode(nodeId)}
                   onPersisted={() =>
                     void runRoadmapAction("Saving task…", loadSnapshot).catch(
                       (e: unknown) => setErr(String(e)),
@@ -1646,6 +1701,13 @@ export default function App() {
         <SharedDocsDrawer
           open={sharedDocsOpen}
           onClose={() => setSharedDocsOpen(false)}
+          onOpenSharedMarkdown={(path) => setSharedDocEditPath(path)}
+        />
+        <SharedDocEditModal
+          open={sharedDocEditPath != null}
+          filePath={sharedDocEditPath}
+          onClose={() => setSharedDocEditPath(null)}
+          minTop={0}
         />
         <WorkNotesDrawer
           open={workNotesOpen}
@@ -1669,9 +1731,34 @@ export default function App() {
           status={publishStatus}
           onRefreshStatus={refreshPublishStatus}
           onPublish={handlePublishRoadmap}
-          headerMinTop={headerBottomPx}
+          headerMinTop={0}
         />
       </Suspense>
+      {displayData && minimizedTaskIds.length > 0 ? (
+        <div
+          className="task-minimized-dock"
+          role="region"
+          aria-label="Minimized tasks"
+        >
+          {minimizedTaskIds.map((nid) => {
+            const n = byId[nid];
+            return (
+              <button
+                key={nid}
+                type="button"
+                className="task-minimized-dock-btn"
+                onClick={() => {
+                  setMinimizedTaskIds((p) => p.filter((x) => x !== nid));
+                  focusEditNode(nid);
+                }}
+                title="Restore"
+              >
+                {n?.title?.trim() || n?.id || nid}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       </div>
     </div>
     </PendingMutationsProvider>

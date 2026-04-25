@@ -47,7 +47,7 @@ export function getDefaultModalRect(): ModalRect {
 
 /**
  * Smaller, left-anchored preset so the Gantt chart on the right stays visible.
- * ``minTop`` keeps the dialog below the app header (or other chrome).
+ * ``minTop`` optionally constrains the top edge (e.g. reserved chrome); use ``0`` to allow the full viewport.
  */
 export function getDefaultEditModalRect(opts?: { minTop?: number }): ModalRect {
   const vw = typeof window !== "undefined" ? window.innerWidth : 800;
@@ -80,6 +80,24 @@ export function getDefaultSettingsModalRect(): ModalRect {
     width,
     height: vh - 2 * margin,
   };
+}
+
+/** Task dialog “full window” (viewport minus small margins, below ``minTop`` / header). */
+export function getTaskMaximizedRect(clampOpts?: ClampRectOpts): ModalRect {
+  const m = 8;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 800;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 600;
+  const minTop = clampOpts?.minTop ?? 0;
+  const top = minTop + m;
+  return clampRectToViewport(
+    {
+      left: m,
+      top,
+      width: vw - 2 * m,
+      height: vh - top - m,
+    },
+    clampOpts,
+  );
 }
 
 function isModalRect(x: unknown): x is ModalRect {

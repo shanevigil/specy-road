@@ -42,6 +42,8 @@ type Props = {
   onBarDoubleClick?: (id: string) => void;
   /** Clicks on empty chart area (not bars) save dependency edit when active. */
   onChartBackgroundMouseDown?: () => void;
+  /** Rows with at least one child in the outline tree (container / non-leaf). */
+  parentNodeIds?: ReadonlySet<string>;
 };
 
 /**
@@ -73,6 +75,7 @@ export function GanttPane({
   onSelect,
   onBarDoubleClick,
   onChartBackgroundMouseDown,
+  parentNodeIds,
 }: Props) {
   const n = orderedIds.length;
   if (n === 0) return null;
@@ -223,6 +226,7 @@ export function GanttPane({
           depHighlight: hi,
           displayStatus: disp,
           node,
+          isParentNode: Boolean(parentNodeIds?.has(id)),
           registryByNode,
           gitCheckoutById,
           gitEnrichment,

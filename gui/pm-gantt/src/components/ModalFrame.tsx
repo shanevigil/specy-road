@@ -10,12 +10,78 @@ import {
 import {
   clampRectToViewport,
   getDefaultModalRect,
+  getTaskMaximizedRect,
   loadStoredModalRect,
   saveStoredModalRect,
   type ClampRectOpts,
   type ModalRect,
 } from "../modalRect";
 import { isMacLike } from "../os";
+
+/** Matches `modalRect` clamp minima for width/height. */
+const RESIZE_MIN_W = 320;
+const RESIZE_MIN_H = 220;
+
+type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
+function applyModalResize(
+  kind: ResizeHandle,
+  r: ModalRect,
+  dx: number,
+  dy: number,
+): ModalRect {
+  const minW = RESIZE_MIN_W;
+  const minH = RESIZE_MIN_H;
+  let { left, top, width, height } = r;
+  switch (kind) {
+    case "e":
+      width = Math.max(minW, width + dx);
+      break;
+    case "s":
+      height = Math.max(minH, height + dy);
+      break;
+    case "w": {
+      const newW = Math.max(minW, width - dx);
+      left += width - newW;
+      width = newW;
+      break;
+    }
+    case "n": {
+      const newH = Math.max(minH, height - dy);
+      top += height - newH;
+      height = newH;
+      break;
+    }
+    case "se":
+      width = Math.max(minW, width + dx);
+      height = Math.max(minH, height + dy);
+      break;
+    case "ne": {
+      width = Math.max(minW, width + dx);
+      const newH = Math.max(minH, height - dy);
+      top += height - newH;
+      height = newH;
+      break;
+    }
+    case "sw": {
+      const newW = Math.max(minW, width - dx);
+      left += width - newW;
+      width = newW;
+      height = Math.max(minH, height + dy);
+      break;
+    }
+    case "nw": {
+      const newW = Math.max(minW, width - dx);
+      left += width - newW;
+      width = newW;
+      const newH = Math.max(minH, height - dy);
+      top += height - newH;
+      height = newH;
+      break;
+    }
+  }
+  return { left, top, width, height };
+}
 
 type Props = {
   title: ReactNode;
@@ -48,16 +114,28 @@ type Props = {
   onRectCommit?: (r: ModalRect) => void;
   /** User brought this dialog forward (title bar or window). */
   onActivate?: () => void;
-  /** Show the bottom-right resize handle (default true). */
+  /** Show edge and corner resize handles (default true). */
   resizable?: boolean;
   /** On window resize, replace rect with ``getDefaultRect()`` (e.g. right-docked panel). */
   reanchorOnResize?: boolean;
+  /**
+   * Extra control in the title bar: after the drag handle on Mac (where close is on the
+   * left), before the drag handle on other platforms (where close is on the right).
+   */
+  titleBarAction?: ReactNode;
   /** Stacking order when multiple modals are open (e.g. 50, 51, …). */
   zIndex?: number;
   /** Transparent backdrop that does not dim or block the rest of the UI. */
   backdropPassThrough?: boolean;
   /** When false, Escape does not close (only topmost modal should use true in a stack). */
   closeOnEscape?: boolean;
+  /** macOS / Windows–style min / max / close (task modals). */
+  taskWindowChrome?: boolean;
+  /** Hide the window (state alive; e.g. minimized to the task strip). */
+  minimized?: boolean;
+  onMinimize?: () => void;
+  /** When true, maximize is disabled (e.g. tiled layout). */
+  maximizeConstrained?: boolean;
 };
 
 function resolveInitialRect(
@@ -99,12 +177,19 @@ export function ModalFrame({
   onActivate,
   resizable = true,
   reanchorOnResize = false,
+  titleBarAction,
   zIndex = 50,
   backdropPassThrough = false,
   closeOnEscape = true,
+  taskWindowChrome = false,
+  minimized = false,
+  onMinimize,
+  maximizeConstrained = false,
 }: Props) {
   const mac = isMacLike();
   const clampOpts: ClampRectOpts = useMemo(() => ({ minTop }), [minTop]);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const preMaxRectRef = useRef<ModalRect | null>(null);
 
   const [rect, setRect] = useState<ModalRect>(() =>
     resolveInitialRect(
@@ -129,6 +214,44 @@ export function ModalFrame({
   }, [onRectCommit]);
 
   useEffect(() => {
+    if (forcedRect != null) {
+      setIsMaximized(false);
+      preMaxRectRef.current = null;
+    }
+  }, [forcedRect]);
+
+  const toggleMaximize = useCallback(() => {
+    if (maximizeConstrained || forcedRect != null) return;
+    if (isMaximized) {
+      const pre = preMaxRectRef.current;
+      if (pre) {
+        const next = clampRectToViewport(pre, clampOpts);
+        setRect(next);
+        rectRef.current = next;
+      }
+      setIsMaximized(false);
+      preMaxRectRef.current = null;
+    } else {
+      preMaxRectRef.current = { ...rectRef.current };
+      const next = getTaskMaximizedRect(clampOpts);
+      setRect(next);
+      rectRef.current = next;
+      setIsMaximized(true);
+    }
+    requestAnimationFrame(() => {
+      persistRect();
+      emitCommit();
+    });
+  }, [
+    isMaximized,
+    maximizeConstrained,
+    forcedRect,
+    clampOpts,
+    persistRect,
+    emitCommit,
+  ]);
+
+  useEffect(() => {
     onRectCommit?.(rectRef.current);
     // eslint-disable-next-line @eslint-react/exhaustive-deps -- report initial rect once
   }, []);
@@ -139,11 +262,11 @@ export function ModalFrame({
     left: number;
     top: number;
   } | null>(null);
-  const resizeRef = useRef<{
+  const resizeSessionRef = useRef<{
+    kind: ResizeHandle;
     x: number;
     y: number;
-    width: number;
-    height: number;
+    rect: ModalRect;
   } | null>(null);
 
   const tileWasActive = useRef(false);
@@ -180,22 +303,29 @@ export function ModalFrame({
     const onWinResize = () => {
       if (reanchorOnResize && getDefaultRect) {
         setRect(clampRectToViewport(getDefaultRect(), clampOpts));
-      } else {
-        setRect((r) => clampRectToViewport(r, clampOpts));
+        return;
       }
+      if (isMaximized && !forcedRect) {
+        const next = getTaskMaximizedRect(clampOpts);
+        setRect(next);
+        rectRef.current = next;
+        requestAnimationFrame(emitCommit);
+        return;
+      }
+      setRect((r) => clampRectToViewport(r, clampOpts));
     };
     window.addEventListener("resize", onWinResize);
     return () => window.removeEventListener("resize", onWinResize);
-  }, [reanchorOnResize, getDefaultRect, clampOpts]);
+  }, [reanchorOnResize, getDefaultRect, clampOpts, isMaximized, forcedRect, emitCommit]);
 
   useEffect(() => {
-    if (!closeOnEscape) return;
+    if (!closeOnEscape || minimized) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, closeOnEscape]);
+  }, [onClose, closeOnEscape, minimized]);
 
   const onTitlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -203,6 +333,21 @@ export function ModalFrame({
       if (e.button !== 0) return;
       e.preventDefault();
       onActivate?.();
+      if (isMaximized) {
+        const pre = preMaxRectRef.current;
+        if (pre) {
+          const next = clampRectToViewport(pre, clampOpts);
+          setRect(next);
+          rectRef.current = next;
+        }
+        setIsMaximized(false);
+        preMaxRectRef.current = null;
+        requestAnimationFrame(() => {
+          persistRect();
+          emitCommit();
+        });
+        return;
+      }
       const r = rectRef.current;
       dragRef.current = {
         x: e.clientX,
@@ -236,39 +381,37 @@ export function ModalFrame({
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     },
-    [forcedRect, persistRect, emitCommit, onActivate, clampOpts],
+    [forcedRect, isMaximized, persistRect, emitCommit, onActivate, clampOpts],
   );
 
-  const onResizePointerDown = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onResizeStart = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>, kind: ResizeHandle) => {
       if (forcedRect != null) return;
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
       onActivate?.();
       const r = rectRef.current;
-      resizeRef.current = {
+      resizeSessionRef.current = {
+        kind,
         x: e.clientX,
         y: e.clientY,
-        width: r.width,
-        height: r.height,
+        rect: { ...r },
       };
       const move = (ev: PointerEvent) => {
-        if (!resizeRef.current) return;
-        const d = resizeRef.current;
-        setRect((prev) =>
+        if (!resizeSessionRef.current) return;
+        const s = resizeSessionRef.current;
+        const dx = ev.clientX - s.x;
+        const dy = ev.clientY - s.y;
+        setRect(
           clampRectToViewport(
-            {
-              ...prev,
-              width: Math.max(320, d.width + ev.clientX - d.x),
-              height: Math.max(220, d.height + ev.clientY - d.y),
-            },
+            applyModalResize(s.kind, s.rect, dx, dy),
             clampOpts,
           ),
         );
       };
       const up = () => {
-        resizeRef.current = null;
+        resizeSessionRef.current = null;
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
         requestAnimationFrame(() => {
@@ -286,7 +429,9 @@ export function ModalFrame({
     onActivate?.();
   }, [onActivate]);
 
-  const closeBtn = (
+  const maxDisabled = maximizeConstrained || forcedRect != null;
+
+  const defaultCloseBtn = (
     <button
       type="button"
       className="modal-close"
@@ -301,21 +446,123 @@ export function ModalFrame({
     </button>
   );
 
+  const macTld =
+    taskWindowChrome && mac ? (
+      <div className="modal-tld" role="group" aria-label="Window">
+        <button
+          type="button"
+          className="modal-tld-btn modal-tld-btn--close"
+          aria-label="Close"
+          title="Close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+        <button
+          type="button"
+          className="modal-tld-btn modal-tld-btn--min"
+          aria-label="Minimize"
+          title="Minimize"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMinimize?.();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+        <button
+          type="button"
+          className="modal-tld-btn modal-tld-btn--zoom"
+          aria-label={isMaximized ? "Restore" : "Enter full screen"}
+          title={isMaximized ? "Restore" : "Enter full screen"}
+          disabled={maxDisabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!maxDisabled) toggleMaximize();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        />
+      </div>
+    ) : null;
+
+  const winControls =
+    taskWindowChrome && !mac ? (
+      <div className="modal-win-ctrls" role="group" aria-label="Window">
+        <button
+          type="button"
+          className="modal-win-btn"
+          aria-label="Minimize"
+          title="Minimize"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMinimize?.();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <span className="modal-win-glyph" aria-hidden>
+            ―
+          </span>
+        </button>
+        <button
+          type="button"
+          className="modal-win-btn"
+          aria-label={isMaximized ? "Restore" : "Maximize"}
+          title={isMaximized ? "Restore" : "Maximize"}
+          disabled={maxDisabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!maxDisabled) toggleMaximize();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <span className="modal-win-glyph" aria-hidden>
+            {isMaximized ? "❐" : "□"}
+          </span>
+        </button>
+        <button
+          type="button"
+          className="modal-win-btn modal-win-btn--close"
+          aria-label="Close"
+          title="Close"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <span className="modal-win-glyph" aria-hidden>
+            ×
+          </span>
+        </button>
+      </div>
+    ) : null;
+
   const titlebarClass =
     mac
-      ? `modal-titlebar modal-titlebar--mac${titleBarActive ? " modal-titlebar--active" : ""}`
-      : `modal-titlebar${titleBarActive ? " modal-titlebar--active" : ""}`;
+      ? `modal-titlebar modal-titlebar--mac${
+          taskWindowChrome ? " modal-titlebar--mac-task" : ""
+        }${titleBarActive ? " modal-titlebar--active" : ""}`
+      : `modal-titlebar${
+          taskWindowChrome ? " modal-titlebar--win-task" : ""
+        }${titleBarActive ? " modal-titlebar--active" : ""}`;
 
   return (
     <div
-      className={
+      className={[
         backdropPassThrough
           ? "modal-backdrop modal-backdrop--pass-through"
-          : "modal-backdrop"
-      }
+          : "modal-backdrop",
+        minimized ? "modal-backdrop--minimized" : null,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="presentation"
       style={{ zIndex }}
-      onMouseDown={backdropPassThrough ? undefined : onClose}
+      aria-hidden={minimized}
+      onMouseDown={
+        minimized || backdropPassThrough ? undefined : onClose
+      }
     >
       <div
         className="modal-window"
@@ -334,7 +581,25 @@ export function ModalFrame({
         }}
       >
         <header className={titlebarClass}>
-          {mac ? closeBtn : null}
+          {taskWindowChrome
+            ? mac
+              ? macTld
+              : titleBarAction != null
+                ? (
+                    <div className="modal-titlebar-action modal-titlebar-action--leading">
+                      {titleBarAction}
+                    </div>
+                  )
+                : null
+            : mac
+              ? defaultCloseBtn
+              : titleBarAction != null
+                ? (
+                    <div className="modal-titlebar-action modal-titlebar-action--leading">
+                      {titleBarAction}
+                    </div>
+                  )
+                : null}
           <div
             className="modal-titlebar-drag"
             onPointerDown={onTitlePointerDown}
@@ -347,7 +612,25 @@ export function ModalFrame({
               {title}
             </span>
           </div>
-          {!mac ? closeBtn : null}
+          {taskWindowChrome
+            ? mac
+              ? titleBarAction != null
+                ? (
+                    <div className="modal-titlebar-action modal-titlebar-action--trailing">
+                      {titleBarAction}
+                    </div>
+                  )
+                : null
+              : winControls
+            : mac
+              ? titleBarAction != null
+                ? (
+                    <div className="modal-titlebar-action modal-titlebar-action--trailing">
+                      {titleBarAction}
+                    </div>
+                  )
+                : null
+              : defaultCloseBtn}
         </header>
         <div
           className={
@@ -359,13 +642,28 @@ export function ModalFrame({
           {children}
         </div>
         {footer != null ? <div className="modal-footer">{footer}</div> : null}
-        {resizable && forcedRect == null ? (
-          <div
-            className="modal-resize-handle"
-            onPointerDown={onResizePointerDown}
-            aria-hidden
-            title="Resize"
-          />
+        {resizable && forcedRect == null && !isMaximized ? (
+          <div className="modal-resize-layer" aria-hidden>
+            {(
+              [
+                ["n", "Resize from top"] as const,
+                ["s", "Resize from bottom"] as const,
+                ["e", "Resize from right"] as const,
+                ["w", "Resize from left"] as const,
+                ["nw", "Resize from top-left"] as const,
+                ["ne", "Resize from top-right"] as const,
+                ["sw", "Resize from bottom-left"] as const,
+                ["se", "Resize from bottom-right"] as const,
+              ] as const
+            ).map(([kind, titleT]) => (
+              <div
+                key={kind}
+                className={`modal-resize-grip modal-resize-grip--${kind}`}
+                title={titleT}
+                onPointerDown={(ev) => onResizeStart(ev, kind)}
+              />
+            ))}
+          </div>
         ) : null}
       </div>
     </div>

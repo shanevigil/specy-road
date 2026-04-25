@@ -180,6 +180,31 @@ describe("resolveGanttBarStyle", () => {
     expect(s.fill).toBe("var(--gantt-bar-selected)");
   });
 
+  it("parent container rows use neutral parent bar when not selected", () => {
+    const s = resolveGanttBarStyle({
+      nodeId: "P1",
+      selected: false,
+      depHighlight: false,
+      displayStatus: "In Progress",
+      isParentNode: true,
+      node: stubNode("P1", "In Progress"),
+    });
+    expect(s.fill).toBe("var(--bar-parent)");
+    expect(s.stroke).toBe("var(--bar-parent-stroke)");
+  });
+
+  it("selection wins over parent grey on bar", () => {
+    const s = resolveGanttBarStyle({
+      nodeId: "P1",
+      selected: true,
+      depHighlight: false,
+      displayStatus: "In Progress",
+      isParentNode: true,
+      node: stubNode("P1", "In Progress"),
+    });
+    expect(s.fill).toBe("var(--gantt-bar-selected)");
+  });
+
   it("uses thick accent stroke for feature-branch in-progress bar only", () => {
     const thick = resolveGanttBarStyle({
       nodeId: "N1",
