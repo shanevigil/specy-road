@@ -163,10 +163,8 @@ export default function App() {
   > | null>(null);
   const editRectsRef = useRef<Record<string, ModalRect>>({});
   const focusedEditNodeIdRef = useRef<string | null>(null);
-  const headerBottomRef = useRef(0);
   const preTileRectsRef = useRef<Record<string, ModalRect>>({});
   const headerRef = useRef<HTMLElement>(null);
-  const [headerBottomPx, setHeaderBottomPx] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
@@ -278,10 +276,6 @@ export default function App() {
   useEffect(() => {
     focusedEditNodeIdRef.current = focusedEditNodeId;
   }, [focusedEditNodeId]);
-  useEffect(() => {
-    headerBottomRef.current = headerBottomPx;
-  }, [headerBottomPx]);
-
   useLayoutEffect(() => {
     document.documentElement.setAttribute("data-theme", themeMode);
   }, [themeMode]);
@@ -289,16 +283,6 @@ export default function App() {
   useEffect(() => {
     writeBrowserPref(BROWSER_PREF_KEYS.themeMode, repoId, themeMode);
   }, [themeMode, repoId]);
-
-  useLayoutEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-    const measure = () => setHeaderBottomPx(el.getBoundingClientRect().bottom);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const measureGanttStackHeader = useCallback(() => {
     const wrap = leftRef.current;
@@ -894,7 +878,7 @@ export default function App() {
         const anchorRect = anchorId
           ? editRectsRef.current[anchorId]
           : undefined;
-        const spawn = computeSpawnRect(anchorRect, headerBottomRef.current);
+        const spawn = computeSpawnRect(anchorRect, 0);
         setSpawnRects((s) => ({ ...s, [id]: spawn }));
       }
       return next;
@@ -929,7 +913,7 @@ export default function App() {
         byId,
         displayData.ordered_ids,
       );
-      setTileRects(computeTileRects(sorted, headerBottomPx));
+      setTileRects(computeTileRects(sorted));
       setEditTileMode(true);
     } else {
       setResumeAfterUntile({ ...preTileRectsRef.current });
@@ -939,7 +923,7 @@ export default function App() {
         requestAnimationFrame(() => setResumeAfterUntile(null));
       });
     }
-  }, [displayData, editOpenIds, byId, editTileMode, headerBottomPx]);
+  }, [displayData, editOpenIds, byId, editTileMode]);
 
   /* eslint-disable @eslint-react/set-state-in-effect -- sync focused dialog when open stack changes */
   useEffect(() => {
@@ -971,8 +955,8 @@ export default function App() {
       byId,
       displayData.ordered_ids,
     );
-    setTileRects(computeTileRects(sorted, headerBottomPx));
-  }, [editTileMode, displayData, editOpenIds, byId, headerBottomPx]);
+    setTileRects(computeTileRects(sorted));
+  }, [editTileMode, displayData, editOpenIds, byId]);
   /* eslint-enable @eslint-react/set-state-in-effect */
 
   const indentDisabled =
@@ -1252,25 +1236,6 @@ export default function App() {
             >
               {hideCompleteActive ? "Show Complete" : "Hide Complete"}
             </button>
-            {editOpenIds.length > 0 ? (
-              <button
-                type="button"
-                className="app-header-icon-btn app-header-tile-btn"
-                aria-pressed={editTileMode}
-                disabled={queueOverloaded}
-                title={
-                  editTileMode
-                    ? "Restore task dialogs to their positions before tiling"
-                    : "Tile open task dialogs by dependency, left to right"
-                }
-                aria-label={
-                  editTileMode ? "Untile task dialogs" : "Tile task dialogs"
-                }
-                onClick={() => toggleTileLayout()}
-              >
-                Tile
-              </button>
-            ) : null}
             <button
               type="button"
               className="app-header-icon-btn"
@@ -1614,7 +1579,7 @@ export default function App() {
                   stackZIndex={50 + index}
                   backdropPassThrough={passThrough}
                   closeOnEscape={index === editOpenIds.length - 1}
-                  headerMinTop={headerBottomPx}
+                  headerMinTop={0}
                   spawnInitialRect={spawnRects[nodeId]}
                   editTileMode={editTileMode}
                   tileRect={tileRects?.[nodeId] ?? null}
@@ -1622,6 +1587,9 @@ export default function App() {
                   titleBarActive={focusedEditNodeId === nodeId}
                   onActivate={() => focusEditNode(nodeId)}
                   onRectCommit={(r) => handleEditRectCommit(nodeId, r)}
+                  onTileToggle={toggleTileLayout}
+                  tileMode={editTileMode}
+                  tileToggleDisabled={queueOverloaded}
                   dependencyInheritance={displayData.dependency_inheritance?.[nodeId]}
                   registryByNode={displayData.registry_by_node}
                   gitEnrichment={displayData.git_enrichment}
@@ -1661,7 +1629,7 @@ export default function App() {
           open={sharedDocEditPath != null}
           filePath={sharedDocEditPath}
           onClose={() => setSharedDocEditPath(null)}
-          minTop={headerBottomPx}
+          minTop={0}
         />
         <WorkNotesDrawer
           open={workNotesOpen}
@@ -1685,7 +1653,7 @@ export default function App() {
           status={publishStatus}
           onRefreshStatus={refreshPublishStatus}
           onPublish={handlePublishRoadmap}
-          headerMinTop={headerBottomPx}
+          headerMinTop={0}
         />
       </Suspense>
       </div>

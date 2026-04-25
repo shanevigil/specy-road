@@ -52,6 +52,11 @@ type Props = {
   resizable?: boolean;
   /** On window resize, replace rect with ``getDefaultRect()`` (e.g. right-docked panel). */
   reanchorOnResize?: boolean;
+  /**
+   * Extra control in the title bar: after the drag handle on Mac (where close is on the
+   * left), before the drag handle on other platforms (where close is on the right).
+   */
+  titleBarAction?: ReactNode;
   /** Stacking order when multiple modals are open (e.g. 50, 51, …). */
   zIndex?: number;
   /** Transparent backdrop that does not dim or block the rest of the UI. */
@@ -99,6 +104,7 @@ export function ModalFrame({
   onActivate,
   resizable = true,
   reanchorOnResize = false,
+  titleBarAction,
   zIndex = 50,
   backdropPassThrough = false,
   closeOnEscape = true,
@@ -335,6 +341,11 @@ export function ModalFrame({
       >
         <header className={titlebarClass}>
           {mac ? closeBtn : null}
+          {!mac && titleBarAction != null ? (
+            <div className="modal-titlebar-action modal-titlebar-action--leading">
+              {titleBarAction}
+            </div>
+          ) : null}
           <div
             className="modal-titlebar-drag"
             onPointerDown={onTitlePointerDown}
@@ -347,6 +358,11 @@ export function ModalFrame({
               {title}
             </span>
           </div>
+          {mac && titleBarAction != null ? (
+            <div className="modal-titlebar-action modal-titlebar-action--trailing">
+              {titleBarAction}
+            </div>
+          ) : null}
           {!mac ? closeBtn : null}
         </header>
         <div

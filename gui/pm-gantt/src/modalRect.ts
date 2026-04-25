@@ -47,7 +47,7 @@ export function getDefaultModalRect(): ModalRect {
 
 /**
  * Smaller, left-anchored preset so the Gantt chart on the right stays visible.
- * ``minTop`` keeps the dialog below the app header (or other chrome).
+ * ``minTop`` optionally constrains the top edge (e.g. reserved chrome); use ``0`` to allow the full viewport.
  */
 export function getDefaultEditModalRect(opts?: { minTop?: number }): ModalRect {
   const vw = typeof window !== "undefined" ? window.innerWidth : 800;

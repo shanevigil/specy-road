@@ -1265,6 +1265,38 @@ button {
   background: color-mix(in srgb, var(--muted) 20%, transparent);
 }
 
+.modal-titlebar-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.modal-titlebar-tile-btn {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  min-height: 1.75rem;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.modal-titlebar-tile-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--muted) 14%, var(--bg));
+}
+
+.modal-titlebar-tile-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .modal-resize-handle {
   position: absolute;
   right: 0;

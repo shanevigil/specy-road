@@ -89,16 +89,13 @@ export function sortOpenIdsByDependencyOrder(
   return out;
 }
 
-/** Horizontal tiles below the app header, left to right. */
-export function computeTileRects(
-  orderedNodeIds: string[],
-  headerBottomPx: number,
-): Record<string, ModalRect> {
+/** Horizontal tiles across the viewport, left to right (may use space above the app header). */
+export function computeTileRects(orderedNodeIds: string[]): Record<string, ModalRect> {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const margin = 8;
   const gap = 6;
-  const top = headerBottomPx + margin;
+  const top = margin;
   const n = orderedNodeIds.length;
   if (n === 0) return {};
   const availW = vw - 2 * margin;
@@ -113,7 +110,7 @@ export function computeTileRects(
         width: colW,
         height: availH,
       },
-      { minTop: headerBottomPx },
+      { minTop: 0 },
     );
   });
   return out;

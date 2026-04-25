@@ -112,6 +112,12 @@ type Props = {
   onRectCommit?: (r: ModalRect) => void;
   /** Current git branch matches this task's registered branch — title/planning edits disabled. */
   readOnlyCheckout?: boolean;
+  /** Toggles tiling all open task dialogs; shown in the title bar. */
+  onTileToggle?: () => void;
+  /** When true, this dialog and siblings are in tiled layout. */
+  tileMode?: boolean;
+  /** Disable the tile / untile control (e.g. while the mutation queue is overloaded). */
+  tileToggleDisabled?: boolean;
 };
 
 type SavedSnap = {
@@ -229,6 +235,9 @@ export function EditModal({
   onActivate,
   onRectCommit,
   readOnlyCheckout = false,
+  onTileToggle,
+  tileMode = false,
+  tileToggleDisabled = false,
 }: Props) {
   const { onConcurrencyConflict } = usePmGuiHandlers();
   const [title, setTitle] = useState("");
@@ -768,6 +777,31 @@ export function EditModal({
       ? "Have an LLM provide a suggested clean up"
       : "Configure an LLM in Settings to enable this";
 
+  const titleBarAction =
+    onTileToggle != null ? (
+      <button
+        type="button"
+        className="modal-titlebar-tile-btn"
+        aria-pressed={tileMode}
+        disabled={tileToggleDisabled}
+        title={
+          tileMode
+            ? "Restore task dialogs to their positions before tiling"
+            : "Tile open task dialogs by dependency, left to right"
+        }
+        aria-label={
+          tileMode ? "Untile task dialogs" : "Tile task dialogs"
+        }
+        onClick={(e) => {
+          e.stopPropagation();
+          onTileToggle();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        Tile
+      </button>
+    ) : null;
+
   return (
     <ModalFrame
       title={titleBarText}
@@ -784,6 +818,7 @@ export function EditModal({
       titleBarActive={titleBarActive}
       onActivate={onActivate}
       onRectCommit={onRectCommit}
+      titleBarAction={titleBarAction}
       footer={footer}
       bodyClassName="modal-body--edit"
       zIndex={stackZIndex}
