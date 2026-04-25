@@ -41,6 +41,7 @@ import {
 import {
   buildDisplayStatusWithPhaseRollup,
   computeEffectiveDisplayForAllNodes,
+  nodeIdsWithChildren,
 } from "./parentStatusRollup";
 import { rowMatchesRegisteredBranch } from "./rowMatchesRegisteredBranch";
 import { transitiveEffectivePrereqIds } from "./depChain";
@@ -771,6 +772,11 @@ export default function App() {
     }
     return out;
   }, [displayData?.ordered_ids, displayData?.row_depths, hideCompleteActive, effectiveDisplayById]);
+
+  const parentNodeIds = useMemo(
+    () => nodeIdsWithChildren(visibleOrderedIds, byId),
+    [visibleOrderedIds, byId],
+  );
 
   /** Crop leading empty chart columns when hiding complete (min step among visible rows). */
   const ganttDepthOffset = useMemo(() => {
@@ -1578,6 +1584,7 @@ export default function App() {
               onMutationError={(msg) => setErr(msg)}
               onWaitMessage={triggerWaitMessage}
               onGapInsert={onGapInsert}
+              parentNodeIds={parentNodeIds}
             />
           </div>
           <div
@@ -1615,6 +1622,7 @@ export default function App() {
               onChartBackgroundMouseDown={
                 depEditId ? () => void applyDepEdit() : undefined
               }
+              parentNodeIds={parentNodeIds}
             />
           </div>
         </div>

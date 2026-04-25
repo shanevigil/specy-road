@@ -56,6 +56,25 @@ export function childrenIdsByParentId(
 }
 
 /**
+ * Ids in `orderedIds` that have at least one child in the `parent_id` forest
+ * (container rows: phases, group tasks, etc.).
+ */
+export function nodeIdsWithChildren(
+  orderedIds: string[],
+  byId: Record<string, RoadmapNode | undefined>,
+): Set<string> {
+  const nodes = orderedIds
+    .map((id) => byId[id])
+    .filter((n): n is RoadmapNode => Boolean(n));
+  const childrenByParent = childrenIdsByParentId(nodes);
+  const s = new Set<string>();
+  for (const id of orderedIds) {
+    if ((childrenByParent.get(id)?.length ?? 0) > 0) s.add(id);
+  }
+  return s;
+}
+
+/**
  * Post-order ids: every child before its parent (forest over `parent_id`).
  * Disconnected subtrees (e.g. missing parent id) are still visited.
  */
