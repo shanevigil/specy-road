@@ -158,6 +158,7 @@ export function MarkdownWorkspace({
       ) : null}
       <div
         className="markdown-workspace-editor-wrap md-preview"
+        data-tiptap-workspace=""
         role="region"
         id={regionId}
         aria-label={editorLabel}
