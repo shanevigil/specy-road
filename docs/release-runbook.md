@@ -165,7 +165,7 @@ Run the prompts docs-first exactly as instructed in:
 - [`suggested_prompts/compliance_prompts.md`](../suggested_prompts/compliance_prompts.md)
 - [`suggested_prompts/cleanup_prompts.md`](../suggested_prompts/cleanup_prompts.md)
 
-Use the previous released tag as the baseline:
+Use the previous release tag as the baseline:
 
 ```bash
 git fetch origin --tags
@@ -173,8 +173,18 @@ git log --oneline vX.Y.Z..HEAD
 git diff --name-only vX.Y.Z..HEAD
 ```
 
-Where `vX.Y.Z` is the latest live release (for example, a final
-`v0.1.2` pre-release pass starts from `v0.1.1`).
+Baseline rule:
+
+- For the first RC or a final with no RCs, diff from the latest
+  **final** tag (for example, a `v0.1.2` final with no RCs uses
+  `v0.1.1..HEAD`).
+- For follow-up RCs in the same train, diff from the previous RC tag
+  (for example, `v0.2.0-rc1..HEAD` before cutting `v0.2.0-rc2`), and
+  include a short note confirming the latest final-to-current delta
+  was already reviewed earlier in the train.
+- For a final after one or more RCs, diff from the latest RC tag for
+  post-RC changes, then also skim the latest-final-to-HEAD summary so
+  the final release notes still cover the whole train.
 
 At minimum, apply these prompt sections to the changed code/docs:
 
@@ -195,6 +205,17 @@ toolkit (roadmap validation/export/file-limits, `pytest`, PM Gantt
 lint/test/build when `gui/pm-gantt/` changed, and supply-chain audits).
 
 ### 3.3 Three-app user-testing harness
+
+Minimum evidence to capture in the release PR/body or an attached
+`work/pre-release-checks-<version>.md` note:
+
+- app repo paths + remotes for all three disposable apps
+- exact CLI commands run (or a terminal log path) and final pass/fail
+  result for each app
+- selected node IDs used for brief generation, pickup, completion, or
+  abort testing
+- PM GUI screenshot/recording artifact paths for the desktop test
+- any accepted warnings from §3.2 with rationale
 
 Create three disposable consumer app repositories outside this toolkit
 checkout (for example under `/tmp/specy-road-pre-release-apps/`):
