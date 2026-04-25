@@ -17,6 +17,71 @@ import {
 } from "../modalRect";
 import { isMacLike } from "../os";
 
+/** Matches `modalRect` clamp minima for width/height. */
+const RESIZE_MIN_W = 320;
+const RESIZE_MIN_H = 220;
+
+type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
+function applyModalResize(
+  kind: ResizeHandle,
+  r: ModalRect,
+  dx: number,
+  dy: number,
+): ModalRect {
+  const minW = RESIZE_MIN_W;
+  const minH = RESIZE_MIN_H;
+  let { left, top, width, height } = r;
+  switch (kind) {
+    case "e":
+      width = Math.max(minW, width + dx);
+      break;
+    case "s":
+      height = Math.max(minH, height + dy);
+      break;
+    case "w": {
+      const newW = Math.max(minW, width - dx);
+      left += width - newW;
+      width = newW;
+      break;
+    }
+    case "n": {
+      const newH = Math.max(minH, height - dy);
+      top += height - newH;
+      height = newH;
+      break;
+    }
+    case "se":
+      width = Math.max(minW, width + dx);
+      height = Math.max(minH, height + dy);
+      break;
+    case "ne": {
+      width = Math.max(minW, width + dx);
+      const newH = Math.max(minH, height - dy);
+      top += height - newH;
+      height = newH;
+      break;
+    }
+    case "sw": {
+      const newW = Math.max(minW, width - dx);
+      left += width - newW;
+      width = newW;
+      height = Math.max(minH, height + dy);
+      break;
+    }
+    case "nw": {
+      const newW = Math.max(minW, width - dx);
+      left += width - newW;
+      width = newW;
+      const newH = Math.max(minH, height - dy);
+      top += height - newH;
+      height = newH;
+      break;
+    }
+  }
+  return { left, top, width, height };
+}
+
 type Props = {
   title: ReactNode;
   /** Native tooltip on the title (e.g. full text when the bar is ellipsized). */
@@ -48,7 +113,7 @@ type Props = {
   onRectCommit?: (r: ModalRect) => void;
   /** User brought this dialog forward (title bar or window). */
   onActivate?: () => void;
-  /** Show the bottom-right resize handle (default true). */
+  /** Show edge and corner resize handles (default true). */
   resizable?: boolean;
   /** On window resize, replace rect with ``getDefaultRect()`` (e.g. right-docked panel). */
   reanchorOnResize?: boolean;
@@ -145,11 +210,11 @@ export function ModalFrame({
     left: number;
     top: number;
   } | null>(null);
-  const resizeRef = useRef<{
+  const resizeSessionRef = useRef<{
+    kind: ResizeHandle;
     x: number;
     y: number;
-    width: number;
-    height: number;
+    rect: ModalRect;
   } | null>(null);
 
   const tileWasActive = useRef(false);
@@ -245,36 +310,34 @@ export function ModalFrame({
     [forcedRect, persistRect, emitCommit, onActivate, clampOpts],
   );
 
-  const onResizePointerDown = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
+  const onResizeStart = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>, kind: ResizeHandle) => {
       if (forcedRect != null) return;
       if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
       onActivate?.();
       const r = rectRef.current;
-      resizeRef.current = {
+      resizeSessionRef.current = {
+        kind,
         x: e.clientX,
         y: e.clientY,
-        width: r.width,
-        height: r.height,
+        rect: { ...r },
       };
       const move = (ev: PointerEvent) => {
-        if (!resizeRef.current) return;
-        const d = resizeRef.current;
-        setRect((prev) =>
+        if (!resizeSessionRef.current) return;
+        const s = resizeSessionRef.current;
+        const dx = ev.clientX - s.x;
+        const dy = ev.clientY - s.y;
+        setRect(
           clampRectToViewport(
-            {
-              ...prev,
-              width: Math.max(320, d.width + ev.clientX - d.x),
-              height: Math.max(220, d.height + ev.clientY - d.y),
-            },
+            applyModalResize(s.kind, s.rect, dx, dy),
             clampOpts,
           ),
         );
       };
       const up = () => {
-        resizeRef.current = null;
+        resizeSessionRef.current = null;
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
         requestAnimationFrame(() => {
@@ -376,12 +439,27 @@ export function ModalFrame({
         </div>
         {footer != null ? <div className="modal-footer">{footer}</div> : null}
         {resizable && forcedRect == null ? (
-          <div
-            className="modal-resize-handle"
-            onPointerDown={onResizePointerDown}
-            aria-hidden
-            title="Resize"
-          />
+          <div className="modal-resize-layer" aria-hidden>
+            {(
+              [
+                ["n", "Resize from top"] as const,
+                ["s", "Resize from bottom"] as const,
+                ["e", "Resize from right"] as const,
+                ["w", "Resize from left"] as const,
+                ["nw", "Resize from top-left"] as const,
+                ["ne", "Resize from top-right"] as const,
+                ["sw", "Resize from bottom-left"] as const,
+                ["se", "Resize from bottom-right"] as const,
+              ] as const
+            ).map(([kind, titleT]) => (
+              <div
+                key={kind}
+                className={`modal-resize-grip modal-resize-grip--${kind}`}
+                title={titleT}
+                onPointerDown={(ev) => onResizeStart(ev, kind)}
+              />
+            ))}
+          </div>
         ) : null}
       </div>
     </div>
