@@ -3020,7 +3020,7 @@ button {
   font-size: 0.85rem;
 }
 
-.modal-window input,
+.modal-window input:not([type="checkbox"]):not([type="radio"]),
 .modal-window textarea,
 .modal-window select {
   width: 100%;
@@ -3275,6 +3275,21 @@ button {
 .md-preview input[type="checkbox"] {
   margin-right: 0.35rem;
   vertical-align: middle;
+}
+
+/* TipTap task list: do not let modal form `input` rules affect checkbox layout */
+.md-preview li[data-type="taskItem"] > label > input[type="checkbox"] {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin-top: 0;
+  margin-right: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 .constitution-missing-banner {
