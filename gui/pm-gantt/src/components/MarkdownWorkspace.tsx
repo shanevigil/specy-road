@@ -55,8 +55,14 @@ export function MarkdownWorkspace({
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
       }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
+      // Stable classes for `index.css` (layout does not depend only on data-type / .md-preview).
+      TaskList.configure({
+        HTMLAttributes: { class: "pm-tiptap-task-list" },
+      }),
+      TaskItem.configure({
+        nested: true,
+        HTMLAttributes: { class: "pm-tiptap-task-item" },
+      }),
       Markdown.configure({
         markedOptions: { gfm: true },
       }),

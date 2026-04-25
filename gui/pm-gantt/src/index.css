@@ -3210,12 +3210,14 @@ button {
   padding-left: 1.35rem;
 }
 
-.md-preview ul[data-type="taskList"] {
+.md-preview ul[data-type="taskList"],
+.md-preview ul.pm-tiptap-task-list {
   list-style: none;
   padding-left: 0;
 }
 
-.md-preview ul[data-type="taskList"] ul[data-type="taskList"] {
+.md-preview ul[data-type="taskList"] ul[data-type="taskList"],
+.md-preview ul.pm-tiptap-task-list ul.pm-tiptap-task-list {
   margin: 0.2em 0 0.2em 0.5rem;
 }
 
@@ -3224,10 +3226,12 @@ button {
 }
 
 /*
- * TipTap v3+ taskItem (nodeView): <ul data-type=taskList><li data-type=taskItem>…
- * Target the list directly so layout rules still apply if wrapper attrs/classes differ.
+ * TipTap task list (nodeView): <ul><li><label>input+span</label><div>…</div></li></ul>
+ * Primary: `pm-tiptap-*` classes from MarkdownWorkspace (HTMLAttributes) so rules match
+ * the live DOM even when [data-type] / .md-preview chains fail. Fallback: data-type.
  * `display: grid` must beat the UA’s `li { display: list-item }` (see DevTools).
  */
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item,
 .md-preview ul[data-type="taskList"] > li[data-type="taskItem"] {
   display: grid !important;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -3239,10 +3243,12 @@ button {
   margin: 0.2em 0;
 }
 
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item::marker,
 .md-preview ul[data-type="taskList"] > li[data-type="taskItem"]::marker {
   content: none;
 }
 
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label,
 .md-preview ul[data-type="taskList"] > li[data-type="taskItem"] > label {
   grid-column: 1;
   display: flex;
@@ -3260,6 +3266,7 @@ button {
 }
 
 /* @tiptap/extension-list: empty span next to the checkbox (styler hook) */
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > span,
 .md-preview
   ul[data-type="taskList"]
   > li[data-type="taskItem"]
@@ -3277,11 +3284,14 @@ button {
   vertical-align: top;
 }
 
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div,
 .md-preview ul[data-type="taskList"] > li[data-type="taskItem"] > div {
   grid-column: 2;
   min-width: 0;
 }
 
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div > p:first-child,
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > div > p:only-of-type,
 .md-preview
   ul[data-type="taskList"]
   > li[data-type="taskItem"]
@@ -3332,6 +3342,7 @@ button {
 }
 
 /* TipTap task list: do not let modal form `input` rules affect checkbox layout */
+ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"],
 .md-preview
   ul[data-type="taskList"]
   > li[data-type="taskItem"]
