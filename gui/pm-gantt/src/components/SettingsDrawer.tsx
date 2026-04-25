@@ -184,6 +184,7 @@ export function SettingsDrawer({
 }: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
+  const [gitHelpOpen, setGitHelpOpen] = useState(false);
   const [inheritLlm, setInheritLlm] = useState(true);
   const [inheritPmGui, setInheritPmGui] = useState(true);
   const [registryRemoteOverlay, setRegistryRemoteOverlay] = useState(false);
@@ -215,6 +216,7 @@ export function SettingsDrawer({
     /* eslint-disable @eslint-react/set-state-in-effect -- reset when opening */
     setMsg(null);
     setPersistMsg(null);
+    setGitHelpOpen(false);
     /* eslint-enable @eslint-react/set-state-in-effect */
     getSettings()
       .then((s) => {
@@ -437,10 +439,133 @@ export function SettingsDrawer({
       <hr className="settings-section-rule" aria-hidden="true" />
       <div className="settings-section-heading">
         <h3>Git remote</h3>
-        <button type="button" onClick={() => void testGit()}>
-          Test Git
-        </button>
+        <div className="settings-section-heading-actions">
+          <button
+            type="button"
+            className="settings-git-help-trigger"
+            aria-label="Help for Git remote token and least-privilege access"
+            title="Help for personal access tokens (GitHub / GitLab)"
+            aria-expanded={gitHelpOpen}
+            onClick={() => setGitHelpOpen((v) => !v)}
+          >
+            ?
+          </button>
+          <button type="button" onClick={() => void testGit()}>
+            Test Git
+          </button>
+        </div>
       </div>
+      {gitHelpOpen ? (
+        <div className="settings-git-help" role="note" aria-label="Git remote token help">
+          <p className="outline-meta">
+            The PM GUI uses your token only for read-only forge API calls: repository/project
+            metadata and pull/merge request lookup for registry branches.
+          </p>
+          <details>
+            <summary>GitHub classic personal access token (legacy)</summary>
+            <div className="settings-git-help-body">
+              <p className="outline-meta">
+                Least privilege is “read repository metadata + pull requests”, but classic PAT
+                scopes are broad.
+              </p>
+              <ul className="settings-git-help-list">
+                <li>
+                  For private repos, classic PATs commonly require <code>repo</code> (broader than
+                  needed) to read PRs.
+                </li>
+                <li>
+                  For public repos, these endpoints are generally readable, but your token must
+                  still be valid.
+                </li>
+                <li>
+                  Docs:{" "}
+                  <a
+                    href="https://docs.github.com/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    GitHub classic PATs
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </details>
+          <details>
+            <summary>GitHub fine-grained personal access token (refined)</summary>
+            <div className="settings-git-help-body">
+              <p className="outline-meta">
+                Recommended. Scope the token to the single repository you enter above.
+              </p>
+              <ul className="settings-git-help-list">
+                <li>
+                  Repository permissions: <b>Metadata: Read</b> and <b>Pull requests: Read</b>.
+                </li>
+                <li>
+                  Docs:{" "}
+                  <a
+                    href="https://docs.github.com/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    GitHub fine-grained PATs
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </details>
+          <details>
+            <summary>GitLab.com personal access token</summary>
+            <div className="settings-git-help-body">
+              <p className="outline-meta">
+                Least privilege is read-only REST API access to project metadata and merge
+                requests.
+              </p>
+              <ul className="settings-git-help-list">
+                <li>
+                  Prefer <code>read_api</code> when available; some setups require broader{" "}
+                  <code>api</code>.
+                </li>
+                <li>
+                  Docs:{" "}
+                  <a
+                    href="https://docs.gitlab.com/user/profile/personal_access_tokens/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    GitLab personal access tokens
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </details>
+          <details>
+            <summary>GitLab self-hosted (custom base URL)</summary>
+            <div className="settings-git-help-body">
+              <p className="outline-meta">
+                Same as GitLab.com: read-only API access to project metadata and merge requests.
+                Your instance may enforce different scope names/policies.
+              </p>
+              <ul className="settings-git-help-list">
+                <li>
+                  If your admin disables <code>read_api</code> or requires additional scopes, use
+                  the least permissive option that still allows GET requests to{" "}
+                  <code>/api/v4/projects/…</code> and <code>/merge_requests</code>.
+                </li>
+                <li>
+                  Docs:{" "}
+                  <a
+                    href="https://docs.gitlab.com/user/profile/personal_access_tokens/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    GitLab personal access tokens
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </details>
+        </div>
+      ) : null}
       <label>
         Provider
         <select
