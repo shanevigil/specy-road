@@ -82,6 +82,7 @@ flagged "user runs this".
 |---|------|-------|-----|
 | 2.1 | `git fetch && git checkout dev && git pull --ff-only` | agent | sync. |
 | 2.2 | Decide RC vs final, choose version number | agent (with user) | needs user intent. |
+| 2.2a | Complete the mandatory pre-release checks branch (§3) | agent | prompt-driven cleanup/compliance + 3-app user testing must pass before any release branch is cut. |
 | 2.3 | Cut `chore/release-vX-Y-Z[-rcN]` branch | agent | naming is load-bearing. |
 | 2.4 | Bump `pyproject.toml` `project.version` to PEP 440 form | agent | exact format matters. |
 | 2.5 | Add `## [vX.Y.Z[-rcN]] - YYYY-MM-DD` to `CHANGELOG.md` | agent | uses today's UTC date. |
@@ -98,6 +99,181 @@ flagged "user runs this".
 | 2.16 | Back-merge `main → dev` | agent | mirror of `7236352` from rc4. |
 | 2.17 | Cleanup: delete the `chore/release-...` branch + any `cursor/...` session aliases | agent | leave only `main`, `dev`, and active feature branches. |
 | 2.18 | **Confirm the release is live** (final: PyPI page; RC: TestPyPI page) | **user** | the agent reports the URLs and waits for the user's "looks good" before signing off. |
+
+---
+
+## 3. Mandatory pre-release checks branch (before `chore/release-*`)
+
+Before cutting **any** RC or final release branch, prove the current
+candidate line is ready from a user's point of view. This is a
+release-readiness branch, not the release branch.
+
+### 3.1 Branch order
+
+1. Sync the integration line:
+
+   ```bash
+   git fetch --all --prune
+   git checkout dev
+   git pull --ff-only origin dev
+   ```
+
+   If maintainers have an active `WIP/improvements-x-y-z` batch for
+   the release train, start from that branch instead of raw `dev`.
+
+2. Create the pre-release validation branch:
+
+   ```bash
+   git checkout -b WIP/pre-release-checks
+   git push -u origin WIP/pre-release-checks
+   ```
+
+3. **Before creating any fix branches**, run the
+   [`suggested_prompts/`](../suggested_prompts/) cleanup and compliance
+   prompts against the delta from the previous release tag to this
+   candidate branch. The prompt pass is first because it marshals the
+   agent to review what changed since the last release against the
+   repository's documented standards.
+
+4. If the prompt pass finds issues, create short-lived branches from
+   `WIP/pre-release-checks` (for example
+   `fix/pre-release-cli-contract`, `fix/pre-release-pm-gui`, or
+   `docs/pre-release-prompt-alignment`), fix one logical issue per
+   branch, and merge each branch back into `WIP/pre-release-checks`.
+   Re-run the relevant prompt/gate after each merge.
+
+5. Run the three-app user-testing harness in §3.3 on the updated
+   `WIP/pre-release-checks` branch. If user testing finds issues, use
+   the same short-lived-branch pattern, merge back into
+   `WIP/pre-release-checks`, and re-run the affected checks.
+
+6. When **all** prompt checks and app tests pass, merge
+   `WIP/pre-release-checks` back into `dev` (or into the active
+   release-train WIP branch if that is the agreed integration line).
+   Only after that merge may the operator cut
+   `chore/release-vX-Y-Z[-rcN]`.
+
+If the entire pass produces no code/docs changes, record the passing
+evidence in the release notes/PR body and delete
+`WIP/pre-release-checks`. Do **not** cut the release branch until this
+branch is green or explicitly closed as no-op.
+
+### 3.2 Prompt-driven cleanup and compliance pass
+
+Run the prompts docs-first exactly as instructed in:
+
+- [`suggested_prompts/compliance_prompts.md`](../suggested_prompts/compliance_prompts.md)
+- [`suggested_prompts/cleanup_prompts.md`](../suggested_prompts/cleanup_prompts.md)
+
+Use the previous release tag as the baseline:
+
+```bash
+git fetch origin --tags
+git log --oneline vX.Y.Z..HEAD
+git diff --name-only vX.Y.Z..HEAD
+```
+
+Baseline rule:
+
+- For the first RC or a final with no RCs, diff from the latest
+  **final** tag (for example, a `v0.1.2` final with no RCs uses
+  `v0.1.1..HEAD`).
+- For follow-up RCs in the same train, diff from the previous RC tag
+  (for example, `v0.2.0-rc1..HEAD` before cutting `v0.2.0-rc2`), and
+  include a short note confirming the latest final-to-current delta
+  was already reviewed earlier in the train.
+- For a final after one or more RCs, diff from the latest RC tag for
+  post-RC changes, then also skim the latest-final-to-HEAD summary so
+  the final release notes still cover the whole train.
+
+At minimum, apply these prompt sections to the changed code/docs:
+
+- **Architecture & Vision Compliance**
+- **Scoped Code Review** against the previous release tag
+- **Test Coverage Gap Audit**
+- **Dependency Audit** and **Security Audit** when dependencies,
+  packaging, subprocess behavior, path handling, GUI/API surfaces, or
+  release workflows changed
+- **Pre-Release Gate Check**
+- From cleanup prompts: **File & Function Size Enforcement**,
+  **Documentation Hygiene**, and **Dead Code Cleanup**
+
+Every FAIL is a release blocker. A WARNING must either be fixed or
+explicitly accepted in the release notes/PR body with rationale. Use
+the command substitutions documented in the prompt files for this
+toolkit (roadmap validation/export/file-limits, `pytest`, PM Gantt
+lint/test/build when `gui/pm-gantt/` changed, and supply-chain audits).
+
+### 3.3 Three-app user-testing harness
+
+Minimum evidence to capture in the release PR/body or an attached
+`work/pre-release-checks-<version>.md` note:
+
+- app repo paths + remotes for all three disposable apps
+- exact CLI commands run (or a terminal log path) and final pass/fail
+  result for each app
+- selected node IDs used for brief generation, pickup, completion, or
+  abort testing
+- PM GUI screenshot/recording artifact paths for the desktop test
+- any accepted warnings from §3.2 with rationale
+
+Create three disposable consumer app repositories outside this toolkit
+checkout (for example under `/tmp/specy-road-pre-release-apps/`):
+
+1. **ToDo application**
+2. **Calculator application**
+3. **Personal notes app**
+
+Install the candidate toolkit from the `WIP/pre-release-checks` checkout
+into a fresh virtual environment and use that `specy-road` executable
+for all app tests. Each app must be a real git repo with a configured
+remote (a local bare remote is fine) so registry and branch workflows
+exercise the same assumptions as users' repos.
+
+At least one of the three apps must have a **moderate-complexity
+roadmap**, not just a smoke scaffold. The moderate roadmap should
+include multiple phases, gates, dependencies, planning sheets, shared
+contracts, and enough leaf tasks to exercise ordering, validation,
+brief generation, and registry pickup.
+
+For each app, run the PM-oriented CLI flow:
+
+- `specy-road init project`
+- roadmap authoring commands such as `add-node`, `edit-node`,
+  dependency updates, and gate status updates as appropriate for the
+  app's roadmap
+- `specy-road validate`
+- `specy-road export --check` (then `specy-road export` if the index
+  intentionally changed)
+- `specy-road file-limits`
+
+For each app, run the developer-oriented CLI flow:
+
+- generate at least one `specy-road brief <NODE_ID>`
+- pick up at least one eligible leaf with
+  `specy-road do-next-available-task`
+- verify the registry claim is committed/pushed on the integration
+  branch and that the feature branch is created
+- complete or abort the pickup using the documented command path for
+  the scenario under test, then verify the registry is clean
+
+For at least one app (preferably the moderate roadmap), run the PM GUI
+through the desktop environment:
+
+- launch `specy-road gui --repo-root <APP_REPO>`
+- open the dashboard in the browser
+- create or edit a task, update dependencies/gate status where
+  applicable, and save
+- exercise planning/shared-document editing if those surfaces changed
+  in the release candidate
+- validate that the GUI write is reflected on disk and that
+  `specy-road validate` plus `specy-road export --check` pass
+
+Capture evidence for the release PR/body: commands run, app paths,
+selected node IDs, GUI screenshots or recordings when GUI behavior was
+changed, and the final pass/fail result for each app. Remove disposable
+apps after the release unless the user explicitly asks to keep them for
+inspection.
 
 ---
 
