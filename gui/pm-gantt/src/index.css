@@ -26,6 +26,11 @@
   --row-parent-fg: var(--muted);
   --bar-gate: #7b1fa2;
   --row-gate-bg: rgba(123, 31, 162, 0.1);
+  --row-feature-active-bg: color-mix(
+    in srgb,
+    var(--bar-in-progress) 18%,
+    var(--bg)
+  );
   --gantt-bar-selected: var(--accent);
   --gantt-dep-chain: #f9a825;
   --gantt-dep-chain-bg: rgba(249, 168, 37, 0.2);
@@ -1045,21 +1050,51 @@ button {
   color: var(--row-parent-fg);
 }
 
-.outline-table tbody tr.outline-row-git-current td {
-  box-shadow: inset 3px 0 0 0 #2e7d32;
+/* Feature-active outline row: full-row tint + single left accent (matches Gantt green bar). */
+.outline-table
+  tbody
+  tr.outline-row-feature-active:not(.outline-row-gate)
+  td {
+  background: var(--row-feature-active-bg);
 }
 
-:root[data-theme="dark"] .outline-table tbody tr.outline-row-git-current td {
-  box-shadow: inset 3px 0 0 0 #66bb6a;
+.outline-table
+  tbody
+  tr.outline-row-feature-active:not(.outline-row-gate)
+  td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--bar-in-progress);
+}
+
+.outline-table
+  tbody
+  tr.outline-row-feature-active.selected:not(.outline-row-gate)
+  td {
+  background: color-mix(
+    in srgb,
+    var(--row-feature-active-bg) 55%,
+    var(--sel-bg)
+  );
+}
+
+.outline-table tbody tr.outline-row-feature-active.dep-candidate-row td {
+  background: rgba(25, 118, 210, 0.07);
+}
+
+.outline-table tbody tr.outline-row-feature-active.dep-candidate-row td:first-child {
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .outline-table tbody tr.outline-row-feature-active.dep-candidate-row td {
+  background: rgba(100, 181, 246, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"])
     .outline-table
     tbody
-    tr.outline-row-git-current
+    tr.outline-row-feature-active.dep-candidate-row
     td {
-    box-shadow: inset 3px 0 0 0 #66bb6a;
+    background: rgba(100, 181, 246, 0.1);
   }
 }
 
