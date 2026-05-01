@@ -287,8 +287,9 @@ over silently rolling status backward, unless your team explicitly uses rollback
 phase as done when every descendant is complete (see [pm-workflow.md](pm-workflow.md)).
 To align the file with that state, edit the phase row (for example `specy-road
 edit-node <PHASE_ID> --set status=Complete`) or rely on display-only rollup.
-`specy-road validate` may **warn** when a phase is not `Complete` but every descendant
-is; use `--no-phase-status-warn` to hide that message in CI if it is too noisy.
+`specy-road validate` follows the same **F-013 rollup** semantics as load/export and
+does not warn when stored phase `status` lags behind a fully-complete leaf subtree.
+The `--no-phase-status-warn` CLI flag is deprecated and ignored.
 
 ---
 

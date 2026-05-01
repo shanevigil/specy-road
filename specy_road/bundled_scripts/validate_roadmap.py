@@ -22,7 +22,6 @@ from validate_roadmap_checks import (
     validate_required_planning_dirs,
     validate_unique_title_slugs,
     validate_unique_titles,
-    warn_phase_status_when_all_descendants_complete,
 )
 from validate_roadmap_gates import validate_gates
 from validate_self_heal import auto_heal_roadmap
@@ -36,7 +35,6 @@ __all__ = [
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",
-    "warn_phase_status_when_all_descendants_complete",
 ]
 
 
@@ -68,7 +66,6 @@ def validate_at(
     *,
     no_overlap_warn: bool = False,
     require_registry: bool = True,
-    no_phase_status_warn: bool = False,
     auto_heal: bool = True,
 ) -> None:
     """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
@@ -107,7 +104,6 @@ def validate_at(
         registry,
         no_overlap_warn,
         repo_root=root,
-        no_phase_status_warn=no_phase_status_warn,
     )
 
 
@@ -122,7 +118,8 @@ def main() -> None:
         "--no-phase-status-warn",
         action="store_true",
         help=(
-            "suppress warning when a phase is not Complete but every descendant node is"
+            "Deprecated. Ignored. Validation aligns with F-013 rollup; stale phase "
+            "status when all leaf descendants are Complete no longer emits a warning."
         ),
     )
     parser.add_argument(
@@ -138,7 +135,6 @@ def main() -> None:
         root,
         no_overlap_warn=args.no_overlap_warn,
         require_registry=True,
-        no_phase_status_warn=args.no_phase_status_warn,
     )
 
 

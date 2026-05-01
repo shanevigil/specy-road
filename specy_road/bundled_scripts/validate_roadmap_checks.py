@@ -87,60 +87,6 @@ def cycle_check(nodes: list[dict]) -> None:
             visit(nk)
 
 
-def warn_phase_status_when_all_descendants_complete(
-    nodes: list[dict], *, no_phase_status_warn: bool
-) -> None:
-    """Warn when a phase subtree is all Complete but the phase is not."""
-    if no_phase_status_warn:
-        return
-    by_id = {n["id"]: n for n in nodes}
-    children: dict[str | None, list[str]] = {}
-    for n in nodes:
-        pid = n.get("parent_id")
-        if pid in (None, ""):
-            pkey: str | None = None
-        else:
-            pkey = str(pid)
-        children.setdefault(pkey, []).append(n["id"])
-
-    def gather_descendants(root: str) -> list[str]:
-        out: list[str] = []
-        stack = list(children.get(root, []))
-        seen: set[str] = set()
-        while stack:
-            x = stack.pop()
-            if x in seen:
-                continue
-            seen.add(x)
-            out.append(x)
-            stack.extend(children.get(x, []))
-        return out
-
-    for n in nodes:
-        if n.get("type") != "phase":
-            continue
-        desc = gather_descendants(str(n["id"]))
-        if not desc:
-            continue
-        all_complete = True
-        for d in desc:
-            st = by_id.get(d, {}).get("status")
-            if st != "Complete":
-                all_complete = False
-                break
-        if not all_complete:
-            continue
-        st_phase = n.get("status")
-        if st_phase != "Complete":
-            print(
-                "warning: roadmap: phase "
-                f"{n['id']!r} has status {st_phase!r} but every descendant "
-                "node is Complete — update the phase status or rely on PM UI "
-                "display rollup (subtree complete).",
-                file=sys.stderr,
-            )
-
-
 def validate_parents(nodes: list[dict]) -> None:
     ids = {n["id"] for n in nodes}
     for n in nodes:
@@ -296,7 +242,6 @@ def run_validation(
     no_overlap_warn: bool,
     *,
     repo_root: Path | None = None,
-    no_phase_status_warn: bool = False,
 ) -> None:
     r = repo_root or default_user_repo_root()
     _validate_roadmap_and_registry_schemas(roadmap, registry, r)
@@ -319,10 +264,6 @@ def run_validation(
     validate_unique_title_slugs(nodes)
     validate_codenames(nodes)
     validate_required_planning_dirs(nodes)
-
-    warn_phase_status_when_all_descendants_complete(
-        nodes, no_phase_status_warn=no_phase_status_warn
-    )
 
     plan_errs = collect_planning_artifact_errors(r, nodes)
     if plan_errs:

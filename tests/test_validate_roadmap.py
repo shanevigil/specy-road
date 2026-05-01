@@ -22,60 +22,23 @@ from validate_roadmap_checks import (
 )
 
 
-def test_warn_phase_status_when_all_descendants_complete_emits(capsys) -> None:
-    k1 = "10000000-0000-4000-8000-000000000001"
-    k2 = "20000000-0000-4000-8000-000000000002"
-    nodes = [
-        {
-            "id": "M1",
-            "node_key": k1,
-            "type": "phase",
-            "title": "P",
-            "status": "In Progress",
-            "planning_dir": "planning/M1_x.md",
-            "parent_id": None,
-        },
-        {
-            "id": "M1.1",
-            "node_key": k2,
-            "type": "milestone",
-            "title": "M",
-            "status": "Complete",
-            "planning_dir": "planning/M1.1_y.md",
-            "parent_id": "M1",
-        },
-    ]
-    vr.warn_phase_status_when_all_descendants_complete(nodes, no_phase_status_warn=False)
-    err = capsys.readouterr().err
-    assert "phase 'M1'" in err
-    assert "every descendant" in err
-
-
-def test_warn_phase_status_suppressed_with_flag(capsys) -> None:
-    k1 = "10000000-0000-4000-8000-000000000001"
-    k2 = "20000000-0000-4000-8000-000000000002"
-    nodes = [
-        {
-            "id": "M1",
-            "node_key": k1,
-            "type": "phase",
-            "title": "P",
-            "status": "In Progress",
-            "planning_dir": "planning/M1_x.md",
-            "parent_id": None,
-        },
-        {
-            "id": "M1.1",
-            "node_key": k2,
-            "type": "milestone",
-            "title": "M",
-            "status": "Complete",
-            "planning_dir": "planning/M1.1_y.md",
-            "parent_id": "M1",
-        },
-    ]
-    vr.warn_phase_status_when_all_descendants_complete(nodes, no_phase_status_warn=True)
-    assert capsys.readouterr().err == ""
+def test_validate_script_no_stale_phase_status_warning_when_subtree_complete() -> None:
+    """Dogfood M0 is phase Not Started with all descendant nodes Complete (F-013 rollup)."""
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(BUNDLED_SCRIPTS / "validate_roadmap.py"),
+            "--repo-root",
+            str(DOGFOOD),
+        ],
+        cwd=REPO,
+        env=script_subprocess_env(),
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    err = r.stderr or ""
+    assert "every descendant node is Complete" not in err
 
 
 def test_cycle_check_detects_cycle() -> None:
