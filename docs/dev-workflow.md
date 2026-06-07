@@ -35,6 +35,9 @@ specy-road do-next-available-task --milestone-subtree # or: --under <PARENT_NODE
 specy-road finish-this-task          # with session: lands bookkeeping on integration, merges leaf into rollup branch
 specy-road open-milestone-pr         # print gh/glab one-liner (rollup head → integration base)
 
+# Agent-driven loop (orchestrate pickup→implement→finish over many leaves):
+specy-road grind-session --plan --json        # read-only: ready/blocked/waves (plan sub-agents)
+specy-road grind-session --until M7.6 --on-complete merge --implement-mode hook --implement-cmd '…'
 ```
 
 
@@ -122,6 +125,18 @@ Use this when you want **one integration PR** for **all leaf work under a parent
 6. **After the PR merges** — run **`specy-road reconcile-milestone-status`** (dry-run) then **`--apply`** so `milestone_execution` becomes **`closed`** and the parent `status` matches delivery. If your team landed leaf merges on integration **without** that rollup PR, use **`--fallback-head-delivery`** only when you accept HEAD as the source of truth.
 
 Do **not** rely on editing the parent milestone’s JSON `status` to “Complete” until the subtree is actually done; the PM Gantt already derives **In Progress** from children. Optional: set the parent to **Complete** once all descendant leaves are **Complete** (same as any other manual status edit).
+
+### Agent-driven loop (`grind-session`)
+
+To run **many** leaf cycles without re-invoking pickup/finish by hand, use
+**`specy-road grind-session`** — it orchestrates the approved primitives
+(`do-next-available-task` → implement → optional `--pre-finish-cmd` →
+`finish-this-task`) until a stop condition, with stable exit codes and `--json`
+events, and never edits the registry itself. **`grind-session --plan [--json]`**
+is a read-only planner reporting ready / blocked / active leaves plus dependency
+**waves** and **parallel batches**, so an orchestrator can dispatch independent
+work and skip waves whose dependencies are unmet. Full guide:
+**[grind-session.md](grind-session.md)**.
 
 ### Abort pickup (`abort-task-pickup`)
 

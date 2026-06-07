@@ -33,6 +33,7 @@ More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review**
 
 1. Pick up work with **`specy-road do-next-available-task`**, or **`specy-road brief <NODE_ID>`** for a specific node ([docs/dev-workflow.md](docs/dev-workflow.md)).
 2. Finish with **`specy-road finish-this-task`**, then land changes with your team’s PR process ([docs/git-workflow.md](docs/git-workflow.md)).
+3. Run many leaves (or plan sub-agent batches) with **`specy-road grind-session`** — orchestrates pickup→implement→finish, and **`--plan`** reports ready/blocked leaves and dependency waves ([docs/grind-session.md](docs/grind-session.md)).
 
 ## Install
 
@@ -75,6 +76,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/architecture.md](docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
 | [docs/roadmap-authoring.md](docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
 | [docs/git-workflow.md](docs/git-workflow.md) | Consumer workflow contract (`git-workflow.yaml`), branches, registry, merge-back |
+| [docs/grind-session.md](docs/grind-session.md) | Agent-driven loop + read-only planner (`grind-session`): waves, exit codes, JSON events |
 | [docs/toolkit-development.md](docs/toolkit-development.md) | Short maintainer notes (this repo vs consumer contract) |
 | [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP) for app repos |
 | [suggested_prompts/](suggested_prompts/) | Adoption prompts (clone this repo; not shipped on PyPI) |
