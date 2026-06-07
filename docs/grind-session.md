@@ -148,6 +148,25 @@ gates instead of failing a pickup**: if nothing is ready but leaves are blocked
 before `finish-this-task`. A non-zero exit stops the session (exit `4`) and leaves
 the feature branch intact so you can fix and resume.
 
+### Requirements for autonomous (hook) runs
+
+For an unattended loop to keep cycling:
+
+- **Leave a clean working tree.** Your `--implement-cmd` (and `--pre-finish-cmd`)
+  must **commit** their changes and not leave untracked/uncommitted files — the
+  next pickup refuses to run on a dirty tree. Gitignore build artifacts (e.g.
+  `__pycache__/`, coverage files) so tools you run in the pre-finish hook do not
+  dirty the tree.
+- **Land work on the integration branch each cycle** with `--on-complete merge`
+  (or `auto`). With `pr`, the just-finished work never reaches the integration
+  branch, so the next cycle re-evaluates the same state and downstream stays
+  blocked.
+- **Implementation review gate.** If `roadmap/git-workflow.yaml` sets
+  `require_implementation_review_before_finish: true`, `finish-this-task` requires
+  a recorded review. For a fully autonomous loop either set it to `false`, or have
+  your `--implement-cmd` write `work/implementation-summary-<NODE_ID>.md` and run
+  `specy-road mark-implementation-reviewed --yes` before the loop calls finish.
+
 ### Examples
 
 ```bash
