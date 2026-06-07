@@ -45,6 +45,7 @@ COMMAND_FILES = (
     "specyrd-mark-reviewed.md",
     "specyrd-finish.md",
     "specyrd-do-next-task.md",
+    "specyrd-grind-session.md",
     "specyrd-abort-task-pickup.md",
     "specyrd-sync.md",
     "specyrd-list-nodes.md",
@@ -73,6 +74,7 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-mark-reviewed.md",
         "specyrd-finish.md",
         "specyrd-do-next-task.md",
+        "specyrd-grind-session.md",
         "specyrd-abort-task-pickup.md",
     ),
 }

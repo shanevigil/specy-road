@@ -44,6 +44,7 @@ import {
   devColumnDetailTitle,
   devColumnLabel,
   rowMatchesRegisteredBranch,
+  showActiveFeatureBranchBar,
 } from "../rowMatchesRegisteredBranch";
 import { visibleDragSubtreeIds } from "../outlineSubtree";
 
@@ -256,6 +257,8 @@ type RowProps = {
   depCellRef?: RefObject<HTMLTableCellElement | null>;
   /** Registry branch matches current git checkout (named branch). */
   isGitCheckoutRow?: boolean;
+  /** Same semantics as Gantt green bar: registered branch + checkout or outline In Progress. */
+  isFeatureActiveRow?: boolean;
   /** Branch / registry details (hover); not shown under title to keep row height aligned with Gantt. */
   devCellTitle?: string;
   /** Inline title edit disabled (same condition as isGitCheckoutRow). */
@@ -467,6 +470,7 @@ function SortableRow({
   dragDisabled,
   depCellRef,
   isGitCheckoutRow,
+  isFeatureActiveRow,
   devCellTitle,
   titleEditLocked,
   isParentRow = false,
@@ -588,6 +592,7 @@ function SortableRow({
     selected ? "selected" : "",
     depEditId === id ? "dep-edit-row" : "",
     isDepCandidate ? "dep-candidate-row" : "",
+    isFeatureActiveRow ? "outline-row-feature-active" : "",
     isGitCheckoutRow ? "outline-row-git-current" : "",
     node.type === "gate" ? "outline-row-gate" : "",
     isParentRow ? "outline-row-parent" : "",
@@ -1215,6 +1220,12 @@ export function OutlineTable({
       outlineStatusById != null
         ? outlineStatusById[rowId] ?? baseDisp
         : baseDisp;
+    const isFeatureActiveRow = showActiveFeatureBranchBar(
+      rowId,
+      outlineDisp,
+      registryByNode,
+      { [rowId]: isGitCheckoutRow },
+    );
     const statusText =
       outlineStatusById != null
         ? outlineDisp
@@ -1251,6 +1262,7 @@ export function OutlineTable({
       depCellText: depCellLabel(rowId),
       depEditId,
       isGitCheckoutRow,
+      isFeatureActiveRow,
       devCellTitle: devColumnDetailTitle(
         rowId,
         registryByNode,
@@ -1415,6 +1427,7 @@ export function OutlineTable({
                   rp.selected ? "selected" : "",
                   rp.depEditId === did ? "dep-edit-row" : "",
                   rp.isDepCandidate ? "dep-candidate-row" : "",
+                  rp.isFeatureActiveRow ? "outline-row-feature-active" : "",
                   rp.isGitCheckoutRow ? "outline-row-git-current" : "",
                   rp.node.type === "gate" ? "outline-row-gate" : "",
                   rp.isParentRow ? "outline-row-parent" : "",

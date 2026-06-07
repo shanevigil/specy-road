@@ -62,6 +62,10 @@ _USAGE_TEXT = (
     "    (optional: --yes | --allow-missing-summary)\n"
     "  finish-this-task        — complete task, validate, commit; land pr|merge|auto\n"
     "    (optional: --push [--remote NAME] | --no-cleanup-work | --no-milestone-rollup)\n"
+    "  grind-session           — orchestrate pickup->implement->finish over many leaves\n"
+    "    (--plan for read-only ready/blocked/waves; --until NODE | --under PARENT | "
+    "--max-leaves N | --implement-mode {manual,hook} --implement-cmd CMD | "
+    "--pre-finish-cmd CMD | --on-complete {pr,merge,auto} | --json)\n"
     "  start-milestone-session <PARENT_NODE_ID> — sync base, ensure rollup branch, write work/.milestone-session.yaml\n"
     "    (optional: --base BRANCH --remote NAME --repo-root DIR)\n"
     "  reconcile-milestone-status — dry-run milestone delivery vs git; --apply to close/sync (see -h)\n"
@@ -276,6 +280,8 @@ def main(argv: list[str] | None = None) -> None:
         _run("mark_implementation_reviewed.py", rest)
     elif cmd == "finish-this-task":
         _run("finish_task.py", rest)
+    elif cmd == "grind-session":
+        _run("grind_session.py", rest)
     elif cmd == "start-milestone-session":
         _run("start_milestone_session.py", rest)
     elif cmd == "open-milestone-pr":

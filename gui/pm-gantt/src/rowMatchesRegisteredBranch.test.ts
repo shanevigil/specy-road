@@ -5,6 +5,7 @@ import {
   displayStatusAllowsCheckoutBar,
   isDisplayStatusInProgress,
   rowMatchesRegisteredBranch,
+  showActiveFeatureBranchBar,
 } from "./rowMatchesRegisteredBranch";
 
 describe("rowMatchesRegisteredBranch", () => {
@@ -183,5 +184,28 @@ describe("isDisplayStatusInProgress", () => {
     expect(isDisplayStatusInProgress("In Progress")).toBe(true);
     expect(isDisplayStatusInProgress("in progress")).toBe(true);
     expect(isDisplayStatusInProgress("Not Started")).toBe(false);
+  });
+});
+
+describe("showActiveFeatureBranchBar", () => {
+  const reg = {
+    N1: {
+      branch: "feature/rm-x",
+      node_id: "N1",
+      codename: "x",
+      touch_zones: ["a"],
+    },
+  };
+
+  it("is true for In Progress with registered branch when checkout does not match", () => {
+    expect(
+      showActiveFeatureBranchBar("N1", "In Progress", reg, { N1: false }),
+    ).toBe(true);
+  });
+
+  it("is true when checkout matches even if display is Not Started", () => {
+    expect(
+      showActiveFeatureBranchBar("N1", "Not Started", reg, { N1: true }),
+    ).toBe(true);
   });
 });

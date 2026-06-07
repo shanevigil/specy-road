@@ -11,6 +11,7 @@ from pathlib import Path
 import yaml
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.registry_yaml import write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
@@ -68,8 +69,7 @@ def _load_registry() -> dict:
 
 
 def _save_registry(doc: dict) -> None:
-    with REGISTRY_PATH.open("w", encoding="utf-8") as f:
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    write_registry(REGISTRY_PATH, doc)
 
 
 def _count_commits_ahead_of_remote_base(remote: str, base: str) -> int:

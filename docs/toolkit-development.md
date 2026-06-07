@@ -49,6 +49,8 @@ Use `playground/` when you want to pretend this clone contains a separate consum
 
 For batching toolkit improvements toward a release or release candidate, use a temporary `WIP/improvements-x-y-z` branch for the target version. Keep each logical change on its own short-lived topic branch, then merge those topic branches into the WIP branch for integration before the normal promotion path through `dev` and `main`.
 
+**PR requirements.** A PR is **required for promotion to `main`** (the `release: x.x.x` gate). Merging a topic branch into a `WIP/improvements-x-y-z` batch line, and merging that WIP line into `dev`, **do not require a PR for a solo maintainer** — merge directly, but run the full gate suite locally first (`pytest`, `specy-road validate`/`export --check` on the dogfood fixture, `specy-road file-limits`). When **multiple developers** are active, prefer a PR into `dev` (and review on the WIP) so changes are visible before they land.
+
 ## See also
 
 - [AGENTS.md](../AGENTS.md) — contributor load order and coordination

@@ -91,6 +91,11 @@ pytest
 - Normal flow is: `topic branch` -> PR -> `dev`.
 - Promotion flow is: `dev` -> PR -> `main`.
 - Treat `main` as release-facing: it should move via promotion PRs, not via routine feature commits.
+- **PR requirement:** a PR is **required only for promotion to `main`**. For a
+  **solo maintainer**, merging topic branches into a `WIP/improvements-x-y-z`
+  batch line and merging that WIP line into `dev` may be done **directly without a
+  PR** (run the full gate suite locally first). With **multiple developers**,
+  prefer a PR into `dev` (and review on the WIP) so work is visible before it lands.
 
 ### Release tag requirement for `main`
 
