@@ -11,6 +11,35 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- **`specy-road grind-session` — agent-driven task-loop orchestration.** A new
+  command that wraps the existing primitives (`do-next-available-task` →
+  implement → optional `--pre-finish-cmd` → `finish-this-task`) over many leaves
+  until a stop condition (`--until` / `--under` / `--max-leaves` / no work). It
+  never edits `roadmap/registry.yaml` itself — it shells out to the approved
+  commands. Provides stable exit codes (0/1/2/3/4/5), `--json` events, and
+  `--implement-mode {manual,hook}` (manual signal file or autonomous
+  `--implement-cmd`). See [docs/grind-session.md](docs/grind-session.md).
+- **`grind-session --plan` — read-only dependency/wave planner.** Reports ready /
+  blocked / active leaves plus dependency **waves** and **parallel batches**
+  (with `--json`), so a sub-agent orchestrator can dispatch independent work and
+  avoid spawning a sub-agent for a wave whose dependencies are not yet met. Blocked
+  leaves carry `waiting_on` (display ids) and a dependency-vs-gate reason.
+- **IDE stub `/specyrd-grind-session`.** Installed for the dev role by
+  `specyrd init`.
+
+### Changed
+
+- **Registry writes are yamllint-clean.** `roadmap/registry.yaml` is now written
+  with indented block sequences (new `specy_road.registry_yaml` helper used by
+  pickup, finish, abort, self-heal, and mark-reviewed), so unattended pickup no
+  longer trips a default `yamllint` pre-commit hook.
+- **Docs:** new [docs/grind-session.md](docs/grind-session.md); pointers from
+  `dev-workflow.md` and `README.md`; clarified in `docs/toolkit-development.md`
+  and `CLAUDE.md` that WIP→`dev` needs no PR for a solo maintainer (PRs required
+  for `dev`→`main`).
+
 ## [v0.1.3] - 2026-04-25
 
 Patch release. Publishes the post-`v0.1.2` release-readiness hardening:
