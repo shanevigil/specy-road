@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from specy_road.registry_yaml import write_registry
+
 
 def attempt_self_cleanup(
     *,
@@ -34,8 +36,7 @@ def attempt_self_cleanup(
         reg["entries"] = [e for e in before if e.get("codename") != codename]
         if len(reg["entries"]) == len(before):
             return True
-        with registry_path.open("w", encoding="utf-8") as f:
-            yaml.dump(reg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+        write_registry(registry_path, reg)
         git_runner("add", str(registry_path))
         git_runner(
             "commit",

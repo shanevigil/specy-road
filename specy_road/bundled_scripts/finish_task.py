@@ -23,6 +23,7 @@ from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.registry_yaml import write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
@@ -64,8 +65,7 @@ def _load_registry() -> dict:
 
 
 def _save_registry(doc: dict) -> None:
-    with REGISTRY_PATH.open("w", encoding="utf-8") as f:
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    write_registry(REGISTRY_PATH, doc)
 
 
 # ---------------------------------------------------------------------------

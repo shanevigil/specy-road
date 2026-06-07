@@ -10,8 +10,6 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
-import yaml
-
 from do_next_prompt import write_agent_prompt
 from do_next_task_self_heal import (
     attempt_self_cleanup,
@@ -22,6 +20,7 @@ from specy_road.on_complete_session import (
     on_complete_session_path,
     write_on_complete_session,
 )
+from specy_road.registry_yaml import write_registry
 
 
 def write_brief(work_dir: Path, node: dict, nodes: list[dict]) -> Path:
@@ -58,8 +57,7 @@ def register_and_commit(
     if impl_review_gate:
         entry["implementation_review"] = "pending"
     reg.setdefault("entries", []).append(entry)
-    with registry_path.open("w", encoding="utf-8") as f:
-        yaml.dump(reg, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    write_registry(registry_path, reg)
     git_runner("add", str(registry_path))
     git_runner("commit", "-m", commit_message)
 

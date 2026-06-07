@@ -13,6 +13,7 @@ from pathlib import Path
 import yaml
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.registry_yaml import write_registry
 from specy_road.runtime_paths import default_user_repo_root
 from work_dir_stash import (
     restore_work_dir_changes as _restore_work,
@@ -44,8 +45,7 @@ def _load_registry() -> dict:
 
 
 def _save_registry(doc: dict) -> None:
-    with REGISTRY_PATH.open("w", encoding="utf-8") as f:
-        yaml.dump(doc, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    write_registry(REGISTRY_PATH, doc)
 
 
 def _working_tree_clean() -> bool:
