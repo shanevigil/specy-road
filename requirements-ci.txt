@@ -54,7 +54,7 @@ pydantic-core==2.46.0
     # via pydantic
 pygments==2.20.0
     # via pytest
-pytest==9.0.3
+pytest==9.1.0
     # via specy-road
 pyyaml==6.0.3
     # via specy-road
