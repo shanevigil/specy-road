@@ -60,7 +60,7 @@ jobs:
       target: ${{ steps.ctx.outputs.target }}
       dry_run: ${{ steps.ctx.outputs.dry_run }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Compute release context
@@ -104,7 +104,7 @@ jobs:
       sdist_name: ${{ steps.find.outputs.sdist_name }}
       wheel_name: ${{ steps.find.outputs.wheel_name }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
@@ -204,7 +204,7 @@ jobs:
     if: ${{ always() && needs.resolve.outputs.target != 'dry-run' && (needs.publish-pypi.result == 'success' || needs.publish-testpypi.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: dist
@@ -252,7 +252,7 @@ jobs:
     needs: [resolve, publish-pypi]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: dev
           fetch-depth: 0
