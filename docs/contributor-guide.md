@@ -161,6 +161,7 @@ The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood 
 ```bash
 source .venv/bin/activate
 pip install -e ".[dev,gui-next]"
+specy-road --version   # which build you are actually running
 pytest -q
 specy-road validate    --repo-root tests/fixtures/specy_road_dogfood
 specy-road export --check --repo-root tests/fixtures/specy_road_dogfood

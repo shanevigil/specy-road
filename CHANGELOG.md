@@ -59,8 +59,10 @@ output or leaving a mode implicit that its own docs call unusable.
 - **A tracked `work/.on-complete-<NODE>.yaml` is now removed properly.** The
   sidecar was unlinked without staging, unlike its brief/prompt/summary
   siblings, so a committed copy left a dirty worktree that the next checkout
-  restored. Removal is folded into the bookkeeping commit, and every other
-  caller (abort, milestone rollup) stages the deletion.
+  restored. `finish-this-task` now removes it during its bookkeeping phase, so
+  a tracked copy is staged into that commit. The other callers (abort, milestone
+  rollup, the `on_complete` tail) run after their command's last commit, where
+  staging would only leave a dirty index, so they still plainly unlink.
 - **`specy-road --version` / `-V` works** (also `specyrd --version`). It
   previously fell through to `unknown command: --version` and exited 2, while
   `specy_road.__version__` resolved correctly.

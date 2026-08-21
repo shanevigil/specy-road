@@ -72,14 +72,9 @@ def write_with_routing(
         )
         insert_include_in_manifest(manifest_doc, decision.chunk_rel, base_for_insert)
         plan.stage_manifest(manifest_doc)
-        reason = (
-            "phase roots get their own chunk"
-            if node.get("type") == "phase"
-            else "would have overflowed existing chunks"
-        )
         print(
             f"[chunk-router] auto-created chunk roadmap/{decision.chunk_rel} "
-            f"(node {node.get('id')!r} {reason})",
+            f"(node {node.get('id')!r} {decision.new_chunk_reason})",
             file=sys.stderr,
         )
     plan.commit(_validate_callback(root))

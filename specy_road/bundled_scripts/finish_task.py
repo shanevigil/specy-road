@@ -10,7 +10,6 @@ from pathlib import Path
 
 import yaml
 from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
@@ -294,7 +293,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
     ctx = _resolve_main_context(args, branch)
-    codename, reg, entry, nodes, node, node_id = ctx["codename"], ctx["reg"], ctx["entry"], ctx["nodes"], ctx["node"], ctx["node_id"]
+    codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]
+    node, node_id = ctx["node"], ctx["node_id"]
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
     ib, gw_remote = ctx["ib"], ctx["gw_remote"]
 
