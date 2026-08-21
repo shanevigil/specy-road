@@ -89,7 +89,7 @@ def apply_on_complete_mode(
             mr_manual=mr_manual,
             pr_body_path=pr_body_path,
         )
-        remove_on_complete_session(sess_path, repo)
+        remove_on_complete_session(sess_path)
         return
 
     ok, err_msg = land_merge_feature_into_integration(
@@ -100,7 +100,7 @@ def apply_on_complete_mode(
     )
     if ok:
         print(f"\n[ok] merged {branch} into {ib} and pushed to {gw_remote}")
-        remove_on_complete_session(sess_path, repo)
+        remove_on_complete_session(sess_path)
         return
 
     print(
