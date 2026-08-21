@@ -66,6 +66,7 @@ specy-road validate --repo-root tests/fixtures/specy_road_dogfood
 From your application repository root (or pass a path):
 
 ```bash
+specy-road --version          # confirm which build you are on
 specy-road init project
 # Edit roadmap/git-workflow.yaml so integration_branch and remote match
 # your team's trunk (e.g. integration_branch: dev, remote: origin).
@@ -79,10 +80,11 @@ It refuses to overwrite an existing scaffold unless you pass `--force`.
 Preview without writing: `--dry-run`.
 
 The bundled `.gitignore` ignores **only** the session-scoped files
-(`work/.on-complete-*.yaml`, `work/prompt-*.md`,
+(`work/.on-complete-*.yaml`, `work/prompt-*.md`, `work/pr-body-*.md`,
 `work/.milestone-session.yaml`); briefs and implementation summaries are
 intentionally tracked because they document the work and belong on the
-feature branch.
+feature branch. The PR-body snapshot is ignored because it is a regenerated
+copy of those two.
 
 ---
 
@@ -143,6 +145,11 @@ printed `gh pr create` / `glab mr create` command already references
 the file via `--body-file` / `--description-file`, so reviewers see
 both narratives without leaving the PR view. The snapshot does **not**
 update if the roadmap evolves later; that's the point.
+
+The snapshot is a regenerated copy of two files that are already on the
+branch, so `specy-road init project` ignores `work/pr-body-*.md` and
+`specy-road file-limits` never reports it. If your repo predates that
+ignore rule, `finish-this-task` prints a one-time pointer to add it.
 
 When something goes wrong mid-pickup, specy-road auto-rolls-back the stale
 registry claim (F-014). If the auto-rollback itself fails, follow the
@@ -214,8 +221,11 @@ Headlines:
   for tagged releases (the `main-release-tag-gate.yml` workflow enforces
   this).
 - **Branching:** feature work goes on `feature/<thing>` branches off `dev`.
-- **Tagging:** semver `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`). Tags are cut
-  from `dev` and merged to `main`.
+- **Tagging:** semver `vMAJOR.MINOR.PATCH` (e.g. `v0.1.0`). `dev` is
+  promoted to `main` by a release PR, and the tag is created on the merged
+  `main` commit — see [contributor-guide.md](contributor-guide.md).
 - **PRs:** small and focused; drafts welcome; squash on merge.
-- **Release:** PyPI publish will be automated on every tag (TODO; tracked
-  in the README's top-of-file comment).
+- **Release:** [`release-publish.yml`](../.github/workflows/release-publish.yml)
+  publishes on a release tag — finals to PyPI, `-rcN` prereleases to
+  TestPyPI. The full procedure is
+  [`docs/release-runbook.md`](release-runbook.md).

@@ -315,3 +315,53 @@ def test_exit_no_actionable_leaves_has_deterministic_diagnostics(
     assert "blocked by unmet dependencies: none" in err
     assert "already claimed leaves: M2.1" in err
     assert "open leaves (dependency-satisfied, unclaimed): none" in err
+
+
+def test_exit_no_actionable_leaves_names_the_integration_branch(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The usual cause is an add-node commit that never landed on the trunk."""
+    leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
+    with pytest.raises(SystemExit):
+        dnt._exit_no_actionable_leaves(
+            [leaf],
+            _reg("M2.1"),
+            after_sync=True,
+            integration_branch="trunk",
+        )
+    err = capsys.readouterr().err
+    assert "pickup reads the roadmap from trunk after syncing" in err
+    assert "Land the add-node commit on trunk first" in err
+
+
+def test_exit_no_actionable_leaves_hint_without_a_known_branch(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
+    with pytest.raises(SystemExit):
+        dnt._exit_no_actionable_leaves([leaf], _reg("M2.1"), after_sync=True)
+    assert "the integration branch" in capsys.readouterr().err
+
+
+def test_hint_comes_after_the_diagnostics(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The counts explain the queue when they can; the hint covers when they cannot."""
+    leaf = {**_BASE_NODE, "id": "M2.1", "codename": "leaf-node"}
+    with pytest.raises(SystemExit):
+        dnt._exit_no_actionable_leaves(
+            [leaf], _reg("M2.1"), after_sync=True, integration_branch="trunk"
+        )
+    err = capsys.readouterr().err
+    assert err.index("already claimed leaves") < err.index("pickup reads the roadmap")
+
+
+def test_exit_no_leaves_under_parent_also_names_the_branch(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A freshly authored subtree is the likeliest reason --under comes back empty."""
+    with pytest.raises(SystemExit):
+        dnt._exit_no_leaves_under_parent("M7", after_sync=True, integration_branch="trunk")
+    err = capsys.readouterr().err
+    assert "No actionable leaf tasks under parent 'M7'" in err
+    assert "pickup reads the roadmap from trunk after syncing" in err

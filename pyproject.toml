@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "specy-road"
 # Canonical version: `specy_road.__version__` prefers this file when the
 # package lives under this repo; else importlib.metadata; else `0.0.0+unknown`.
-version = "0.1.4rc1"
+version = "0.1.4rc2"
 description = "Roadmap-first coordination kit for humans and AI agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,9 +52,16 @@ where = ["."]
 include = ["specy_road*"]
 
 [tool.setuptools.package-data]
+# `*` does not match a leading dot, so every dotfile in the scaffold needs its
+# own entry. Without one it is dropped from the wheel silently: `init project`
+# copies whatever is on disk, so an editable checkout still scaffolds correctly
+# and only pip-installed users see the gap. scripts/verify_wheel_contents.py and
+# tests/test_package_data_dotfiles.py guard against adding another.
 specy_road = [
   "templates/**/*",
   "templates/project/**/*",
+  "templates/project/.gitignore",
+  "templates/project/work/.gitkeep",
   "pm_gantt_static/**/*",
   "bundled_scripts/*.py",
 ]

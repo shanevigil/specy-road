@@ -11,6 +11,102 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.4-rc2] - 2026-08-21
+
+Second release candidate for v0.1.4. Routed to **TestPyPI** by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.1.4rc2
+
+Acts on adopter feedback gathered while running the `v0.1.4-rc1` prerelease on a
+real project, plus five further defects the pre-release pass found on top of it.
+Almost every item is a case of specy-road tripping over its own output, shipping
+an incomplete artifact, or leaving a mode implicit that its own docs call
+unusable.
+
+**Adopters upgrading from `v0.1.4-rc1` or earlier:** if `specy-road init project`
+scaffolded your repository, it did not write a `.gitignore` (see the packaging
+fix below). Copy the rules from
+[`specy_road/templates/project/.gitignore`](specy_road/templates/project/.gitignore)
+into yours, then `git rm --cached` any `work/prompt-*.md`,
+`work/pr-body-*.md`, `work/.on-complete-*.yaml`, or `work/.milestone-session.yaml`
+that got committed.
+
+### Fixed
+
+- **`specy-road init project` now scaffolds its `.gitignore` for pip-installed
+  users.** `[tool.setuptools.package-data]` covered the template tree with
+  `templates/project/**/*`, and those globs are `fnmatch`-style, where `*` does
+  not match a leading dot — so `.gitignore` and `work/.gitkeep` were dropped
+  from the wheel with no warning. `init project` copies whatever is on disk, so
+  an editable checkout scaffolded correctly and only `pip install specy-road`
+  users were affected: they got a consumer repo with **no ignore rules at all**
+  and started committing `work/prompt-*.md`, `work/.on-complete-*.yaml`,
+  `work/.milestone-session.yaml`, and the PR-body snapshot. This is the actual
+  origin of the tracked session artifacts reported against `v0.1.4-rc1`. Both
+  paths are now declared explicitly, `scripts/verify_wheel_contents.py` asserts
+  they are in the built wheel, and a test asserts every template dotfile is
+  declared. **Existing consumer repos need the ignore rules added by hand** —
+  copy them from `specy_road/templates/project/.gitignore`.
+- **`specy-road abort-task-pickup` works immediately after a pickup.** It
+  refused whenever `git status --porcelain` was non-empty, and
+  `do-next-available-task` always leaves untracked files behind — the brief is
+  deliberately not gitignored — so the documented escape hatch failed in its
+  most common invocation and the user had to hand-delete the toolkit's own
+  output first. The check now skips the untracked `work/` artifacts belonging to
+  the pickup being aborted (the ones abort deletes anyway). A modified tracked
+  file still blocks, and the error now lists what is dirty.
+- **`specy-road file-limits` no longer fails on the toolkit's own output.**
+  `finish-this-task` writes `work/pr-body-<NODE>.md` (the F-015 snapshot of the
+  brief plus the implementation summary) and cannot delete it, because the
+  printed `gh pr create --body-file` command still needs it. It is several
+  thousand lines, is matched by the scaffold's `**/*.md` glob, and was not
+  ignored — so a default `init project` scaffold failed `file-limits` after its
+  first finish. `file-limits` now skips the session artifacts specy-road itself
+  writes under `work/` (`brief-`, `prompt-`, `implementation-summary-`,
+  `pr-body-`, `.on-complete-`, `.milestone-session.yaml`), the `init project`
+  `.gitignore` covers `work/pr-body-*.md`, and `finish-this-task` points repos
+  that already track the snapshot at the ignore rule.
+- **`specy-road file-limits` respects `.gitignore`.** The scan walked every
+  directory outside a hardcoded eight-entry skip list, reporting violations for
+  files CI can never see; one adopter repo reported 1,579 untracked violations
+  out of 1,610. Inside a git worktree, ignored paths are now skipped. Tracked
+  files are still always checked, even when an ignore rule matches them. Use
+  `specy-road file-limits --no-respect-gitignore` for the old behavior.
+- **A tracked `work/.on-complete-<NODE>.yaml` is now removed properly.** The
+  sidecar was unlinked without staging, unlike its brief/prompt/summary
+  siblings, so a committed copy left a dirty worktree that the next checkout
+  restored. `finish-this-task` now removes it during its bookkeeping phase, so
+  a tracked copy is staged into that commit. The other callers (abort, milestone
+  rollup, the `on_complete` tail) run after their command's last commit, where
+  staging would only leave a dirty index, so they still plainly unlink.
+- **`specy-road --version` / `-V` works** (also `specyrd --version`). It
+  previously fell through to `unknown command: --version` and exited 2, while
+  `specy_road.__version__` resolved correctly.
+- **A new phase node gets its own chunk.** A phase has no phase *ancestor*, so
+  it bypassed the router's locality pass and landed in whichever chunk had
+  room — typically a sibling phase's file. Everything added under it then
+  followed it there, so one misrouted phase root pulled its whole subtree into
+  a misnamed chunk. `add-node --type phase M2` now creates `phases/M2.json`. An
+  explicit `--chunk` hint still wins.
+
+### Changed
+
+- **`specy-road grind-session` refuses to run in `pr` mode.** `pr` never merges
+  between cycles, so each finish stays stranded on its feature branch where the
+  next pickup — which syncs to the integration branch first — cannot see it.
+  `pr` is also the fallback when nothing declares a mode, so an unattended grind
+  in a repo whose `git-workflow.yaml` omitted `on_complete` degraded silently.
+  The loop now resolves the mode up front and exits 1 with the fix; `--plan`
+  stays allowed. `init project` writes `on_complete` explicitly so the mode is
+  never implicit.
+- **Empty-queue diagnostics name the integration-branch rule.** Pickup syncs to
+  the integration branch before selecting, so a node added on an unmerged branch
+  is invisible and reads as "no actionable leaves". The diagnostics now say so
+  and name the configured branch.
+
 ## [v0.1.4-rc1] - 2026-06-07
 
 Release candidate (routes to **TestPyPI**). Adds the agent-driven task-loop

@@ -11,4 +11,9 @@ require_implementation_review_before_finish: true
 # Omit or set true for default; set false to keep those files (CLI --no-cleanup-work also skips).
 cleanup_work_artifacts_on_finish: true
 # Optional: merge_request_requires_manual_approval: true
-# Optional: on_complete: pr   # pr | merge | auto — how finish-this-task lands work (default pr); see docs/git-workflow.md
+# How finish-this-task lands work: pr | merge | auto. Declared explicitly rather
+# than left to the built-in default so the mode is never implicit. Change this to
+# merge (or auto) before running grind-session: the loop refuses to start in pr
+# mode, because pr never merges between cycles and the next pickup cannot see the
+# work the last one finished. See docs/git-workflow.md and docs/grind-session.md.
+on_complete: pr

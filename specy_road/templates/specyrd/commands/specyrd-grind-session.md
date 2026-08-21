@@ -47,8 +47,11 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 ```
 
 Stop conditions: `--until NODE`, `--under PARENT`, `--max-leaves N`, or default
-(no actionable work). Stable exit codes: `0` ok, `2` no leaves, `3` blocked on
-dependency/gate (human needed), `4` pre-finish failed, `5` pickup failed. The loop
-lands work per cycle, so use **`--on-complete merge`** (or `auto`), not `pr`.
+(no actionable work). Stable exit codes: `0` ok, `1` generic failure (including
+a refused `pr` mode), `2` no leaves, `3` blocked on dependency/gate (human
+needed), `4` pre-finish failed, `5` pickup failed. The loop lands work per
+cycle, so it **refuses to start** when the resolved mode is `pr` — pass
+**`--on-complete merge`** (or `auto`), or set `on_complete` in
+`roadmap/git-workflow.yaml`. `--plan` is read-only and always allowed.
 
 See `specy-road grind-session --help` and `docs/grind-session.md`.

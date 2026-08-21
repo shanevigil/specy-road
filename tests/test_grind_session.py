@@ -135,7 +135,7 @@ def test_plan_mode_emits_plan_and_no_git(monkeypatch, capsys):
 def test_loop_hook_mode_max_leaves(monkeypatch, capsys):
     plans = [_plan(ready=["M1.1"]), _plan(ready=["M1.2"]), _plan(ready=["M1.3"])]
     h = _Harness(monkeypatch, plans)
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--max-leaves", "2", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
     evs = _events(capsys)
@@ -149,7 +149,7 @@ def test_loop_hook_mode_max_leaves(monkeypatch, capsys):
 def test_loop_until_stops_after_node(monkeypatch, capsys):
     plans = [_plan(ready=["M1.1"]), _plan(ready=["M1.2"]), _plan(ready=["M1.3"])]
     _Harness(monkeypatch, plans)
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--until", "M1.2", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
     evs = _events(capsys)
@@ -159,7 +159,7 @@ def test_loop_until_stops_after_node(monkeypatch, capsys):
 def test_loop_runs_until_no_work(monkeypatch, capsys):
     plans = [_plan(ready=["M1.1"]), _plan(ready=[])]
     _Harness(monkeypatch, plans)
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
     evs = _events(capsys)
@@ -175,7 +175,7 @@ def test_loop_runs_until_no_work(monkeypatch, capsys):
 def test_blocked_only_exits_3(monkeypatch, capsys):
     plan = _plan(ready=[], blocked=[BlockedLeaf("M11.1", "cn", ["M10.5"], "dependency")])
     h = _Harness(monkeypatch, [plan])
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_BLOCKED
     evs = _events(capsys)
@@ -186,7 +186,7 @@ def test_blocked_only_exits_3(monkeypatch, capsys):
 
 def test_no_actionable_leaves_exits_2(monkeypatch, capsys):
     _Harness(monkeypatch, [_plan(ready=[])])
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_NO_LEAVES
 
@@ -199,7 +199,7 @@ def test_pre_finish_failure_exits_4_and_skips_finish(monkeypatch, capsys):
         return 2 if cmd == "make test" else 0  # only the pre-finish hook fails
 
     monkeypatch.setattr(gs, "_run_shell", failing_shell)
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--pre-finish-cmd", "make test", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_PRE_FINISH_FAILED
     # finish-this-task must NOT have been called.
@@ -211,7 +211,7 @@ def test_pre_finish_failure_exits_4_and_skips_finish(monkeypatch, capsys):
 
 def test_pickup_failure_exits_5(monkeypatch, capsys):
     h = _Harness(monkeypatch, [_plan(ready=["M1.1"])], pickup_rc=1)
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "true",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_PICKUP_FAILED
     evs = _events(capsys)
@@ -226,7 +226,7 @@ def test_implement_hook_failure_exits_1(monkeypatch, capsys):
         return 3  # implement-cmd fails
 
     monkeypatch.setattr(gs, "_run_shell", failing_shell)
-    code = _run(["--implement-mode", "hook", "--implement-cmd", "false",
+    code = _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd", "false",
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_GENERIC
     evs = _events(capsys)
@@ -259,6 +259,74 @@ def test_pickup_and_finish_pass_through_flags(monkeypatch, capsys):
     assert "--base" in pickup and "dev" in pickup
     assert "--remote" in pickup and "up" in pickup
     assert "--on-complete" in finish and "merge" in finish
+
+
+# ---------------------------------------------------------------------------
+# on_complete guard
+# ---------------------------------------------------------------------------
+
+
+def test_loop_refuses_implicit_pr_mode(monkeypatch, capsys):
+    """`pr` is the fallback when nothing declares a mode, and it never merges.
+
+    Without this guard an unattended grind in a repo whose git-workflow.yaml
+    omits `on_complete` opens a PR per leaf and strands every finish on its
+    feature branch, where the next pickup cannot see it.
+    """
+    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
+    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+                 "--json", "--repo-root", "/tmp/x"])
+    assert code == EXIT_GENERIC
+    assert h.cli_calls == []  # refused before any pickup
+    assert "'pr' mode" in capsys.readouterr().err
+
+
+def test_loop_refuses_explicit_pr_mode(monkeypatch, capsys):
+    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
+    code = _run(["--on-complete", "pr", "--implement-mode", "hook",
+                 "--implement-cmd", "true", "--json", "--repo-root", "/tmp/x"])
+    assert code == EXIT_GENERIC
+    assert h.cli_calls == []
+
+
+def test_plan_mode_is_allowed_in_pr_mode(monkeypatch, capsys):
+    """--plan is read-only, so the merge requirement does not apply."""
+    _Harness(monkeypatch, [_plan(ready=["M1.1"])])
+    assert _run(["--plan", "--json", "--repo-root", "/tmp/x"]) == EXIT_OK
+
+
+def test_git_workflow_on_complete_satisfies_the_guard(monkeypatch, capsys, tmp_path):
+    """An explicit mode in git-workflow.yaml means no flag is needed."""
+    (tmp_path / "roadmap").mkdir()
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\non_complete: merge\n",
+        encoding="utf-8",
+    )
+    _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])])
+    code = _run(["--implement-mode", "hook", "--implement-cmd", "true",
+                 "--json", "--repo-root", str(tmp_path)])
+    assert code == EXIT_OK
+
+
+def test_resolved_mode_is_forwarded_to_every_cycle(monkeypatch, capsys, tmp_path):
+    """Pinning the mode is what stops the pickup prompt reintroducing `pr`.
+
+    Without an explicit --on-complete, each cycle's do-next-available-task
+    prompts on a TTY and writes the answer to the session file, which
+    finish-this-task prefers over git-workflow.yaml.
+    """
+    (tmp_path / "roadmap").mkdir()
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\non_complete: merge\n",
+        encoding="utf-8",
+    )
+    h = _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])])
+    _run(["--implement-mode", "hook", "--implement-cmd", "true",
+          "--json", "--repo-root", str(tmp_path)])
+    pickup = next(c for c in h.cli_calls if c[0] == "do-next-available-task")
+    finish = next(c for c in h.cli_calls if c[0] == "finish-this-task")
+    assert pickup[pickup.index("--on-complete") + 1] == "merge"
+    assert finish[finish.index("--on-complete") + 1] == "merge"
 
 
 # ---------------------------------------------------------------------------

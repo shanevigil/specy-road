@@ -102,8 +102,8 @@ def _resync_and_select(
         available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
         if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=True)
-        _exit_no_actionable_leaves(nodes, reg, after_sync=True)
+            _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
+        _exit_no_actionable_leaves(nodes, reg, after_sync=True, integration_branch=base)
     return nodes, reg, available, integration_statuses
 
 
@@ -326,7 +326,7 @@ def _finalize_pickup(
     )
 
 
-def _check_pre_sync_availability(remote: str, parent_filter) -> None:
+def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
     """Pre-sync availability sanity check: exit if no actionable leaf locally."""
     nodes = load_roadmap(ROOT)["nodes"]
     reg = _load_registry()
@@ -338,8 +338,8 @@ def _check_pre_sync_availability(remote: str, parent_filter) -> None:
         available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
         if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=False)
-        _exit_no_actionable_leaves(nodes, reg, after_sync=False)
+            _exit_no_leaves_under_parent(parent_filter, after_sync=False, integration_branch=base)
+        _exit_no_actionable_leaves(nodes, reg, after_sync=False, integration_branch=base)
 
 
 def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
@@ -374,7 +374,7 @@ def main(argv: list[str] | None = None) -> None:
 
     parent_filter = _resolve_milestone_parent_filter(WORK_DIR, args)
     _validate_or_exit()
-    _check_pre_sync_availability(remote, parent_filter)
+    _check_pre_sync_availability(base, remote, parent_filter)
     # F-011: stash any in-progress work/ changes so the integration-branch
     # registry commit is clean; restore onto the new feature branch.
     stashed = _stash_work_dir_changes()

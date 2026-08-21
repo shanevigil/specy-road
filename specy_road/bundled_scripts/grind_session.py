@@ -37,6 +37,7 @@ from grind_session_events import (
 from session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
 from session_plan_render import render_session_plan_text
 from roadmap_load import load_roadmap
+from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
 
 
@@ -214,6 +215,35 @@ def _do_cycle(args, repo_root: Path, emitter: EventEmitter, nodes: list[dict],
     return node_id, None
 
 
+def _pin_loop_mode(repo_root: Path, args) -> str | None:
+    """Resolve ``on_complete`` once and pin it on ``args``; return error text or None.
+
+    ``pr`` never merges, so each cycle leaves its bookkeeping stranded on the
+    feature branch and the next pickup — which syncs to the integration branch
+    first — cannot see it. Since ``pr`` is also the fallback when nothing
+    declares a mode, an unattended grind in a repo whose git-workflow.yaml omits
+    ``on_complete`` silently degrades instead of failing.
+
+    Pinning matters as much as rejecting: without an explicit ``--on-complete``,
+    each cycle's ``do-next-available-task`` prompts on a TTY and writes the
+    answer to the per-task session file, which ``finish-this-task`` prefers over
+    the config. Answering ``pr`` once would put the loop back in the state this
+    check exists to prevent. Writing the resolved mode back onto ``args`` makes
+    both pass-through builders forward it, which also suppresses the prompt.
+    """
+    mode = resolve_on_complete(repo_root, cli=args.on_complete, session=None)
+    if mode == "pr":
+        return (
+            "grind-session cannot run in 'pr' mode: it does not merge between "
+            "cycles, so downstream dependencies stay blocked and the loop cannot "
+            "continue. Pass --on-complete merge (or auto), or set 'on_complete' in "
+            "roadmap/git-workflow.yaml. For one PR per leaf, use --plan plus "
+            "individual do-next-available-task / finish-this-task runs."
+        )
+    args.on_complete = mode
+    return None
+
+
 def _handle_no_ready(emitter: EventEmitter, plan: SessionPlan, finished: int) -> int:
     if plan.blocked:
         b = plan.blocked[0]
@@ -241,6 +271,10 @@ def run_session(args) -> int:
         _nodes, _reg, plan = gather_plan(repo_root, args.under)
         _emit_plan(emitter, plan)
         return EXIT_OK
+    mode_error = _pin_loop_mode(repo_root, args)
+    if mode_error is not None:
+        print(f"error: {mode_error}", file=sys.stderr)
+        return EXIT_GENERIC
     finished = 0
     for _cycle in range(max(1, args.max_cycles)):
         nodes, _reg, plan = gather_plan(repo_root, args.under)

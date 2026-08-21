@@ -66,7 +66,14 @@ def read_on_complete_session(
 
 
 def remove_on_complete_session(path: Path) -> None:
-    """Delete session file if present (ignore errors)."""
+    """Delete session file if present (ignore errors).
+
+    Safety net only. Every caller here runs *after* its command's last commit,
+    so staging a deletion would just leave a dirty index. ``finish-this-task``
+    removes a tracked sidecar during its bookkeeping phase instead — see
+    ``specy_road.finish_work_artifacts.cleanup_session_sidecar`` — which leaves
+    nothing for this to do on the normal path.
+    """
     try:
         path.unlink()
     except OSError:

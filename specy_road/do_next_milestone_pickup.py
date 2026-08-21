@@ -49,7 +49,26 @@ def resolve_milestone_parent_filter(
     return None
 
 
-def exit_no_leaves_under_parent(parent_id: str, *, after_sync: bool) -> None:
+def print_integration_branch_hint(integration_branch: str | None) -> None:
+    """Name the cause an empty queue does not otherwise show.
+
+    Pickup syncs to the integration branch before selecting, so it only sees the
+    graph as committed there. A node added on a feature branch that has not
+    merged yet is invisible, which reads as "no actionable leaves" rather than as
+    a missing merge.
+    """
+    branch = integration_branch or "the integration branch"
+    print(
+        f"  note: pickup reads the roadmap from {branch} after syncing, so a "
+        "node added on an unmerged branch is not visible yet. Land the "
+        f"add-node commit on {branch} first, then re-run.",
+        file=sys.stderr,
+    )
+
+
+def exit_no_leaves_under_parent(
+    parent_id: str, *, after_sync: bool, integration_branch: str | None = None
+) -> None:
     phase = "after sync" if after_sync else "before sync"
     print(
         f"No actionable leaf tasks under parent {parent_id!r} ({phase}).",
@@ -60,4 +79,7 @@ def exit_no_leaves_under_parent(parent_id: str, *, after_sync: bool) -> None:
         "dependencies.",
         file=sys.stderr,
     )
+    # A freshly authored subtree is the most likely reason a --under filter comes
+    # back empty, and that is exactly the case the hint covers.
+    print_integration_branch_hint(integration_branch)
     raise SystemExit(1)

@@ -23,5 +23,5 @@ Prefer the repo’s documented verification commands in [`README.md`](../../READ
 - `pytest`
 - When changing [`gui/pm-gantt/`](../../gui/pm-gantt/): `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build` (ESLint 10 + `@eslint-react/eslint-plugin`; see [`gui/pm-gantt/eslint.config.js`](../../gui/pm-gantt/eslint.config.js) and [`.cursor/rules/025-pm-gantt-eslint.mdc`](025-pm-gantt-eslint.mdc))
 
-Equivalent direct script entrypoints live under `specy_road/bundled_scripts/` (see [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml)); there is no top-level `scripts/` directory in this repository.
+Equivalent direct script entrypoints live under `specy_road/bundled_scripts/` (see [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml)) — that is where CLI-equivalent scripts belong. The top-level [`scripts/`](../../scripts/) directory is reserved for release automation invoked by CI ([`check_release_version.py`](../../scripts/check_release_version.py), [`post_release_readme_cleanup.py`](../../scripts/post_release_readme_cleanup.py), [`verify_wheel_contents.py`](../../scripts/verify_wheel_contents.py)); do not add roadmap tooling there.
 

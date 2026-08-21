@@ -26,6 +26,12 @@ The loop lands each finished leaf on the integration branch, so run it with
 so downstream dependencies stay blocked and the loop cannot continue
 autonomously — use `--plan` + per-leaf runs instead.
 
+**This is enforced, not just advised.** `grind-session` resolves the effective
+mode before the first pickup and exits 1 if it is `pr` — including the case
+where nothing declared a mode at all and `pr` came from the built-in default.
+Set it once in `roadmap/git-workflow.yaml` (`on_complete: merge`) or pass
+`--on-complete merge` per run. `--plan` is read-only and always allowed.
+
 ---
 
 ## Planner first: `--plan`
@@ -198,7 +204,7 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | Code | Meaning |
 | --- | --- |
 | `0` | Ended normally (bound reached, or no actionable work left) |
-| `1` | Generic failure (implement hook or `finish-this-task` failed) |
+| `1` | Generic failure — implement hook or `finish-this-task` failed, or the resolved `on_complete` was `pr` and the loop refused to start |
 | `2` | No actionable leaves at start |
 | `3` | Blocked on a dependency or gate — human action required |
 | `4` | `--pre-finish-cmd` failed |

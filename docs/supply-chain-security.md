@@ -55,7 +55,7 @@ For each dependency, the audit should:
 
 ## Frozen Python resolution (maintainers)
 
-CI and reproducible audits use **[`requirements-ci.txt`](../requirements-ci.txt)** — a **compiled** lock produced from `pyproject.toml` with the **`dev`** extra (not hand-edited).
+CI and reproducible audits use **[`requirements-ci.txt`](../requirements-ci.txt)** — a **compiled** lock produced from `pyproject.toml` with the **`dev`** extra.
 
 **Regenerate** after changing dependencies in `pyproject.toml`:
 
@@ -63,6 +63,16 @@ CI and reproducible audits use **[`requirements-ci.txt`](../requirements-ci.txt)
 pip install pip-tools
 pip-compile requirements-ci.in -o requirements-ci.txt
 ```
+
+**One exception — targeted security pins.** When `pip-audit` or OSV-Scanner flags a
+transitive package, you may edit that single pin to the lowest fixed version
+instead of recompiling, provided the result still satisfies every declared
+constraint (verify with a clean `pip install -r requirements-ci.txt`). A full
+recompile pulls unrelated upgrades across the whole tree, which is the wrong risk
+to take when the goal is closing one advisory — especially mid-release, where it
+would conflate dependency churn with the change under test. Fold the pin into the
+next full recompile. Dependabot PRs remain the route for routine upgrades, and a
+human still reviews each one.
 
 **Install** like CI:
 

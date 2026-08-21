@@ -74,7 +74,7 @@ def write_with_routing(
         plan.stage_manifest(manifest_doc)
         print(
             f"[chunk-router] auto-created chunk roadmap/{decision.chunk_rel} "
-            f"(node {node.get('id')!r} would have overflowed existing chunks)",
+            f"(node {node.get('id')!r} {decision.new_chunk_reason})",
             file=sys.stderr,
         )
     plan.commit(_validate_callback(root))

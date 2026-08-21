@@ -6,6 +6,7 @@ import sys
 from typing import Iterable
 
 from do_next_available import _leaf_diagnostics, _leaf_node_ids
+from specy_road.do_next_milestone_pickup import print_integration_branch_hint
 
 
 def _fmt_ids(ids: Iterable[str], *, cap: int = 6) -> str:
@@ -29,7 +30,8 @@ def assert_leaf_target(node: dict, nodes: list[dict]) -> None:
 
 
 def exit_no_actionable_leaves(
-    nodes: list[dict], reg: dict, *, after_sync: bool
+    nodes: list[dict], reg: dict, *, after_sync: bool,
+    integration_branch: str | None = None,
 ) -> None:
     diag = _leaf_diagnostics(nodes, reg)
     phase = "after sync" if after_sync else "before sync"
@@ -75,4 +77,8 @@ def exit_no_actionable_leaves(
             f"{_fmt_ids(diag['missing_codename_leaf_ids'])}",
             file=sys.stderr,
         )
+    # Last, not first: the counts above explain the queue when they can, and
+    # this covers the case they cannot show — a node that is not on the trunk
+    # yet does not appear in any of them.
+    print_integration_branch_hint(integration_branch)
     raise SystemExit(1)

@@ -31,6 +31,14 @@ def main() -> None:
         action="store_true",
         help="Treat hard_alerts warnings as failures (exit 1).",
     )
+    parser.add_argument(
+        "--no-respect-gitignore",
+        action="store_true",
+        help=(
+            "Also check files git ignores. Default: skip them, since CI never "
+            "sees them (has no effect outside a git worktree)."
+        ),
+    )
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
     config_path = root / "constraints" / "file-limits.yaml"
@@ -43,6 +51,7 @@ def main() -> None:
         root,
         cfg,
         strict_hard_alerts=args.strict_hard_alerts,
+        respect_gitignore=not args.no_respect_gitignore,
     ):
         raise SystemExit(1)
     print("OK: file limits satisfied.")

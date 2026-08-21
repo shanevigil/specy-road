@@ -3,6 +3,11 @@
 # branches. Briefs (work/brief-*.md) and implementation summaries
 # (work/implementation-summary-*.md) are intentionally NOT ignored — they
 # document the work and belong on the feature branch.
+#
+# work/pr-body-*.md is the finish-this-task snapshot passed to
+# `gh pr create --body-file`. It is a concatenation of the brief and the
+# implementation summary, so tracking it duplicates both in git history.
 work/.on-complete-*.yaml
 work/prompt-*.md
+work/pr-body-*.md
 work/.milestone-session.yaml

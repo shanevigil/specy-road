@@ -10,7 +10,6 @@ from pathlib import Path
 
 import yaml
 from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
@@ -20,6 +19,11 @@ from specy_road.git_workflow_config import (
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
+from specy_road.finish_work_artifacts import (
+    cleanup_session_sidecar,
+    cleanup_work_artifacts,
+    warn_if_pr_body_tracked,
+)
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
@@ -109,47 +113,6 @@ def _validate_and_export() -> None:
     subprocess.check_call(
         [sys.executable, "-m", "specy_road.cli", "export", *rr], cwd=ROOT
     )
-
-
-def _work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:
-    return (
-        f"work/brief-{node_id}.md",
-        f"work/prompt-{node_id}.md",
-        f"work/implementation-summary-{node_id}.md",
-    )
-
-
-def _is_git_tracked(repo_root: Path, rel: str) -> bool:
-    r = subprocess.run(
-        ["git", "ls-files", "--", rel],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return bool((r.stdout or "").strip())
-
-
-def _cleanup_work_artifacts(repo_root: Path, node_id: str) -> list[str]:
-    """Remove toolkit session files under work/; return tracked paths to stage as deletions."""
-    need_add: list[str] = []
-    root_r = repo_root.resolve()
-    for rel in _work_artifact_rel_paths(node_id):
-        path = (root_r / rel).resolve()
-        if not path.is_file():
-            continue
-        try:
-            path.relative_to(root_r)
-        except ValueError:
-            continue
-        tracked = _is_git_tracked(root_r, rel)
-        path.unlink()
-        if tracked:
-            need_add.append(rel)
-            print(f"[ok] removed {rel} (tracked — staging deletion)")
-        else:
-            print(f"[ok] removed {rel}")
-    return need_add
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -283,6 +246,7 @@ def _bookkeeping_commit_phase(
     reg: dict,
     *,
     pr_body_path: Path | None = None,
+    sess_path: Path | None = None,
 ) -> None:
     changed_files = _update_chunk_status(node_id)
     changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
@@ -296,12 +260,14 @@ def _bookkeeping_commit_phase(
         # Print AFTER export so the dev sees a clean post-commit pointer.
         rel = pr_body_path.relative_to(ROOT)
         print(f"[ok] wrote {rel} (snapshot for PR/MR body, F-015)")
+        warn_if_pr_body_tracked(ROOT)
     work_tracked_removals: list[str] = []
     if should_cleanup_work_artifacts_on_finish(
         ROOT,
         no_cleanup_work_cli=args.no_cleanup_work,
     ):
-        work_tracked_removals = _cleanup_work_artifacts(ROOT, node_id)
+        work_tracked_removals = cleanup_work_artifacts(ROOT, node_id)
+    work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
     changed_files.append("roadmap.md")
     changed_files.extend(work_tracked_removals)
     _git("add", *changed_files)
@@ -327,7 +293,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
     ctx = _resolve_main_context(args, branch)
-    codename, reg, entry, nodes, node, node_id = ctx["codename"], ctx["reg"], ctx["entry"], ctx["nodes"], ctx["node"], ctx["node_id"]
+    codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]
+    node, node_id = ctx["node"], ctx["node_id"]
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
     ib, gw_remote = ctx["ib"], ctx["gw_remote"]
 
@@ -345,7 +312,8 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     _bookkeeping_commit_phase(
-        args, codename, node_id, branch, reg, pr_body_path=pr_body_path,
+        args, codename, node_id, branch, reg,
+        pr_body_path=pr_body_path, sess_path=sess_path,
     )
     mr_manual = merge_request_requires_manual_approval(ROOT)
 

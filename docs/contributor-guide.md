@@ -161,6 +161,7 @@ The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood 
 ```bash
 source .venv/bin/activate
 pip install -e ".[dev,gui-next]"
+specy-road --version   # which build you are actually running
 pytest -q
 specy-road validate    --repo-root tests/fixtures/specy_road_dogfood
 specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
@@ -276,8 +277,10 @@ npm ci
 npm audit --omit=dev
 ```
 
-Dependabot opens weekly PRs for pip, npm, and GitHub Actions; review
-before merge.
+Dependabot opens weekly PRs for pip, npm, and GitHub Actions against
+`dev`; review before merge. They must target `dev` rather than the
+default branch, because `main-release-tag-gate.yml` rejects any PR to
+`main` that carries no `release: vX.Y.Z` marker.
 
 ---
 
