@@ -11,6 +11,59 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+Acts on adopter feedback gathered while running the `v0.1.4-rc1` prerelease on a
+real project. Every item below is a case of specy-road tripping over its own
+output or leaving a mode implicit that its own docs call unusable.
+
+### Fixed
+
+- **`specy-road file-limits` no longer fails on the toolkit's own output.**
+  `finish-this-task` writes `work/pr-body-<NODE>.md` (the F-015 snapshot of the
+  brief plus the implementation summary) and cannot delete it, because the
+  printed `gh pr create --body-file` command still needs it. It is several
+  thousand lines, is matched by the scaffold's `**/*.md` glob, and was not
+  ignored — so a default `init project` scaffold failed `file-limits` after its
+  first finish. `file-limits` now skips the session artifacts specy-road itself
+  writes under `work/` (`brief-`, `prompt-`, `implementation-summary-`,
+  `pr-body-`, `.on-complete-`, `.milestone-session.yaml`), the `init project`
+  `.gitignore` covers `work/pr-body-*.md`, and `finish-this-task` points repos
+  that already track the snapshot at the ignore rule.
+- **`specy-road file-limits` respects `.gitignore`.** The scan walked every
+  directory outside a hardcoded eight-entry skip list, reporting violations for
+  files CI can never see; one adopter repo reported 1,579 untracked violations
+  out of 1,610. Inside a git worktree, ignored paths are now skipped. Tracked
+  files are still always checked, even when an ignore rule matches them. Use
+  `specy-road file-limits --no-respect-gitignore` for the old behavior.
+- **A tracked `work/.on-complete-<NODE>.yaml` is now removed properly.** The
+  sidecar was unlinked without staging, unlike its brief/prompt/summary
+  siblings, so a committed copy left a dirty worktree that the next checkout
+  restored. Removal is folded into the bookkeeping commit, and every other
+  caller (abort, milestone rollup) stages the deletion.
+- **`specy-road --version` / `-V` works** (also `specyrd --version`). It
+  previously fell through to `unknown command: --version` and exited 2, while
+  `specy_road.__version__` resolved correctly.
+- **A new phase node gets its own chunk.** A phase has no phase *ancestor*, so
+  it bypassed the router's locality pass and landed in whichever chunk had
+  room — typically a sibling phase's file. Everything added under it then
+  followed it there, so one misrouted phase root pulled its whole subtree into
+  a misnamed chunk. `add-node --type phase M2` now creates `phases/M2.json`. An
+  explicit `--chunk` hint still wins.
+
+### Changed
+
+- **`specy-road grind-session` refuses to run in `pr` mode.** `pr` never merges
+  between cycles, so each finish stays stranded on its feature branch where the
+  next pickup — which syncs to the integration branch first — cannot see it.
+  `pr` is also the fallback when nothing declares a mode, so an unattended grind
+  in a repo whose `git-workflow.yaml` omitted `on_complete` degraded silently.
+  The loop now resolves the mode up front and exits 1 with the fix; `--plan`
+  stays allowed. `init project` writes `on_complete` explicitly so the mode is
+  never implicit.
+- **Empty-queue diagnostics name the integration-branch rule.** Pickup syncs to
+  the integration branch before selecting, so a node added on an unmerged branch
+  is invisible and reads as "no actionable leaves". The diagnostics now say so
+  and name the configured branch.
+
 ## [v0.1.4-rc1] - 2026-06-07
 
 Release candidate (routes to **TestPyPI**). Adds the agent-driven task-loop
