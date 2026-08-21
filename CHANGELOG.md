@@ -11,9 +11,28 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.4-rc2] - 2026-08-21
+
+Second release candidate for v0.1.4. Routed to **TestPyPI** by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.1.4rc2
+
 Acts on adopter feedback gathered while running the `v0.1.4-rc1` prerelease on a
-real project. Every item below is a case of specy-road tripping over its own
-output or leaving a mode implicit that its own docs call unusable.
+real project, plus five further defects the pre-release pass found on top of it.
+Almost every item is a case of specy-road tripping over its own output, shipping
+an incomplete artifact, or leaving a mode implicit that its own docs call
+unusable.
+
+**Adopters upgrading from `v0.1.4-rc1` or earlier:** if `specy-road init project`
+scaffolded your repository, it did not write a `.gitignore` (see the packaging
+fix below). Copy the rules from
+[`specy_road/templates/project/.gitignore`](specy_road/templates/project/.gitignore)
+into yours, then `git rm --cached` any `work/prompt-*.md`,
+`work/pr-body-*.md`, `work/.on-complete-*.yaml`, or `work/.milestone-session.yaml`
+that got committed.
 
 ### Fixed
 
