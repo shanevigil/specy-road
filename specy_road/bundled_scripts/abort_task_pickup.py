@@ -41,7 +41,26 @@ def _current_branch() -> str:
     return _git_capture("rev-parse", "--abbrev-ref", "HEAD").strip()
 
 
-def _working_tree_clean() -> bool:
+def _pickup_artifact_rel_paths(node_id: str) -> set[str]:
+    """The ``work/`` files pickup created for this node — the ones abort deletes."""
+    return {
+        f"work/brief-{node_id}.md",
+        f"work/prompt-{node_id}.md",
+        f"work/implementation-summary-{node_id}.md",
+        on_complete_session_path(Path("work"), node_id).as_posix(),
+    }
+
+
+def _dirty_entries(ignore_untracked: set[str]) -> list[str]:
+    """Porcelain entries that should block the abort.
+
+    ``do-next-available-task`` writes the brief, the prompt and the session
+    sidecar, and the scaffold deliberately does not gitignore the brief — so a
+    pickup leaves untracked files behind and an immediate abort would refuse on
+    output the toolkit itself just produced. Those specific untracked paths are
+    excluded. A *modified tracked* file still blocks: that is real work, and
+    abort is not the command to throw it away.
+    """
     r = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=ROOT,
@@ -49,16 +68,28 @@ def _working_tree_clean() -> bool:
         text=True,
         check=True,
     )
-    return not r.stdout.strip()
+    blocking: list[str] = []
+    for line in (r.stdout or "").splitlines():
+        if not line.strip():
+            continue
+        status, _, path = line[:2], line[2], line[3:]
+        if status == "??" and path in ignore_untracked:
+            continue
+        blocking.append(line)
+    return blocking
 
 
-def _assert_working_tree_clean() -> None:
-    if not _working_tree_clean():
-        print(
-            "error: working tree is not clean (commit, stash, or discard changes first).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
+def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None:
+    dirty = _dirty_entries(ignore_untracked or set())
+    if not dirty:
+        return
+    print(
+        "error: working tree is not clean (commit, stash, or discard changes first).",
+        file=sys.stderr,
+    )
+    for line in dirty:
+        print(f"  {line}", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def _load_registry() -> dict:
@@ -269,14 +300,17 @@ def main(argv: list[str] | None = None) -> None:
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
 
-    _assert_working_tree_clean()
     branch = _require_feature_rm_branch_or_exit()
 
+    # Resolve the claim first so the cleanliness check knows which work/ files
+    # belong to this pickup. Reads roadmap/registry.yaml only; no git state
+    # changes before the check.
     codename, _reg_before, entry, _nodes = resolve_feature_rm_registry_context(
         ROOT,
         branch,
     )
     node_id = entry["node_id"]
+    _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
 
     _git("fetch", remote)
     ahead = _count_commits_ahead_of_remote_base(remote, base)

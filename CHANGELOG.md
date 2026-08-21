@@ -31,6 +31,14 @@ output or leaving a mode implicit that its own docs call unusable.
   they are in the built wheel, and a test asserts every template dotfile is
   declared. **Existing consumer repos need the ignore rules added by hand** —
   copy them from `specy_road/templates/project/.gitignore`.
+- **`specy-road abort-task-pickup` works immediately after a pickup.** It
+  refused whenever `git status --porcelain` was non-empty, and
+  `do-next-available-task` always leaves untracked files behind — the brief is
+  deliberately not gitignored — so the documented escape hatch failed in its
+  most common invocation and the user had to hand-delete the toolkit's own
+  output first. The check now skips the untracked `work/` artifacts belonging to
+  the pickup being aborted (the ones abort deletes anyway). A modified tracked
+  file still blocks, and the error now lists what is dirty.
 - **`specy-road file-limits` no longer fails on the toolkit's own output.**
   `finish-this-task` writes `work/pr-body-<NODE>.md` (the F-015 snapshot of the
   brief plus the implementation summary) and cannot delete it, because the
