@@ -56,7 +56,11 @@ def phase_root_chunk_rel(root: Path, new_node: dict) -> str | None:
     phase root drags its whole subtree into a misnamed chunk.
 
     Returns None when the name is unusable or already taken, leaving the caller
-    on its normal routing path.
+    on its normal routing path. "Taken" covers a file that exists on disk but is
+    absent from ``includes`` — the state a merge leaves behind when it resolves a
+    ``manifest.json`` conflict by dropping an include line. Its nodes are not in
+    the merged graph, so writing a fresh chunk over them would destroy them
+    without validation noticing anything was lost.
     """
     if new_node.get("type") != "phase":
         return None
@@ -70,7 +74,9 @@ def phase_root_chunk_rel(root: Path, new_node: dict) -> str | None:
     first = next((x for x in includes if isinstance(x, str) and x.strip()), None)
     parent = Path(first).parent.as_posix() if first else _PHASE_PRIMARY_DIR
     rel = f"{safe}.json" if parent in ("", ".") else f"{parent}/{safe}.json"
-    return None if rel in includes else rel
+    if rel in includes or (roadmap_dir(root) / rel).exists():
+        return None
+    return rel
 
 
 # Keys that are computed in-memory and must never be persisted to chunk JSON.

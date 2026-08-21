@@ -47,6 +47,26 @@ def test_phase_root_chunk_rel_yields_when_the_name_is_taken(tmp_path: Path) -> N
     assert phase_root_chunk_rel(tmp_path, _phase("M2")) is None
 
 
+def test_phase_root_chunk_rel_yields_to_an_unincluded_file_on_disk(tmp_path: Path) -> None:
+    """A dropped `includes` line must not turn into silent data loss.
+
+    Nodes in an unincluded chunk are absent from the merged graph, so writing a
+    fresh chunk over them validates cleanly and the atomic rollback never fires.
+    """
+    _fixture(tmp_path, {"phases/M1.json": [_phase("M1")]})
+    orphan = tmp_path / "roadmap" / "phases" / "M2.json"
+    orphan.write_text(
+        json.dumps({"nodes": [_phase("M2"), {"id": "M2.1", "type": "milestone",
+                                             "parent_id": "M2", "title": "m"}]}),
+        encoding="utf-8",
+    )
+    assert phase_root_chunk_rel(tmp_path, _phase("M2")) is None
+
+    decision = pick_target_chunk(tmp_path, None, None, _phase("M2"))
+    assert decision.chunk_path != orphan
+    assert [n["id"] for n in json.loads(orphan.read_text())["nodes"]] == ["M2", "M2.1"]
+
+
 def test_new_phase_routes_to_its_own_chunk_even_when_room_exists(tmp_path: Path) -> None:
     _fixture(tmp_path, {"phases/M1.json": [_phase("M1")]})
     decision = pick_target_chunk(tmp_path, None, None, _phase("M2"))
