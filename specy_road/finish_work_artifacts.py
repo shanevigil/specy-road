@@ -3,9 +3,11 @@
 Split out of ``bundled_scripts/finish_task`` to keep that module under the
 repo's per-file line cap; the ``finish_*`` modules follow the same pattern.
 
-Tracked files get their deletion staged rather than unlinked, so the caller can
-fold them into the bookkeeping commit. A bare unlink on a tracked path leaves a
-dirty worktree that the next checkout silently restores.
+Nothing here touches the index. Tracked files are unlinked and their repo-
+relative paths returned, so the caller can fold the deletion into the
+bookkeeping commit it is already assembling — an unlinked-but-tracked path that
+never reaches a commit leaves a dirty worktree that the next checkout silently
+restores.
 """
 
 from __future__ import annotations

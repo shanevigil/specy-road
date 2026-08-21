@@ -42,7 +42,13 @@ def load_manifest_mapping(root: Path) -> dict:
     return doc
 
 
-_PHASE_PRIMARY_DIR = "phases"
+PHASE_PRIMARY_DIR = "phases"
+
+# Why the router created a new chunk, for the operator-facing log line. A phase
+# can reach the overflow path too — when its own name is already taken — so the
+# node type alone does not identify which rule fired.
+PHASE_ROOT_REASON = "phase roots get their own chunk"
+OVERFLOW_REASON = "would have overflowed existing chunks"
 
 
 def phase_root_chunk_rel(root: Path, new_node: dict) -> str | None:
@@ -72,7 +78,7 @@ def phase_root_chunk_rel(root: Path, new_node: dict) -> str | None:
         return None
     includes = load_manifest_mapping(root).get("includes") or []
     first = next((x for x in includes if isinstance(x, str) and x.strip()), None)
-    parent = Path(first).parent.as_posix() if first else _PHASE_PRIMARY_DIR
+    parent = Path(first).parent.as_posix() if first else PHASE_PRIMARY_DIR
     rel = f"{safe}.json" if parent in ("", ".") else f"{parent}/{safe}.json"
     if rel in includes or (roadmap_dir(root) / rel).exists():
         return None
