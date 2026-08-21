@@ -308,6 +308,27 @@ def test_git_workflow_on_complete_satisfies_the_guard(monkeypatch, capsys, tmp_p
     assert code == EXIT_OK
 
 
+def test_resolved_mode_is_forwarded_to_every_cycle(monkeypatch, capsys, tmp_path):
+    """Pinning the mode is what stops the pickup prompt reintroducing `pr`.
+
+    Without an explicit --on-complete, each cycle's do-next-available-task
+    prompts on a TTY and writes the answer to the session file, which
+    finish-this-task prefers over git-workflow.yaml.
+    """
+    (tmp_path / "roadmap").mkdir()
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\non_complete: merge\n",
+        encoding="utf-8",
+    )
+    h = _Harness(monkeypatch, [_plan(ready=["M1.1"]), _plan(ready=[])])
+    _run(["--implement-mode", "hook", "--implement-cmd", "true",
+          "--json", "--repo-root", str(tmp_path)])
+    pickup = next(c for c in h.cli_calls if c[0] == "do-next-available-task")
+    finish = next(c for c in h.cli_calls if c[0] == "finish-this-task")
+    assert pickup[pickup.index("--on-complete") + 1] == "merge"
+    assert finish[finish.index("--on-complete") + 1] == "merge"
+
+
 # ---------------------------------------------------------------------------
 # CLI smoke tests (real subprocess through specy_road.cli)
 # ---------------------------------------------------------------------------

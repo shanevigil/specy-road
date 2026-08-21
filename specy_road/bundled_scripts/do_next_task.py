@@ -102,7 +102,7 @@ def _resync_and_select(
         available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
         if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=True)
+            _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
         _exit_no_actionable_leaves(nodes, reg, after_sync=True, integration_branch=base)
     return nodes, reg, available, integration_statuses
 
@@ -338,7 +338,7 @@ def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
         available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:
         if parent_filter:
-            _exit_no_leaves_under_parent(parent_filter, after_sync=False)
+            _exit_no_leaves_under_parent(parent_filter, after_sync=False, integration_branch=base)
         _exit_no_actionable_leaves(nodes, reg, after_sync=False, integration_branch=base)
 
 
