@@ -26,6 +26,12 @@ The loop lands each finished leaf on the integration branch, so run it with
 so downstream dependencies stay blocked and the loop cannot continue
 autonomously — use `--plan` + per-leaf runs instead.
 
+**This is enforced, not just advised.** `grind-session` resolves the effective
+mode before the first pickup and exits 1 if it is `pr` — including the case
+where nothing declared a mode at all and `pr` came from the built-in default.
+Set it once in `roadmap/git-workflow.yaml` (`on_complete: merge`) or pass
+`--on-complete merge` per run. `--plan` is read-only and always allowed.
+
 ---
 
 ## Planner first: `--plan`
