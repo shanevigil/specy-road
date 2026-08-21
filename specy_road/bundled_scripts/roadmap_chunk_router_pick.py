@@ -17,6 +17,7 @@ from roadmap_chunk_utils import (
     build_node_chunk_map,
     load_json_chunk,
     load_manifest_mapping,
+    phase_root_chunk_rel,
     render_json_chunk,
     roadmap_dir,
 )
@@ -295,16 +296,20 @@ def pick_target_chunk(
     Priority order (tuned for locality + concurrency-friendliness):
 
     1. Hint chunk if it still fits.
-    2. Smallest valid chunk in the same phase subtree (manifest-order tie-break).
-    3. **Auto-create a new chunk in the same phase** when same-phase chunks
+    2. **A phase root gets its own chunk** named after it (``phases/M2.json``).
+       It has no phase ancestor of its own, so without this it would fall to
+       step 5 and be packed into a sibling phase's file, taking its whole
+       future subtree with it.
+    3. Smallest valid chunk in the same phase subtree (manifest-order tie-break).
+    4. **Auto-create a new chunk in the same phase** when same-phase chunks
        are full. Locality matters: scattering siblings of one phase across
        unrelated phase chunks made parallel-PM merges noisier and made the
        graph less reviewable. The new chunk's filename derives from the new
        node's ``node_key`` so two PMs adding overflow nodes on parallel
        branches generate different filenames and never collide on a chunk
        file (only the manifest gets a clean two-line addition).
-    4. Only when there is no phase ancestor (e.g. authoring a vision/phase
-       row), fall back to smallest-valid-anywhere then auto-create.
+    5. Only when there is no phase ancestor (e.g. authoring a vision row),
+       fall back to smallest-valid-anywhere then auto-create.
     """
     if max_lines is None:
         max_lines = chunk_max_lines(root)
@@ -312,6 +317,10 @@ def pick_target_chunk(
     decision = _route_via_hint(root, hint_chunk_rel, new_node, max_lines)
     if decision is not None:
         return decision
+
+    phase_rel = phase_root_chunk_rel(root, new_node)
+    if phase_rel is not None:
+        return _new_chunk_decision(root, phase_rel, new_node)
 
     merged = load_merged_nodes(root)
     phase_id = phase_ancestor_id(merged, parent_id)
@@ -333,12 +342,8 @@ def pick_target_chunk(
     return _build_new_chunk_decision(root, parent_id, new_node)
 
 
-def _build_new_chunk_decision(
-    root: Path, parent_id: str | None, new_node: dict
-) -> RoutingDecision:
+def _new_chunk_decision(root: Path, new_rel: str, new_node: dict) -> RoutingDecision:
     base = roadmap_dir(root)
-    base_rel = default_chunk_for_parent(root, parent_id)
-    new_rel = derive_new_chunk_path(root, base_rel, new_node)
     new_abs = (base / new_rel).resolve()
     try:
         new_abs.relative_to(base)
@@ -350,6 +355,13 @@ def _build_new_chunk_decision(
         nodes_after=[new_node],
         chunk_rel=new_rel,
     )
+
+
+def _build_new_chunk_decision(
+    root: Path, parent_id: str | None, new_node: dict
+) -> RoutingDecision:
+    base_rel = default_chunk_for_parent(root, parent_id)
+    return _new_chunk_decision(root, derive_new_chunk_path(root, base_rel, new_node), new_node)
 
 
 def insert_include_in_manifest(

@@ -17,6 +17,9 @@ def test_init_project_ships_a_gitignore(tmp_path: Path) -> None:
     assert "work/.on-complete-*.yaml" in text
     assert "work/prompt-*.md" in text
     assert "work/.milestone-session.yaml" in text
+    # The PR-body snapshot re-inlines the brief and the implementation summary,
+    # so tracking it commits both a second time on every finish.
+    assert "work/pr-body-*.md" in text
     # Briefs and impl-summaries are intentionally NOT ignored: the patterns
     # work/brief-*.md and work/implementation-summary-*.md must NOT appear
     # as their own lines (we still allow them in comments).

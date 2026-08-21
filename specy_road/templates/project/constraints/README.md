@@ -12,3 +12,5 @@ Operational rules that are **enforced** (or enforceable by CI), not aspirational
 **Dependency and supply-chain policy** (Python/npm, advisory scans, review discipline) lives in [`docs/supply-chain-security.md`](../docs/supply-chain-security.md). Enforce it with your own CI jobs and lockfiles.
 
 Tune `file-limits.yaml` globs for your repository layout (for example `src/`, `packages/`, `app/`). For languages other than Python, keep **per-file** limits here and enforce method/style rules with language-native tooling in CI.
+
+**Two things are skipped before your globs are applied**, so you do not have to re-declare them: files **git ignores** (they never reach CI — pass `specy-road file-limits --no-respect-gitignore` to include them), and the toolkit's own session artifacts under `work/` (`brief-`, `prompt-`, `implementation-summary-`, `pr-body-`, `.on-complete-`). Those are machine-written and regenerated each cycle, so a line cap on them is not actionable.

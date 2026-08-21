@@ -129,6 +129,8 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
+    from specy_road import __version__
+
     p = argparse.ArgumentParser(
         prog="specyrd",
         description=(
@@ -138,6 +140,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "Does not replace core validation or briefs."
         ),
     )
+    p.add_argument("--version", "-V", action="version", version=f"specyrd {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
     _add_specyrd_init_subparser(sub)
     return p

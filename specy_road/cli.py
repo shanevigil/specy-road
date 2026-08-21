@@ -18,6 +18,8 @@ _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
 _USAGE_TEXT = (
     "Usage: specy-road <command> [args...]\n"
     "\n"
+    "  --version, -V        — print the installed specy-road version\n"
+    "\n"
     "Authoring / validation:\n"
     "  validate             — validate merged roadmap graph and registry\n"
     "  brief <NODE_ID>      — generate focused brief for a node\n"
@@ -260,6 +262,11 @@ def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
         print(_USAGE_TEXT)
+        raise SystemExit(0)
+    if argv[0] in ("--version", "-V"):
+        from specy_road import __version__
+
+        print(f"specy-road {__version__}")
         raise SystemExit(0)
     cmd, *rest = argv
     if cmd == "validate":

@@ -36,6 +36,8 @@ Optional field **`on_complete`** (`pr`, `merge`, or `auto`; default **`pr`**): c
 
 **Precedence for `finish-this-task`:** CLI **`--on-complete`** overrides **`work/.on-complete-<NODE_ID>.yaml`** (written by **`do-next-available-task`** for that task) overrides environment **`SPECY_ROAD_ON_COMPLETE`** overrides **`on_complete`** in this file, else **`pr`**.
 
+**`grind-session` refuses to run when that resolution lands on `pr`**, because `pr` never merges and the loop cannot see its own finished work on the next cycle. New scaffolds therefore write **`on_complete`** into this file explicitly rather than relying on the built-in default, so the mode is never implicit. See [grind-session.md](grind-session.md).
+
 **`do-next-available-task`:** On an interactive terminal, the command shows the resolved default and asks for **`pr`**, **`merge`**, or **`auto`** for **this task** (unless you pass **`--on-complete`**). Non-interactive runs use the default from the file/env without prompting.
 
 **Examples** (schema: [`../specy_road/templates/project/schemas/git-workflow.schema.json`](../specy_road/templates/project/schemas/git-workflow.schema.json)):
