@@ -17,6 +17,20 @@ output or leaving a mode implicit that its own docs call unusable.
 
 ### Fixed
 
+- **`specy-road init project` now scaffolds its `.gitignore` for pip-installed
+  users.** `[tool.setuptools.package-data]` covered the template tree with
+  `templates/project/**/*`, and those globs are `fnmatch`-style, where `*` does
+  not match a leading dot — so `.gitignore` and `work/.gitkeep` were dropped
+  from the wheel with no warning. `init project` copies whatever is on disk, so
+  an editable checkout scaffolded correctly and only `pip install specy-road`
+  users were affected: they got a consumer repo with **no ignore rules at all**
+  and started committing `work/prompt-*.md`, `work/.on-complete-*.yaml`,
+  `work/.milestone-session.yaml`, and the PR-body snapshot. This is the actual
+  origin of the tracked session artifacts reported against `v0.1.4-rc1`. Both
+  paths are now declared explicitly, `scripts/verify_wheel_contents.py` asserts
+  they are in the built wheel, and a test asserts every template dotfile is
+  declared. **Existing consumer repos need the ignore rules added by hand** —
+  copy them from `specy_road/templates/project/.gitignore`.
 - **`specy-road file-limits` no longer fails on the toolkit's own output.**
   `finish-this-task` writes `work/pr-body-<NODE>.md` (the F-015 snapshot of the
   brief plus the implementation summary) and cannot delete it, because the

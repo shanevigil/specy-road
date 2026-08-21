@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Verify a built specy-road wheel contains the bundled PM Gantt UI.
+"""Verify a built specy-road wheel ships everything ``init project`` needs.
 
 Usage:
     python scripts/verify_wheel_contents.py <wheel.whl>
 
-Specifically asserts that ``specy_road/pm_gantt_static/index.html`` and
-at least one ``specy_road/pm_gantt_static/assets/index-*.js`` chunk are
-present inside the wheel. Catches the failure mode where the npm build
-step was skipped or returned an empty bundle and we'd otherwise ship a
-wheel with a broken ``specy-road gui``.
+Two failure modes, both invisible from an editable checkout:
+
+* The bundled PM Gantt UI is missing because the npm build step was skipped or
+  produced an empty bundle, so the wheel ships a broken ``specy-road gui``.
+* A scaffold **dotfile** is missing because ``package-data`` globs use ``*``,
+  which does not match a leading dot. ``init project`` copies whatever is on
+  disk, so a source checkout scaffolds correctly while pip-installed users get a
+  consumer repo with no ``.gitignore`` — and start committing the toolkit's own
+  session artifacts.
 
 Exit 0 on success, 1 with a clear message on failure.
 """
@@ -22,6 +26,9 @@ from pathlib import Path
 
 REQUIRED_FILES = (
     "specy_road/pm_gantt_static/index.html",
+    # Scaffold dotfiles — see the module docstring for why these need naming.
+    "specy_road/templates/project/.gitignore",
+    "specy_road/templates/project/work/.gitkeep",
 )
 REQUIRED_GLOBS = (
     "specy_road/pm_gantt_static/assets/index-",  # prefix match on at least one entry
@@ -45,17 +52,20 @@ def main(argv: list[str]) -> int:
             missing.append(f"{prefix}*")
     if missing:
         print(
-            "error: wheel is missing required PM Gantt UI assets:\n  "
+            "error: wheel is missing required files:\n  "
             + "\n  ".join(missing)
-            + "\n\nThis usually means the npm build step (npm run build "
-              "in gui/pm-gantt/) was skipped or produced no output. Re-build "
-              "the SPA and rebuild the wheel before publishing.",
+            + "\n\nFor pm_gantt_static entries: the npm build step (npm run "
+              "build in gui/pm-gantt/) was probably skipped or produced no "
+              "output. Re-build the SPA and rebuild the wheel.\n"
+              "For templates entries: add an explicit [tool.setuptools."
+              "package-data] line for the path — glob patterns using `*` skip "
+              "dotfiles.",
             file=sys.stderr,
         )
         return 1
     print(
-        f"ok: wheel {wheel.name} contains PM Gantt UI assets "
-        f"(index.html + at least one index-*.js chunk)."
+        f"ok: wheel {wheel.name} contains the PM Gantt UI assets "
+        f"and the init-project scaffold dotfiles."
     )
     return 0
 
