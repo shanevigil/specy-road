@@ -6,6 +6,7 @@ import subprocess
 
 from specy_road.finish_work_artifacts import (
     cleanup_work_artifacts,
+    warn_if_pr_body_tracked,
     work_artifact_rel_paths,
 )
 from specy_road.git_workflow_config import (
@@ -123,3 +124,46 @@ def test_should_cleanup_work_artifacts_cli_overrides_yaml(tmp_path) -> None:
         tmp_path,
         no_cleanup_work_cli=False,
     ) is True
+
+
+def _init_repo(root) -> None:
+    for args in (
+        ["init"],
+        ["config", "user.email", "a@b.c"],
+        ["config", "user.name", "t"],
+    ):
+        subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
+
+
+def test_pr_body_warning_fires_for_snapshots_from_earlier_tasks(tmp_path, capsys) -> None:
+    """The repos that need this warning never track the node being finished.
+
+    Its snapshot was written moments ago, so it is not in the index; what a
+    pre-ignore-rule repo carries is committed snapshots from previous tasks.
+    """
+    _init_repo(tmp_path)
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work" / "pr-body-M1.1.md").write_text("old", encoding="utf-8")
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "add", "-f", "work/pr-body-M1.1.md"],
+        check=True, capture_output=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "commit", "-m", "legacy snapshot"],
+        check=True, capture_output=True,
+    )
+    # A different node is being finished now; its snapshot is untracked.
+    (tmp_path / "work" / "pr-body-M2.7.md").write_text("new", encoding="utf-8")
+
+    warn_if_pr_body_tracked(tmp_path)
+    err = capsys.readouterr().err
+    assert "work/pr-body-*.md" in err
+    assert "git rm --cached" in err
+
+
+def test_pr_body_warning_silent_when_nothing_is_tracked(tmp_path, capsys) -> None:
+    _init_repo(tmp_path)
+    (tmp_path / "work").mkdir()
+    (tmp_path / "work" / "pr-body-M1.1.md").write_text("x", encoding="utf-8")
+    warn_if_pr_body_tracked(tmp_path)
+    assert capsys.readouterr().err == ""

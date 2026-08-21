@@ -10,7 +10,6 @@ from pathlib import Path
 
 import yaml
 from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
@@ -21,8 +20,8 @@ from specy_road.git_workflow_config import (
 )
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
+    cleanup_session_sidecar,
     cleanup_work_artifacts,
-    remove_work_file,
     warn_if_pr_body_tracked,
 )
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
@@ -261,21 +260,14 @@ def _bookkeeping_commit_phase(
         # Print AFTER export so the dev sees a clean post-commit pointer.
         rel = pr_body_path.relative_to(ROOT)
         print(f"[ok] wrote {rel} (snapshot for PR/MR body, F-015)")
-        warn_if_pr_body_tracked(ROOT, rel.as_posix())
+        warn_if_pr_body_tracked(ROOT)
     work_tracked_removals: list[str] = []
     if should_cleanup_work_artifacts_on_finish(
         ROOT,
         no_cleanup_work_cli=args.no_cleanup_work,
     ):
         work_tracked_removals = cleanup_work_artifacts(ROOT, node_id)
-    # The on-complete sidecar is internal handoff state, not a document, so it
-    # goes regardless of --no-cleanup-work. Removing it here rather than in the
-    # on_complete tail means a tracked copy is staged into this commit instead
-    # of being left as an uncommitted deletion that the next checkout restores.
-    if sess_path is not None:
-        sess_rel = sess_path.resolve().relative_to(ROOT.resolve()).as_posix()
-        if remove_work_file(ROOT.resolve(), sess_rel):
-            work_tracked_removals.append(sess_rel)
+    work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
     changed_files.append("roadmap.md")
     changed_files.extend(work_tracked_removals)
     _git("add", *changed_files)
@@ -301,7 +293,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(1)
 
     ctx = _resolve_main_context(args, branch)
-    codename, reg, entry, nodes, node, node_id = ctx["codename"], ctx["reg"], ctx["entry"], ctx["nodes"], ctx["node"], ctx["node_id"]
+    codename, reg, nodes = ctx["codename"], ctx["reg"], ctx["nodes"]
+    node, node_id = ctx["node"], ctx["node_id"]
     work_dir, sess_path, on_mode = ctx["work_dir"], ctx["sess_path"], ctx["on_mode"]
     ib, gw_remote = ctx["ib"], ctx["gw_remote"]
 
