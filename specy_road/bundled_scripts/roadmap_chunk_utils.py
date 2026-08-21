@@ -42,6 +42,37 @@ def load_manifest_mapping(root: Path) -> dict:
     return doc
 
 
+_PHASE_PRIMARY_DIR = "phases"
+
+
+def phase_root_chunk_rel(root: Path, new_node: dict) -> str | None:
+    """Dedicated chunk path for a phase root, e.g. ``phases/M2.json``.
+
+    A phase node has no phase *ancestor*, so the router's locality pass does not
+    apply to it and it would otherwise fall through to the capacity-first scan
+    and land in whichever chunk had room — typically an unrelated sibling
+    phase's file. Everything added under it then follows it there, because the
+    chunk lookup for that phase resolves to the same file, so one misrouted
+    phase root drags its whole subtree into a misnamed chunk.
+
+    Returns None when the name is unusable or already taken, leaving the caller
+    on its normal routing path.
+    """
+    if new_node.get("type") != "phase":
+        return None
+    nid = new_node.get("id")
+    if not isinstance(nid, str):
+        return None
+    safe = "".join(c for c in nid.strip() if c.isalnum() or c in "._-")
+    if not safe:
+        return None
+    includes = load_manifest_mapping(root).get("includes") or []
+    first = next((x for x in includes if isinstance(x, str) and x.strip()), None)
+    parent = Path(first).parent.as_posix() if first else _PHASE_PRIMARY_DIR
+    rel = f"{safe}.json" if parent in ("", ".") else f"{parent}/{safe}.json"
+    return None if rel in includes else rel
+
+
 # Keys that are computed in-memory and must never be persisted to chunk JSON.
 _DERIVED_NODE_KEYS = frozenset({"rollup_status"})
 
