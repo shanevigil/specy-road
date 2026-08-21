@@ -11,6 +11,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.4-rc1] - 2026-06-07
+
+Release candidate (routes to **TestPyPI**). Adds the agent-driven task-loop
+orchestration command **`specy-road grind-session`** (loop + read-only
+dependency/wave planner) and makes `roadmap/registry.yaml` writes
+yamllint-clean so unattended pickup does not trip a default yamllint
+pre-commit hook.
+
 ### Added
 
 - **`specy-road grind-session` — agent-driven task-loop orchestration.** A new

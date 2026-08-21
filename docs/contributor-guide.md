@@ -276,8 +276,10 @@ npm ci
 npm audit --omit=dev
 ```
 
-Dependabot opens weekly PRs for pip, npm, and GitHub Actions; review
-before merge.
+Dependabot opens weekly PRs for pip, npm, and GitHub Actions against
+`dev`; review before merge. They must target `dev` rather than the
+default branch, because `main-release-tag-gate.yml` rejects any PR to
+`main` that carries no `release: vX.Y.Z` marker.
 
 ---
 

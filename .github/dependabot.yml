@@ -1,18 +1,25 @@
 # Opens PRs for review; do not auto-merge. See docs/supply-chain-security.md.
+#
+# target-branch is `dev` on every ecosystem: without it Dependabot targets the
+# default branch (`main`), and main-release-tag-gate.yml fails any PR to main
+# that has no `release: vX.Y.Z` marker, so those PRs can never merge.
 
 version: 2
 updates:
   - package-ecosystem: "pip"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
   - package-ecosystem: "npm"
     directory: "/gui/pm-gantt"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "weekly"
