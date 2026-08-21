@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -65,8 +66,41 @@ def read_on_complete_session(
     return None
 
 
-def remove_on_complete_session(path: Path) -> None:
-    """Delete session file if present (ignore errors)."""
+def _git_rm_if_tracked(repo_root: Path, path: Path) -> bool:
+    """``git rm`` the file when git tracks it, so the deletion is staged, not just on disk."""
+    try:
+        rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        return False
+    try:
+        listed = subprocess.run(
+            ["git", "-C", str(repo_root), "ls-files", "--", rel],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if not (listed.stdout or "").strip():
+            return False
+        removed = subprocess.run(
+            ["git", "-C", str(repo_root), "rm", "-f", "--quiet", "--", rel],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return removed.returncode == 0
+    except OSError:
+        return False
+
+
+def remove_on_complete_session(path: Path, repo_root: Path | None = None) -> None:
+    """Delete session file if present (ignore errors).
+
+    When ``repo_root`` is given and git tracks the file, stage the deletion
+    instead of a bare unlink: an unlinked-but-tracked file leaves a dirty
+    worktree that the next checkout silently restores.
+    """
+    if repo_root is not None and _git_rm_if_tracked(repo_root, path):
+        return
     try:
         path.unlink()
     except OSError:

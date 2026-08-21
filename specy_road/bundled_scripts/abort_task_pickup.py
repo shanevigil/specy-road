@@ -136,7 +136,7 @@ def _remove_pickup_work_files(node_id: str, *, force: bool) -> None:
         if p.is_file():
             p.unlink()
             print(f"[ok] removed work/{name}")
-    remove_on_complete_session(on_complete_session_path(work_dir, node_id))
+    remove_on_complete_session(on_complete_session_path(work_dir, node_id), ROOT)
     if force:
         summary = work_dir / f"implementation-summary-{node_id}.md"
         if summary.is_file():

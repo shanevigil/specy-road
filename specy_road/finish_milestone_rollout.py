@@ -103,7 +103,7 @@ def try_milestone_rollup_finish(
     if not ok:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
-    remove_on_complete_session(sess_path)
+    remove_on_complete_session(sess_path, repo)
     try:
         from roadmap_load import load_roadmap
 
