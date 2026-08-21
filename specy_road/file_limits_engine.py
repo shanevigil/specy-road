@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +21,21 @@ SKIP_DIR_NAMES = frozenset(
         ".pytest_cache",
         ".egg-info",
     }
+)
+
+# Session artifacts the toolkit itself generates under ``work/``. They are
+# machine-written and ephemeral (see ``work/README.md``), so a line cap on them
+# reports a violation no one can act on — notably the ``pr-body-`` snapshot,
+# which inlines the brief plus the implementation summary and therefore always
+# dwarfs a source-file limit. Writers: ``do_next_task``, ``finish_pr_body``,
+# ``on_complete_session``.
+SESSION_ARTIFACT_GLOBS = (
+    "work/brief-*.md",
+    "work/prompt-*.md",
+    "work/implementation-summary-*.md",
+    "work/pr-body-*.md",
+    "work/.on-complete-*.yaml",
+    "work/.milestone-session.yaml",
 )
 
 
@@ -90,9 +106,9 @@ def iter_glob_files(root: Path, pattern: str) -> list[Path]:
 
 
 def collect_excluded_paths(root: Path, cfg: dict) -> frozenset[str]:
-    """Paths excluded by ``exclude_globs`` / ``exclude_path_globs`` (same ``Path.glob`` semantics as applies_to_globs)."""
+    """Paths excluded by ``exclude_globs`` / ``exclude_path_globs`` plus toolkit session artifacts."""
     matched: set[str] = set()
-    for pat in merge_exclude_patterns(cfg):
+    for pat in [*merge_exclude_patterns(cfg), *SESSION_ARTIFACT_GLOBS]:
         for p in iter_glob_files(root, pat):
             matched.add(p.relative_to(root).as_posix())
     return frozenset(matched)
@@ -187,7 +203,39 @@ def resolve_limits(
     return ResolvedLimits(mf, mfn, oname)
 
 
-def collect_tracked_files(root: Path, cfg: dict) -> list[Path]:
+def git_ignored_paths(root: Path, rel_paths: list[str]) -> frozenset[str]:
+    """Subset of ``rel_paths`` that git ignores.
+
+    ``git check-ignore`` consults the index by default, so a tracked file is
+    never reported even when a rule would otherwise match it. Returns an empty
+    set when ``root`` is not a git worktree or git is unavailable, so the scan
+    degrades to plain filesystem behavior.
+    """
+    if not rel_paths:
+        return frozenset()
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "check-ignore", "--stdin", "-z"],
+            input="\0".join(rel_paths),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):
+        return frozenset()
+    # 0 = some paths ignored, 1 = none ignored; anything else (128 = not a
+    # repo) means we cannot trust the answer.
+    if proc.returncode not in (0, 1):
+        return frozenset()
+    return frozenset(p for p in (proc.stdout or "").split("\0") if p)
+
+
+def collect_tracked_files(
+    root: Path,
+    cfg: dict,
+    *,
+    respect_gitignore: bool = True,
+) -> list[Path]:
     globs = cfg.get("applies_to_globs") or []
     excluded_paths = collect_excluded_paths(root, cfg)
     seen: set[str] = set()
@@ -203,6 +251,10 @@ def collect_tracked_files(root: Path, cfg: dict) -> list[Path]:
                 continue
             seen.add(rel)
             paths.append(path)
+    if respect_gitignore:
+        ignored = git_ignored_paths(root, sorted(seen))
+        if ignored:
+            paths = [p for p in paths if p.relative_to(root).as_posix() not in ignored]
     paths.sort(key=lambda p: p.as_posix())
     return paths
 
@@ -218,6 +270,7 @@ def run_file_limits_scan(
     cfg: dict,
     *,
     strict_hard_alerts: bool = False,
+    respect_gitignore: bool = True,
     err: TextIO | None = None,
 ) -> bool:
     """
@@ -240,7 +293,7 @@ def run_file_limits_scan(
     failed = False
     hard_failed = False
     overlay_sets = build_overlay_match_sets(root, cfg)
-    paths = collect_tracked_files(root, cfg)
+    paths = collect_tracked_files(root, cfg, respect_gitignore=respect_gitignore)
 
     for path in paths:
         rel = path.relative_to(root).as_posix()

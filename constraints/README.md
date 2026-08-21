@@ -13,3 +13,5 @@ Test-fixture roadmap validation uses the consumer-shaped sample tree under [`tes
 | Dogfood test-fixture roadmap graph | `tests/fixtures/specy_road_dogfood/roadmap/` | `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` |
 
 **Non-Python files** matched by `applies_to_globs` are checked for **line count per file** only. Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** sources in this toolkit; use your stack’s analyzers in CI for other languages.
+
+**Skipped before `applies_to_globs` is applied:** git-ignored files (opt out with `--no-respect-gitignore`) and the toolkit's own `work/` session artifacts. See [`specy_road/file_limits_engine.py`](../specy_road/file_limits_engine.py) (`SESSION_ARTIFACT_GLOBS`).
