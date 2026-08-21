@@ -144,6 +144,11 @@ the file via `--body-file` / `--description-file`, so reviewers see
 both narratives without leaving the PR view. The snapshot does **not**
 update if the roadmap evolves later; that's the point.
 
+The snapshot is a regenerated copy of two files that are already on the
+branch, so `specy-road init project` ignores `work/pr-body-*.md` and
+`specy-road file-limits` never reports it. If your repo predates that
+ignore rule, `finish-this-task` prints a one-time pointer to add it.
+
 When something goes wrong mid-pickup, specy-road auto-rolls-back the stale
 registry claim (F-014). If the auto-rollback itself fails, follow the
 printed instructions or run `specy-road abort-task-pickup --force`.

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import subprocess
 
-import finish_task as ft
+from specy_road.finish_work_artifacts import (
+    cleanup_work_artifacts,
+    work_artifact_rel_paths,
+)
 from specy_road.git_workflow_config import (
     cleanup_work_artifacts_on_finish,
     should_cleanup_work_artifacts_on_finish,
@@ -12,7 +15,7 @@ from specy_road.git_workflow_config import (
 
 
 def test_work_artifact_rel_paths() -> None:
-    assert ft._work_artifact_rel_paths("M1.1") == (
+    assert work_artifact_rel_paths("M1.1") == (
         "work/brief-M1.1.md",
         "work/prompt-M1.1.md",
         "work/implementation-summary-M1.1.md",
@@ -27,7 +30,7 @@ def test_cleanup_work_artifacts_removes_untracked_files(tmp_path) -> None:
         "implementation-summary-M1.1.md",
     ):
         (tmp_path / "work" / name).write_text("x", encoding="utf-8")
-    tracked = ft._cleanup_work_artifacts(tmp_path, "M1.1")
+    tracked = cleanup_work_artifacts(tmp_path, "M1.1")
     assert tracked == []
     for name in (
         "brief-M1.1.md",
@@ -66,7 +69,7 @@ def test_cleanup_work_artifacts_tracked_paths_returned(tmp_path) -> None:
         check=True,
         capture_output=True,
     )
-    tracked = ft._cleanup_work_artifacts(tmp_path, "M1.1")
+    tracked = cleanup_work_artifacts(tmp_path, "M1.1")
     assert set(tracked) == {"work/brief-M1.1.md"}
     assert not (tmp_path / "work" / "brief-M1.1.md").is_file()
     assert not (tmp_path / "work" / "prompt-M1.1.md").is_file()
