@@ -79,10 +79,11 @@ It refuses to overwrite an existing scaffold unless you pass `--force`.
 Preview without writing: `--dry-run`.
 
 The bundled `.gitignore` ignores **only** the session-scoped files
-(`work/.on-complete-*.yaml`, `work/prompt-*.md`,
+(`work/.on-complete-*.yaml`, `work/prompt-*.md`, `work/pr-body-*.md`,
 `work/.milestone-session.yaml`); briefs and implementation summaries are
 intentionally tracked because they document the work and belong on the
-feature branch.
+feature branch. The PR-body snapshot is ignored because it is a regenerated
+copy of those two.
 
 ---
 

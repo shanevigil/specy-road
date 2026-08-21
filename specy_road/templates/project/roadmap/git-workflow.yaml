@@ -12,7 +12,8 @@ require_implementation_review_before_finish: true
 cleanup_work_artifacts_on_finish: true
 # Optional: merge_request_requires_manual_approval: true
 # How finish-this-task lands work: pr | merge | auto. Declared explicitly rather
-# than left to the built-in default so the mode is never implicit — notably for
-# grind-session, which refuses to run in pr mode because it never merges between
-# cycles. See docs/git-workflow.md and docs/grind-session.md.
+# than left to the built-in default so the mode is never implicit. Change this to
+# merge (or auto) before running grind-session: the loop refuses to start in pr
+# mode, because pr never merges between cycles and the next pickup cannot see the
+# work the last one finished. See docs/git-workflow.md and docs/grind-session.md.
 on_complete: pr
