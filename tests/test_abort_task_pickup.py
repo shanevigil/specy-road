@@ -8,21 +8,64 @@ import pytest
 import abort_task_pickup as atp
 
 
-def test_abort_refuses_dirty_tree(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
-    monkeypatch.setattr(atp, "_working_tree_clean", lambda: False)
+def _claimed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A feature branch with a resolvable registry claim."""
+    monkeypatch.setattr(atp, "_current_branch", lambda: "feature/rm-ab")
+    monkeypatch.setattr(
+        atp,
+        "resolve_feature_rm_registry_context",
+        lambda *_a, **_k: ("ab", {"version": 1, "entries": []}, {"node_id": "M9.1"}, []),
+    )
     monkeypatch.setattr(
         atp,
         "resolve_integration_defaults",
         lambda *_a, **_k: ("main", "origin", []),
     )
+
+
+def test_abort_refuses_dirty_tree(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    _claimed(monkeypatch)
+    monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [" M src/app.py"])
     with pytest.raises(SystemExit):
         atp.main(["--repo-root", str(tmp_path)])
+
+
+def test_pickup_artifacts_do_not_block_abort() -> None:
+    """An immediate pickup->abort must work: pickup writes these itself.
+
+    The scaffold deliberately does not gitignore the brief, so a fresh pickup
+    always leaves untracked files that abort is about to delete anyway.
+    """
+    ignore = atp._pickup_artifact_rel_paths("M9.1")
+    assert ignore == {
+        "work/brief-M9.1.md",
+        "work/prompt-M9.1.md",
+        "work/implementation-summary-M9.1.md",
+        "work/.on-complete-M9.1.yaml",
+    }
+
+
+def test_dirty_entries_filters_only_the_listed_untracked_paths(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    porcelain = (
+        "?? work/brief-M9.1.md\n"
+        "?? work/notes.txt\n"
+        " M src/app.py\n"
+    )
+
+    class _R:
+        stdout = porcelain
+
+    monkeypatch.setattr(atp.subprocess, "run", lambda *_a, **_k: _R())
+    blocking = atp._dirty_entries({"work/brief-M9.1.md"})
+    assert blocking == ["?? work/notes.txt", " M src/app.py"]
 
 
 def test_abort_refuses_non_feature_branch(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    monkeypatch.setattr(atp, "_working_tree_clean", lambda: True)
+    monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "_current_branch", lambda: "main")
     monkeypatch.setattr(
         atp,
@@ -36,7 +79,7 @@ def test_abort_refuses_non_feature_branch(
 def test_abort_refuses_ahead_of_remote_without_force(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
-    monkeypatch.setattr(atp, "_working_tree_clean", lambda: True)
+    monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "_current_branch", lambda: "feature/rm-x")
     monkeypatch.setattr(
         atp,
@@ -87,7 +130,7 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(atp, "_working_tree_clean", lambda: True)
+    monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "_current_branch", fake_branch)
     monkeypatch.setattr(
         atp,
@@ -142,7 +185,7 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
         encoding="utf-8",
     )
 
-    monkeypatch.setattr(atp, "_working_tree_clean", lambda: True)
+    monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "_current_branch", fake_branch)
     monkeypatch.setattr(
         atp,
