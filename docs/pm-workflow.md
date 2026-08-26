@@ -243,7 +243,9 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road show-node M0.1.1`                      | Print one item as JSON (replace `M0.1.1` with a real id).                                                                                   |
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
-| `specy-road archive-node M0.1.1 --hard-remove`    | Remove the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema).                      |
+| `specy-road archive M0.1`                          | Move a **Complete** subtree out of the live roadmap into `roadmap/archive/`, reversibly. See [Archiving](archiving.md).                     |
+| `specy-road list-archives`                         | What is archived. `show-archive <ID>` for detail, `restore-archive <ID>` to bring it back.                                                  |
+| `specy-road archive-node M0.1.1 --hard-remove`    | **Destructive**, and unrelated to `archive` above: removes the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema). |
 | `specy-road list-dependencies M0.1.1`            | Print this node’s **explicit** `dependencies` as **node_key** values (with id/title); same field the PM GUI edits.                         |
 | `specy-road set-dependencies M0.1.1 --clear`      | Clear explicit dependencies on that node (runs validate after save).                                                                       |
 | `specy-road set-dependencies M0.1.1 --deps "…"`   | Replace explicit dependencies with a space/comma-separated list of **node_key** strings (same rules as `edit-node … dependencies=…`).       |
@@ -319,6 +321,12 @@ Agentic development moves fast. Your job is **not** to approve every pull reques
 3. Resolve `human-gate` items before you stop for the day.
 4. `specy-road validate`, then `specy-road export`.
 5. Commit with something like: `chore(roadmap): short description of change`
+
+**Trimming the far end.** On a long-running roadmap the completed end grows
+without limit and starts pushing chunks toward their line cap. `specy-road
+archive <NODE_ID>` moves a finished subtree into `roadmap/archive/`, reversibly
+and without breaking live dependencies on it; `specy-road archive --auto`
+sweeps everything complete for 90+ days. See [Archiving](archiving.md).
 
 ---
 

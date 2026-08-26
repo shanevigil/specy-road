@@ -17,6 +17,7 @@ COMPLETE_WHEEL = {
     "specy_road/pm_gantt_static/assets/index-abc123.js": "console.log('hi')",
     "specy_road/templates/project/.gitignore": "work/prompt-*.md\n",
     "specy_road/templates/project/work/.gitkeep": "",
+    "specy_road/schemas/archive.schema.json": "{}",
 }
 
 
@@ -46,6 +47,15 @@ def test_passes_with_required_assets(tmp_path: Path) -> None:
     r = _run(wheel)
     assert r.returncode == 0, r.stderr
     assert "scaffold dotfiles" in r.stdout
+
+
+def test_fails_when_the_bundled_archive_schema_is_missing(tmp_path: Path) -> None:
+    """Without it every archive command dies as a broken install."""
+    wheel = tmp_path / "broken-schema.whl"
+    _wheel_without(wheel, "specy_road/schemas/archive.schema.json")
+    r = _run(wheel)
+    assert r.returncode == 1
+    assert "specy_road/schemas/archive.schema.json" in r.stderr
 
 
 def test_fails_when_index_html_missing(tmp_path: Path) -> None:

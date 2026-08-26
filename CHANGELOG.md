@@ -11,6 +11,56 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- **Archive completed roadmap subtrees.** Long-running roadmaps accumulate
+  finished milestones that keep loading, validating, exporting and rendering
+  forever, eventually pushing chunks toward `roadmap_json_chunk_max_lines`.
+  `specy-road archive <NODE_ID>` now moves a subtree whose rollup status is
+  `Complete` out of the live graph into `roadmap/archive/`, with
+  `list-archives`, `show-archive`, and `restore-archive` alongside it, plus
+  `archive --auto [--older-than-days N]` to sweep everything finished longer
+  than a threshold. This is unrelated to the PM GUI's **Hide Complete** button,
+  which remains a pure view filter, and to the legacy destructive
+  `archive-node --hard-remove`.
+  - The live/archived boundary is `manifest.json`'s existing `includes` list,
+    which the roadmap loader already treats as authoritative — archiving needs
+    no loader change.
+  - **Live nodes may keep depending on archived work.**
+    `validate_dependency_ids` would otherwise hard-fail on the dangling
+    `node_key`. Rather than rewriting dependency edges, `roadmap/archive/index.json`
+    records every archived key and validation accepts it as satisfied
+    (archived implies Complete). Live `dependencies` arrays are left untouched,
+    which is what makes restore lossless. **That index is not disposable** —
+    deleting it turns every such edge into a validation error.
+  - Restore replays each node's recorded chunk **and index within that chunk**,
+    so an archive/restore round trip leaves no diff, including when the subtree
+    shared a chunk with live nodes or spanned several chunks. A chunk the
+    archive emptied is recreated and re-added to `includes`.
+  - Archived planning sheets land under `roadmap/archive/planning/`, not
+    `planning/archive/`: `validate` rejects any subdirectory or nested `.md`
+    under `planning/`.
+  - Records capture best-effort git provenance (rollup branch, integration
+    branch, merge commit, nearest tag, `closed_at`) read from
+    `milestone_execution` and existing refs. **No git objects are created.**
+  - An active `milestone_execution` blocks archiving its subtree and `--force`
+    does not override that, since moving files out from under an in-flight
+    rollup would strand the branch.
+  - New bundled schema `specy_road/schemas/archive.schema.json`, validated from
+    the wheel rather than from `<repo_root>/schemas/`, so adopters pick up new
+    archive fields by upgrading the package instead of hand-editing a
+    consumer-owned schema. `scripts/verify_wheel_contents.py` and
+    `tests/test_package_data_schemas.py` guard that it ships.
+  - Docs: [`docs/archiving.md`](docs/archiving.md).
+
+### Known limitations
+
+- `archive --auto` derives completion age from
+  `milestone_execution.closed_at`, the only completion timestamp the roadmap
+  records today, so it currently reaches rollup-closed milestones only.
+  Subtrees with no rollup history must be archived by id until per-node
+  activity timestamps land.
+
 ## [v0.1.4-rc2] - 2026-08-21
 
 Second release candidate for v0.1.4. Routed to **TestPyPI** by

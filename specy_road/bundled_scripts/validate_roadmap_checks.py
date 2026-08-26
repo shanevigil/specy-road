@@ -47,15 +47,46 @@ def validate_node_keys(nodes: list[dict]) -> None:
         raise SystemExit(1)
 
 
-def validate_dependency_ids(nodes: list[dict]) -> None:
+def _archived_dependency_keys(repo_root: Path | None) -> set[str]:
+    """node_keys held in ``roadmap/archive/index.json``, or empty if unreadable here.
+
+    A repo that has never archived has no index and gets an empty set. A
+    *malformed* index raises out of :func:`archived_node_keys` — the ledger is
+    what keeps archived dependencies resolvable, so silently ignoring a broken
+    one would turn it into a wave of "missing node_key" errors pointing at the
+    wrong thing.
+    """
+    if repo_root is None:
+        return set()
+    from specy_road.archive_index import archived_node_keys
+
+    return archived_node_keys(repo_root)
+
+
+def validate_dependency_ids(
+    nodes: list[dict], repo_root: Path | None = None
+) -> None:
+    """Every dependency must resolve to a live node, or to an archived one.
+
+    Archiving deliberately leaves live nodes' ``dependencies`` untouched, so a
+    dependency on archived work would otherwise dangle. An archived subtree is
+    Complete by construction, so the edge is satisfied — the archive index is
+    consulted as a second source of resolvable keys.
+    """
     keys = {n["node_key"] for n in nodes}
+    archived: set[str] | None = None
     for n in nodes:
         for dep in n.get("dependencies") or []:
-            if dep not in keys:
-                nid = n["id"]
-                msg = f"roadmap: node {nid} depends on missing node_key {dep}"
-                print(msg, file=sys.stderr)
-                raise SystemExit(1)
+            if dep in keys:
+                continue
+            if archived is None:
+                archived = _archived_dependency_keys(repo_root)
+            if dep in archived:
+                continue
+            nid = n["id"]
+            msg = f"roadmap: node {nid} depends on missing node_key {dep}"
+            print(msg, file=sys.stderr)
+            raise SystemExit(1)
 
 
 def cycle_check(nodes: list[dict]) -> None:
@@ -258,7 +289,7 @@ def run_validation(
     validate_node_keys(nodes)
     validate_parents(nodes)
     validate_gates(nodes)
-    validate_dependency_ids(nodes)
+    validate_dependency_ids(nodes, r)
     cycle_check(nodes)
     validate_unique_titles(nodes)
     validate_unique_title_slugs(nodes)

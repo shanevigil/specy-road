@@ -35,7 +35,14 @@ _USAGE_TEXT = (
     "    (--chunk is now optional; specy-road auto-routes to a valid chunk)\n"
     "  edit-node ...\n"
     "  set-gate-status <NODE_ID> --status … — gate nodes only (Not Started|In Progress|Complete|Blocked)\n"
-    "  archive-node ...\n"
+    "  archive-node ...         — legacy hard-remove; see `archive` below to archive completed work\n"
+    "\n"
+    "Archiving (long-running roadmaps):\n"
+    "  archive <NODE_ID>    — move a Complete subtree out of the live graph into roadmap/archive/\n"
+    "    (optional: --dry-run --force | --auto [--older-than-days N])\n"
+    "  list-archives        — list archive records (optional: --json)\n"
+    "  show-archive <ARCHIVE_ID> — one record in detail, including git provenance\n"
+    "  restore-archive <ARCHIVE_ID> — bring an archived subtree back (optional: --dry-run)\n"
     "  list-dependencies <NODE_ID>\n"
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
     "  add-dependency <NODE_ID> <DEP_NODE_KEY>\n"
@@ -310,6 +317,8 @@ def main(argv: list[str] | None = None) -> None:
         "remove-dependency",
     ):
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
+    elif cmd in ("archive", "list-archives", "show-archive", "restore-archive"):
+        _run("archive_cli.py", [cmd, *rest])
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)
     elif cmd == "review-node":

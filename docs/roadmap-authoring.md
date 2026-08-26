@@ -194,6 +194,8 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 
 **Dropped status:** `Cancelled` is no longer a valid `status`. To retire a feature, remove the node (for example `specy-road archive-node <id> --hard-remove` after team agreement) or set an appropriate status such as **Complete** / **Blocked** with notes.
 
+**Retiring finished work is a different operation.** To get completed milestones out of the working tree without deleting anything, use `specy-road archive <id>` — it moves the subtree into `roadmap/archive/`, drops its chunk from `manifest.json`'s `includes`, and restores byte-for-byte on demand. Live nodes may keep depending on archived work; see [Archiving](archiving.md).
+
 ### Gate (`type: gate`)
 
 A **Gate** is a **leaf-only** human hold point: it has a **planning sheet** (`planning_dir`) for PM notes (scaffolded with the **gate** template—why the hold exists, criteria to clear, decisions, resolution—not the full feature-sheet task outline), but it is **not** claimed via `do-next-available-task`, and **`roadmap/registry.yaml` must not** reference a Gate’s `node_id`.

@@ -29,6 +29,9 @@ REQUIRED_FILES = (
     # Scaffold dotfiles — see the module docstring for why these need naming.
     "specy_road/templates/project/.gitignore",
     "specy_road/templates/project/work/.gitkeep",
+    # Toolkit-owned schema: the archive index validates against this copy, so a
+    # wheel without it turns every archive command into a broken-install error.
+    "specy_road/schemas/archive.schema.json",
 )
 REQUIRED_GLOBS = (
     "specy_road/pm_gantt_static/assets/index-",  # prefix match on at least one entry

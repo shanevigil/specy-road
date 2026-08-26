@@ -390,8 +390,11 @@ def cmd_archive(args: object) -> None:
         return
     print(
         "error: archive-node without --hard-remove is no longer supported "
-        "(Cancelled was removed from the roadmap schema). "
-        "Remove the node with --hard-remove after team agreement, or edit the JSON chunk.",
+        "(Cancelled was removed from the roadmap schema).\n"
+        "  To retire completed work reversibly, use the archive feature instead:\n"
+        "    specy-road archive <NODE_ID>       (restore with: restore-archive)\n"
+        "  To delete a node outright, pass --hard-remove after team agreement, "
+        "or edit the JSON chunk.",
         file=sys.stderr,
     )
     raise SystemExit(1)

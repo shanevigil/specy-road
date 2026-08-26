@@ -75,6 +75,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md) | What the kit promises and what it leaves to you |
 | [docs/architecture.md](docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
 | [docs/roadmap-authoring.md](docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
+| [docs/archiving.md](docs/archiving.md) | Move completed subtrees out of the live roadmap (`archive`, `restore-archive`) |
 | [docs/git-workflow.md](docs/git-workflow.md) | Consumer workflow contract (`git-workflow.yaml`), branches, registry, merge-back |
 | [docs/grind-session.md](docs/grind-session.md) | Agent-driven loop + read-only planner (`grind-session`): waves, exit codes, JSON events |
 | [docs/toolkit-development.md](docs/toolkit-development.md) | Short maintainer notes (this repo vs consumer contract) |
