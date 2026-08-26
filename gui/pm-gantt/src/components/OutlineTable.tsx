@@ -34,7 +34,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { DependencyInheritanceEntry, RoadmapNode } from "../types";
+import { formatRelativeAge, lastWorkedTooltip } from "../lastWorked";
+import type { ActivityEntry, DependencyInheritanceEntry, RoadmapNode } from "../types";
 import { moveOutline, patchNode, reorderOutline } from "../api";
 import { usePendingMutations } from "../pendingMutationsContext";
 import { isPendingPlaceholderId } from "../optimisticOutline";
@@ -235,6 +236,9 @@ type RowProps = {
   selected: boolean;
   meta?: string;
   statusText: string;
+  /** Relative age for the Last worked column; empty when never recorded. */
+  lastWorkedText: string;
+  lastWorkedTitle: string;
   statusCellTitle?: string;
   devText: string;
   depCellText: string;
@@ -284,6 +288,35 @@ type OutlineRowTrExtra = {
   onStatusDevClick?: () => void;
 };
 
+/**
+ * Last-worked cell values for one row.
+ *
+ * Leaf rows only, per the feature's intent: a container's "last worked" would
+ * be the max over its children, which reads as activity on work the row does
+ * not itself represent.
+ */
+function lastWorkedCell(
+  node: RoadmapNode | undefined,
+  activity: Record<string, ActivityEntry> | undefined,
+  isParent: boolean,
+): { lastWorkedText: string; lastWorkedTitle: string } {
+  const key = node?.node_key;
+  const entry =
+    isParent || !activity || typeof key !== "string" ? undefined : activity[key];
+  if (!entry) {
+    return {
+      lastWorkedText: "",
+      lastWorkedTitle: isParent
+        ? "Container row — activity is tracked on the leaves underneath"
+        : "No activity recorded yet (see: specy-road backfill-activity)",
+    };
+  }
+  return {
+    lastWorkedText: formatRelativeAge(entry.at),
+    lastWorkedTitle: lastWorkedTooltip(entry),
+  };
+}
+
 function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
   const {
     variant,
@@ -292,6 +325,8 @@ function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
     outlineDepth,
     meta,
     statusText,
+    lastWorkedText,
+    lastWorkedTitle,
     statusCellTitle,
     devText,
     depCellText,
@@ -413,6 +448,9 @@ function OutlineRowTr(props: RowProps & OutlineRowTrExtra) {
       >
         {statusText}
       </td>
+      <td className="outline-col-activity" title={lastWorkedTitle}>
+        {lastWorkedText}
+      </td>
       <td
         className="outline-col-dev"
         title={devCellTitle}
@@ -451,6 +489,8 @@ function SortableRow({
   selected,
   meta,
   statusText,
+  lastWorkedText,
+  lastWorkedTitle,
   statusCellTitle,
   devText,
   depCellText,
@@ -613,6 +653,8 @@ function SortableRow({
       selected={selected}
       meta={meta}
       statusText={statusText}
+      lastWorkedText={lastWorkedText}
+      lastWorkedTitle={lastWorkedTitle}
       statusCellTitle={statusCellTitle}
       devText={devText}
       depCellText={depCellText}
@@ -703,6 +745,8 @@ type Props = {
   interactionLocked?: boolean;
   /** Container rows (have children in the outline tree) — muted strip styling. */
   parentNodeIds?: ReadonlySet<string>;
+  /** Last-worked-on per node_key (roadmap/activity.json), for the Last worked column. */
+  activity?: Record<string, ActivityEntry>;
 };
 
 export function OutlineTable({
@@ -735,6 +779,7 @@ export function OutlineTable({
   reorderLocked = false,
   interactionLocked = false,
   parentNodeIds,
+  activity,
 }: Props) {
   const pendingMutationsApi = usePendingMutations();
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
@@ -1251,6 +1296,7 @@ export function OutlineTable({
       isParentRow: Boolean(parentNodeIds?.has(rowId)),
       meta: metaLine(rowId),
       statusText,
+      ...lastWorkedCell(node, activity, parentNodeIds?.has(rowId) === true),
       statusCellTitle,
       devText: devColumnLabel(
         rowId,
@@ -1377,6 +1423,12 @@ export function OutlineTable({
             <th className="outline-id">ID</th>
             <th className="outline-title">Task</th>
             <th className="outline-col-status">Status</th>
+            <th
+              className="outline-col-activity"
+              title="When this leaf was last worked on (roadmap/activity.json)"
+            >
+              Last worked
+            </th>
             <th className="outline-col-dev">Dev</th>
             <th className="outline-col-dep">Dependency</th>
           </tr>

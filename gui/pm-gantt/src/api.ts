@@ -1,4 +1,9 @@
-import type { PublishStatusPayload, RoadmapResponse } from "./types";
+import type {
+  ArchiveRecord,
+  ArchivesResponse,
+  PublishStatusPayload,
+  RoadmapResponse,
+} from "./types";
 
 const API = "/api";
 
@@ -564,4 +569,101 @@ export async function postGitTest(
     message: typeof raw.message === "string" ? raw.message : "",
     git_remote_tested_ok: raw.git_remote_tested_ok === true,
   };
+}
+
+
+// --- Archiving ---------------------------------------------------------------
+// Reads are plain GETs; every write carries the mutation fingerprint, because
+// archiving moves roadmap files just as much as an outline edit does.
+
+export async function fetchArchives(): Promise<ArchivesResponse> {
+  const r = await fetch(`${API}/archives`);
+  if (!r.ok) throw new Error(`GET /archives failed: ${r.status}`);
+  return r.json() as Promise<ArchivesResponse>;
+}
+
+export async function fetchArchiveNodes(archiveId: string): Promise<{
+  browsable: boolean;
+  depth: string;
+  nodes: Record<string, unknown>[];
+}> {
+  const r = await fetch(`${API}/archives/${encodeURIComponent(archiveId)}/nodes`);
+  if (!r.ok) throw new Error(`GET /archives/${archiveId}/nodes failed: ${r.status}`);
+  return r.json() as Promise<{
+    browsable: boolean;
+    depth: string;
+    nodes: Record<string, unknown>[];
+  }>;
+}
+
+/** Dry run — returns the plan without writing anything. */
+export async function previewArchive(
+  nodeId: string,
+  force = false,
+): Promise<{ archive_id: string; summary: string[] }> {
+  const r = await fetch(`${API}/archives/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ node_id: nodeId, force }),
+  });
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(detail.detail ?? `preview failed: ${r.status}`);
+  }
+  return r.json() as Promise<{ archive_id: string; summary: string[] }>;
+}
+
+export async function createArchive(
+  nodeId: string,
+  opts: { deep?: boolean; force?: boolean } = {},
+): Promise<ArchiveRecord> {
+  const r = await fetch(`${API}/archives/create`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      node_id: nodeId,
+      deep: opts.deep ?? false,
+      force: opts.force ?? false,
+    }),
+  });
+  await throwIfMutationFailed(r);
+  return r.json() as Promise<ArchiveRecord>;
+}
+
+export async function deepenArchive(archiveId: string): Promise<ArchiveRecord> {
+  const r = await fetch(
+    `${API}/archives/${encodeURIComponent(archiveId)}/deepen`,
+    { method: "POST", headers: pmGuiMutationHeaders() },
+  );
+  await throwIfMutationFailed(r);
+  return r.json() as Promise<ArchiveRecord>;
+}
+
+export async function restoreArchive(archiveId: string): Promise<void> {
+  const r = await fetch(
+    `${API}/archives/${encodeURIComponent(archiveId)}/restore`,
+    { method: "POST", headers: pmGuiMutationHeaders() },
+  );
+  await throwIfMutationFailed(r);
+}
+
+export async function autoArchive(
+  olderThanDays: number,
+  dryRun = false,
+): Promise<{
+  dry_run: boolean;
+  candidates?: { node_id: string; completed_at: string }[];
+  archived?: ArchiveRecord[];
+}> {
+  const r = await fetch(`${API}/archives/auto`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ older_than_days: olderThanDays, dry_run: dryRun }),
+  });
+  await throwIfMutationFailed(r);
+  return r.json() as Promise<{
+    dry_run: boolean;
+    candidates?: { node_id: string; completed_at: string }[];
+    archived?: ArchiveRecord[];
+  }>;
 }

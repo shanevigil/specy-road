@@ -88,6 +88,22 @@ body. Keep section bodies focused; link to PRs for detail.
     `milestone_execution.closed_at`, so it reaches work that never went through
     a rollup.
 
+- **PM GUI archive surface.** An **Archive** toolbar button opens a drawer that
+  lists archived subtrees, offers eligible ones, previews a plan before
+  committing to it, and restores or deep-archives in one click. Eligibility is
+  computed server-side from the same gate the CLI uses, so the drawer never
+  offers something `specy-road archive` would refuse. Every write carries the
+  usual `X-PM-Gui-Fingerprint` token — archiving moves roadmap files, so a stale
+  tab must not be able to fire one.
+  - New `pm_gui` preferences under **Settings → Completed work**:
+    `auto_hide_completed` (seeds the Hide Complete filter — a **view filter**,
+    no files move), `auto_archive_completed` and `auto_archive_after_days`
+    (which **do** move files, always bounded by the age threshold).
+  - **`Hide Complete` is unchanged.** It remains a pure view filter; the new
+    preference only sets its initial state.
+  - The outline gains a **Last worked** column on leaf rows, with the exact
+    timestamp and the reason in the cell tooltip.
+
 ### Changed
 
 - **`file-limits` skips archived material.** `roadmap/archive/**` is added to

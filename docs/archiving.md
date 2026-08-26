@@ -203,6 +203,26 @@ Unrelated, despite the names. `archive-node --hard-remove` is a legacy
 references it. `archive` is the reversible feature described here. Use
 `archive`.
 
+## In the PM GUI
+
+The **Archive** button in the toolbar (next to Hide Complete) opens a drawer
+that lists what is archived, offers eligible subtrees, previews a plan before
+committing to it, and restores or deep-archives with one click. Eligibility is
+computed server-side from the same gate the CLI uses, so the drawer never offers
+something `specy-road archive` would refuse.
+
+Two preferences under **Settings → Completed work**:
+
+| Preference | What it does |
+| ---------- | ------------ |
+| Hide completed work by default | Starts each session with the Hide Complete filter on. **View filter only** — no files move. |
+| Auto-archive work completed long ago | Offers completed subtrees for archiving past the day threshold. **Moves files.** |
+
+The threshold input is the same `--older-than-days` the CLI takes, and applies
+to auto-archiving only. Every write from the drawer carries the same
+optimistic-concurrency token as any other PM GUI mutation, so a stale tab cannot
+archive against a graph it has not seen.
+
 ## See also
 
 - [`pm-workflow.md`](pm-workflow.md) — the PM-side roadmap commands

@@ -3406,3 +3406,137 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
 .gantt-svg {
   display: block;
 }
+
+/* --- Last worked column ---------------------------------------------------
+   A glanceable staleness signal, so it is deliberately quieter than Status
+   and never wraps: the outline rows are height-locked to the Gantt rows. */
+.outline-col-activity {
+  font-size: 0.72rem;
+  padding: 0 0.25rem;
+  max-width: 5.5rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* --- Archive drawer ------------------------------------------------------- */
+.archive-section {
+  margin-bottom: 1.25rem;
+}
+
+.archive-section h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.archive-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.archive-create {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.archive-create select {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.archive-deep-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.archive-preview {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--panel-alt, rgba(127, 127, 127, 0.08));
+}
+
+.archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.archive-item {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.archive-item-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.archive-depth {
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid var(--border);
+}
+
+/* Deep archives are not browsable, so the badge carries real information
+   rather than decoration — keep the two visually distinct. */
+.archive-depth--deep {
+  background: rgba(120, 80, 200, 0.16);
+}
+
+.archive-when,
+.archive-item-nodes,
+.archive-item-git {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.archive-item-git {
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.archive-item-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.archive-msg {
+  font-size: 0.78rem;
+}
+
+.settings-number-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  padding: 0.25rem 0;
+}
+
+.settings-number-row input {
+  width: 5rem;
+}

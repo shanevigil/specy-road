@@ -9,6 +9,14 @@ import json
 from pathlib import Path
 from typing import Any
 
+from roadmap_gui_settings_tokens import (
+    _B64_PREFIX,
+    _b64_decode,
+    _b64_encode,
+    _decode_tokens_in_struct,
+    _merge_token_fields,
+    _obfuscate_llm_git,
+)
 from roadmap_gui_settings_scope import (
     blank_llm_base as _blank_llm_base,
     git_effective as _git_effective,
@@ -18,13 +26,6 @@ from roadmap_gui_settings_scope import (
 SETTINGS_DIR = Path.home() / ".specy-road"
 SETTINGS_PATH = SETTINGS_DIR / "gui-settings.json"
 SETTINGS_FILE_VERSION = 2
-_B64_PREFIX = "__b64__:"
-
-def _b64_encode(s: str) -> str:
-    return base64.standard_b64encode(s.encode("utf-8")).decode("ascii")
-
-def _b64_decode(s: str) -> str:
-    return base64.standard_b64decode(s.encode("ascii")).decode("utf-8")
 
 def default_settings() -> dict[str, Any]:
     return {
@@ -52,23 +53,13 @@ def default_settings() -> dict[str, Any]:
         "pm_gui": {
             "registry_remote_overlay": True,
             "integration_branch_auto_ff": False,
+            # View filter only — seeds the Hide Complete toggle, touches no files.
+            "auto_hide_completed": False,
+            # Moves files. Always bounded by auto_archive_after_days.
+            "auto_archive_completed": False,
+            "auto_archive_after_days": 90,
         },
     }
-
-def _merge_token_fields(base: dict[str, Any]) -> None:
-    for key in ("openai_api_key", "azure_api_key", "anthropic_api_key"):
-        v = base["llm"].get(key) or ""
-        if isinstance(v, str) and v.startswith(_B64_PREFIX):
-            try:
-                base["llm"][key] = _b64_decode(v[len(_B64_PREFIX):])
-            except (ValueError, UnicodeDecodeError):
-                base["llm"][key] = ""
-    tok = base["git_remote"].get("token") or ""
-    if isinstance(tok, str) and tok.startswith(_B64_PREFIX):
-        try:
-            base["git_remote"]["token"] = _b64_decode(tok[len(_B64_PREFIX):])
-        except (ValueError, UnicodeDecodeError):
-            base["git_remote"]["token"] = ""
 
 def repo_settings_id(repo_root: Path) -> str:
     return hashlib.sha256(str(repo_root.resolve()).encode("utf-8")).hexdigest()
@@ -123,46 +114,6 @@ def _read_settings_file_struct() -> dict[str, Any]:
     struct = _migrate_raw_to_v2(raw)
     _decode_tokens_in_struct(struct)
     return struct
-
-def _decode_tokens_in_struct(struct: dict[str, Any]) -> None:
-    g = struct.get("global") or {}
-    gl_ok = isinstance(g.get("llm"), dict)
-    gr_ok = isinstance(g.get("git_remote"), dict)
-    if gl_ok and gr_ok:
-        pair = {"llm": g["llm"], "git_remote": g["git_remote"]}
-        _merge_token_fields(pair)
-        g["llm"], g["git_remote"] = pair["llm"], pair["git_remote"]
-    projs = struct.get("projects") or {}
-    if not isinstance(projs, dict):
-        return
-    for _pid, entry in list(projs.items()):
-        if not isinstance(entry, dict):
-            continue
-        el_ok = isinstance(entry.get("llm"), dict)
-        er_ok = isinstance(entry.get("git_remote"), dict)
-        if el_ok and er_ok:
-            pair = {"llm": entry["llm"], "git_remote": entry["git_remote"]}
-            _merge_token_fields(pair)
-            entry["llm"], entry["git_remote"] = pair["llm"], pair["git_remote"]
-
-def _obfuscate_llm_git(
-    llm: dict[str, Any],
-    git_remote: dict[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    out_l = copy.deepcopy(llm)
-    out_g = copy.deepcopy(git_remote)
-    for key in ("openai_api_key", "azure_api_key", "anthropic_api_key"):
-        v = out_l.get(key) or ""
-        if v:
-            out_l[key] = _B64_PREFIX + _b64_encode(str(v))
-        elif key in out_l and not out_l[key]:
-            out_l[key] = ""
-    tok = out_g.get("token") or ""
-    if tok:
-        out_g["token"] = _B64_PREFIX + _b64_encode(str(tok))
-    elif "token" in out_g and not out_g["token"]:
-        out_g["token"] = ""
-    return out_l, out_g
 
 def _write_settings_file_struct(struct: dict[str, Any]) -> None:
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)

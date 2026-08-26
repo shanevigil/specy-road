@@ -131,4 +131,52 @@ export type RoadmapResponse = {
   integration_branch_auto_ff?: IntegrationBranchAutoFfPayload;
   /** Set when the server scheduled deferred ``git fetch`` / integration FF (non-blocking). */
   sync?: { scheduled?: boolean };
+  /**
+   * Last-worked-on per node, keyed by ``node_key``. A sidecar
+   * (``roadmap/activity.json``) rather than fields on ``nodes``: the
+   * consumer-owned roadmap schema forbids extra node properties.
+   */
+  activity?: Record<string, ActivityEntry>;
+};
+
+/** One archived subtree, as recorded in `roadmap/archive/index.json`. */
+export type ArchiveRecord = {
+  archive_id: string;
+  /** `shallow`: nodes still on disk as JSON. `deep`: bundled into a tarball. */
+  depth: "shallow" | "deep";
+  root_node_id: string;
+  root_node_key: string;
+  archived_at: string;
+  node_keys: string[];
+  nodes_summary: {
+    id: string;
+    node_key: string;
+    title: string;
+    type: string;
+    status?: string;
+  }[];
+  chunk?: string | null;
+  planning?: { origin: string; stored: string }[];
+  bundle?: { path: string; sha256: string } | null;
+  /** Best-effort; every field may be null (no rollup history, deleted branch, no tags). */
+  git?: {
+    rollup_branch?: string | null;
+    integration_branch?: string | null;
+    rollup_tip?: string | null;
+    merge_commit?: string | null;
+    nearest_tag?: string | null;
+    closed_at?: string | null;
+  } | null;
+};
+
+export type ArchivesResponse = {
+  records: ArchiveRecord[];
+  /** Subtrees the server would accept an archive for (rollup Complete, unlocked). */
+  eligible: { node_id: string; title: string }[];
+};
+
+/** When a node was last worked on. Keyed by `node_key`, not display id. */
+export type ActivityEntry = {
+  at: string;
+  kind: "picked_up" | "reviewed" | "finished" | "edited" | "backfilled";
 };
