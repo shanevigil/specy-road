@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  autoArchive,
   createArchive,
   deepenArchive,
   fetchArchives,
@@ -54,6 +55,9 @@ export function ArchiveDrawer({ open, onClose, onChanged }: Props) {
         await fn();
         setMsg(label);
         setPreview(null);
+        // The archived subtree leaves `eligible`, so a kept selection would
+        // point at a vanished id while the Archive button stayed enabled.
+        setSelectedNode("");
         await refresh();
         onChanged();
       } catch (e) {
@@ -78,6 +82,8 @@ export function ArchiveDrawer({ open, onClose, onChanged }: Props) {
 
   const eligible = data?.eligible ?? [];
   const records = data?.records ?? [];
+  const auto = data?.auto;
+  const autoCandidates = auto?.enabled ? auto.candidates : [];
 
   return (
     <ModalFrame
@@ -92,6 +98,31 @@ export function ArchiveDrawer({ open, onClose, onChanged }: Props) {
         ) : null
       }
     >
+      {autoCandidates.length > 0 ? (
+        <section className="archive-section archive-auto">
+          <h3>Ready to auto-archive</h3>
+          <p className="archive-empty">
+            {autoCandidates.length} subtree
+            {autoCandidates.length === 1 ? " has" : "s have"} been complete for
+            more than {auto?.older_than_days} days:{" "}
+            {autoCandidates.map((c) => c.node_id).join(", ")}
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            title="Archive every subtree past the threshold set in Settings"
+            onClick={() =>
+              void run(
+                `Archived ${autoCandidates.length} subtree(s).`,
+                () => autoArchive(auto?.older_than_days ?? 90),
+              )
+            }
+          >
+            Archive {autoCandidates.length}
+          </button>
+        </section>
+      ) : null}
+
       <section className="archive-section">
         <h3>Archive completed work</h3>
         {eligible.length === 0 ? (

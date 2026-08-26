@@ -165,3 +165,43 @@ def test_settings_expose_the_new_pm_gui_preferences(client: TestClient) -> None:
     assert pm["auto_hide_completed"] is False
     assert pm["auto_archive_completed"] is False
     assert pm["auto_archive_after_days"] == 90
+
+
+def test_auto_suggestions_are_absent_until_the_preference_is_on(
+    client: TestClient,
+) -> None:
+    """The preference must actually gate something, or it is a dead control."""
+    body = client.get("/api/archives").json()
+    assert body["auto"]["enabled"] is False
+    assert body["auto"]["candidates"] == []
+
+
+def test_auto_suggestions_appear_when_the_preference_is_on(
+    client: TestClient, repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "specy_road.gui_app_routes_archive._auto_settings", lambda root: (True, 0)
+    )
+    body = client.get("/api/archives").json()
+
+    assert body["auto"]["enabled"] is True
+    assert {c["node_id"] for c in body["auto"]["candidates"]} <= {"M0.1", "M0.3"}
+
+
+def test_listing_survives_a_failing_candidate_scan(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Suggestions are a convenience; they must not take down the archive list."""
+    import specy_road.gui_app_routes_archive as mod
+
+    monkeypatch.setattr(mod, "_auto_settings", lambda root: (True, 0))
+
+    def boom(root, **kwargs):
+        raise RuntimeError("scan exploded")
+
+    monkeypatch.setattr(mod, "auto_archive_candidates", boom)
+
+    r = client.get("/api/archives")
+    assert r.status_code == 200
+    assert r.json()["auto"]["candidates"] == []
+    assert r.json()["records"] == []

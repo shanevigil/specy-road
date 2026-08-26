@@ -53,6 +53,16 @@ def _refuse_if_milestone_locked(root: Path, node_id: str) -> None:
         raise SystemExit(1) from e
 
 
+def _archived_node_keys_quiet(root: Path) -> set[str]:
+    """Archived keys, or empty when the ledger is absent/unreadable."""
+    try:
+        from specy_road.archive_index import archived_node_keys
+
+        return archived_node_keys(root)
+    except Exception:  # noqa: BLE001 - editing must not depend on the ledger
+        return set()
+
+
 def run_validate_raise(root: Path) -> None:
     """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure."""
     err = io.StringIO()
@@ -264,6 +274,10 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
             for n in load_roadmap(root)["nodes"]
             if isinstance(n.get("node_key"), str) and n["node_key"]
         }
+        # Archived node_keys are resolvable too — `validate` accepts them, and
+        # every dependency write sends the FULL set. Without this, one archived
+        # dependency would make a node's dependencies permanently uneditable.
+        nkeys |= _archived_node_keys_quiet(root)
         for k, v in pairs:
             old_pd = node.get("planning_dir")
             if isinstance(old_pd, str):

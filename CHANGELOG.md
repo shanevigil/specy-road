@@ -106,6 +106,49 @@ body. Keep section bodies focused; link to PRs for detail.
   - The outline gains a **Last worked** column on leaf rows, with the exact
     timestamp and the reason in the cell tooltip.
 
+### Fixed
+
+- **Archived files no longer trip the roadmap chunk line limit.**
+  `validate_roadmap_line_limits` scans every `*.json` under `roadmap/`, so
+  `roadmap/archive/` was checked against `roadmap_json_chunk_max_lines` (500).
+  Archiving writes a whole subtree into one file and the ledger grows per
+  record, so **one archive of a 31-node phase was enough to make `validate`,
+  `export --check` and every CRUD command exit 1** — on exactly the repositories
+  archiving exists to help, with no way to split the files. `file-limits`
+  reported OK throughout, because only the other scanner had been exempted.
+- **Archiving an ancestor of a locked milestone is refused.** The milestone
+  lock marks a milestone and its descendants, so a root-only check passed when
+  archiving an *ancestor* and carried the locked subtree out from under an
+  in-flight rollup branch.
+- **Archiving the last live subtree is refused.** It would leave
+  `manifest.json` with `"includes": []`, which the loader reads as the legacy
+  "nodes live in the manifest" layout — a repository that cannot load at all.
+- **`restore-archive` validates before destroying the archive.** It previously
+  deleted the chunk, planning sheets and ledger record and only then validated,
+  so a validation failure destroyed the only copy on the way to reporting the
+  error.
+- **Dependencies can still be edited on a node that depends on archived work.**
+  Every dependency write sends the full set, and the edit path rejected keys
+  absent from the live graph — so one archived dependency made a node's
+  `dependencies` permanently uneditable from both the CLI and the PM GUI.
+- **`specy-road brief` names archived dependencies** instead of reporting "no
+  effective dependencies" for a node that visibly lists one.
+- **`list-dependencies` labels an archived dependency as archived** rather than
+  "missing node_key in roadmap", which pointed the PM at the one edit that
+  breaks restore.
+- **Last worked is populated when the roadmap is not the git repo root.**
+  `git log --name-only` prints repository-relative paths while roadmap paths are
+  project-relative, so in a monorepo — or any `SPECY_ROAD_REPO_ROOT` pointing at
+  a subdirectory — every lookup missed and the column went silently blank.
+- **The outline's drag-drop rows span the full table again.** `TABLE_COLS` was
+  left at 5 when the sixth column was added, truncating the root drop zone and
+  every gap row.
+- **The auto-archive preferences now do something.** `auto_archive_completed`
+  and `auto_archive_after_days` were saved and read back but consumed by
+  nothing. The Archive drawer now surfaces subtrees past the threshold with a
+  one-click action — surfaced, never applied on its own, because archiving
+  moves files.
+
 ### Changed
 
 - **Archive and restore is now net-zero.** Restoring the last archive removes

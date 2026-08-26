@@ -3540,3 +3540,12 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
 .settings-number-row input {
   width: 5rem;
 }
+
+/* Auto-archive suggestions. Visually distinct because acting on it moves many
+   files at once — it should not read like the ordinary single-subtree form. */
+.archive-auto {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid rgba(120, 80, 200, 0.55);
+  border-radius: 4px;
+}

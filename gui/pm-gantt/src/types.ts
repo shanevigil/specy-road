@@ -172,6 +172,16 @@ export type ArchivesResponse = {
   records: ArchiveRecord[];
   /** Subtrees the server would accept an archive for (rollup Complete, unlocked). */
   eligible: { node_id: string; title: string }[];
+  /**
+   * Auto-archive suggestions from the saved `pm_gui` preferences. Only
+   * populated when `auto_archive_completed` is on; archiving moves files, so
+   * these are offered for one click, never applied on their own.
+   */
+  auto?: {
+    enabled: boolean;
+    older_than_days: number;
+    candidates: { node_id: string; completed_at: string }[];
+  };
 };
 
 /**

@@ -61,7 +61,10 @@ const outlineCollisionDetection: CollisionDetection = (args) => {
   return closestCorners(args);
 };
 
-const TABLE_COLS = 5;
+// ID, Task, Status, Last worked, Dev, Dependency. Must match the <th> count:
+// it is the colSpan for the root drop zone and every drag-drop gap row, so a
+// stale value truncates those rows short of the table width.
+const TABLE_COLS = 6;
 
 function statusColumnTooltip(
   node: RoadmapNode | undefined,

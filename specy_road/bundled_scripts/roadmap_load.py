@@ -211,10 +211,28 @@ def _roadmap_json_chunk_max_lines(root: Path) -> int:
     return 500
 
 
+#: Subdirectory of ``roadmap/`` holding archived subtrees. Its JSON is not
+#: roadmap *source*: nothing there is in ``manifest.json``'s ``includes``, so
+#: the loader never reads it and no one edits it by hand.
+_ARCHIVE_DIRNAME = "archive"
+
+
 def _line_limit_json_chunks(root: Path, base: Path, json_max: int) -> bool:
+    """Enforce the chunk cap on roadmap source files only.
+
+    ``roadmap/archive/`` is skipped. Archiving deliberately writes a whole
+    subtree into one file, and the ledger grows with every record, so scanning
+    them against the per-chunk cap would fail on exactly the repositories the
+    feature exists to help — and the operator cannot split those files, because
+    the archive owns their layout. The cap protects files humans edit and the
+    loader merges; archived files are neither.
+    """
+    archive_dir = base / _ARCHIVE_DIRNAME
     failed = False
     for path in sorted(base.rglob("*.json")):
         if path.name == "manifest.json":
+            continue
+        if archive_dir in path.parents:
             continue
         try:
             path.relative_to(base)

@@ -180,6 +180,14 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     _sync_includes(root, _write_back(root, grouped))
     _restore_planning_sheets(root, record)
 
+    # Validate BEFORE removing the archive. The archived chunk is not in
+    # `includes`, so the graph being validated is exactly the restored one, and
+    # the still-present ledger only makes archived keys resolvable — which
+    # cannot mask a problem. If this raises, the archive is still fully intact
+    # and the operator can retry or investigate; deleting first would destroy
+    # the only copy on the way to reporting the error.
+    run_validate_raise(root)
+
     src.unlink(missing_ok=True)
     shutil.rmtree(archive_planning_dir(root, archive_id), ignore_errors=True)
 
@@ -188,8 +196,6 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     ]
     write_archive_index(root, doc)
     _prune_empty_archive(root, doc)
-
-    run_validate_raise(root)
     return {
         "archive_id": archive_id,
         "chunks": sorted(grouped),

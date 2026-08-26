@@ -80,11 +80,46 @@ def _eligible(root: Path) -> list[dict[str, Any]]:
     return out
 
 
+def _auto_settings(root: Path) -> tuple[bool, int]:
+    """``(enabled, older_than_days)`` from the saved ``pm_gui`` preferences."""
+    try:
+        from roadmap_gui_lib import load_settings
+
+        pm = load_settings(root).get("pm_gui") or {}
+    except Exception:  # noqa: BLE001 - a settings problem must not break the list
+        return False, DEFAULT_AUTO_DAYS
+    days = pm.get("auto_archive_after_days")
+    try:
+        days = max(1, int(days))
+    except (TypeError, ValueError):
+        days = DEFAULT_AUTO_DAYS
+    return pm.get("auto_archive_completed") is True, days
+
+
 def _api_archives_list() -> dict[str, Any]:
     root = get_repo_root()
+    enabled, days = _auto_settings(root)
+    # Surfaced, never acted on automatically: archiving moves files, so the
+    # preference decides what the drawer OFFERS, and the operator still clicks.
+    # The scan walks git history, so it is the most failure-prone part of this
+    # response — and the least important. Never let it take down the listing.
+    suggestions: list[dict[str, str]] = []
+    if enabled:
+        try:
+            suggestions = [
+                {"node_id": nid, "completed_at": done}
+                for nid, done in auto_archive_candidates(root, older_than_days=days)
+            ]
+        except Exception:  # noqa: BLE001 - suggestions are a convenience
+            suggestions = []
     return {
         "records": index_records(load_archive_index(root)),
         "eligible": _eligible(root),
+        "auto": {
+            "enabled": enabled,
+            "older_than_days": days,
+            "candidates": suggestions,
+        },
     }
 
 

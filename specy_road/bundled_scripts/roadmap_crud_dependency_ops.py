@@ -22,6 +22,16 @@ def _dependencies_patch_value(keys: list[str]) -> str:
     return " ".join(sorted(keys))
 
 
+def _archived_keys(root) -> set[str]:
+    """Archived node_keys, or empty when the ledger is absent/unreadable."""
+    try:
+        from specy_road.archive_index import archived_node_keys
+
+        return archived_node_keys(root)
+    except Exception:  # noqa: BLE001 - listing must not depend on the ledger
+        return set()
+
+
 def cmd_list_dependencies(args: object) -> None:
     root = repo_root(args)
     nid = args.node_id
@@ -47,7 +57,12 @@ def cmd_list_dependencies(args: object) -> None:
             title = str(row.get("title", ""))[:72]
             print(f"{dk}\t{oid}\t{title}")
         else:
-            print(f"{dk}\t?\t(missing node_key in roadmap)")
+            label = (
+                "(archived — restore-archive to bring it back)"
+                if dk in _archived_keys(root)
+                else "(missing node_key in roadmap)"
+            )
+            print(f"{dk}\t?\t{label}")
 
 
 def cmd_set_dependencies(args: object) -> None:

@@ -220,6 +220,58 @@ def _render_one_dep(repo_root: Path, dep: dict) -> list[str]:
     return out
 
 
+def _archived_dep_lines(
+    active_node: dict, by_id: dict[str, dict], repo_root: Path
+) -> list[str]:
+    """Name dependencies that were archived rather than omitting them.
+
+    ``effective_dependency_keys`` drops keys absent from the live graph, which
+    is right for readiness — archived implies Complete implies satisfied — but
+    would otherwise tell an implementer "no dependencies" for a node that
+    visibly lists one. Naming the archived work preserves the context without
+    reopening it.
+    """
+    try:
+        from specy_road.archive_index import index_records, load_archive_index
+    except Exception:  # noqa: BLE001 - the brief must render without the ledger
+        return []
+
+    live = {
+        n.get("node_key")
+        for n in by_id.values()
+        if isinstance(n.get("node_key"), str)
+    }
+    wanted = {
+        d
+        for d in (active_node.get("dependencies") or [])
+        if isinstance(d, str) and d not in live
+    }
+    if not wanted:
+        return []
+
+    try:
+        records = index_records(load_archive_index(repo_root))
+    except Exception:  # noqa: BLE001 - see above
+        return []
+    summary: dict[str, tuple[str, str]] = {}
+    for rec in records:
+        for n in rec.get("nodes_summary") or []:
+            key = n.get("node_key")
+            if isinstance(key, str):
+                summary[key] = (str(n.get("id") or "?"), str(n.get("title") or ""))
+
+    lines = [f"- **{summary[k][0]}** — {summary[k][1]} _(archived)_" for k in sorted(wanted) if k in summary]
+    if not lines:
+        return []
+    return [
+        "**Archived dependencies** (complete; moved out of the live roadmap — "
+        "`specy-road show-archive` for detail):",
+        "",
+        *lines,
+        "",
+    ]
+
+
 def render_dependency_context_section(
     active_node: dict,
     by_id: dict[str, dict],
@@ -248,10 +300,17 @@ def render_dependency_context_section(
         "",
     ]
     deps = effective_dep_nodes(active_node, by_id)
+    archived = _archived_dep_lines(active_node, by_id, repo_root)
     if not deps:
-        out.append("- _no effective dependencies_")
+        out.append(
+            "- _no effective dependencies_"
+            if not archived
+            else "- _no effective dependencies still in the live roadmap_"
+        )
         out.append("")
+        out.extend(archived)
         return out
     for dep in deps:
         out.extend(_render_one_dep(repo_root, dep))
+    out.extend(archived)
     return out

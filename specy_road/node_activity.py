@@ -61,6 +61,19 @@ def head_sha(root: Path) -> str | None:
     return (out or "").strip() or None
 
 
+def repo_prefix(root: Path) -> str:
+    """``root``'s path within its git repo, e.g. ``"project/"`` — or ``""``.
+
+    ``git log --name-only`` prints paths relative to the **repository** root,
+    while roadmap paths (``planning_dir``, chunk paths) are relative to the
+    **project** root. Those coincide only when the project is the repo root. In
+    a monorepo — or whenever ``SPECY_ROAD_REPO_ROOT`` points at a subdirectory
+    — every lookup would miss and the column would silently go blank.
+    """
+    out = _run_git(root, ["rev-parse", "--show-prefix"])
+    return (out or "").strip()
+
+
 def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
     """``{repo-relative path: ISO date}`` for everything under ``scopes``.
 
@@ -89,13 +102,23 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
     )
     if not out:
         return {}
+    prefix = repo_prefix(root)
     dates: dict[str, str] = {}
     current: str | None = None
     for line in out.splitlines():
         if line.startswith("@"):
             current = line[1:].strip()
-        elif line.strip() and current and line not in dates:
-            dates[line] = current
+            continue
+        rel = line.strip()
+        if not rel or not current:
+            continue
+        # Re-base repository-relative output onto the project root.
+        if prefix:
+            if not rel.startswith(prefix):
+                continue
+            rel = rel[len(prefix):]
+        if rel not in dates:
+            dates[rel] = current
     return dates
 
 

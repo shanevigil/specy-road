@@ -104,7 +104,12 @@ def assert_archivable(
 
     # An active milestone rollup owns its whole subtree; moving files out from
     # under it would strand the in-flight branch. --force does not override this.
-    assert_pm_nodes_not_milestone_locked(nodes, node_id)
+    #
+    # Check every node being archived, not just the root: the lock marks the
+    # locked milestone and its DESCENDANTS, so archiving an ANCESTOR of a
+    # locked milestone would pass a root-only check while carrying the locked
+    # subtree out with it.
+    assert_pm_nodes_not_milestone_locked(nodes, *subtree_node_ids(node_id, nodes))
 
     if not force:
         rollup = compute_rollup_status(nodes).get(node_id)
@@ -184,6 +189,8 @@ def plan_archive(
             f"node {node_id} resolved to no chunk nodes — nothing to archive"
         )
 
+    _refuse_if_manifest_would_empty(root, edits)
+
     archived_nodes.sort(key=lambda n: _id_sort_key(str(n.get("id") or "")))
     when = archived_at or utc_now_iso()
 
@@ -197,6 +204,29 @@ def plan_archive(
         archived_at=when,
         git=capture_provenance(root, root_node),
     )
+
+
+def _refuse_if_manifest_would_empty(root: Path, edits: list[ChunkEdit]) -> None:
+    """Never leave ``manifest.json`` with an empty ``includes``.
+
+    ``build_node_chunk_map`` reads a falsy ``includes`` as the legacy
+    "nodes live in the manifest" layout and tries to parse ``manifest.json``
+    as a chunk, which fails — so archiving the last live subtree would leave a
+    repo that cannot load at all.
+    """
+    from roadmap_chunk_utils import load_manifest_mapping
+
+    includes = [
+        rel for rel in (load_manifest_mapping(root).get("includes") or [])
+        if isinstance(rel, str)
+    ]
+    emptied = {e.rel for e in edits if e.emptied}
+    if includes and not [rel for rel in includes if rel not in emptied]:
+        raise ValueError(
+            "archiving this subtree would empty the roadmap: every remaining "
+            "chunk in manifest.json would be removed, leaving a repository "
+            "that cannot load. Keep at least one live node."
+        )
 
 
 def _id_sort_key(node_id: str) -> tuple:
