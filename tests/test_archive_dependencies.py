@@ -121,3 +121,80 @@ def test_no_index_means_no_archived_keys(repo: Path) -> None:
     """A repo that has never archived must not pay for the feature."""
     assert archived_node_keys(repo) == set()
     validate_dependency_ids(_live_nodes(repo), repo)
+
+
+# --- the dev loop, not just `validate` --------------------------------------
+# `validate` was taught that archived node_keys are satisfied. The task loop
+# computes readiness separately, via roadmap_layout.effective_dependency_keys,
+# which drops keys absent from the live graph. That yields the right answer for
+# archived work — archived implies Complete implies satisfied — but only
+# incidentally. These tests make it a contract: if that filter ever changes to
+# treat unknown keys as blocking, archiving would silently freeze the dev loop,
+# and one of these fails instead.
+
+
+def _leaf_is_dep_blocked(repo: Path, node_id: str) -> bool:
+    import do_next_available as dna
+    from roadmap_layout import effective_dependency_keys
+
+    nodes = _live_nodes(repo)
+    node = next(n for n in nodes if n["id"] == node_id)
+    return bool(
+        dna._unmet_effective_dependency_keys(
+            node,
+            dna._statuses_by_node_key(nodes),
+            effective_dependency_keys(nodes),
+        )
+    )
+
+
+def test_archiving_a_dependency_does_not_block_the_leaf_that_needs_it(
+    repo: Path,
+) -> None:
+    """M0.2 depends on M0.3. Archiving M0.3 must not strand M0.2 forever."""
+    assert not _leaf_is_dep_blocked(repo, "M0.2")
+
+    archive_node(repo, "M0.3")
+
+    assert not _leaf_is_dep_blocked(repo, "M0.2")
+
+
+def test_do_next_still_offers_a_leaf_whose_dependency_was_archived(
+    repo: Path,
+) -> None:
+    import do_next_available as dna
+
+    archive_node(repo, "M0.3")
+    nodes = _live_nodes(repo)
+    available = dna._available(nodes, {"version": 1, "entries": []})
+
+    assert "M0.2" in {n["id"] for n in available}
+
+
+def test_grind_session_waves_still_schedule_it(repo: Path) -> None:
+    """A whole grind run would stall if archived deps counted as unmet."""
+    from session_plan import compute_session_plan, session_plan_to_dict
+
+    archive_node(repo, "M0.3")
+    plan = session_plan_to_dict(
+        compute_session_plan(_live_nodes(repo), {"version": 1, "entries": []})
+    )
+
+    scheduled = {nid for wave in plan.get("waves", []) for nid in wave.get("node_ids", [])}
+    assert "M0.2" in plan.get("ready", []) or "M0.2" in scheduled, plan
+
+
+def test_an_unmet_live_dependency_still_blocks(repo: Path) -> None:
+    """Guards the guard: the archived case must not blanket-unblock everything."""
+    from roadmap_load import load_roadmap
+    from roadmap_chunk_utils import load_json_chunk, write_json_chunk
+
+    chunk = repo / "roadmap" / "phases" / "M0.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        if n["id"] == "M0.3":
+            n["status"] = "Not Started"
+    write_json_chunk(chunk, nodes)
+    load_roadmap(repo)
+
+    assert _leaf_is_dep_blocked(repo, "M0.2")
