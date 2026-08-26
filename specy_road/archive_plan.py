@@ -190,6 +190,7 @@ def plan_archive(
         )
 
     _refuse_if_manifest_would_empty(root, edits)
+    _refuse_if_claimed(root, subtree_ids)
 
     archived_nodes.sort(key=lambda n: _id_sort_key(str(n.get("id") or "")))
     when = archived_at or utc_now_iso()
@@ -203,6 +204,37 @@ def plan_archive(
         planning_paths=tuple(_planning_paths(archived_nodes)),
         archived_at=when,
         git=capture_provenance(root, root_node),
+    )
+
+
+def _refuse_if_claimed(root: Path, subtree_ids: set[str]) -> None:
+    """Refuse to archive a node someone still has an open registry claim on.
+
+    ``validate`` rejects a registry entry whose ``node_id`` is not in the merged
+    graph, so archiving a claimed node leaves the repository failing validation
+    with no hint about why — and strands the claimant's feature branch. Caught
+    at plan time so nothing has moved yet.
+    """
+    from roadmap_gui_lib import load_registry
+
+    try:
+        entries = load_registry(root).get("entries") or []
+    except Exception:  # noqa: BLE001 - a registry problem is validate's to report
+        return
+    claimed = [
+        e for e in entries
+        if isinstance(e, dict) and e.get("node_id") in subtree_ids
+    ]
+    if not claimed:
+        return
+    detail = ", ".join(
+        f"{e.get('node_id')} ({e.get('branch') or e.get('codename')})"
+        for e in claimed
+    )
+    raise ValueError(
+        f"in-progress work is still registered on this subtree: {detail}. "
+        "Finish it (specy-road finish-this-task) or release the claim "
+        "(specy-road abort-task-pickup) before archiving."
     )
 
 

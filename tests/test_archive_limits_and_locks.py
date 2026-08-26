@@ -164,3 +164,28 @@ def test_restore_keeps_the_archive_when_validation_fails(
 
     assert chunk.is_file(), "archive chunk was destroyed before validation"
     assert load_archive_index(repo)["records"], "ledger record was dropped"
+
+
+def test_archiving_a_node_with_an_open_claim_is_refused(repo: Path) -> None:
+    """`validate` rejects a registry entry whose node_id left the graph.
+
+    Archiving a claimed node used to apply fully and only then fail validation,
+    leaving the repository failing validate with no hint why — and stranding
+    the claimant's feature branch. Refused at plan time, before anything moves.
+    """
+    (repo / "roadmap" / "registry.yaml").write_text(
+        "version: 1\n"
+        "entries:\n"
+        "  - codename: contracts-bootstrap\n"
+        "    node_id: M0.1\n"
+        "    branch: feature/rm-contracts-bootstrap\n"
+        "    touch_zones: []\n"
+        "    started: '2026-01-01'\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="still registered"):
+        plan_archive(repo, "M0.1")
+
+    assert not (repo / "roadmap" / "archive").exists()
+    _validate(repo)

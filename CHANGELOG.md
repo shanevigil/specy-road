@@ -131,6 +131,10 @@ body. Keep section bodies focused; link to PRs for detail.
   Every dependency write sends the full set, and the edit path rejected keys
   absent from the live graph — so one archived dependency made a node's
   `dependencies` permanently uneditable from both the CLI and the PM GUI.
+- **Archiving a node with an open registry claim is refused.** It used to
+  apply fully and only then fail validation (`registry: entry … references
+  unknown node_id`), leaving the repository failing `validate` with no hint why
+  and stranding the claimant's feature branch. Now caught before anything moves.
 - **`specy-road brief` names archived dependencies** instead of reporting "no
   effective dependencies" for a node that visibly lists one.
 - **`list-dependencies` labels an archived dependency as archived** rather than
