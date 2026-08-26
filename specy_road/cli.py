@@ -39,7 +39,8 @@ _USAGE_TEXT = (
     "\n"
     "Archiving (long-running roadmaps):\n"
     "  archive <NODE_ID>    — move a Complete subtree out of the live graph into roadmap/archive/\n"
-    "    (optional: --dry-run --force | --auto [--older-than-days N])\n"
+    "    (optional: --deep --dry-run --force | --auto [--older-than-days N])\n"
+    "  deepen-archive <ARCHIVE_ID> — bundle a shallow archive into a tarball + reference file\n"
     "  list-archives        — list archive records (optional: --json)\n"
     "  show-archive <ARCHIVE_ID> — one record in detail, including git provenance\n"
     "  restore-archive <ARCHIVE_ID> — bring an archived subtree back (optional: --dry-run)\n"
@@ -317,7 +318,13 @@ def main(argv: list[str] | None = None) -> None:
         "remove-dependency",
     ):
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
-    elif cmd in ("archive", "list-archives", "show-archive", "restore-archive"):
+    elif cmd in (
+        "archive",
+        "deepen-archive",
+        "list-archives",
+        "show-archive",
+        "restore-archive",
+    ):
         _run("archive_cli.py", [cmd, *rest])
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)

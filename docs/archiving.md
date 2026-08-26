@@ -21,6 +21,8 @@ specy-road archive M0.2               # archive one Complete subtree
 specy-road archive M0.2 --dry-run     # show the plan, write nothing
 specy-road archive --auto             # everything Complete for 90+ days
 specy-road archive --auto --older-than-days 180
+specy-road archive M0.2 --deep        # archive and bundle it away in one step
+specy-road deepen-archive <ARCHIVE_ID>
 specy-road list-archives              # what is archived (add --json)
 specy-road show-archive <ARCHIVE_ID>  # detail, including git provenance
 specy-road restore-archive <ARCHIVE_ID>
@@ -51,6 +53,39 @@ manifest edit — no loader changes, no node rewriting.
 under `planning/` (the flat-`planning/*.md` rule), so parking them there would
 break the next validate. Keeping them beside the archived chunk also means one
 self-contained directory per archive.
+
+## Two tiers
+
+**Shallow** (the default) leaves the archived nodes on disk as ordinary JSON
+under `roadmap/archive/chunks/`. They are out of the live graph but still
+readable, greppable, and browsable in the PM GUI.
+
+**Deep** is for work nobody expects to open again. The chunk and its planning
+sheets are packed into a single `roadmap/archive/deep/<archive_id>.tar.gz`, the
+loose files are deleted, and what stays behind is
+`roadmap/archive/refs/<archive_id>.json` — a small, standalone reference naming
+the nodes and the git refs they were delivered on. Deep archives are **not**
+browsable in the PM GUI; only their reference is.
+
+```text
+roadmap/archive/
+  index.json
+  deep/M0.2-e7fcdb23-20260826.tar.gz    # the only copy of the nodes
+  refs/M0.2-e7fcdb23-20260826.json      # what it was, where it landed
+```
+
+The index record survives deepening with its `node_keys` and `nodes_summary`
+intact, so a deep archive is still listable, still satisfies live dependencies,
+and still shows its node titles — without unpacking anything.
+
+`restore-archive` handles both tiers in one command: on a deep archive it
+unpacks the bundle and then restores as usual. `deepen-archive` goes the other
+way for an archive already on disk.
+
+**The bundle checksum is verified before anything unpacks.** A bundle that does
+not match the `sha256` on record is refused outright rather than partially
+restored — putting silently-altered roadmap nodes back into the live graph
+would be worse than failing.
 
 ## Eligibility
 

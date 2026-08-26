@@ -13,6 +13,7 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.archive_deep import deepen_archive
 from specy_road.archive_index import index_records, load_archive_index
 from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive, plan_summary
@@ -67,7 +68,23 @@ def cmd_archive(ns: argparse.Namespace) -> int:
     print(f"     chunk    {rec['chunk']}")
     for move in rec.get("planning") or []:
         print(f"     planning {move['origin']} -> {move['stored']}")
+    if ns.deep:
+        rec = deepen_archive(root, rec["archive_id"])
+        _print_deepened(rec)
     print("     restore with: specy-road restore-archive " + rec["archive_id"])
+    return 0
+
+
+def _print_deepened(rec: dict) -> None:
+    bundle = rec.get("bundle") or {}
+    print(f"[ok] deep-archived {rec['archive_id']}")
+    print(f"     bundle   {bundle.get('path')}")
+    print(f"     sha256   {bundle.get('sha256')}")
+    print(f"     ref      roadmap/archive/refs/{rec['archive_id']}.json")
+
+
+def cmd_deepen(ns: argparse.Namespace) -> int:
+    _print_deepened(deepen_archive(_root(ns), ns.archive_id))
     return 0
 
 
@@ -193,9 +210,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Archive even when the subtree does not roll up as Complete.",
     )
+    sp.add_argument(
+        "--deep",
+        action="store_true",
+        help="Bundle the archive into a tarball, leaving only a reference file.",
+    )
     sp.add_argument("--dry-run", action="store_true", help="Show the plan; write nothing.")
     _add_repo_root(sp)
     sp.set_defaults(func=cmd_archive)
+
+    sp = sub.add_parser(
+        "deepen-archive",
+        help="Bundle an existing shallow archive into archive/deep/.",
+    )
+    sp.add_argument("archive_id", metavar="ARCHIVE_ID")
+    _add_repo_root(sp)
+    sp.set_defaults(func=cmd_deepen)
 
     sp = sub.add_parser("list-archives", help="List archive records.")
     sp.add_argument("--json", action="store_true", help="Emit the raw index JSON.")

@@ -53,6 +53,22 @@ body. Keep section bodies focused; link to PRs for detail.
     `tests/test_package_data_schemas.py` guard that it ships.
   - Docs: [`docs/archiving.md`](docs/archiving.md).
 
+- **Deep archive tier.** `specy-road archive <NODE_ID> --deep` (or
+  `deepen-archive <ARCHIVE_ID>` afterwards) packs an archived chunk and its
+  planning sheets into `roadmap/archive/deep/<archive_id>.tar.gz`, removes the
+  loose files, and leaves a standalone
+  `roadmap/archive/refs/<archive_id>.json` naming the nodes and the git refs
+  they were delivered on. Deep archives are not browsable in the PM GUI; their
+  reference file is.
+  - The index record keeps its `node_keys` and `nodes_summary` through
+    deepening, so a deep archive stays listable and keeps satisfying live
+    dependencies without unpacking anything.
+  - `restore-archive` handles both tiers in one command — on a deep archive it
+    unpacks and then restores.
+  - **The bundle `sha256` is verified before anything unpacks.** A mismatch is
+    refused outright rather than partially restored; the archive stays deep and
+    the live roadmap is untouched.
+
 ### Known limitations
 
 - `archive --auto` derives completion age from

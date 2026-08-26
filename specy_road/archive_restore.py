@@ -131,10 +131,17 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
             f"no archive with id {archive_id!r} (try: specy-road list-archives)"
         )
     if record.get("depth") == "deep":
-        raise ValueError(
-            f"archive {archive_id} is deep-archived — unpack the bundle before "
-            "restoring it to the live roadmap."
-        )
+        # Unpack first, then fall through to the ordinary shallow restore.
+        # Making the caller run two commands buys nothing: the checksum guard
+        # lives in undeepen_archive either way, and a refusal there aborts
+        # before anything touches the live roadmap.
+        from specy_road.archive_deep import undeepen_archive
+
+        undeepen_archive(root, archive_id)
+        doc = load_archive_index(root)
+        record = find_record(doc, archive_id)
+        if record is None:  # pragma: no cover - undeepen would have raised
+            raise ValueError(f"archive {archive_id} vanished while unpacking")
 
     chunk_rel = record.get("chunk")
     if not isinstance(chunk_rel, str) or not (root / chunk_rel).is_file():
