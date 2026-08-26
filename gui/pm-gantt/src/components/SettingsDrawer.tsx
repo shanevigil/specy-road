@@ -435,7 +435,7 @@ export function SettingsDrawer({
         optionTitle="Offers completed subtrees for archiving once they are older than the threshold below. Archiving MOVES FILES out of roadmap/phases and planning/ into roadmap/archive/ — it is reversible, but it is not a view filter."
       />
       <label className="settings-number-row">
-        <span title="Only subtrees complete for longer than this are eligible for auto-archiving. Age comes from the milestone rollup close date, or from roadmap/activity.json.">
+        <span title="Only subtrees complete for longer than this are eligible for auto-archiving. Age comes from the milestone rollup close date, or from the node's last commit in git history.">
           Archive after (days)
         </span>
         <input

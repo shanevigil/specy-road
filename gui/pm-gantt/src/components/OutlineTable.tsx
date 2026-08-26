@@ -745,7 +745,7 @@ type Props = {
   interactionLocked?: boolean;
   /** Container rows (have children in the outline tree) — muted strip styling. */
   parentNodeIds?: ReadonlySet<string>;
-  /** Last-worked-on per node_key (roadmap/activity.json), for the Last worked column. */
+  /** Last-worked-on per node_key, derived from git history server-side. */
   activity?: Record<string, ActivityEntry>;
 };
 
@@ -1425,7 +1425,7 @@ export function OutlineTable({
             <th className="outline-col-status">Status</th>
             <th
               className="outline-col-activity"
-              title="When this leaf was last worked on (roadmap/activity.json)"
+              title="When this leaf was last worked on, from git history (committed work only)"
             >
               Last worked
             </th>
