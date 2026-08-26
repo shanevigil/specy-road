@@ -33,7 +33,7 @@ working tree; publish it the way you publish any other roadmap edit.
 
 ## What moves
 
-```
+```text
 roadmap/
   manifest.json                          # the archived chunk leaves `includes`
   phases/M0.json                         # rewritten without the archived nodes
@@ -139,12 +139,52 @@ threshold (default 90 days, `--older-than-days N` to change it). When subtrees
 nest, only the top one is offered — archiving a phase already takes its
 milestones.
 
-Completion age currently comes from `milestone_execution.closed_at`, which only
-milestones that went through a rollup carry. **Subtrees with no rollup history
-have no completion timestamp yet and `--auto` will skip them**; archive those by
-id. A per-node activity timestamp is coming and will close that gap.
+Completion age comes from `milestone_execution.closed_at` when the subtree went
+through a rollup, and otherwise from a `finished` entry in
+[`roadmap/activity.json`](#last-worked-on). A subtree with neither has no
+completion date and `--auto` skips it; archive those by id.
 
 The PM GUI exposes the same threshold as a preference.
+
+## Last-worked-on
+
+`roadmap/activity.json` records when each node was last touched, keyed by
+`node_key`:
+
+```json
+{ "version": 1,
+  "nodes": { "44ef4a9d-…": { "at": "2026-05-01T09:12:00+00:00", "kind": "finished" } } }
+```
+
+`kind` is one of `picked_up`, `reviewed`, `finished`, `edited`, or
+`backfilled`. It is written by `do-next-available-task`,
+`mark-implementation-reviewed`, `finish-this-task` and `edit-node`, and the PM
+GUI shows it as a **Last worked** column on leaf rows.
+
+**Why a sidecar rather than a node field.** `<repo_root>/schemas/roadmap.schema.json`
+is consumer-owned and uses `additionalProperties: false`, so a new node field
+would fail every existing adopter's `validate` until they hand-edited that file.
+Activity also changes on every pickup and finish, which would churn the chunk
+diffs that land in each PR for data nobody reviews.
+
+**Writes are best-effort and never fatal.** A read-only checkout or a mangled
+sidecar must not be the reason `finish-this-task` fails, so recording failures
+are swallowed.
+
+### Seeding an existing repo
+
+Live write points only record from the moment they ship, so an established
+roadmap starts with an empty column. `specy-road backfill-activity` derives a
+timestamp per node from the last commit touching its planning sheet:
+
+```bash
+specy-road backfill-activity --dry-run
+specy-road backfill-activity
+```
+
+Backfilled entries are recorded as `kind: backfilled` — a **lower bound** on
+real activity, not an observation. Backfill never overwrites a newer observed
+timestamp, so it is safe to run at any point.
 
 ## Git provenance
 

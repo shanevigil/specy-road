@@ -44,6 +44,8 @@ _USAGE_TEXT = (
     "  list-archives        — list archive records (optional: --json)\n"
     "  show-archive <ARCHIVE_ID> — one record in detail, including git provenance\n"
     "  restore-archive <ARCHIVE_ID> — bring an archived subtree back (optional: --dry-run)\n"
+    "  backfill-activity    — seed roadmap/activity.json (last-worked-on) from git history\n"
+    "    (optional: --dry-run)\n"
     "  list-dependencies <NODE_ID>\n"
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
     "  add-dependency <NODE_ID> <DEP_NODE_KEY>\n"
@@ -326,6 +328,8 @@ def main(argv: list[str] | None = None) -> None:
         "restore-archive",
     ):
         _run("archive_cli.py", [cmd, *rest])
+    elif cmd == "backfill-activity":
+        _run("backfill_activity.py", rest)
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)
     elif cmd == "review-node":

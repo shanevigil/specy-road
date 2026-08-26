@@ -12,6 +12,11 @@ from pathlib import Path
 
 import yaml
 from roadmap_load import load_roadmap
+from specy_road.activity_log import (
+    KIND_REVIEWED,
+    record_activity,
+    record_activity_for_node_id,
+)
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.registry_yaml import write_registry
 from specy_road.runtime_paths import default_user_repo_root
@@ -211,6 +216,12 @@ def _commit_registry_approved(codename: str, reg: dict) -> None:
         if e.get("codename") == codename:
             e["implementation_review"] = "approved"
             e["implementation_review_at"] = now
+            if isinstance(e.get("node_key"), str):
+                record_activity(ROOT, e["node_key"], KIND_REVIEWED, now)
+            else:
+                record_activity_for_node_id(
+                    ROOT, str(e.get("node_id") or ""), KIND_REVIEWED, now
+                )
             break
     _save_registry(reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")

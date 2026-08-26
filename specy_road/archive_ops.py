@@ -114,19 +114,27 @@ def archive_node(
     return apply_archive(root, plan_archive(root, node_id, force=force))
 
 
-def completed_at(root_node: dict[str, Any]) -> str | None:
+def completed_at(
+    root_node: dict[str, Any], activity: dict[str, dict[str, Any]] | None = None
+) -> str | None:
     """When this subtree finished, for the auto-archive age threshold.
 
-    ``milestone_execution.closed_at`` is the only completion timestamp the
-    roadmap records today, so ``--auto`` currently reaches rollup-closed
-    milestones only. ``roadmap/activity.json`` becomes the fallback for
-    everything else once the last-worked-on work lands.
+    ``milestone_execution.closed_at`` is authoritative when present, but only
+    milestones that went through a rollup carry it. ``roadmap/activity.json``
+    is the fallback: a ``finished`` entry is the moment the node's status
+    actually flipped to Complete.
     """
     me = root_node.get("milestone_execution")
     if isinstance(me, dict):
         closed = me.get("closed_at")
         if isinstance(closed, str) and closed.strip():
             return closed.strip()
+    if activity:
+        entry = activity.get(root_node.get("node_key"))
+        if isinstance(entry, dict) and entry.get("kind") in ("finished", "backfilled"):
+            at = entry.get("at")
+            if isinstance(at, str) and at.strip():
+                return at.strip()
     return None
 
 
@@ -144,14 +152,20 @@ def auto_archive_candidates(
 
     from roadmap_load import compute_rollup_status, load_roadmap
 
+    from specy_road.activity_log import activity_by_node_key
     from specy_road.archive_plan import utc_now_iso
     from specy_road.milestone_subtree import subtree_node_ids
 
     nodes = load_roadmap(root)["nodes"]
+    activity = activity_by_node_key(root)
     rollup = compute_rollup_status(nodes)
     now = datetime.fromisoformat(now_iso or utc_now_iso())
     cutoff = now - timedelta(days=max(0, older_than_days))
-    archived = {k for r in index_records(load_archive_index(root)) for k in r.get("node_keys", [])}
+    archived = {
+        k
+        for r in index_records(load_archive_index(root))
+        for k in r.get("node_keys", [])
+    }
 
     eligible: dict[str, str] = {}
     for n in nodes:
@@ -160,7 +174,7 @@ def auto_archive_candidates(
             continue
         if n.get("node_key") in archived:
             continue
-        done = completed_at(n)
+        done = completed_at(n, activity)
         if not done:
             continue
         try:

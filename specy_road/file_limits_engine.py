@@ -36,6 +36,12 @@ SESSION_ARTIFACT_GLOBS = (
     "work/pr-body-*.md",
     "work/.on-complete-*.yaml",
     "work/.milestone-session.yaml",
+    # Archived roadmap material. Getting finished work to stop counting against
+    # line limits is a large part of why archiving exists — a scaffold's
+    # `**/*.md` glob would otherwise keep flagging planning sheets for
+    # milestones that shipped years ago.
+    "roadmap/archive/**/*.json",
+    "roadmap/archive/**/*.md",
 )
 
 

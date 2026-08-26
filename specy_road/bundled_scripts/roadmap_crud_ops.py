@@ -24,6 +24,7 @@ from roadmap_node_keys import new_node_key
 from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
+from specy_road.activity_log import KIND_EDITED, record_activity
 from specy_road.runtime_paths import default_user_repo_root
 
 
@@ -281,6 +282,7 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
                 new_pd = new_pd.strip() or None
             rename_planning_file_if_path_changed(root, old_pd, new_pd)
         write_json_chunk(chunk, nodes)
+        record_activity(root, node.get("node_key"), KIND_EDITED)
         # Auto-relocate the edited node if its growth pushed the chunk over
         # the line cap. relocate_node_if_overflow is atomic and runs validation
         # internally; if relocation happens we skip the redundant validate call
@@ -339,62 +341,3 @@ def cmd_set_gate_status(args: object) -> None:
     chunk = find_chunk_path(root, nid)
     assert chunk is not None
     print(f"[ok] gate {nid} status -> {args.status} ({chunk.relative_to(root)})")
-
-
-def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
-    nodes = load_roadmap(root)["nodes"]
-    target_key: str | None = None
-    for n in nodes:
-        if n.get("id") == node_id:
-            target_key = n.get("node_key")
-            break
-    for n in nodes:
-        if n.get("parent_id") == node_id:
-            return False, f"child node {n['id']} has parent_id {node_id!r}"
-        if target_key and target_key in (n.get("dependencies") or []):
-            return False, f"node {n['id']} depends on node_key of {node_id!r}"
-    return True, ""
-
-
-def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
-    """Remove a node from its JSON chunk. Raises ``ValueError`` if not found or not removable."""
-    chunk = find_chunk_path(root, node_id)
-    if not chunk:
-        raise ValueError(unknown_node_msg(node_id))
-    if chunk.suffix.lower() != ".json":
-        raise ValueError(f"unsupported chunk type {chunk.suffix}")
-    nodes = load_json_chunk(chunk)
-    idx = node_index_in_chunk(nodes, node_id)
-    if idx is None:
-        raise ValueError(f"node {node_id!r} not found")
-    ok, msg = can_hard_remove(root, node_id)
-    if not ok:
-        raise ValueError(msg)
-    removed = nodes[idx]
-    remove_planning_sheet_if_present(root, removed.get("planning_dir"))
-    del nodes[idx]
-    write_json_chunk(chunk, nodes)
-    run_validate_raise(root)
-
-
-def cmd_archive(args: object) -> None:
-    root = repo_root(args)
-    nid = args.node_id
-    if args.hard_remove:
-        try:
-            delete_roadmap_node_hard(root, nid)
-        except ValueError as e:
-            print(f"error: {e}", file=sys.stderr)
-            raise SystemExit(1) from None
-        print(f"[ok] removed {nid}")
-        return
-    print(
-        "error: archive-node without --hard-remove is no longer supported "
-        "(Cancelled was removed from the roadmap schema).\n"
-        "  To retire completed work reversibly, use the archive feature instead:\n"
-        "    specy-road archive <NODE_ID>       (restore with: restore-archive)\n"
-        "  To delete a node outright, pass --hard-remove after team agreement, "
-        "or edit the JSON chunk.",
-        file=sys.stderr,
-    )
-    raise SystemExit(1)

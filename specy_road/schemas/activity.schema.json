@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/activity.schema.json",
+  "title": "specy-road node activity log",
+  "description": "When each node was last worked on, keyed by node_key. A sidecar rather than node fields: consumer-owned roadmap schemas use additionalProperties:false, so a new node field would break every adopter's validate until they hand-edited a schema — and per-activity writes would churn the chunk diffs that land in every PR.",
+  "type": "object",
+  "required": ["version", "nodes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "nodes": {
+      "type": "object",
+      "description": "node_key -> the most recent activity on that node.",
+      "propertyNames": {
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "required": ["at", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "ISO 8601 UTC timestamp of the activity."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["picked_up", "reviewed", "finished", "edited", "backfilled"],
+          "description": "What happened. 'backfilled' means the timestamp was derived from git history rather than observed live, so it is a lower bound on real activity."
+        }
+      }
+    }
+  }
+}

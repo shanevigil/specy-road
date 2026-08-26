@@ -15,12 +15,12 @@ from roadmap_edit_fields import ROADMAP_NODE_STATUSES
 
 from roadmap_crud_ops import (
     cmd_add,
-    cmd_archive,
     cmd_edit,
     cmd_list,
     cmd_set_gate_status,
     cmd_show,
 )
+from roadmap_crud_remove import cmd_archive
 
 
 def _p_list(sub: argparse._SubParsersAction) -> None:

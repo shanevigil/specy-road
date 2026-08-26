@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 
 import roadmap_crud_ops as ops
+import roadmap_crud_remove as crud_remove
 from roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import REPO, SCHEMAS
 
@@ -109,7 +110,7 @@ def test_edit_node_set_pairs_updates_status_direct(tmp_path: Path) -> None:
 def test_delete_roadmap_node_hard_dependency_guard(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     with pytest.raises(ValueError, match="depends on node_key"):
-        ops.delete_roadmap_node_hard(tmp_path, "M99.1")
+        crud_remove.delete_roadmap_node_hard(tmp_path, "M99.1")
 
 
 def test_cmd_add_direct_rejects_invalid_codename(tmp_path: Path) -> None:

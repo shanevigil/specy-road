@@ -10,11 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from roadmap_chunk_utils import find_chunk_path, roadmap_dir
 from roadmap_crud_ops import (
     append_node_to_chunk,
-    delete_roadmap_node_hard,
     edit_node_set_pairs,
     merged_ids,
     run_validate_raise,
 )
+from roadmap_crud_remove import delete_roadmap_node_hard
 from roadmap_load import load_roadmap
 from roadmap_node_keys import new_node_key
 from roadmap_layout import sibling_sort_key

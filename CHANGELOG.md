@@ -69,13 +69,35 @@ body. Keep section bodies focused; link to PRs for detail.
     refused outright rather than partially restored; the archive stays deep and
     the live roadmap is untouched.
 
-### Known limitations
+- **Last-worked-on for roadmap nodes.** `roadmap/activity.json` records when
+  each node was last touched (`picked_up`, `reviewed`, `finished`, `edited`),
+  written by `do-next-available-task`, `mark-implementation-reviewed`,
+  `finish-this-task` and `edit-node`, and surfaced in the PM GUI payload.
+  - **A sidecar, not node fields.** `<repo_root>/schemas/roadmap.schema.json`
+    is consumer-owned and uses `additionalProperties: false`, so a new node
+    field would fail every existing adopter's `validate` until they hand-edited
+    that file. It would also churn the chunk diffs in every PR.
+  - Writes are best-effort and never fatal — a read-only checkout or a mangled
+    sidecar must not be able to fail `finish-this-task`.
+  - The later timestamp always wins, so live writes and backfills can
+    interleave in any order without a stale write clobbering a real one.
+  - `specy-road backfill-activity` seeds an established repo from the last
+    commit touching each planning sheet, recorded as `kind: backfilled` — a
+    lower bound on real activity, never overwriting an observed timestamp.
+  - `archive --auto` now falls back to a `finished` entry when a subtree has no
+    `milestone_execution.closed_at`, so it reaches work that never went through
+    a rollup.
 
-- `archive --auto` derives completion age from
-  `milestone_execution.closed_at`, the only completion timestamp the roadmap
-  records today, so it currently reaches rollup-closed milestones only.
-  Subtrees with no rollup history must be archived by id until per-node
-  activity timestamps land.
+### Changed
+
+- **`file-limits` skips archived material.** `roadmap/archive/**` is added to
+  the session-artifact skip list: a scaffold's `**/*.md` glob would otherwise
+  keep flagging planning sheets for milestones that shipped years ago, which
+  defeats much of the point of archiving.
+- **The destructive `archive-node --hard-remove` path moved** to
+  `specy_road/bundled_scripts/roadmap_crud_remove.py`, and its error message now
+  points at `specy-road archive` for retiring completed work. Behavior is
+  unchanged; the two commands remain unrelated despite the similar names.
 
 ## [v0.1.4-rc2] - 2026-08-21
 
