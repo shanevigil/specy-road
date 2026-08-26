@@ -180,3 +180,29 @@ def test_archive_ids_do_not_collide_with_a_live_record(repo: Path) -> None:
 
     assert record["archive_id"] == base
     assert unique_archive_id(repo, base) == f"{base}-2"
+
+
+def test_archive_then_restore_leaves_no_trace(repo: Path) -> None:
+    """A change of mind should be net-zero, not a stray empty ledger.
+
+    Otherwise the user is left with a file to explain in review — and, once
+    committed, a tracked file that no longer records anything.
+    """
+    before = _snapshot(repo)
+    rec = archive_node(repo, "M0.1")
+    assert (repo / "roadmap" / "archive").exists()
+
+    restore_archive(repo, rec["archive_id"])
+
+    assert not (repo / "roadmap" / "archive").exists()
+    assert _snapshot(repo) == before
+
+
+def test_pruning_keeps_the_ledger_while_any_record_remains(repo: Path) -> None:
+    first = archive_node(repo, "M0.1")
+    archive_node(repo, "M0.3")
+
+    restore_archive(repo, first["archive_id"])
+
+    assert (repo / "roadmap" / "archive" / "index.json").is_file()
+    assert len(load_archive_index(repo)["records"]) == 1

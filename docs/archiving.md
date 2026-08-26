@@ -140,68 +140,49 @@ nest, only the top one is offered — archiving a phase already takes its
 milestones.
 
 Completion age comes from `milestone_execution.closed_at` when the subtree went
-through a rollup, and otherwise from a `finished` entry in
-[`roadmap/activity.json`](#last-worked-on). A subtree with neither has no
-completion date and `--auto` skips it; archive those by id.
+through a rollup, and otherwise from the git-derived
+[last-worked-on](#last-worked-on) date — so `--auto` reaches work that never
+went through a rollup. A subtree git cannot date at all is skipped; archive
+those by id.
 
 The PM GUI exposes the same threshold as a preference.
 
 ## Last-worked-on
 
-`roadmap/activity.json` records when each node was last touched, keyed by
-`node_key`:
+The PM GUI shows a **Last worked** column on leaf rows, answering "when did
+anything about this item last change?".
 
-```json
-{ "version": 1,
-  "nodes": { "44ef4a9d-…": { "at": "2026-05-01T09:12:00+00:00", "kind": "finished" } } }
-```
+It is **derived from git history, never stored.** There is no sidecar file to
+create, seed, commit, or migrate — which means an existing repo is fully
+populated the first time you open it, with no setup step of any kind.
 
-`kind` is one of `picked_up`, `reviewed`, `finished`, `edited`, or
-`backfilled`. It is written by `do-next-available-task`,
-`mark-implementation-reviewed`, `finish-this-task` and `edit-node`, and the PM
-GUI shows it as a **Last worked** column on leaf rows.
+Per node, in order:
 
-**Why a sidecar rather than a node field.** `<repo_root>/schemas/roadmap.schema.json`
-is consumer-owned and uses `additionalProperties: false`, so a new node field
-would fail every existing adopter's `validate` until they hand-edited that file.
-Activity also changes on every pickup and finish, which would churn the chunk
-diffs that land in each PR for data nobody reviews.
+1. **Planning sheet** — the last commit touching the node's `planning_dir`.
+   Per-node and precise; this is the answer you normally see.
+2. **Roadmap chunk** — used *only* when the sheet has never been committed.
 
-**Writes are best-effort and never fatal.** A read-only checkout or a mangled
-sidecar must not be the reason `finish-this-task` fails, so recording failures
-are swallowed.
+The two are deliberately **not** blended. A chunk holds many nodes, so
+crediting its commit date to all of them would make every sibling look freshly
+worked the moment one node's status changed — destroying exactly the staleness
+signal the column exists to give.
 
-### Seeding an existing repo
+Merge commits do not count as a touch. A merge that only carries someone
+else's edit across is not the moment the node was worked on, and counting it
+would make the whole roadmap look freshly touched after every integration
+merge.
 
-Live write points only record from the moment they ship, so an established
-roadmap starts with an empty column. `specy-road backfill-activity` derives a
-timestamp per node from the last commit touching its planning sheet:
+**It reflects committed work only**, so it is a lower bound: work in progress
+that has not been committed yet still shows its previous commit. The **Dev**
+column and `roadmap/registry.yaml` are what show active claims.
 
-```bash
-specy-road backfill-activity --dry-run
-specy-road backfill-activity
-```
+### Cost
 
-Backfilled entries are recorded as `kind: backfilled` — a **lower bound** on
-real activity, not an observation. Backfill never overwrites a newer observed
-timestamp, so it is safe to run at any point.
-
-## Git provenance
-
-Every record captures what git still knows about the delivery: the rollup and
-integration branch names, the rollup tip, the merge commit that landed it, the
-nearest reachable tag, and `closed_at`. `show-archive` prints them.
-
-All of it is best-effort and every field may be null — a repo with no rollup
-history, with deleted branches, or with no tags archives cleanly and simply
-records less. **Archiving never creates git objects**; it only reads refs.
-
-## `archive` vs `archive-node`
-
-Unrelated, despite the names. `archive-node --hard-remove` is a legacy
-**destructive delete** that removes a node outright and refuses if anything
-references it. `archive` is the reversible feature described here. Use
-`archive`.
+One `git log --name-only` walk for the whole roadmap, memoized on `HEAD` —
+commit dates cannot change while `HEAD` is still, so the cache is exact rather
+than a timeout guess. Asking git per node instead is linear in node count and
+was the reason a stored sidecar looked necessary at all: on a 400-node roadmap
+that is ~31s against ~0.17s for a single walk.
 
 ## In the PM GUI
 

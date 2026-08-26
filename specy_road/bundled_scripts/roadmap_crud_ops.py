@@ -24,7 +24,6 @@ from roadmap_node_keys import new_node_key
 from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
-from specy_road.activity_log import KIND_EDITED, record_activity
 from specy_road.runtime_paths import default_user_repo_root
 
 
@@ -282,7 +281,6 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
                 new_pd = new_pd.strip() or None
             rename_planning_file_if_path_changed(root, old_pd, new_pd)
         write_json_chunk(chunk, nodes)
-        record_activity(root, node.get("node_key"), KIND_EDITED)
         # Auto-relocate the edited node if its growth pushed the chunk over
         # the line cap. relocate_node_if_overflow is atomic and runs validation
         # internally; if relocation happens we skip the redundant validate call

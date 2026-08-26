@@ -9,7 +9,7 @@ The supported **PM dashboard** is a **FastAPI** server plus a **prebuilt React**
 - **CLI:** `specy-road gui` starts Uvicorn with the FastAPI app. Install optional dependencies with `pip install 'specy-road[gui]'` or `'specy-road[gui-next]'` (same dependency sets; see `pyproject.toml`).
 
 - **Archive drawer:** the toolbar's **Archive** button lists archived subtrees, offers eligible ones, and restores them. Routes live in [`specy_road/gui_app_routes_archive.py`](../specy_road/gui_app_routes_archive.py); every write carries the usual `X-PM-Gui-Fingerprint` token because archiving moves roadmap files. Two preferences under **Settings → Completed work** control the default Hide Complete state (a view filter) and auto-archiving (which moves files). See [Archiving](archiving.md).
-- **Last worked column:** the outline shows when each leaf was last worked on, read from `roadmap/activity.json` via the `activity` map on `GET /api/roadmap`.
+- **Last worked column:** the outline shows when each leaf was last worked on, **derived from git history** (no stored file) via the `activity` map on `GET /api/roadmap`; see [Archiving](archiving.md#last-worked-on).
 
 ## How to use it and install it
 

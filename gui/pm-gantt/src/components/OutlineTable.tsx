@@ -308,7 +308,7 @@ function lastWorkedCell(
       lastWorkedText: "",
       lastWorkedTitle: isParent
         ? "Container row — activity is tracked on the leaves underneath"
-        : "No activity recorded yet (see: specy-road backfill-activity)",
+        : "No commit found for this item yet",
     };
   }
   return {

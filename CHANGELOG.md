@@ -69,24 +69,26 @@ body. Keep section bodies focused; link to PRs for detail.
     refused outright rather than partially restored; the archive stays deep and
     the live roadmap is untouched.
 
-- **Last-worked-on for roadmap nodes.** `roadmap/activity.json` records when
-  each node was last touched (`picked_up`, `reviewed`, `finished`, `edited`),
-  written by `do-next-available-task`, `mark-implementation-reviewed`,
-  `finish-this-task` and `edit-node`, and surfaced in the PM GUI payload.
-  - **A sidecar, not node fields.** `<repo_root>/schemas/roadmap.schema.json`
-    is consumer-owned and uses `additionalProperties: false`, so a new node
-    field would fail every existing adopter's `validate` until they hand-edited
-    that file. It would also churn the chunk diffs in every PR.
-  - Writes are best-effort and never fatal — a read-only checkout or a mangled
-    sidecar must not be able to fail `finish-this-task`.
-  - The later timestamp always wins, so live writes and backfills can
-    interleave in any order without a stale write clobbering a real one.
-  - `specy-road backfill-activity` seeds an established repo from the last
-    commit touching each planning sheet, recorded as `kind: backfilled` — a
-    lower bound on real activity, never overwriting an observed timestamp.
-  - `archive --auto` now falls back to a `finished` entry when a subtree has no
-    `milestone_execution.closed_at`, so it reaches work that never went through
-    a rollup.
+- **Last-worked-on for roadmap nodes, derived from git.** The PM GUI shows a
+  **Last worked** column on leaf rows. It is computed from commit dates on
+  demand and **never stored**, so an existing repo is fully populated the first
+  time it is opened — there is no seeding step, no migration, and no file added
+  to the consumer repo.
+  - Per node: the last commit touching its planning sheet (precise), falling
+    back to its roadmap chunk only when the sheet was never committed. The two
+    are not blended — a chunk holds many nodes, so crediting its date to all of
+    them would make every sibling look freshly worked whenever one node's
+    status changed.
+  - Merge commits do not count as a touch, or every node would look freshly
+    worked after each integration merge.
+  - Reflects **committed work only**, so it is a lower bound; the Dev column
+    and `roadmap/registry.yaml` show active claims.
+  - One `git log --name-only` walk per roadmap, memoized on `HEAD` (commit
+    dates cannot move while `HEAD` is still). Asking git per node is linear in
+    node count: ~31s on a 400-node roadmap against ~0.17s for a single walk.
+  - `archive --auto` uses the same derived date when a subtree has no
+    `milestone_execution.closed_at`, so it now reaches work that never went
+    through a rollup.
 
 - **PM GUI archive surface.** An **Archive** toolbar button opens a drawer that
   lists archived subtrees, offers eligible ones, previews a plan before
@@ -106,6 +108,9 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- **Archive and restore is now net-zero.** Restoring the last archive removes
+  `roadmap/archive/` instead of leaving an empty ledger behind for the user to
+  explain in review.
 - **`file-limits` skips archived material.** `roadmap/archive/**` is added to
   the session-artifact skip list: a scaffold's `**/*.md` glob would otherwise
   keep flagging planning sheets for milestones that shipped years ago, which

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { activityKindLabel, formatRelativeAge, lastWorkedTooltip } from "./lastWorked";
+import {
+  activitySourceLabel,
+  formatRelativeAge,
+  lastWorkedTooltip,
+} from "./lastWorked";
 
 const NOW = new Date("2026-06-01T12:00:00Z");
 
@@ -35,14 +39,20 @@ describe("formatRelativeAge", () => {
   });
 });
 
-describe("activityKindLabel", () => {
-  it("spells out that a backfill is derived, not observed", () => {
-    expect(activityKindLabel("backfilled")).toBe("from git history");
+describe("activitySourceLabel", () => {
+  it("names the planning sheet as the precise per-node signal", () => {
+    expect(activitySourceLabel("planning")).toBe(
+      "planning sheet last committed",
+    );
   });
 
-  it("builds a tooltip pairing the reason with the exact timestamp", () => {
+  it("distinguishes the chunk fallback, which is only used when the sheet is uncommitted", () => {
+    expect(activitySourceLabel("chunk")).toBe("roadmap chunk last committed");
+  });
+
+  it("builds a tooltip pairing the source with the exact timestamp", () => {
     expect(
-      lastWorkedTooltip({ at: "2026-05-01T09:12:00+00:00", kind: "finished" }),
-    ).toBe("finished — 2026-05-01T09:12:00+00:00");
+      lastWorkedTooltip({ at: "2026-05-01T09:12:00+00:00", source: "planning" }),
+    ).toBe("planning sheet last committed — 2026-05-01T09:12:00+00:00");
   });
 });

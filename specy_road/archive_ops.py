@@ -120,9 +120,9 @@ def completed_at(
     """When this subtree finished, for the auto-archive age threshold.
 
     ``milestone_execution.closed_at`` is authoritative when present, but only
-    milestones that went through a rollup carry it. ``roadmap/activity.json``
-    is the fallback: a ``finished`` entry is the moment the node's status
-    actually flipped to Complete.
+    milestones that went through a rollup carry it. The git-derived last-touch
+    is the fallback, so subtrees that never went through a rollup are still
+    reachable by ``--auto``.
     """
     me = root_node.get("milestone_execution")
     if isinstance(me, dict):
@@ -130,11 +130,9 @@ def completed_at(
         if isinstance(closed, str) and closed.strip():
             return closed.strip()
     if activity:
-        entry = activity.get(root_node.get("node_key"))
-        if isinstance(entry, dict) and entry.get("kind") in ("finished", "backfilled"):
-            at = entry.get("at")
-            if isinstance(at, str) and at.strip():
-                return at.strip()
+        from specy_road.node_activity import completed_at_from_activity
+
+        return completed_at_from_activity(root_node, activity)
     return None
 
 
@@ -152,12 +150,12 @@ def auto_archive_candidates(
 
     from roadmap_load import compute_rollup_status, load_roadmap
 
-    from specy_road.activity_log import activity_by_node_key
+    from specy_road.node_activity import node_activity
     from specy_road.archive_plan import utc_now_iso
     from specy_road.milestone_subtree import subtree_node_ids
 
     nodes = load_roadmap(root)["nodes"]
-    activity = activity_by_node_key(root)
+    activity = node_activity(root, nodes)
     rollup = compute_rollup_status(nodes)
     now = datetime.fromisoformat(now_iso or utc_now_iso())
     cutoff = now - timedelta(days=max(0, older_than_days))

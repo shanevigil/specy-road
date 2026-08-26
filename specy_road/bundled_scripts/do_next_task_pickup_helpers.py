@@ -21,7 +21,6 @@ from specy_road.on_complete_session import (
     write_on_complete_session,
 )
 from specy_road.registry_yaml import write_registry
-from specy_road.activity_log import KIND_PICKED_UP, record_activity
 
 
 def write_brief(work_dir: Path, node: dict, nodes: list[dict]) -> Path:
@@ -59,8 +58,6 @@ def register_and_commit(
         entry["implementation_review"] = "pending"
     reg.setdefault("entries", []).append(entry)
     write_registry(registry_path, reg)
-    # registry_path is <repo_root>/roadmap/registry.yaml
-    record_activity(registry_path.parent.parent, node.get("node_key"), KIND_PICKED_UP)
     git_runner("add", str(registry_path))
     git_runner("commit", "-m", commit_message)
 

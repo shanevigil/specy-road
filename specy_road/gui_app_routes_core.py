@@ -25,7 +25,7 @@ from roadmap_layout import (
 )
 from roadmap_load import load_roadmap
 
-from specy_road.activity_log import activity_by_node_key
+from specy_road.node_activity import node_activity
 from specy_road.git_workflow_config import build_git_workflow_status
 from specy_road.pm_gui_fingerprint import (
     outline_mutation_fingerprint,
@@ -154,9 +154,10 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
         "dependency_inheritance": dep_inheritance,
         "outline_actions": _outline_actions_for(nodes),
         "git_workflow": gw,
-        # {node_key: {at, kind}} — a sidecar, so it rides alongside `nodes`
-        # rather than living on them. See specy_road/activity_log.py.
-        "activity": activity_by_node_key(root),
+        # {node_key: {at, source}} — derived from git history, not stored.
+        # Memoized on HEAD, so repeat polls do not re-walk. See
+        # specy_road/node_activity.py.
+        "activity": node_activity(root, nodes),
     }
     if registry_overlay_meta is not None:
         fetch_status = last_registry_auto_fetch_status(root)

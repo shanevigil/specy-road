@@ -132,9 +132,8 @@ export type RoadmapResponse = {
   /** Set when the server scheduled deferred ``git fetch`` / integration FF (non-blocking). */
   sync?: { scheduled?: boolean };
   /**
-   * Last-worked-on per node, keyed by ``node_key``. A sidecar
-   * (``roadmap/activity.json``) rather than fields on ``nodes``: the
-   * consumer-owned roadmap schema forbids extra node properties.
+   * Last-worked-on per node, keyed by ``node_key``. Derived from git history
+   * server-side and memoized on HEAD, so polling does not re-walk.
    */
   activity?: Record<string, ActivityEntry>;
 };
@@ -175,8 +174,15 @@ export type ArchivesResponse = {
   eligible: { node_id: string; title: string }[];
 };
 
-/** When a node was last worked on. Keyed by `node_key`, not display id. */
+/**
+ * When a node was last worked on. Keyed by `node_key`, not display id.
+ *
+ * Derived from git history on the server, never stored: there is no sidecar
+ * file, so an existing repo is populated on first load with nothing to seed.
+ * `source` says which commit answered — the node's own planning sheet
+ * (precise) or, only when that was never committed, its roadmap chunk.
+ */
 export type ActivityEntry = {
   at: string;
-  kind: "picked_up" | "reviewed" | "finished" | "edited" | "backfilled";
+  source: "planning" | "chunk";
 };

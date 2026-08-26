@@ -30,25 +30,25 @@ export function formatRelativeAge(iso: string, now: Date = new Date()): string {
   return `${Math.floor(months / 12)}y ago`;
 }
 
-/** Human label for why the timestamp exists, shown in the cell tooltip. */
-export function activityKindLabel(kind: ActivityEntry["kind"]): string {
-  switch (kind) {
-    case "picked_up":
-      return "picked up";
-    case "reviewed":
-      return "implementation reviewed";
-    case "finished":
-      return "finished";
-    case "edited":
-      return "edited";
-    case "backfilled":
-      // Derived from git history rather than observed, so it is a lower bound.
-      return "from git history";
+/**
+ * Human label for where the timestamp came from, shown in the cell tooltip.
+ *
+ * Every value is a git commit date, so it is a lower bound on real activity:
+ * uncommitted work in progress is not visible here. The Dev column and the
+ * registry are what show active claims.
+ */
+export function activitySourceLabel(source: ActivityEntry["source"]): string {
+  switch (source) {
+    case "planning":
+      return "planning sheet last committed";
+    case "chunk":
+      // Only used when the sheet itself was never committed.
+      return "roadmap chunk last committed";
     default:
-      return kind;
+      return source;
   }
 }
 
 export function lastWorkedTooltip(entry: ActivityEntry): string {
-  return `${activityKindLabel(entry.kind)} — ${entry.at}`;
+  return `${activitySourceLabel(entry.source)} — ${entry.at}`;
 }

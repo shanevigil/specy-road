@@ -10,7 +10,6 @@ from pathlib import Path
 
 import yaml
 from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from specy_road.activity_log import KIND_FINISHED, record_activity
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
@@ -100,7 +99,6 @@ def _update_chunk_status(node_id: str) -> list[str]:
         if n.get("id") == node_id:
             n["status"] = "Complete"
             write_json_chunk(chunk, nodes)
-            record_activity(ROOT, n.get("node_key"), KIND_FINISHED)
             print(f"[ok] status -> Complete  ({chunk.relative_to(ROOT)})")
             return [str(chunk.relative_to(ROOT))]
     print(f"[warn] node {node_id} not found in {chunk.relative_to(ROOT)}")

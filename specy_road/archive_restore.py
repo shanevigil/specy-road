@@ -114,6 +114,30 @@ def _sync_includes(root: Path, rels: list[str]) -> None:
         write_manifest(manifest_path(root), manifest)
 
 
+def _prune_empty_archive(root: Path, doc: dict[str, Any]) -> None:
+    """Remove ``roadmap/archive/`` once the last record is restored.
+
+    Archiving and immediately restoring should be net-zero. Leaving an empty
+    ledger behind means a user who changed their mind still has a stray file to
+    explain in review — and, if it was already committed, a tracked file that
+    no longer records anything.
+    """
+    from specy_road.archive_index import archive_dir, archive_index_path
+
+    if doc.get("records"):
+        return
+    base = archive_dir(root)
+    index = archive_index_path(root)
+    leftovers = [p for p in base.rglob("*") if p.is_file() and p != index]
+    if leftovers:
+        return
+    index.unlink(missing_ok=True)
+    for d in sorted(base.rglob("*"), reverse=True):
+        if d.is_dir():
+            d.rmdir()
+    base.rmdir()
+
+
 def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     """Restore ``archive_id`` to the live roadmap and drop it from the index.
 
@@ -163,6 +187,7 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
         r for r in doc.get("records", []) if r.get("archive_id") != archive_id
     ]
     write_archive_index(root, doc)
+    _prune_empty_archive(root, doc)
 
     run_validate_raise(root)
     return {
