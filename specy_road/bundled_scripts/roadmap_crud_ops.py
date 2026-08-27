@@ -12,13 +12,9 @@ from roadmap_chunk_utils import (
     build_node_chunk_map,
     find_chunk_path,
     load_json_chunk,
-    write_json_chunk,
 )
-from planning_rename import rename_planning_file_if_path_changed
-from planning_sheet_bootstrap import (
-    ensure_planning_sheet_for_new_node,
-    remove_planning_sheet_if_present,
-)
+from planning_artifacts import normalize_planning_dir, resolve_planning_path
+from planning_sheet_bootstrap import plan_planning_sheet_for_new_node
 from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
 from roadmap_node_keys import new_node_key
 from roadmap_layout import natural_id_sort_key
@@ -54,9 +50,15 @@ def _refuse_if_milestone_locked(root: Path, node_id: str) -> None:
 
 
 def run_validate_raise(root: Path) -> None:
-    """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure."""
+    """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure.
+
+    Both streams are captured. Letting validation's ``OK: roadmap and registry
+    validate.`` through would interleave with each mutation command's own
+    ``[ok]`` line, which reads as if the command reported twice.
+    """
     err = io.StringIO()
-    with contextlib.redirect_stderr(err):
+    out = io.StringIO()
+    with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
         try:
             validate_roadmap_line_limits(root)
             validate_at(root, no_overlap_warn=False, require_registry=True)
@@ -64,6 +66,9 @@ def run_validate_raise(root: Path) -> None:
             if e.code not in (0, None):
                 msg = err.getvalue().strip()
                 raise ValueError(msg or "validation failed") from e
+    warnings = [ln for ln in err.getvalue().splitlines() if ln.strip()]
+    for line in warnings:
+        print(line, file=sys.stderr)
 
 
 def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
@@ -215,8 +220,6 @@ def cmd_add(args: object) -> None:
     if node.get("dependencies") == []:
         node["dependencies"] = []
 
-    ensure_planning_sheet_for_new_node(root, node)
-
     try:
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
     except ValueError as e:
@@ -231,67 +234,100 @@ def append_node_to_chunk(root: Path, chunk_arg: str | None, node: dict) -> Path:
     ``chunk_arg`` is treated as a *hint*: if supplied and the chunk has room,
     the node lands there (today's behavior). If no hint or the hint is full,
     the chunk router picks a same-phase chunk, then any chunk, then auto-creates
-    a new chunk and updates the manifest. Atomic: rolls back on any validation
-    failure.
+    a new chunk and updates the manifest.
+
+    Atomic: the node's planning sheet is staged alongside the chunk and manifest,
+    so a validation failure rolls back all three. Scaffolding the sheet outside
+    the transaction used to leave an orphan behind that ``validate`` rejects,
+    turning a refused ``add-node`` into a repo that cannot validate at all.
     """
     from roadmap_chunk_router import write_with_routing
 
     parent_id_raw = node.get("parent_id")
     parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
-    return write_with_routing(root, parent_id, chunk_arg, node)
+    planned_sheet = plan_planning_sheet_for_new_node(root, node)
+    extra = {planned_sheet[0]: planned_sheet[1]} if planned_sheet else None
+    return write_with_routing(root, parent_id, chunk_arg, node, extra_files=extra)
+
+
+def _planning_rename_plan(
+    root: Path, old_rel: object, new_rel: object
+) -> tuple[Path, Path] | None:
+    """Resolve a ``planning_dir`` change into a ``(src, dst)`` move, or ``None``.
+
+    Mirrors the guards the eager rename used to apply: both sides must be
+    normalizable planning paths, the source must exist, and the destination
+    must be free.
+    """
+    if not isinstance(old_rel, str) or not isinstance(new_rel, str):
+        return None
+    if not old_rel.strip() or not new_rel.strip():
+        return None
+    try:
+        old_norm = normalize_planning_dir(old_rel.strip())
+        new_norm = normalize_planning_dir(new_rel.strip())
+    except ValueError:
+        return None
+    if old_norm == new_norm:
+        return None
+    src = resolve_planning_path(root, old_norm)
+    dst = resolve_planning_path(root, new_norm)
+    if not src.is_file() or dst.exists():
+        return None
+    return src, dst
 
 
 def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) -> None:
     """
-    Patch whitelisted fields on a node, save its chunk, and validate.
+    Patch whitelisted fields on a node, then save its chunk atomically.
+
+    Nothing reaches disk until the whole prospective graph validates: the chunk
+    write, any overflow relocation, and any planning-sheet rename are staged
+    together. Writing first and validating afterwards left a rejected edit — and
+    a half-renamed planning sheet — on disk, which blocked every later command
+    and made a multi-``--set`` batch impossible to reason about.
 
     Raises ``ValueError`` on missing node, bad keys, or validation failure.
     """
     chunk = find_chunk_path(root, node_id)
     if not chunk:
         raise ValueError(unknown_node_msg(node_id))
-    if chunk.suffix.lower() == ".json":
-        nodes = load_json_chunk(chunk)
-        idx = node_index_in_chunk(nodes, node_id)
-        if idx is None:
-            raise ValueError(f"node {node_id!r} not found")
-        node = nodes[idx]
-        if not isinstance(node, dict):
-            raise ValueError("corrupt node entry")
-        ids = merged_ids(root)
-        nkeys = {
-            n["node_key"]
-            for n in load_roadmap(root)["nodes"]
-            if isinstance(n.get("node_key"), str) and n["node_key"]
-        }
-        for k, v in pairs:
-            old_pd = node.get("planning_dir")
-            if isinstance(old_pd, str):
-                old_pd = old_pd.strip() or None
-            apply_set(
-                node,
-                k,
-                v,
-                all_ids=ids,
-                all_node_keys=nkeys,
-                self_id=node_id,
-            )
-            new_pd = node.get("planning_dir")
-            if isinstance(new_pd, str):
-                new_pd = new_pd.strip() or None
-            rename_planning_file_if_path_changed(root, old_pd, new_pd)
-        write_json_chunk(chunk, nodes)
-        # Auto-relocate the edited node if its growth pushed the chunk over
-        # the line cap. relocate_node_if_overflow is atomic and runs validation
-        # internally; if relocation happens we skip the redundant validate call
-        # below.
-        from roadmap_chunk_router import relocate_node_if_overflow
+    if chunk.suffix.lower() != ".json":
+        raise ValueError(f"unsupported chunk type {chunk.suffix} (expected .json)")
+    nodes = load_json_chunk(chunk)
+    idx = node_index_in_chunk(nodes, node_id)
+    if idx is None:
+        raise ValueError(f"node {node_id!r} not found")
+    node = nodes[idx]
+    if not isinstance(node, dict):
+        raise ValueError("corrupt node entry")
+    ids = merged_ids(root)
+    nkeys = {
+        n["node_key"]
+        for n in load_roadmap(root)["nodes"]
+        if isinstance(n.get("node_key"), str) and n["node_key"]
+    }
+    planning_dir_before = node.get("planning_dir")
+    for k, v in pairs:
+        apply_set(
+            node,
+            k,
+            v,
+            all_ids=ids,
+            all_node_keys=nkeys,
+            self_id=node_id,
+        )
+    rename = _planning_rename_plan(root, planning_dir_before, node.get("planning_dir"))
 
-        relocated = relocate_node_if_overflow(root, node_id, chunk)
-        if relocated is None:
-            run_validate_raise(root)
-        return
-    raise ValueError(f"unsupported chunk type {chunk.suffix} (expected .json)")
+    from roadmap_chunk_router import write_node_update
+
+    write_node_update(
+        root,
+        node_id,
+        chunk,
+        nodes,
+        renames=[rename] if rename else None,
+    )
 
 
 def cmd_edit(args: object) -> None:
@@ -341,57 +377,12 @@ def cmd_set_gate_status(args: object) -> None:
     print(f"[ok] gate {nid} status -> {args.status} ({chunk.relative_to(root)})")
 
 
-def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
-    nodes = load_roadmap(root)["nodes"]
-    target_key: str | None = None
-    for n in nodes:
-        if n.get("id") == node_id:
-            target_key = n.get("node_key")
-            break
-    for n in nodes:
-        if n.get("parent_id") == node_id:
-            return False, f"child node {n['id']} has parent_id {node_id!r}"
-        if target_key and target_key in (n.get("dependencies") or []):
-            return False, f"node {n['id']} depends on node_key of {node_id!r}"
-    return True, ""
-
-
-def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
-    """Remove a node from its JSON chunk. Raises ``ValueError`` if not found or not removable."""
-    chunk = find_chunk_path(root, node_id)
-    if not chunk:
-        raise ValueError(unknown_node_msg(node_id))
-    if chunk.suffix.lower() != ".json":
-        raise ValueError(f"unsupported chunk type {chunk.suffix}")
-    nodes = load_json_chunk(chunk)
-    idx = node_index_in_chunk(nodes, node_id)
-    if idx is None:
-        raise ValueError(f"node {node_id!r} not found")
-    ok, msg = can_hard_remove(root, node_id)
-    if not ok:
-        raise ValueError(msg)
-    removed = nodes[idx]
-    remove_planning_sheet_if_present(root, removed.get("planning_dir"))
-    del nodes[idx]
-    write_json_chunk(chunk, nodes)
-    run_validate_raise(root)
-
-
-def cmd_archive(args: object) -> None:
-    root = repo_root(args)
-    nid = args.node_id
-    if args.hard_remove:
-        try:
-            delete_roadmap_node_hard(root, nid)
-        except ValueError as e:
-            print(f"error: {e}", file=sys.stderr)
-            raise SystemExit(1) from None
-        print(f"[ok] removed {nid}")
-        return
-    print(
-        "error: archive-node without --hard-remove is no longer supported "
-        "(Cancelled was removed from the roadmap schema). "
-        "Remove the node with --hard-remove after team agreement, or edit the JSON chunk.",
-        file=sys.stderr,
-    )
-    raise SystemExit(1)
+# Node removal lives in ``roadmap_crud_delete`` (per-file line cap). Re-exported
+# here so ``roadmap_crud_argparse``, the PM GUI routes, and tests keep one
+# import site. Imported at the bottom because that module imports back for
+# ``node_index_in_chunk`` / ``repo_root`` / ``unknown_node_msg``.
+from roadmap_crud_delete import (  # noqa: E402,F401
+    can_hard_remove,
+    cmd_archive,
+    delete_roadmap_node_hard,
+)

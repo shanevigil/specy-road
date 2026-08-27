@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from roadmap_chunk_atomic import AtomicWritePlan
-from roadmap_chunk_router import _validate_callback  # noqa: PLC2701 (deliberate re-use)
+from roadmap_chunk_router import validate_callback
 from roadmap_chunk_router_pick import (
     chunk_max_lines,
     load_merged_nodes,
@@ -242,7 +242,7 @@ def apply_pack_plan(root: Path, plan: _PackPlan) -> None:
             except OSError:
                 pass
     try:
-        _validate_callback(root)()
+        validate_callback(root)()
     except BaseException:
         for path, original in delete_snapshots.items():
             if not path.is_file():
