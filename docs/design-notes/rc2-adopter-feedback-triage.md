@@ -1,5 +1,14 @@
 # Triage: `v0.1.4-rc2` adopter feedback
 
+> **Outcome:** everything marked ship-blocking or strongly-recommended below was
+> fixed in **`v0.1.4-rc3`**; see the [CHANGELOG](../../CHANGELOG.md) entry for
+> that release. The runbook §3.3 pre-release pass then found two further
+> release blockers this triage had not: `requests` was missing from the base
+> dependencies (so the whole dev loop was dead on a plain
+> `pip install specy-road`), and the self-heal pass ran *inside* each mutation's
+> transaction (so the PM GUI hit the orphan-planning-sheet bug even after the
+> CLI fix). This note is kept as the analysis record.
+
 Assessment of the 14-finding adopter handoff written after running an
 autonomous grind against a real consumer repository. Each item is classified as
 a **defect**, **working as designed** (documentation gap), or **feature
