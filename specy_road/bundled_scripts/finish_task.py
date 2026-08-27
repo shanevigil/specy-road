@@ -24,6 +24,7 @@ from specy_road.finish_work_artifacts import (
     cleanup_work_artifacts,
     warn_if_pr_body_tracked,
 )
+from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
@@ -249,6 +250,9 @@ def _bookkeeping_commit_phase(
     sess_path: Path | None = None,
 ) -> None:
     changed_files = _update_chunk_status(node_id)
+    for rel in complete_rolled_up_ancestors(ROOT, node_id):
+        if rel not in changed_files:
+            changed_files.append(rel)
     changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
     reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
     _save_registry(reg)

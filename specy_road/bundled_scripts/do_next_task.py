@@ -14,7 +14,7 @@ from do_next_available import (
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
 )
-from do_next_prompt import write_agent_prompt  # noqa: F401  (re-exported for tests)
+from do_next_prompt import print_pickup_header, write_agent_prompt  # noqa: F401
 from do_next_task_args import parse_do_next_task_args
 from do_next_task_interactive import pick_interactive as _pick_interactive
 from do_next_task_self_heal import (
@@ -288,8 +288,7 @@ def _finalize_pickup(
 ) -> None:
     node_id = node["id"]
     codename = node["codename"]
-    print(f"\n[{node_id}] {node.get('title', '')}")
-    print(f"implementation branch: {branch}\n")
+    print_pickup_header(node, branch)
 
     brief_path = _write_brief(node, nodes)
     reg = _load_registry()

@@ -1,3 +1,5 @@
 # Validator and brief helper (Python 3.11+)
 PyYAML>=6.0
 jsonschema>=4.20
+# Forge enrichment reached from the dev task loop, not only the PM GUI.
+requests>=2.31

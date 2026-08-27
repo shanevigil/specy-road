@@ -12,18 +12,19 @@ import pytest
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 import validate_roadmap as vr
-from roadmap_load import load_roadmap
+from roadmap_load import annotate_rollup_status, load_roadmap
 from validate_roadmap_checks import (
     run_validation,
     touch_zone_overlap,
     validate_dependency_ids,
     validate_node_keys,
     validate_parents,
+    warn_stale_parent_status,
 )
 
 
-def test_validate_script_no_stale_phase_status_warning_when_subtree_complete() -> None:
-    """Dogfood M0 is phase Not Started with all descendant nodes Complete (F-013 rollup)."""
+def test_validate_script_is_quiet_when_no_parent_status_drifted() -> None:
+    """The dogfood fixture's parents agree with their rollups, so nothing is reported."""
     r = subprocess.run(
         [
             sys.executable,
@@ -37,8 +38,64 @@ def test_validate_script_no_stale_phase_status_warning_when_subtree_complete() -
         text=True,
     )
     assert r.returncode == 0, (r.stdout, r.stderr)
-    err = r.stderr or ""
-    assert "every descendant node is Complete" not in err
+    assert "rolls up to" not in (r.stderr or "")
+
+
+def test_warn_stale_parent_status_reports_drift_without_failing(capsys) -> None:
+    """Rollup is authoritative, so drift is a warning — but it must not be silent.
+
+    rc2 dropped this warning while dependency satisfaction still read own status,
+    which turned a stale parent into an unexplained stall.
+    """
+    nodes = annotate_rollup_status(
+        [
+            {
+                "id": "M1",
+                "node_key": "50000000-0000-4000-8000-000000000001",
+                "parent_id": None,
+                "type": "phase",
+                "title": "P",
+                "status": "Not Started",
+            },
+            {
+                "id": "M1.1",
+                "node_key": "50000000-0000-4000-8000-000000000002",
+                "parent_id": "M1",
+                "type": "task",
+                "title": "T",
+                "status": "Complete",
+            },
+        ]
+    )
+    warn_stale_parent_status(nodes)
+    err = capsys.readouterr().err
+    assert "M1 has status 'Not Started' but rolls up to 'Complete'" in err
+    assert "specy-road edit-node M1 --set status=Complete" in err
+
+
+def test_warn_stale_parent_status_quiet_when_aligned(capsys) -> None:
+    nodes = annotate_rollup_status(
+        [
+            {
+                "id": "M1",
+                "node_key": "50000000-0000-4000-8000-000000000003",
+                "parent_id": None,
+                "type": "phase",
+                "title": "P",
+                "status": "Complete",
+            },
+            {
+                "id": "M1.1",
+                "node_key": "50000000-0000-4000-8000-000000000004",
+                "parent_id": "M1",
+                "type": "task",
+                "title": "T",
+                "status": "Complete",
+            },
+        ]
+    )
+    warn_stale_parent_status(nodes)
+    assert capsys.readouterr().err == ""
 
 
 def test_cycle_check_detects_cycle() -> None:

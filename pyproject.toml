@@ -14,6 +14,12 @@ license = { text = "MIT" }
 dependencies = [
   "PyYAML>=6.0",
   "jsonschema>=4.20",
+  # The dev task loop needs this, not just the PM GUI: do_next_available imports
+  # roadmap_gui_remote for forge enrichment (MR-rejected pickup tier), so
+  # do-next-available-task, grind-session, abort-task-pickup,
+  # mark-implementation-reviewed and finish-this-task all fail to import without
+  # it on a plain `pip install specy-road`.
+  "requests>=2.31",
 ]
 
 [project.optional-dependencies]

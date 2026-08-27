@@ -9,6 +9,7 @@ from pathlib import Path
 
 import yaml
 
+from refresh_schemas import warn_if_schemas_stale
 from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.git_workflow_config import load_git_workflow_config
@@ -22,6 +23,7 @@ from validate_roadmap_checks import (
     validate_required_planning_dirs,
     validate_unique_title_slugs,
     validate_unique_titles,
+    warn_stale_parent_status,
 )
 from validate_roadmap_gates import validate_gates
 from validate_self_heal import auto_heal_roadmap
@@ -35,6 +37,7 @@ __all__ = [
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",
+    "warn_stale_parent_status",
 ]
 
 
@@ -82,6 +85,7 @@ def validate_at(
     validate_roadmap_line_limits(root)
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
+    warn_if_schemas_stale(root)
 
     if auto_heal:
         changed, _logs = auto_heal_roadmap(root)
@@ -118,8 +122,9 @@ def main() -> None:
         "--no-phase-status-warn",
         action="store_true",
         help=(
-            "Deprecated. Ignored. Validation aligns with F-013 rollup; stale phase "
-            "status when all leaf descendants are Complete no longer emits a warning."
+            "Deprecated. Ignored. Parent status that disagrees with the F-013 "
+            "rollup is reported as a warning again (it never fails validation), "
+            "because the authored chunk value is what a reviewer reads."
         ),
     )
     parser.add_argument(

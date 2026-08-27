@@ -11,7 +11,7 @@ You are migrating **roadmap-like** information from an existing project into **s
 1. **`specy-road init project --dry-run`** — Lists every scaffold path; use as checklist.
 2. **`docs/roadmap-authoring.md`** — Manifest, chunks, immutability, line limits, planning feature sheets.
 3. **`docs/git-workflow.md`** — Register on the integration branch, then `feature/rm-<codename>`, touch zones.
-4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`.
+4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`. These are copied in by `init project` and do **not** follow toolkit upgrades — if `specy-road validate` warns that a schema is behind, run **`specy-road refresh-schemas`** (never `init project --force`, which rewrites the whole scaffold).
 
 ## Mental model (do not confuse these)
 
@@ -57,7 +57,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 
 ### Dependencies
 
-- **`dependencies`** — Array of **`node_key`** UUID strings (depends-on), **not** display `id` strings.
+- **`dependencies`** — Array of **`node_key`** UUID strings (depends-on), **not** display `id` strings. A dependency on a **phase or milestone** is satisfied when that node's leaf descendants are all `Complete` (the F-013 rollup), not when its own `status` field says so.
 
 ### Nodes with planning (vision, phase, milestone, task, gate)
 
@@ -66,6 +66,8 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 ### Common optional fields
 
 - `parent_id`, `sibling_order`, `status`, `notes`, `codename`, `touch_zones`, `parallel_tracks`, `execution_milestone`, `execution_subtask`, `goal`, `acceptance`, `risks`, `decision`, `agentic_checklist`.
+- **`execution_milestone`** (`Human-led` / `Agentic-led` / `Mixed`) is **advisory** metadata. It does **not** keep a leaf out of `specy-road do-next-available-task`. To hold work until a person clears it, add a **`type: gate`** node and depend on it.
+- **`status: "Blocked"`** on a leaf **promotes** it to the top of the pickup queue (a blocked leaf is the one most worth unblocking). Do not use it to mean "do not pick this up" — use a gate dependency.
 - If **`execution_subtask`** is `"agentic"`, **`agentic_checklist`** must include all required keys: `artifact_action`, `contract_citation`, `interface_contract`, `constraints_note`, `dependency_note` (plus optional `success_signal`, `forbidden_patterns` per schema).
 
 ### Root `vision.md` vs graph
