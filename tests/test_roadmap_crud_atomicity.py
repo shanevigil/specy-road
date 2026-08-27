@@ -17,7 +17,11 @@ from pathlib import Path
 import pytest
 
 from roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from roadmap_crud_ops import delete_roadmap_node_hard, edit_node_set_pairs
+from roadmap_crud_ops import (
+    append_node_to_chunk,
+    delete_roadmap_node_hard,
+    edit_node_set_pairs,
+)
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 NK_PHASE = "20000000-0000-4000-8000-000000000001"
@@ -150,6 +154,54 @@ def test_rejected_add_node_leaves_no_orphan_planning_sheet(repo: Path) -> None:
     assert "is not one of" in r.stderr
     assert _snapshot(repo) == before
     assert not list((repo / "planning").glob("M50.2_*"))
+
+
+def test_rejected_add_of_a_codenameless_task_leaves_nothing_behind(repo: Path) -> None:
+    """The self-heal pass must not rename a staged sheet from inside the transaction.
+
+    A task with no codename used to be healed during the mutation's own
+    validation: the heal derived a codename, renamed the just-staged planning
+    sheet to match, and the rollback then unlinked the pre-rename path — leaving
+    the renamed sheet as an orphan the PM GUI hit on every refused add.
+    """
+    schema_path = repo / "schemas" / "roadmap.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema["$defs"]["node"]["properties"]["title"]["minLength"] = 400
+    schema_path.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+    sheets_before = sorted(p.name for p in (repo / "planning").iterdir())
+
+    node = {
+        "id": "M50.2",
+        "node_key": "20000000-0000-4000-8000-000000000003",
+        "parent_id": "M50",
+        "type": "task",
+        "title": "Refused leaf",
+        "status": "Not Started",
+        "touch_zones": [],
+        "dependencies": [],
+    }
+    with pytest.raises(ValueError, match="too short"):
+        append_node_to_chunk(repo, None, node)
+
+    assert sorted(p.name for p in (repo / "planning").iterdir()) == sheets_before
+
+
+def test_add_derives_a_codename_before_writing(repo: Path) -> None:
+    node = {
+        "id": "M50.2",
+        "node_key": "20000000-0000-4000-8000-000000000004",
+        "parent_id": "M50",
+        "type": "task",
+        "title": "Accepted leaf",
+        "status": "Not Started",
+        "touch_zones": [],
+        "dependencies": [],
+    }
+    append_node_to_chunk(repo, None, node)
+    assert node["codename"] == "accepted-leaf"
+    assert (
+        repo / "planning" / f"M50.2_accepted-leaf_{node['node_key']}.md"
+    ).is_file()
 
 
 def test_rejected_hard_remove_keeps_the_planning_sheet(repo: Path) -> None:

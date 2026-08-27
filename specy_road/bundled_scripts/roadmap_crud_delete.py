@@ -55,7 +55,9 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     """
     from roadmap_chunk_router import validate_callback
     from roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
+    from roadmap_crud_prepare import heal_before_mutation
 
+    heal_before_mutation(root)
     chunk = find_chunk_path(root, node_id)
     if not chunk:
         raise ValueError(unknown_node_msg(node_id))
