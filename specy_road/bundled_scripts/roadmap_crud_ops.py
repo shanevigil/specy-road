@@ -79,17 +79,27 @@ def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
 
 
 def cmd_list(args: object) -> None:
+    """List nodes with both statuses.
+
+    ``STATUS`` is the node's own ``status`` field as written in the chunk;
+    ``ROLLUP`` is what ``roadmap.md`` and the PM GUI show (a parent rolls up
+    from its leaf descendants). An unlabelled single column let the two
+    disagree silently for parent rows.
+    """
     root = repo_root(args)
     merged = load_roadmap(root)["nodes"]
     chunk_map = build_node_chunk_map(root)
+    print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
     for n in sorted(merged, key=lambda x: natural_id_sort_key(x["id"])):
         nid = n["id"]
         ch = chunk_map.get(nid)
         rel = ch.relative_to(root) if ch else "(unknown)"
         title = str(n.get("title", ""))[:60]
+        own = str(n.get("status", ""))
+        rollup = str(n.get("rollup_status") or own)
         print(
             f"{nid:12}  {n.get('type', ''):10}  "
-            f"{str(n.get('status', '')):12}  {title}  [{rel}]",
+            f"{own:12}  {rollup:12}  {title}  [{rel}]",
         )
 
 

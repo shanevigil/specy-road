@@ -25,7 +25,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from do_next_available import _available, _claimed_node_ids, _leaf_node_ids
+from do_next_available import (
+    _available,
+    _claimed_node_ids,
+    _leaf_node_ids,
+    _statuses_by_node_key,
+)
 from roadmap_layout import effective_dependency_keys, natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
 
@@ -70,6 +75,13 @@ class SessionPlan:
 
 
 def _status(node: dict) -> str:
+    """A node's own status, for bucketing the node itself (not its dependents).
+
+    Dependency satisfaction must use ``_statuses_by_node_key`` instead, which
+    rolls parent status up from leaf descendants. Mixing the two is what made
+    ``grind-session --plan`` report a leaf as ready in ``totals`` while leaving
+    it out of every wave.
+    """
     return (node.get("status") or "Not Started").lower()
 
 
@@ -121,9 +133,7 @@ def _classify(
     """Bucket scoped leaves into ready / blocked / active / closed / gated."""
     by_key = {n["node_key"]: n for n in nodes if n.get("node_key")}
     key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
-    statuses_by_key = {
-        n["node_key"]: _status(n) for n in nodes if n.get("node_key")
-    }
+    statuses_by_key = _statuses_by_node_key(nodes)
     eff = effective_dependency_keys(nodes)
     gate_keys = _gate_keys(nodes)
     claimed = _claimed_node_ids(reg)
@@ -196,7 +206,7 @@ def _open_gates_blocking(
     gate_keys: set[str],
 ) -> list[str]:
     """Gate node ids (not Complete) that block at least one scoped leaf."""
-    statuses = {n["node_key"]: _status(n) for n in nodes if n.get("node_key")}
+    statuses = _statuses_by_node_key(nodes)
     key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
     needed: set[str] = set()
     for n in nodes:

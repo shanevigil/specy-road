@@ -16,30 +16,45 @@ from typing import Any, Iterable
 from roadmap_gui_lib import load_registry, load_settings, registry_by_node_id
 from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
 from roadmap_layout import effective_dependency_keys, ordered_tree_rows
+from roadmap_load import compute_rollup_status
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
     return {e["node_id"] for e in reg.get("entries", []) if "node_id" in e}
 
 
-def _statuses_by_node_key(nodes: list[dict]) -> dict[str, str]:
-    """Map node_key -> lowercased status (dependencies reference node_key UUIDs)."""
-    return {
-        n["node_key"]: (n.get("status") or "").lower()
+def _statuses_by_node_key(
+    nodes: list[dict],
+    status_overrides: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Map node_key -> lowercased **rollup** status (dependencies reference node_key UUIDs).
+
+    A dependency may point at a phase or milestone, whose own ``status`` field is
+    bookkeeping that nothing updates when its last leaf closes. Reading own
+    status here made a finished parent look unfinished forever, and silently:
+    ``roadmap.md``, ``brief``, and the PM GUI all showed it Complete while
+    pickup refused every leaf downstream of it. Rollup (F-013) is the single
+    authoritative model, so satisfaction reads it too.
+
+    ``status_overrides`` is keyed by node_key and replaces own statuses *before*
+    the rollup is computed, so a leaf whose feature branch is already Complete
+    also counts toward its ancestors' rollup.
+    """
+    by_key = {
+        n["node_key"]: n
         for n in nodes
         if isinstance(n.get("node_key"), str) and n["node_key"]
     }
-
-
-def _merge_status_overrides(
-    nodes: list[dict],
-    status_overrides: dict[str, str] | None,
-) -> dict[str, str]:
-    out = _statuses_by_node_key(nodes)
-    if status_overrides:
-        for k, v in status_overrides.items():
-            out[k] = (v or "").lower()
-    return out
+    own_by_id: dict[str, str] = {}
+    for key, value in (status_overrides or {}).items():
+        node = by_key.get(key)
+        if node is not None and isinstance(node.get("id"), str):
+            own_by_id[node["id"]] = value or ""
+    rollup = compute_rollup_status(nodes, own_by_id or None)
+    return {
+        key: (rollup.get(node.get("id", ""), node.get("status") or "") or "").lower()
+        for key, node in by_key.items()
+    }
 
 
 def _unmet_effective_dependency_keys(
@@ -97,6 +112,21 @@ def interactive_deps_blocked_entries(
 
     pairs.sort(key=sort_key)
     return pairs
+
+
+def blocked_pick_notice(node: dict) -> str | None:
+    """Explain a Blocked pick, or ``None`` when the leaf is not Blocked.
+
+    ``_collect_do_next_tiers`` offers Blocked leaves first. Handing one over
+    without saying so reads as "nothing was blocking this", which is the
+    opposite of what the tiering meant.
+    """
+    if (node.get("status") or "").strip().lower() != "blocked":
+        return None
+    return (
+        "status: Blocked — offered first because a blocked leaf is the one "
+        "most worth unblocking. Check why before implementing."
+    )
 
 
 def _leaf_node_ids(nodes: list[dict]) -> set[str]:
@@ -286,7 +316,7 @@ def _available(
     ``virtual_complete_keys`` prefers leaves that depend on those keys within the
     non-blocked, non-MR-rejected tier (``rest``).
     """
-    statuses_by_key = _merge_status_overrides(nodes, status_overrides)
+    statuses_by_key = _statuses_by_node_key(nodes, status_overrides)
     effective_dep_keys = effective_dependency_keys(nodes)
     claimed = _claimed_node_ids(reg)
     leaf_ids = _leaf_node_ids(nodes)
