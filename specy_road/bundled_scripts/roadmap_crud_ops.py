@@ -50,25 +50,29 @@ def _refuse_if_milestone_locked(root: Path, node_id: str) -> None:
 
 
 def run_validate_raise(root: Path) -> None:
-    """Run roadmap + registry validation; raise ``ValueError`` with stderr text on failure.
+    """Run roadmap + registry validation; raise ``ValueError`` with the errors on failure.
 
-    Both streams are captured. Letting validation's ``OK: roadmap and registry
-    validate.`` through would interleave with each mutation command's own
-    ``[ok]`` line, which reads as if the command reported twice.
+    Both streams are captured: validation's ``OK: roadmap and registry
+    validate.`` would otherwise interleave with each mutation command's own
+    ``[ok]`` line, reading as if the command reported twice. Warnings pass
+    through as warnings rather than being folded into the raised message, so a
+    caller printing ``error: {message}`` does not relabel them.
     """
     err = io.StringIO()
     out = io.StringIO()
+    failed = False
     with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
         try:
             validate_roadmap_line_limits(root)
             validate_at(root, no_overlap_warn=False, require_registry=True)
         except SystemExit as e:
-            if e.code not in (0, None):
-                msg = err.getvalue().strip()
-                raise ValueError(msg or "validation failed") from e
-    warnings = [ln for ln in err.getvalue().splitlines() if ln.strip()]
-    for line in warnings:
+            failed = e.code not in (0, None)
+    lines = [ln for ln in err.getvalue().splitlines() if ln.strip()]
+    for line in (ln for ln in lines if "warning" in ln.lower()):
         print(line, file=sys.stderr)
+    if failed:
+        errors = [ln for ln in lines if "warning" not in ln.lower()]
+        raise ValueError("\n".join(errors) or "validation failed")
 
 
 def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
@@ -81,10 +85,9 @@ def node_index_in_chunk(nodes_seq: list, node_id: str) -> int | None:
 def cmd_list(args: object) -> None:
     """List nodes with both statuses.
 
-    ``STATUS`` is the node's own ``status`` field as written in the chunk;
-    ``ROLLUP`` is what ``roadmap.md`` and the PM GUI show (a parent rolls up
-    from its leaf descendants). An unlabelled single column let the two
-    disagree silently for parent rows.
+    ``STATUS`` is the node's own field as written in the chunk; ``ROLLUP`` is
+    what ``roadmap.md`` and the PM GUI show (a parent rolls up from its leaf
+    descendants). One unlabelled column let the two disagree silently.
     """
     root = repo_root(args)
     merged = load_roadmap(root)["nodes"]
@@ -265,9 +268,8 @@ def _planning_rename_plan(
 ) -> tuple[Path, Path] | None:
     """Resolve a ``planning_dir`` change into a ``(src, dst)`` move, or ``None``.
 
-    Mirrors the guards the eager rename used to apply: both sides must be
-    normalizable planning paths, the source must exist, and the destination
-    must be free.
+    Same guards the eager rename applied: both sides must be normalizable
+    planning paths, the source must exist, and the destination must be free.
     """
     if not isinstance(old_rel, str) or not isinstance(new_rel, str):
         return None

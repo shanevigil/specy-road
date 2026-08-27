@@ -167,6 +167,29 @@ def test_accepted_hard_remove_takes_the_planning_sheet(repo: Path) -> None:
     assert [n["id"] for n in nodes] == ["M50"]
 
 
+def test_validation_warnings_are_not_relabelled_as_errors(repo: Path) -> None:
+    """A refused mutation must not print unrelated warnings under an `error:` prefix."""
+    schema_path = repo / "schemas" / "roadmap.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    schema["$defs"]["node"]["properties"]["title"]["description"] = "Reworded."
+    del schema["$defs"]["node"]["properties"]["decision"]
+    schema_path.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+
+    r = _run(
+        repo,
+        "--repo-root",
+        str(repo),
+        "edit-node",
+        "M50.1",
+        "--set",
+        "title=Atomicity phase",
+    )
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "schemas: warning" in r.stderr
+    assert "error: schemas: warning" not in r.stderr
+    assert "error: roadmap: duplicate title" in r.stderr
+
+
 def test_mutation_output_does_not_leak_validation_success_line(repo: Path) -> None:
     r = _run(
         repo,
