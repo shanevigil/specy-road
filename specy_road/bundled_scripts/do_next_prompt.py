@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from do_next_available import blocked_pick_notice
 from generate_brief import index as make_index
 from specy_road.git_workflow_config import (
     require_implementation_review_before_finish,
@@ -16,6 +17,15 @@ from planning_artifacts import (
 )
 
 _LEAF_EXCERPT_MAX_LINES = 80
+
+
+def print_pickup_header(node: dict, branch: str) -> None:
+    """Announce the claimed leaf, naming its status when it is Blocked."""
+    print(f"\n[{node['id']}] {node.get('title', '')}")
+    notice = blocked_pick_notice(node)
+    if notice:
+        print(notice)
+    print(f"implementation branch: {branch}\n")
 
 _GOVERNANCE_FILES: tuple[tuple[str, str], ...] = (
     ("constitution/purpose.md", "Purpose"),

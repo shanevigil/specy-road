@@ -18,7 +18,7 @@ if str(BUNDLED_SCRIPTS) not in sys.path:
 
 from roadmap_chunk_atomic import AtomicWritePlan
 from roadmap_chunk_router import (
-    relocate_node_if_overflow,
+    write_node_update,
     write_with_routing,
 )
 from roadmap_chunk_router_pick import (
@@ -270,7 +270,7 @@ def test_write_with_routing_rolls_back_on_validation_failure(
             raise ValueError("synthetic validate failure")
         return do
 
-    monkeypatch.setattr(router_mod, "_validate_callback", boom)
+    monkeypatch.setattr(router_mod, "validate_callback", boom)
 
     with pytest.raises(ValueError, match="synthetic"):
         write_with_routing(tmp_path, "M0", "phases/M0.json", new)
@@ -285,28 +285,39 @@ def test_write_with_routing_rolls_back_on_validation_failure(
     assert extras == []
 
 
-def test_relocate_node_if_overflow_moves_node(tmp_path: Path) -> None:
+def test_write_node_update_relocates_on_overflow(tmp_path: Path) -> None:
     """When edit-node growth pushes a chunk over, the edited node moves out."""
     nodes = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 6)]
     _seed_repo(tmp_path, {"phases/M0.json": nodes})
     chunk = tmp_path / "roadmap" / "phases" / "M0.json"
-    # Now bump one node's notes to be huge so the chunk is over the cap.
-    on_disk = load_json_chunk(chunk)
-    on_disk[-1]["notes"] = "x" * 1000
-    write_json_chunk(chunk, on_disk)
-    # Tighten the cap below current size so relocation triggers.
+    # Tighten the cap below the post-edit size so relocation triggers.
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
         "roadmap_json_chunk_max_lines: 80\n", encoding="utf-8"
     )
-    edited_id = on_disk[-1]["id"]
-    new_chunk = relocate_node_if_overflow(tmp_path, edited_id, chunk)
-    assert new_chunk is not None
+    # The edit is only in memory: write_node_update is what puts it on disk.
+    nodes_after = load_json_chunk(chunk)
+    nodes_after[-1]["notes"] = "x" * 1000
+    edited_id = nodes_after[-1]["id"]
+    new_chunk = write_node_update(tmp_path, edited_id, chunk, nodes_after)
     assert new_chunk != chunk
     # Source no longer contains the evicted node.
     src = load_json_chunk(chunk)
     assert all(n["id"] != edited_id for n in src)
     dst = load_json_chunk(new_chunk)
     assert any(n["id"] == edited_id for n in dst)
+    assert any(n["notes"] == "x" * 1000 for n in dst)
+
+
+def test_write_node_update_stays_put_when_chunk_still_fits(tmp_path: Path) -> None:
+    nodes = [_phase_M0(), _milestone("M0.1", "M0", n_index=11)]
+    _seed_repo(tmp_path, {"phases/M0.json": nodes})
+    chunk = tmp_path / "roadmap" / "phases" / "M0.json"
+    nodes_after = load_json_chunk(chunk)
+    nodes_after[-1]["status"] = "Complete"
+    assert write_node_update(tmp_path, "M0.1", chunk, nodes_after) == chunk
+    assert [n["status"] for n in load_json_chunk(chunk) if n["id"] == "M0.1"] == [
+        "Complete"
+    ]
 
 
 def test_atomic_plan_rollback_restores_existing_and_unlinks_new(tmp_path: Path) -> None:

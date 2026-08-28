@@ -34,10 +34,26 @@ _STATUS_PRECEDENCE = {
 _UNKNOWN_STATUS_RANK = -1
 
 
-def _rank(status: str | None) -> int:
+_CANONICAL_STATUS = {s.lower(): s for s in _STATUS_PRECEDENCE}
+
+
+def canonical_status(status: object) -> str | None:
+    """Return the canonical spelling of ``status``, or ``None`` if unrecognized.
+
+    Callers may hand in lowercased statuses (the dependency-satisfaction code
+    compares in lowercase), so match case-insensitively rather than rejecting
+    a value that only differs in case.
+    """
     if not isinstance(status, str):
+        return None
+    return _CANONICAL_STATUS.get(status.strip().lower())
+
+
+def _rank(status: str | None) -> int:
+    canon = canonical_status(status)
+    if canon is None:
         return _UNKNOWN_STATUS_RANK
-    return _STATUS_PRECEDENCE.get(status, _UNKNOWN_STATUS_RANK)
+    return _STATUS_PRECEDENCE[canon]
 
 
 def _children_map(nodes: list[dict]) -> dict[str, list[str]]:
@@ -49,7 +65,10 @@ def _children_map(nodes: list[dict]) -> dict[str, list[str]]:
     return out
 
 
-def compute_rollup_status(nodes: list[dict]) -> dict[str, str]:
+def compute_rollup_status(
+    nodes: list[dict],
+    own_status_by_id: dict[str, str] | None = None,
+) -> dict[str, str]:
     """
     Return ``{node_id: rollup_status}`` for every node.
 
@@ -58,16 +77,25 @@ def compute_rollup_status(nodes: list[dict]) -> dict[str, str]:
     status among leaf descendants (``Blocked`` > ``In Progress`` >
     ``Not Started``). Nodes with unknown/invalid status contribute as
     ``Not Started``.
+
+    ``own_status_by_id`` substitutes per-node own statuses before the rollup is
+    computed. Dependency satisfaction uses it to treat a leaf whose feature
+    branch is already Complete as done, and to let that flow up to ancestors.
     """
     by_id = {n["id"]: n for n in nodes if isinstance(n.get("id"), str)}
     children = _children_map(nodes)
+    overrides = own_status_by_id or {}
     cache: dict[str, str] = {}
+
+    def own_status(nid: str) -> object:
+        if nid in overrides:
+            return overrides[nid]
+        return by_id.get(nid, {}).get("status")
 
     def leaf_statuses(nid: str) -> list[str]:
         kids = children.get(nid, [])
         if not kids:
-            s = by_id.get(nid, {}).get("status")
-            return [s if isinstance(s, str) else "Not Started"]
+            return [canonical_status(own_status(nid)) or "Not Started"]
         out: list[str] = []
         for k in kids:
             out.extend(leaf_statuses(k))
@@ -76,8 +104,8 @@ def compute_rollup_status(nodes: list[dict]) -> dict[str, str]:
     for nid in by_id:
         kids = children.get(nid, [])
         if not kids:
-            s = by_id[nid].get("status")
-            cache[nid] = s if isinstance(s, str) else "Not Started"
+            s = own_status(nid)
+            cache[nid] = canonical_status(s) or (s if isinstance(s, str) else "Not Started")
             continue
         descendants = leaf_statuses(nid)
         if descendants and all(s == "Complete" for s in descendants):
@@ -231,7 +259,9 @@ def _line_limit_json_chunks(root: Path, base: Path, json_max: int) -> bool:
         if ncount != 1:
             print(
                 f"roadmap line limit: {path.relative_to(root)}: {nlines} lines "
-                f"(max {json_max}); split or reduce to a single node per file",
+                f"(max {json_max}); run `specy-road rebalance-chunks` to re-pack "
+                "chunks and update the manifest (add --dry-run first), or split "
+                "the file by hand",
                 file=sys.stderr,
             )
             failed = True

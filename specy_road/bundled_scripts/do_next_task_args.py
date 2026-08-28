@@ -9,12 +9,31 @@ from pathlib import Path
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 
 
+_DESCRIPTION = """\
+Pick the next actionable leaf task: sync integration branch, write brief,
+register on integration branch, create feature/rm-*, write prompt.
+
+Selection order among eligible leaves:
+  1. status Blocked   — a blocked leaf is the thing most worth unblocking, so
+     it is offered FIRST rather than skipped. To keep work out of the queue
+     entirely, give it a type: gate dependency; gates are never pickable and
+     hold their dependents back.
+  2. MR-rejected      — changes requested on the open PR/MR.
+  3. everything else  — outline (tree) order.
+
+A dependency on a phase or milestone is satisfied when that node's leaf
+descendants are all Complete (the F-013 rollup), not when its own status field
+says Complete.
+
+execution_milestone (Human-led / Agentic-led / Mixed) is advisory metadata for
+humans reading the roadmap. It does NOT gate pickup.
+"""
+
+
 def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description=(
-            "Pick the next actionable leaf task: sync integration branch, write brief, "
-            "register on integration branch, create feature/rm-*, write prompt."
-        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=_DESCRIPTION,
     )
     p.add_argument(
         "--base",

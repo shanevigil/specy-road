@@ -40,8 +40,10 @@ _USAGE_TEXT = (
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
     "  add-dependency <NODE_ID> <DEP_NODE_KEY>\n"
     "  remove-dependency <NODE_ID> <DEP_NODE_KEY>\n"
-    "  rebalance-chunks     — power-user: re-pack roadmap chunks deterministically\n"
-    "    (optional: --repo-root DIR --dry-run)\n"
+    "  rebalance-chunks     — re-pack roadmap chunks deterministically when a chunk\n"
+    "    exceeds the line cap (optional: --repo-root DIR --dry-run)\n"
+    "  refresh-schemas      — update schemas/ from this specy-road version; touches\n"
+    "    nothing else (optional: --repo-root DIR --dry-run)\n"
     "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
     "  scaffold-planning <NODE_ID> — create planning/<id>_<slug>_<node_key>.md; set planning_dir\n"
     "    (optional: --planning-dir PATH --force; see specy_road/bundled_scripts/scaffold_planning.py -h)\n"
@@ -57,7 +59,11 @@ _USAGE_TEXT = (
     "Dev task loop:\n"
     "  do-next-available-task  — sync base, pick actionable leaf, brief, register on base, push base, branch, prompt\n"
     "    (optional: --base BRANCH --remote NAME | --interactive | "
-    "--no-ci-skip-in-message | --milestone-subtree | --under PARENT_NODE_ID)\n"
+    "--no-ci-skip-in-message | --on-complete MODE | --milestone-subtree | "
+    "--under PARENT_NODE_ID)\n"
+    "    Selection: Blocked leaves are offered FIRST, then MR-rejected, then the\n"
+    "    rest in outline order. execution_milestone (Human-led/…) is advisory and\n"
+    "    does not gate pickup; use a type: gate dependency to hold work back.\n"
     "  abort-task-pickup       — undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/\n"
     "    (optional: --base BRANCH --remote NAME | --force)\n"
     "  mark-implementation-reviewed — human gate: record review after implementation-summary\n"
@@ -312,6 +318,8 @@ def main(argv: list[str] | None = None) -> None:
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)
+    elif cmd == "refresh-schemas":
+        _run("refresh_schemas.py", rest)
     elif cmd == "review-node":
         _run("review_node.py", rest)
     elif cmd == "scaffold-planning":
