@@ -16,4 +16,12 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 
 The brief inlines each effective dependency's `## Intent` block under `## 6. Dependency context (intent of upstream work)` — read it before opening dependency planning sheets directly. When **authoring** a planning sheet, do not paraphrase what dependencies deliver; the brief carries that for the coding agent automatically.
 
-**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push). The pickup target is always an actionable **leaf**; ancestors are context containers and roll up progress from descendants. Among eligible leaves, auto-pick follows **outline (tree) order** after Blocked/MR-rejected priority — not raw merged chunk order (`docs/roadmap-authoring.md`). To release a claim without finishing, use `specy-road abort-task-pickup` on `feature/rm-*` (see `docs/dev-workflow.md`).
+**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push). The pickup target is always an actionable **leaf**; ancestors are context containers and roll up progress from descendants. To release a claim without finishing, use `specy-road abort-task-pickup` on `feature/rm-*` (see `docs/dev-workflow.md`).
+
+Three selection rules that are easy to read backwards:
+
+- **`status: Blocked` leaves are offered FIRST**, not skipped — a blocked leaf is the one most worth unblocking. Pickup prints `status: Blocked` when it hands you one. To keep work out of the queue entirely, give it a `type: gate` dependency instead of marking it Blocked.
+- **`execution_milestone` (`Human-led` / …) is advisory.** It documents intent; it does not gate pickup. `type: gate` is the enforcing mechanism.
+- **A dependency on a phase or milestone is satisfied by its rollup** — every leaf descendant `Complete` — not by that node's own `status` field.
+
+After Blocked and MR-rejected, auto-pick follows **outline (tree) order**, not raw merged chunk order (`docs/roadmap-authoring.md`).

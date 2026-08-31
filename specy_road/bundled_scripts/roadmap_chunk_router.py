@@ -25,7 +25,7 @@ from roadmap_chunk_router_pick import (
     pick_target_chunk,
     simulate_chunk_lines,
 )
-from roadmap_chunk_utils import load_json_chunk, load_manifest_mapping
+from roadmap_chunk_utils import load_manifest_mapping
 
 
 # Re-export the pure helpers so callers (and tests) only need this module.
@@ -35,13 +35,14 @@ __all__ = [
     "default_chunk_for_parent",
     "insert_include_in_manifest",
     "pick_target_chunk",
-    "relocate_node_if_overflow",
     "simulate_chunk_lines",
+    "validate_callback",
+    "write_node_update",
     "write_with_routing",
 ]
 
 
-def _validate_callback(root: Path) -> Callable[[], None]:
+def validate_callback(root: Path) -> Callable[[], None]:
     """Return a no-arg callable that re-raises ``ValueError`` from validation."""
     # Lazy import to avoid a circular import at module load time
     # (roadmap_crud_ops imports this module).
@@ -58,11 +59,19 @@ def write_with_routing(
     parent_id: str | None,
     hint_chunk_arg: str | None,
     node: dict,
+    *,
+    extra_files: dict[Path, str] | None = None,
 ) -> Path:
-    """Route ``node`` to the right chunk, write atomically, validate, return chunk path."""
+    """Route ``node`` to the right chunk, write atomically, validate, return chunk path.
+
+    ``extra_files`` (abs path -> text) joins the same transaction, so a node's
+    planning sheet is never left on disk after a rejected write.
+    """
     decision = pick_target_chunk(root, parent_id, hint_chunk_arg, node)
     plan = AtomicWritePlan(root=root)
     plan.stage_chunk(decision.chunk_path, decision.nodes_after)
+    for path, text in (extra_files or {}).items():
+        plan.stage_text(path, text)
     if decision.is_new_chunk:
         manifest_doc = load_manifest_mapping(root)
         base_for_insert = (
@@ -77,7 +86,7 @@ def write_with_routing(
             f"(node {node.get('id')!r} {decision.new_chunk_reason})",
             file=sys.stderr,
         )
-    plan.commit(_validate_callback(root))
+    plan.commit(validate_callback(root))
     return decision.chunk_path
 
 
@@ -115,37 +124,32 @@ def _relocation_log(
         )
 
 
-def relocate_node_if_overflow(
+def _plan_overflow_relocation(
+    plan: AtomicWritePlan,
     root: Path,
     node_id: str,
     chunk_path: Path,
-    max_lines: int | None = None,
+    nodes_after: list[dict],
+    max_lines: int,
 ) -> Path | None:
-    """If ``chunk_path`` exceeds the cap, move ``node_id`` to a fitting chunk.
+    """Stage a relocation when ``nodes_after`` would push ``chunk_path`` over the cap.
 
-    Returns the new chunk path on success, ``None`` if no relocation needed.
-    Atomic + validated.
+    Returns the chunk that will hold ``node_id``, or ``None`` when the edited
+    chunk still fits and the caller should stage it as-is. Single-node chunks
+    are exempt from the cap per validator policy, so they never relocate.
     """
-    if max_lines is None:
-        max_lines = chunk_max_lines(root)
-    if not chunk_path.is_file():
-        return None
-    current_nodes = load_json_chunk(chunk_path)
-    if simulate_chunk_lines(current_nodes) <= max_lines:
+    if len(nodes_after) < 2 or simulate_chunk_lines(nodes_after) <= max_lines:
         return None
     target = next(
-        (n for n in current_nodes if isinstance(n, dict) and n.get("id") == node_id),
+        (n for n in nodes_after if isinstance(n, dict) and n.get("id") == node_id),
         None,
     )
     if target is None:
         return None
-    if len(current_nodes) == 1:
-        # Single-node chunks are exempt from the cap (per validator policy).
-        return None
     pid_raw = target.get("parent_id")
     parent_id = pid_raw if isinstance(pid_raw, str) else None
     remaining = [
-        n for n in current_nodes
+        n for n in nodes_after
         if not (isinstance(n, dict) and n.get("id") == node_id)
     ]
     decision = pick_target_chunk(
@@ -157,8 +161,37 @@ def relocate_node_if_overflow(
     )
     if decision.chunk_path == chunk_path and not decision.is_new_chunk:
         return None
-    plan = AtomicWritePlan(root=root)
     _stage_relocation(plan, root, parent_id, chunk_path, remaining, decision)
     _relocation_log(decision, node_id, chunk_path.name)
-    plan.commit(_validate_callback(root))
     return decision.chunk_path
+
+
+def write_node_update(
+    root: Path,
+    node_id: str,
+    chunk_path: Path,
+    nodes_after: list[dict],
+    *,
+    renames: list[tuple[Path, Path]] | None = None,
+    max_lines: int | None = None,
+) -> Path:
+    """Persist an edited chunk atomically; return the chunk holding ``node_id``.
+
+    Everything an edit touches is staged before a single byte lands: the chunk
+    itself, a relocation (plus manifest entry) when the edit pushed the chunk
+    over the line cap, and any planning-sheet rename the edit implies. A
+    validation failure therefore leaves the working tree exactly as it was,
+    rather than a half-applied edit that blocks every later command.
+    """
+    if max_lines is None:
+        max_lines = chunk_max_lines(root)
+    plan = AtomicWritePlan(root=root)
+    relocated = _plan_overflow_relocation(
+        plan, root, node_id, chunk_path, nodes_after, max_lines
+    )
+    if relocated is None:
+        plan.stage_chunk(chunk_path, nodes_after)
+    for src, dst in renames or []:
+        plan.stage_rename(src, dst)
+    plan.commit(validate_callback(root))
+    return relocated or chunk_path

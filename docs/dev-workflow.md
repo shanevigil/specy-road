@@ -8,7 +8,9 @@ For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
 
 Canonical model: **execute leaves, contextualize with ancestors, roll up progress upward**.
 
-`do-next-available-task` considers **effective** dependencies (each leaf’s explicit `dependencies` plus prerequisites listed on **ancestors**), matching the PM Gantt. A **`type: gate`** node is never a pickup target; PMs clear a scoped hold by marking that Gate **Complete** (see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate)).
+`do-next-available-task` considers **effective** dependencies (each leaf’s explicit `dependencies` plus prerequisites listed on **ancestors**), matching the PM Gantt. A dependency on a **phase or milestone** is satisfied when that node’s leaf descendants are all `Complete` — the same **F-013 rollup** `roadmap.md` displays — not when its own `status` field says so, so a finished phase never silently blocks the work downstream of it. A **`type: gate`** node is never a pickup target; PMs clear a scoped hold by marking that Gate **Complete** (see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate)).
+
+**Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism.
 
 ## Quick reference
 
@@ -297,14 +299,14 @@ the PM (or delegate), with team agreement — it affects audit trail and anythin
 depended on that node being done. Prefer adding a **follow-up task** with a clear title
 over silently rolling status backward, unless your team explicitly uses rollback.
 
-**Parent / phase rows:** Finishing a leaf milestone does **not** automatically set
-`status: Complete` on parent **phase** nodes in the JSON — the PM Gantt may still *show* a
-phase as done when every descendant is complete (see [pm-workflow.md](pm-workflow.md)).
-To align the file with that state, edit the phase row (for example `specy-road
-edit-node <PHASE_ID> --set status=Complete`) or rely on display-only rollup.
-`specy-road validate` follows the same **F-013 rollup** semantics as load/export and
-does not warn when stored phase `status` lags behind a fully-complete leaf subtree.
-The `--no-phase-status-warn` CLI flag is deprecated and ignored.
+**Parent / phase rows:** `specy-road finish-this-task` closes the leaf **and** every ancestor
+whose leaf descendants are now all `Complete`, in the same bookkeeping commit
+(`[ok] M9 status -> Complete (all leaf descendants complete)`). Ancestors carrying a
+`milestone_execution` block are left alone — that state machine closes those only once the
+rollup branch is proven merged (`specy-road reconcile-milestone-status`). If a stored
+`status` drifts from its rollup anyway, `specy-road validate` warns and prints the
+`edit-node` command; it never fails, because the rollup is what every reader *and*
+dependency satisfaction use. `--no-phase-status-warn` is deprecated and ignored.
 
 ---
 
@@ -351,11 +353,10 @@ flowchart LR
 
 ## Optional: quality and compliance prompts
 
-For **copy-paste prompts** (architecture compliance, scoped code review, test coverage
-audit, dependency audit, security audit, pre-release checklist) that stay
-project-agnostic — with placeholders for your lint/test/scan commands — see
-[optional-agent-review-prompts.md](optional-agent-review-prompts.md). They are optional;
-this kit’s core workflow remains `specy-road` commands and contracts.
+For **copy-paste prompts** (architecture compliance, scoped code review, test coverage audit,
+dependency audit, security audit, pre-release checklist) that stay project-agnostic — with
+placeholders for your lint/test/scan commands — see
+[optional-agent-review-prompts.md](optional-agent-review-prompts.md), which are optional.
 
 ---
 

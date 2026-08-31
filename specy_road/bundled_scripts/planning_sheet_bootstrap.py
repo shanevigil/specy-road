@@ -136,32 +136,45 @@ def render_feature_sheet_template(node_id: str) -> str:
     return _substitute_node_id(path.read_text(encoding="utf-8"), node_id)
 
 
-def ensure_planning_sheet_for_new_node(repo_root: Path, node: dict) -> None:
+def plan_planning_sheet_for_new_node(
+    repo_root: Path, node: dict
+) -> tuple[Path, str] | None:
     """
-    For vision/phase/milestone/task/gate nodes, write ``planning/<id>_<slug>_<node_key>.md`` if
-    missing and set ``planning_dir`` on ``node``. No-op for other types or missing id/key.
+    Set ``planning_dir`` on ``node`` and return the ``(path, content)`` its sheet needs.
+
+    No disk IO: callers stage the write in the same transaction as the chunk, so
+    a rejected node never leaves an orphan sheet behind. Returns ``None`` when
+    the node type has no sheet, the id/key are missing, or the sheet already
+    exists (in which case ``planning_dir`` is still set).
     """
     t = node.get("type")
     if t not in _TYPES_WITH_PLANNING:
-        return
+        return None
     nid = node.get("id")
     nk = node.get("node_key")
     if not isinstance(nid, str) or not nid.strip():
-        return
+        return None
     if not isinstance(nk, str) or not nk.strip():
-        return
+        return None
     norm = normalize_planning_dir(expected_planning_rel(node))
     root = repo_root.resolve()
     dest = resolve_planning_path(root, norm)
     if dest.exists() and dest.is_dir():
         raise ValueError(f"{norm} exists and is a directory (expected a single .md file)")
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if not dest.is_file():
-        dest.write_text(
-            render_planning_sheet_template(nid.strip(), node_type=t),
-            encoding="utf-8",
-        )
     node["planning_dir"] = norm
+    if dest.is_file():
+        return None
+    return dest, render_planning_sheet_template(nid.strip(), node_type=t)
+
+
+def ensure_planning_sheet_for_new_node(repo_root: Path, node: dict) -> None:
+    """Eager variant of :func:`plan_planning_sheet_for_new_node` for non-transactional callers."""
+    planned = plan_planning_sheet_for_new_node(repo_root, node)
+    if planned is None:
+        return
+    dest, content = planned
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(content, encoding="utf-8")
 
 
 def remove_planning_sheet_if_present(repo_root: Path, planning_dir: object) -> None:

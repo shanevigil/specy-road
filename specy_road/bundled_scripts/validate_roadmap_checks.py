@@ -203,6 +203,33 @@ def validate_required_planning_dirs(nodes: list[dict]) -> None:
         raise SystemExit(1)
 
 
+def warn_stale_parent_status(nodes: list[dict]) -> None:
+    """Warn when a parent's own ``status`` disagrees with its computed rollup.
+
+    Not fatal: the rollup is authoritative for readers and for dependency
+    satisfaction, so a stale field cannot stall a grind. It is still worth
+    reporting, because ``list-nodes`` and the chunk JSON show the authored value
+    and a reviewer reading the file would draw the wrong conclusion. Repos that
+    drifted before ``finish-this-task`` learned to close rolled-up ancestors see
+    this until they run the printed command.
+    """
+    for n in nodes:
+        rollup = n.get("rollup_status")
+        own = n.get("status")
+        if not isinstance(rollup, str) or not isinstance(own, str):
+            continue
+        if rollup == own:
+            continue
+        nid = n.get("id", "?")
+        print(
+            f"roadmap: warning — {nid} has status {own!r} but rolls up to "
+            f"{rollup!r} from its leaf descendants. Readers use the rollup; the "
+            f"chunk file does not. Run: specy-road edit-node {nid} "
+            f"--set status={rollup}",
+            file=sys.stderr,
+        )
+
+
 def touch_zone_overlap(entries: list[dict]) -> None:
     """Warn if entries share a touch zone path (heuristic)."""
     for i, a in enumerate(entries):
@@ -333,6 +360,7 @@ def run_validation(
                 )
                 raise SystemExit(1)
 
+    warn_stale_parent_status(nodes)
     if registry.get("entries") and not no_overlap_warn:
         touch_zone_overlap(registry["entries"])
 

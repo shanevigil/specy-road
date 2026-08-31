@@ -162,10 +162,150 @@ body. Keep section bodies focused; link to PRs for detail.
   the session-artifact skip list: a scaffold's `**/*.md` glob would otherwise
   keep flagging planning sheets for milestones that shipped years ago, which
   defeats much of the point of archiving.
-- **The destructive `archive-node --hard-remove` path moved** to
-  `specy_road/bundled_scripts/roadmap_crud_remove.py`, and its error message now
-  points at `specy-road archive` for retiring completed work. Behavior is
-  unchanged; the two commands remain unrelated despite the similar names.
+- **The destructive `archive-node --hard-remove` error message now points at
+  `specy-road archive`** for retiring completed work. The path itself lives in
+  `specy_road/bundled_scripts/roadmap_crud_delete.py` (split out in v0.1.4) and
+  keeps its atomic behavior; the two commands remain unrelated despite the
+  similar names.
+
+
+## [v0.1.4] - 2026-08-31
+
+First stable **v0.1.4** release on **PyPI**. Promotes the work validated in
+`v0.1.4-rc1`, `v0.1.4-rc2`, and `v0.1.4-rc3` with no post-rc3 code changes.
+Smoke install:
+
+    pip install specy-road==0.1.4
+
+**Adopters upgrading from any earlier version:** if `specy-road init project`
+scaffolded your repository before this release, run **`specy-road
+refresh-schemas`** once. Repos created from `v0.1.4-rc2` or later should also
+ensure `.gitignore` includes the `work/` session-artifact rules from
+[`specy_road/templates/project/.gitignore`](specy_road/templates/project/.gitignore).
+
+### Headline (vs v0.1.3)
+
+- **`specy-road grind-session`** — agent-driven task-loop orchestration with
+  read-only `--plan` waves/batches for parallel dispatch
+  ([docs/grind-session.md](docs/grind-session.md)).
+- **`specy-road refresh-schemas`** — refresh consumer `schemas/` from the
+  installed toolkit without touching roadmap files.
+- **Atomic roadmap mutations** — refused `add-node` / `edit-node` no longer
+  leave orphan sheets or half-written chunks; PM GUI routes share the same
+  staging.
+- **Dependency satisfaction follows rollup status** — a finished phase no
+  longer silently blocks downstream leaves.
+- **Base-install dev loop works again** — `requests` is a core dependency so
+  `do-next-available-task` and `grind-session` run after `pip install specy-road`.
+- **Packaging and hygiene** — wheel ships `.gitignore` / `work/.gitkeep`;
+  `file-limits` respects `.gitignore` and skips toolkit session artifacts;
+  `specy-road --version` works.
+
+See the `v0.1.4-rc1` … `v0.1.4-rc3` sections below for full detail.
+
+## [v0.1.4-rc3] - 2026-08-27
+
+Third release candidate for v0.1.4. Routed to **TestPyPI** by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.1.4rc3
+
+Closes the three defects an adopter reported after an autonomous grind on
+`v0.1.4-rc2`, plus two release blockers the pre-release pass found on top of
+them. Every item is a case of specy-road doing damage on the way out of a
+*refused* operation, or of two parts of the toolkit disagreeing about what
+"complete" means. The analysis behind the adopter items, including the ones
+deliberately not changed, is in
+[`docs/design-notes/rc2-adopter-feedback-triage.md`](docs/design-notes/rc2-adopter-feedback-triage.md).
+
+**Adopters upgrading from any earlier version:** if `specy-road init project`
+scaffolded your repository before this release, run **`specy-road
+refresh-schemas`** once. `init project` copies `schemas/` in and never revisits
+it, so an older copy rejects output the current CLI legitimately produces
+(`type: gate` nodes, the `implementation_review` fields
+`mark-implementation-reviewed` writes). `specy-road validate` now warns when it
+notices this. Do **not** use `init project --force` for it — that rewrites every
+scaffold file, including `roadmap/manifest.json` and your phase chunks.
+
+### Fixed
+
+- **A refused `edit-node` no longer leaves the invalid edit on disk.**
+  `edit_node_set_pairs` wrote its chunk and renamed the node's planning sheet
+  *before* validating. On rejection it exited 1 and left behind the invalid
+  chunk, a deleted sheet and a renamed one, so every later command failed
+  validation and a multi-`--set` batch was impossible to reason about. The chunk
+  write, any overflow relocation, and the planning-sheet rename are now staged
+  in one atomic plan that only lands if the prospective graph validates. Same
+  function backs the PM GUI's edit, sibling-reorder, and delete routes.
+- **A refused `add-node` no longer leaves an orphan planning sheet.** The chunk
+  rollback already worked, but the sheet was scaffolded outside the transaction,
+  and an ownerless sheet is a *fatal* validation error — so a rejected add left
+  a repo that could not validate at all. The sheet now travels with the chunk.
+- **The self-heal pass no longer runs inside a mutation's transaction.** It
+  rewrites chunks and renames sheets, and it ran from each mutation's validation
+  callback, outside the atomic plan's snapshot. For a task with no codename
+  (every PM GUI add) it renamed the just-staged sheet, so the rollback unlinked
+  a path that no longer existed and the renamed sheet survived as an orphan.
+  Mutations now heal first and validate without healing, and new tasks get their
+  codename derived up front on every add path.
+- **A finished phase no longer silently blocks everything downstream of it.**
+  `roadmap.md`, `brief` and the PM GUI read the F-013 rollup, but dependency
+  satisfaction read a parent's own `status` field, which nothing updated when
+  its last leaf closed. Downstream leaves became permanently unpickable with no
+  error: `validate` said OK, `reconcile-milestone-status` was a no-op (it only
+  looks at nodes carrying `milestone_execution`), and rc2 had removed the one
+  warning that used to hint at it. `grind-session --plan` disagreed with itself,
+  counting such a leaf as ready while leaving it out of every wave. Satisfaction
+  now reads the rollup, in `do_next_available` and in the three places
+  `session_plan` had reimplemented it.
+- **`pip install specy-road` can run the dev loop again.** `do_next_available`
+  imports `roadmap_gui_remote` for the MR-rejected pickup tier, that module
+  imports `requests` at module scope, and `requests` was declared only in the
+  `gui` / `gui-next` / `dev` extras — so `do-next-available-task` and
+  `grind-session` died on `ModuleNotFoundError` before printing anything on a
+  base install. Reproduced against the published `0.1.4rc2` wheel, so this
+  shipped in rc1 and rc2. A new test walks the module-scope import graph from
+  every CLI entry script and fails when it reaches a package that is not a base
+  dependency.
+- **Mutation commands stop printing validation's `OK: roadmap and registry
+  validate.` into their own output**, and a refused mutation no longer relabels
+  unrelated warnings under its `error:` prefix. Between them, that is what made
+  `add-node` look as though it had reported success and failure at once.
+
+### Added
+
+- **`specy-road refresh-schemas`** — updates a consumer repo's `schemas/` from
+  the installed toolkit and touches nothing else (`--dry-run` to preview).
+  `validate` warns when a consumer schema differs structurally from the bundled
+  one; the comparison ignores description text, so rewording is not drift.
+- **`finish-this-task` closes rolled-up ancestors** in the same bookkeeping
+  commit (`[ok] M9 status -> Complete (all leaf descendants complete)`), so the
+  authored graph stops drifting from what every reader computes. Ancestors
+  carrying `milestone_execution` are left to the milestone-rollup state machine,
+  which closes them only once the rollup branch is proven merged.
+
+### Changed
+
+- **`validate` reports parent status that disagrees with its rollup** again, as
+  a warning that names the `edit-node` command to fix it. It never fails: the
+  rollup is authoritative for readers *and* for dependency satisfaction. rc2
+  removed this warning while leaving satisfaction on own-status, which is what
+  made the stall silent.
+- **`list-nodes` prints a header and separate `STATUS` / `ROLLUP` columns.** One
+  unlabelled column let a parent row contradict `roadmap.md` with no way to tell
+  which number was which.
+- **The oversized-chunk error names `specy-road rebalance-chunks`**, which
+  re-packs chunks and updates the manifest. The old wording ("split or reduce to
+  a single node per file") sent adopters off to hand-split JSON.
+- **`do-next-available-task -h` documents the two selection rules that read
+  backwards without it**: a `Blocked` leaf is promoted to the top of the queue
+  rather than skipped (pickup now prints `status: Blocked` on the leaf it hands
+  over), and `execution_milestone` is advisory metadata that does not gate
+  pickup — a `type: gate` dependency is the enforcing mechanism. The top-level
+  usage text also lists `--on-complete`, which existed but was undocumented
+  there.
 
 ## [v0.1.4-rc2] - 2026-08-21
 

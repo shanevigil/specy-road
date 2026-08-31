@@ -10,11 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from roadmap_chunk_utils import find_chunk_path, roadmap_dir
 from roadmap_crud_ops import (
     append_node_to_chunk,
+    delete_roadmap_node_hard,
     edit_node_set_pairs,
     merged_ids,
     run_validate_raise,
 )
-from roadmap_crud_remove import delete_roadmap_node_hard
 from roadmap_load import load_roadmap
 from roadmap_node_keys import new_node_key
 from roadmap_layout import sibling_sort_key
@@ -28,7 +28,6 @@ from roadmap_outline_ops import (
 )
 from roadmap_outline_renumber import renumber_display_ids_inplace
 from sync_planning_artifacts import sync_planning_artifacts
-from planning_sheet_bootstrap import ensure_planning_sheet_for_new_node
 
 from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
@@ -135,13 +134,13 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
         "touch_zones": [],
     }
 
-    ensure_planning_sheet_for_new_node(root, new_node)
     inserted_key = new_node["node_key"]
 
     try:
         # append_node_to_chunk delegates to the chunk router, which validates
-        # internally inside an atomic plan (rolls back on failure). Avoid the
-        # double validation that used to live here.
+        # internally inside an atomic plan (rolls back on failure) and stages
+        # the node's planning sheet in that same plan. Avoid the double
+        # validation that used to live here.
         append_node_to_chunk(root, chunk_arg, new_node)
     except (SystemExit, OSError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

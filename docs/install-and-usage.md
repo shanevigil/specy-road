@@ -79,6 +79,24 @@ specy-road export
 It refuses to overwrite an existing scaffold unless you pass `--force`.
 Preview without writing: `--dry-run`.
 
+### Keeping `schemas/` current after an upgrade
+
+`init project` copies the JSON schemas into your repo once. They do **not**
+update when you upgrade specy-road, so a repo scaffolded against an older
+version can reject output the current CLI legitimately produces (for example
+`type: gate` nodes, or the `implementation_review` fields that
+`mark-implementation-reviewed` writes). `specy-road validate` warns when it
+notices this. To fix it:
+
+```bash
+specy-road refresh-schemas --dry-run   # see which schemas would change
+specy-road refresh-schemas             # copy them, then review the diff
+```
+
+`refresh-schemas` touches `schemas/` and nothing else. Do **not** use
+`init project --force` for this — it overwrites every scaffold file, including
+`roadmap/manifest.json` and your phase chunks.
+
 The bundled `.gitignore` ignores **only** the session-scoped files
 (`work/.on-complete-*.yaml`, `work/prompt-*.md`, `work/pr-body-*.md`,
 `work/.milestone-session.yaml`); briefs and implementation summaries are

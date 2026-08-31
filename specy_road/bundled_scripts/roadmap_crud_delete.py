@@ -1,8 +1,11 @@
-"""The destructive removal path: ``archive-node --hard-remove``.
+"""Node removal for the roadmap CRUD CLI (``archive-node --hard-remove``).
 
-Split out of :mod:`roadmap_crud_ops` to keep that module under the file-line
-constraint, and because this is genuinely a different operation from the rest of
-CRUD: it deletes a node and its planning sheet outright, with no way back.
+Split out of :mod:`roadmap_crud_ops` to stay inside the repo's per-file line
+cap; the ``roadmap_crud_*`` modules follow the same pattern.
+
+A node and its planning sheet go in one transaction. Unlinking the sheet before
+validating the resulting graph would leave a repo that cannot validate whenever
+the removal is refused (for example because another node still depends on it).
 
 Not to be confused with ``specy-road archive`` (:mod:`specy_road.archive_ops`),
 which moves completed work out of the live graph **reversibly**. The name
@@ -14,20 +17,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from planning_sheet_bootstrap import remove_planning_sheet_if_present
-from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from planning_artifacts import normalize_planning_dir, resolve_planning_path
+from roadmap_chunk_atomic import AtomicWritePlan
+from roadmap_chunk_utils import find_chunk_path, load_json_chunk
 from roadmap_load import load_roadmap
-
-from roadmap_crud_ops import (
-    node_index_in_chunk,
-    repo_root,
-    run_validate_raise,
-    unknown_node_msg,
-)
 
 
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
-    """Refuse when anything still points at the node — children or dependencies."""
+    """Whether ``node_id`` has no children and nothing depends on it."""
     nodes = load_roadmap(root)["nodes"]
     target_key: str | None = None
     for n in nodes:
@@ -42,8 +39,29 @@ def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
     return True, ""
 
 
+def planning_sheet_delete_plan(root: Path, planning_dir: object) -> Path | None:
+    """Resolve ``planning_dir`` to the sheet to unlink, or ``None`` when there is none."""
+    if not isinstance(planning_dir, str) or not planning_dir.strip():
+        return None
+    try:
+        norm = normalize_planning_dir(planning_dir.strip())
+    except ValueError:
+        return None
+    path = resolve_planning_path(root, norm)
+    return path if path.is_file() else None
+
+
 def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
-    """Remove a node from its JSON chunk. Raises ``ValueError`` if not removable."""
+    """Remove a node and its planning sheet in one transaction.
+
+    Raises ``ValueError`` if not found, not removable, or if the resulting graph
+    fails validation — in which case nothing is removed from disk.
+    """
+    from roadmap_chunk_router import validate_callback
+    from roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
+    from roadmap_crud_prepare import heal_before_mutation
+
+    heal_before_mutation(root)
     chunk = find_chunk_path(root, node_id)
     if not chunk:
         raise ValueError(unknown_node_msg(node_id))
@@ -57,13 +75,18 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     if not ok:
         raise ValueError(msg)
     removed = nodes[idx]
-    remove_planning_sheet_if_present(root, removed.get("planning_dir"))
+    sheet = planning_sheet_delete_plan(root, removed.get("planning_dir"))
     del nodes[idx]
-    write_json_chunk(chunk, nodes)
-    run_validate_raise(root)
+    plan = AtomicWritePlan(root=root)
+    plan.stage_chunk(chunk, nodes)
+    if sheet is not None:
+        plan.stage_delete(sheet)
+    plan.commit(validate_callback(root))
 
 
 def cmd_archive(args: object) -> None:
+    from roadmap_crud_ops import repo_root
+
     root = repo_root(args)
     nid = args.node_id
     if args.hard_remove:

@@ -72,6 +72,22 @@ def test_validate_roadmap_line_limits_json_chunk(tmp_path) -> None:
     rl.validate_roadmap_line_limits(tmp_path)
 
 
+def test_oversized_chunk_error_names_rebalance_chunks(tmp_path, capsys) -> None:
+    """The remedy exists; the message used to say only "split or reduce"."""
+    r = tmp_path / "roadmap"
+    _write_manifest_json(r, ["a.json"])
+    pad = [f"pad{i}" for i in range(400)]
+    nodes = [
+        {"id": "M0", "parent_id": None, "type": "phase", "title": "a", "pad": pad},
+        {"id": "M1", "parent_id": None, "type": "phase", "title": "b", "pad": pad},
+    ]
+    (r / "a.json").write_text(json.dumps({"nodes": nodes}, indent=2), encoding="utf-8")
+
+    with pytest.raises(SystemExit):
+        rl.validate_roadmap_line_limits(tmp_path)
+    assert "specy-road rebalance-chunks" in capsys.readouterr().err
+
+
 def test_validate_roadmap_line_limits_manifest_reads_config(tmp_path) -> None:
     """Manifest line cap is read from constraints/file-limits.yaml."""
     r = tmp_path / "roadmap"
