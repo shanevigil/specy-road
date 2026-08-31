@@ -11,6 +11,40 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.1.4] - 2026-08-31
+
+First stable **v0.1.4** release on **PyPI**. Promotes the work validated in
+`v0.1.4-rc1`, `v0.1.4-rc2`, and `v0.1.4-rc3` with no post-rc3 code changes.
+Smoke install:
+
+    pip install specy-road==0.1.4
+
+**Adopters upgrading from any earlier version:** if `specy-road init project`
+scaffolded your repository before this release, run **`specy-road
+refresh-schemas`** once. Repos created from `v0.1.4-rc2` or later should also
+ensure `.gitignore` includes the `work/` session-artifact rules from
+[`specy_road/templates/project/.gitignore`](specy_road/templates/project/.gitignore).
+
+### Headline (vs v0.1.3)
+
+- **`specy-road grind-session`** — agent-driven task-loop orchestration with
+  read-only `--plan` waves/batches for parallel dispatch
+  ([docs/grind-session.md](docs/grind-session.md)).
+- **`specy-road refresh-schemas`** — refresh consumer `schemas/` from the
+  installed toolkit without touching roadmap files.
+- **Atomic roadmap mutations** — refused `add-node` / `edit-node` no longer
+  leave orphan sheets or half-written chunks; PM GUI routes share the same
+  staging.
+- **Dependency satisfaction follows rollup status** — a finished phase no
+  longer silently blocks downstream leaves.
+- **Base-install dev loop works again** — `requests` is a core dependency so
+  `do-next-available-task` and `grind-session` run after `pip install specy-road`.
+- **Packaging and hygiene** — wheel ships `.gitignore` / `work/.gitkeep`;
+  `file-limits` respects `.gitignore` and skips toolkit session artifacts;
+  `specy-road --version` works.
+
+See the `v0.1.4-rc1` … `v0.1.4-rc3` sections below for full detail.
+
 ## [v0.1.4-rc3] - 2026-08-27
 
 Third release candidate for v0.1.4. Routed to **TestPyPI** by
