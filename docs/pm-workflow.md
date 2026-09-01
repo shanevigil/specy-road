@@ -101,7 +101,17 @@ Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling 
 
 ### Gantt PM UI (FastAPI + React)
 
-**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/`). The UI discovers that root the same way as other CLI commands (git worktree from the current directory, or the current directory if not in git). If that resolves to the wrong tree—nested checkouts, monorepos—pass `--repo-root /path/to/repo` or set `SPECY_ROAD_REPO_ROOT`.
+**Working directory:** run `specy-road gui` from anywhere in your project's checkout. The UI and every CLI command now share one resolver, which takes the first of these that answers:
+
+1. an explicit `--repo-root /path/to/project`;
+2. the `SPECY_ROAD_REPO_ROOT` environment variable;
+3. the `project_root` recorded in `.specyrd/manifest.json` (written by `specy-road init project`);
+4. the nearest ancestor of the working directory containing `roadmap/manifest.json`;
+5. the git worktree root, then the working directory.
+
+Steps 2–4 are new in 0.2.1. Before that the GUI read the environment variable and discovered upward while the CLI did neither, so the two could disagree about which tree they were looking at — and this page told you to set a variable the CLI ignored.
+
+**Two layouts, both supported**, chosen per project: **embedded**, with `roadmap/`, `planning/` and `shared/` at the repository root, or **nested**, with the same tree under a subfolder (`sr/`) so the coding root stays uncluttered. `specy-road init project sr` scaffolds the nested form and records it, after which every command resolves it with no flag from any working directory. Keep the two roots straight: the **git root** owns `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`; the **project root** owns `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and `constraints/`. Entries written to the first that name paths in the second are prefixed automatically. One consequence: `constraints/file-limits.yaml` is read from the project root, but its `applies_to_globs` resolve against the git root — so a glob stays `frontend/**/*.tsx` rather than `../frontend/**/*.tsx`.
 
 **One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init gui --install-gui` also compiles that tree. After `pip install specy-road`:
 

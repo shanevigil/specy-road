@@ -5,31 +5,26 @@ Requires ``bundled_scripts`` on ``sys.path``.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from fastapi import HTTPException
 
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import discover_project_root, project_root
 
-
-def resolve_roadmap_project_root_from_cwd() -> Path | None:
-    """Nearest ancestor of cwd containing ``roadmap/manifest.json``, if any."""
-    cwd = Path.cwd().resolve()
-    for anc in [cwd, *cwd.parents]:
-        if (anc / "roadmap" / "manifest.json").is_file():
-            return anc
-    return None
+#: Retained for callers that imported it before the resolver was unified.
+resolve_roadmap_project_root_from_cwd = discover_project_root
 
 
 def get_repo_root() -> Path:
-    env = os.environ.get("SPECY_ROAD_REPO_ROOT")
-    if env:
-        return Path(env).resolve()
-    discovered = resolve_roadmap_project_root_from_cwd()
-    if discovered:
-        return discovered
-    return default_user_repo_root()
+    """The project root, resolved exactly as every CLI command resolves it.
+
+    This used to be the GUI's own rule — env var, then discovery, then git —
+    while the CLI did git-toplevel-or-cwd and read no environment at all. The
+    two surfaces disagreeing about where the project lives is what made a
+    nested layout unusable, so there is now one resolver and the GUI is a
+    caller of it.
+    """
+    return project_root()
 
 
 def safe_rel_path(repo_root: Path, rel: str) -> Path:

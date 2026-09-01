@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import __version__
+from specy_road.agent_ignores import apply_and_report
+from specy_road.runtime_paths import (
+    discover_project_root,
+    prefix_within,
+    recorded_project_root,
+)
 
 AGENT_CHOICES = frozenset({"cursor", "claude-code", "generic"})
 ROLE_CHOICES = frozenset({"pm", "dev", "both"})
@@ -315,20 +321,6 @@ def _maybe_write_readme_claude_and_gui_stub(
             written.append(gui_display)
 
 
-def _apply_ignores(repo_root: Path, written: list[str]) -> None:
-    """Keep the duplicated corpus out of IDE indexing, and the caches out of git.
-
-    Both files belong to the consumer; only a marked block inside each is ours,
-    so this is safe to re-run and safe on a repo that already has its own rules.
-    """
-    from specy_road.agent_ignores import apply_agent_ignores
-    from specy_road.managed_block import UNCHANGED
-
-    for name, outcome in sorted(apply_agent_ignores(repo_root).items()):
-        if outcome != UNCHANGED:
-            written.append(f"{name} ({outcome})")
-
-
 def run_init(
     *,
     target: Path,
@@ -381,8 +373,15 @@ def run_init(
         skipped=skipped,
     )
 
+    # The project tree may sit below the checkout (the nested layout). Prefer
+    # the root `init project` recorded: discovery only walks *upward*, so run
+    # from the git root of a nested repo it cannot see `sr/` at all — which is
+    # how the ignore blocks came out unprefixed.
+    project = recorded_project_root(repo_root) or discover_project_root(target)
+    prefix = prefix_within(repo_root, project or repo_root)
+
     if not dry_run:
-        _apply_ignores(repo_root, written)
+        apply_and_report(repo_root, prefix, written)
 
     readme_rel = Path(".specyrd/README.md")
     if not dry_run:
@@ -392,6 +391,7 @@ def run_init(
         agents[agent] = canonical
         if role is not None:
             manifest["role"] = role
+        manifest["project_root"] = prefix.rstrip("/") or "."
         _save_manifest(repo_root, manifest)
 
     return InitResult(written=written, skipped=skipped, dry_run=dry_run)

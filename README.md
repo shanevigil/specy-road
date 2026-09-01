@@ -58,9 +58,9 @@ Consumer **`init project`**, `roadmap/git-workflow.yaml`, optional **`specyrd`**
 
 Typical path in an **application** repository after `specy-road init project`: roadmap and planning for direction and detail; validation, export, and briefs for engineering and agents; registry and branches for safe parallel work. Maintainers working on **this** toolkit follow [AGENTS.md](AGENTS.md), [docs/toolkit-development.md](docs/toolkit-development.md), and [docs/contributor-guide.md](docs/contributor-guide.md).
 
-1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, and `AGENTS.md`.
+1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, and `AGENTS.md`. Pass a subfolder — `specy-road init project sr` — to keep the whole tree out of the coding root; the layout is recorded in `.specyrd/manifest.json` so every command and the PM GUI resolve it without a flag. See [docs/pm-workflow.md](docs/pm-workflow.md).
 2. **Author** — Edit JSON chunks under `roadmap/` (listed in `manifest.json`). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
-3. **Validate** — `specy-road validate` (use `--repo-root` if not in the project root).
+3. **Validate** — `specy-road validate` (resolves the project from the recorded layout, `SPECY_ROAD_REPO_ROOT`, or the working directory; `--repo-root` overrides).
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.
 5. **Focus a task** — `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`, then implement against `shared/` contracts cited for that node.
 6. **Branches** — Follow [docs/git-workflow.md](docs/git-workflow.md): register in `roadmap/registry.yaml` on the **integration branch** from `roadmap/git-workflow.yaml`, then `feature/rm-<codename>` (or use `specy-road do-next-available-task`).

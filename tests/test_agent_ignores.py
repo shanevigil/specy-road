@@ -90,3 +90,64 @@ def test_applying_twice_reports_unchanged(tmp_path: Path) -> None:
 
     assert first[CURSOR_INDEXING_IGNORE] == CREATED
     assert all(outcome == UNCHANGED for outcome in second.values())
+
+
+# --- nested layout ----------------------------------------------------------
+
+
+def test_nested_layout_prefixes_every_entry(tmp_path: Path) -> None:
+    """The shipped breakage: entries are project-relative, the file is not.
+
+    Both ignore files land at the git root. Under a nested layout an unprefixed
+    ``roadmap/archive/`` matches nothing there, so archived material stayed in
+    the IDE index while appearing to be excluded.
+    """
+    apply_agent_ignores(tmp_path, "sr/")
+    text = (tmp_path / CURSOR_INDEXING_IGNORE).read_text(encoding="utf-8")
+
+    assert "sr/roadmap/archive/" in text
+    assert "sr/work/brief-*.md" in text
+    assert "sr/roadmap.md" in text
+    assert "\nroadmap/archive/" not in text  # never the unprefixed form
+
+
+def test_nested_layout_prefixes_the_gitignore_block_too(tmp_path: Path) -> None:
+    apply_agent_ignores(tmp_path, "sr/")
+    text = (tmp_path / GITIGNORE).read_text(encoding="utf-8")
+
+    assert "sr/.specyrd/cache/" in text
+
+
+def test_embedded_layout_is_byte_identical_to_before(tmp_path: Path) -> None:
+    """An empty prefix must change nothing for the overwhelmingly common case."""
+    other = tmp_path / "other"
+    other.mkdir()
+    apply_agent_ignores(tmp_path)
+    apply_agent_ignores(other, "")
+
+    assert (tmp_path / CURSOR_INDEXING_IGNORE).read_text(encoding="utf-8") == (
+        other / CURSOR_INDEXING_IGNORE
+    ).read_text(encoding="utf-8")
+
+
+def test_a_prefixed_block_actually_matches_in_git(tmp_path: Path) -> None:
+    """End-to-end: git must agree the nested archive path is ignored."""
+    subprocess.run(
+        ["git", "-C", str(tmp_path), "init", "-q", "-b", "main"],
+        check=True,
+        capture_output=True,
+    )
+    (tmp_path / "sr" / "roadmap" / "archive").mkdir(parents=True)
+    apply_agent_ignores(tmp_path, "sr/")
+    # .cursorindexingignore is not a git file, so assert through the gitignore
+    # block, which uses the same prefixing path.
+    (tmp_path / "sr" / ".specyrd" / "cache").mkdir(parents=True)
+    (tmp_path / "sr" / ".specyrd" / "cache" / "x.json").write_text("{}")
+
+    proc = subprocess.run(
+        ["git", "-C", str(tmp_path), "check-ignore", "sr/.specyrd/cache/x.json"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, "nested cache path should be gitignored"

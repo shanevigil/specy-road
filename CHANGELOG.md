@@ -252,6 +252,36 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- **One project-root resolver, and both layouts work without a flag.** The CLI
+  and the PM GUI resolved the project by different rules, and the CLI's was the
+  weaker one: `default_user_repo_root` was git-toplevel-or-cwd and never read
+  `SPECY_ROAD_REPO_ROOT` at all, although `docs/pm-workflow.md` told people to
+  set it. It had no discovery either, so a project living in a subfolder needed
+  an explicit `--repo-root` on every single invocation.
+  - `runtime_paths.project_root()` is now the single resolver, and both
+    surfaces call it. Order: explicit `--repo-root`, then
+    `SPECY_ROAD_REPO_ROOT`, then the `project_root` recorded in
+    `.specyrd/manifest.json`, then discovery upward from the working directory,
+    then the git root, then the working directory.
+  - **The layout is recorded, not guessed.** `init project` writes
+    `project_root` to the already-tracked `.specyrd/manifest.json`, because a
+    repository can contain two roadmaps and a scan would eventually pick the
+    wrong one silently. A recorded root that escapes its checkout is ignored.
+  - **The git root and the project root are now named apart.** The git root owns
+    `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`; the project
+    root owns `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and
+    `constraints/`. `runtime_paths.project_prefix` bridges them.
+  - **Fixed: the ignore blocks broke in a nested layout.** `agent_ignores` wrote
+    root-relative entries such as `roadmap/archive/` into files that land at the
+    git root, so under a nested project none of them matched and archived
+    material silently stayed in the IDE index. Entries are now prefixed.
+  - **Fixed: `file-limits` would have enforced nothing in a nested layout.**
+    `constraints/file-limits.yaml` is read from the project root, but its
+    `applies_to_globs` name the consumer's own source and now resolve against
+    the git root. Pointing `--repo-root` at an arbitrary subdirectory still
+    scans only that subtree.
+  - A parametrized suite runs the real commands in both layouts, from three
+    working directories, with no `--repo-root` at all.
 - **A brief now inlines only the contracts its node cites.** `specy-road brief`
   globbed all of `shared/` into every brief regardless of the task, so a brief's
   size tracked the repository rather than the work: measured on a repo with
