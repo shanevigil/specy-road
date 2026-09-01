@@ -40,10 +40,15 @@ _USAGE_TEXT = (
     "Archiving (long-running roadmaps):\n"
     "  archive <NODE_ID>    — move a Complete subtree out of the live graph into roadmap/archive/\n"
     "    (optional: --deep --dry-run --force | --auto [--older-than-days N])\n"
-    "  deepen-archive <ARCHIVE_ID> — bundle a shallow archive into a tarball + reference file\n"
+    "  deepen-archive <ARCHIVE_ID> — fold a shallow archive into one capsule file + reference\n"
     "  list-archives        — list archive records (optional: --json)\n"
     "  show-archive <ARCHIVE_ID> — one record in detail, including git provenance\n"
     "  restore-archive <ARCHIVE_ID> — bring an archived subtree back (optional: --dry-run)\n"
+    "\n"
+    "History (derived from git, cached under .specyrd/cache/):\n"
+    "  history [NODE_ID]    — how a node got here: status changes, dependency edges,\n"
+    "    renumbering, archived work. Omit NODE_ID for a roadmap-wide feed.\n"
+    "    (optional: --since DATE --archived --limit N --json --rebuild --repo-root DIR)\n"
 
     "  list-dependencies <NODE_ID>\n"
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
@@ -333,6 +338,8 @@ def main(argv: list[str] | None = None) -> None:
         "restore-archive",
     ):
         _run("archive_cli.py", [cmd, *rest])
+    elif cmd == "history":
+        _run("history_cli.py", [cmd, *rest])
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)
     elif cmd == "refresh-schemas":

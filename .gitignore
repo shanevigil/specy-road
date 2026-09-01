@@ -41,3 +41,7 @@ CLAUDE.*.local.md
 agent-transcripts/
 sample-apps/
 /playground-dev/
+
+# Derived roadmap-history index (see docs/roadmap-history.md). Rebuilt from git
+# on demand, so it is never committed; .specyrd/manifest.json stays tracked.
+.specyrd/cache/

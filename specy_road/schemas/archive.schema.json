@@ -85,7 +85,7 @@
             "path": { "type": "string", "minLength": 1 },
             "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
           },
-          "description": "Deep archive bundle. Verified before any restore unpacks it."
+          "description": "Deep archive capsule: one canonical JSON file holding the archived nodes and planning-sheet bodies. Deliberately uncompressed \u2014 git already compresses and deltas blobs, and text keeps archived work greppable and diffable. Canonical formatting makes the sha256 reproducible; it is verified before any restore unfolds it."
         },
         "git": { "$ref": "#/$defs/git_provenance" }
       }

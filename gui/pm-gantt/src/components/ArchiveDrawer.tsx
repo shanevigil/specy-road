@@ -155,7 +155,7 @@ export function ArchiveDrawer({ open, onClose, onChanged }: Props) {
                 onChange={(e) => setDeep(e.target.checked)}
                 disabled={busy}
               />
-              Deep archive (bundle into a tarball)
+              Deep archive (fold into one capsule file)
             </label>
             <button
               type="button"
@@ -208,7 +208,7 @@ export function ArchiveDrawer({ open, onClose, onChanged }: Props) {
                     <button
                       type="button"
                       disabled={busy}
-                      title="Bundle into a tarball; only a reference file stays browsable"
+                      title="Fold into one capsule file; only the reference stays browsable"
                       onClick={() =>
                         void run(`Deep-archived ${rec.archive_id}.`, () =>
                           deepenArchive(rec.archive_id),

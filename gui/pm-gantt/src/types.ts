@@ -141,7 +141,7 @@ export type RoadmapResponse = {
 /** One archived subtree, as recorded in `roadmap/archive/index.json`. */
 export type ArchiveRecord = {
   archive_id: string;
-  /** `shallow`: nodes still on disk as JSON. `deep`: bundled into a tarball. */
+  /** `shallow`: nodes browsable as JSON. `deep`: folded into one capsule. */
   depth: "shallow" | "deep";
   root_node_id: string;
   root_node_key: string;

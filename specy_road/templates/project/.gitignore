@@ -11,3 +11,7 @@ work/.on-complete-*.yaml
 work/prompt-*.md
 work/pr-body-*.md
 work/.milestone-session.yaml
+
+# Derived roadmap-history index (see docs/roadmap-history.md). Rebuilt from git
+# on demand, so it is never committed; .specyrd/manifest.json stays tracked.
+.specyrd/cache/

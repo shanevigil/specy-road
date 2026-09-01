@@ -253,7 +253,11 @@ def _section_rollup_semantics() -> list[str]:
 
 
 def render_brief(
-    node_id: str, by_id: dict[str, dict], *, repo_root: Path | None = None
+    node_id: str,
+    by_id: dict[str, dict],
+    *,
+    repo_root: Path | None = None,
+    include_history: bool = True,
 ) -> str:
     root = repo_root or default_user_repo_root()
     n = by_id[node_id]
@@ -270,6 +274,10 @@ def render_brief(
         _section_touch_zone_instruction(n),
         _section_rollup_semantics(),
     ]
+    if include_history:
+        from brief_history_context import render_history_section
+
+        parts.append(render_history_section(n, by_id, root))
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
 
 
@@ -289,6 +297,11 @@ def main() -> None:
         metavar="DIR",
         help="Repository root (default: git root or cwd)",
     )
+    p.add_argument(
+        "--no-history",
+        action="store_true",
+        help="Omit the git-derived history section (## 9).",
+    )
     args = p.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
 
@@ -297,7 +310,9 @@ def main() -> None:
     if args.node_id not in by_id:
         raise SystemExit(f"unknown node id: {args.node_id}")
 
-    text = render_brief(args.node_id, by_id, repo_root=root)
+    text = render_brief(
+        args.node_id, by_id, repo_root=root, include_history=not args.no_history
+    )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")

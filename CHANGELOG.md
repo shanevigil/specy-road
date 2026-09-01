@@ -13,6 +13,35 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- **Roadmap history, derived from git.** `specy-road history [NODE_ID]` answers
+  how the roadmap got to its current shape: status transitions, dependency edges
+  added and later dropped, renumbering, planning-sheet revisions, and archived
+  work. Without it an agent re-derives decisions that were already made and
+  unmade, and archived subtrees look like work that was never done.
+  - **Events are keyed by `node_key`, not `id`.** An `id` is a position in the
+    outline and renumbers freely, so an id-keyed history would lose a node's past
+    every time a milestone was inserted above it. Renumbering is recorded as an
+    ordinary event and the node's story stays continuous across it.
+  - An id that several nodes have held, and none holds now, **exits 2 and lists
+    the candidates** rather than guessing which node's past to show.
+  - **Nothing is committed.** The index is cached at
+    `.specyrd/cache/roadmap-history.json` (gitignored; `.specyrd/manifest.json`
+    stays tracked) and rebuilt whenever git disagrees with it — a moved `HEAD`
+    appends only the new commits, a rewritten history rebuilds, and an
+    unrecognised `cache_version` rebuilds, so there is no migration to write.
+  - Cost is one `git log --raw` pass plus one long-lived `git cat-file --batch`
+    process for the whole history, with parsed chunks memoised by blob SHA.
+    Planning-sheet events are free: the flat-`planning/` naming rule puts the
+    `node_key` in the filename.
+  - The walk follows `--first-parent`, so each step is a state the integration
+    branch actually passed through and a merged branch arrives as one step.
+    Walking `--no-merges` instead interleaves parallel branches and manufactures
+    flip-flop events.
+  - `specy-road brief` gains a `## 9. History` section from the same index,
+    including archived work on the node's branch of the outline. Suppress it
+    with `--no-history`.
+  - Docs: [`docs/roadmap-history.md`](docs/roadmap-history.md).
+
 - **Archive completed roadmap subtrees.** Long-running roadmaps accumulate
   finished milestones that keep loading, validating, exporting and rendering
   forever, eventually pushing chunks toward `roadmap_json_chunk_max_lines`.
@@ -54,18 +83,25 @@ body. Keep section bodies focused; link to PRs for detail.
   - Docs: [`docs/archiving.md`](docs/archiving.md).
 
 - **Deep archive tier.** `specy-road archive <NODE_ID> --deep` (or
-  `deepen-archive <ARCHIVE_ID>` afterwards) packs an archived chunk and its
-  planning sheets into `roadmap/archive/deep/<archive_id>.tar.gz`, removes the
-  loose files, and leaves a standalone
-  `roadmap/archive/refs/<archive_id>.json` naming the nodes and the git refs
-  they were delivered on. Deep archives are not browsable in the PM GUI; their
-  reference file is.
+  `deepen-archive <ARCHIVE_ID>` afterwards) folds an archived chunk and its
+  planning sheets into a single capsule file,
+  `roadmap/archive/deep/<archive_id>.json`, removes the loose files, and leaves
+  a standalone `roadmap/archive/refs/<archive_id>.json` naming the nodes and the
+  git refs they were delivered on. Deep archives are not browsable in the PM
+  GUI; their reference file is.
+  - **The capsule is uncompressed text, deliberately.** The tier exists to cut
+    file count, not bytes. Git already zlib-compresses and delta-compresses
+    blobs, so a compressed archive would be opaque to that — stored in full on
+    every change, with `diff`, `blame`, `log -p` and `git grep` all lost on
+    content someone would later want to read. Canonical JSON formatting also
+    makes the capsule byte-reproducible, which a gzipped tarball could not be
+    (gzip headers carry a timestamp; tar headers carry per-file mtime/uid/gid).
   - The index record keeps its `node_keys` and `nodes_summary` through
     deepening, so a deep archive stays listable and keeps satisfying live
-    dependencies without unpacking anything.
+    dependencies without opening the capsule.
   - `restore-archive` handles both tiers in one command — on a deep archive it
-    unpacks and then restores.
-  - **The bundle `sha256` is verified before anything unpacks.** A mismatch is
+    unfolds and then restores.
+  - **The capsule `sha256` is verified before anything unfolds.** A mismatch is
     refused outright rather than partially restored; the archive stays deep and
     the live roadmap is untouched.
 

@@ -246,6 +246,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
 | `specy-road archive M0.1`                          | Move a **Complete** subtree out of the live roadmap into `roadmap/archive/`, reversibly. See [Archiving](archiving.md).                     |
+| `specy-road history M0.1`                          | How a node got here: status changes, dependency edges, renumbering, archived work. Derived from git. See [Roadmap history](roadmap-history.md). |
 | `specy-road list-archives`                         | What is archived. `show-archive <ID>` for detail, `restore-archive <ID>` to bring it back.                                                  |
 | `specy-road archive-node M0.1.1 --hard-remove`    | **Destructive**, and unrelated to `archive` above: removes the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema). |
 | `specy-road list-dependencies M0.1.1`            | Print this node’s **explicit** `dependencies` as **node_key** values (with id/title); same field the PM GUI edits.                         |
