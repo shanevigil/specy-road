@@ -13,6 +13,67 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- **Agent context: `specy-road digest` and `specy-road search`.** A long-running
+  project generates far more documentation than its roadmap describes, and most
+  of the volume is duplicated — on a real 48-node repo, `work/` is 58% of the
+  bytes and roughly 70% of it is a copy, because a brief inlines its ancestor
+  planning sheets and every `shared/*.md` verbatim and a pr-body re-inlines the
+  whole brief. An IDE index built over that returns the same passage from a dozen
+  near-identical files, while archived work — the material most likely to be
+  settled — has left the live graph entirely.
+  - **`specy-road digest`** writes `roadmap-context.md`: one generated,
+    git-tracked file with the live outline and rolled-up status, decisions taken,
+    open gates, dependencies that were removed, what is archived, and what is
+    claimed. About 6 KB for a 48-node roadmap, against the ~800 KB it stands in
+    for. `--check` is a CI drift gate, like `export --check`.
+  - **`specy-road search`** is ranked, deduplicated search over planning sheets,
+    shared contracts, governance docs, roadmap-node prose, implementation
+    summaries and archived work. Output is a pointer plus a snippet, never file
+    contents, so an agent pulls the rest only if it needs it.
+  - **No embeddings, deliberately.** The backend is SQLite FTS5 with BM25 from
+    the standard library — no new dependency — with an in-memory fallback for
+    builds without FTS5. Vector search brings staleness, privacy and reliability
+    problems to a corpus that changes on every commit, and the identifiers people
+    search for here (`M1.2`, a codename, a `node_key`) are exactly what lexical
+    matching does best.
+  - **Context is derived, not generated.** Contextual Retrieval pays an LLM to
+    write a per-chunk summary because generic prose has no structure to read.
+    Every sheet here already maps to a node, so the context line — id, title,
+    type, status, codename, ancestor chain, archive state — is derived: free,
+    exact, and unable to drift. It is indexed as its own weighted column, which
+    is why "payments backoff" finds a section whose body never says "payments".
+  - Ranking fuses BM25 with structural identifier matches via Reciprocal Rank
+    Fusion, so `specy-road search M1.2` needs no special code path. Archived hits
+    are demoted rather than hidden — often they are the *final* decision.
+  - The index at `.specyrd/cache/search-index.sqlite3` is gitignored and
+    disposable, rebuilt incrementally from `(mtime, size)` per file and tracking
+    the **working tree** rather than `HEAD`, so uncommitted edits are searchable.
+    296 chunks, 0.3s cold build, ~9ms per query on the repo above.
+  - How much the ignore block removes depends on the repo's `.gitignore`, since
+    an index already skips what git ignores. With the shipped scaffold, which
+    tracks briefs on purpose, excluding them takes the indexed corpus from
+    ~351 KB to ~205 KB (42%) on a 48-node project; a repo that already ignores
+    briefs sees little until it starts archiving.
+  - **`specyrd init` now maintains a marked block** in `.cursorindexingignore`
+    (`roadmap/archive/`, `work/brief-*.md`, `roadmap.md`) and in `.gitignore`
+    (`.specyrd/cache/`). Content outside the markers is never touched and
+    re-running is a no-op. `.cursorindexingignore` — not `.cursorignore` — because
+    it removes files from Cursor's index while leaving them readable when
+    referenced; blocking reads would break every path search returns. Claude Code
+    gets no read-denials: it builds no index, and deny rules would break the same
+    pointers.
+  - **Fixes an upgrade gap:** `init project` skips a `.gitignore` that already
+    exists, so a repo scaffolded before these caches existed would have shown
+    `.specyrd/cache/` as untracked forever. The managed block repairs that.
+  - New stubs `specyrd-search`, `specyrd-digest` and the previously missing
+    `specyrd-history`, installed for both `pm` and `dev` roles. A test now
+    cross-checks the command templates against the install registry, which
+    nothing did before — a template with no entry shipped in the wheel and never
+    installed.
+  - The `##`-section parser is lifted out of `brief_dependency_context` into
+    `specy_road.text_sections`, shared with the index; brief output is unchanged.
+  - Docs: [`docs/agent-search.md`](docs/agent-search.md).
+
 - **Roadmap history, derived from git.** `specy-road history [NODE_ID]` answers
   how the roadmap got to its current shape: status transitions, dependency edges
   added and later dropped, renumbering, planning-sheet revisions, and archived

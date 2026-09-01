@@ -13,6 +13,8 @@ For any roadmap-linked task, keep context small:
 - **Roadmap graph** (`roadmap/manifest.json` manifest + chunk files from `includes`): your node + parents + `dependencies`
 - `shared/README.md`, then open **only** cited contract files
 
+Before any of that, read `roadmap-context.md` — the generated current-state summary (`specy-road digest`). It is far smaller than the corpus it summarises and is always current. Archived roadmap material is excluded from IDE indexing on purpose; reach it with `specy-road search --scope archived`.
+
 ## Roadmap model (do not confuse with registry)
 
 - **Merged graph (source of truth):** `roadmap/manifest.json` lists ordered `includes` of **JSON** chunk files under `roadmap/` (e.g. `phases/M1.json`). That is the roadmap data model — not YAML.
@@ -28,7 +30,7 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 
 - **Docs win**: if instructions conflict, prefer tracked repo docs (not chat history).
 - **No scope creep**: don’t refactor or reorganize unrelated code “for cleanliness”.
-- **Search before adding**: prefer reusing existing scripts/validators over creating new ones.
+- **Search before adding**: prefer reusing existing scripts/validators over creating new ones. Use `specy-road search "<query>"` — it covers planning sheets, shared contracts, roadmap nodes, implementation summaries and archived work, ranked and deduplicated. Grepping `planning/` or `work/` directly returns the same passage many times, because briefs and pr-bodies re-inline their sources.
 - **Roadmap-linked implementation**: follow `docs/git-workflow.md` and the registry protocol in `roadmap/registry.yaml` (register on the integration branch, then `feature/rm-*`).
 
 ## Common commands (repo root)

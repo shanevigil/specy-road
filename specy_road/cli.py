@@ -49,6 +49,17 @@ _USAGE_TEXT = (
     "  history [NODE_ID]    — how a node got here: status changes, dependency edges,\n"
     "    renumbering, archived work. Omit NODE_ID for a roadmap-wide feed.\n"
     "    (optional: --since DATE --archived --limit N --json --rebuild --repo-root DIR)\n"
+    "\n"
+    "Agent context (keeps IDE indexing small):\n"
+    "  search <QUERY>       — ranked search over planning sheets, shared contracts,\n"
+    "    roadmap nodes, implementation summaries and archived work\n"
+    "    (optional: --scope live|archived|all --kind K --node ID --limit N --json\n"
+    "     --stats --rebuild --repo-root DIR)\n"
+    "  digest               — write roadmap-context.md: the current state in one file,\n"
+    "    for an agent to read instead of crawling planning/ and work/\n"
+    "    (optional: -o FILE | -o - for stdout | --check --repo-root DIR)\n"
+    "\n"
+    "Roadmap editing:\n"
 
     "  list-dependencies <NODE_ID>\n"
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
@@ -93,6 +104,15 @@ _USAGE_TEXT = (
     "  reconcile-milestone-status — dry-run milestone delivery vs git; --apply to close/sync (see -h)\n"
     "  open-milestone-pr       — print gh/glab one-line PR from rollup branch to integration\n"
 )
+
+
+# Commands whose bundled script owns its own argparse. The command name is
+# forwarded so `specy-road <cmd> -h` prints that subcommand's help.
+_FORWARDED = {
+    "history": "history_cli.py",
+    "digest": "digest_cli.py",
+    "search": "search_cli.py",
+}
 
 
 def _run_init_cli(rest: list[str]) -> None:
@@ -338,8 +358,8 @@ def main(argv: list[str] | None = None) -> None:
         "restore-archive",
     ):
         _run("archive_cli.py", [cmd, *rest])
-    elif cmd == "history":
-        _run("history_cli.py", [cmd, *rest])
+    elif cmd in _FORWARDED:
+        _run(_FORWARDED[cmd], [cmd, *rest])
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)
     elif cmd == "refresh-schemas":

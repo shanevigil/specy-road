@@ -52,6 +52,9 @@ COMMAND_FILES = (
     "specyrd-show-node.md",
     "specyrd-add-node.md",
     "specyrd-review-node.md",
+    "specyrd-search.md",
+    "specyrd-digest.md",
+    "specyrd-history.md",
 )
 
 # Stubs installed per role; omit to install all.
@@ -66,6 +69,9 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-show-node.md",
         "specyrd-add-node.md",
         "specyrd-review-node.md",
+        "specyrd-search.md",
+        "specyrd-digest.md",
+        "specyrd-history.md",
     ),
     "dev": (
         "specyrd-validate.md",
@@ -76,6 +82,9 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-do-next-task.md",
         "specyrd-grind-session.md",
         "specyrd-abort-task-pickup.md",
+        "specyrd-search.md",
+        "specyrd-digest.md",
+        "specyrd-history.md",
     ),
 }
 
@@ -306,6 +315,20 @@ def _maybe_write_readme_claude_and_gui_stub(
             written.append(gui_display)
 
 
+def _apply_ignores(repo_root: Path, written: list[str]) -> None:
+    """Keep the duplicated corpus out of IDE indexing, and the caches out of git.
+
+    Both files belong to the consumer; only a marked block inside each is ours,
+    so this is safe to re-run and safe on a repo that already has its own rules.
+    """
+    from specy_road.agent_ignores import apply_agent_ignores
+    from specy_road.managed_block import UNCHANGED
+
+    for name, outcome in sorted(apply_agent_ignores(repo_root).items()):
+        if outcome != UNCHANGED:
+            written.append(f"{name} ({outcome})")
+
+
 def run_init(
     *,
     target: Path,
@@ -357,6 +380,9 @@ def run_init(
         written=written,
         skipped=skipped,
     )
+
+    if not dry_run:
+        _apply_ignores(repo_root, written)
 
     readme_rel = Path(".specyrd/README.md")
     if not dry_run:

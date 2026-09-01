@@ -246,5 +246,6 @@ than assuming the area was never built.
 ## See also
 
 - [`roadmap-history.md`](roadmap-history.md) — how the roadmap got here, derived from git
+- [`agent-search.md`](agent-search.md) — searching archived work that is hidden from IDE indexing
 - [`pm-workflow.md`](pm-workflow.md) — the PM-side roadmap commands
 - [`roadmap-authoring.md`](roadmap-authoring.md) — chunks, the manifest, node fields

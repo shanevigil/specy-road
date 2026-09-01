@@ -168,6 +168,8 @@ planning sheet, and so on.
 
 ## See also
 
+- [`agent-search.md`](agent-search.md) — searching the corpus, and the digest that
+  keeps an IDE index small
 - [`archiving.md`](archiving.md) — where archived work goes, and why history is
   the only place it stays visible
 - [`roadmap-authoring.md`](roadmap-authoring.md) — `node_key` vs `id`, chunks,
