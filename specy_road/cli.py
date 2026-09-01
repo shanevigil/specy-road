@@ -23,6 +23,8 @@ _USAGE_TEXT = (
     "Authoring / validation:\n"
     "  validate             — validate merged roadmap graph and registry\n"
     "  brief <NODE_ID>      — generate focused brief for a node\n"
+    "    (inlines shared/ contracts cited in the chain's `## References`;\n"
+    "     --all-contracts inlines every shared/**/*.md instead)\n"
     "  export               — regenerate roadmap.md index from merged graph\n"
     "  file-limits          — check line-count constraints\n"
     "\n"

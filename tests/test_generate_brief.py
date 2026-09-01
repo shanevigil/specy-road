@@ -45,14 +45,66 @@ def test_render_brief_inlines_planning_sheet_body() -> None:
     assert "## Intent" in text
 
 
-def test_render_brief_inlines_shared_contracts() -> None:
-    """F-004: brief inlines shared/*.md bodies in deterministic order."""
+def test_render_brief_inlines_cited_shared_contracts() -> None:
+    """A contract named in the chain's ``## References`` is inlined bodily."""
     nodes = gb.load_nodes(DOGFOOD)
     by_id = gb.index(nodes)
     text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
-    assert "## 4. Shared contracts (inlined, deterministic order)" in text
-    # The dogfood ships a shared/api-contract.md.
-    assert "shared/api-contract.md" in text
+    assert "## 4. Shared contracts (cited)" in text
+    # M0.3's sheet cites shared/api-contract.md; its body must be present.
+    assert "### `shared/api-contract.md`" in text
+    assert "Error codes (enum)" in text  # a heading from inside that contract
+
+
+def test_render_brief_lists_uncited_contracts_without_inlining_them() -> None:
+    """The fix for the 436 KB brief: uncited contracts cost a path, not a body.
+
+    M0.2 is about CI and cites no contract, so the api-contract body must not
+    appear — but its path must, or the brief would silently hide it.
+    """
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD)
+    assert "### `shared/api-contract.md`" not in text
+    assert "Error codes (enum)" not in text
+    assert "`shared/api-contract.md`" in text
+    assert "**Not inlined**" in text
+    assert "--kind shared" in text
+
+
+def test_render_brief_always_inlines_the_shared_readme() -> None:
+    """AGENTS.md's load order: the index, then cited contracts only."""
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD)
+    assert "### `shared/README.md`" in text
+
+
+def test_render_brief_all_contracts_restores_inlining_everything() -> None:
+    """The escape hatch has to be a real restoration, not an approximation."""
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    scoped = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD)
+    every = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD, all_contracts=True)
+    assert "### `shared/api-contract.md`" in every
+    assert "**Not inlined**" not in every
+    assert len(every) > len(scoped)
+
+
+def test_render_brief_finds_contracts_in_shared_subdirectories(tmp_path) -> None:
+    """The opposite bug: a flat glob never saw shared/<dir>/*.md at all."""
+    import shutil
+
+    dest = tmp_path / "repo"
+    shutil.copytree(DOGFOOD, dest)
+    nested = dest / "shared" / "contracts" / "auth-model.md"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("# Auth model\n", encoding="utf-8")
+
+    by_id = gb.index(gb.load_nodes(dest))
+    text = gb.render_brief("M0.2", by_id, repo_root=dest)
+
+    assert "`shared/contracts/auth-model.md`" in text
 
 
 def test_render_brief_includes_touch_zone_instruction() -> None:

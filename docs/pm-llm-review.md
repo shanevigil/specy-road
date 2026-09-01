@@ -59,7 +59,7 @@ The server sends a fixed block of text that tells the model, in short:
 
 The user message is built on the server from your **resolved repository root** (the path shown as **Open repository** in Settings). It includes, in order:
 
-1. **`## Brief`** — The same **work-packet brief** the CLI would generate for that node (`specy-road brief`): metadata, ancestor chain, **inlined planning sheets** along the ancestor path and for this node, **full text of every top-level `shared/*.md` file**, dependencies, **`## 6. Dependency context (intent of upstream work)`** with each effective dependency's `## Intent` block inlined verbatim, touch-zone guidance, and a short rollup reference. This block can be **large** on big programs.
+1. **`## Brief`** — The same **work-packet brief** the CLI would generate for that node (`specy-road brief`): metadata, ancestor chain, **inlined planning sheets** along the ancestor path and for this node, the **full text of each `shared/` contract the chain cites in its `## References`** (plus `shared/README.md`; everything else under `shared/` is listed as a path), dependencies, **`## 6. Dependency context (intent of upstream work)`** with each effective dependency's `## Intent` block inlined verbatim, touch-zone guidance, and a short rollup reference. This block can be **large** on big programs.
 2. **`## shared/ index (possible references)`** — A **sorted** list of files under **`shared/`** (including subfolders), each with a **short, deterministic one-line description** derived from a small prefix of the file (so the model knows what else exists without rereading the whole tree). Very large trees are **capped** (file count and total characters) with a short footer so the request stays bounded.
 3. **`## constraints/README.md`** — The full **`constraints/README.md`** file if it exists, or a placeholder if it does not.
 4. **`## Cited documents (from contract_citation)`** — Parsed from the node’s **`agentic_checklist.contract_citation`** field in the roadmap JSON. Only repo-relative paths starting with **`shared/`**, **`docs/`**, **`specs/`**, or **`adr/`** are included; each file is inlined up to a **per-file size cap** (very long files are truncated with a marker).
@@ -116,7 +116,7 @@ Until you **save** (or autosave) through your normal workflow, other collaborato
 
 ## Privacy and “what leaves my laptop”
 
-Everything described above is sent from the **machine running the PM GUI server** to the **API endpoint** you configured (OpenAI, Azure, Anthropic, or compatible). That includes the **brief** (which inlines planning content and top-level `shared/*.md` bodies), **constraints**, **cited paths**, the **`shared/` file index**, and your **current sheet text**.
+Everything described above is sent from the **machine running the PM GUI server** to the **API endpoint** you configured (OpenAI, Azure, Anthropic, or compatible). That includes the **brief** (which inlines planning content and the bodies of the `shared/` contracts the chain cites), **constraints**, **cited paths**, the **`shared/` file index**, and your **current sheet text**.
 
 If any of that material is sensitive, **do not use LLM Review** until your team’s policy allows it, or use a **private deployment** / gateway your organization approves.
 

@@ -13,4 +13,6 @@ Constraints, major steps, and how you will verify done.
 ## References
 
 - Roadmap chunk for `{{NODE_ID}}`
-- `shared/` contracts (read selectively)
+- Cite each contract this node conforms to by filename, e.g. `shared/api-contract.md`.
+  `specy-road brief` inlines exactly what is listed here and links the rest, so a
+  bare `shared/` cites nothing. Find one with `specy-road search "<query>" --kind shared`.

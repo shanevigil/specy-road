@@ -42,7 +42,7 @@ Create or **replace placeholder content** at these paths (match the structure fr
 | `constitution/principles.md` | How the team decides (values, roadmap-first, contracts over tribal knowledge, etc.). |
 | `constraints/README.md` | Table of **enforced** rules: what is checked, **where** it lives, **which command** validates it (e.g. `specy-road validate`, `specy-road file-limits`). |
 | `constraints/file-limits.yaml` | Tune `applies_to_globs` to this repo’s real paths (examples: `src/`, `packages/`, `app/`). `max_lines_per_file` applies to every matched path. `max_lines_per_function` and `hard_alerts.max_lines_per_function` are enforced for **Python (`.py`)** only by `specy-road file-limits`; optional `exclude_path_globs` (merged with `exclude_globs`), `override_limits`, and `hard_alerts` shape rollout policy. Git-ignored files and the toolkit's own `work/` session artifacts are skipped before your globs apply, so do not re-declare them. Roadmap caps: `roadmap_manifest_max_lines`, `roadmap_json_chunk_max_lines` (also read by `specy-road validate`). |
-| `shared/README.md` | Explain that contracts live here; roadmap nodes should **cite** paths under `shared/` in `agentic_checklist.contract_citation` when applicable—not duplicate specs in chat. |
+| `shared/README.md` | Explain that contracts live here, and keep it a real index — `specy-road brief` always inlines this file, then only the contracts a node cites by filename in its planning sheet's `## References`. Everything else under `shared/` is listed as a path, so nodes should **cite** rather than duplicate specs in chat. |
 
 ### If the scaffold is missing entirely
 

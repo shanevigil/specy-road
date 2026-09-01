@@ -89,12 +89,22 @@ def test_review_node_mock_llm(tiny_repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert msg.index("## shared/ index (possible references)") < msg.index(
         "## constraints/README.md",
     )
-    assert "`shared/README.md`" in msg
-    assert "`shared/asset.bin`" in msg
-    assert "`shared/nested/note.md`" in msg
     assert "Deep title" in msg
-    assert msg.index("`shared/README.md`") < msg.index("`shared/asset.bin`")
-    assert msg.index("`shared/asset.bin`") < msg.index("`shared/nested/note.md`")
+    # Sort order is a property of the catalog block, so measure inside it: the
+    # brief above now lists un-inlined shared/*.md paths of its own, and a
+    # whole-message index() would compare positions across the two blocks.
+    catalog = msg[
+        msg.index("## shared/ index (possible references)") : msg.index(
+            "## constraints/README.md",
+        )
+    ]
+    assert "`shared/README.md`" in catalog
+    assert "`shared/asset.bin`" in catalog
+    assert "`shared/nested/note.md`" in catalog
+    assert catalog.index("`shared/README.md`") < catalog.index("`shared/asset.bin`")
+    assert catalog.index("`shared/asset.bin`") < catalog.index(
+        "`shared/nested/note.md`",
+    )
     assert "constraints/README.md" in msg
     assert "shared/README.md" in msg
     assert "Current planning sheet" in msg
