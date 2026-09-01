@@ -12,9 +12,16 @@ describes, and most of the volume is duplicated. On a real 48-node repo:
 | `docs/` | 11 | 163 KB |
 
 Those are on-disk bytes. `work/` is 58% of them and roughly 70% of that is a
-copy: a **brief** inlines its ancestor planning sheets *and every* `shared/*.md`
-verbatim, and a **pr-body** then re-inlines the whole brief. The same contract
-paragraph can appear N+1 times across a repo.
+copy: a **brief** inlines its ancestor planning sheets verbatim, and a
+**pr-body** then re-inlines the whole brief. The same paragraph can appear N+1
+times across a repo.
+
+Briefs used to inline *every* `shared/*.md` on top of that, which made a
+brief's size track the repository rather than the task — 436 KB for one leaf
+node on a repo with 444 KB of contracts. Since 0.2.1 a brief inlines only the
+contracts its planning chain cites in `## References`, plus `shared/README.md`
+as the index, and lists the rest as paths. This index is what makes that safe:
+nothing became unreachable, only un-inlined.
 
 That duplication is why the search index skips briefs and pr-bodies outright —
 see [What is indexed](#what-is-indexed-and-what-is-not) — regardless of what any

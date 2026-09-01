@@ -8,7 +8,11 @@ inlines all the context an implementer needs (no separate file-opening):
 * ancestor context chain (program -> phase -> milestone -> task)
 * every ancestor planning sheet body, in chain order
 * this node's planning sheet body
-* every cited shared contract under shared/ (full body, deterministic order)
+* the shared contracts this node cites — every ``shared/…`` path named in the
+  ``## References`` section of its own planning sheet or an ancestor's, plus
+  ``shared/README.md`` as the index. Everything else under ``shared/`` is
+  listed as a path rather than inlined, so a brief's size tracks the task and
+  not the repository. ``--all-contracts`` inlines the lot.
 * dependency list (resolved from node_key UUIDs to display ids)
 * **dependency context: each effective dependency's ``## Intent`` block
   inlined verbatim** (so PMs do not have to paraphrase upstream work in
@@ -28,6 +32,7 @@ from pathlib import Path
 
 from brief_dependency_context import render_dependency_context_section
 
+from specy_road import contract_citations
 from specy_road.text_sections import read_text_safely as _read_text_safely
 from planning_artifacts import (
     ancestor_planning_paths,
@@ -113,12 +118,6 @@ def _section_ancestor_chain(chain: list[dict]) -> list[str]:
     return lines
 
 
-    try:
-        return path.read_text(encoding="utf-8"), True
-    except (OSError, UnicodeDecodeError):
-        return "", False
-
-
 def _inline_planning(
     node: dict, root: Path, by_id: dict[str, dict]
 ) -> list[str]:
@@ -159,29 +158,81 @@ def _inline_planning(
     return out
 
 
-def _inline_shared_contracts(root: Path) -> list[str]:
-    """Section 4: inline every shared/*.md body in deterministic (sorted) order."""
-    out = ["## 4. Shared contracts (inlined, deterministic order)", ""]
-    shared = root / "shared"
-    if not shared.is_dir():
-        out.append("_(no `shared/` directory in this repo)_")
-        out.append("")
-        return out
-    files = sorted(shared.glob("*.md"))
-    if not files:
-        out.append("_(no `shared/*.md` files yet)_")
-        out.append("")
-        return out
-    for f in files:
-        rel = f.relative_to(root)
-        text, ok = _read_text_safely(f)
-        out.append(f"### `{rel}`")
-        out.append("")
-        if ok:
-            out.append(text.rstrip())
-        else:
-            out.append("_(unreadable)_")
-        out.append("")
+def _chain_sheet_paths(
+    node: dict, root: Path, by_id: dict[str, dict]
+) -> list[Path]:
+    """Every planning sheet governing this node: ancestors first, then its own.
+
+    Deliberately a second, small resolution rather than a refactor of
+    ``_inline_planning``: section 3's byte-for-byte output is worth more than
+    the eight lines saved by sharing one traversal.
+    """
+    paths = [p for _rel, p in ancestor_planning_paths(node["id"], by_id, root)]
+    pd = node.get("planning_dir")
+    if isinstance(pd, str) and pd.strip():
+        try:
+            norm = normalize_planning_dir(pd.strip())
+            paths.append(planning_artifact_paths(root, norm)["sheet"])
+        except ValueError:
+            pass  # section 3 already reports the invalid planning_dir
+    return paths
+
+
+def _human_size(n: int) -> str:
+    return f"{n / 1024:.0f} KB" if n >= 1024 else f"{n} B"
+
+
+def _contract_body(root: Path, rel: str) -> list[str]:
+    text, ok = _read_text_safely(root / rel)
+    return [f"### `{rel}`", "", text.rstrip() if ok else "_(unreadable)_", ""]
+
+
+def _uncited_listing(root: Path, uncited: list[str]) -> list[str]:
+    """Name what was left out, so an omission is visible rather than silent."""
+    total = sum((root / rel).stat().st_size for rel in uncited)
+    out = [
+        f"**Not inlined** — {len(uncited)} "
+        f"contract{'s' if len(uncited) != 1 else ''}, {_human_size(total)}. "
+        "Cite one in your planning sheet's `## References` to inline it, "
+        "or reach it directly:",
+        "",
+    ]
+    out.extend(
+        f"- `{rel}` ({_human_size((root / rel).stat().st_size)})"
+        for rel in uncited
+    )
+    out.extend(["", '    specy-road search "<query>" --kind shared', ""])
+    return out
+
+
+def _inline_shared_contracts(
+    root: Path, cited: list[str], *, inline_all: bool = False
+) -> list[str]:
+    """Section 4: inline the contracts this node cites, list the rest.
+
+    ``shared/README.md`` is always inlined — it is the index that makes the
+    listed paths navigable, and it is what the documented load order asks for.
+    """
+    out = ["## 4. Shared contracts (cited)", ""]
+    if not (root / contract_citations.SHARED_DIR).is_dir():
+        return [*out, "_(no `shared/` directory in this repo)_", ""]
+    every = contract_citations.all_contracts(root)
+    if not every:
+        return [*out, "_(no `shared/**/*.md` files yet)_", ""]
+
+    if inline_all:
+        inline = every
+    else:
+        keep = set(cited)
+        if contract_citations.SHARED_README in every:
+            keep.add(contract_citations.SHARED_README)
+        inline = sorted(keep)
+
+    for rel in inline:
+        out.extend(_contract_body(root, rel))
+    uncited = [rel for rel in every if rel not in set(inline)]
+    if uncited:
+        out.extend(_uncited_listing(root, uncited))
     return out
 
 
@@ -256,17 +307,21 @@ def render_brief(
     *,
     repo_root: Path | None = None,
     include_history: bool = True,
+    all_contracts: bool = False,
 ) -> str:
     root = repo_root or default_user_repo_root()
     n = by_id[node_id]
     chain = ancestors(node_id, by_id) + [n]
+    cited = contract_citations.cited_contracts(
+        _chain_sheet_paths(n, root, by_id), root
+    )
 
     parts: list[list[str]] = [
         _section_header(node_id, n.get("title", ""), n.get("codename")),
         _section_metadata(n),
         _section_ancestor_chain(chain),
         _inline_planning(n, root, by_id),
-        _inline_shared_contracts(root),
+        _inline_shared_contracts(root, cited, inline_all=all_contracts),
         _section_dependencies(n, by_id),
         render_dependency_context_section(n, by_id, root),
         _section_touch_zone_instruction(n),
@@ -300,6 +355,14 @@ def main() -> None:
         action="store_true",
         help="Omit the git-derived history section (## 9).",
     )
+    p.add_argument(
+        "--all-contracts",
+        action="store_true",
+        help=(
+            "Inline every shared/**/*.md instead of only those cited in the "
+            "planning chain's `## References`. Restores pre-0.2.1 behaviour."
+        ),
+    )
     args = p.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
 
@@ -309,7 +372,11 @@ def main() -> None:
         raise SystemExit(f"unknown node id: {args.node_id}")
 
     text = render_brief(
-        args.node_id, by_id, repo_root=root, include_history=not args.no_history
+        args.node_id,
+        by_id,
+        repo_root=root,
+        include_history=not args.no_history,
+        all_contracts=args.all_contracts,
     )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

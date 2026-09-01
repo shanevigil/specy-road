@@ -252,6 +252,27 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- **A brief now inlines only the contracts its node cites.** `specy-road brief`
+  globbed all of `shared/` into every brief regardless of the task, so a brief's
+  size tracked the repository rather than the work: measured on a repo with
+  444 KB of contracts, one leaf task's brief came to 436 KB — roughly 109,000
+  tokens — of which the node itself contributed about 3 KB. That is the opposite
+  of what `AGENTS.md` asks for on its first line, and unlike a slow command it
+  does not degrade, it fails outright at exactly the scale specy-road exists to
+  serve.
+  - Citations are read from the `## References` section of the node's own
+    planning sheet **and every ancestor's** — a section both sheet templates
+    already ship and real repos already fill in. `shared/README.md` is always
+    inlined as the index, matching the load order `AGENTS.md` already documents.
+  - Everything else under `shared/` is listed as a path with its size and a
+    `specy-road search --kind shared` pointer. Nothing became unreachable, only
+    un-inlined. On a real 48-node repo a brief for an unrelated node went from
+    28.7 KB to 8.3 KB, while the node that genuinely cites the large contract
+    was unchanged.
+  - **`--all-contracts`** restores the previous behaviour exactly.
+  - Contract discovery is now recursive, fixing the same bug in the opposite
+    direction: the old flat `shared/*.md` glob never saw `shared/<dir>/*.md` at
+    all, so a repo that filed contracts in subfolders got none of them.
 - **Archive and restore is now net-zero.** Restoring the last archive removes
   `roadmap/archive/` instead of leaving an empty ledger behind for the user to
   explain in review.
