@@ -213,7 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument(
         "--deep",
         action="store_true",
-        help="Bundle the archive into a tarball, leaving only a reference file.",
+        help="Fold the archive into one capsule file, leaving only a reference.",
     )
     sp.add_argument("--dry-run", action="store_true", help="Show the plan; write nothing.")
     _add_repo_root(sp)

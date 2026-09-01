@@ -61,31 +61,54 @@ under `roadmap/archive/chunks/`. They are out of the live graph but still
 readable, greppable, and browsable in the PM GUI.
 
 **Deep** is for work nobody expects to open again. The chunk and its planning
-sheets are packed into a single `roadmap/archive/deep/<archive_id>.tar.gz`, the
-loose files are deleted, and what stays behind is
-`roadmap/archive/refs/<archive_id>.json` — a small, standalone reference naming
-the nodes and the git refs they were delivered on. Deep archives are **not**
-browsable in the PM GUI; only their reference is.
+sheets are folded into a single **capsule** —
+`roadmap/archive/deep/<archive_id>.json` — the loose files are deleted, and what
+stays behind is `roadmap/archive/refs/<archive_id>.json`, a small standalone
+reference naming the nodes and the git refs they were delivered on. Deep
+archives are **not** browsable in the PM GUI; only their reference is.
 
 ```text
 roadmap/archive/
   index.json
-  deep/M0.2-e7fcdb23-20260826.tar.gz    # the only copy of the nodes
+  deep/M0.2-e7fcdb23-20260826.json      # the only copy of the nodes
   refs/M0.2-e7fcdb23-20260826.json      # what it was, where it landed
 ```
 
 The index record survives deepening with its `node_keys` and `nodes_summary`
 intact, so a deep archive is still listable, still satisfies live dependencies,
-and still shows its node titles — without unpacking anything.
+and still shows its node titles — without opening the capsule.
 
 `restore-archive` handles both tiers in one command: on a deep archive it
-unpacks the bundle and then restores as usual. `deepen-archive` goes the other
+unfolds the capsule and then restores as usual. `deepen-archive` goes the other
 way for an archive already on disk.
 
-**The bundle checksum is verified before anything unpacks.** A bundle that does
-not match the `sha256` on record is refused outright rather than partially
+**The capsule checksum is verified before anything unfolds.** A capsule that
+does not match the `sha256` on record is refused outright rather than partially
 restored — putting silently-altered roadmap nodes back into the live graph
 would be worse than failing.
+
+### Why the capsule is not compressed
+
+The deep tier exists to cut **file count**, not bytes. A long-running roadmap
+accumulates one planning sheet per node; folding each archive into one file is
+what keeps `roadmap/archive/` in hand. Compressing it would be a separate
+choice, and inside a git repo it is the wrong one:
+
+- **Git already compresses.** Every blob is zlib-compressed in the object store
+  and delta-compressed against similar blobs in packfiles. A `.tar.gz` is opaque
+  to that — git cannot delta it, so each version is stored in full.
+- **You lose the tools.** `git diff`, `blame`, `log -p`, `git grep` and code
+  search all stop working on exactly the content someone — or an agent reading
+  `specy-road history` — would later want to read.
+- **The savings are not there.** At roughly 500-600 bytes of chunk JSON and
+  600 bytes of planning markdown per node, a 5,000-node roadmap is about 6 MB
+  of text. Git does not notice that.
+- **Reproducibility.** A capsule is written with canonical JSON (`indent=2`,
+  sorted keys, trailing newline), so the same content produces byte-identical
+  output and a stable `sha256`. Gzipped tarballs cannot: the gzip header carries
+  a timestamp and tar headers carry per-file mtime, uid and gid, so re-bundling
+  identical content produced a different blob and a different checksum every
+  time.
 
 ## Eligibility
 
@@ -204,7 +227,24 @@ to auto-archiving only. Every write from the drawer carries the same
 optimistic-concurrency token as any other PM GUI mutation, so a stale tab cannot
 archive against a graph it has not seen.
 
+## Archived work stays visible in history
+
+Archiving takes a subtree out of the live graph and out of `roadmap.md`, so
+nothing in the current roadmap says it ever existed. `roadmap/archive/index.json`
+records it, and [`specy-road history`](roadmap-history.md) reads that ledger
+alongside the graph:
+
+```bash
+specy-road history --archived        # everything that has left the live graph
+specy-road history M0.2              # an archived node is still addressable by id
+```
+
+Every brief's `## 9. History` section names archived work on the same branch of
+the outline, which is how an agent learns that a phase used to be bigger rather
+than assuming the area was never built.
+
 ## See also
 
+- [`roadmap-history.md`](roadmap-history.md) — how the roadmap got here, derived from git
 - [`pm-workflow.md`](pm-workflow.md) — the PM-side roadmap commands
 - [`roadmap-authoring.md`](roadmap-authoring.md) — chunks, the manifest, node fields
