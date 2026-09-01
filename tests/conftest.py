@@ -14,6 +14,18 @@ from tests.helpers import REPO
 
 
 @pytest.fixture(autouse=True)
+def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A developer's own ``SPECY_ROAD_REPO_ROOT`` must not steer the suite.
+
+    The CLI honours that variable now, and ``tests.helpers.script_subprocess_env``
+    copies ``os.environ`` wholesale into every subprocess test — so anyone who
+    exports it in their shell would silently point the whole suite at one repo.
+    Tests that want it set it themselves with ``monkeypatch.setenv``.
+    """
+    monkeypatch.delenv("SPECY_ROAD_REPO_ROOT", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def history_cache_stays_out_of_the_source_tree(monkeypatch: pytest.MonkeyPatch) -> None:
     """Never write the derived history cache inside this checkout.
 

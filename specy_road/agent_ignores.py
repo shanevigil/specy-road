@@ -2,7 +2,7 @@
 
 A long-running specy-road project accumulates far more text than its roadmap
 describes, and most of it is duplicated: a brief inlines its ancestor planning
-sheets and every ``shared/*.md`` verbatim, and a pr-body re-inlines the whole
+sheets and its cited contracts verbatim, and a pr-body re-inlines the whole
 brief. On a real 48-node repo that is ~458 KB of ``work/`` alone, roughly 70%
 of it a copy of something already indexed from its primary source. An IDE index
 built over that returns the same passage from a dozen near-identical files.
@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.managed_block import apply_managed_block
+from specy_road.managed_block import UNCHANGED, apply_managed_block
 
 CURSOR_INDEXING_IGNORE = ".cursorindexingignore"
 GITIGNORE = ".gitignore"
@@ -60,19 +60,53 @@ _GITIGNORE_NOTE = (
 )
 
 
-def apply_agent_ignores(repo_root: Path) -> dict[str, str]:
-    """Write both managed blocks. Returns ``{filename: outcome}``.
+def _prefixed(lines: list[str], prefix: str) -> list[str]:
+    """Re-base project-relative entries onto the git root.
+
+    Both ignore files live at the **git** root, but every entry above names a
+    path inside the **project** root. Those coincide only in the embedded
+    layout. Under a nested one — the project at ``sr/`` — an unprefixed
+    ``roadmap/archive/`` matches nothing, and archived material silently stays
+    in the IDE index: the bug this function exists to close.
+    """
+    if not prefix:
+        return list(lines)
+    return [prefix + line for line in lines]
+
+
+def apply_agent_ignores(
+    git_root: Path, project_prefix: str = ""
+) -> dict[str, str]:
+    """Write both managed blocks at the git root. Returns ``{filename: outcome}``.
+
+    ``project_prefix`` is the project root's path within the checkout (``"sr/"``
+    or ``""``), as returned by ``runtime_paths.project_prefix``.
 
     Both files belong to the consumer, so only the marked block is ever
     rewritten. Re-running is a no-op.
     """
     return {
         CURSOR_INDEXING_IGNORE: apply_managed_block(
-            repo_root / CURSOR_INDEXING_IGNORE,
-            INDEXING_IGNORE_LINES,
+            git_root / CURSOR_INDEXING_IGNORE,
+            _prefixed(INDEXING_IGNORE_LINES, project_prefix),
             note=_INDEXING_NOTE,
         ),
         GITIGNORE: apply_managed_block(
-            repo_root / GITIGNORE, GITIGNORE_LINES, note=_GITIGNORE_NOTE
+            git_root / GITIGNORE,
+            _prefixed(GITIGNORE_LINES, project_prefix),
+            note=_GITIGNORE_NOTE,
         ),
     }
+
+
+def apply_and_report(
+    git_root: Path, prefix: str, written: list[str]
+) -> None:
+    """:func:`apply_agent_ignores`, appending a line per file actually changed.
+
+    Lives here rather than in ``specyrd_init`` so that the reporting wording
+    stays next to the thing being reported.
+    """
+    for name, outcome in sorted(apply_agent_ignores(git_root, prefix).items()):
+        if outcome != UNCHANGED:
+            written.append(f"{name} ({outcome})")

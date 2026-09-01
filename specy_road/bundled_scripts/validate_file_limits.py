@@ -14,7 +14,7 @@ if str(_REPO_ROOT) not in sys.path:
 import yaml
 
 from specy_road.file_limits_engine import run_file_limits_scan
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import project_root, source_scan_root
 
 
 def main() -> None:
@@ -40,15 +40,18 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
-    root = (args.repo_root or default_user_repo_root()).resolve()
-    config_path = root / "constraints" / "file-limits.yaml"
+    # Two roots: the config belongs to the specy-road project, but the globs
+    # inside it name the consumer's own source, which stays at the git root
+    # when that project lives in a subfolder.
+    project = project_root(args.repo_root)
+    config_path = project / "constraints" / "file-limits.yaml"
     if not config_path.is_file():
         print(f"missing {config_path}", file=sys.stderr)
         raise SystemExit(1)
     with config_path.open(encoding="utf-8") as f:
         cfg = yaml.safe_load(f) or {}
     if run_file_limits_scan(
-        root,
+        source_scan_root(project),
         cfg,
         strict_hard_alerts=args.strict_hard_alerts,
         respect_gitignore=not args.no_respect_gitignore,

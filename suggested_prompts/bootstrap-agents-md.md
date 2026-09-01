@@ -10,7 +10,7 @@ You are helping adopt **specy-road** coding paradigms in an **existing** project
 
 ## Consumer vs toolkit
 
-- **This application repository** owns `roadmap/`, `planning/`, root **`AGENTS.md`**, **`CLAUDE.md`**, **`.cursor/`**, **`scripts`** (as used by the project), and environment such as **`SPECY_ROAD_REPO_ROOT`** (repo root discovery for CLI/GUI; see the toolkit’s `docs/pm-workflow.md` and package `README.md`).
+- **This application repository** owns `roadmap/`, `planning/`, root **`AGENTS.md`**, **`CLAUDE.md`**, **`.cursor/`**, **`scripts`** (as used by the project), and environment such as **`SPECY_ROAD_REPO_ROOT`**. Note the two roots: the **git root** holds `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`, while the **project root** holds `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and `constraints/`. They are the same directory in the default **embedded** layout and differ in the **nested** one (the tree under `sr/`), which `.specyrd/manifest.json` records so CLI and GUI resolve it identically — say which layout this repo uses. See the toolkit’s `docs/pm-workflow.md` and package `README.md`.
 - A root-level **`specy-road/`** directory is often a **local, gitignored clone** of the upstream toolkit for reference—not application source for this project.
 - **Do not** merge agent rules that encourage editing **`specy-road/**`** to fix CLI, GUI, or validation behavior. Those fixes belong in the **upstream specy-road repository** or by **upgrading the installed package** (for example `pip install --upgrade specy-road`).
 
