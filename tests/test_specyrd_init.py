@@ -294,3 +294,34 @@ def test_specyrd_cli_extras_dry_run_skips_pip(monkeypatch: pytest.MonkeyPatch, t
         check=True,
     )
     assert not called
+
+
+def test_every_command_template_is_registered_for_install() -> None:
+    """A template with no COMMAND_FILES entry ships in the wheel and never installs.
+
+    Nothing else catches that: packaging globs the whole templates directory, so
+    the file is present but no code path ever copies it.
+    """
+    from specy_road.runtime_paths import specy_road_package_dir
+    from specy_road.specyrd_init import COMMAND_FILES
+
+    directory = specy_road_package_dir() / "templates" / "specyrd" / "commands"
+    on_disk = {p.name for p in directory.glob("specyrd-*.md")}
+
+    assert on_disk == set(COMMAND_FILES)
+
+
+def test_every_role_stub_is_a_real_command_file() -> None:
+    from specy_road.specyrd_init import COMMAND_FILES, ROLE_COMMAND_FILES
+
+    for role, names in ROLE_COMMAND_FILES.items():
+        assert set(names) <= set(COMMAND_FILES), role
+
+
+def test_the_context_tools_install_for_both_roles() -> None:
+    """search/digest/history are how an agent avoids drowning in the corpus."""
+    from specy_road.specyrd_init import ROLE_COMMAND_FILES
+
+    context_tools = {"specyrd-search.md", "specyrd-digest.md", "specyrd-history.md"}
+    for role in ("pm", "dev"):
+        assert context_tools <= set(ROLE_COMMAND_FILES[role]), role

@@ -27,6 +27,8 @@ import argparse
 from pathlib import Path
 
 from brief_dependency_context import render_dependency_context_section
+
+from specy_road.text_sections import read_text_safely as _read_text_safely
 from planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
@@ -111,10 +113,6 @@ def _section_ancestor_chain(chain: list[dict]) -> list[str]:
     return lines
 
 
-def _read_text_safely(path: Path) -> tuple[str, bool]:
-    """Read a file; return (text, ok). Missing/unreadable files yield ('', False)."""
-    if not path.is_file():
-        return "", False
     try:
         return path.read_text(encoding="utf-8"), True
     except (OSError, UnicodeDecodeError):
