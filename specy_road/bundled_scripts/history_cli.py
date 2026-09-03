@@ -25,6 +25,7 @@ from specy_road.history_index import (
     resolve_node_key,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.cli_entry import run_forwarded_cli
 
 # How each event kind reads on one line. `{}` slots are filled from the event.
 _PHRASES = {
@@ -200,16 +201,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    # `specy-road history …` forwards its own name; argparse defines it here.
-    if argv and argv[0] == "history":
-        argv = argv[1:]
-    ns = build_parser().parse_args(argv)
-    try:
-        raise SystemExit(ns.func(ns))
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    run_forwarded_cli(build_parser, "history", argv)
 
 
 if __name__ == "__main__":

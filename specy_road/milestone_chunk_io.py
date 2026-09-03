@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from specy_road.milestone_subtree import leaf_ids_under_parent
 from specy_road.runtime_paths import bundled_scripts_dir
+from specy_road.archive_plan import utc_now_iso
 
 
 def ensure_bundled_scripts_on_path() -> None:
@@ -28,7 +28,7 @@ def build_active_milestone_execution(
         "rollup_branch": rollup_branch,
         "integration_branch": integration_branch,
         "remote": remote,
-        "opened_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "opened_at": utc_now_iso(),
     }
 
 
@@ -91,7 +91,7 @@ def patch_milestone_execution_state(
     if extra:
         me.update(extra)
     if state == "closed" and prev_state != "closed":
-        me["closed_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        me["closed_at"] = utc_now_iso()
     node["milestone_execution"] = me
     write_json_chunk(chunk, nodes)
     run_validate_raise(root)

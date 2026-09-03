@@ -28,6 +28,7 @@ from specy_road.search_corpus import (
     SCOPE_LIVE,
 )
 from specy_road.search_index import corpus_stats, fts5_available, search
+from specy_road.cli_entry import run_forwarded_cli
 
 _KINDS = (KIND_PLANNING, KIND_SHARED, KIND_NODE, KIND_SUMMARY, KIND_CONSTITUTION)
 
@@ -145,16 +146,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    # `specy-road search …` forwards its own name; argparse defines it here.
-    if argv and argv[0] == "search":
-        argv = argv[1:]
-    ns = build_parser().parse_args(argv)
-    try:
-        raise SystemExit(ns.func(ns))
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    run_forwarded_cli(build_parser, "search", argv)
 
 
 if __name__ == "__main__":

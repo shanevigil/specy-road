@@ -28,11 +28,11 @@ from dataclasses import asdict, dataclass, field
 from do_next_available import (
     _available,
     _claimed_node_ids,
-    _leaf_node_ids,
     _statuses_by_node_key,
 )
 from roadmap_layout import effective_dependency_keys, natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
+from specy_road.milestone_subtree import structural_leaf_ids
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ def _sorted_ids(ids) -> list[str]:
 
 
 def _scope_leaf_ids(nodes: list[dict], under: str | None) -> set[str]:
-    leaves = _leaf_node_ids(nodes)
+    leaves = structural_leaf_ids(nodes)
     if under:
         return leaves & subtree_node_ids(under, nodes)
     return leaves

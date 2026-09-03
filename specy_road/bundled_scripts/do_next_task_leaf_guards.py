@@ -5,8 +5,9 @@ from __future__ import annotations
 import sys
 from typing import Iterable
 
-from do_next_available import _leaf_diagnostics, _leaf_node_ids
+from do_next_available import _leaf_diagnostics
 from specy_road.do_next_milestone_pickup import print_integration_branch_hint
+from specy_road.milestone_subtree import structural_leaf_ids
 
 
 def _fmt_ids(ids: Iterable[str], *, cap: int = 6) -> str:
@@ -19,7 +20,7 @@ def _fmt_ids(ids: Iterable[str], *, cap: int = 6) -> str:
 
 
 def assert_leaf_target(node: dict, nodes: list[dict]) -> None:
-    if node["id"] in _leaf_node_ids(nodes):
+    if node["id"] in structural_leaf_ids(nodes):
         return
     print(
         f"error: selected node {node['id']!r} is not a leaf; "

@@ -141,6 +141,20 @@ def export_markdown(nodes: list[dict]) -> str:
     return render_index(nodes)
 
 
+def reexport_roadmap_md(root: Path) -> None:
+    """Regenerate ``roadmap.md`` from the merged graph.
+
+    The archive CLI and the PM GUI both did this inline so that a later
+    ``export --check`` would not report drift they had caused; the module that
+    owns the file -- and the --check comparison -- owns the regeneration too.
+    """
+    from roadmap_load import load_roadmap
+
+    (root / "roadmap.md").write_text(
+        export_markdown(load_roadmap(root)["nodes"]), encoding="utf-8"
+    )
+
+
 def _write_export(
     root: Path,
     index: str,

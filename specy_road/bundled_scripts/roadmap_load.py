@@ -15,6 +15,7 @@ from roadmap_chunk_utils import (
     load_manifest_mapping,
 )
 from specy_road.runtime_paths import default_user_repo_root
+from specy_road.file_limits_engine import line_count
 
 
 # Status precedence used to aggregate non-leaf rollup status. Higher rank =
@@ -132,13 +133,6 @@ def annotate_rollup_status(nodes: list[dict]) -> list[dict]:
         if isinstance(nid, str) and nid in rs:
             n["rollup_status"] = rs[nid]
     return nodes
-
-
-def line_count(path: Path) -> int:
-    text = path.read_text(encoding="utf-8", errors="replace")
-    if not text:
-        return 0
-    return text.count("\n") + (0 if text.endswith("\n") else 1)
 
 
 def _fail(msg: str) -> None:

@@ -22,6 +22,16 @@ from specy_road.archive_restore import restore_archive
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
+def _reexport_roadmap_md(root: Path) -> None:
+    """Keep ``roadmap.md`` in step so the repo does not drift into a failing CI."""
+    from specy_road.archive_plan import ensure_bundled_scripts_on_path
+
+    ensure_bundled_scripts_on_path()
+    from export_roadmap_md import reexport_roadmap_md
+
+    reexport_roadmap_md(root)
+
+
 DEFAULT_AUTO_DAYS = 90
 
 
@@ -34,19 +44,6 @@ class ArchiveCreateBody(BaseModel):
 class ArchiveAutoBody(BaseModel):
     older_than_days: int = DEFAULT_AUTO_DAYS
     dry_run: bool = False
-
-
-def _reexport(root: Path) -> None:
-    """Keep ``roadmap.md`` in step so the repo does not drift into a failing CI."""
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
-
-    ensure_bundled_scripts_on_path()
-    from export_roadmap_md import export_markdown
-    from roadmap_load import load_roadmap
-
-    (root / "roadmap.md").write_text(
-        export_markdown(load_roadmap(root)["nodes"]), encoding="utf-8"
-    )
 
 
 def _record_or_404(root: Path, archive_id: str) -> dict[str, Any]:
@@ -174,7 +171,7 @@ def _api_archive_create(
             rec = deepen_archive(root, rec["archive_id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    _reexport(root)
+    _reexport_roadmap_md(root)
     return rec
 
 
@@ -196,7 +193,7 @@ def _api_archive_auto(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
     if archived:
-        _reexport(root)
+        _reexport_roadmap_md(root)
     return {"dry_run": False, "archived": archived}
 
 
@@ -219,7 +216,7 @@ def _api_archive_restore(
         out = restore_archive(root, archive_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    _reexport(root)
+    _reexport_roadmap_md(root)
     return out
 
 

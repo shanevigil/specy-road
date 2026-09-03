@@ -18,6 +18,7 @@ from specy_road.registry_yaml import read_registry, registry_path
 from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
 from roadmap_layout import effective_dependency_keys, ordered_tree_rows
 from roadmap_load import compute_rollup_status
+from specy_road.milestone_subtree import structural_leaf_ids
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -84,7 +85,7 @@ def interactive_deps_blocked_entries(
     effective_dep_keys = effective_dependency_keys(nodes)
     ready_set = set(ready_ids)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = _leaf_node_ids(nodes)
+    leaf_ids = structural_leaf_ids(nodes)
     pairs: list[tuple[dict, list[str]]] = []
     for n in nodes:
         nid = n["id"]
@@ -128,16 +129,6 @@ def blocked_pick_notice(node: dict) -> str | None:
         "status: Blocked — offered first because a blocked leaf is the one "
         "most worth unblocking. Check why before implementing."
     )
-
-
-def _leaf_node_ids(nodes: list[dict]) -> set[str]:
-    """Structural leaves: nodes that are not parents of any other node."""
-    parent_ids = {
-        n.get("parent_id")
-        for n in nodes
-        if isinstance(n.get("parent_id"), str) and n.get("parent_id")
-    }
-    return {n["id"] for n in nodes if n.get("id") not in parent_ids}
 
 
 def _effective_deps_met(
@@ -217,7 +208,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
     effective_dep_keys = effective_dependency_keys(nodes)
     statuses_by_key = _statuses_by_node_key(nodes)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = _leaf_node_ids(nodes)
+    leaf_ids = structural_leaf_ids(nodes)
     order_index = _outline_order_index(nodes)
 
     leaf_nodes = [n for n in nodes if n.get("id") in leaf_ids]
@@ -320,7 +311,7 @@ def _available(
     statuses_by_key = _statuses_by_node_key(nodes, status_overrides)
     effective_dep_keys = effective_dependency_keys(nodes)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = _leaf_node_ids(nodes)
+    leaf_ids = structural_leaf_ids(nodes)
     enr = enrich or {}
     order_index = _outline_order_index(nodes)
 
