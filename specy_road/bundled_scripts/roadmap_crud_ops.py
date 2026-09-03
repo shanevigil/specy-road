@@ -22,6 +22,7 @@ from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from validate_roadmap import validate_at
 from specy_road.runtime_paths import default_user_repo_root
+from specy_road.node_kinds import is_gate
 
 
 def repo_root(ns: object) -> Path:
@@ -347,7 +348,7 @@ def cmd_set_gate_status(args: object) -> None:
     if target is None:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
         raise SystemExit(1)
-    if target.get("type") != "gate":
+    if not is_gate(target.get("type")):
         print(
             "error: set-gate-status only applies to type gate "
             f"(node {nid!r} is {target.get('type')!r})",

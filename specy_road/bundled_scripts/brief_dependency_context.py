@@ -37,6 +37,7 @@ from roadmap_node_keys import build_key_to_node
 
 from specy_road.text_sections import find_section, normalize_heading, read_text_safely
 from specy_road.archive_index import iter_archived_summaries
+from specy_road.node_kinds import is_gate
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +52,7 @@ def _intent_titles_for(node_type: str | None) -> tuple[str, ...]:
     sheets contribute ``## Why this gate exists``. Other titles are reserved
     for a future opt-in.
     """
-    if str(node_type or "").strip().lower() == "gate":
+    if is_gate(node_type):
         gate = gate_sheet_level2_titles()
         return (gate[0],) if gate else ("Why this gate exists",)
     feat = feature_sheet_level2_titles()

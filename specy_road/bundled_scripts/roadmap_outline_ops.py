@@ -13,6 +13,7 @@ from roadmap_node_keys import build_key_to_node
 from roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
 from sync_planning_artifacts import sync_planning_artifacts
 from specy_road.registry_yaml import registry_path
+from specy_road.node_kinds import allows_children, is_gate, parent_type_allowed
 
 
 def _chunk_includes(root: Path) -> list[str]:
@@ -91,13 +92,13 @@ def _validate_reparent_target(
         cur = by_id.get(cur, {}).get("parent_id")
     if new_parent_id is not None:
         parent = by_id.get(new_parent_id)
-        if parent and parent.get("type") == "gate":
+        if parent and not allows_children(parent):
             raise ValueError("cannot move node under a gate")
-    if moved_type == "gate":
+    if is_gate(moved_type):
         if new_parent_id is None:
             raise ValueError("gate must have a vision, phase, or milestone parent")
         np = by_id.get(new_parent_id)
-        if not np or np.get("type") not in ("vision", "phase", "milestone"):
+        if not np or not parent_type_allowed(moved_type, np.get("type")):
             raise ValueError(
                 "gate must be a direct child of vision, phase, or milestone"
             )

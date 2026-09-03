@@ -19,6 +19,7 @@ from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejec
 from roadmap_layout import effective_dependency_keys, ordered_tree_rows
 from roadmap_load import compute_rollup_status
 from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.node_kinds import is_pickable
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -149,7 +150,7 @@ def _base_agentic_candidate(
     claimed: set[str],
     effective_dep_keys: dict[str, set[str]],
 ) -> bool:
-    if n.get("type") == "gate":
+    if not is_pickable(n):
         return False
     if not n.get("codename"):
         return False
@@ -210,7 +211,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
     for n in leaf_nodes:
         nid = n["id"]
         status = (n.get("status") or "Not Started").lower()
-        if n.get("type") == "gate":
+        if not is_pickable(n):
             # Gate nodes are human-review markers, never pickable leaves.
             non_agentic_leaf_ids.append(nid)
             continue

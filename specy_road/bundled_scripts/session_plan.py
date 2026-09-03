@@ -33,6 +33,7 @@ from do_next_available import (
 from roadmap_layout import effective_dependency_keys, natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.node_kinds import is_gate
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +116,7 @@ def _gate_keys(nodes: list[dict]) -> set[str]:
     return {
         n["node_key"]
         for n in nodes
-        if n.get("type") == "gate" and n.get("node_key")
+        if is_gate(n.get("type")) and n.get("node_key")
     }
 
 
@@ -152,7 +153,7 @@ def _classify(
     }
     for n in nodes:
         nid = n.get("id")
-        if nid not in scope or n.get("type") == "gate":
+        if nid not in scope or is_gate(n.get("type")):
             continue
         st = _status(n)
         if st in ("complete", "cancelled"):

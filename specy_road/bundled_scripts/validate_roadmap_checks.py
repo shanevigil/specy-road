@@ -14,6 +14,7 @@ from specy_road.git_workflow_config import require_implementation_review_before_
 from specy_road.runtime_paths import default_user_repo_root
 
 from validate_roadmap_gates import validate_gates
+from specy_road.node_kinds import is_gate
 
 
 def load_schema(path: Path) -> dict:
@@ -340,7 +341,7 @@ def run_validation(
             unk = f"registry: entry {cn} references unknown node_id {nid}"
             print(unk, file=sys.stderr)
             raise SystemExit(1)
-        if nid and id_to_type.get(nid) == "gate":
+        if nid and is_gate(id_to_type.get(nid)):
             cn = e.get("codename")
             print(
                 f"registry: entry {cn!r} must not reference a gate node "

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from typing import Any
+from specy_road.node_kinds import GATE_PARENT_TYPES
 
 
 def validate_gates(nodes: list[dict[str, Any]]) -> None:
@@ -32,7 +33,7 @@ def validate_gates(nodes: list[dict[str, Any]]) -> None:
         if not parent:
             continue
         pt = parent.get("type")
-        if pt not in ("vision", "phase", "milestone"):
+        if pt not in GATE_PARENT_TYPES:
             print(
                 "roadmap: gate "
                 f"{nid!r} must be a direct child of vision, phase, or milestone "

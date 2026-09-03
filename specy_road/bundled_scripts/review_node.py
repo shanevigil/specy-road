@@ -22,6 +22,7 @@ from planning_sheet_bootstrap import (
 from roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_ok
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.node_kinds import is_gate
 
 # Deterministic `shared/` index for LLM review: bounded reads, sorted paths.
 _TEXT_SUFFIXES = frozenset(
@@ -139,7 +140,7 @@ def _gate_planning_system_prompt() -> str:
 
 def system_prompt_for_planning_review(node_type: str | None = None) -> str:
     """System prompt for LLM planning review: gate sheet vs feature sheet."""
-    if str(node_type or "").strip().lower() == "gate":
+    if is_gate(node_type):
         return _gate_planning_system_prompt()
     return _feature_sheet_system_prompt()
 

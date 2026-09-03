@@ -24,6 +24,7 @@ from typing import Any
 
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import records_or_empty
+from specy_road.node_kinds import is_gate
 
 BANNER = (
     "<!-- specy-road: generated context digest — do not edit by hand. "
@@ -126,7 +127,7 @@ def _section_open_gates(nodes: list[dict[str, Any]]) -> list[str]:
     gates = [
         n
         for n in nodes
-        if n.get("type") == "gate" and _status_of(n) != "Complete"
+        if is_gate(n.get("type")) and _status_of(n) != "Complete"
     ]
     if not gates:
         return []

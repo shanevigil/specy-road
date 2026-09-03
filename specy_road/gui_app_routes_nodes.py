@@ -33,6 +33,7 @@ from specy_road.gui_app_helpers import get_repo_root, next_child_id
 from specy_road.gui_app_models import AddNodeBody, MoveOutlineBody, PatchBody, ReorderBody
 from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
+from specy_road.node_kinds import is_gate
 
 
 def _pm_milestone_lock_guard(
@@ -102,7 +103,7 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="reference node not found")
     ref_node = by_id[ref]
     parent_id: str | None = ref_node.get("parent_id")
-    if body.type == "gate" and parent_id in (None, ""):
+    if is_gate(body.type) and parent_id in (None, ""):
         raise HTTPException(
             status_code=400,
             detail=(
