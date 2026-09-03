@@ -13,7 +13,10 @@ from specy_road.bundled_scripts.do_next_available import (
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
 )
-from specy_road.bundled_scripts.do_next_prompt import print_pickup_header, write_agent_prompt  # noqa: F401
+from specy_road.bundled_scripts.do_next_prompt import (
+    print_pickup_header,
+    write_agent_prompt,
+)
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
 from specy_road.bundled_scripts.do_next_task_interactive import pick_interactive as _pick_interactive
 from specy_road.bundled_scripts.do_next_task_self_heal import (
@@ -218,13 +221,13 @@ def _push_and_branch_with_self_heal(**kwargs) -> None:
 
 
 def _write_session_and_prompt(**kwargs) -> Path:
-    # Resolve write_agent_prompt at call time so monkeypatch of
-    # dnt.write_agent_prompt in tests is honored.
-    import sys as _sys
-    fn = _sys.modules[__name__].write_agent_prompt
+    # A plain global reference is already resolved at call time, so a test
+    # patching dnt.write_agent_prompt is honoured without going through
+    # sys.modules to fetch the same binding.
     return _do_write_session_and_prompt(
-        work_dir=WORK_DIR, repo_root=ROOT,
-        write_agent_prompt_fn=fn,
+        work_dir=WORK_DIR,
+        repo_root=ROOT,
+        write_agent_prompt_fn=write_agent_prompt,
         **kwargs,
     )
 
