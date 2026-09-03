@@ -94,7 +94,7 @@ class _Harness:
         monkeypatch.setattr(gs, "gather_plan", fake_gather)
         monkeypatch.setattr(gs, "_run_cli", fake_run_cli)
         monkeypatch.setattr(gs, "_run_shell", fake_run_shell)
-        monkeypatch.setattr(gs, "_current_branch", fake_current_branch)
+        monkeypatch.setattr(gs, "current_branch", fake_current_branch)
         monkeypatch.setattr(gs, "_resolve_picked", fake_resolve)
         monkeypatch.setattr(gs, "_wait_for_signal", fake_wait)
 

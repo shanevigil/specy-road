@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import datetime
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -19,39 +18,14 @@ from work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
 )
+from repo_ops import current_branch, git_run, working_tree_clean
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)
 
 
-def _current_branch() -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return r.stdout.strip()
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
 def _save_registry(doc: dict) -> None:
     write_registry(REGISTRY_PATH, doc)
-
-
-def _working_tree_clean() -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return not r.stdout.strip()
 
 
 def _stash_work_dir_changes() -> bool:
@@ -179,8 +153,8 @@ def _commit_registry_approved(codename: str, reg: dict) -> None:
     _save_registry(reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
-    _git("add", str(REGISTRY_PATH.relative_to(ROOT)))
-    _git(
+    git_run(ROOT, "add", str(REGISTRY_PATH.relative_to(ROOT)))
+    git_run(ROOT, 
         "commit",
         "-m",
         f"chore(rm-{codename}): mark implementation reviewed",
@@ -228,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(0)
 
-    branch = _current_branch()
+    branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
             f"error: current branch '{branch}' is not a roadmap feature branch "
@@ -265,7 +239,7 @@ def main(argv: list[str] | None = None) -> None:
     # then restore on top of the feature branch (where they belong).
     stashed = _stash_work_dir_changes()
     try:
-        if not _working_tree_clean():
+        if not working_tree_clean(ROOT):
             print(
                 "error: working tree is not clean (commit, stash, or "
                 "discard changes outside work/ first).",

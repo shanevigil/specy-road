@@ -17,28 +17,10 @@ from specy_road.on_complete_session import (
     remove_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from repo_ops import current_branch, git_capture, git_run
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _git_capture(*args: str) -> str:
-    r = subprocess.run(
-        ["git", *args],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return r.stdout
-
-
-def _current_branch() -> str:
-    return _git_capture("rev-parse", "--abbrev-ref", "HEAD").strip()
 
 
 def _pickup_artifact_rel_paths(node_id: str) -> set[str]:
@@ -98,7 +80,7 @@ def _save_registry(doc: dict) -> None:
 
 def _count_commits_ahead_of_remote_base(remote: str, base: str) -> int:
     upstream = f"{remote}/{base}"
-    out = _git_capture("rev-list", "--count", f"{upstream}..HEAD").strip()
+    out = git_capture(ROOT, "rev-list", "--count", f"{upstream}..HEAD").strip()
     return int(out) if out else 0
 
 
@@ -115,9 +97,9 @@ def _log_commits_ahead_of_remote_base(remote: str, base: str) -> str:
 
 
 def _sync_integration_branch_ff(remote: str, base: str) -> None:
-    _git("checkout", base)
+    git_run(ROOT, "checkout", base)
     try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
+        git_run(ROOT, "merge", "--ff-only", f"{remote}/{base}")
     except subprocess.CalledProcessError:
         print(
             f"error: could not fast-forward local '{base}' to {remote}/{base}.",
@@ -132,7 +114,7 @@ def _sync_integration_branch_ff(remote: str, base: str) -> None:
 
 def _delete_feature_branch(branch: str, *, force: bool) -> None:
     if force:
-        _git("branch", "-D", branch)
+        git_run(ROOT, "branch", "-D", branch)
         return
     r = subprocess.run(
         ["git", "branch", "-d", branch],
@@ -202,7 +184,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def _require_feature_rm_branch_or_exit() -> str:
-    branch = _current_branch()
+    branch = current_branch(ROOT)
     if branch == "HEAD":
         print(
             "error: detached HEAD — check out your feature/rm-<codename> branch first.",
@@ -267,10 +249,10 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
     _save_registry(reg)
     rel_reg = str(REGISTRY_PATH.relative_to(ROOT))
-    _git("add", rel_reg)
-    _git("commit", "-m", f"chore(rm-{codename}): abort task pickup")
+    git_run(ROOT, "add", rel_reg)
+    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup")
     print(f"-> git push {remote} {base}")
-    _git("push", remote, base)
+    git_run(ROOT, "push", remote, base)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -299,7 +281,7 @@ def main(argv: list[str] | None = None) -> None:
     node_id = entry["node_id"]
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
 
-    _git("fetch", remote)
+    git_run(ROOT, "fetch", remote)
     ahead = _count_commits_ahead_of_remote_base(remote, base)
     _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
 
@@ -309,7 +291,7 @@ def main(argv: list[str] | None = None) -> None:
     _delete_feature_branch(branch, force=args.force)
     _remove_pickup_work_files(node_id, force=args.force)
 
-    print(f"\n[ok] pickup aborted; on branch {_current_branch()}")
+    print(f"\n[ok] pickup aborted; on branch {current_branch(ROOT)}")
 
 
 if __name__ == "__main__":

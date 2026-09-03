@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
@@ -54,6 +53,7 @@ from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.runtime_paths import default_user_repo_root
 from validate_roadmap import validate_at
+from repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch, working_tree_clean
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)
@@ -85,7 +85,15 @@ def _resync_and_select(
     parent_filter,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty."""
-    _sync_integration_branch(base, remote)
+    sync_integration_branch(
+        ROOT,
+        base,
+        remote,
+        retry_hint="retry do-next-available-task",
+        clean_tree_detail=(
+            "Integration-branch sync and creating a new feature branch need a clean tree."
+        ),
+    )
     reg = read_registry(REGISTRY_PATH)
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
@@ -131,39 +139,8 @@ def _validate_or_exit() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _current_branch() -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    )
-    return r.stdout.strip()
-
-
-def _working_tree_clean() -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    )
-    return not r.stdout.strip()
-
-
-def _assert_working_tree_clean() -> None:
-    if not _working_tree_clean():
-        print(
-            "error: working tree is not clean (commit, stash, or discard "
-            "changes first).\n  Integration-branch sync and creating a new "
-            "feature branch need a clean tree.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
 def _assert_current_branch_equals(base: str) -> None:
-    cur = _current_branch()
+    cur = current_branch(ROOT)
     if cur == "HEAD":
         print(
             "error: detached HEAD — check out the integration branch before "
@@ -188,25 +165,8 @@ def _restore_work_dir_changes(stashed: bool) -> None:
     _restore_work(ROOT, stashed)
 
 
-def _sync_integration_branch(base: str, remote: str) -> None:
-    """Fetch, checkout, fast-forward integration branch via _git."""
-    _assert_working_tree_clean()
-    _git("fetch", remote)
-    _git("checkout", base)
-    try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
-    except subprocess.CalledProcessError:
-        print(
-            f"error: could not fast-forward local '{base}' to {remote}/{base}."
-            "\n  Resolve your local integration branch (e.g. pull with "
-            "rebase, or reset after team agreement), then retry.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
 def _checkout_new_branch(branch: str) -> None:
-    _git("checkout", "-b", branch)
+    git_run(ROOT, "checkout", "-b", branch)
 
 
 def _register_and_commit(
@@ -219,7 +179,7 @@ def _register_and_commit(
 ) -> None:
     _do_register_and_commit(
         registry_path=REGISTRY_PATH,
-        git_runner=_git,
+        git_runner=lambda *a: git_run(ROOT, *a),
         node=node,
         branch=branch,
         reg=reg,
@@ -229,7 +189,7 @@ def _register_and_commit(
 
 
 def _push_integration_branch(remote: str, base: str) -> None:
-    _git("push", remote, base)
+    git_run(ROOT, "push", remote, base)
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +210,7 @@ def _push_and_branch_with_self_heal(**kwargs) -> None:
     _do_push_and_branch(
         repo_root=ROOT,
         registry_path=REGISTRY_PATH,
-        git_runner=_git,
+        git_runner=lambda *a: git_run(ROOT, *a),
         push_integration_branch_fn=_push_integration_branch,
         checkout_new_branch_fn=_checkout_new_branch,
         **kwargs,

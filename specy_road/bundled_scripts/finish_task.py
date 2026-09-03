@@ -34,6 +34,7 @@ from specy_road.on_complete_session import (
     read_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from repo_ops import current_branch, git_run
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)
@@ -42,21 +43,6 @@ REGISTRY_PATH = registry_path(ROOT)
 # ---------------------------------------------------------------------------
 # Git helpers
 # ---------------------------------------------------------------------------
-
-
-def _current_branch() -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return r.stdout.strip()
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
 
 
 # ---------------------------------------------------------------------------
@@ -263,12 +249,12 @@ def _bookkeeping_commit_phase(
     work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
     changed_files.append("roadmap.md")
     changed_files.extend(work_tracked_removals)
-    _git("add", *changed_files)
-    _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
+    git_run(ROOT, "add", *changed_files)
+    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")
     if args.push:
         print(f"-> git push -u {args.remote} {branch}")
-        _git("push", "-u", args.remote, branch)
+        git_run(ROOT, "push", "-u", args.remote, branch)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -276,7 +262,7 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
     REGISTRY_PATH = registry_path(ROOT)
-    branch = _current_branch()
+    branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
             f"error: current branch '{branch}' is not a roadmap feature branch "

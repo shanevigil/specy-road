@@ -10,51 +10,9 @@ from pathlib import Path
 
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from repo_ops import assert_working_tree_clean, git_run, sync_integration_branch, working_tree_clean
 
 ROOT = Path.cwd()
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _working_tree_clean() -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return not r.stdout.strip()
-
-
-def _assert_working_tree_clean() -> None:
-    if not _working_tree_clean():
-        print(
-            "error: working tree is not clean (commit, stash, or discard changes first).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
-def _sync_integration_branch(base: str, remote: str) -> None:
-    _assert_working_tree_clean()
-    _git("fetch", remote)
-    _git("checkout", base)
-    try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
-    except subprocess.CalledProcessError:
-        print(
-            f"error: could not fast-forward local '{base}' to {remote}/{base}.",
-            file=sys.stderr,
-        )
-        print(
-            "  Resolve your local integration branch (e.g. pull with rebase, or reset "
-            "after team agreement), then retry.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
 
 
 def _validate_and_export() -> None:
@@ -104,7 +62,12 @@ def main(argv: list[str] | None = None) -> None:
 
     # F-010: git + a configured remote are a hard dependency. No --no-git
     # opt-out; teams that are offline must use a local bare remote.
-    _sync_integration_branch(base, remote)
+    sync_integration_branch(
+        ROOT,
+        base,
+        remote,
+        retry_hint="retry pm-sync",
+    )
 
     print("-> specy-road validate")
     print("-> specy-road export")

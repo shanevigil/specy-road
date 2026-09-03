@@ -143,10 +143,10 @@ def test_finish_blocks_when_implementation_review_pending(
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     monkeypatch.setattr(ft, "require_implementation_review_before_finish", lambda _r: True)
-    monkeypatch.setattr(ft, "_current_branch", lambda: "feature/rm-example")
+    monkeypatch.setattr(ft, "current_branch", lambda _root: "feature/rm-example")
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
     monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
-    monkeypatch.setattr(ft, "_git", lambda *_a, **_k: None)
+    monkeypatch.setattr(ft, "git_run", lambda *_a, **_k: None)
     with pytest.raises(SystemExit) as ei:
         ft.main(["--repo-root", str(tmp_path)])
     assert ei.value.code == 1

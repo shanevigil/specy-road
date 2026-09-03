@@ -38,7 +38,7 @@ def _repo_with_tracked_session_files(tmp_path: Path, monkeypatch) -> list[list[s
     git_calls: list[list[str]] = []
     monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(ft, "REGISTRY_PATH", tmp_path / "roadmap" / "registry.yaml")
-    monkeypatch.setattr(ft, "_git", lambda *a: git_calls.append(list(a)))
+    monkeypatch.setattr(ft, "git_run", lambda _root, *a: git_calls.append(list(a)))
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _n: [])
     monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
     monkeypatch.setattr(ft, "_save_registry", lambda _d: None)

@@ -40,6 +40,7 @@ from roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
+from repo_ops import current_branch
 
 
 # ---------------------------------------------------------------------------
@@ -68,14 +69,6 @@ def _run_cli(repo_root: Path, cli_args: list[str]) -> int:
 def _run_shell(cmd: str, env: dict, repo_root: Path) -> int:
     proc = subprocess.run(cmd, shell=True, cwd=repo_root, env=env)
     return proc.returncode
-
-
-def _current_branch(repo_root: Path) -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=repo_root, capture_output=True, text=True, check=False,
-    )
-    return (r.stdout or "").strip()
 
 
 def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
@@ -181,7 +174,7 @@ def _do_cycle(args, repo_root: Path, emitter: EventEmitter, nodes: list[dict],
     if rc != 0:
         emitter.emit("hook_failed", phase="pickup", node_id=target_id, rc=rc)
         return None, EXIT_PICKUP_FAILED
-    branch = _current_branch(repo_root) or f"feature/rm-{codename}"
+    branch = current_branch(repo_root) or f"feature/rm-{codename}"
     node_id = _resolve_picked(repo_root, branch, target_id)
     ctx = {
         "node_id": node_id,
