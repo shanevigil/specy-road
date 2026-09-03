@@ -24,7 +24,8 @@ from specy_road.history_cache import (
     save_cache,
 )
 from specy_road.history_events import ARCHIVED, RESTORED
-from specy_road.history_git import head_sha, is_ancestor
+from specy_road.git_subprocess import head_sha
+from specy_road.history_git import is_ancestor
 from specy_road.history_walk import walk
 
 _UUID_RE = re.compile(

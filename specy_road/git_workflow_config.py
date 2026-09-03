@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from pathlib import Path
 from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
+
+from specy_road.git_subprocess import current_branch_name, git_ok, is_git_worktree
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _GIT_WORKFLOW_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "git-workflow.schema.json"
@@ -166,52 +167,10 @@ def resolve_on_complete(
     return on_complete_from_git_workflow(repo_root)
 
 
-def _git_ok(args: list[str], cwd: Path) -> tuple[bool, str]:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
-        )
-        if r.returncode != 0:
-            return False, (r.stderr or r.stdout or "").strip()
-        return True, r.stdout.strip()
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return False, str(e)
-
-
-def is_git_worktree(repo_root: Path) -> bool:
-    ok, out = _git_ok(["rev-parse", "--is-inside-work-tree"], repo_root)
-    return ok and out.lower() == "true"
-
-
-def current_branch_name(repo_root: Path) -> str | None:
-    """Named branch checked out, or None (detached HEAD / not git)."""
-    if not is_git_worktree(repo_root):
-        return None
-    ok, out = _git_ok(["branch", "--show-current"], repo_root)
-    if ok and out.strip():
-        return out.strip()
-    return None
-
-
-def working_tree_clean(repo_root: Path) -> bool:
-    """True when ``git status --porcelain`` is empty (no staged/unstaged/untracked noise)."""
-    if not is_git_worktree(repo_root):
-        return False
-    ok, out = _git_ok(["status", "--porcelain"], repo_root)
-    if not ok:
-        return False
-    return not (out or "").strip()
-
-
 def current_head_short_sha(repo_root: Path) -> str | None:
     if not is_git_worktree(repo_root):
         return None
-    ok, sha = _git_ok(["rev-parse", "--short", "HEAD"], repo_root)
+    ok, sha = git_ok(["rev-parse", "--short", "HEAD"], repo_root)
     return sha if ok else None
 
 
@@ -219,7 +178,7 @@ def git_config_user_name(repo_root: Path) -> str | None:
     """Local ``git config user.name`` for this repo (developer identity on this clone)."""
     if not is_git_worktree(repo_root):
         return None
-    ok, out = _git_ok(["config", "--get", "user.name"], repo_root)
+    ok, out = git_ok(["config", "--get", "user.name"], repo_root)
     if not ok or not (out or "").strip():
         return None
     return (out or "").strip()
@@ -234,10 +193,10 @@ def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | No
     if not rm or not br:
         return None
     ref = f"refs/remotes/{rm}/{br}"
-    ok, _ = _git_ok(["show-ref", "--verify", ref], repo_root)
+    ok, _ = git_ok(["show-ref", "--verify", ref], repo_root)
     if not ok:
         return None
-    ok2, line = _git_ok(["log", "-1", "--format=%an", ref], repo_root)
+    ok2, line = git_ok(["log", "-1", "--format=%an", ref], repo_root)
     if not ok2 or not (line or "").strip():
         return None
     return (line or "").strip()
@@ -251,10 +210,10 @@ def git_local_branch_tip_author(repo_root: Path, branch: str) -> str | None:
     if not br:
         return None
     ref = f"refs/heads/{br}"
-    ok, _ = _git_ok(["show-ref", "--verify", ref], repo_root)
+    ok, _ = git_ok(["show-ref", "--verify", ref], repo_root)
     if not ok:
         return None
-    ok2, line = _git_ok(["log", "-1", "--format=%an", ref], repo_root)
+    ok2, line = git_ok(["log", "-1", "--format=%an", ref], repo_root)
     if not ok2 or not (line or "").strip():
         return None
     return (line or "").strip()
@@ -275,11 +234,11 @@ def integration_refs_present(
 ) -> tuple[bool, str]:
     """True if local remote-tracking ref or local branch exists for integration trunk."""
     rr = f"refs/remotes/{remote}/{integration_branch}"
-    ok, _ = _git_ok(["show-ref", "--verify", rr], repo_root)
+    ok, _ = git_ok(["show-ref", "--verify", rr], repo_root)
     if ok:
         return True, rr
     hb = f"refs/heads/{integration_branch}"
-    ok2, _ = _git_ok(["show-ref", "--verify", hb], repo_root)
+    ok2, _ = git_ok(["show-ref", "--verify", hb], repo_root)
     if ok2:
         return True, hb
     return False, ""

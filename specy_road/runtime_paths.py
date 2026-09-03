@@ -31,8 +31,9 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 from pathlib import Path
+
+from specy_road.git_subprocess import git_text
 
 #: Overrides discovery for both the CLI and the GUI.
 REPO_ROOT_ENV = "SPECY_ROAD_REPO_ROOT"
@@ -54,23 +55,9 @@ def bundled_scripts_dir() -> Path:
     return specy_road_package_dir() / "bundled_scripts"
 
 
-def _git(args: list[str], cwd: Path) -> str | None:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError):
-        return None
-    return r.stdout.strip()
-
-
 def git_root(start: Path | None = None) -> Path | None:
     """The enclosing git worktree root, or ``None`` outside one."""
-    out = _git(["rev-parse", "--show-toplevel"], start or Path.cwd())
+    out = git_text(["rev-parse", "--show-toplevel"], start or Path.cwd())
     return Path(out).resolve() if out else None
 
 
@@ -81,7 +68,7 @@ def project_prefix(root: Path) -> str:
     ``.gitignore`` matches, is relative to the **git** root; roadmap paths are
     relative to the **project** root. Prefix to go one way, strip to go back.
     """
-    return _git(["rev-parse", "--show-prefix"], root) or ""
+    return git_text(["rev-parse", "--show-prefix"], root) or ""
 
 
 def prefix_within(git_top: Path, project: Path) -> str:

@@ -24,9 +24,10 @@ git binary, or a shallow clone yields fewer dated nodes, never an error.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
+
+from specy_road.git_subprocess import HISTORY_TIMEOUT, git_stdout, head_sha
 
 # Belt-and-braces bound on a pathological history. A node whose last touch is
 # older than this is stale by any measure the column could express.
@@ -42,25 +43,6 @@ _CACHE: dict[tuple[str, str], dict[str, dict[str, str]]] = {}
 _CACHE_MAX = 8
 
 
-def _run_git(root: Path, args: list[str]) -> str | None:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except (OSError, ValueError):
-        return None
-    return r.stdout if r.returncode == 0 else None
-
-
-def head_sha(root: Path) -> str | None:
-    out = _run_git(root, ["rev-parse", "HEAD"])
-    return (out or "").strip() or None
-
-
 def repo_prefix(root: Path) -> str:
     """``root``'s path within its git repo, e.g. ``"project/"`` — or ``""``.
 
@@ -70,7 +52,7 @@ def repo_prefix(root: Path) -> str:
     a monorepo — or whenever ``SPECY_ROAD_REPO_ROOT`` points at a subdirectory
     — every lookup would miss and the column would silently go blank.
     """
-    out = _run_git(root, ["rev-parse", "--show-prefix"])
+    out = git_stdout(["rev-parse", "--show-prefix"], root)
     return (out or "").strip()
 
 
@@ -89,8 +71,7 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
     """
     if not scopes:
         return {}
-    out = _run_git(
-        root,
+    out = git_stdout(
         [
             "log",
             f"--max-count={MAX_HISTORY_COMMITS}",
@@ -99,6 +80,8 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
             "--",
             *scopes,
         ],
+        root,
+        timeout=HISTORY_TIMEOUT,
     )
     if not out:
         return {}
