@@ -41,7 +41,7 @@ from planning_artifacts import (
 )
 from roadmap_load import load_roadmap
 from roadmap_node_keys import build_key_to_node
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def load_nodes(root: Path | None = None) -> list[dict]:
@@ -343,13 +343,7 @@ def main() -> None:
         type=Path,
         help="Write markdown to this file (default: stdout)",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd)",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--no-history",
         action="store_true",

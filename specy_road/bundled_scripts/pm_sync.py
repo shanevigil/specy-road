@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 ROOT = Path.cwd()
 
@@ -89,13 +89,7 @@ def main(argv: list[str] | None = None) -> None:
             "(default: roadmap/git-workflow.yaml, else origin)."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
 
     global ROOT

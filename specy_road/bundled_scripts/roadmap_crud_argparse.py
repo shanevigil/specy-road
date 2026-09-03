@@ -21,6 +21,7 @@ from roadmap_crud_ops import (
     cmd_set_gate_status,
     cmd_show,
 )
+from specy_road.runtime_paths import add_repo_root_arg
 
 
 def _p_list(sub: argparse._SubParsersAction) -> None:
@@ -179,12 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="PM-oriented roadmap CRUD: list/show/add/edit/archive nodes.",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     sub = p.add_subparsers(dest="cmd", required=True)
     _p_list(sub)
     _p_show(sub)

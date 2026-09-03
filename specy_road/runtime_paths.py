@@ -29,6 +29,7 @@ recorded there and discovery is only the fallback.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -173,6 +174,36 @@ def source_scan_root(project: Path) -> Path:
     if recorded is not None and recorded == project.resolve():
         return top
     return project.resolve()
+
+
+#: What ``--repo-root`` actually does, in one place.
+#:
+#: Thirty-two parsers spelled this flag out by hand and its documented default
+#: had drifted four ways -- "git root or cwd", "git discovery / cwd", "cwd",
+#: "current working directory". Since :func:`project_root` took over resolution
+#: every one of them was wrong, and correcting the text meant editing all
+#: thirty-two, which is why nobody did.
+REPO_ROOT_HELP = (
+    "Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in "
+    ".specyrd/manifest.json, else the nearest enclosing roadmap/, else the git "
+    "root, else the current directory)."
+)
+
+
+def add_repo_root_arg(parser: "argparse.ArgumentParser") -> None:
+    """Add the standard ``--repo-root`` option to ``parser``."""
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help=REPO_ROOT_HELP,
+    )
+
+
+def resolve_repo_root(ns: "argparse.Namespace") -> Path:
+    """The project root for a parsed command line."""
+    return project_root(getattr(ns, "repo_root", None))
 
 
 def default_user_repo_root() -> Path:

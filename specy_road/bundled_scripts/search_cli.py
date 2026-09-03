@@ -17,7 +17,7 @@ import json
 import sys
 from pathlib import Path
 
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.search_corpus import (
     KIND_CONSTITUTION,
     KIND_NODE,
@@ -30,10 +30,6 @@ from specy_road.search_corpus import (
 from specy_road.search_index import corpus_stats, fts5_available, search
 
 _KINDS = (KIND_PLANNING, KIND_SHARED, KIND_NODE, KIND_SUMMARY, KIND_CONSTITUTION)
-
-
-def _root(ns: argparse.Namespace) -> Path:
-    return (ns.repo_root or default_user_repo_root()).resolve()
 
 
 def _scopes(value: str) -> set[str] | None:
@@ -55,7 +51,7 @@ def _print_results(results: list[dict]) -> None:
 
 
 def cmd_search(ns: argparse.Namespace) -> int:
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     query = " ".join(ns.query).strip()
 
     if ns.stats:
@@ -143,13 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Discard the index under .specyrd/cache/ and re-chunk everything.",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.set_defaults(func=cmd_search)
     return p
 

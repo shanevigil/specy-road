@@ -15,7 +15,7 @@ from roadmap_chunk_utils import discover_manifest_path
 from roadmap_layout import natural_id_sort_key
 from roadmap_load import load_roadmap
 
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 BANNER = (
     "<!-- specy-road: generated index from merged roadmap (manifest.json + chunk files) "
@@ -170,13 +170,7 @@ def main() -> None:
         action="store_true",
         help="Exit 1 if generated files differ from disk (CI drift check)",
     )
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:

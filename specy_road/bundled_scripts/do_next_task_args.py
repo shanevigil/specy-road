@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
+from specy_road.runtime_paths import add_repo_root_arg
 
 
 _DESCRIPTION = """\
@@ -66,13 +67,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--on-complete",
         choices=sorted(ON_COMPLETE_MODES),

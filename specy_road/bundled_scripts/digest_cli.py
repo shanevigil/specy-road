@@ -18,15 +18,11 @@ import sys
 from pathlib import Path
 
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
-from specy_road.runtime_paths import default_user_repo_root
-
-
-def _root(ns: argparse.Namespace) -> Path:
-    return (ns.repo_root or default_user_repo_root()).resolve()
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
 def cmd_digest(ns: argparse.Namespace) -> int:
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     body = render_digest(root)
 
     if ns.output == "-":
@@ -78,13 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit 1 if the file on disk has drifted from the graph (CI gate).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.set_defaults(func=cmd_digest)
     return p
 

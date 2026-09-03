@@ -18,23 +18,13 @@ from specy_road.archive_index import index_records, load_archive_index
 from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive, plan_summary
 from specy_road.archive_restore import restore_archive
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 DEFAULT_AUTO_DAYS = 90
 
 
-def _root(ns: argparse.Namespace) -> Path:
-    return (ns.repo_root or default_user_repo_root()).resolve()
-
-
 def _add_repo_root(p: argparse.ArgumentParser) -> None:
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
 
 
 def _reexport(root: Path) -> None:
@@ -48,7 +38,7 @@ def _reexport(root: Path) -> None:
 
 
 def cmd_archive(ns: argparse.Namespace) -> int:
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     if ns.auto:
         return _cmd_archive_auto(root, ns)
     if not ns.node_id:
@@ -84,7 +74,7 @@ def _print_deepened(rec: dict) -> None:
 
 
 def cmd_deepen(ns: argparse.Namespace) -> int:
-    _print_deepened(deepen_archive(_root(ns), ns.archive_id))
+    _print_deepened(deepen_archive(resolve_repo_root(ns), ns.archive_id))
     return 0
 
 
@@ -108,7 +98,7 @@ def _cmd_archive_auto(root: Path, ns: argparse.Namespace) -> int:
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
-    doc = load_archive_index(_root(ns))
+    doc = load_archive_index(resolve_repo_root(ns))
     records = index_records(doc)
     if ns.json:
         print(json.dumps(doc, indent=2, sort_keys=True))
@@ -128,7 +118,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
 def cmd_show(ns: argparse.Namespace) -> int:
     from specy_road.archive_index import find_record
 
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     rec = find_record(load_archive_index(root), ns.archive_id)
     if rec is None:
         print(
@@ -161,7 +151,7 @@ def cmd_show(ns: argparse.Namespace) -> int:
 
 
 def cmd_restore(ns: argparse.Namespace) -> int:
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     if ns.dry_run:
         from specy_road.archive_index import find_record
 

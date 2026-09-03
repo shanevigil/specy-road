@@ -14,7 +14,7 @@ from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 from validate_roadmap_checks import (
     cycle_check,
     load_schema,
@@ -128,13 +128,7 @@ def main() -> None:
             "because the authored chunk value is what a reviewer reads."
         ),
     )
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
     validate_at(

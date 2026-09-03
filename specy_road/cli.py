@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.runtime_paths import bundled_scripts_dir, specy_road_package_dir
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, specy_road_package_dir
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -212,12 +212,7 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
             "(human judgment; not validated by specy-road). Skips files that already exist unless --force."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: current working directory)",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--force",
         action="store_true",
@@ -240,12 +235,7 @@ def _cmd_gui(rest: list[str]) -> None:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git discovery / cwd)",
-    )
+    add_repo_root_arg(p)
     ns = p.parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
     if uvicorn_spec is None:

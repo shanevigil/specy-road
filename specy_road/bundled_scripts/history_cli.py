@@ -24,7 +24,7 @@ from specy_road.history_index import (
     node_timeline,
     resolve_node_key,
 )
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 # How each event kind reads on one line. `{}` slots are filled from the event.
 _PHRASES = {
@@ -49,10 +49,6 @@ _INITIAL_PHRASES = {
     "recodenamed": "codename set to {to}",
     "reparented": "parent set to {to}",
 }
-
-
-def _root(ns: argparse.Namespace) -> Path:
-    return (ns.repo_root or default_user_repo_root()).resolve()
 
 
 def describe(event: dict) -> str:
@@ -85,7 +81,7 @@ def _print_events(events: list[dict], *, show_node: bool) -> None:
 
 
 def cmd_history(ns: argparse.Namespace) -> int:
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     index = history_index(root, rebuild=ns.rebuild)
 
     if ns.node is None:
@@ -198,13 +194,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Discard the cache under .specyrd/cache/ and re-walk all history.",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.set_defaults(func=cmd_history)
     return p
 

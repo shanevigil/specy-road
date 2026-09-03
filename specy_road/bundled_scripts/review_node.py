@@ -21,7 +21,7 @@ from planning_sheet_bootstrap import (
 )
 from roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_ok
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 # Deterministic `shared/` index for LLM review: bounded reads, sorted paths.
 _TEXT_SUFFIXES = frozenset(
@@ -832,12 +832,7 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help="Write Markdown report to this file (default: stdout)",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _repo_root(args)
     try:

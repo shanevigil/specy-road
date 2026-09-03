@@ -20,7 +20,7 @@ from specy_road.milestone_session import (
     write_milestone_session,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 _CODENAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
@@ -139,13 +139,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="PARENT_NODE_ID",
         help="Roadmap id of the milestone parent (e.g. M7).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--base",
         default=None,

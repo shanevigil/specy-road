@@ -33,7 +33,7 @@ from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
 )
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)
@@ -126,13 +126,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="NAME",
         help="Remote for --push (default: origin).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--no-cleanup-work",
         action="store_true",

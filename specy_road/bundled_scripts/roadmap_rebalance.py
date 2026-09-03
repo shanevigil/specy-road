@@ -44,7 +44,7 @@ from roadmap_chunk_utils import (
     roadmap_dir,
 )
 from roadmap_layout import ordered_tree_rows
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 @dataclass
@@ -256,13 +256,7 @@ def apply_pack_plan(root: Path, plan: _PackPlan) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     parser.add_argument(
         "--dry-run",
         action="store_true",

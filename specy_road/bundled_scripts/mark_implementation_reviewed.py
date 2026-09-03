@@ -14,7 +14,7 @@ import yaml
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 from work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
@@ -207,13 +207,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Allow approving when the implementation summary file is missing (loud warning).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     return p.parse_args(argv)
 
 

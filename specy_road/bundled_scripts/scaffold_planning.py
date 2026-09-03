@@ -16,7 +16,7 @@ from planning_artifacts import (
     resolve_planning_path,
 )
 from planning_sheet_bootstrap import render_planning_sheet_template
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def _resolve_scaffold_planning_path(
@@ -114,12 +114,7 @@ def main() -> None:
         action="store_true",
         help="Overwrite existing feature sheet",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git root or cwd)",
-    )
+    add_repo_root_arg(p)
     args = p.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
     nid = args.node_id.strip()
