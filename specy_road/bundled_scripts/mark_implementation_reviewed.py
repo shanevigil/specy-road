@@ -11,9 +11,9 @@ import sys
 from pathlib import Path
 
 import yaml
-from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import require_implementation_review_before_finish
-from specy_road.registry_yaml import read_registry, registry_path, write_registry
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import default_user_repo_root
 from work_dir_stash import (
     restore_work_dir_changes as _restore_work,
@@ -60,37 +60,6 @@ def _stash_work_dir_changes() -> bool:
 
 def _restore_work_dir_changes(stashed: bool) -> None:
     _restore_work(ROOT, stashed)
-
-
-def _resolve_context(branch: str) -> tuple[str, dict, dict]:
-    """Return (codename, registry_doc, entry) or raise SystemExit."""
-    codename = branch[len("feature/rm-"):]
-    reg = read_registry(REGISTRY_PATH)
-    entries = reg.get("entries") or []
-    entry = next((e for e in entries if e.get("codename") == codename), None)
-    if not entry:
-        print(f"error: no registry entry for codename '{codename}'.", file=sys.stderr)
-        print("  Is roadmap/registry.yaml up to date?", file=sys.stderr)
-        raise SystemExit(1)
-    node_id = entry["node_id"]
-    nodes = load_roadmap(ROOT)["nodes"]
-    if not any(n["id"] == node_id for n in nodes):
-        print(f"error: node '{node_id}' not found in roadmap.", file=sys.stderr)
-        raise SystemExit(1)
-    reg_branch = entry.get("branch")
-    if not reg_branch:
-        print(
-            "error: registry entry is missing 'branch' — fix roadmap/registry.yaml.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    if reg_branch != branch:
-        print(
-            f"error: registry says branch {reg_branch!r} but HEAD is {branch!r}.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    return codename, reg, entry
 
 
 def _summary_path(node_id: str) -> Path:
@@ -274,7 +243,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(1)
 
-    codename, reg, entry = _resolve_context(branch)
+    codename, reg, entry, _nodes = resolve_feature_rm_registry_context(ROOT, branch)
     node_id = entry["node_id"]
 
     spath = _summary_path(node_id)

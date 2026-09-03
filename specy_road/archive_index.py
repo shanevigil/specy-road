@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from specy_road.roadmap_json import render_canonical_json
 from specy_road.runtime_paths import specy_road_package_dir
 
 INDEX_VERSION = 1
@@ -113,11 +114,8 @@ def load_archive_index(root: Path) -> dict[str, Any]:
 
 
 def render_archive_index(doc: dict[str, Any]) -> str:
-    """Canonical index text (stable key order, indent=2, trailing newline)."""
-    body = json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False)
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    """Canonical index text."""
+    return render_canonical_json(doc)
 
 
 def write_archive_index(root: Path, doc: dict[str, Any]) -> Path:

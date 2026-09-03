@@ -41,6 +41,7 @@ from specy_road.history_git import (
     ls_tree_blobs,
 )
 from specy_road.runtime_paths import project_prefix, rebase_to_project
+from specy_road.roadmap_json import nodes_from_chunk_doc
 
 MANIFEST_REL = "roadmap/manifest.json"
 ARCHIVE_INDEX_REL = "roadmap/archive/index.json"
@@ -95,17 +96,6 @@ def _include_path(rel: str) -> str | None:
     return joined if joined.startswith(ROADMAP_PREFIX) else None
 
 
-def _chunk_nodes(doc: Any) -> list[dict[str, Any]]:
-    """Nodes from a parsed chunk, accepting the same shapes the loader does."""
-    if isinstance(doc, list):
-        return [n for n in doc if isinstance(n, dict)]
-    if isinstance(doc, dict):
-        nodes = doc.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in doc:
-            return [doc]
-    return []
 
 
 def build_graph(
@@ -128,7 +118,7 @@ def build_graph(
         path = _include_path(rel.strip())
         sha = state.get(path) if path else None
         if sha:
-            nodes.extend(_chunk_nodes(reader.json(sha)))
+            nodes.extend(nodes_from_chunk_doc(reader.json(sha)) or [])
     return snapshot(nodes)
 
 

@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.roadmap_json import nodes_from_chunk_doc, render_canonical_json
+
 MANIFEST_JSON = "manifest.json"
 
 
@@ -97,16 +99,7 @@ def _strip_derived(node: dict) -> dict:
 def render_json_chunk(nodes: list[dict]) -> str:
     """Canonical chunk text (used by both ``write_json_chunk`` and the chunk
     router for line-count prediction without touching disk)."""
-    cleaned = [_strip_derived(n) for n in nodes]
-    body = json.dumps(
-        {"nodes": cleaned},
-        indent=2,
-        sort_keys=True,
-        ensure_ascii=False,
-    )
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    return render_canonical_json({"nodes": [_strip_derived(n) for n in nodes]})
 
 
 def write_json_chunk(path: Path, nodes: list[dict]) -> None:
@@ -115,16 +108,13 @@ def write_json_chunk(path: Path, nodes: list[dict]) -> None:
 
 
 def render_manifest(doc: dict) -> str:
-    """Canonical manifest text (stable key order, indent=2, trailing newline).
+    """Canonical manifest text.
 
     Used by the chunk router whenever the manifest is rewritten (auto-routing
     or rebalance). Existing manifests that are never modified keep their
     original on-disk format because the loader is format-agnostic.
     """
-    body = json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False)
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    return render_canonical_json(doc)
 
 
 def write_manifest(path: Path, doc: dict) -> None:
@@ -138,18 +128,12 @@ def load_json_chunk(path: Path) -> list[dict]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         _fail_manifest(f"roadmap: JSON parse error in {path}: {e}")
-    if isinstance(data, list):
-        out = [n for n in data if isinstance(n, dict)]
-        if not out and data:
-            _fail_manifest(f"roadmap: JSON chunk must contain objects: {path}")
-        return out
-    if isinstance(data, dict):
-        nodes = data.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in data:
-            return [data]
-    _fail_manifest(f"roadmap: invalid JSON chunk structure: {path}")
+    nodes = nodes_from_chunk_doc(data)
+    if nodes is None:
+        _fail_manifest(f"roadmap: invalid JSON chunk structure: {path}")
+    if not nodes and isinstance(data, list) and data:
+        _fail_manifest(f"roadmap: JSON chunk must contain objects: {path}")
+    return nodes
 
 
 def load_chunk_nodes(path: Path) -> list[dict]:

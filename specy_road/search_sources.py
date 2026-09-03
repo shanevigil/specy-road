@@ -37,6 +37,7 @@ from specy_road.text_sections import (
     read_text_safely,
     split_sections,
 )
+from specy_road.roadmap_json import nodes_from_chunk_doc
 
 ARCHIVE_DIR = "roadmap/archive"
 
@@ -251,15 +252,7 @@ def _nodes_in(path: Path) -> list[dict[str, Any]]:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return []
-    if isinstance(doc, list):
-        return [n for n in doc if isinstance(n, dict)]
-    if isinstance(doc, dict):
-        nodes = doc.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in doc:
-            return [doc]
-    return []
+    return nodes_from_chunk_doc(doc) or []
 
 
 def _node_chunks(
