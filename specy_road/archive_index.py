@@ -17,8 +17,12 @@ new archive fields by upgrading the package.
 from __future__ import annotations
 
 import json
+from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from jsonschema import Draft202012Validator
 
 from specy_road.roadmap_json import render_canonical_json
 from specy_road.runtime_paths import specy_road_package_dir
@@ -79,11 +83,22 @@ def bundled_archive_schema() -> dict[str, Any]:
         return json.load(f)
 
 
-def validate_archive_index(doc: dict[str, Any]) -> None:
-    """Schema-validate an in-memory index; raise ``ValueError`` on the first error."""
+@cache
+def _archive_validator() -> "Draft202012Validator":
+    """The compiled archive-index validator.
+
+    Cached because it was rebuilt -- schema read from the wheel, parsed,
+    validator compiled -- on every load *and* every write of the index, which
+    ``specy-road archive`` does four times in one run.
+    """
     from jsonschema import Draft202012Validator
 
-    validator = Draft202012Validator(bundled_archive_schema())
+    return Draft202012Validator(bundled_archive_schema())
+
+
+def validate_archive_index(doc: dict[str, Any]) -> None:
+    """Schema-validate an in-memory index; raise ``ValueError`` on the first error."""
+    validator = _archive_validator()
     errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
     if not errors:
         return

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -25,9 +26,16 @@ def git_workflow_yaml_path(repo_root: Path) -> Path:
     return (repo_root / GIT_WORKFLOW_REL).resolve()
 
 
+@cache
 def _schema_validator() -> Draft202012Validator:
-    raw = _GIT_WORKFLOW_SCHEMA.read_text(encoding="utf-8")
-    schema = json.loads(raw)
+    """The compiled git-workflow validator.
+
+    Cached because it was rebuilt -- schema file read, JSON parsed, validator
+    compiled -- on *every* ``load_git_workflow_config``, which finish-this-task
+    and do-next-available-task each call five times per run. The schema ships
+    inside the wheel, so it cannot change while the process is alive.
+    """
+    schema = json.loads(_GIT_WORKFLOW_SCHEMA.read_text(encoding="utf-8"))
     return Draft202012Validator(schema)
 
 
@@ -94,33 +102,32 @@ def resolve_integration_defaults(
     return base, remote, warnings
 
 
-def merge_request_requires_manual_approval(repo_root: Path) -> bool:
-    """True when ``roadmap/git-workflow.yaml`` sets ``merge_request_requires_manual_approval``."""
+def _flag(repo_root: Path, key: str, *, default: bool) -> bool:
+    """A boolean from ``roadmap/git-workflow.yaml``, or ``default``.
+
+    An unreadable config yields the default, so a repo without one behaves as
+    if every flag were unset.
+    """
     data, err = load_git_workflow_config(repo_root)
     if err or not data:
-        return False
-    v = data.get("merge_request_requires_manual_approval")
-    return v is True
+        return default
+    v = data.get(key)
+    return default if v is None else bool(v)
+
+
+def merge_request_requires_manual_approval(repo_root: Path) -> bool:
+    """True when ``roadmap/git-workflow.yaml`` opts into manual MR approval."""
+    return _flag(repo_root, "merge_request_requires_manual_approval", default=False)
 
 
 def require_implementation_review_before_finish(repo_root: Path) -> bool:
-    """True when ``roadmap/git-workflow.yaml`` sets ``require_implementation_review_before_finish``."""
-    data, err = load_git_workflow_config(repo_root)
-    if err or not data:
-        return False
-    v = data.get("require_implementation_review_before_finish")
-    return v is True
+    """True when finishing a task requires an implementation review first."""
+    return _flag(repo_root, "require_implementation_review_before_finish", default=False)
 
 
 def cleanup_work_artifacts_on_finish(repo_root: Path) -> bool:
-    """True unless ``cleanup_work_artifacts_on_finish`` is explicitly false in git-workflow.yaml."""
-    data, err = load_git_workflow_config(repo_root)
-    if err or not data:
-        return True
-    v = data.get("cleanup_work_artifacts_on_finish")
-    if v is False:
-        return False
-    return True
+    """True unless ``cleanup_work_artifacts_on_finish`` is explicitly false."""
+    return _flag(repo_root, "cleanup_work_artifacts_on_finish", default=True)
 
 
 def should_cleanup_work_artifacts_on_finish(
@@ -184,39 +191,32 @@ def git_config_user_name(repo_root: Path) -> str | None:
     return (out or "").strip()
 
 
-def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
-    """Author name (``%an``) of the latest commit on ``refs/remotes/<remote>/<branch>``."""
+def _tip_author(repo_root: Path, ref: str) -> str | None:
+    """Author (``%an``) of the tip of ``ref``, when that ref exists."""
     if not is_git_worktree(repo_root):
         return None
+    ok, _ = git_ok(["show-ref", "--verify", ref], repo_root)
+    if not ok:
+        return None
+    ok2, line = git_ok(["log", "-1", "--format=%an", ref], repo_root)
+    return (line or "").strip() or None if ok2 else None
+
+
+def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
+    """Author name (``%an``) of the latest commit on ``refs/remotes/<remote>/<branch>``."""
     rm = (remote or "").strip()
     br = (branch or "").strip()
     if not rm or not br:
         return None
-    ref = f"refs/remotes/{rm}/{br}"
-    ok, _ = git_ok(["show-ref", "--verify", ref], repo_root)
-    if not ok:
-        return None
-    ok2, line = git_ok(["log", "-1", "--format=%an", ref], repo_root)
-    if not ok2 or not (line or "").strip():
-        return None
-    return (line or "").strip()
+    return _tip_author(repo_root, f"refs/remotes/{rm}/{br}")
 
 
 def git_local_branch_tip_author(repo_root: Path, branch: str) -> str | None:
     """Latest commit author (%an) on ``refs/heads/<branch>`` when that ref exists."""
-    if not is_git_worktree(repo_root):
-        return None
     br = (branch or "").strip()
     if not br:
         return None
-    ref = f"refs/heads/{br}"
-    ok, _ = git_ok(["show-ref", "--verify", ref], repo_root)
-    if not ok:
-        return None
-    ok2, line = git_ok(["log", "-1", "--format=%an", ref], repo_root)
-    if not ok2 or not (line or "").strip():
-        return None
-    return (line or "").strip()
+    return _tip_author(repo_root, f"refs/heads/{br}")
 
 
 def git_branch_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
@@ -244,24 +244,22 @@ def integration_refs_present(
     return False, ""
 
 
+#: Optional config fields echoed in the status payload, with how to coerce each.
+_STATUS_FIELDS: tuple[tuple[str, type], ...] = (
+    ("merge_request_requires_manual_approval", bool),
+    ("require_implementation_review_before_finish", bool),
+    ("cleanup_work_artifacts_on_finish", bool),
+    ("on_complete", str),
+)
+
+
 def _optional_git_workflow_config_fields(data: dict[str, Any]) -> dict[str, Any]:
-    """Optional booleans exposed in status payload (subset of schema)."""
-    out: dict[str, Any] = {}
-    if "merge_request_requires_manual_approval" in data:
-        out["merge_request_requires_manual_approval"] = bool(
-            data["merge_request_requires_manual_approval"],
-        )
-    if "require_implementation_review_before_finish" in data:
-        out["require_implementation_review_before_finish"] = bool(
-            data["require_implementation_review_before_finish"],
-        )
-    if "cleanup_work_artifacts_on_finish" in data:
-        out["cleanup_work_artifacts_on_finish"] = bool(
-            data["cleanup_work_artifacts_on_finish"],
-        )
-    if "on_complete" in data and isinstance(data.get("on_complete"), str):
-        out["on_complete"] = data["on_complete"]
-    return out
+    """Optional fields exposed in the status payload (subset of schema)."""
+    return {
+        key: kind(data[key])
+        for key, kind in _STATUS_FIELDS
+        if key in data and (kind is not str or isinstance(data[key], str))
+    }
 
 
 def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:

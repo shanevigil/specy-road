@@ -15,7 +15,7 @@ from roadmap_chunk_utils import (
     load_manifest_mapping,
 )
 from specy_road.runtime_paths import default_user_repo_root
-from specy_road.file_limits_engine import line_count
+from specy_road.file_limits_engine import line_count, roadmap_line_limit
 
 
 # Status precedence used to aggregate non-leaf rollup status. Higher rank =
@@ -211,28 +211,6 @@ def _check_oversized_manifest_file(root: Path, path: Path, max_lines: int) -> bo
     return False
 
 
-def _roadmap_manifest_max_lines(root: Path) -> int:
-    config_path = root / "constraints" / "file-limits.yaml"
-    if config_path.is_file():
-        with config_path.open(encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-        val = cfg.get("roadmap_manifest_max_lines")
-        if isinstance(val, int) and val > 0:
-            return val
-    return 500
-
-
-def _roadmap_json_chunk_max_lines(root: Path) -> int:
-    config_path = root / "constraints" / "file-limits.yaml"
-    if config_path.is_file():
-        with config_path.open(encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-        val = cfg.get("roadmap_json_chunk_max_lines")
-        if isinstance(val, int) and val > 0:
-            return val
-    return 500
-
-
 #: Subdirectory of ``roadmap/`` holding archived subtrees. Its JSON is not
 #: roadmap *source*: nothing there is in ``manifest.json``'s ``includes``, so
 #: the loader never reads it and no one edits it by hand.
@@ -288,8 +266,8 @@ def validate_roadmap_line_limits(
     ``.json`` chunk files under ``roadmap/``.
     """
     root = root or default_user_repo_root()
-    manifest_max = max_lines if max_lines is not None else _roadmap_manifest_max_lines(root)
-    json_max = max_lines if max_lines is not None else _roadmap_json_chunk_max_lines(root)
+    manifest_max = max_lines or roadmap_line_limit(root, "roadmap_manifest_max_lines")
+    json_max = max_lines or roadmap_line_limit(root, "roadmap_json_chunk_max_lines")
     base = root / "roadmap"
     failed = False
     try:

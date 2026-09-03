@@ -24,27 +24,19 @@ from roadmap_chunk_utils import (
     render_json_chunk,
     roadmap_dir,
 )
+from specy_road.file_limits_engine import roadmap_line_limit
 
 
 _DEFAULT_MAX_CHUNK_LINES = 500
-_NEW_CHUNK_KEY_HEX_DEFAULT = 6
-_NEW_CHUNK_KEY_HEX_FALLBACK = 8
 
 
 def chunk_max_lines(root: Path) -> int:
-    """Resolve ``roadmap_json_chunk_max_lines`` from ``constraints/file-limits.yaml``."""
-    cfg_path = root / "constraints" / "file-limits.yaml"
-    if not cfg_path.is_file():
-        return _DEFAULT_MAX_CHUNK_LINES
-    try:
-        with cfg_path.open(encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-    except (OSError, yaml.YAMLError):
-        return _DEFAULT_MAX_CHUNK_LINES
-    val = cfg.get("roadmap_json_chunk_max_lines")
-    if isinstance(val, int) and val > 0:
-        return val
-    return _DEFAULT_MAX_CHUNK_LINES
+    """``roadmap_json_chunk_max_lines`` from ``constraints/file-limits.yaml``."""
+    return roadmap_line_limit(
+        root, "roadmap_json_chunk_max_lines", _DEFAULT_MAX_CHUNK_LINES
+    )
+_NEW_CHUNK_KEY_HEX_DEFAULT = 6
+_NEW_CHUNK_KEY_HEX_FALLBACK = 8
 
 
 def simulate_chunk_lines(nodes: list[dict]) -> int:
