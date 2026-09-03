@@ -189,18 +189,17 @@ def _contract_body(root: Path, rel: str) -> list[str]:
 
 def _uncited_listing(root: Path, uncited: list[str]) -> list[str]:
     """Name what was left out, so an omission is visible rather than silent."""
-    total = sum((root / rel).stat().st_size for rel in uncited)
+    # One stat per contract: the total and the per-line size are the same number.
+    sizes = [(rel, (root / rel).stat().st_size) for rel in uncited]
     out = [
         f"**Not inlined** — {len(uncited)} "
-        f"contract{'s' if len(uncited) != 1 else ''}, {_human_size(total)}. "
+        f"contract{'s' if len(uncited) != 1 else ''}, "
+        f"{_human_size(sum(n for _, n in sizes))}. "
         "Cite one in your planning sheet's `## References` to inline it, "
         "or reach it directly:",
         "",
     ]
-    out.extend(
-        f"- `{rel}` ({_human_size((root / rel).stat().st_size)})"
-        for rel in uncited
-    )
+    out.extend(f"- `{rel}` ({_human_size(n)})" for rel, n in sizes)
     out.extend(["", '    specy-road search "<query>" --kind shared', ""])
     return out
 
@@ -230,7 +229,8 @@ def _inline_shared_contracts(
 
     for rel in inline:
         out.extend(_contract_body(root, rel))
-    uncited = [rel for rel in every if rel not in set(inline)]
+    inlined = set(inline)
+    uncited = [rel for rel in every if rel not in inlined]
     if uncited:
         out.extend(_uncited_listing(root, uncited))
     return out
