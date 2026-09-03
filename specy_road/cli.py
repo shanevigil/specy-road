@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, specy_road_package_dir
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"

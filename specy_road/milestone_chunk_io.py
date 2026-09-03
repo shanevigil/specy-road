@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.milestone_subtree import leaf_ids_under_parent
-from specy_road.runtime_paths import bundled_scripts_dir
 from specy_road.archive_plan import utc_now_iso
 
 

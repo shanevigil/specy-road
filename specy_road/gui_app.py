@@ -14,24 +14,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 
-def _scripts_dir() -> Path:
-    """Locate bundled roadmap Python modules (``bundled_scripts/``)."""
-    env = os.environ.get("SPECY_ROAD_SCRIPTS")
-    if env:
-        p = Path(env).resolve()
-        if p.is_dir():
-            return p
-    pkg = Path(__file__).resolve().parent
-    bundled = pkg / "bundled_scripts"
-    if bundled.is_dir():
-        return bundled
-    raise RuntimeError(
-        "Cannot locate bundled_scripts/ (roadmap modules). "
-        "Reinstall specy-road, "
-        "or set SPECY_ROAD_SCRIPTS to that directory.",
-    )
-
-
 from specy_road.gui_app_api import make_api_router  # noqa: E402
 
 _PKG_DIR = Path(__file__).resolve().parent

@@ -129,7 +129,7 @@ specy-road gui
 
 The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:8765)**). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If **address already in use** on port 8765, stop the other process or run `specy-road gui --port 8766` and open that port in the browser.
 
-**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `PYTHONPATH=scripts python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
+**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
 
 ### Multi-writer behavior (optimistic concurrency)
 

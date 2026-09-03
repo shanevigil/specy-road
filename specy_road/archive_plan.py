@@ -15,7 +15,6 @@ from typing import Any
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import find_record, load_archive_index, node_summary
 from specy_road.milestone_subtree import subtree_node_ids
-from specy_road.runtime_paths import bundled_scripts_dir
 
 
 @dataclass(frozen=True)
