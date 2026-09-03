@@ -205,6 +205,33 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Fixed
 
+- **The milestone stub template scaffolded JSON that fails `specy-road validate`.**
+  `templates/planning-node/milestone-stub.md.template` told PMs to author
+  `agentic_checklist` and `execution_subtask`. Both are in
+  `validate_self_heal._DEPRECATED_FIELDS` — stripped from chunk files on disk —
+  and `roadmap.schema.json` sets `additionalProperties: false`, so following the
+  shipped template produced a repository that fails its own validation.
+  `docs/roadmap-authoring.md` was worse: it called `agentic_checklist`
+  "**Required** when `execution_subtask: agentic`" forty lines above declaring
+  it deprecated. The five questions that make a task implementable now live in
+  the planning sheet, which is where `specy-road brief` already reads cited
+  contracts from.
+- **The outline editor refused a gate reparent that `validate` accepts.**
+  `validate_roadmap_gates` allows a gate under a vision, phase **or milestone**;
+  `roadmap_outline_renumber` allowed only vision or phase, so moving a gate
+  under a milestone in the PM GUI was rejected for a shape the schema and the
+  docs both describe as correct. Both now read one `NODE_KINDS` table.
+- **A deep archive's reference file escaped non-ASCII titles the capsule did
+  not.** `archive_deep` rendered the ref file with an inline `json.dumps` that
+  had lost `ensure_ascii=False`, so a node titled in Japanese was written as
+  `\uXXXX` escapes in `roadmap/archive/refs/*.json` and as UTF-8 in the capsule
+  beside it. One `render_canonical_json` now writes both.
+- **A missing `roadmap/registry.yaml` raised a traceback in three commands.**
+  `finish-this-task`, `mark-implementation-reviewed` and the `feature/rm-*`
+  resolver let `FileNotFoundError` reach the user, while four other readers of
+  the same file treated absent as empty. All now go through
+  `registry_yaml.read_registry`, and a repo with no claims yet reports the real
+  problem instead.
 - **Archived files no longer trip the roadmap chunk line limit.**
   `validate_roadmap_line_limits` scans every `*.json` under `roadmap/`, so
   `roadmap/archive/` was checked against `roadmap_json_chunk_max_lines` (500).
@@ -252,6 +279,26 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Changed
 
+- **`bundled_scripts` is a real package.** The scripts imported each other by
+  bare module name, which resolved only because eleven modules mutated
+  `sys.path` on the way past — `ensure_bundled_scripts_on_path()` at 24 call
+  sites, seven hand-rolled equivalents, a `PYTHONPATH` prefix built in
+  `cli._run`, another in the test harness, and a pytest `pythonpath` entry.
+  They are now imported as `specy_road.bundled_scripts.<name>`, and the CLI runs
+  them with `-m` so a child process resolves imports the way its parent did.
+  Anything importing these modules by bare name needs the package path.
+- **`--repo-root` now documents what it actually does.** Twenty-six parsers
+  spelled the flag out by hand and its stated default had drifted four ways
+  ("git root or cwd", "git discovery / cwd", "cwd", "current working
+  directory"). Every one was wrong once `project_root()` took over resolution.
+  One definition, one help string, and it names the real order.
+- **Faster where it was repeating itself.** The git-workflow and archive JSON
+  schema validators were re-read from the wheel and recompiled on *every* call —
+  five times per `finish-this-task`, four per `specy-road archive`.
+  `constraints/file-limits.yaml` was parsed twice on adjacent lines to read two
+  keys. The PM GUI ran `rev-parse --is-inside-work-tree` five times per payload,
+  walked the roadmap twice per fingerprint poll, and loaded the merged graph
+  three times per node insert.
 - **One project-root resolver, and both layouts work without a flag.** The CLI
   and the PM GUI resolved the project by different rules, and the CLI's was the
   weaker one: `default_user_repo_root` was git-toplevel-or-cwd and never read
@@ -316,6 +363,27 @@ body. Keep section bodies focused; link to PRs for detail.
   keeps its atomic behavior; the two commands remain unrelated despite the
   similar names.
 
+### Removed
+
+- **`pr_hints` is gone from the `GET /api/roadmap` payload.** It duplicated
+  `git_enrichment[<id>].hint_line`, which the PM UI already preferred — the
+  client used `pr_hints` only as a tail fallback and carried explicit de-dup
+  logic to suppress the overlap. Building it cost a second GitHub/GitLab request
+  per registered node, and `hint_line` itself cost a third, re-fetching a PR the
+  server already had in hand. Removing it drops **2N forge API calls per roadmap
+  load** and fills in `hint_line` for merged and closed PRs, which the old
+  `state=open` query never returned.
+- **`inherit_git_remote` is gone from the settings API.** The React client
+  hardcoded it to `false`; it travelled through a Pydantic field, a route
+  handler and a keyword argument whose own docstring said it was ignored, and
+  nothing ever read it.
+- **The `.specyr/` → `.specyrd/` manifest migration is gone.** `git log -S '".specyr"'`
+  over `specy_road/` returns exactly the `v0.1.0-rc1` commit that introduced the
+  string as the legacy name to migrate *from*; no tagged release ever wrote
+  `.specyr/`.
+- **`SPECY_ROAD_SCRIPTS` no longer does anything.** It was honoured by one of
+  the eleven places that put `bundled_scripts/` on `sys.path`, so setting it
+  produced a half-redirected process.
 
 ## [v0.1.4] - 2026-08-31
 

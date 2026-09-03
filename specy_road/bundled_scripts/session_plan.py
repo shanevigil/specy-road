@@ -25,14 +25,15 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from do_next_available import (
+from specy_road.bundled_scripts.do_next_available import (
     _available,
     _claimed_node_ids,
-    _leaf_node_ids,
     _statuses_by_node_key,
 )
-from roadmap_layout import effective_dependency_keys, natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.node_kinds import is_gate
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +91,7 @@ def _sorted_ids(ids) -> list[str]:
 
 
 def _scope_leaf_ids(nodes: list[dict], under: str | None) -> set[str]:
-    leaves = _leaf_node_ids(nodes)
+    leaves = structural_leaf_ids(nodes)
     if under:
         return leaves & subtree_node_ids(under, nodes)
     return leaves
@@ -115,7 +116,7 @@ def _gate_keys(nodes: list[dict]) -> set[str]:
     return {
         n["node_key"]
         for n in nodes
-        if n.get("type") == "gate" and n.get("node_key")
+        if is_gate(n.get("type")) and n.get("node_key")
     }
 
 
@@ -152,7 +153,7 @@ def _classify(
     }
     for n in nodes:
         nid = n.get("id")
-        if nid not in scope or n.get("type") == "gate":
+        if nid not in scope or is_gate(n.get("type")):
             continue
         st = _status(n)
         if st in ("complete", "cancelled"):

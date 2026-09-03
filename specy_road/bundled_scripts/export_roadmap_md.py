@@ -11,11 +11,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import discover_manifest_path
-from roadmap_layout import natural_id_sort_key
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 BANNER = (
     "<!-- specy-road: generated index from merged roadmap (manifest.json + chunk files) "
@@ -141,6 +141,20 @@ def export_markdown(nodes: list[dict]) -> str:
     return render_index(nodes)
 
 
+def reexport_roadmap_md(root: Path) -> None:
+    """Regenerate ``roadmap.md`` from the merged graph.
+
+    The archive CLI and the PM GUI both did this inline so that a later
+    ``export --check`` would not report drift they had caused; the module that
+    owns the file -- and the --check comparison -- owns the regeneration too.
+    """
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+
+    (root / "roadmap.md").write_text(
+        export_markdown(load_roadmap(root)["nodes"]), encoding="utf-8"
+    )
+
+
 def _write_export(
     root: Path,
     index: str,
@@ -170,13 +184,7 @@ def main() -> None:
         action="store_true",
         help="Exit 1 if generated files differ from disk (CI drift check)",
     )
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:

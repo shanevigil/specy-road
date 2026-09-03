@@ -30,12 +30,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
-from planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
-from roadmap_layout import effective_dependency_keys
-from roadmap_node_keys import build_key_to_node
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
+from specy_road.bundled_scripts.planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
+from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 
 from specy_road.text_sections import find_section, normalize_heading, read_text_safely
+from specy_road.archive_index import iter_archived_summaries
+from specy_road.node_kinds import is_gate
 
 
 # ---------------------------------------------------------------------------
@@ -50,7 +52,7 @@ def _intent_titles_for(node_type: str | None) -> tuple[str, ...]:
     sheets contribute ``## Why this gate exists``. Other titles are reserved
     for a future opt-in.
     """
-    if str(node_type or "").strip().lower() == "gate":
+    if is_gate(node_type):
         gate = gate_sheet_level2_titles()
         return (gate[0],) if gate else ("Why this gate exists",)
     feat = feature_sheet_level2_titles()
@@ -191,11 +193,6 @@ def _archived_dep_lines(
     visibly lists one. Naming the archived work preserves the context without
     reopening it.
     """
-    try:
-        from specy_road.archive_index import index_records, load_archive_index
-    except Exception:  # noqa: BLE001 - the brief must render without the ledger
-        return []
-
     live = {
         n.get("node_key")
         for n in by_id.values()
@@ -209,16 +206,11 @@ def _archived_dep_lines(
     if not wanted:
         return []
 
-    try:
-        records = index_records(load_archive_index(repo_root))
-    except Exception:  # noqa: BLE001 - see above
-        return []
-    summary: dict[str, tuple[str, str]] = {}
-    for rec in records:
-        for n in rec.get("nodes_summary") or []:
-            key = n.get("node_key")
-            if isinstance(key, str):
-                summary[key] = (str(n.get("id") or "?"), str(n.get("title") or ""))
+    summary: dict[str, tuple[str, str]] = {
+        n["node_key"]: (str(n.get("id") or "?"), str(n.get("title") or ""))
+        for _rec, n in iter_archived_summaries(repo_root)
+        if isinstance(n.get("node_key"), str)
+    }
 
     lines = [f"- **{summary[k][0]}** — {summary[k][1]} _(archived)_" for k in sorted(wanted) if k in summary]
     if not lines:

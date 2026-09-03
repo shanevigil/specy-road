@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from roadmap_load_at_ref import load_roadmap_nodes_at_ref
+from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 
 
 def virtual_complete_from_registry(

@@ -17,9 +17,14 @@ new archive fields by upgrading the package.
 from __future__ import annotations
 
 import json
+from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from jsonschema import Draft202012Validator
+
+from specy_road.roadmap_json import render_canonical_json
 from specy_road.runtime_paths import specy_road_package_dir
 
 INDEX_VERSION = 1
@@ -78,11 +83,22 @@ def bundled_archive_schema() -> dict[str, Any]:
         return json.load(f)
 
 
-def validate_archive_index(doc: dict[str, Any]) -> None:
-    """Schema-validate an in-memory index; raise ``ValueError`` on the first error."""
+@cache
+def _archive_validator() -> "Draft202012Validator":
+    """The compiled archive-index validator.
+
+    Cached because it was rebuilt -- schema read from the wheel, parsed,
+    validator compiled -- on every load *and* every write of the index, which
+    ``specy-road archive`` does four times in one run.
+    """
     from jsonschema import Draft202012Validator
 
-    validator = Draft202012Validator(bundled_archive_schema())
+    return Draft202012Validator(bundled_archive_schema())
+
+
+def validate_archive_index(doc: dict[str, Any]) -> None:
+    """Schema-validate an in-memory index; raise ``ValueError`` on the first error."""
+    validator = _archive_validator()
     errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
     if not errors:
         return
@@ -113,11 +129,37 @@ def load_archive_index(root: Path) -> dict[str, Any]:
 
 
 def render_archive_index(doc: dict[str, Any]) -> str:
-    """Canonical index text (stable key order, indent=2, trailing newline)."""
-    body = json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False)
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    """Canonical index text."""
+    return render_canonical_json(doc)
+
+
+def records_or_empty(root: Path) -> list[dict[str, Any]]:
+    """Ledger records, or ``[]`` if the ledger is missing or unreadable.
+
+    :func:`load_archive_index` raises, which is right for ``validate`` and wrong
+    for everyone else: a digest, a brief, a search index and a history walk all
+    have to render without the ledger rather than fail. Four callers wrapped it
+    in the same ``try/except Exception`` to say so; this says it once.
+    """
+    try:
+        return index_records(load_archive_index(root))
+    except Exception:  # noqa: BLE001 - a broken ledger is validate's to report
+        return []
+
+
+def iter_archived_summaries(root: Path) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """``(record, node summary)`` for every archived node, best-effort.
+
+    The nested walk into ``nodes_summary`` was written out at four call sites,
+    each projecting it differently -- by key, by id, as pairs. The traversal is
+    shared here; the projection stays with the caller that needs it.
+    """
+    return [
+        (record, summary)
+        for record in records_or_empty(root)
+        for summary in record.get("nodes_summary") or []
+        if isinstance(summary, dict)
+    ]
 
 
 def write_archive_index(root: Path, doc: dict[str, Any]) -> Path:

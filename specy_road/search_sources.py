@@ -37,6 +37,7 @@ from specy_road.text_sections import (
     read_text_safely,
     split_sections,
 )
+from specy_road.roadmap_json import nodes_from_chunk_doc
 
 ARCHIVE_DIR = "roadmap/archive"
 
@@ -99,10 +100,8 @@ def _work_rels(root: Path) -> list[str]:
 def _live_chunk_rels(root: Path) -> list[str]:
     """Chunk files named by the manifest — the live/archived boundary itself."""
     try:
-        from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-        ensure_bundled_scripts_on_path()
-        from roadmap_chunk_utils import load_manifest_mapping
+        from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
 
         includes = load_manifest_mapping(root).get("includes") or []
     except (Exception, SystemExit):
@@ -140,7 +139,7 @@ def chunks_for(
 
 
 def _node_key_from_path(rel: str) -> str:
-    from planning_artifacts import PLANNING_FILENAME_RE
+    from specy_road.bundled_scripts.planning_artifacts import PLANNING_FILENAME_RE
 
     match = PLANNING_FILENAME_RE.match(Path(rel).name)
     return match.group("uuid").lower() if match else ""
@@ -182,7 +181,7 @@ def _sheet_chunks(
     by_id: dict[str, dict[str, Any]],
     scope: str,
 ) -> list[Chunk]:
-    from planning_artifacts import split_frontmatter
+    from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 
     text, ok = read_text_safely(root / rel)
     if not ok:
@@ -251,15 +250,7 @@ def _nodes_in(path: Path) -> list[dict[str, Any]]:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return []
-    if isinstance(doc, list):
-        return [n for n in doc if isinstance(n, dict)]
-    if isinstance(doc, dict):
-        nodes = doc.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in doc:
-            return [doc]
-    return []
+    return nodes_from_chunk_doc(doc) or []
 
 
 def _node_chunks(

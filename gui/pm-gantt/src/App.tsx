@@ -1594,7 +1594,6 @@ export default function App() {
               reorderLocked={hideCompleteActive}
               interactionLocked={queueOverloaded}
               selectedId={selectedId}
-              prHints={displayData.pr_hints}
               gitEnrichment={displayData.git_enrichment}
               dependencyInheritance={displayData.dependency_inheritance}
               registryByNode={displayData.registry_by_node}
@@ -1707,8 +1706,7 @@ export default function App() {
                   dependencyInheritance={displayData.dependency_inheritance?.[nodeId]}
                   registryByNode={displayData.registry_by_node}
                   gitEnrichment={displayData.git_enrichment}
-                  prHints={displayData.pr_hints}
-                  onClose={() => closeEditNode(nodeId)}
+                      onClose={() => closeEditNode(nodeId)}
                   onOpenNode={openEditNode}
                   minimized={minimizedTaskIds.includes(nodeId)}
                   onMinimize={() => minimizeEditNode(nodeId)}

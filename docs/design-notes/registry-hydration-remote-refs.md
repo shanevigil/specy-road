@@ -2,7 +2,7 @@
 
 ## Context
 
-The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **working tree at HEAD**. With the default `do-next-available-task` flow, active claims are committed and pushed on the integration branch first, so `HEAD` usually already reflects in-progress work after `git pull`. Remote overlay exists to fill visibility gaps when local HEAD is behind or when teams still use feature-only registration patterns.
+The PM Gantt loads [`roadmap/registry.yaml`](../../specy_road/registry_yaml.py) from the **working tree at HEAD**. With the default `do-next-available-task` flow, active claims are committed and pushed on the integration branch first, so `HEAD` usually already reflects in-progress work after `git pull`. Remote overlay exists to fill visibility gaps when local HEAD is behind or when teams still use feature-only registration patterns.
 
 ### Integration-branch registration (recommended)
 
@@ -27,7 +27,7 @@ Implementation: [`specy_road/registry_remote_overlay.py`](../../specy_road/regis
 
 **Limits:** max refs scanned (default **48**, override with **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_MAX_REFS`**), total time budget (default **5s**, **`SPECY_ROAD_GUI_REGISTRY_REMOTE_OVERLAY_BUDGET_S`**), per-`git show` timeout. Invalid YAML on a ref is skipped.
 
-**Payload:** `registry`, `registry_by_node`, `pr_hints`, and `git_enrichment` use the **merged** view when overlay is active. The response may include **`registry_overlay`** (scan counts) plus **`registry_overlay.last_auto_fetch_attempt`** (`ok`, `reason`, `step`, `error`, timestamp) so PMs can see when background `git fetch` failed.
+**Payload:** `registry`, `registry_by_node`, and `git_enrichment` use the **merged** view when overlay is active. The response may include **`registry_overlay`** (scan counts) plus **`registry_overlay.last_auto_fetch_attempt`** (`ok`, `reason`, `step`, `error`, timestamp) so PMs can see when background `git fetch` failed.
 
 When integration auto-ff is enabled, **`integration_branch_auto_ff`** may also include **`last_auto_ff_attempt`** with the same status shape (`ok`, `reason`, `step`, `error`, timestamp). Failures remain best-effort (the API still responds), but metadata and logs now surface stale-sync causes.
 

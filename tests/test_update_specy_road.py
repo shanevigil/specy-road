@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
-import update_specy_road as usr
+from specy_road.bundled_scripts import update_specy_road as usr
 
 REPO = Path(__file__).resolve().parent.parent
 

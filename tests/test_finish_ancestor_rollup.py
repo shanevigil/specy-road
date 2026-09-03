@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from roadmap_load import annotate_rollup_status, load_roadmap
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_load import annotate_rollup_status, load_roadmap
 from specy_road.finish_ancestor_rollup import (
     complete_rolled_up_ancestors,
     rolled_up_stale_ancestor_ids,

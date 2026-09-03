@@ -20,7 +20,7 @@ def dogfood_copy(tmp_path: Path) -> Path:
 def test_pm_gui_mutation_fingerprint_base_changes_when_planning_file_touched(
     dogfood_copy: Path,
 ) -> None:
-    from roadmap_gui_lib import (
+    from specy_road.bundled_scripts.roadmap_gui_lib import (
         iter_pm_gui_extra_fingerprint_files,
         pm_gui_mutation_fingerprint_base,
         roadmap_fingerprint,

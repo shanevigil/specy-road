@@ -6,11 +6,6 @@ import argparse
 import sys
 from pathlib import Path
 
-from specy_road.runtime_paths import bundled_scripts_dir
-
-if str(bundled_scripts_dir()) not in sys.path:
-    sys.path.insert(0, str(bundled_scripts_dir()))
-
 from specy_road.milestone_rollup_git import (
     cherry_pick_bookkeeping_to_integration,
     merge_leaf_into_rollup,
@@ -105,7 +100,7 @@ def try_milestone_rollup_finish(
         raise SystemExit(1)
     remove_on_complete_session(sess_path)
     try:
-        from roadmap_load import load_roadmap
+        from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
         nodes2 = load_roadmap(repo)["nodes"]
         if maybe_promote_milestone_to_pending_mr(repo, ms.parent_node_id, nodes2):

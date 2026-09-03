@@ -9,8 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import roadmap_crud_ops as ops
-from roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts import roadmap_crud_ops as ops
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import REPO, SCHEMAS
 
 

@@ -24,9 +24,11 @@ git binary, or a shallow clone yields fewer dated nodes, never an error.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
+
+from specy_road.git_subprocess import HISTORY_TIMEOUT, git_stdout, head_sha
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 # Belt-and-braces bound on a pathological history. A node whose last touch is
 # older than this is stale by any measure the column could express.
@@ -40,38 +42,6 @@ SOURCE_CHUNK = "chunk"
 # any answer here. Bounded so a long-lived GUI process cannot grow without end.
 _CACHE: dict[tuple[str, str], dict[str, dict[str, str]]] = {}
 _CACHE_MAX = 8
-
-
-def _run_git(root: Path, args: list[str]) -> str | None:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except (OSError, ValueError):
-        return None
-    return r.stdout if r.returncode == 0 else None
-
-
-def head_sha(root: Path) -> str | None:
-    out = _run_git(root, ["rev-parse", "HEAD"])
-    return (out or "").strip() or None
-
-
-def repo_prefix(root: Path) -> str:
-    """``root``'s path within its git repo, e.g. ``"project/"`` — or ``""``.
-
-    ``git log --name-only`` prints paths relative to the **repository** root,
-    while roadmap paths (``planning_dir``, chunk paths) are relative to the
-    **project** root. Those coincide only when the project is the repo root. In
-    a monorepo — or whenever ``SPECY_ROAD_REPO_ROOT`` points at a subdirectory
-    — every lookup would miss and the column would silently go blank.
-    """
-    out = _run_git(root, ["rev-parse", "--show-prefix"])
-    return (out or "").strip()
 
 
 def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
@@ -89,8 +59,7 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
     """
     if not scopes:
         return {}
-    out = _run_git(
-        root,
+    out = git_stdout(
         [
             "log",
             f"--max-count={MAX_HISTORY_COMMITS}",
@@ -99,10 +68,12 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
             "--",
             *scopes,
         ],
+        root,
+        timeout=HISTORY_TIMEOUT,
     )
     if not out:
         return {}
-    prefix = repo_prefix(root)
+    prefix = project_prefix(root)
     dates: dict[str, str] = {}
     current: str | None = None
     for line in out.splitlines():
@@ -112,11 +83,10 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
         rel = line.strip()
         if not rel or not current:
             continue
-        # Re-base repository-relative output onto the project root.
-        if prefix:
-            if not rel.startswith(prefix):
-                continue
-            rel = rel[len(prefix):]
+        rebased = rebase_to_project(rel, prefix)
+        if rebased is None:
+            continue
+        rel = rebased
         if rel not in dates:
             dates[rel] = current
     return dates
@@ -135,7 +105,7 @@ def _scopes(paths: list[str]) -> list[str]:
 def _chunk_rel_by_node_id(root: Path) -> dict[str, str]:
     """``{node_id: repo-relative chunk path}``, or empty when unavailable."""
     try:
-        from roadmap_chunk_utils import build_node_chunk_map
+        from specy_road.bundled_scripts.roadmap_chunk_utils import build_node_chunk_map
 
         base = root.resolve()
         return {

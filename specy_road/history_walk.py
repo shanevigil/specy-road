@@ -40,7 +40,8 @@ from specy_road.history_git import (
     log_raw,
     ls_tree_blobs,
 )
-from specy_road.node_activity import repo_prefix
+from specy_road.runtime_paths import project_prefix, rebase_to_project
+from specy_road.roadmap_json import nodes_from_chunk_doc
 
 MANIFEST_REL = "roadmap/manifest.json"
 ARCHIVE_INDEX_REL = "roadmap/archive/index.json"
@@ -64,18 +65,6 @@ class Commit:
         return {"commit": self.sha, "at": self.at, "author": self.author}
 
 
-def _rebase(path: str, prefix: str) -> str | None:
-    """Re-base git's repository-relative path onto the project root.
-
-    They coincide only when the project *is* the repo root; in a monorepo, or
-    whenever ``SPECY_ROAD_REPO_ROOT`` points at a subdirectory, every lookup
-    would otherwise miss silently.
-    """
-    if not prefix:
-        return path
-    return path[len(prefix):] if path.startswith(prefix) else None
-
-
 def parse_log(text: str, prefix: str = "") -> list[Commit]:
     """Parse ``git log --raw --no-abbrev`` output into commits, oldest first."""
     commits: list[Commit] = []
@@ -93,7 +82,7 @@ def parse_log(text: str, prefix: str = "") -> list[Commit]:
         # ":<srcmode> <dstmode> <srcsha> <dstsha> <status>"
         if len(fields) < 5 or not path:
             continue
-        rel = _rebase(path, prefix)
+        rel = rebase_to_project(path, prefix)
         if rel is None:
             continue
         deleted = fields[4].startswith("D")
@@ -107,17 +96,6 @@ def _include_path(rel: str) -> str | None:
     return joined if joined.startswith(ROADMAP_PREFIX) else None
 
 
-def _chunk_nodes(doc: Any) -> list[dict[str, Any]]:
-    """Nodes from a parsed chunk, accepting the same shapes the loader does."""
-    if isinstance(doc, list):
-        return [n for n in doc if isinstance(n, dict)]
-    if isinstance(doc, dict):
-        nodes = doc.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in doc:
-            return [doc]
-    return []
 
 
 def build_graph(
@@ -140,7 +118,7 @@ def build_graph(
         path = _include_path(rel.strip())
         sha = state.get(path) if path else None
         if sha:
-            nodes.extend(_chunk_nodes(reader.json(sha)))
+            nodes.extend(nodes_from_chunk_doc(reader.json(sha)) or [])
     return snapshot(nodes)
 
 
@@ -162,7 +140,7 @@ def _is_graph_path(path: str) -> bool:
 
 def _sheet_events(commit: Commit) -> list[dict[str, Any]]:
     """Sheet touches, attributed straight from the filename's ``node_key``."""
-    from planning_artifacts import PLANNING_FILENAME_RE
+    from specy_road.bundled_scripts.planning_artifacts import PLANNING_FILENAME_RE
 
     # One event per node per commit. Renumbering or recodenaming a node renames
     # its sheet, which --no-renames reports as a delete plus an add; both name
@@ -251,11 +229,9 @@ def walk(
     than from anything cached, so an incremental walk can never diff against a
     blob map that has drifted from what git actually holds.
     """
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
 
-    prefix = repo_prefix(root)
+    prefix = project_prefix(root)
     text = log_raw(root, SCOPES, since)
     if text is None:
         return [], since
@@ -266,7 +242,7 @@ def walk(
     seed: dict[str, str] = {}
     if since:
         for path, sha in ls_tree_blobs(root, since, ROADMAP_PREFIX.rstrip("/")).items():
-            rel = _rebase(path, prefix)
+            rel = rebase_to_project(path, prefix)
             if rel is not None:
                 seed[rel] = sha
 

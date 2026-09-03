@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import yaml
-from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
@@ -28,15 +28,18 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
-from specy_road.registry_yaml import write_registry
+from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
 )
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.bundled_scripts.repo_ops import current_branch, git_run
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
 
 
 # ---------------------------------------------------------------------------
@@ -44,33 +47,13 @@ REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
 # ---------------------------------------------------------------------------
 
 
-def _current_branch() -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return r.stdout.strip()
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
 # ---------------------------------------------------------------------------
 # Registry helpers
 # ---------------------------------------------------------------------------
 
 
-def _load_registry() -> dict:
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 def _save_registry(doc: dict) -> None:
-    write_registry(REGISTRY_PATH, doc)
+    write_registry(registry_path(ROOT), doc)
 
 
 # ---------------------------------------------------------------------------
@@ -131,13 +114,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="NAME",
         help="Remote for --push (default: origin).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--no-cleanup-work",
         action="store_true",
@@ -253,7 +230,7 @@ def _bookkeeping_commit_phase(
     for rel in complete_rolled_up_ancestors(ROOT, node_id):
         if rel not in changed_files:
             changed_files.append(rel)
-    changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
+    changed_files.append(str(registry_path(ROOT).relative_to(ROOT)))
     reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
     _save_registry(reg)
     print(f"[ok] removed registry entry for '{codename}'\n")
@@ -274,20 +251,19 @@ def _bookkeeping_commit_phase(
     work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
     changed_files.append("roadmap.md")
     changed_files.extend(work_tracked_removals)
-    _git("add", *changed_files)
-    _git("commit", "-m", f"chore(rm-{codename}): complete, deregister")
+    git_run(ROOT, "add", *changed_files)
+    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): complete, deregister")
     print("\n[ok] bookkeeping committed")
     if args.push:
         print(f"-> git push -u {args.remote} {branch}")
-        _git("push", "-u", args.remote, branch)
+        git_run(ROOT, "push", "-u", args.remote, branch)
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH
+    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
-    branch = _current_branch()
+    ROOT = resolve_repo_root(args)
+    branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
             f"error: current branch '{branch}' is not a roadmap feature branch "

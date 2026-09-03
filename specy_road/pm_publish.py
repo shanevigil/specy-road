@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_subprocess import git_ok
-from specy_road.git_workflow_config import current_branch_name, is_git_worktree
+from specy_road.git_subprocess import (
+    current_branch_name,
+    git_ok,
+    is_git_worktree,
+    run,
+)
 
 # Repo-relative paths the PM GUI is expected to edit (forward slashes).
 PUBLISH_PATHSPECS: tuple[str, ...] = (
@@ -177,58 +180,25 @@ def validate_commit_message(message: str) -> str:
     return m
 
 
-def _run_git(
-    repo_root: Path,
-    args: list[str],
-    *,
-    timeout: float,
-) -> tuple[bool, int, str]:
-    try:
-        run = subprocess.run(
-            ["git", *args],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return False, -1, str(e)
-    err = (run.stderr or run.stdout or "").strip()
-    return run.returncode == 0, run.returncode, err
-
-
 def _verify_staged_index_not_empty(repo_root: Path) -> None:
-    d = subprocess.run(
-        ["git", "diff", "--cached", "--quiet"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        timeout=30.0,
-        check=False,
-    )
-    if d.returncode == 0:
+    d = run(["diff", "--cached", "--quiet"], repo_root, timeout=30.0)
+    if d.code == 0:
         raise ValueError("No staged changes after git add.")
-    if d.returncode != 1:
-        raise RuntimeError(
-            f"git diff --cached failed (exit {d.returncode}).",
-        )
+    if d.code != 1:
+        raise RuntimeError(f"git diff --cached failed (exit {d.code}).")
 
 
 def _git_commit_roadmap(repo_root: Path, msg: str) -> None:
-    ok, rc, err = _run_git(
-        repo_root,
-        ["commit", "-m", msg],
-        timeout=120.0,
-    )
-    if ok:
+    r = run(["commit", "-m", msg], repo_root, timeout=120.0)
+    if r.ok:
         return
+    err = r.message
     if "Please tell me who you are" in err or "user.name" in err:
         raise RuntimeError(
             "Git needs your name and email on this computer. "
             "A developer can run: git config user.name and git config user.email.",
         )
-    raise RuntimeError(f"git commit failed (exit {rc}): {err or 'unknown error'}")
+    raise RuntimeError(f"git commit failed (exit {r.code}): {err or 'unknown error'}")
 
 
 def _raise_push_failure(
@@ -276,13 +246,11 @@ def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
     files = scope_changed_files(repo_root)
     if not files:
         raise ValueError("No roadmap changes to publish.")
-    ok, rc, err = _run_git(
-        repo_root,
-        ["add", "--", *files],
-        timeout=120.0,
-    )
-    if not ok:
-        raise RuntimeError(f"git add failed (exit {rc}): {err or 'unknown error'}")
+    r_add = run(["add", "--", *files], repo_root, timeout=120.0)
+    if not r_add.ok:
+        raise RuntimeError(
+            f"git add failed (exit {r_add.code}): {r_add.message or 'unknown error'}"
+        )
 
     _verify_staged_index_not_empty(repo_root)
     _git_commit_roadmap(repo_root, msg)
@@ -290,13 +258,11 @@ def publish_roadmap(repo_root: Path, message: str) -> dict[str, Any]:
     sha_lines = _git_lines(repo_root, ["rev-parse", "--short", "HEAD"])
     short_sha = sha_lines[0] if sha_lines else None
 
-    ok_push, _rc_push, err_push = _run_git(
-        repo_root,
-        ["push"],
-        timeout=300.0,
-    )
-    if not ok_push:
-        _raise_push_failure(err_push or "git push failed.", current_branch=st.current_branch)
+    r_push = run(["push"], repo_root, timeout=300.0)
+    if not r_push.ok:
+        _raise_push_failure(
+            r_push.message or "git push failed.", current_branch=st.current_branch
+        )
 
     return {
         "ok": True,

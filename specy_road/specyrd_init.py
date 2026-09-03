@@ -169,32 +169,14 @@ class InitResult:
 
 
 def _normalize_manifest_dict(data: dict[str, Any]) -> dict[str, Any]:
-    if "specyr_version" in data and "specyrd_version" not in data:
-        data["specyrd_version"] = data.pop("specyr_version")
     if "specyrd_version" not in data:
         data["specyrd_version"] = __version__
     return data
 
 
-def _remove_legacy_specyr_manifest(repo_root: Path) -> None:
-    """Drop pre-rename ``.specyr/manifest.json`` once ``.specyrd/`` is canonical."""
-    legacy = repo_root / ".specyr" / "manifest.json"
-    if not legacy.is_file():
-        return
-    try:
-        legacy.unlink()
-    except OSError:
-        return
-    try:
-        legacy.parent.rmdir()
-    except OSError:
-        pass
-
-
 def _load_manifest(repo_root: Path) -> dict[str, Any]:
-    """Load ``.specyrd/manifest.json``; migrate from ``.specyr/manifest.json`` if needed."""
+    """Load ``.specyrd/manifest.json``."""
     primary = repo_root / ".specyrd" / "manifest.json"
-    legacy = repo_root / ".specyr" / "manifest.json"
     empty: dict[str, Any] = {"specyrd_version": __version__, "agents": {}}
 
     def _parse(path: Path) -> dict[str, Any] | None:
@@ -210,18 +192,7 @@ def _load_manifest(repo_root: Path) -> dict[str, Any]:
         return data
 
     if primary.is_file():
-        data = _parse(primary) or empty
-        _remove_legacy_specyr_manifest(repo_root)
-        return data
-
-    if legacy.is_file():
-        data = _parse(legacy) or empty
-        primary.parent.mkdir(parents=True, exist_ok=True)
-        data["specyrd_version"] = __version__
-        primary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-        _remove_legacy_specyr_manifest(repo_root)
-        return data
-
+        return _parse(primary) or empty
     return empty
 
 

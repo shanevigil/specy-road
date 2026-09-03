@@ -65,7 +65,7 @@ def _import_reconcile():
     if str(_BUNDLED) not in sys.path:
         sys.path.insert(0, str(_BUNDLED))
     sys.modules.pop("reconcile_milestone_status", None)
-    import reconcile_milestone_status as rms  # type: ignore[import-not-found]
+    from specy_road.bundled_scripts import reconcile_milestone_status as rms  # type: ignore[import-not-found]
 
     return rms
 

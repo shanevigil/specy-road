@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from validate_roadmap_gates import validate_gates
+from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 
 
 def test_validate_gates_rejects_children() -> None:

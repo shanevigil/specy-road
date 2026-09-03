@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.registry_yaml import read_registry, registry_path
 
 _Context = tuple[str, dict[str, Any], dict[str, Any], list[dict[str, Any]]]
 
@@ -15,9 +16,7 @@ _Context = tuple[str, dict[str, Any], dict[str, Any], list[dict[str, Any]]]
 def resolve_feature_rm_registry_context(repo_root: Path, branch: str) -> _Context:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
     codename = branch[len("feature/rm-"):]
-    reg_path = repo_root / "roadmap" / "registry.yaml"
-    with reg_path.open(encoding="utf-8") as f:
-        reg = yaml.safe_load(f) or {"version": 1, "entries": []}
+    reg = read_registry(registry_path(repo_root))
     entries = reg.get("entries") or []
     entry = next((e for e in entries if e.get("codename") == codename), None)
     if not entry:

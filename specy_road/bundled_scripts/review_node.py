@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Advisory LLM review of a roadmap node (brief + constraints + cited docs)."""
+"""Advisory LLM review of a roadmap node (brief + shared/ index + constraints)."""
 
 from __future__ import annotations
 
@@ -13,15 +13,16 @@ from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlparse
 
-from generate_brief import index as make_index, render_brief
-from planning_sheet_bootstrap import (
+from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     feature_sheet_structure_instruction_for_llm,
     gate_sheet_structure_instruction_for_llm,
     planning_review_expected_shape_block,
 )
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_ok
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.node_kinds import is_gate
 
 # Deterministic `shared/` index for LLM review: bounded reads, sorted paths.
 _TEXT_SUFFIXES = frozenset(
@@ -44,8 +45,6 @@ _SHARED_CATALOG_CACHE_MAX_ENTRIES = 32
 
 _SHARED_CATALOG_CACHE: OrderedDict[str, str] = OrderedDict()
 _SHARED_CATALOG_CACHE_LOCK = threading.Lock()
-
-ALLOWED_PREFIXES = ("shared/", "docs/", "specs/", "adr/")
 
 
 class ReviewError(Exception):
@@ -90,10 +89,10 @@ def _feature_sheet_system_prompt() -> str:
         "- Do not explain what you changed; the UI will diff against the previous "
         "sheet.\n\n"
         "Context below includes the roadmap brief, a deterministic index of files "
-        "under shared/ (one-line descriptions each), constraints, cited contracts, "
+        "under shared/ (one-line descriptions each), constraints, "
         "and the current planning sheet. Treat the shared/ index as optional "
         "references when improving the sheet (including ## References); it does not "
-        "replace cited contract bodies. Improve clarity, checklist completeness, "
+        "replace contract bodies. Improve clarity, checklist completeness, "
         "and alignment with constraints and citations—not generic advice."
     )
 
@@ -131,17 +130,17 @@ def _gate_planning_system_prompt() -> str:
         "- Do not explain what you changed; the UI will diff against the previous "
         "sheet.\n\n"
         "Context below includes the roadmap brief, a deterministic index of files "
-        "under shared/ (one-line descriptions each), constraints, cited contracts, "
+        "under shared/ (one-line descriptions each), constraints, "
         "and the current planning sheet. Treat the shared/ index as optional "
         "references when improving the sheet (including ## References); it does not "
-        "replace cited contract bodies. Improve clarity and alignment with constraints "
+        "replace contract bodies. Improve clarity and alignment with constraints "
         "and citations—not generic advice."
     )
 
 
 def system_prompt_for_planning_review(node_type: str | None = None) -> str:
     """System prompt for LLM planning review: gate sheet vs feature sheet."""
-    if str(node_type or "").strip().lower() == "gate":
+    if is_gate(node_type):
         return _gate_planning_system_prompt()
     return _feature_sheet_system_prompt()
 
@@ -304,8 +303,7 @@ def _shared_catalog_build(root_res: Path) -> str:
         intro = (
             "Sorted paths under `shared/` (deterministic one-line blurbs from a "
             f"prefix of at most {_SHARED_CATALOG_SAMPLE_BYTES} bytes per text "
-            "file). Optional references for this task—not a substitute for cited "
-            "snippets.\n\n"
+            "file). Optional references for this task.\n\n"
         )
         remaining = char_budget - len(intro)
         truncated_mid_list = False
@@ -338,7 +336,7 @@ def _shared_catalog_build(root_res: Path) -> str:
             )
         body += "".join(footers)
 
-    return body + "\nUse this index only for optional references; cited contracts appear in their own section.\n"
+    return body + "\nUse this index only for optional references.\n"
 
 
 def _shared_catalog(root: Path) -> str:
@@ -393,38 +391,6 @@ def _feature_sheet_for_prompt(
     if path.is_file():
         return path.read_text(encoding="utf-8", errors="replace")
     return f"_(planning file not found on disk: `{pd}`)_"
-
-
-def _cited_snippets(root: Path, node: dict) -> str:
-    ac = node.get("agentic_checklist") or {}
-    citation = ac.get("contract_citation", "") or ""
-    parts: list[str] = []
-    root_res = root.resolve()
-    for raw in citation.split(";"):
-        token = raw.strip()
-        if not token:
-            continue
-        path_part = token.split()[0] if token else ""
-        if not any(path_part.startswith(p) for p in ALLOWED_PREFIXES):
-            continue
-        rel = Path(path_part)
-        if rel.is_absolute():
-            continue
-        target = (root / rel).resolve()
-        try:
-            target.relative_to(root_res)
-        except ValueError:
-            parts.append(f"### (skipped path outside repo) `{path_part}`\n")
-            continue
-        if target.is_file():
-            text = target.read_text(encoding="utf-8", errors="replace")
-            cap = 12000
-            if len(text) > cap:
-                text = text[:cap] + "\n\n…(truncated)…"
-            parts.append(f"### `{path_part}`\n\n{text}\n")
-    if not parts:
-        return "_(no readable cited files parsed from contract_citation)_"
-    return "\n".join(parts)
 
 
 def _normalize_azure_endpoint(raw: str) -> str:
@@ -547,7 +513,7 @@ def _openai_safe_error_message(exc: BaseException) -> str:
 
 
 def _openai_chat_completions_create(client: object, **kwargs: object) -> object:
-    from llm_throughput import (
+    from specy_road.bundled_scripts.llm_throughput import (
         ThroughputExceeded,
         estimate_openai_chat_request_tokens,
         get_openai_chat_throughput_gate,
@@ -779,8 +745,8 @@ def run_review(
     planning_body: str | None = None,
 ) -> str:
     """
-    Build context (brief, shared/ index, constraints, cited docs, current
-    sheet) and return the revised planning Markdown from the LLM (feature-sheet
+    Build context (brief, shared/ index, constraints, current sheet) and return
+    the revised planning Markdown from the LLM (feature-sheet
     or gate-sheet shape, depending on ``node.type``).
 
     ``planning_body`` — when not ``None`` (including empty string), used as the
@@ -799,7 +765,6 @@ def run_review(
     brief = render_brief(node_id, by_id, repo_root=root)
     shared_index = _shared_catalog(root)
     constraints = _constraints_text(root)
-    cited = _cited_snippets(root, node)
     sheet = _feature_sheet_for_prompt(root, node, planning_body)
     nt = node.get("type")
     system_prompt = system_prompt_for_planning_review(
@@ -810,7 +775,6 @@ def run_review(
             "## Brief\n\n" + brief,
             "## shared/ index (possible references)\n\n" + shared_index,
             "## constraints/README.md\n\n" + constraints,
-            "## Cited documents (from contract_citation)\n\n" + cited,
             "## Current planning sheet\n\n" + sheet,
             "## Expected shape\n\n" + planning_review_expected_shape_block(
                 nt if isinstance(nt, str) else None,
@@ -832,12 +796,7 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help="Write Markdown report to this file (default: stdout)",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _repo_root(args)
     try:

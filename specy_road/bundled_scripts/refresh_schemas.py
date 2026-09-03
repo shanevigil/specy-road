@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 from specy_road.init_project import project_template_root
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 SCHEMAS_DIRNAME = "schemas"
 
@@ -118,13 +118,7 @@ def main(argv: list[str] | None = None) -> None:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--dry-run",
         action="store_true",

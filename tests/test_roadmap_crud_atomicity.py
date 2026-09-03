@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from roadmap_chunk_utils import load_json_chunk, write_json_chunk
-from roadmap_crud_ops import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_crud_ops import (
     append_node_to_chunk,
     delete_roadmap_node_hard,
     edit_node_set_pairs,

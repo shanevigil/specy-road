@@ -30,18 +30,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from brief_dependency_context import render_dependency_context_section
+from specy_road.bundled_scripts.brief_dependency_context import render_dependency_context_section
 
 from specy_road import contract_citations
 from specy_road.text_sections import read_text_safely as _read_text_safely
-from planning_artifacts import (
+from specy_road.bundled_scripts.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,
 )
-from roadmap_load import load_roadmap
-from roadmap_node_keys import build_key_to_node
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def load_nodes(root: Path | None = None) -> list[dict]:
@@ -189,18 +189,17 @@ def _contract_body(root: Path, rel: str) -> list[str]:
 
 def _uncited_listing(root: Path, uncited: list[str]) -> list[str]:
     """Name what was left out, so an omission is visible rather than silent."""
-    total = sum((root / rel).stat().st_size for rel in uncited)
+    # One stat per contract: the total and the per-line size are the same number.
+    sizes = [(rel, (root / rel).stat().st_size) for rel in uncited]
     out = [
         f"**Not inlined** — {len(uncited)} "
-        f"contract{'s' if len(uncited) != 1 else ''}, {_human_size(total)}. "
+        f"contract{'s' if len(uncited) != 1 else ''}, "
+        f"{_human_size(sum(n for _, n in sizes))}. "
         "Cite one in your planning sheet's `## References` to inline it, "
         "or reach it directly:",
         "",
     ]
-    out.extend(
-        f"- `{rel}` ({_human_size((root / rel).stat().st_size)})"
-        for rel in uncited
-    )
+    out.extend(f"- `{rel}` ({_human_size(n)})" for rel, n in sizes)
     out.extend(["", '    specy-road search "<query>" --kind shared', ""])
     return out
 
@@ -230,7 +229,8 @@ def _inline_shared_contracts(
 
     for rel in inline:
         out.extend(_contract_body(root, rel))
-    uncited = [rel for rel in every if rel not in set(inline)]
+    inlined = set(inline)
+    uncited = [rel for rel in every if rel not in inlined]
     if uncited:
         out.extend(_uncited_listing(root, uncited))
     return out
@@ -328,7 +328,7 @@ def render_brief(
         _section_rollup_semantics(),
     ]
     if include_history:
-        from brief_history_context import render_history_section
+        from specy_road.bundled_scripts.brief_history_context import render_history_section
 
         parts.append(render_history_section(n, by_id, root))
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
@@ -343,13 +343,7 @@ def main() -> None:
         type=Path,
         help="Write markdown to this file (default: stdout)",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd)",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--no-history",
         action="store_true",

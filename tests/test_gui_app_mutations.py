@@ -258,7 +258,7 @@ def test_api_post_nodes_add_auto_routes_when_reference_chunk_full(
     body = r.json()
     new_id = body["id"]
     # The new node lives outside M0.json (auto-routed).
-    from roadmap_chunk_utils import find_chunk_path
+    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
 
     chunk_path = find_chunk_path(dogfood_copy, new_id)
     assert chunk_path is not None

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from planning_artifacts import (
+from specy_road.bundled_scripts.planning_artifacts import (
     expected_planning_rel,
     normalize_planning_dir,
     resolve_planning_path,
 )
 from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.node_kinds import is_gate
 
 _TYPES_WITH_PLANNING = frozenset({"vision", "phase", "milestone", "task", "gate"})
 _TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
@@ -101,7 +102,7 @@ def gate_sheet_expected_shape_block() -> str:
 
 def planning_review_expected_shape_block(node_type: str | None = None) -> str:
     """Expected-shape block for LLM planning review: gate vs feature sheet."""
-    if str(node_type or "").strip().lower() == "gate":
+    if is_gate(node_type):
         return gate_sheet_expected_shape_block()
     return feature_sheet_expected_shape_block()
 
@@ -118,10 +119,10 @@ def render_planning_sheet_template(node_id: str, *, node_type: str | None = None
     use ``feature-sheet.md.template``. Missing gate template falls back to the
     feature sheet template.
     """
-    is_gate = str(node_type or "").strip().lower() == "gate"
-    name = _GATE_TEMPLATE if is_gate else _FEATURE_TEMPLATE
+    gate = is_gate(node_type)
+    name = _GATE_TEMPLATE if gate else _FEATURE_TEMPLATE
     path = _TEMPLATES / name
-    if is_gate and not path.is_file():
+    if gate and not path.is_file():
         path = _TEMPLATES / _FEATURE_TEMPLATE
     if not path.is_file():
         raise FileNotFoundError(f"missing template {path}")

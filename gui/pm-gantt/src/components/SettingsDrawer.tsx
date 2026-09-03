@@ -272,7 +272,6 @@ export function SettingsDrawer({
         : pmGuiOverlayPersistedRef.current;
       putSettings({
         inherit_llm: inheritLlm,
-        inherit_git_remote: false,
         inherit_pm_gui: inheritPmGui,
         llm: buildLlmPayload(llm),
         git_remote: {

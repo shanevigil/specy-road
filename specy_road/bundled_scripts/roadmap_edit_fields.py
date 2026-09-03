@@ -5,9 +5,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from planning_artifacts import normalize_planning_dir, planning_filename_for_node
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, planning_filename_for_node
 
-from roadmap_node_keys import NODE_KEY_PATTERN
+from specy_road.bundled_scripts.roadmap_node_keys import NODE_KEY_PATTERN
 
 ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")

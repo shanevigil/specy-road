@@ -29,10 +29,12 @@ recorded there and discovery is only the fallback.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
-import subprocess
 from pathlib import Path
+
+from specy_road.git_subprocess import git_text
 
 #: Overrides discovery for both the CLI and the GUI.
 REPO_ROOT_ENV = "SPECY_ROAD_REPO_ROOT"
@@ -54,23 +56,9 @@ def bundled_scripts_dir() -> Path:
     return specy_road_package_dir() / "bundled_scripts"
 
 
-def _git(args: list[str], cwd: Path) -> str | None:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError, NotADirectoryError):
-        return None
-    return r.stdout.strip()
-
-
 def git_root(start: Path | None = None) -> Path | None:
     """The enclosing git worktree root, or ``None`` outside one."""
-    out = _git(["rev-parse", "--show-toplevel"], start or Path.cwd())
+    out = git_text(["rev-parse", "--show-toplevel"], start or Path.cwd())
     return Path(out).resolve() if out else None
 
 
@@ -81,7 +69,22 @@ def project_prefix(root: Path) -> str:
     ``.gitignore`` matches, is relative to the **git** root; roadmap paths are
     relative to the **project** root. Prefix to go one way, strip to go back.
     """
-    return _git(["rev-parse", "--show-prefix"], root) or ""
+    return git_text(["rev-parse", "--show-prefix"], root) or ""
+
+
+def rebase_to_project(repo_relative: str, prefix: str) -> str | None:
+    """A path git reported, expressed relative to the project root.
+
+    ``None`` when the path lies outside the project — the common case in a
+    monorepo, where most of what ``git log`` prints belongs to other trees.
+    The inverse of :func:`project_prefix`, and the reason that function is
+    rarely useful on its own.
+    """
+    if not prefix:
+        return repo_relative
+    if not repo_relative.startswith(prefix):
+        return None
+    return repo_relative[len(prefix):]
 
 
 def prefix_within(git_top: Path, project: Path) -> str:
@@ -171,6 +174,36 @@ def source_scan_root(project: Path) -> Path:
     if recorded is not None and recorded == project.resolve():
         return top
     return project.resolve()
+
+
+#: What ``--repo-root`` actually does, in one place.
+#:
+#: Thirty-two parsers spelled this flag out by hand and its documented default
+#: had drifted four ways -- "git root or cwd", "git discovery / cwd", "cwd",
+#: "current working directory". Since :func:`project_root` took over resolution
+#: every one of them was wrong, and correcting the text meant editing all
+#: thirty-two, which is why nobody did.
+REPO_ROOT_HELP = (
+    "Project root (default: $SPECY_ROAD_REPO_ROOT, else the root recorded in "
+    ".specyrd/manifest.json, else the nearest enclosing roadmap/, else the git "
+    "root, else the current directory)."
+)
+
+
+def add_repo_root_arg(parser: "argparse.ArgumentParser") -> None:
+    """Add the standard ``--repo-root`` option to ``parser``."""
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help=REPO_ROOT_HELP,
+    )
+
+
+def resolve_repo_root(ns: "argparse.Namespace") -> Path:
+    """The project root for a parsed command line."""
+    return project_root(getattr(ns, "repo_root", None))
 
 
 def default_user_repo_root() -> Path:

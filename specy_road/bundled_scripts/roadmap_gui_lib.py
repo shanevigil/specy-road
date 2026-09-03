@@ -4,19 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import os
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any
+from specy_road.git_subprocess import git_text
 
-# Ensure sibling script imports work when this module is loaded first
-_LIB_DIR = Path(__file__).resolve().parent
-if str(_LIB_DIR) not in sys.path:
-    sys.path.insert(0, str(_LIB_DIR))
+from specy_road.registry_yaml import registry_path
 
 import yaml
-from roadmap_chunk_utils import iter_roadmap_fingerprint_files
-from roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
+from specy_road.bundled_scripts.roadmap_chunk_utils import iter_roadmap_fingerprint_files
+from specy_road.bundled_scripts.roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
     SETTINGS_DIR,
     SETTINGS_FILE_VERSION,
     SETTINGS_PATH,
@@ -28,20 +24,6 @@ from roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui 
     save_settings_for_repo,
     settings_api_payload,
 )
-
-
-def resolve_repo_root(fallback: Path) -> Path:
-    try:
-        r = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=fallback,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return Path(r.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return fallback
 
 
 def _apply_azure_llm_env(llm: dict[str, Any]) -> None:
@@ -117,14 +99,6 @@ def apply_llm_env_from_settings(llm: dict[str, Any]) -> None:
         os.environ.pop("AZURE_OPENAI_MAX_TOKENS_PER_MINUTE", None)
 
 
-def load_registry(root: Path) -> dict[str, Any]:
-    p = root / "roadmap" / "registry.yaml"
-    if not p.is_file():
-        return {"version": 1, "entries": []}
-    with p.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 def registry_by_node_id(reg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for e in reg.get("entries") or []:
@@ -133,35 +107,34 @@ def registry_by_node_id(reg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return out
 
 
-def roadmap_fingerprint(root: Path) -> int:
+def roadmap_files_fingerprint(root: Path) -> int:
+    """Summed mtimes of the manifest and every chunk it lists.
+
+    Split out because the narrow outline token is exactly this sum, and the
+    broad view token is this sum plus extras -- so the polled fingerprint
+    endpoint used to stat every chunk twice per request to build both.
+    """
     h = 0
     for p in iter_roadmap_fingerprint_files(root):
         try:
             h += p.stat().st_mtime_ns
         except OSError:
             continue
-    reg = root / "roadmap" / "registry.yaml"
+    return h
+
+
+def roadmap_fingerprint(root: Path, base: int | None = None) -> int:
+    h = roadmap_files_fingerprint(root) if base is None else base
+    reg = registry_path(root)
     if reg.is_file():
         try:
             h += reg.stat().st_mtime_ns
         except OSError:
             pass
-    try:
-        gr = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=10,
+    if sha := (git_text(["rev-parse", "HEAD"], root, timeout=10.0) or ""):
+        h += int.from_bytes(
+            hashlib.sha256(sha.encode("utf-8")).digest()[:8], "little"
         )
-        if gr.returncode == 0 and (sha := gr.stdout.strip()):
-            h += int.from_bytes(
-                hashlib.sha256(sha.encode("utf-8")).digest()[:8],
-                "little",
-            )
-    except OSError:
-        pass
     return h
 
 
@@ -191,9 +164,9 @@ def iter_pm_gui_extra_fingerprint_files(root: Path) -> list[Path]:
     return sorted(set(out), key=lambda x: str(x))
 
 
-def pm_gui_mutation_fingerprint_base(root: Path) -> int:
+def pm_gui_mutation_fingerprint_base(root: Path, base: int | None = None) -> int:
     """Roadmap fingerprint plus PM-edited paths outside ``roadmap/`` (for optimistic concurrency)."""
-    h = roadmap_fingerprint(root)
+    h = roadmap_fingerprint(root, base)
     for p in iter_pm_gui_extra_fingerprint_files(root):
         try:
             h += p.stat().st_mtime_ns

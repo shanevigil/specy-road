@@ -7,25 +7,15 @@ import argparse
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
-
 import yaml
 
 from specy_road.file_limits_engine import run_file_limits_scan
-from specy_road.runtime_paths import project_root, source_scan_root
+from specy_road.runtime_paths import add_repo_root_arg, project_root, source_scan_root
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     parser.add_argument(
         "--strict-hard-alerts",
         action="store_true",

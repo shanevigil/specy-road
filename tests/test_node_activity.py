@@ -70,7 +70,7 @@ def committed(repo: Path) -> Path:
 
 
 def _nodes(root: Path) -> list[dict]:
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     return load_roadmap(root)["nodes"]
 

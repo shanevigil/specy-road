@@ -6,9 +6,9 @@ import json
 import shutil
 from pathlib import Path
 
-from roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import REPO, SCHEMAS
-from validate_self_heal import auto_heal_roadmap
+from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 
 
 def _bootstrap(dest: Path, nodes: list[dict]) -> None:

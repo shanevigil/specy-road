@@ -16,8 +16,6 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
@@ -31,12 +29,13 @@ from specy_road.git_sync_status import (
     status_failure,
     status_ok,
 )
-from specy_road.git_workflow_config import (
+from specy_road.git_subprocess import (
     current_branch_name,
     is_git_worktree,
-    resolve_integration_defaults,
+    run,
     working_tree_clean,
 )
+from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.pm_integration_registry import (
     describe_integration_branch_auto_ff as _describe_integration_branch_auto_ff,
 )
@@ -48,11 +47,7 @@ from specy_road.registry_remote_overlay_merge import (
     resolve_git_remote,
     roadmap_fingerprint_with_remote_refs,
 )
-
-_LIB_DIR = Path(__file__).resolve().parent / "bundled_scripts"
-if str(_LIB_DIR) not in sys.path:
-    sys.path.insert(0, str(_LIB_DIR))
-from roadmap_gui_settings import effective_settings_for_repo  # noqa: E402
+from specy_road.bundled_scripts.roadmap_gui_settings import effective_settings_for_repo  # noqa: E402
 
 _GIT_SYNC_LOCK = threading.Lock()
 _LAST_FETCH_MONO: dict[str, float] = {}
@@ -91,7 +86,7 @@ def registry_remote_overlay_enabled(repo_root: Path | None = None) -> bool:
     pm = eff.get("pm_gui") if isinstance(eff.get("pm_gui"), dict) else {}
     if not pm.get("registry_remote_overlay"):
         return False
-    from pm_gui_git_remote_verify import get_git_remote_tested_ok
+    from specy_road.bundled_scripts.pm_gui_git_remote_verify import get_git_remote_tested_ok
 
     if not get_git_remote_tested_ok(repo_root):
         return False
@@ -126,19 +121,6 @@ def _integration_ff_interval_s() -> float:
     except ValueError:
         interval = 5.0
     return max(1.0, min(interval, 3600.0))
-
-
-def _git_sync_result(args: list[str], repo_root: Path) -> tuple[bool, int, str]:
-    run = subprocess.run(
-        args,
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        timeout=120.0,
-        check=False,
-    )
-    err = (run.stderr or run.stdout or "").strip()
-    return run.returncode == 0, run.returncode, err
 
 
 def _record_and_log_ff_failure(
@@ -226,48 +208,33 @@ def maybe_auto_integration_ff(repo_root: Path) -> None:
                 return
         _LAST_INTEGRATION_FF_MONO[key] = now
         try:
-            ok_fetch, rc_fetch, err_fetch = _git_sync_result(
-                ["git", "fetch", "--quiet", rname],
-                repo_root,
-            )
-            if not ok_fetch:
+            r_fetch = run(["fetch", "--quiet", rname], repo_root, timeout=120.0)
+            if not r_fetch.ok:
                 _record_and_log_ff_failure(
                     repo_root,
                     remote=rname,
                     base=base,
                     step="fetch",
-                    reason="non_zero_exit",
-                    error=err_fetch,
-                    returncode=rc_fetch,
+                    reason=r_fetch.failure or "non_zero_exit",
+                    error=r_fetch.message,
+                    returncode=r_fetch.code,
                 )
                 return
-            ok_merge, rc_merge, err_merge = _git_sync_result(
-                ["git", "merge", "--ff-only", f"{rname}/{base}"],
-                repo_root,
-            )
-            if not ok_merge:
+            r_merge = run(["merge", "--ff-only", f"{rname}/{base}"], repo_root, timeout=120.0)
+            if not r_merge.ok:
                 _record_and_log_ff_failure(
                     repo_root,
                     remote=rname,
                     base=base,
                     step="merge_ff_only",
-                    reason="non_zero_exit",
-                    error=err_merge,
-                    returncode=rc_merge,
+                    reason=r_merge.failure or "non_zero_exit",
+                    error=r_merge.message,
+                    returncode=r_merge.code,
                 )
                 return
             set_last_integration_auto_ff_status(
                 repo_root,
                 status_ok(remote=rname, step="merge_ff_only"),
-            )
-        except subprocess.TimeoutExpired as exc:
-            _record_and_log_ff_failure(
-                repo_root,
-                remote=rname,
-                base=base,
-                step="fetch_or_merge_ff_only",
-                reason="timeout",
-                error=str(exc),
             )
         except OSError as exc:
             _record_and_log_ff_failure(
@@ -303,29 +270,19 @@ def maybe_auto_git_fetch(repo_root: Path, remote: str) -> None:
                 return
         _LAST_FETCH_MONO[key] = now
         try:
-            ok_fetch, rc_fetch, err_fetch = _git_sync_result(
-                ["git", "fetch", "--quiet", rname],
-                repo_root,
-            )
-            if not ok_fetch:
+            r_fetch = run(["fetch", "--quiet", rname], repo_root, timeout=120.0)
+            if not r_fetch.ok:
                 _record_and_log_fetch_failure(
                     repo_root,
                     remote=rname,
-                    reason="non_zero_exit",
-                    error=err_fetch,
-                    returncode=rc_fetch,
+                    reason=r_fetch.failure or "non_zero_exit",
+                    error=r_fetch.message,
+                    returncode=r_fetch.code,
                 )
                 return
             set_last_registry_auto_fetch_status(
                 repo_root,
                 status_ok(remote=rname, step="fetch"),
-            )
-        except subprocess.TimeoutExpired as exc:
-            _record_and_log_fetch_failure(
-                repo_root,
-                remote=rname,
-                reason="timeout",
-                error=str(exc),
             )
         except OSError as exc:
             _record_and_log_fetch_failure(

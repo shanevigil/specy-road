@@ -44,6 +44,7 @@ from specy_road.archive_index import (
     load_archive_index,
     write_archive_index,
 )
+from specy_road.roadmap_json import render_canonical_json
 
 CAPSULE_VERSION = 1
 
@@ -88,10 +89,7 @@ def build_reference(record: dict[str, Any]) -> dict[str, Any]:
 
 def render_capsule(capsule: dict[str, Any]) -> str:
     """Canonical capsule text — the reason a capsule's ``sha256`` is stable."""
-    body = json.dumps(capsule, indent=2, sort_keys=True, ensure_ascii=False)
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    return render_canonical_json(capsule)
 
 
 def build_capsule(root: Path, record: dict[str, Any]) -> dict[str, Any] | None:
@@ -100,10 +98,8 @@ def build_capsule(root: Path, record: dict[str, Any]) -> dict[str, Any] | None:
     ``None`` when nothing is left on disk to fold, which means the index and
     ``roadmap/archive/`` have drifted apart.
     """
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import load_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
 
     chunk = record.get("chunk")
     chunk_path = root / chunk if isinstance(chunk, str) else None
@@ -176,8 +172,7 @@ def deepen_archive(root: Path, archive_id: str) -> dict[str, Any]:
     refs_dir.mkdir(parents=True, exist_ok=True)
     ref_path = refs_dir / f"{archive_id}.json"
     ref_path.write_text(
-        json.dumps(build_reference(record), indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+        render_canonical_json(build_reference(record)), encoding="utf-8"
     )
 
     # Only now remove the loose files: if anything above failed, the shallow
@@ -207,10 +202,8 @@ def undeepen_archive(root: Path, archive_id: str) -> dict[str, Any]:
     recorded is not unfolded at all — restoring silently-altered roadmap nodes
     would be worse than refusing.
     """
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import write_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
 
     doc = load_archive_index(root)
     record = find_record(doc, archive_id)

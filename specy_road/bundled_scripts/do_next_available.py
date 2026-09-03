@@ -13,10 +13,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from roadmap_gui_lib import load_registry, load_settings, registry_by_node_id
-from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
-from roadmap_layout import effective_dependency_keys, ordered_tree_rows
-from roadmap_load import compute_rollup_status
+from specy_road.bundled_scripts.roadmap_gui_lib import load_settings, registry_by_node_id
+from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, ordered_tree_rows
+from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.node_kinds import is_pickable
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -83,15 +86,13 @@ def interactive_deps_blocked_entries(
     effective_dep_keys = effective_dependency_keys(nodes)
     ready_set = set(ready_ids)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = _leaf_node_ids(nodes)
+    leaf_ids = structural_leaf_ids(nodes)
     pairs: list[tuple[dict, list[str]]] = []
     for n in nodes:
         nid = n["id"]
         if nid not in leaf_ids or nid in ready_set:
             continue
         if not n.get("codename"):
-            continue
-        if not _agentic_execution_ok(n):
             continue
         if nid in claimed:
             continue
@@ -129,16 +130,6 @@ def blocked_pick_notice(node: dict) -> str | None:
     )
 
 
-def _leaf_node_ids(nodes: list[dict]) -> set[str]:
-    """Structural leaves: nodes that are not parents of any other node."""
-    parent_ids = {
-        n.get("parent_id")
-        for n in nodes
-        if isinstance(n.get("parent_id"), str) and n.get("parent_id")
-    }
-    return {n["id"] for n in nodes if n.get("id") not in parent_ids}
-
-
 def _effective_deps_met(
     node: dict,
     statuses_by_key: dict[str, str],
@@ -153,27 +144,15 @@ def _effective_deps_met(
     return True
 
 
-def _agentic_execution_ok(n: dict) -> bool:
-    """
-    Post-F-003/F-007: all leaf tasks are considered agentic by design.
-    This function is kept as a trivial pass-through for call-site stability
-    (do-next-available queue logic still calls it); it no longer gates pickup.
-    """
-    _ = n  # not used
-    return True
-
-
 def _base_agentic_candidate(
     n: dict,
     statuses_by_key: dict[str, str],
     claimed: set[str],
     effective_dep_keys: dict[str, set[str]],
 ) -> bool:
-    if n.get("type") == "gate":
+    if not is_pickable(n):
         return False
     if not n.get("codename"):
-        return False
-    if not _agentic_execution_ok(n):
         return False
     if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
         return False
@@ -202,7 +181,7 @@ def _sort_by_outline(
 def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
     """Same enrichment as the PM GUI when settings/registry load; `{}` on any failure (offline-safe)."""
     try:
-        reg = load_registry(root)
+        reg = read_registry(registry_path(root))
         by_reg = registry_by_node_id(reg)
         settings = load_settings(root)
         gr = settings.get("git_remote") or {}
@@ -216,7 +195,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
     effective_dep_keys = effective_dependency_keys(nodes)
     statuses_by_key = _statuses_by_node_key(nodes)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = _leaf_node_ids(nodes)
+    leaf_ids = structural_leaf_ids(nodes)
     order_index = _outline_order_index(nodes)
 
     leaf_nodes = [n for n in nodes if n.get("id") in leaf_ids]
@@ -232,7 +211,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
     for n in leaf_nodes:
         nid = n["id"]
         status = (n.get("status") or "Not Started").lower()
-        if n.get("type") == "gate":
+        if not is_pickable(n):
             # Gate nodes are human-review markers, never pickable leaves.
             non_agentic_leaf_ids.append(nid)
             continue
@@ -319,7 +298,7 @@ def _available(
     statuses_by_key = _statuses_by_node_key(nodes, status_overrides)
     effective_dep_keys = effective_dependency_keys(nodes)
     claimed = _claimed_node_ids(reg)
-    leaf_ids = _leaf_node_ids(nodes)
+    leaf_ids = structural_leaf_ids(nodes)
     enr = enrich or {}
     order_index = _outline_order_index(nodes)
 

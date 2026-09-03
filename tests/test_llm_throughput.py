@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import llm_throughput
-import review_node
+from specy_road.bundled_scripts import llm_throughput
+from specy_road.bundled_scripts import review_node
 
 
 @pytest.fixture(autouse=True)
@@ -135,7 +135,7 @@ def test_apply_llm_env_azure_throughput_defaults(
 ) -> None:
     monkeypatch.delenv("AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE", raising=False)
     monkeypatch.delenv("AZURE_OPENAI_MAX_TOKENS_PER_MINUTE", raising=False)
-    import roadmap_gui_lib as gl
+    from specy_road.bundled_scripts import roadmap_gui_lib as gl
 
     gl.apply_llm_env_from_settings(
         {
@@ -155,7 +155,7 @@ def test_apply_llm_env_azure_throughput_defaults(
 def test_apply_llm_env_azure_throughput_explicit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import roadmap_gui_lib as gl
+    from specy_road.bundled_scripts import roadmap_gui_lib as gl
 
     gl.apply_llm_env_from_settings(
         {
@@ -174,7 +174,7 @@ def test_apply_llm_env_azure_throughput_explicit(
 def test_apply_llm_env_openai_clears_azure_throughput_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import roadmap_gui_lib as gl
+    from specy_road.bundled_scripts import roadmap_gui_lib as gl
 
     monkeypatch.setenv("AZURE_OPENAI_MAX_REQUESTS_PER_MINUTE", "1")
     monkeypatch.setenv("AZURE_OPENAI_MAX_TOKENS_PER_MINUTE", "2")

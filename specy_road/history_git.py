@@ -24,6 +24,8 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+from specy_road.git_subprocess import HISTORY_TIMEOUT, git_stdout, run
+
 # Belt-and-braces bound on a pathological history, matching node_activity.
 MAX_HISTORY_COMMITS = 50_000
 
@@ -41,37 +43,13 @@ _LOG_FORMAT = f"{COMMIT_MARK}%H{FIELD_SEP}%aI{FIELD_SEP}%an"
 _NULL_SHA = "0" * 40
 
 
-def run_git(root: Path, args: list[str]) -> str | None:
-    """Stdout, or ``None`` on any failure. Never raises."""
-    try:
-        r = subprocess.run(
-            ["git", *args], cwd=root, capture_output=True, text=True, check=False
-        )
-    except (OSError, ValueError):
-        return None
-    return r.stdout if r.returncode == 0 else None
-
-
-def head_sha(root: Path) -> str | None:
-    return (run_git(root, ["rev-parse", "HEAD"]) or "").strip() or None
-
-
 def is_ancestor(root: Path, older: str, newer: str) -> bool:
     """Whether ``older`` is still reachable from ``newer``.
 
     False after a rebase, amend or force-push — which is exactly when an
     incrementally-built index must be thrown away rather than appended to.
     """
-    try:
-        r = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", older, newer],
-            cwd=root,
-            capture_output=True,
-            check=False,
-        )
-    except (OSError, ValueError):
-        return False
-    return r.returncode == 0
+    return run(["merge-base", "--is-ancestor", older, newer], root).ok
 
 
 def log_raw(root: Path, scopes: list[str], since: str | None = None) -> str | None:
@@ -103,9 +81,13 @@ def log_raw(root: Path, scopes: list[str], since: str | None = None) -> str | No
     tail = ["--", *scopes]
     # Explicit on modern git; dropped on <2.31, where --first-parent already
     # implies a first-parent diff for merges.
-    out = run_git(root, [*base, "--diff-merges=first-parent", *rev, *tail])
+    out = git_stdout(
+        [*base, "--diff-merges=first-parent", *rev, *tail],
+        root,
+        timeout=HISTORY_TIMEOUT,
+    )
     if out is None:
-        out = run_git(root, [*base, *rev, *tail])
+        out = git_stdout([*base, *rev, *tail], root, timeout=HISTORY_TIMEOUT)
     return out
 
 
@@ -116,7 +98,7 @@ def ls_tree_blobs(root: Path, ref: str, scope: str) -> dict[str, str]:
     so the cache never has to store a derived blob map that could drift from
     what git actually holds.
     """
-    out = run_git(root, ["ls-tree", "-r", ref, "--", scope])
+    out = git_stdout(["ls-tree", "-r", ref, "--", scope], root)
     if not out:
         return {}
     blobs: dict[str, str] = {}

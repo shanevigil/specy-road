@@ -3,42 +3,45 @@
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 
 import yaml
-from do_next_available import (
+from specy_road.bundled_scripts.do_next_available import (
     _available,
     _load_branch_enrichment,
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
 )
-from do_next_prompt import print_pickup_header, write_agent_prompt  # noqa: F401
-from do_next_task_args import parse_do_next_task_args
-from do_next_task_interactive import pick_interactive as _pick_interactive
-from do_next_task_self_heal import (
+from specy_road.bundled_scripts.do_next_prompt import (
+    print_pickup_header,
+    write_agent_prompt,
+)
+from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
+from specy_road.bundled_scripts.do_next_task_interactive import pick_interactive as _pick_interactive
+from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,
 )
-from do_next_task_pickup_helpers import (
+from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
     push_and_branch_with_self_heal as _do_push_and_branch,
     register_and_commit as _do_register_and_commit,
     write_brief as _do_write_brief,
     write_session_and_prompt as _do_write_session_and_prompt,
 )
-from do_next_task_leaf_guards import (
+from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     assert_leaf_target as _assert_leaf_target,
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
-from registration_pickup_commit import registration_commit_message
-from work_dir_stash import (
+from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
+from specy_road.bundled_scripts.work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
 )
-from roadmap_load import load_roadmap
-from do_next_task_virtual_complete import (
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
     resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
@@ -51,12 +54,14 @@ from specy_road.git_workflow_config import (
 )
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
-from specy_road.runtime_paths import default_user_repo_root
-from validate_roadmap import validate_at
+from specy_road.runtime_paths import resolve_repo_root
+from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch, working_tree_clean
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
-WORK_DIR = ROOT / "work"
 
 
 # ---------------------------------------------------------------------------
@@ -84,8 +89,16 @@ def _resync_and_select(
     parent_filter,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty."""
-    _sync_integration_branch(base, remote)
-    reg = _load_registry()
+    sync_integration_branch(
+        ROOT,
+        base,
+        remote,
+        retry_hint="retry do-next-available-task",
+        clean_tree_detail=(
+            "Integration-branch sync and creating a new feature branch need a clean tree."
+        ),
+    )
+    reg = read_registry(registry_path(ROOT))
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
     integration_statuses = _statuses_by_node_key(nodes)
@@ -125,51 +138,13 @@ def _validate_or_exit() -> None:
             raise
 
 
-def _load_registry() -> dict:
-    if not REGISTRY_PATH.is_file():
-        return {"version": 1, "entries": []}
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 # ---------------------------------------------------------------------------
 # Git + registry operations
 # ---------------------------------------------------------------------------
 
 
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _current_branch() -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    )
-    return r.stdout.strip()
-
-
-def _working_tree_clean() -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT, capture_output=True, text=True, check=True,
-    )
-    return not r.stdout.strip()
-
-
-def _assert_working_tree_clean() -> None:
-    if not _working_tree_clean():
-        print(
-            "error: working tree is not clean (commit, stash, or discard "
-            "changes first).\n  Integration-branch sync and creating a new "
-            "feature branch need a clean tree.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
 def _assert_current_branch_equals(base: str) -> None:
-    cur = _current_branch()
+    cur = current_branch(ROOT)
     if cur == "HEAD":
         print(
             "error: detached HEAD — check out the integration branch before "
@@ -194,25 +169,8 @@ def _restore_work_dir_changes(stashed: bool) -> None:
     _restore_work(ROOT, stashed)
 
 
-def _sync_integration_branch(base: str, remote: str) -> None:
-    """Fetch, checkout, fast-forward integration branch via _git."""
-    _assert_working_tree_clean()
-    _git("fetch", remote)
-    _git("checkout", base)
-    try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
-    except subprocess.CalledProcessError:
-        print(
-            f"error: could not fast-forward local '{base}' to {remote}/{base}."
-            "\n  Resolve your local integration branch (e.g. pull with "
-            "rebase, or reset after team agreement), then retry.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-
 def _checkout_new_branch(branch: str) -> None:
-    _git("checkout", "-b", branch)
+    git_run(ROOT, "checkout", "-b", branch)
 
 
 def _register_and_commit(
@@ -224,8 +182,8 @@ def _register_and_commit(
     impl_review_gate: bool,
 ) -> None:
     _do_register_and_commit(
-        registry_path=REGISTRY_PATH,
-        git_runner=_git,
+        registry_path=registry_path(ROOT),
+        git_runner=lambda *a: git_run(ROOT, *a),
         node=node,
         branch=branch,
         reg=reg,
@@ -235,7 +193,7 @@ def _register_and_commit(
 
 
 def _push_integration_branch(remote: str, base: str) -> None:
-    _git("push", remote, base)
+    git_run(ROOT, "push", remote, base)
 
 
 # ---------------------------------------------------------------------------
@@ -244,7 +202,7 @@ def _push_integration_branch(remote: str, base: str) -> None:
 
 
 def _write_brief(node: dict, nodes: list[dict]) -> Path:
-    return _do_write_brief(WORK_DIR, node, nodes)
+    return _do_write_brief(ROOT / "work", node, nodes)
 
 
 # ---------------------------------------------------------------------------
@@ -255,8 +213,8 @@ def _write_brief(node: dict, nodes: list[dict]) -> Path:
 def _push_and_branch_with_self_heal(**kwargs) -> None:
     _do_push_and_branch(
         repo_root=ROOT,
-        registry_path=REGISTRY_PATH,
-        git_runner=_git,
+        registry_path=registry_path(ROOT),
+        git_runner=lambda *a: git_run(ROOT, *a),
         push_integration_branch_fn=_push_integration_branch,
         checkout_new_branch_fn=_checkout_new_branch,
         **kwargs,
@@ -264,13 +222,13 @@ def _push_and_branch_with_self_heal(**kwargs) -> None:
 
 
 def _write_session_and_prompt(**kwargs) -> Path:
-    # Resolve write_agent_prompt at call time so monkeypatch of
-    # dnt.write_agent_prompt in tests is honored.
-    import sys as _sys
-    fn = _sys.modules[__name__].write_agent_prompt
+    # A plain global reference is already resolved at call time, so a test
+    # patching dnt.write_agent_prompt is honoured without going through
+    # sys.modules to fetch the same binding.
     return _do_write_session_and_prompt(
-        work_dir=WORK_DIR, repo_root=ROOT,
-        write_agent_prompt_fn=fn,
+        work_dir=ROOT / "work",
+        repo_root=ROOT,
+        write_agent_prompt_fn=write_agent_prompt,
         **kwargs,
     )
 
@@ -291,7 +249,7 @@ def _finalize_pickup(
     print_pickup_header(node, branch)
 
     brief_path = _write_brief(node, nodes)
-    reg = _load_registry()
+    reg = read_registry(registry_path(ROOT))
     commit_msg = registration_commit_message(
         codename,
         include_ci_skip=include_ci_skip,
@@ -312,7 +270,7 @@ def _finalize_pickup(
 
     print_pickup_footer(
         root=ROOT,
-        work_dir=WORK_DIR,
+        work_dir=ROOT / "work",
         brief_path=brief_path,
         prompt_path=prompt_path,
         push_registry=push_registry,
@@ -328,7 +286,7 @@ def _finalize_pickup(
 def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
     """Pre-sync availability sanity check: exit if no actionable leaf locally."""
     nodes = load_roadmap(ROOT)["nodes"]
-    reg = _load_registry()
+    reg = read_registry(registry_path(ROOT))
     # F-014: surface stale registry claims to the next user immediately.
     _warn_about_stale_claims_before_pickup(repo_root=ROOT, reg=reg, remote=remote)
     enrich = _load_branch_enrichment(ROOT)
@@ -357,12 +315,10 @@ def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH, WORK_DIR
+    global ROOT
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
-    WORK_DIR = ROOT / "work"
+    ROOT = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,
@@ -371,7 +327,7 @@ def main(argv: list[str] | None = None) -> None:
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
 
-    parent_filter = _resolve_milestone_parent_filter(WORK_DIR, args)
+    parent_filter = _resolve_milestone_parent_filter(ROOT / "work", args)
     _validate_or_exit()
     _check_pre_sync_availability(base, remote, parent_filter)
     # F-011: stash any in-progress work/ changes so the integration-branch

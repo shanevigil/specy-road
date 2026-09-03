@@ -18,15 +18,12 @@ import sys
 from pathlib import Path
 
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
-from specy_road.runtime_paths import default_user_repo_root
-
-
-def _root(ns: argparse.Namespace) -> Path:
-    return (ns.repo_root or default_user_repo_root()).resolve()
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.cli_entry import run_forwarded_cli
 
 
 def cmd_digest(ns: argparse.Namespace) -> int:
-    root = _root(ns)
+    root = resolve_repo_root(ns)
     body = render_digest(root)
 
     if ns.output == "-":
@@ -78,28 +75,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit 1 if the file on disk has drifted from the graph (CI gate).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.set_defaults(func=cmd_digest)
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
-    argv = list(sys.argv[1:] if argv is None else argv)
-    # `specy-road digest …` forwards its own name; argparse defines it here.
-    if argv and argv[0] == "digest":
-        argv = argv[1:]
-    ns = build_parser().parse_args(argv)
-    try:
-        raise SystemExit(ns.func(ns))
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    run_forwarded_cli(build_parser, "digest", argv)
 
 
 if __name__ == "__main__":

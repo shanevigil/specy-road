@@ -12,17 +12,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import find_record, load_archive_index, node_summary
 from specy_road.milestone_subtree import subtree_node_ids
-from specy_road.runtime_paths import bundled_scripts_dir
-
-
-def ensure_bundled_scripts_on_path() -> None:
-    import sys
-
-    d = str(bundled_scripts_dir())
-    if d not in sys.path:
-        sys.path.insert(0, d)
 
 
 @dataclass(frozen=True)
@@ -92,8 +84,7 @@ def assert_archivable(
     nodes: list[dict[str, Any]], node_id: str, *, force: bool = False
 ) -> dict[str, Any]:
     """Return the root node, or raise ``ValueError`` explaining why it can't archive."""
-    ensure_bundled_scripts_on_path()
-    from roadmap_load import compute_rollup_status
+    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
 
     from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 
@@ -147,13 +138,12 @@ def plan_archive(
     way — pull the subtree's nodes into one archive chunk and rewrite whatever
     remains back to each source.
     """
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import (
+    from specy_road.bundled_scripts.roadmap_chunk_utils import (
         build_node_chunk_map,
         load_json_chunk,
         roadmap_dir,
     )
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     from specy_road.archive_git import capture_provenance
 
@@ -215,10 +205,9 @@ def _refuse_if_claimed(root: Path, subtree_ids: set[str]) -> None:
     with no hint about why — and strands the claimant's feature branch. Caught
     at plan time so nothing has moved yet.
     """
-    from roadmap_gui_lib import load_registry
 
     try:
-        entries = load_registry(root).get("entries") or []
+        entries = read_registry(registry_path(root)).get("entries") or []
     except Exception:  # noqa: BLE001 - a registry problem is validate's to report
         return
     claimed = [
@@ -241,12 +230,13 @@ def _refuse_if_claimed(root: Path, subtree_ids: set[str]) -> None:
 def _refuse_if_manifest_would_empty(root: Path, edits: list[ChunkEdit]) -> None:
     """Never leave ``manifest.json`` with an empty ``includes``.
 
-    ``build_node_chunk_map`` reads a falsy ``includes`` as the legacy
-    "nodes live in the manifest" layout and tries to parse ``manifest.json``
-    as a chunk, which fails — so archiving the last live subtree would leave a
-    repo that cannot load at all.
+    This used to be load-bearing against a crash: the chunk-map helpers read a
+    falsy ``includes`` as the legacy "nodes live in the manifest" layout and
+    tried to parse ``manifest.json`` as a chunk. They now agree with the loader
+    that empty means no chunks, so the guard stands on its own terms -- a
+    roadmap with nothing live in it is not a state to archive a repo into.
     """
-    from roadmap_chunk_utils import load_manifest_mapping
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
 
     includes = [
         rel for rel in (load_manifest_mapping(root).get("includes") or [])

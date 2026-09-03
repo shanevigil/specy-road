@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import yaml
 
-from do_next_task_self_heal import (
+from specy_road.bundled_scripts.do_next_task_self_heal import (
     attempt_self_cleanup,
     detect_stale_claims,
 )

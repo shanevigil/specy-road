@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def structural_leaf_ids(nodes: list[dict]) -> set[str]:
-    """Nodes that are not parents of any other node (same as do-next structural leaves)."""
+    """Nodes that are not parents of any other node."""
     parent_ids = {
         n.get("parent_id")
         for n in nodes

@@ -9,9 +9,8 @@ from typing import Any
 
 import yaml
 
-from specy_road.git_subprocess import git_ok
+from specy_road.git_subprocess import git_ok, is_git_worktree
 from specy_road.git_workflow_config import (
-    is_git_worktree,
     load_git_workflow_config,
     resolve_integration_defaults,
 )

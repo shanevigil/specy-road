@@ -26,7 +26,7 @@ def repo(tmp_path: Path) -> Path:
 
 
 def _validate(root: Path) -> None:
-    from roadmap_crud_ops import run_validate_raise
+    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 
     run_validate_raise(root)
 
@@ -120,7 +120,7 @@ def test_archiving_an_ancestor_of_a_locked_milestone_is_refused(
 
 def test_archiving_the_last_live_subtree_is_refused(repo: Path) -> None:
     """An empty `includes` reads as the legacy manifest layout and cannot load."""
-    from roadmap_chunk_utils import load_json_chunk, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 
     for name in ("M0.json", "M1.json"):
         path = repo / "roadmap" / "phases" / name
@@ -156,7 +156,7 @@ def test_restore_keeps_the_archive_when_validation_fails(
 
     monkeypatch.setattr(mod, "run_validate_raise", boom, raising=False)
     monkeypatch.setattr(
-        "roadmap_crud_ops.run_validate_raise", boom, raising=False
+        "specy_road.bundled_scripts.roadmap_crud_ops.run_validate_raise", boom, raising=False
     )
 
     with pytest.raises(ValueError):

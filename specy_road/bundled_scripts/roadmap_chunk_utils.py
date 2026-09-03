@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+from specy_road.roadmap_json import nodes_from_chunk_doc, render_canonical_json
+
 MANIFEST_JSON = "manifest.json"
 
 
@@ -97,16 +99,7 @@ def _strip_derived(node: dict) -> dict:
 def render_json_chunk(nodes: list[dict]) -> str:
     """Canonical chunk text (used by both ``write_json_chunk`` and the chunk
     router for line-count prediction without touching disk)."""
-    cleaned = [_strip_derived(n) for n in nodes]
-    body = json.dumps(
-        {"nodes": cleaned},
-        indent=2,
-        sort_keys=True,
-        ensure_ascii=False,
-    )
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    return render_canonical_json({"nodes": [_strip_derived(n) for n in nodes]})
 
 
 def write_json_chunk(path: Path, nodes: list[dict]) -> None:
@@ -115,16 +108,13 @@ def write_json_chunk(path: Path, nodes: list[dict]) -> None:
 
 
 def render_manifest(doc: dict) -> str:
-    """Canonical manifest text (stable key order, indent=2, trailing newline).
+    """Canonical manifest text.
 
     Used by the chunk router whenever the manifest is rewritten (auto-routing
     or rebalance). Existing manifests that are never modified keep their
     original on-disk format because the loader is format-agnostic.
     """
-    body = json.dumps(doc, indent=2, sort_keys=True, ensure_ascii=False)
-    if not body.endswith("\n"):
-        body += "\n"
-    return body
+    return render_canonical_json(doc)
 
 
 def write_manifest(path: Path, doc: dict) -> None:
@@ -138,18 +128,12 @@ def load_json_chunk(path: Path) -> list[dict]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         _fail_manifest(f"roadmap: JSON parse error in {path}: {e}")
-    if isinstance(data, list):
-        out = [n for n in data if isinstance(n, dict)]
-        if not out and data:
-            _fail_manifest(f"roadmap: JSON chunk must contain objects: {path}")
-        return out
-    if isinstance(data, dict):
-        nodes = data.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in data:
-            return [data]
-    _fail_manifest(f"roadmap: invalid JSON chunk structure: {path}")
+    nodes = nodes_from_chunk_doc(data)
+    if nodes is None:
+        _fail_manifest(f"roadmap: invalid JSON chunk structure: {path}")
+    if not nodes and isinstance(data, list) and data:
+        _fail_manifest(f"roadmap: JSON chunk must contain objects: {path}")
+    return nodes
 
 
 def load_chunk_nodes(path: Path) -> list[dict]:
@@ -188,17 +172,32 @@ def iter_roadmap_fingerprint_files(root: Path) -> list[Path]:
     return sorted(set(out), key=lambda p: str(p))
 
 
+def manifest_includes(root: Path) -> list[str]:
+    """The chunk paths ``manifest.json`` lists, as declared.
+
+    An absent or empty ``includes`` means **no chunks**, which is what
+    ``roadmap_load`` has always enforced -- it refuses a manifest carrying
+    top-level ``nodes`` outright. ``find_chunk_path`` and
+    ``build_node_chunk_map`` used to read the same emptiness as the legacy
+    "nodes live in the manifest" layout and try to parse ``manifest.json`` as a
+    chunk, so the loader and the chunk-map helpers held opposite policies and a
+    guard in the archive planner existed only to keep execution away from the
+    disagreement.
+    """
+    inc = load_manifest_mapping(root).get("includes")
+    if not isinstance(inc, list):
+        return []
+    return [rel for rel in inc if isinstance(rel, str) and rel.strip()]
+
+
 def find_chunk_path(root: Path, node_id: str) -> Path | None:
     """Chunk file under ``roadmap/`` containing ``node_id``, or None."""
     try:
-        path = manifest_path(root)
+        manifest_path(root)
     except FileNotFoundError:
         return None
-    doc = load_manifest_mapping(root)
-    includes = doc.get("includes")
+    includes = manifest_includes(root)
     if not includes:
-        if any(n.get("id") == node_id for n in load_chunk_nodes(path)):
-            return path
         return None
     base = roadmap_dir(root)
     for rel in includes:
@@ -219,17 +218,12 @@ def find_chunk_path(root: Path, node_id: str) -> Path | None:
 def build_node_chunk_map(root: Path) -> dict[str, Path]:
     """Map node id to chunk path (last wins; validator rejects duplicate ids)."""
     try:
-        path = manifest_path(root)
+        manifest_path(root)
     except FileNotFoundError:
         return {}
     by_id: dict[str, Path] = {}
-    doc = load_manifest_mapping(root)
-    includes = doc.get("includes")
+    includes = manifest_includes(root)
     if not includes:
-        for n in load_chunk_nodes(path):
-            nid = n.get("id")
-            if isinstance(nid, str):
-                by_id[nid] = path
         return by_id
     base = roadmap_dir(root)
     for rel in includes:

@@ -48,7 +48,6 @@ function fixture(): RoadmapResponse {
     edges: [],
     ordered_ids: [],
     row_depths: [],
-    pr_hints: {},
     git_enrichment: {},
   };
 }

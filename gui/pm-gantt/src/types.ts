@@ -122,7 +122,6 @@ export type RoadmapResponse = {
   edges: DependencyEdge[];
   ordered_ids: string[];
   row_depths: number[];
-  pr_hints: Record<string, string>;
   git_enrichment: Record<string, Record<string, unknown>>;
   dependency_inheritance?: Record<string, DependencyInheritanceEntry>;
   outline_actions?: Record<string, OutlineActionsEntry>;

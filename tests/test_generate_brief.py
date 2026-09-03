@@ -7,7 +7,7 @@ import sys
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
-import generate_brief as gb
+from specy_road.bundled_scripts import generate_brief as gb
 
 
 def test_render_brief_m02_contains_title() -> None:
@@ -174,7 +174,7 @@ def test_unknown_node_exits() -> None:
 
 def test_render_brief_includes_the_history_section() -> None:
     """The section header is a stable landmark even with nothing to report."""
-    import generate_brief as gb
+    from specy_road.bundled_scripts import generate_brief as gb
 
     by_id = gb.index(gb.load_nodes(DOGFOOD))
     text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
@@ -183,7 +183,7 @@ def test_render_brief_includes_the_history_section() -> None:
 
 
 def test_render_brief_no_history_omits_the_section() -> None:
-    import generate_brief as gb
+    from specy_road.bundled_scripts import generate_brief as gb
 
     by_id = gb.index(gb.load_nodes(DOGFOOD))
     text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD, include_history=False)
@@ -196,7 +196,7 @@ def test_render_brief_history_degrades_outside_a_git_worktree(tmp_path) -> None:
     """A brief must still render where git cannot answer."""
     import shutil
 
-    import generate_brief as gb
+    from specy_road.bundled_scripts import generate_brief as gb
 
     dest = tmp_path / "no-git"
     shutil.copytree(DOGFOOD, dest)
@@ -210,7 +210,7 @@ def test_render_brief_history_degrades_outside_a_git_worktree(tmp_path) -> None:
 
 def test_render_brief_history_reports_archived_work_in_the_subtree(tmp_path) -> None:
     """The signal that is invisible any other way: this phase used to be bigger."""
-    import generate_brief as gb
+    from specy_road.bundled_scripts import generate_brief as gb
     from specy_road.archive_ops import archive_node
     from specy_road.history_index import clear_memo
     from tests.test_history_walk import commit, git

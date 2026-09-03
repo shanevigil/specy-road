@@ -7,7 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_workflow_config import (
     merge_request_requires_manual_approval,
     resolve_integration_defaults,
@@ -16,7 +16,7 @@ from specy_road.milestone_session import (
     milestone_session_path,
     read_milestone_session,
 )
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -27,13 +27,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "(after subtree work is complete)."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     return p.parse_args(argv)
 
 

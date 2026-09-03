@@ -11,16 +11,16 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     build_node_chunk_map,
     load_json_chunk,
     write_json_chunk,
 )
-from roadmap_edit_fields import (
+from specy_road.bundled_scripts.roadmap_edit_fields import (
     title_to_codename,
     update_planning_dir_to_canonical,
 )
-from planning_rename import rename_planning_file_if_path_changed
+from specy_road.bundled_scripts.planning_rename import rename_planning_file_if_path_changed
 
 # Fields that were part of the schema before F-003/F-007 and should now be
 # silently stripped from any chunk file that still carries them.

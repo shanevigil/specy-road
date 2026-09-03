@@ -66,7 +66,7 @@ After merge, every node must conform to `schemas/roadmap.schema.json` (validated
 
 ### Common optional fields
 
-- `parent_id`, `sibling_order`, `status`, `notes`, `codename`, `touch_zones`, `parallel_tracks`, `execution_milestone`, `execution_subtask`, `goal`, `acceptance`, `risks`, `decision`, `agentic_checklist`.
+- `parent_id`, `sibling_order`, `status`, `notes`, `codename`, `touch_zones`, `parallel_tracks`, `execution_milestone`, `goal`, `acceptance`, `risks`, `decision`.
 - **`execution_milestone`** (`Human-led` / `Agentic-led` / `Mixed`) is **advisory** metadata. It does **not** keep a leaf out of `specy-road do-next-available-task`. To hold work until a person clears it, add a **`type: gate`** node and depend on it.
 - **`status: "Blocked"`** on a leaf **promotes** it to the top of the pickup queue (a blocked leaf is the one most worth unblocking). Do not use it to mean "do not pick this up" — use a gate dependency.
 - **Do not author `agentic_checklist` or `execution_subtask`.** Both are deprecated and absent from `schemas/roadmap.schema.json`; `specy-road validate` strips them from chunk files. Put the contract a node conforms to in its planning sheet's `## References`, cited by filename (`shared/api-contract.md`) — that is what `specy-road brief` reads and inlines.

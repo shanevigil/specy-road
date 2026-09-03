@@ -24,8 +24,10 @@ from specy_road.history_cache import (
     save_cache,
 )
 from specy_road.history_events import ARCHIVED, RESTORED
-from specy_road.history_git import head_sha, is_ancestor
+from specy_road.git_subprocess import head_sha
+from specy_road.history_git import is_ancestor
 from specy_road.history_walk import walk
+from specy_road.archive_index import iter_archived_summaries
 
 _UUID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
@@ -194,10 +196,8 @@ def ids_ever_held(index: dict[str, Any], node_key: str) -> list[str]:
 
 def _live_key_for_id(root: Path, node_id: str) -> str | None:
     try:
-        from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-        ensure_bundled_scripts_on_path()
-        from roadmap_chunk_router_pick import load_merged_nodes
+        from specy_road.bundled_scripts.roadmap_chunk_router_pick import load_merged_nodes
 
         for node in load_merged_nodes(root):
             if node.get("id") == node_id and isinstance(node.get("node_key"), str):
@@ -208,17 +208,9 @@ def _live_key_for_id(root: Path, node_id: str) -> str | None:
 
 
 def _archived_key_for_id(root: Path, node_id: str) -> str | None:
-    try:
-        from specy_road.archive_index import index_records, load_archive_index
-
-        for record in index_records(load_archive_index(root)):
-            for summary in record.get("nodes_summary") or []:
-                if isinstance(summary, dict) and summary.get("id") == node_id:
-                    key = summary.get("node_key")
-                    if isinstance(key, str):
-                        return key
-    except Exception:  # noqa: BLE001 - a broken ledger must not block history
-        return None
+    for _record, summary in iter_archived_summaries(root):
+        if summary.get("id") == node_id and isinstance(summary.get("node_key"), str):
+            return summary["node_key"]
     return None
 
 

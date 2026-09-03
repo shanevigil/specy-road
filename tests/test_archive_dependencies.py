@@ -16,7 +16,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-from validate_roadmap_checks import validate_dependency_ids
+from specy_road.bundled_scripts.validate_roadmap_checks import validate_dependency_ids
 
 from specy_road.archive_index import archive_index_path, archived_node_keys
 from specy_road.archive_ops import archive_node
@@ -35,7 +35,7 @@ def repo(tmp_path: Path) -> Path:
 
 
 def _live_nodes(repo: Path) -> list[dict]:
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     return load_roadmap(repo)["nodes"]
 
@@ -134,8 +134,8 @@ def test_no_index_means_no_archived_keys(repo: Path) -> None:
 
 
 def _leaf_is_dep_blocked(repo: Path, node_id: str) -> bool:
-    import do_next_available as dna
-    from roadmap_layout import effective_dependency_keys
+    from specy_road.bundled_scripts import do_next_available as dna
+    from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
 
     nodes = _live_nodes(repo)
     node = next(n for n in nodes if n["id"] == node_id)
@@ -162,7 +162,7 @@ def test_archiving_a_dependency_does_not_block_the_leaf_that_needs_it(
 def test_do_next_still_offers_a_leaf_whose_dependency_was_archived(
     repo: Path,
 ) -> None:
-    import do_next_available as dna
+    from specy_road.bundled_scripts import do_next_available as dna
 
     archive_node(repo, "M0.3")
     nodes = _live_nodes(repo)
@@ -173,7 +173,7 @@ def test_do_next_still_offers_a_leaf_whose_dependency_was_archived(
 
 def test_grind_session_waves_still_schedule_it(repo: Path) -> None:
     """A whole grind run would stall if archived deps counted as unmet."""
-    from session_plan import compute_session_plan, session_plan_to_dict
+    from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
 
     archive_node(repo, "M0.3")
     plan = session_plan_to_dict(
@@ -186,8 +186,8 @@ def test_grind_session_waves_still_schedule_it(repo: Path) -> None:
 
 def test_an_unmet_live_dependency_still_blocks(repo: Path) -> None:
     """Guards the guard: the archived case must not blanket-unblock everything."""
-    from roadmap_load import load_roadmap
-    from roadmap_chunk_utils import load_json_chunk, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 
     chunk = repo / "roadmap" / "phases" / "M0.json"
     nodes = load_json_chunk(chunk)

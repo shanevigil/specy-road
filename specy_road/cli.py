@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.runtime_paths import bundled_scripts_dir, specy_road_package_dir
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -178,24 +178,21 @@ def _args_repo_root_first(args: list[str]) -> list[str]:
 
 
 def _run(script: str, args: list[str]) -> None:
-    d = bundled_scripts_dir()
-    script_path = d / script
-    if not script_path.is_file():
+    """Run a bundled entrypoint in its own process.
+
+    ``-m`` on the installed package, so the child resolves imports the same way
+    the parent did. This used to exec the file by path with a hand-built
+    PYTHONPATH prefix, which was the only thing making the scripts'
+    bare-module-name imports resolve.
+    """
+    module = f"specy_road.bundled_scripts.{script.removesuffix('.py')}"
+    if not (bundled_scripts_dir() / script).is_file():
         print(
-            f"error: missing bundled script {script_path} (broken install).",
+            f"error: missing bundled script {script} (broken install).",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    env = os.environ.copy()
-    sep = os.pathsep
-    prev = env.get("PYTHONPATH", "")
-    # Parent of the `specy_road` package dir so `import specy_road` works for
-    # bundled scripts; `d` keeps flat imports (do_next_available, …).
-    repo_or_site = str(specy_road_package_dir().parent)
-    prefix = f"{repo_or_site}{sep}{d}"
-    env["PYTHONPATH"] = prefix + (sep + prev if prev else "")
-    cmd = [sys.executable, str(script_path), *args]
-    proc = subprocess.run(cmd, env=env)
+    proc = subprocess.run([sys.executable, "-m", module, *args])
     if proc.returncode != 0:
         # Avoid chaining from CalledProcessError: bundled scripts already print
         # stderr messages; surfacing subprocess.check_call adds a noisy traceback.
@@ -212,12 +209,7 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
             "(human judgment; not validated by specy-road). Skips files that already exist unless --force."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: current working directory)",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--force",
         action="store_true",
@@ -240,12 +232,7 @@ def _cmd_gui(rest: list[str]) -> None:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git discovery / cwd)",
-    )
+    add_repo_root_arg(p)
     ns = p.parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
     if uvicorn_spec is None:

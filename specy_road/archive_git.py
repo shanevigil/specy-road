@@ -12,27 +12,10 @@ cleanly — it simply records less. Nothing here creates git objects.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import Any
 
-
-def _git(repo: Path, *args: str) -> str | None:
-    """Run git, returning stripped stdout, or ``None`` on any failure."""
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except (OSError, ValueError):
-        return None
-    if r.returncode != 0:
-        return None
-    out = (r.stdout or "").strip()
-    return out or None
+from specy_road.git_subprocess import git_text
 
 
 def resolve_ref(repo: Path, branch: str | None, remote: str | None = None) -> str | None:
@@ -48,7 +31,7 @@ def resolve_ref(repo: Path, branch: str | None, remote: str | None = None) -> st
         candidates.append(f"{remote}/{branch}")
         candidates.append(f"refs/remotes/{remote}/{branch}")
     for ref in candidates:
-        sha = _git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+        sha = git_text(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], repo)
         if sha:
             return sha
     return None
@@ -62,12 +45,14 @@ def merge_commit_for(repo: Path, rollup_tip: str, integration_sha: str) -> str |
     ``rev-list`` emits newest-first, so the **last** line is the earliest such
     merge — the one that landed the work.
     """
-    out = _git(
+    out = git_text(
+        [
+            "rev-list",
+            "--ancestry-path",
+            "--merges",
+            f"{rollup_tip}..{integration_sha}",
+        ],
         repo,
-        "rev-list",
-        "--ancestry-path",
-        "--merges",
-        f"{rollup_tip}..{integration_sha}",
     )
     if not out:
         return None
@@ -79,7 +64,7 @@ def nearest_tag(repo: Path, ref: str | None) -> str | None:
     """Closest tag reachable from ``ref`` (``git describe --tags --abbrev=0``)."""
     if not ref:
         return None
-    return _git(repo, "describe", "--tags", "--abbrev=0", ref)
+    return git_text(["describe", "--tags", "--abbrev=0", ref], repo) or None
 
 
 def capture_provenance(root: Path, root_node: dict[str, Any]) -> dict[str, Any]:

@@ -2,8 +2,8 @@
 
 ## Data flow
 
-- The FastAPI **`GET /api/roadmap`** handler loads `roadmap/registry.yaml` with [`load_registry()`](../../specy_road/bundled_scripts/roadmap_gui_lib.py) from the **repository root** resolved for the GUI ([`get_repo_root()`](../../specy_road/gui_app_helpers.py): `SPECY_ROAD_REPO_ROOT`, else roadmap discovery from cwd).
-- When [**remote registry overlay**](registry-hydration-remote-refs.md) is enabled (default in GUI defaults, gated by Git remote + **Test Git**), the server **merges** `registry.yaml` from **`refs/remotes/<remote>/<integration_branch>`** and from **`refs/remotes/<remote>/feature/rm-*`** into the payload. **`registry`**, **`registry_by_node`**, **`pr_hints`**, and **`git_enrichment`** then reflect that **merged** view. HEAD entries win on duplicate **`node_id`**; remote integration ref then feature refs fill gaps.
+- The FastAPI **`GET /api/roadmap`** handler loads `roadmap/registry.yaml` with [`read_registry()`](../../specy_road/registry_yaml.py) from the **repository root** resolved for the GUI ([`get_repo_root()`](../../specy_road/gui_app_helpers.py): `SPECY_ROAD_REPO_ROOT`, else roadmap discovery from cwd).
+- When [**remote registry overlay**](registry-hydration-remote-refs.md) is enabled (default in GUI defaults, gated by Git remote + **Test Git**), the server **merges** `registry.yaml` from **`refs/remotes/<remote>/<integration_branch>`** and from **`refs/remotes/<remote>/feature/rm-*`** into the payload. **`registry`**, **`registry_by_node`**, and **`git_enrichment`** then reflect that **merged** view. HEAD entries win on duplicate **`node_id`**; remote integration ref then feature refs fill gaps.
 
 ## Green outline accent (developers vs PMs)
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import sys
 
-from roadmap_crud_argparse import build_parser
+from specy_road.bundled_scripts.roadmap_crud_argparse import build_parser
 
 
 def main(argv: list[str] | None = None) -> None:

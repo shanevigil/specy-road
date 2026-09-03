@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from refresh_schemas import (
+from specy_road.bundled_scripts.refresh_schemas import (
     bundled_schemas_dir,
     refresh_schemas,
     stale_schema_names,
