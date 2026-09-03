@@ -231,10 +231,11 @@ def _refuse_if_claimed(root: Path, subtree_ids: set[str]) -> None:
 def _refuse_if_manifest_would_empty(root: Path, edits: list[ChunkEdit]) -> None:
     """Never leave ``manifest.json`` with an empty ``includes``.
 
-    ``build_node_chunk_map`` reads a falsy ``includes`` as the legacy
-    "nodes live in the manifest" layout and tries to parse ``manifest.json``
-    as a chunk, which fails — so archiving the last live subtree would leave a
-    repo that cannot load at all.
+    This used to be load-bearing against a crash: the chunk-map helpers read a
+    falsy ``includes`` as the legacy "nodes live in the manifest" layout and
+    tried to parse ``manifest.json`` as a chunk. They now agree with the loader
+    that empty means no chunks, so the guard stands on its own terms -- a
+    roadmap with nothing live in it is not a state to archive a repo into.
     """
     from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
 

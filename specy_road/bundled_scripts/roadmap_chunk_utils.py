@@ -172,17 +172,32 @@ def iter_roadmap_fingerprint_files(root: Path) -> list[Path]:
     return sorted(set(out), key=lambda p: str(p))
 
 
+def manifest_includes(root: Path) -> list[str]:
+    """The chunk paths ``manifest.json`` lists, as declared.
+
+    An absent or empty ``includes`` means **no chunks**, which is what
+    ``roadmap_load`` has always enforced -- it refuses a manifest carrying
+    top-level ``nodes`` outright. ``find_chunk_path`` and
+    ``build_node_chunk_map`` used to read the same emptiness as the legacy
+    "nodes live in the manifest" layout and try to parse ``manifest.json`` as a
+    chunk, so the loader and the chunk-map helpers held opposite policies and a
+    guard in the archive planner existed only to keep execution away from the
+    disagreement.
+    """
+    inc = load_manifest_mapping(root).get("includes")
+    if not isinstance(inc, list):
+        return []
+    return [rel for rel in inc if isinstance(rel, str) and rel.strip()]
+
+
 def find_chunk_path(root: Path, node_id: str) -> Path | None:
     """Chunk file under ``roadmap/`` containing ``node_id``, or None."""
     try:
-        path = manifest_path(root)
+        manifest_path(root)
     except FileNotFoundError:
         return None
-    doc = load_manifest_mapping(root)
-    includes = doc.get("includes")
+    includes = manifest_includes(root)
     if not includes:
-        if any(n.get("id") == node_id for n in load_chunk_nodes(path)):
-            return path
         return None
     base = roadmap_dir(root)
     for rel in includes:
@@ -203,17 +218,12 @@ def find_chunk_path(root: Path, node_id: str) -> Path | None:
 def build_node_chunk_map(root: Path) -> dict[str, Path]:
     """Map node id to chunk path (last wins; validator rejects duplicate ids)."""
     try:
-        path = manifest_path(root)
+        manifest_path(root)
     except FileNotFoundError:
         return {}
     by_id: dict[str, Path] = {}
-    doc = load_manifest_mapping(root)
-    includes = doc.get("includes")
+    includes = manifest_includes(root)
     if not includes:
-        for n in load_chunk_nodes(path):
-            nid = n.get("id")
-            if isinstance(nid, str):
-                by_id[nid] = path
         return by_id
     base = roadmap_dir(root)
     for rel in includes:

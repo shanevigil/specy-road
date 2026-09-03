@@ -14,19 +14,14 @@ from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_pa
 from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
 from specy_road.registry_yaml import registry_path
 from specy_road.node_kinds import allows_children, is_gate, parent_type_allowed
-
-
-def _chunk_includes(root: Path) -> list[str]:
-    doc = load_manifest_mapping(root)
-    inc = doc.get("includes") or []
-    return [x for x in inc if isinstance(x, str) and x.strip()]
+from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
 
 
 def persist_merged_nodes(root: Path, merged: list[dict]) -> None:
     """Write merged node list back to JSON chunks (match by ``node_key``, preserve chunk order)."""
     by_key = {n["node_key"]: n for n in merged}
     base = roadmap_dir(root)
-    for rel in _chunk_includes(root):
+    for rel in manifest_includes(root):
         path = (base / rel).resolve()
         if not path.is_file() or path.suffix.lower() != ".json":
             continue

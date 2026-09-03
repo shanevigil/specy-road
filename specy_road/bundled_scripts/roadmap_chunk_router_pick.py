@@ -25,6 +25,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     roadmap_dir,
 )
 from specy_road.file_limits_engine import roadmap_line_limit
+from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
 
 
 _DEFAULT_MAX_CHUNK_LINES = 500
@@ -45,12 +46,6 @@ def simulate_chunk_lines(nodes: list[dict]) -> int:
     if not text:
         return 0
     return text.count("\n") + (0 if text.endswith("\n") else 1)
-
-
-def manifest_includes(root: Path) -> list[str]:
-    doc = load_manifest_mapping(root)
-    inc = doc.get("includes") or []
-    return [x for x in inc if isinstance(x, str) and x.strip()]
 
 
 def load_merged_nodes(root: Path) -> list[dict]:
