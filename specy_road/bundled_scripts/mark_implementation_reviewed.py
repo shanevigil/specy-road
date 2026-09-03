@@ -13,19 +13,21 @@ import yaml
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
 )
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = registry_path(ROOT)
 
 
 def _save_registry(doc: dict) -> None:
-    write_registry(REGISTRY_PATH, doc)
+    write_registry(registry_path(ROOT), doc)
 
 
 def _stash_work_dir_changes() -> bool:
@@ -153,7 +155,7 @@ def _commit_registry_approved(codename: str, reg: dict) -> None:
     _save_registry(reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
-    git_run(ROOT, "add", str(REGISTRY_PATH.relative_to(ROOT)))
+    git_run(ROOT, "add", str(registry_path(ROOT).relative_to(ROOT)))
     git_run(ROOT, 
         "commit",
         "-m",
@@ -186,10 +188,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH
+    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = registry_path(ROOT)
+    ROOT = resolve_repo_root(args)
 
     if not require_implementation_review_before_finish(ROOT):
         print(

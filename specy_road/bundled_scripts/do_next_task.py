@@ -54,13 +54,14 @@ from specy_road.git_workflow_config import (
 )
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch, working_tree_clean
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = registry_path(ROOT)
-WORK_DIR = ROOT / "work"
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +98,7 @@ def _resync_and_select(
             "Integration-branch sync and creating a new feature branch need a clean tree."
         ),
     )
-    reg = read_registry(REGISTRY_PATH)
+    reg = read_registry(registry_path(ROOT))
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
     integration_statuses = _statuses_by_node_key(nodes)
@@ -181,7 +182,7 @@ def _register_and_commit(
     impl_review_gate: bool,
 ) -> None:
     _do_register_and_commit(
-        registry_path=REGISTRY_PATH,
+        registry_path=registry_path(ROOT),
         git_runner=lambda *a: git_run(ROOT, *a),
         node=node,
         branch=branch,
@@ -201,7 +202,7 @@ def _push_integration_branch(remote: str, base: str) -> None:
 
 
 def _write_brief(node: dict, nodes: list[dict]) -> Path:
-    return _do_write_brief(WORK_DIR, node, nodes)
+    return _do_write_brief(ROOT / "work", node, nodes)
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +213,7 @@ def _write_brief(node: dict, nodes: list[dict]) -> Path:
 def _push_and_branch_with_self_heal(**kwargs) -> None:
     _do_push_and_branch(
         repo_root=ROOT,
-        registry_path=REGISTRY_PATH,
+        registry_path=registry_path(ROOT),
         git_runner=lambda *a: git_run(ROOT, *a),
         push_integration_branch_fn=_push_integration_branch,
         checkout_new_branch_fn=_checkout_new_branch,
@@ -225,7 +226,7 @@ def _write_session_and_prompt(**kwargs) -> Path:
     # patching dnt.write_agent_prompt is honoured without going through
     # sys.modules to fetch the same binding.
     return _do_write_session_and_prompt(
-        work_dir=WORK_DIR,
+        work_dir=ROOT / "work",
         repo_root=ROOT,
         write_agent_prompt_fn=write_agent_prompt,
         **kwargs,
@@ -248,7 +249,7 @@ def _finalize_pickup(
     print_pickup_header(node, branch)
 
     brief_path = _write_brief(node, nodes)
-    reg = read_registry(REGISTRY_PATH)
+    reg = read_registry(registry_path(ROOT))
     commit_msg = registration_commit_message(
         codename,
         include_ci_skip=include_ci_skip,
@@ -269,7 +270,7 @@ def _finalize_pickup(
 
     print_pickup_footer(
         root=ROOT,
-        work_dir=WORK_DIR,
+        work_dir=ROOT / "work",
         brief_path=brief_path,
         prompt_path=prompt_path,
         push_registry=push_registry,
@@ -285,7 +286,7 @@ def _finalize_pickup(
 def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
     """Pre-sync availability sanity check: exit if no actionable leaf locally."""
     nodes = load_roadmap(ROOT)["nodes"]
-    reg = read_registry(REGISTRY_PATH)
+    reg = read_registry(registry_path(ROOT))
     # F-014: surface stale registry claims to the next user immediately.
     _warn_about_stale_claims_before_pickup(repo_root=ROOT, reg=reg, remote=remote)
     enrich = _load_branch_enrichment(ROOT)
@@ -314,12 +315,10 @@ def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH, WORK_DIR
+    global ROOT
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = registry_path(ROOT)
-    WORK_DIR = ROOT / "work"
+    ROOT = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,
@@ -328,7 +327,7 @@ def main(argv: list[str] | None = None) -> None:
     for w in gw_warns:
         print(f"warning: {w}", file=sys.stderr)
 
-    parent_filter = _resolve_milestone_parent_filter(WORK_DIR, args)
+    parent_filter = _resolve_milestone_parent_filter(ROOT / "work", args)
     _validate_or_exit()
     _check_pre_sync_availability(base, remote, parent_filter)
     # F-011: stash any in-progress work/ changes so the integration-branch

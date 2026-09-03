@@ -20,11 +20,14 @@ from specy_road.milestone_session import (
     write_milestone_session,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch, working_tree_clean
 
 _CODENAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
 
 
@@ -125,7 +128,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = _parse_args(argv)
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
+    ROOT = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,

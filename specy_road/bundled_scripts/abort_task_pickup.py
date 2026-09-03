@@ -16,11 +16,13 @@ from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
 )
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = registry_path(ROOT)
 
 
 def _pickup_artifact_rel_paths(node_id: str) -> set[str]:
@@ -75,7 +77,7 @@ def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None
 
 
 def _save_registry(doc: dict) -> None:
-    write_registry(REGISTRY_PATH, doc)
+    write_registry(registry_path(ROOT), doc)
 
 
 def _count_commits_ahead_of_remote_base(remote: str, base: str) -> int:
@@ -233,7 +235,7 @@ def _exit_if_unpushed_commits_without_force(
 
 
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
-    reg = read_registry(REGISTRY_PATH)
+    reg = read_registry(registry_path(ROOT))
     entries = reg.get("entries") or []
     if not next((e for e in entries if e.get("codename") == codename), None):
         print(
@@ -248,7 +250,7 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
         raise SystemExit(1)
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
     _save_registry(reg)
-    rel_reg = str(REGISTRY_PATH.relative_to(ROOT))
+    rel_reg = str(registry_path(ROOT).relative_to(ROOT))
     git_run(ROOT, "add", rel_reg)
     git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup")
     print(f"-> git push {remote} {base}")
@@ -256,10 +258,9 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH
+    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = registry_path(ROOT)
+    ROOT = resolve_repo_root(args)
 
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,

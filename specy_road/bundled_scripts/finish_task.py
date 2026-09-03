@@ -33,11 +33,13 @@ from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
 )
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = registry_path(ROOT)
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +53,7 @@ REGISTRY_PATH = registry_path(ROOT)
 
 
 def _save_registry(doc: dict) -> None:
-    write_registry(REGISTRY_PATH, doc)
+    write_registry(registry_path(ROOT), doc)
 
 
 # ---------------------------------------------------------------------------
@@ -228,7 +230,7 @@ def _bookkeeping_commit_phase(
     for rel in complete_rolled_up_ancestors(ROOT, node_id):
         if rel not in changed_files:
             changed_files.append(rel)
-    changed_files.append(str(REGISTRY_PATH.relative_to(ROOT)))
+    changed_files.append(str(registry_path(ROOT).relative_to(ROOT)))
     reg["entries"] = [e for e in reg.get("entries", []) if e.get("codename") != codename]
     _save_registry(reg)
     print(f"[ok] removed registry entry for '{codename}'\n")
@@ -258,10 +260,9 @@ def _bookkeeping_commit_phase(
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH
+    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = registry_path(ROOT)
+    ROOT = resolve_repo_root(args)
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
