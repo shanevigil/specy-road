@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.git_subprocess import HISTORY_TIMEOUT, git_stdout, head_sha
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 # Belt-and-braces bound on a pathological history. A node whose last touch is
 # older than this is stale by any measure the column could express.
@@ -41,19 +42,6 @@ SOURCE_CHUNK = "chunk"
 # any answer here. Bounded so a long-lived GUI process cannot grow without end.
 _CACHE: dict[tuple[str, str], dict[str, dict[str, str]]] = {}
 _CACHE_MAX = 8
-
-
-def repo_prefix(root: Path) -> str:
-    """``root``'s path within its git repo, e.g. ``"project/"`` — or ``""``.
-
-    ``git log --name-only`` prints paths relative to the **repository** root,
-    while roadmap paths (``planning_dir``, chunk paths) are relative to the
-    **project** root. Those coincide only when the project is the repo root. In
-    a monorepo — or whenever ``SPECY_ROAD_REPO_ROOT`` points at a subdirectory
-    — every lookup would miss and the column would silently go blank.
-    """
-    out = git_stdout(["rev-parse", "--show-prefix"], root)
-    return (out or "").strip()
 
 
 def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
@@ -85,7 +73,7 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
     )
     if not out:
         return {}
-    prefix = repo_prefix(root)
+    prefix = project_prefix(root)
     dates: dict[str, str] = {}
     current: str | None = None
     for line in out.splitlines():
@@ -95,11 +83,10 @@ def last_commit_dates(root: Path, scopes: list[str]) -> dict[str, str]:
         rel = line.strip()
         if not rel or not current:
             continue
-        # Re-base repository-relative output onto the project root.
-        if prefix:
-            if not rel.startswith(prefix):
-                continue
-            rel = rel[len(prefix):]
+        rebased = rebase_to_project(rel, prefix)
+        if rebased is None:
+            continue
+        rel = rebased
         if rel not in dates:
             dates[rel] = current
     return dates

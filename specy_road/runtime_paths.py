@@ -71,6 +71,21 @@ def project_prefix(root: Path) -> str:
     return git_text(["rev-parse", "--show-prefix"], root) or ""
 
 
+def rebase_to_project(repo_relative: str, prefix: str) -> str | None:
+    """A path git reported, expressed relative to the project root.
+
+    ``None`` when the path lies outside the project — the common case in a
+    monorepo, where most of what ``git log`` prints belongs to other trees.
+    The inverse of :func:`project_prefix`, and the reason that function is
+    rarely useful on its own.
+    """
+    if not prefix:
+        return repo_relative
+    if not repo_relative.startswith(prefix):
+        return None
+    return repo_relative[len(prefix):]
+
+
 def prefix_within(git_top: Path, project: Path) -> str:
     """:func:`project_prefix` computed from two paths instead of from git.
 

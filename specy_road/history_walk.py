@@ -40,7 +40,7 @@ from specy_road.history_git import (
     log_raw,
     ls_tree_blobs,
 )
-from specy_road.node_activity import repo_prefix
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 MANIFEST_REL = "roadmap/manifest.json"
 ARCHIVE_INDEX_REL = "roadmap/archive/index.json"
@@ -64,18 +64,6 @@ class Commit:
         return {"commit": self.sha, "at": self.at, "author": self.author}
 
 
-def _rebase(path: str, prefix: str) -> str | None:
-    """Re-base git's repository-relative path onto the project root.
-
-    They coincide only when the project *is* the repo root; in a monorepo, or
-    whenever ``SPECY_ROAD_REPO_ROOT`` points at a subdirectory, every lookup
-    would otherwise miss silently.
-    """
-    if not prefix:
-        return path
-    return path[len(prefix):] if path.startswith(prefix) else None
-
-
 def parse_log(text: str, prefix: str = "") -> list[Commit]:
     """Parse ``git log --raw --no-abbrev`` output into commits, oldest first."""
     commits: list[Commit] = []
@@ -93,7 +81,7 @@ def parse_log(text: str, prefix: str = "") -> list[Commit]:
         # ":<srcmode> <dstmode> <srcsha> <dstsha> <status>"
         if len(fields) < 5 or not path:
             continue
-        rel = _rebase(path, prefix)
+        rel = rebase_to_project(path, prefix)
         if rel is None:
             continue
         deleted = fields[4].startswith("D")
@@ -255,7 +243,7 @@ def walk(
 
     ensure_bundled_scripts_on_path()
 
-    prefix = repo_prefix(root)
+    prefix = project_prefix(root)
     text = log_raw(root, SCOPES, since)
     if text is None:
         return [], since
@@ -266,7 +254,7 @@ def walk(
     seed: dict[str, str] = {}
     if since:
         for path, sha in ls_tree_blobs(root, since, ROADMAP_PREFIX.rstrip("/")).items():
-            rel = _rebase(path, prefix)
+            rel = rebase_to_project(path, prefix)
             if rel is not None:
                 seed[rel] = sha
 
