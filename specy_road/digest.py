@@ -22,6 +22,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from specy_road.registry_yaml import read_registry, registry_path
+
 BANNER = (
     "<!-- specy-road: generated context digest — do not edit by hand. "
     "Regenerate with `specy-road digest`. -->"
@@ -226,9 +228,8 @@ def _section_claims(root: Path) -> list[str]:
         from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
         ensure_bundled_scripts_on_path()
-        from roadmap_gui_lib import load_registry
 
-        entries = load_registry(root).get("entries") or []
+        entries = read_registry(registry_path(root)).get("entries") or []
     except Exception:  # noqa: BLE001 - the registry is advisory here
         return []
     entries = [e for e in entries if isinstance(e, dict) and e.get("node_id")]

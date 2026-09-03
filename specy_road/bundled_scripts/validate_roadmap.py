@@ -12,6 +12,7 @@ import yaml
 from refresh_schemas import warn_if_schemas_stale
 from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.registry_yaml import registry_path
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import default_user_repo_root
 from validate_roadmap_checks import (
@@ -77,7 +78,7 @@ def validate_at(
     codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
     e.g. in a read-only CI drift check.
     """
-    reg_path = root / "roadmap" / "registry.yaml"
+    reg_path = registry_path(root)
     if require_registry and not reg_path.is_file():
         print(f"missing {reg_path}", file=sys.stderr)
         raise SystemExit(1)

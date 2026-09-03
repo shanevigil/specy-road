@@ -28,7 +28,7 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
-from specy_road.registry_yaml import write_registry
+from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
@@ -36,7 +36,7 @@ from specy_road.on_complete_session import (
 from specy_road.runtime_paths import default_user_repo_root
 
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+REGISTRY_PATH = registry_path(ROOT)
 
 
 # ---------------------------------------------------------------------------
@@ -62,11 +62,6 @@ def _git(*args: str) -> None:
 # ---------------------------------------------------------------------------
 # Registry helpers
 # ---------------------------------------------------------------------------
-
-
-def _load_registry() -> dict:
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
 
 
 def _save_registry(doc: dict) -> None:
@@ -286,7 +281,7 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT, REGISTRY_PATH
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    REGISTRY_PATH = registry_path(ROOT)
     branch = _current_branch()
     if not branch.startswith("feature/rm-"):
         print(

@@ -19,6 +19,7 @@ import yaml
 from roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
 from roadmap_load import load_manifest_mapping, load_roadmap
 from validate_roadmap import validate_at
+from specy_road.registry_yaml import registry_path
 
 
 NS = uuid.UUID("01234567-89ab-cdef-0123-456789abcdef")
@@ -89,7 +90,7 @@ def main() -> None:
             if migrate_chunk(p, id_to_key):
                 touched = True
                 print(f"migrated: {p.relative_to(root)}")
-    reg = root / "roadmap" / "registry.yaml"
+    reg = registry_path(root)
     if reg.is_file():
         data = yaml.safe_load(reg.read_text(encoding="utf-8"))
         entries = data.get("entries") if isinstance(data, dict) else None

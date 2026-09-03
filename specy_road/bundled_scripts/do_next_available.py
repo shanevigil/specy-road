@@ -13,7 +13,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from roadmap_gui_lib import load_registry, load_settings, registry_by_node_id
+from roadmap_gui_lib import load_settings, registry_by_node_id
+from specy_road.registry_yaml import read_registry, registry_path
 from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
 from roadmap_layout import effective_dependency_keys, ordered_tree_rows
 from roadmap_load import compute_rollup_status
@@ -202,7 +203,7 @@ def _sort_by_outline(
 def _load_branch_enrichment(root: Path) -> dict[str, dict[str, Any]]:
     """Same enrichment as the PM GUI when settings/registry load; `{}` on any failure (offline-safe)."""
     try:
-        reg = load_registry(root)
+        reg = read_registry(registry_path(root))
         by_reg = registry_by_node_id(reg)
         settings = load_settings(root)
         gr = settings.get("git_remote") or {}

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from specy_road.registry_yaml import write_registry
+from specy_road.registry_yaml import read_registry, write_registry
 
 
 def attempt_self_cleanup(
@@ -30,8 +30,7 @@ def attempt_self_cleanup(
     try:
         if not registry_path.is_file():
             return True
-        with registry_path.open(encoding="utf-8") as f:
-            reg = yaml.safe_load(f) or {"version": 1, "entries": []}
+        reg = read_registry(registry_path)
         before = list(reg.get("entries") or [])
         reg["entries"] = [e for e in before if e.get("codename") != codename]
         if len(reg["entries"]) == len(before):

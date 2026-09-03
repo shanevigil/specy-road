@@ -14,6 +14,8 @@ _LIB_DIR = Path(__file__).resolve().parent
 if str(_LIB_DIR) not in sys.path:
     sys.path.insert(0, str(_LIB_DIR))
 
+from specy_road.registry_yaml import registry_path
+
 import yaml
 from roadmap_chunk_utils import iter_roadmap_fingerprint_files
 from roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
@@ -117,14 +119,6 @@ def apply_llm_env_from_settings(llm: dict[str, Any]) -> None:
         os.environ.pop("AZURE_OPENAI_MAX_TOKENS_PER_MINUTE", None)
 
 
-def load_registry(root: Path) -> dict[str, Any]:
-    p = root / "roadmap" / "registry.yaml"
-    if not p.is_file():
-        return {"version": 1, "entries": []}
-    with p.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 def registry_by_node_id(reg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for e in reg.get("entries") or []:
@@ -140,7 +134,7 @@ def roadmap_fingerprint(root: Path) -> int:
             h += p.stat().st_mtime_ns
         except OSError:
             continue
-    reg = root / "roadmap" / "registry.yaml"
+    reg = registry_path(root)
     if reg.is_file():
         try:
             h += reg.stat().st_mtime_ns

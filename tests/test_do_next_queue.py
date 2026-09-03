@@ -135,10 +135,10 @@ def test_available_prioritizes_blocked_before_not_started() -> None:
 def test_load_branch_enrichment_returns_empty_on_registry_failure(
     monkeypatch: pytest.MonkeyPatch, tmp_path,
 ) -> None:
-    def boom(_root):
+    def boom(_path, **_kw):
         raise RuntimeError("no registry")
 
-    monkeypatch.setattr(dna, "load_registry", boom)
+    monkeypatch.setattr(dna, "read_registry", boom)
     assert dna._load_branch_enrichment(tmp_path) == {}
 
 

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.archive_index import find_record, load_archive_index, node_summary
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.runtime_paths import bundled_scripts_dir
@@ -215,10 +216,9 @@ def _refuse_if_claimed(root: Path, subtree_ids: set[str]) -> None:
     with no hint about why — and strands the claimant's feature branch. Caught
     at plan time so nothing has moved yet.
     """
-    from roadmap_gui_lib import load_registry
 
     try:
-        entries = load_registry(root).get("entries") or []
+        entries = read_registry(registry_path(root)).get("entries") or []
     except Exception:  # noqa: BLE001 - a registry problem is validate's to report
         return
     claimed = [

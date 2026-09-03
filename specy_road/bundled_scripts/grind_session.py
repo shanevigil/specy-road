@@ -37,6 +37,7 @@ from grind_session_events import (
 from session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
 from session_plan_render import render_session_plan_text
 from roadmap_load import load_roadmap
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
 
@@ -46,17 +47,9 @@ from specy_road.runtime_paths import default_user_repo_root
 # ---------------------------------------------------------------------------
 
 
-def _load_registry(repo_root: Path) -> dict:
-    path = repo_root / "roadmap" / "registry.yaml"
-    if not path.is_file():
-        return {"version": 1, "entries": []}
-    with path.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 def gather_plan(repo_root: Path, under: str | None) -> tuple[list[dict], dict, SessionPlan]:
     nodes = load_roadmap(repo_root)["nodes"]
-    reg = _load_registry(repo_root)
+    reg = read_registry(registry_path(repo_root))
     return nodes, reg, compute_session_plan(nodes, reg, under=under)
 
 
@@ -161,7 +154,7 @@ def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
     if not branch.startswith("feature/rm-"):
         return fallback_id
     codename = branch[len("feature/rm-"):]
-    reg = _load_registry(repo_root)
+    reg = read_registry(registry_path(repo_root))
     for e in reg.get("entries") or []:
         if e.get("codename") == codename and e.get("node_id"):
             return e["node_id"]

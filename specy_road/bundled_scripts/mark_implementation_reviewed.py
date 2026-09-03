@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import require_implementation_review_before_finish
-from specy_road.registry_yaml import write_registry
+from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.runtime_paths import default_user_repo_root
 from work_dir_stash import (
     restore_work_dir_changes as _restore_work,
@@ -21,7 +21,7 @@ from work_dir_stash import (
 )
 
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+REGISTRY_PATH = registry_path(ROOT)
 
 
 def _current_branch() -> str:
@@ -37,11 +37,6 @@ def _current_branch() -> str:
 
 def _git(*args: str) -> None:
     subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _load_registry() -> dict:
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
 
 
 def _save_registry(doc: dict) -> None:
@@ -70,7 +65,7 @@ def _restore_work_dir_changes(stashed: bool) -> None:
 def _resolve_context(branch: str) -> tuple[str, dict, dict]:
     """Return (codename, registry_doc, entry) or raise SystemExit."""
     codename = branch[len("feature/rm-"):]
-    reg = _load_registry()
+    reg = read_registry(REGISTRY_PATH)
     entries = reg.get("entries") or []
     entry = next((e for e in entries if e.get("codename") == codename), None)
     if not entry:
@@ -257,7 +252,7 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT, REGISTRY_PATH
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    REGISTRY_PATH = registry_path(ROOT)
 
     if not require_implementation_review_before_finish(ROOT):
         print(

@@ -39,6 +39,7 @@ from roadmap_load import load_roadmap
 from do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
     resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
@@ -55,7 +56,7 @@ from specy_road.runtime_paths import default_user_repo_root
 from validate_roadmap import validate_at
 
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+REGISTRY_PATH = registry_path(ROOT)
 WORK_DIR = ROOT / "work"
 
 
@@ -85,7 +86,7 @@ def _resync_and_select(
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty."""
     _sync_integration_branch(base, remote)
-    reg = _load_registry()
+    reg = read_registry(REGISTRY_PATH)
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
     integration_statuses = _statuses_by_node_key(nodes)
@@ -123,13 +124,6 @@ def _validate_or_exit() -> None:
                 file=sys.stderr,
             )
             raise
-
-
-def _load_registry() -> dict:
-    if not REGISTRY_PATH.is_file():
-        return {"version": 1, "entries": []}
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +285,7 @@ def _finalize_pickup(
     print_pickup_header(node, branch)
 
     brief_path = _write_brief(node, nodes)
-    reg = _load_registry()
+    reg = read_registry(REGISTRY_PATH)
     commit_msg = registration_commit_message(
         codename,
         include_ci_skip=include_ci_skip,
@@ -328,7 +322,7 @@ def _finalize_pickup(
 def _check_pre_sync_availability(base: str, remote: str, parent_filter) -> None:
     """Pre-sync availability sanity check: exit if no actionable leaf locally."""
     nodes = load_roadmap(ROOT)["nodes"]
-    reg = _load_registry()
+    reg = read_registry(REGISTRY_PATH)
     # F-014: surface stale registry claims to the next user immediately.
     _warn_about_stale_claims_before_pickup(repo_root=ROOT, reg=reg, remote=remote)
     enrich = _load_branch_enrichment(ROOT)
@@ -361,7 +355,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_do_next_task_args(argv)
     include_ci_skip = not args.no_ci_skip_in_message
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    REGISTRY_PATH = registry_path(ROOT)
     WORK_DIR = ROOT / "work"
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,

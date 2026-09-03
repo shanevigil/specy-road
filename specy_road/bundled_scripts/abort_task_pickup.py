@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.registry_yaml import write_registry
+from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
@@ -19,7 +19,7 @@ from specy_road.on_complete_session import (
 from specy_road.runtime_paths import default_user_repo_root
 
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+REGISTRY_PATH = registry_path(ROOT)
 
 
 def _git(*args: str) -> None:
@@ -90,13 +90,6 @@ def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None
     for line in dirty:
         print(f"  {line}", file=sys.stderr)
     raise SystemExit(1)
-
-
-def _load_registry() -> dict:
-    if not REGISTRY_PATH.is_file():
-        return {"version": 1, "entries": []}
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
 
 
 def _save_registry(doc: dict) -> None:
@@ -264,7 +257,7 @@ def _exit_if_unpushed_commits_without_force(
 
 
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
-    reg = _load_registry()
+    reg = read_registry(REGISTRY_PATH)
     entries = reg.get("entries") or []
     if not next((e for e in entries if e.get("codename") == codename), None):
         print(
@@ -290,7 +283,7 @@ def main(argv: list[str] | None = None) -> None:
     global ROOT, REGISTRY_PATH
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    REGISTRY_PATH = registry_path(ROOT)
 
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,

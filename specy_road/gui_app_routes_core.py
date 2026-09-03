@@ -10,7 +10,6 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from roadmap_gui_lib import (
-    load_registry,
     load_settings,
     registry_by_node_id,
     repo_settings_id,
@@ -25,6 +24,7 @@ from roadmap_layout import (
 )
 from roadmap_load import load_roadmap
 
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.node_activity import node_activity
 from specy_road.git_workflow_config import build_git_workflow_status
 from specy_road.pm_gui_fingerprint import (
@@ -109,7 +109,7 @@ def _outline_actions_for(nodes: list[dict[str, Any]]) -> dict[str, dict[str, boo
 def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
     nodes = _apply_rollup_on_wire(doc.get("nodes") or [])
-    head_reg = load_registry(root)
+    head_reg = read_registry(registry_path(root))
     reg = head_reg
     registry_overlay_meta: dict[str, Any] | None = None
     if registry_remote_overlay_enabled(root):

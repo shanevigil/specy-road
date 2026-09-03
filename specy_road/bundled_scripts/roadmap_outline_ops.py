@@ -12,6 +12,7 @@ from roadmap_load import load_manifest_mapping, load_roadmap
 from roadmap_node_keys import build_key_to_node
 from roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
 from sync_planning_artifacts import sync_planning_artifacts
+from specy_road.registry_yaml import registry_path
 
 
 def _chunk_includes(root: Path) -> list[str]:
@@ -210,7 +211,7 @@ def apply_outdent(repo_root: Path, node_id: str) -> bool:
 
 def sync_registry_node_ids(root: Path, old_to_new: dict[str, str]) -> None:
     """Update roadmap/registry.yaml entry ``node_id`` when display ids change."""
-    reg_path = root / "roadmap" / "registry.yaml"
+    reg_path = registry_path(root)
     if not reg_path.is_file():
         return
     if not old_to_new:
