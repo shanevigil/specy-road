@@ -11,9 +11,9 @@ import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
-import validate_roadmap as vr
-from roadmap_load import annotate_rollup_status, load_roadmap
-from validate_roadmap_checks import (
+from specy_road.bundled_scripts import validate_roadmap as vr
+from specy_road.bundled_scripts.roadmap_load import annotate_rollup_status, load_roadmap
+from specy_road.bundled_scripts.validate_roadmap_checks import (
     run_validation,
     touch_zone_overlap,
     validate_dependency_ids,
@@ -285,7 +285,7 @@ def test_run_validation_requires_implementation_review_when_gate_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "validate_roadmap_checks.require_implementation_review_before_finish",
+        "specy_road.bundled_scripts.validate_roadmap_checks.require_implementation_review_before_finish",
         lambda _r: True,
     )
     roadmap = load_roadmap(DOGFOOD)
@@ -308,7 +308,7 @@ def test_run_validation_accepts_implementation_review_pending_when_gate_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "validate_roadmap_checks.require_implementation_review_before_finish",
+        "specy_road.bundled_scripts.validate_roadmap_checks.require_implementation_review_before_finish",
         lambda _r: True,
     )
     roadmap = load_roadmap(DOGFOOD)

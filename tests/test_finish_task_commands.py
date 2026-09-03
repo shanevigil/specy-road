@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 import yaml
 
-import finish_task as ft
-import mark_implementation_reviewed as mir
+from specy_road.bundled_scripts import finish_task as ft
+from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road import feature_rm_registry as frm
 
 
@@ -155,7 +155,7 @@ def test_finish_blocks_when_implementation_review_pending(
 def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:
     import json
 
-    from roadmap_chunk_utils import load_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
 
     (tmp_path / "roadmap" / "phases").mkdir(parents=True)
     (tmp_path / "roadmap" / "manifest.json").write_text(

@@ -30,10 +30,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
-from planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
-from roadmap_layout import effective_dependency_keys
-from roadmap_node_keys import build_key_to_node
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
+from specy_road.bundled_scripts.planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
+from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 
 from specy_road.text_sections import find_section, normalize_heading, read_text_safely
 from specy_road.archive_index import iter_archived_summaries

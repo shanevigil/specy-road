@@ -7,8 +7,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from roadmap_crud_ops import edit_node_set_pairs
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_milestone_delivery import rollup_merged_into_integration
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.milestone_chunk_io import (

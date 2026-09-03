@@ -14,11 +14,11 @@ from specy_road.git_workflow_config import require_implementation_review_before_
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
-from work_dir_stash import (
+from specy_road.bundled_scripts.work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
 )
-from repo_ops import current_branch, git_run, working_tree_clean
+from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)

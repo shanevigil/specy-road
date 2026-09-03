@@ -24,10 +24,8 @@ from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 def _reexport_roadmap_md(root: Path) -> None:
     """Keep ``roadmap.md`` in step so the repo does not drift into a failing CI."""
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from export_roadmap_md import reexport_roadmap_md
+    from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 
     reexport_roadmap_md(root)
 
@@ -59,10 +57,8 @@ def _eligible(root: Path) -> list[dict[str, Any]]:
     Mirrors ``plan_archive``'s gate rather than re-deriving it, so the button
     never appears on something the CLI would refuse.
     """
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_load import compute_rollup_status, load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import compute_rollup_status, load_roadmap
 
     from specy_road.milestone_lock import locked_node_ids
 
@@ -80,7 +76,7 @@ def _eligible(root: Path) -> list[dict[str, Any]]:
 def _auto_settings(root: Path) -> tuple[bool, int]:
     """``(enabled, older_than_days)`` from the saved ``pm_gui`` preferences."""
     try:
-        from roadmap_gui_lib import load_settings
+        from specy_road.bundled_scripts.roadmap_gui_lib import load_settings
 
         pm = load_settings(root).get("pm_gui") or {}
     except Exception:  # noqa: BLE001 - a settings problem must not break the list
@@ -139,10 +135,8 @@ def _api_archive_nodes(archive_id: str) -> dict[str, Any]:
             "depth": rec.get("depth"),
             "nodes": rec.get("nodes_summary") or [],
         }
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import load_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
 
     return {
         "browsable": True,

@@ -5,8 +5,8 @@ from __future__ import annotations
 import yaml
 import pytest
 
-import do_next_task as dnt
-from registration_pickup_commit import (
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )

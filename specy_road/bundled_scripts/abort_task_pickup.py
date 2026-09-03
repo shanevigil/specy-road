@@ -17,7 +17,7 @@ from specy_road.on_complete_session import (
     remove_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
-from repo_ops import current_branch, git_capture, git_run
+from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)

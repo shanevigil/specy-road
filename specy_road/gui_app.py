@@ -6,7 +6,6 @@ Includes roadmap CRUD, planning files, and settings endpoints.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -32,10 +31,6 @@ def _scripts_dir() -> Path:
         "or set SPECY_ROAD_SCRIPTS to that directory.",
     )
 
-
-_SCRIPTS = _scripts_dir()
-if str(_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_SCRIPTS))
 
 from specy_road.gui_app_api import make_api_router  # noqa: E402
 

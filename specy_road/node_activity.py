@@ -105,7 +105,7 @@ def _scopes(paths: list[str]) -> list[str]:
 def _chunk_rel_by_node_id(root: Path) -> dict[str, str]:
     """``{node_id: repo-relative chunk path}``, or empty when unavailable."""
     try:
-        from roadmap_chunk_utils import build_node_chunk_map
+        from specy_road.bundled_scripts.roadmap_chunk_utils import build_node_chunk_map
 
         base = root.resolve()
         return {

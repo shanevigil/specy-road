@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-import do_next_task as dnt
-import repo_ops
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts import repo_ops
 
 
 def test_sync_integration_branch_git_sequence(monkeypatch: pytest.MonkeyPatch) -> None:

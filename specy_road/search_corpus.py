@@ -146,10 +146,8 @@ def build_node_info(root: Path) -> dict[str, dict[str, Any]]:
 
 def _live_nodes(root: Path) -> list[dict[str, Any]]:
     try:
-        from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-        ensure_bundled_scripts_on_path()
-        from roadmap_load import load_roadmap
+        from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
         return load_roadmap(root)["nodes"]
     except (Exception, SystemExit):

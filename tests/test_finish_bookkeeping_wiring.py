@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import finish_task as ft
+from specy_road.bundled_scripts import finish_task as ft
 
 
 def _args(**over) -> argparse.Namespace:

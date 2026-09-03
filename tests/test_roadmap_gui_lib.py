@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-import roadmap_gui_lib as m
-import roadmap_gui_settings as st
+from specy_road.bundled_scripts import roadmap_gui_lib as m
+from specy_road.bundled_scripts import roadmap_gui_settings as st
 
 
 def test_apply_llm_env_anthropic(monkeypatch: pytest.MonkeyPatch) -> None:

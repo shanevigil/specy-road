@@ -17,10 +17,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path
-from roadmap_chunk_atomic import AtomicWritePlan
-from roadmap_chunk_utils import find_chunk_path, load_json_chunk
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
@@ -57,9 +57,9 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     Raises ``ValueError`` if not found, not removable, or if the resulting graph
     fails validation — in which case nothing is removed from disk.
     """
-    from roadmap_chunk_router import validate_callback
-    from roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
-    from roadmap_crud_prepare import heal_before_mutation
+    from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
+    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
+    from specy_road.bundled_scripts.roadmap_crud_prepare import heal_before_mutation
 
     heal_before_mutation(root)
     chunk = find_chunk_path(root, node_id)
@@ -85,7 +85,7 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
 
 
 def cmd_archive(args: object) -> None:
-    from roadmap_crud_ops import repo_root
+    from specy_road.bundled_scripts.roadmap_crud_ops import repo_root
 
     root = repo_root(args)
     nid = args.node_id

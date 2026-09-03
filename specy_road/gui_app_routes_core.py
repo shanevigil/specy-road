@@ -9,20 +9,20 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from roadmap_gui_lib import (
+from specy_road.bundled_scripts.roadmap_gui_lib import (
     load_settings,
     registry_by_node_id,
     repo_settings_id,
 )
-from roadmap_gui_remote import build_registry_enrichment
-from roadmap_gui_tree import can_indent_outline, can_outdent_outline
-from roadmap_layout import (
+from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment
+from specy_road.bundled_scripts.roadmap_gui_tree import can_indent_outline, can_outdent_outline
+from specy_road.bundled_scripts.roadmap_layout import (
     compute_dependency_steps,
     dependency_edges_detailed,
     dependency_inheritance_display,
     ordered_tree_rows,
 )
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.node_activity import node_activity

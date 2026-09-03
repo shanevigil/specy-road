@@ -23,7 +23,7 @@ def _no_memo() -> None:
 
 
 def run(argv: list[str], repo: Path) -> int:
-    from history_cli import main
+    from specy_road.bundled_scripts.history_cli import main
 
     with pytest.raises(SystemExit) as exit_info:
         main([*argv, "--repo-root", str(repo)])

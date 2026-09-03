@@ -10,12 +10,12 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
-from do_next_prompt import write_agent_prompt
-from do_next_task_self_heal import (
+from specy_road.bundled_scripts.do_next_prompt import write_agent_prompt
+from specy_road.bundled_scripts.do_next_task_self_heal import (
     attempt_self_cleanup,
     emit_stale_claim_warning,
 )
-from generate_brief import index as make_index, render_brief
+from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
 from specy_road.on_complete_session import (
     on_complete_session_path,
     write_on_complete_session,

@@ -9,13 +9,13 @@ from pathlib import Path
 
 import yaml
 
-from refresh_schemas import warn_if_schemas_stale
-from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
-from roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
+from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
+from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
-from validate_roadmap_checks import (
+from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
     load_schema,
     run_validation,
@@ -26,8 +26,8 @@ from validate_roadmap_checks import (
     validate_unique_titles,
     warn_stale_parent_status,
 )
-from validate_roadmap_gates import validate_gates
-from validate_self_heal import auto_heal_roadmap
+from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
+from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 
 __all__ = [
     "cycle_check",

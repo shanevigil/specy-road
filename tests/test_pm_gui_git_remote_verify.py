@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-import roadmap_gui_lib as m
-import roadmap_gui_settings as st
-import pm_gui_git_remote_verify as v
+from specy_road.bundled_scripts import roadmap_gui_lib as m
+from specy_road.bundled_scripts import roadmap_gui_settings as st
+from specy_road.bundled_scripts import pm_gui_git_remote_verify as v
 from specy_road.registry_remote_overlay import registry_remote_overlay_enabled
 
 

@@ -22,7 +22,7 @@ def default_project_entry() -> dict[str, Any]:
 
 def blank_llm_base() -> dict[str, Any]:
     """Same keys as default LLM settings; empty strings (backend stays openai for UI)."""
-    import roadmap_gui_settings as m
+    from specy_road.bundled_scripts import roadmap_gui_settings as m
 
     d = m.default_settings()["llm"]
     return {k: ("openai" if k == "backend" else "") for k in d}
@@ -41,7 +41,7 @@ def migrate_global_git_into_project_if_needed(
     repo_id: str,
 ) -> bool:
     """Copy legacy global git_remote into this project if the project had no saved identity."""
-    import roadmap_gui_settings as m
+    from specy_road.bundled_scripts import roadmap_gui_settings as m
 
     d = m.default_settings()
     d_git = d["git_remote"]
@@ -68,7 +68,7 @@ def migrate_global_git_into_project_if_needed(
 
 
 def read_settings_file_struct_with_git_migration(repo_root: Path) -> dict[str, Any]:
-    import roadmap_gui_settings as m
+    from specy_road.bundled_scripts import roadmap_gui_settings as m
 
     struct = m._read_settings_file_struct()
     rid = m.repo_settings_id(repo_root)

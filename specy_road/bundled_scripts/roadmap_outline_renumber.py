@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from roadmap_layout import sibling_sort_key
+from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
 from specy_road.node_kinds import allows_children, parent_type_allowed
 
 # Maximum dot-separated segments in a display id (M0.1.2 = 3 segments).

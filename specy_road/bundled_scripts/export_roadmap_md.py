@@ -11,9 +11,9 @@ import argparse
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import discover_manifest_path
-from roadmap_layout import natural_id_sort_key
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
@@ -148,7 +148,7 @@ def reexport_roadmap_md(root: Path) -> None:
     ``export --check`` would not report drift they had caused; the module that
     owns the file -- and the --check comparison -- owns the regeneration too.
     """
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     (root / "roadmap.md").write_text(
         export_markdown(load_roadmap(root)["nodes"]), encoding="utf-8"

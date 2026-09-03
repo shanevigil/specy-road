@@ -6,12 +6,12 @@ import json
 import shutil
 from pathlib import Path
 
-from roadmap_chunk_utils import write_json_chunk
-from roadmap_load import load_roadmap
-from roadmap_outline_ops import reorder_siblings
-from sync_planning_artifacts import sync_planning_artifacts
+from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_outline_ops import reorder_siblings
+from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
 from tests.helpers import REPO, SCHEMAS
-from validate_roadmap import validate_at
+from specy_road.bundled_scripts.validate_roadmap import validate_at
 
 def _minimal_repo(dest: Path) -> tuple[str, str, str]:
     shutil.copytree(SCHEMAS, dest / "schemas")

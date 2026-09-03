@@ -16,8 +16,8 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-from roadmap_chunk_atomic import AtomicWritePlan
-from roadmap_chunk_router_pick import (
+from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
+from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
     RoutingDecision,
     chunk_max_lines,
     default_chunk_for_parent,
@@ -25,7 +25,7 @@ from roadmap_chunk_router_pick import (
     pick_target_chunk,
     simulate_chunk_lines,
 )
-from roadmap_chunk_utils import load_manifest_mapping
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
 
 
 # Re-export the pure helpers so callers (and tests) only need this module.
@@ -46,7 +46,7 @@ def validate_callback(root: Path) -> Callable[[], None]:
     """Return a no-arg callable that re-raises ``ValueError`` from validation."""
     # Lazy import to avoid a circular import at module load time
     # (roadmap_crud_ops imports this module).
-    from roadmap_crud_ops import run_validate_raise
+    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 
     def _do() -> None:
         run_validate_raise(root)

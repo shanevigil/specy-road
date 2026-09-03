@@ -12,7 +12,7 @@ from tests.helpers import BUNDLED_SCRIPTS
 
 if str(BUNDLED_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(BUNDLED_SCRIPTS))
-import roadmap_gui_settings as _rgs  # noqa: E402
+from specy_road.bundled_scripts import roadmap_gui_settings as _rgs  # noqa: E402
 
 from specy_road.git_subprocess import working_tree_clean
 from specy_road.pm_integration_registry import (

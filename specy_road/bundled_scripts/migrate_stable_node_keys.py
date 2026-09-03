@@ -16,9 +16,9 @@ from pathlib import Path
 
 import yaml
 
-from roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
-from roadmap_load import load_manifest_mapping, load_roadmap
-from validate_roadmap import validate_at
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
+from specy_road.bundled_scripts.roadmap_load import load_manifest_mapping, load_roadmap
+from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.registry_yaml import registry_path
 from specy_road.runtime_paths import add_repo_root_arg
 

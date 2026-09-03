@@ -98,10 +98,8 @@ def build_capsule(root: Path, record: dict[str, Any]) -> dict[str, Any] | None:
     ``None`` when nothing is left on disk to fold, which means the index and
     ``roadmap/archive/`` have drifted apart.
     """
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import load_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
 
     chunk = record.get("chunk")
     chunk_path = root / chunk if isinstance(chunk, str) else None
@@ -204,10 +202,8 @@ def undeepen_archive(root: Path, archive_id: str) -> dict[str, Any]:
     recorded is not unfolded at all — restoring silently-altered roadmap nodes
     would be worse than refusing.
     """
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import write_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
 
     doc = load_archive_index(root)
     record = find_record(doc, archive_id)

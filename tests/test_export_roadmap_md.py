@@ -7,7 +7,7 @@ import sys
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
-import export_roadmap_md as em
+from specy_road.bundled_scripts import export_roadmap_md as em
 
 
 def test_export_check_matches_repo() -> None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from session_plan import compute_session_plan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
 
 
 def _leaf(nid, key, *, status="Not Started", deps=None, codename=None, ntype="task", parent=None):

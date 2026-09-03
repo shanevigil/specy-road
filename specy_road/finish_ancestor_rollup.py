@@ -57,9 +57,9 @@ def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
     validated; an ancestor that cannot be flipped is reported with the manual
     command rather than aborting a finish that has already succeeded.
     """
-    from roadmap_chunk_utils import find_chunk_path
-    from roadmap_crud_ops import edit_node_set_pairs
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
+    from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     changed: list[str] = []
     root = repo_root.resolve()

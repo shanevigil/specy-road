@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     discover_manifest_path,
     load_chunk_nodes,
     load_json_chunk,

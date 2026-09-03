@@ -21,7 +21,7 @@ def repo(tmp_path: Path) -> Path:
 
 
 def run(argv: list[str], root: Path) -> int:
-    from search_cli import main
+    from specy_road.bundled_scripts.search_cli import main
 
     with pytest.raises(SystemExit) as exit_info:
         main([*argv, "--repo-root", str(root)])

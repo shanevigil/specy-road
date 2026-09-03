@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -11,18 +10,14 @@ from urllib.parse import quote
 
 import requests
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-if str(_SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(_SCRIPT_DIR))
-
-from roadmap_gui_lib import apply_llm_env_from_settings  # noqa: E402
-from roadmap_gui_pr_pickers import github_pulls_for_branch, gitlab_mrs_for_branch, pick_latest_github_pr, pick_latest_gitlab_mr  # noqa: E402
+from specy_road.bundled_scripts.roadmap_gui_lib import apply_llm_env_from_settings  # noqa: E402
+from specy_road.bundled_scripts.roadmap_gui_pr_pickers import github_pulls_for_branch, gitlab_mrs_for_branch, pick_latest_github_pr, pick_latest_gitlab_mr  # noqa: E402
 
 
 def test_llm_connection(llm: dict[str, Any]) -> tuple[bool, str]:
     apply_llm_env_from_settings(llm)
     try:
-        from review_node import ping_llm
+        from specy_road.bundled_scripts.review_node import ping_llm
 
         ping_llm()
         return True, "LLM endpoint responded."

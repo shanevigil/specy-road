@@ -5,7 +5,7 @@ from __future__ import annotations
 import yaml
 import pytest
 
-import abort_task_pickup as atp
+from specy_road.bundled_scripts import abort_task_pickup as atp
 
 
 def _claimed(monkeypatch: pytest.MonkeyPatch) -> None:

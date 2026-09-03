@@ -23,7 +23,6 @@ from specy_road.archive_index import (
     load_archive_index,
     write_archive_index,
 )
-from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
 
 def _reinsert(existing: list[dict], placements: list[tuple[int, dict]]) -> list[dict]:
@@ -81,8 +80,7 @@ def _restore_planning_sheets(root: Path, record: dict[str, Any]) -> None:
 
 def _write_back(root: Path, grouped: dict[str, list[tuple[int, dict]]]) -> list[str]:
     """Write each target chunk and return the ones needing a manifest include."""
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
 
     base = roadmap_dir(root)
     need_include: list[str] = []
@@ -98,9 +96,8 @@ def _write_back(root: Path, grouped: dict[str, list[tuple[int, dict]]]) -> list[
 
 def _sync_includes(root: Path, rels: list[str]) -> None:
     """Add any chunk the restore recreated back into ``manifest.json``."""
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_router_pick import insert_include_in_manifest
-    from roadmap_chunk_utils import (
+    from specy_road.bundled_scripts.roadmap_chunk_router_pick import insert_include_in_manifest
+    from specy_road.bundled_scripts.roadmap_chunk_utils import (
         load_manifest_mapping,
         manifest_path,
         write_manifest,
@@ -144,9 +141,8 @@ def restore_archive(root: Path, archive_id: str) -> dict[str, Any]:
     A deep archive must be unpacked to shallow first; this refuses rather than
     guessing, so the caller can surface the two-step nature of the operation.
     """
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import load_json_chunk
-    from roadmap_crud_ops import run_validate_raise
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+    from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 
     doc = load_archive_index(root)
     record = find_record(doc, archive_id)

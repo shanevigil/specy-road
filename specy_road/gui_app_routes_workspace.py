@@ -7,16 +7,16 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
-from pm_gui_git_remote_verify import set_git_remote_tested_ok
+from specy_road.bundled_scripts.pm_gui_git_remote_verify import set_git_remote_tested_ok
 
-from roadmap_gui_lib import (
+from specy_road.bundled_scripts.roadmap_gui_lib import (
     apply_llm_env_from_settings,
     save_settings_for_repo,
     settings_api_payload,
 )
-from roadmap_gui_remote import test_git_remote, test_llm_connection
+from specy_road.bundled_scripts.roadmap_gui_remote import test_git_remote, test_llm_connection
 
-from review_node import ReviewError, run_review
+from specy_road.bundled_scripts.review_node import ReviewError, run_review
 
 from specy_road.gui_app_helpers import (
     assert_under_allowed_root,

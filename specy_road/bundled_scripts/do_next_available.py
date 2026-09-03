@@ -13,11 +13,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from roadmap_gui_lib import load_settings, registry_by_node_id
+from specy_road.bundled_scripts.roadmap_gui_lib import load_settings, registry_by_node_id
 from specy_road.registry_yaml import read_registry, registry_path
-from roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
-from roadmap_layout import effective_dependency_keys, ordered_tree_rows
-from roadmap_load import compute_rollup_status
+from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, ordered_tree_rows
+from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
 

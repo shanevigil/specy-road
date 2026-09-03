@@ -10,7 +10,7 @@ from tests.helpers import BUNDLED_SCRIPTS  # noqa: E402
 if str(BUNDLED_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(BUNDLED_SCRIPTS))
 
-from brief_dependency_context import (  # noqa: E402
+from specy_road.bundled_scripts.brief_dependency_context import (  # noqa: E402
     effective_dep_nodes,
     extract_intent_block,
     render_dependency_context_section,

@@ -30,17 +30,17 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from brief_dependency_context import render_dependency_context_section
+from specy_road.bundled_scripts.brief_dependency_context import render_dependency_context_section
 
 from specy_road import contract_citations
 from specy_road.text_sections import read_text_safely as _read_text_safely
-from planning_artifacts import (
+from specy_road.bundled_scripts.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,
 )
-from roadmap_load import load_roadmap
-from roadmap_node_keys import build_key_to_node
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
@@ -328,7 +328,7 @@ def render_brief(
         _section_rollup_semantics(),
     ]
     if include_history:
-        from brief_history_context import render_history_section
+        from specy_road.bundled_scripts.brief_history_context import render_history_section
 
         parts.append(render_history_section(n, by_id, root))
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"

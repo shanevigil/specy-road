@@ -6,8 +6,8 @@ import shutil
 import uuid
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path
-from roadmap_edit_fields import sync_planning_dir_filename
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.bundled_scripts.roadmap_edit_fields import sync_planning_dir_filename
 
 
 def sync_planning_artifacts(repo_root: Path, nodes: list[dict]) -> None:

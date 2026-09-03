@@ -9,11 +9,11 @@ from pathlib import Path
 
 import pytest
 
-import grind_session as gs
+from specy_road.bundled_scripts import grind_session as gs
 
 REPO = Path(__file__).resolve().parent.parent
 DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
-from grind_session_events import (
+from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
     EXIT_NO_LEAVES,
@@ -21,7 +21,7 @@ from grind_session_events import (
     EXIT_PICKUP_FAILED,
     EXIT_PRE_FINISH_FAILED,
 )
-from session_plan import BlockedLeaf, SessionPlan, Wave
+from specy_road.bundled_scripts.session_plan import BlockedLeaf, SessionPlan, Wave
 
 
 def _node(nid, codename=None):
@@ -100,7 +100,7 @@ class _Harness:
 
 
 def _run(argv):
-    from grind_session_args import parse_grind_session_args
+    from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 
     args = parse_grind_session_args(argv)
     return gs.run_session(args)
@@ -241,7 +241,7 @@ def test_implement_hook_failure_exits_1(monkeypatch, capsys):
 
 
 def test_hook_mode_requires_implement_cmd():
-    from grind_session_args import parse_grind_session_args
+    from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 
     with pytest.raises(SystemExit) as ei:
         parse_grind_session_args(["--implement-mode", "hook", "--repo-root", "/tmp/x"])

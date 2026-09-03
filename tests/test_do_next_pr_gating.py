@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import do_next_task as dnt
+from specy_road.bundled_scripts import do_next_task as dnt
 
 
 def test_virtual_keys_for_mode_pr_returns_empty_set(monkeypatch) -> None:

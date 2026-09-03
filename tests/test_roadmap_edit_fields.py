@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from roadmap_crud_ops import edit_node_set_pairs
-from roadmap_edit_fields import apply_set, title_to_codename
+from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+from specy_road.bundled_scripts.roadmap_edit_fields import apply_set, title_to_codename
 
 from tests.test_roadmap_crud import _fixture_repo
 

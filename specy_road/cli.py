@@ -178,24 +178,21 @@ def _args_repo_root_first(args: list[str]) -> list[str]:
 
 
 def _run(script: str, args: list[str]) -> None:
-    d = bundled_scripts_dir()
-    script_path = d / script
-    if not script_path.is_file():
+    """Run a bundled entrypoint in its own process.
+
+    ``-m`` on the installed package, so the child resolves imports the same way
+    the parent did. This used to exec the file by path with a hand-built
+    PYTHONPATH prefix, which was the only thing making the scripts'
+    bare-module-name imports resolve.
+    """
+    module = f"specy_road.bundled_scripts.{script.removesuffix('.py')}"
+    if not (bundled_scripts_dir() / script).is_file():
         print(
-            f"error: missing bundled script {script_path} (broken install).",
+            f"error: missing bundled script {script} (broken install).",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    env = os.environ.copy()
-    sep = os.pathsep
-    prev = env.get("PYTHONPATH", "")
-    # Parent of the `specy_road` package dir so `import specy_road` works for
-    # bundled scripts; `d` keeps flat imports (do_next_available, …).
-    repo_or_site = str(specy_road_package_dir().parent)
-    prefix = f"{repo_or_site}{sep}{d}"
-    env["PYTHONPATH"] = prefix + (sep + prev if prev else "")
-    cmd = [sys.executable, str(script_path), *args]
-    proc = subprocess.run(cmd, env=env)
+    proc = subprocess.run([sys.executable, "-m", module, *args])
     if proc.returncode != 0:
         # Avoid chaining from CalledProcessError: bundled scripts already print
         # stderr messages; surfacing subprocess.check_call adds a noisy traceback.

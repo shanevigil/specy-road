@@ -13,13 +13,13 @@ from collections import OrderedDict
 from pathlib import Path
 from urllib.parse import urlparse
 
-from generate_brief import index as make_index, render_brief
-from planning_sheet_bootstrap import (
+from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     feature_sheet_structure_instruction_for_llm,
     gate_sheet_structure_instruction_for_llm,
     planning_review_expected_shape_block,
 )
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_subprocess import git_ok
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 from specy_road.node_kinds import is_gate
@@ -513,7 +513,7 @@ def _openai_safe_error_message(exc: BaseException) -> str:
 
 
 def _openai_chat_completions_create(client: object, **kwargs: object) -> object:
-    from llm_throughput import (
+    from specy_road.bundled_scripts.llm_throughput import (
         ThroughputExceeded,
         estimate_openai_chat_request_tokens,
         get_openai_chat_throughput_gate,

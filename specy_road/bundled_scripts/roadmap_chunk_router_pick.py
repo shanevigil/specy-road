@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yaml
 
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     OVERFLOW_REASON,
     PHASE_PRIMARY_DIR,
     PHASE_ROOT_REASON,

@@ -9,7 +9,7 @@ sub-agent for work whose dependencies are unmet.
 
 from __future__ import annotations
 
-from session_plan import SessionPlan
+from specy_road.bundled_scripts.session_plan import SessionPlan
 
 
 def _fmt(ids) -> str:

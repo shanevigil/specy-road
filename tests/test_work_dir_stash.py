@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from work_dir_stash import (
+from specy_road.bundled_scripts.work_dir_stash import (
     restore_work_dir_changes,
     stash_work_dir_changes,
 )

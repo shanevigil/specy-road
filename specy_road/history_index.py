@@ -196,10 +196,8 @@ def ids_ever_held(index: dict[str, Any], node_key: str) -> list[str]:
 
 def _live_key_for_id(root: Path, node_id: str) -> str | None:
     try:
-        from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-        ensure_bundled_scripts_on_path()
-        from roadmap_chunk_router_pick import load_merged_nodes
+        from specy_road.bundled_scripts.roadmap_chunk_router_pick import load_merged_nodes
 
         for node in load_merged_nodes(root):
             if node.get("id") == node_id and isinstance(node.get("node_key"), str):

@@ -39,10 +39,8 @@ _MAX_ARCHIVES = 40
 
 
 def _load_nodes(root: Path) -> list[dict[str, Any]]:
-    from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-    ensure_bundled_scripts_on_path()
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     return load_roadmap(root)["nodes"]
 
@@ -66,7 +64,7 @@ def _label(node: dict[str, Any]) -> str:
 
 def _section_outline(nodes: list[dict[str, Any]]) -> list[str]:
     """The live graph as an indented outline with rolled-up status."""
-    from roadmap_layout import ordered_tree_rows
+    from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
 
     out = [
         "## Live roadmap",
@@ -91,7 +89,7 @@ def _section_outline(nodes: list[dict[str, Any]]) -> list[str]:
 
 def _section_decisions(nodes: list[dict[str, Any]]) -> list[str]:
     """Decisions already taken — the thing an agent must not silently redo."""
-    from roadmap_layout import natural_id_sort_key
+    from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 
     decided = [
         n
@@ -122,7 +120,7 @@ def _section_decisions(nodes: list[dict[str, Any]]) -> list[str]:
 
 def _section_open_gates(nodes: list[dict[str, Any]]) -> list[str]:
     """Gates still holding work back."""
-    from roadmap_layout import natural_id_sort_key
+    from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 
     gates = [
         n
@@ -222,9 +220,7 @@ def _section_archived(root: Path) -> list[str]:
 def _section_claims(root: Path) -> list[str]:
     """Nodes someone is actively working on right now."""
     try:
-        from specy_road.archive_plan import ensure_bundled_scripts_on_path
 
-        ensure_bundled_scripts_on_path()
 
         entries = read_registry(registry_path(root)).get("entries") or []
     except Exception:  # noqa: BLE001 - the registry is advisory here

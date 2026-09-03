@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import do_next_prompt as dnp
+from specy_road.bundled_scripts import do_next_prompt as dnp
 
 
 def test_write_agent_prompt_includes_leaf_execution_contract(

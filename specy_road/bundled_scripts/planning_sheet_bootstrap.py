@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from planning_artifacts import (
+from specy_road.bundled_scripts.planning_artifacts import (
     expected_planning_rel,
     normalize_planning_dir,
     resolve_planning_path,

@@ -16,19 +16,19 @@ from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS  # noqa: E402
 if str(BUNDLED_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(BUNDLED_SCRIPTS))
 
-from roadmap_chunk_atomic import AtomicWritePlan
-from roadmap_chunk_router import (
+from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
+from specy_road.bundled_scripts.roadmap_chunk_router import (
     write_node_update,
     write_with_routing,
 )
-from roadmap_chunk_router_pick import (
+from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
     chunk_max_lines,
     derive_new_chunk_path,
     insert_include_in_manifest,
     pick_target_chunk,
     simulate_chunk_lines,
 )
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     load_json_chunk,
     load_manifest_mapping,
     render_json_chunk,
@@ -260,10 +260,10 @@ def test_write_with_routing_rolls_back_on_validation_failure(
     # Force the router into the auto-create branch by simulating overflow on
     # any chunk. Easiest: monkeypatch chunk_max_lines low.
     monkeypatch.setattr(
-        "roadmap_chunk_router_pick.chunk_max_lines", lambda _root: 1
+        "specy_road.bundled_scripts.roadmap_chunk_router_pick.chunk_max_lines", lambda _root: 1
     )
     # Force validation to always fail.
-    import roadmap_chunk_router as router_mod
+    from specy_road.bundled_scripts import roadmap_chunk_router as router_mod
 
     def boom(root):  # noqa: ANN001
         def do() -> None:

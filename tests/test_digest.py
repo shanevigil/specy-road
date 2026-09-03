@@ -27,7 +27,7 @@ def _no_memo() -> None:
 
 
 def run_cli(argv: list[str], root: Path) -> int:
-    from digest_cli import main
+    from specy_road.bundled_scripts.digest_cli import main
 
     with pytest.raises(SystemExit) as exit_info:
         main([*argv, "--repo-root", str(root)])

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from do_next_available import blocked_pick_notice
-from generate_brief import index as make_index
+from specy_road.bundled_scripts.do_next_available import blocked_pick_notice
+from specy_road.bundled_scripts.generate_brief import index as make_index
 from specy_road.git_workflow_config import (
     require_implementation_review_before_finish,
 )
-from planning_artifacts import (
+from specy_road.bundled_scripts.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
     planning_artifact_paths,

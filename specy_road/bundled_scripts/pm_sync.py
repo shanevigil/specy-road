@@ -10,7 +10,7 @@ from pathlib import Path
 
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
-from repo_ops import assert_working_tree_clean, git_run, sync_integration_branch, working_tree_clean
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, git_run, sync_integration_branch, working_tree_clean
 
 ROOT = Path.cwd()
 

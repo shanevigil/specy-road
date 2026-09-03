@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from typing import Iterable
 
-from do_next_available import _leaf_diagnostics
+from specy_road.bundled_scripts.do_next_available import _leaf_diagnostics
 from specy_road.do_next_milestone_pickup import print_integration_branch_hint
 from specy_road.milestone_subtree import structural_leaf_ids
 

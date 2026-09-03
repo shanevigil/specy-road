@@ -69,7 +69,6 @@ specy_road = [
   "templates/project/.gitignore",
   "templates/project/work/.gitkeep",
   "pm_gantt_static/**/*",
-  "bundled_scripts/*.py",
   # Toolkit-owned schemas validated from the wheel rather than from
   # <repo_root>/schemas/, so adopters get new archive fields by upgrading the
   # package instead of hand-editing a consumer-owned schema.
@@ -78,4 +77,4 @@ specy_road = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = [".", "specy_road/bundled_scripts"]
+pythonpath = ["."]

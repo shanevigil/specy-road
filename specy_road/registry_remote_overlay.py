@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import threading
 import time
 from pathlib import Path
@@ -48,11 +47,7 @@ from specy_road.registry_remote_overlay_merge import (
     resolve_git_remote,
     roadmap_fingerprint_with_remote_refs,
 )
-
-_LIB_DIR = Path(__file__).resolve().parent / "bundled_scripts"
-if str(_LIB_DIR) not in sys.path:
-    sys.path.insert(0, str(_LIB_DIR))
-from roadmap_gui_settings import effective_settings_for_repo  # noqa: E402
+from specy_road.bundled_scripts.roadmap_gui_settings import effective_settings_for_repo  # noqa: E402
 
 _GIT_SYNC_LOCK = threading.Lock()
 _LAST_FETCH_MONO: dict[str, float] = {}
@@ -91,7 +86,7 @@ def registry_remote_overlay_enabled(repo_root: Path | None = None) -> bool:
     pm = eff.get("pm_gui") if isinstance(eff.get("pm_gui"), dict) else {}
     if not pm.get("registry_remote_overlay"):
         return False
-    from pm_gui_git_remote_verify import get_git_remote_tested_ok
+    from specy_road.bundled_scripts.pm_gui_git_remote_verify import get_git_remote_tested_ok
 
     if not get_git_remote_tested_ok(repo_root):
         return False

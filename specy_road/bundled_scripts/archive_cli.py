@@ -19,7 +19,7 @@ from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive, plan_summary
 from specy_road.archive_restore import restore_archive
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from export_roadmap_md import reexport_roadmap_md
+from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 
 DEFAULT_AUTO_DAYS = 90
 

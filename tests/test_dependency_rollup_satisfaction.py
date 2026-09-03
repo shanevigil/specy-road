@@ -9,9 +9,9 @@ all reported the phase as Complete. Nothing warned.
 
 from __future__ import annotations
 
-from do_next_available import _available, _statuses_by_node_key, blocked_pick_notice
-from roadmap_load import annotate_rollup_status, compute_rollup_status
-from session_plan import compute_session_plan
+from specy_road.bundled_scripts.do_next_available import _available, _statuses_by_node_key, blocked_pick_notice
+from specy_road.bundled_scripts.roadmap_load import annotate_rollup_status, compute_rollup_status
+from specy_road.bundled_scripts.session_plan import compute_session_plan
 
 NK = {
     "M1": "30000000-0000-4000-8000-000000000001",

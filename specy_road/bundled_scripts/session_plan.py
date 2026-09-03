@@ -25,12 +25,12 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from do_next_available import (
+from specy_road.bundled_scripts.do_next_available import (
     _available,
     _claimed_node_ids,
     _statuses_by_node_key,
 )
-from roadmap_layout import effective_dependency_keys, natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_gate

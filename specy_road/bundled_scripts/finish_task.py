@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 import yaml
-from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
@@ -34,7 +34,7 @@ from specy_road.on_complete_session import (
     read_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
-from repo_ops import current_branch, git_run
+from specy_road.bundled_scripts.repo_ops import current_branch, git_run
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)

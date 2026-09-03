@@ -2,19 +2,12 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
 from specy_road.milestone_subtree import leaf_ids_under_parent
 from specy_road.runtime_paths import bundled_scripts_dir
 from specy_road.archive_plan import utc_now_iso
-
-
-def ensure_bundled_scripts_on_path() -> None:
-    d = str(bundled_scripts_dir())
-    if d not in sys.path:
-        sys.path.insert(0, d)
 
 
 def build_active_milestone_execution(
@@ -38,9 +31,8 @@ def write_milestone_execution(
     doc: dict[str, Any] | None,
 ) -> Path:
     """Set or remove ``milestone_execution`` on ``parent_node_id``; validate and save chunk."""
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-    from roadmap_crud_ops import node_index_in_chunk, run_validate_raise
+    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, run_validate_raise
 
     chunk = find_chunk_path(root, parent_node_id)
     if not chunk:
@@ -69,9 +61,8 @@ def patch_milestone_execution_state(
     extra: dict[str, Any] | None = None,
 ) -> Path:
     """Load node, merge ``state`` (and optional keys) into ``milestone_execution``, save."""
-    ensure_bundled_scripts_on_path()
-    from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-    from roadmap_crud_ops import node_index_in_chunk, run_validate_raise
+    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, run_validate_raise
 
     chunk = find_chunk_path(root, parent_node_id)
     if not chunk:
@@ -104,7 +95,6 @@ def maybe_promote_milestone_to_pending_mr(
     nodes: list[dict],
 ) -> bool:
     """If every structural leaf under parent is Complete, set execution state to pending_mr."""
-    ensure_bundled_scripts_on_path()
 
     leaves = leaf_ids_under_parent(parent_node_id, nodes)
     by_id = {n["id"]: n for n in nodes if isinstance(n.get("id"), str)}

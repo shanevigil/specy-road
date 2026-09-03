@@ -8,19 +8,19 @@ import json
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     build_node_chunk_map,
     find_chunk_path,
     load_json_chunk,
 )
-from planning_artifacts import normalize_planning_dir, resolve_planning_path
-from planning_sheet_bootstrap import plan_planning_sheet_for_new_node
-from roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation
-from roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
-from roadmap_node_keys import new_node_key
-from roadmap_layout import natural_id_sort_key
-from roadmap_load import load_roadmap, validate_roadmap_line_limits
-from validate_roadmap import validate_at
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.bundled_scripts.planning_sheet_bootstrap import plan_planning_sheet_for_new_node
+from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation
+from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
+from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
+from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.runtime_paths import default_user_repo_root
 from specy_road.node_kinds import is_gate
 
@@ -220,7 +220,7 @@ def append_node_to_chunk(root: Path, chunk_arg: str | None, node: dict) -> Path:
     the transaction used to leave an orphan behind that ``validate`` rejects,
     turning a refused ``add-node`` into a repo that cannot validate at all.
     """
-    from roadmap_chunk_router import write_with_routing
+    from specy_road.bundled_scripts.roadmap_chunk_router import write_with_routing
 
     heal_before_mutation(root)
     ensure_codename_for_new_node(root, node)
@@ -307,7 +307,7 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
         )
     rename = _planning_rename_plan(root, planning_dir_before, node.get("planning_dir"))
 
-    from roadmap_chunk_router import write_node_update
+    from specy_road.bundled_scripts.roadmap_chunk_router import write_node_update
 
     write_node_update(
         root,
@@ -369,7 +369,7 @@ def cmd_set_gate_status(args: object) -> None:
 # here so ``roadmap_crud_argparse``, the PM GUI routes, and tests keep one
 # import site. Imported at the bottom because that module imports back for
 # ``node_index_in_chunk`` / ``repo_root`` / ``unknown_node_msg``.
-from roadmap_crud_delete import (  # noqa: E402,F401
+from specy_road.bundled_scripts.roadmap_crud_delete import (  # noqa: E402,F401
     can_hard_remove,
     cmd_archive,
     delete_roadmap_node_hard,

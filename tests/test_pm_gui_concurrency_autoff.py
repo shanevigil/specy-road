@@ -32,7 +32,7 @@ _ROOT = Path(__file__).resolve().parent.parent
 _SCRIPTS = _ROOT / "specy_road" / "bundled_scripts"
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
-from roadmap_layout import natural_id_sort_key  # noqa: E402
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key  # noqa: E402
 
 
 def _git(args: list[str], cwd: Path) -> str:

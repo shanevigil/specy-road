@@ -8,16 +8,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from roadmap_gui_settings_tokens import (
+from specy_road.bundled_scripts.roadmap_gui_settings_tokens import (
     _decode_tokens_in_struct,
     _obfuscate_llm_git,
 )
-from roadmap_gui_settings_scope import (
+from specy_road.bundled_scripts.roadmap_gui_settings_scope import (
     blank_llm_base as _blank_llm_base,
     git_effective as _git_effective,
     read_settings_file_struct_with_git_migration as _read_settings_file_struct_with_git_migration,
 )
-from roadmap_gui_settings_scope import default_project_entry
+from specy_road.bundled_scripts.roadmap_gui_settings_scope import default_project_entry
 
 SETTINGS_DIR = Path.home() / ".specy-road"
 SETTINGS_PATH = SETTINGS_DIR / "gui-settings.json"
@@ -205,7 +205,7 @@ def _overlay_diff(eff: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
     return out
 
 def settings_api_payload(repo_root: Path) -> dict[str, Any]:
-    from pm_gui_git_remote_verify import get_git_remote_tested_ok
+    from specy_road.bundled_scripts.pm_gui_git_remote_verify import get_git_remote_tested_ok
 
     struct = _read_settings_file_struct_with_git_migration(repo_root)
     rid = repo_settings_id(repo_root)
@@ -287,7 +287,7 @@ def save_settings_for_repo(
         entry["pm_gui"] = _overlay_diff(pm_in, g_base_pm)
 
     struct["projects"][rid] = entry
-    from pm_gui_git_remote_verify import clear_git_remote_tested_ok_if_identity_changed
+    from specy_road.bundled_scripts.pm_gui_git_remote_verify import clear_git_remote_tested_ok_if_identity_changed
 
     clear_git_remote_tested_ok_if_identity_changed(
         repo_root,

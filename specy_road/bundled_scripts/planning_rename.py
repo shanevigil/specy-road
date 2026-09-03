@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 
 
 def rename_planning_file_if_path_changed(

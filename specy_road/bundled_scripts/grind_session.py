@@ -24,8 +24,8 @@ from pathlib import Path
 
 import yaml
 
-from grind_session_args import parse_grind_session_args
-from grind_session_events import (
+from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
+from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
     EXIT_NO_LEAVES,
@@ -34,13 +34,13 @@ from grind_session_events import (
     EXIT_PRE_FINISH_FAILED,
     EventEmitter,
 )
-from session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
-from session_plan_render import render_session_plan_text
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
-from repo_ops import current_branch
+from specy_road.bundled_scripts.repo_ops import current_branch
 
 
 # ---------------------------------------------------------------------------

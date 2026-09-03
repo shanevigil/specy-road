@@ -7,7 +7,7 @@ without a circular import at module load.
 from __future__ import annotations
 
 from typing import Any
-from roadmap_gui_settings_scope import default_project_entry
+from specy_road.bundled_scripts.roadmap_gui_settings_scope import default_project_entry
 
 
 def git_remote_identity(gr: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -20,7 +20,7 @@ def git_remote_identity(gr: dict[str, Any]) -> tuple[str, str, str, str]:
 
 
 def get_git_remote_tested_ok(repo_root) -> bool:
-    import roadmap_gui_settings as m
+    from specy_road.bundled_scripts import roadmap_gui_settings as m
 
     struct = m._read_settings_file_struct()
     rid = m.repo_settings_id(repo_root)
@@ -31,7 +31,7 @@ def get_git_remote_tested_ok(repo_root) -> bool:
 
 
 def set_git_remote_tested_ok(repo_root, ok: bool) -> None:
-    import roadmap_gui_settings as m
+    from specy_road.bundled_scripts import roadmap_gui_settings as m
 
     struct = m._read_settings_file_struct()
     rid = m.repo_settings_id(repo_root)
@@ -51,7 +51,7 @@ def clear_git_remote_tested_ok_if_identity_changed(
     struct_after: dict[str, Any],
 ) -> None:
     """Clear ``git_remote_tested_ok`` if effective git remote identity changed vs ``old_git_remote``."""
-    import roadmap_gui_settings as m
+    from specy_road.bundled_scripts import roadmap_gui_settings as m
 
     rid = m.repo_settings_id(repo_root)
     new_eff = m._effective_from_struct(struct_after, rid)

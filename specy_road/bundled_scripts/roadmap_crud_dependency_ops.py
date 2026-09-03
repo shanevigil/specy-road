@@ -5,9 +5,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import find_chunk_path
-from roadmap_crud_ops import edit_node_set_pairs, repo_root, unknown_node_msg
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
+from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs, repo_root, unknown_node_msg
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 
 def merged_node_by_id(root: Path, node_id: str) -> dict | None:

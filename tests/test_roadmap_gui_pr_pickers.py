@@ -9,7 +9,7 @@ _SCRIPT_DIR = Path(__file__).resolve().parent.parent / "specy_road" / "bundled_s
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
-from roadmap_gui_pr_pickers import (  # noqa: E402
+from specy_road.bundled_scripts.roadmap_gui_pr_pickers import (  # noqa: E402
     github_pulls_for_branch,
     gitlab_mrs_for_branch,
     pick_latest_github_pr,

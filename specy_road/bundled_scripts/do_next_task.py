@@ -7,35 +7,35 @@ import sys
 from pathlib import Path
 
 import yaml
-from do_next_available import (
+from specy_road.bundled_scripts.do_next_available import (
     _available,
     _load_branch_enrichment,
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
 )
-from do_next_prompt import print_pickup_header, write_agent_prompt  # noqa: F401
-from do_next_task_args import parse_do_next_task_args
-from do_next_task_interactive import pick_interactive as _pick_interactive
-from do_next_task_self_heal import (
+from specy_road.bundled_scripts.do_next_prompt import print_pickup_header, write_agent_prompt  # noqa: F401
+from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
+from specy_road.bundled_scripts.do_next_task_interactive import pick_interactive as _pick_interactive
+from specy_road.bundled_scripts.do_next_task_self_heal import (
     warn_about_stale_claims_before_pickup as _warn_about_stale_claims_before_pickup,
 )
-from do_next_task_pickup_helpers import (
+from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
     push_and_branch_with_self_heal as _do_push_and_branch,
     register_and_commit as _do_register_and_commit,
     write_brief as _do_write_brief,
     write_session_and_prompt as _do_write_session_and_prompt,
 )
-from do_next_task_leaf_guards import (
+from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     assert_leaf_target as _assert_leaf_target,
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
-from registration_pickup_commit import registration_commit_message
-from work_dir_stash import (
+from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
+from specy_road.bundled_scripts.work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
 )
-from roadmap_load import load_roadmap
-from do_next_task_virtual_complete import (
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
 from specy_road.registry_yaml import read_registry, registry_path
@@ -52,8 +52,8 @@ from specy_road.git_workflow_config import (
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.runtime_paths import default_user_repo_root
-from validate_roadmap import validate_at
-from repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch, working_tree_clean
+from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch, working_tree_clean
 
 ROOT = Path.cwd()
 REGISTRY_PATH = registry_path(ROOT)

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-import do_next_available as dna
-import do_next_task as dnt
-import do_next_task_interactive as dnti
+from specy_road.bundled_scripts import do_next_available as dna
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts import do_next_task_interactive as dnti
 
 # dependencies[] reference node_key UUIDs (not display ids)
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"

@@ -4,21 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import os
-import sys
 from pathlib import Path
 from typing import Any
 from specy_road.git_subprocess import git_text
 
-# Ensure sibling script imports work when this module is loaded first
-_LIB_DIR = Path(__file__).resolve().parent
-if str(_LIB_DIR) not in sys.path:
-    sys.path.insert(0, str(_LIB_DIR))
-
 from specy_road.registry_yaml import registry_path
 
 import yaml
-from roadmap_chunk_utils import iter_roadmap_fingerprint_files
-from roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
+from specy_road.bundled_scripts.roadmap_chunk_utils import iter_roadmap_fingerprint_files
+from specy_road.bundled_scripts.roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui routes)
     SETTINGS_DIR,
     SETTINGS_FILE_VERSION,
     SETTINGS_PATH,
