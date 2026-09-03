@@ -197,10 +197,6 @@ def cmd_add(args: object) -> None:
         "parallel_tracks": args.parallel_tracks,
     }
     node = {k: v for k, v in node.items() if v is not None}
-    if node.get("touch_zones") == []:
-        node["touch_zones"] = []
-    if node.get("dependencies") == []:
-        node["dependencies"] = []
 
     try:
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)

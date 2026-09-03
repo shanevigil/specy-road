@@ -43,21 +43,6 @@ SHEET_EDIT = "sheet_edit"
 ARCHIVED = "archived"
 RESTORED = "restored"
 
-ALL_KINDS = (
-    CREATED,
-    REMOVED,
-    STATUS,
-    RENUMBERED,
-    RETITLED,
-    RECODENAMED,
-    REPARENTED,
-    DEP_ADDED,
-    DEP_REMOVED,
-    SHEET_EDIT,
-    ARCHIVED,
-    RESTORED,
-)
-
 # Scalar node fields worth a distinct event kind, in emission order.
 _TRACKED_FIELDS: tuple[tuple[str, str], ...] = (
     ("id", RENUMBERED),

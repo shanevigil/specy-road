@@ -32,20 +32,6 @@ from roadmap_gui_settings import (  # noqa: F401 (re-exported for tests and gui 
 )
 
 
-def resolve_repo_root(fallback: Path) -> Path:
-    try:
-        r = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            cwd=fallback,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return Path(r.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return fallback
-
-
 def _apply_azure_llm_env(llm: dict[str, Any]) -> None:
     if not os.environ.get("SPECY_ROAD_AZURE_OPENAI_ENDPOINT"):
         ep = (llm.get("azure_endpoint") or "").strip()

@@ -9,10 +9,9 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from specy_road.runtime_paths import discover_project_root, project_root
+from specy_road.runtime_paths import project_root
 
 #: Retained for callers that imported it before the resolver was unified.
-resolve_roadmap_project_root_from_cwd = discover_project_root
 
 
 def get_repo_root() -> Path:

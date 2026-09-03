@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import copy
 import hashlib
 import json
@@ -10,11 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from roadmap_gui_settings_tokens import (
-    _B64_PREFIX,
-    _b64_decode,
-    _b64_encode,
     _decode_tokens_in_struct,
-    _merge_token_fields,
     _obfuscate_llm_git,
 )
 from roadmap_gui_settings_scope import (

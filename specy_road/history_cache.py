@@ -40,15 +40,6 @@ def cache_path(root: Path) -> Path:
     return root / CACHE_DIR / CACHE_FILENAME
 
 
-def empty_cache() -> dict[str, Any]:
-    return {
-        "cache_version": CACHE_VERSION,
-        "head": None,
-        "last_indexed_commit": None,
-        "events": [],
-    }
-
-
 def load_cache(root: Path) -> dict[str, Any] | None:
     """The cached index, or ``None`` when it is absent, stale or unreadable.
 

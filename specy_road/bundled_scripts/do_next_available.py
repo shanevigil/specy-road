@@ -93,8 +93,6 @@ def interactive_deps_blocked_entries(
             continue
         if not n.get("codename"):
             continue
-        if not _agentic_execution_ok(n):
-            continue
         if nid in claimed:
             continue
         stv = (n.get("status") or "Not Started").lower()
@@ -145,16 +143,6 @@ def _effective_deps_met(
     return True
 
 
-def _agentic_execution_ok(n: dict) -> bool:
-    """
-    Post-F-003/F-007: all leaf tasks are considered agentic by design.
-    This function is kept as a trivial pass-through for call-site stability
-    (do-next-available queue logic still calls it); it no longer gates pickup.
-    """
-    _ = n  # not used
-    return True
-
-
 def _base_agentic_candidate(
     n: dict,
     statuses_by_key: dict[str, str],
@@ -164,8 +152,6 @@ def _base_agentic_candidate(
     if n.get("type") == "gate":
         return False
     if not n.get("codename"):
-        return False
-    if not _agentic_execution_ok(n):
         return False
     if not _effective_deps_met(n, statuses_by_key, effective_dep_keys):
         return False
