@@ -243,31 +243,12 @@ def write_agent_prompt(
 ) -> Path:
     """Write ``work/prompt-<NODE_ID>.md`` and return its path."""
     node_id = node["id"]
-    ac = node.get("agentic_checklist") or {}
     by_id = make_index(nodes)
 
     lines: list[str] = _leaf_execution_contract_lines(node, brief_path, repo_root)
     lines.extend(_governance_lines(repo_root))
     lines.extend(_ancestor_planning_lines(node_id, by_id, repo_root))
     lines.extend(_leaf_planning_excerpt_lines(node, repo_root))
-    lines.extend([
-        "## Contract (agentic checklist)",
-        "",
-    ])
-    if ac:
-        for key in (
-            "artifact_action",
-            "contract_citation",
-            "interface_contract",
-            "constraints_note",
-            "dependency_note",
-        ):
-            lines.append(f"- **{key}:** {ac.get(key, '—')}")
-    else:
-        lines.append(
-            "_(no agentic_checklist — check with PM before starting)_",
-        )
-
     lines += ["", "## Instructions", ""]
     lines += _finish_instruction_lines(
         node_id,

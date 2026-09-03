@@ -32,9 +32,8 @@ others are optional but strongly recommended for milestone-level nodes.
   {
     "id": "M<X.Y.1>",
     "parent_id": "M<X.Y>",
-    "type": "task",
-    "title": "Human-gate: decide <topic>",
-    "execution_subtask": "human-gate",
+    "type": "gate",
+    "title": "Decide <topic>",
     "status": "Not Started"
   },
   {
@@ -42,16 +41,8 @@ others are optional but strongly recommended for milestone-level nodes.
     "parent_id": "M<X.Y>",
     "type": "task",
     "title": "Implement <artifact>",
-    "execution_subtask": "agentic",
     "dependencies": ["M<X.Y.1>"],
-    "status": "Not Started",
-    "agentic_checklist": {
-      "artifact_action": "Build or change <named component / route / record>.",
-      "contract_citation": "shared/<contract-file>.md — <section>",
-      "interface_contract": "Inputs → outputs: <API body / DB fields / props / files>.",
-      "constraints_note": "Security, logging, performance, or UX rules that apply.",
-      "dependency_note": "Prior sub-task, stub, or merged milestone required first."
-    }
+    "status": "Not Started"
   }
 ]
 ```

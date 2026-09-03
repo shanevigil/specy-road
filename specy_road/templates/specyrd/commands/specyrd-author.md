@@ -27,7 +27,7 @@ cd "$(git rev-parse --show-toplevel)"
 }
 ```
 
-3. For `agentic` sub-tasks, include the five-field `agentic_checklist` (see `docs/roadmap-authoring.md — Writing implementable agentic tasks`).
+3. For `agentic` sub-tasks, make sure the planning sheet answers what is built, which contract it conforms to (cited under `## References`), the interface, the constraints, and the prerequisites (see `docs/roadmap-authoring.md — Writing implementable agentic tasks`). Do not add an `agentic_checklist` object to the node: the schema rejects it and `validate` strips it.
 
 4. Validate and regenerate the markdown index:
 

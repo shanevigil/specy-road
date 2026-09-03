@@ -324,13 +324,13 @@ Agentic development moves fast. Your job is **not** to approve every pull reques
 **Signs the runway is too short:**
 
 - People wait on a contract or decision before starting a node
-- `agentic` nodes missing `agentic_checklist` fields
+- `agentic` nodes whose planning sheet leaves what to build, or which contract it conforms to, open
 - `human-gate` tasks not resolved before execution reaches them
 
 **Suggested batch cadence:**
 
 1. Check depth via `roadmap.md` or the dashboard.
-2. Add or refine nodes in chunk files; fill all five `agentic_checklist` fields for agentic tasks.
+2. Add or refine nodes in chunk files, and fill in each agentic task's planning sheet — including the contracts it conforms to, under `## References`.
 3. Resolve `human-gate` items before you stop for the day.
 4. `specy-road validate`, then `specy-road export`.
 5. Commit with something like: `chore(roadmap): short description of change`
