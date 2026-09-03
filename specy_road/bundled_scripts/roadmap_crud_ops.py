@@ -281,10 +281,13 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
     node = nodes[idx]
     if not isinstance(node, dict):
         raise ValueError("corrupt node entry")
-    ids = merged_ids(root)
+    # One load feeds both sets: merged_ids() re-read the whole graph to build
+    # the ids, and the node_keys comprehension re-read it again on the next line.
+    merged = load_roadmap(root)["nodes"]
+    ids = {n["id"] for n in merged}
     nkeys = {
         n["node_key"]
-        for n in load_roadmap(root)["nodes"]
+        for n in merged
         if isinstance(n.get("node_key"), str) and n["node_key"]
     }
     # Archived node_keys are resolvable too — `validate` accepts them, and

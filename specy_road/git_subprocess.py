@@ -146,9 +146,16 @@ def is_git_worktree(repo_root: Path) -> bool:
     return (git_text(["rev-parse", "--is-inside-work-tree"], repo_root) or "").lower() == "true"
 
 
-def current_branch_name(repo_root: Path) -> str | None:
-    """Current branch, or ``None`` outside a worktree / on a detached HEAD."""
-    if not is_git_worktree(repo_root):
+def current_branch_name(
+    repo_root: Path, *, is_worktree: bool | None = None
+) -> str | None:
+    """Current branch, or ``None`` outside a worktree / on a detached HEAD.
+
+    ``is_worktree`` lets a caller that has already probed pass the answer in;
+    building the PM GUI's git status otherwise runs the same
+    ``rev-parse --is-inside-work-tree`` five times per request.
+    """
+    if not (is_git_worktree(repo_root) if is_worktree is None else is_worktree):
         return None
     return git_text(["branch", "--show-current"], repo_root) or None
 

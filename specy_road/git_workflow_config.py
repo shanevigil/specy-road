@@ -174,16 +174,20 @@ def resolve_on_complete(
     return on_complete_from_git_workflow(repo_root)
 
 
-def current_head_short_sha(repo_root: Path) -> str | None:
-    if not is_git_worktree(repo_root):
+def current_head_short_sha(
+    repo_root: Path, *, is_worktree: bool | None = None
+) -> str | None:
+    if not (is_git_worktree(repo_root) if is_worktree is None else is_worktree):
         return None
     ok, sha = git_ok(["rev-parse", "--short", "HEAD"], repo_root)
     return sha if ok else None
 
 
-def git_config_user_name(repo_root: Path) -> str | None:
+def git_config_user_name(
+    repo_root: Path, *, is_worktree: bool | None = None
+) -> str | None:
     """Local ``git config user.name`` for this repo (developer identity on this clone)."""
-    if not is_git_worktree(repo_root):
+    if not (is_git_worktree(repo_root) if is_worktree is None else is_worktree):
         return None
     ok, out = git_ok(["config", "--get", "user.name"], repo_root)
     if not ok or not (out or "").strip():
@@ -268,9 +272,13 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
     config: dict[str, Any] | None = None
     path = git_workflow_yaml_path(repo_root)
 
-    branch_current = current_branch_name(repo_root)
-    head_short = current_head_short_sha(repo_root)
-    git_user_name = git_config_user_name(repo_root)
+    # One worktree probe for the whole payload: this used to run
+    # `rev-parse --is-inside-work-tree` five times, three of them inside the
+    # helpers below, on every GET /api/roadmap.
+    in_worktree = is_git_worktree(repo_root)
+    branch_current = current_branch_name(repo_root, is_worktree=in_worktree)
+    head_short = current_head_short_sha(repo_root, is_worktree=in_worktree)
+    git_user_name = git_config_user_name(repo_root, is_worktree=in_worktree)
 
     if not path.is_file():
         issues.append(
@@ -299,7 +307,7 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
                 **_optional_git_workflow_config_fields(data),
             }
 
-    if not is_git_worktree(repo_root):
+    if not in_worktree:
         issues.append(
             {
                 "code": "not_git_repo",
@@ -310,7 +318,7 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
 
     ib = config["integration_branch"] if config else "main"
     rm = config["remote"] if config else "origin"
-    if is_git_worktree(repo_root) and config:
+    if in_worktree and config:
         ok_ref, _which = integration_refs_present(repo_root, rm, ib)
         if not ok_ref:
             issues.append(

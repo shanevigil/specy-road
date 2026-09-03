@@ -35,7 +35,9 @@ from specy_road.milestone_lock import assert_pm_nodes_not_milestone_locked
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 
 
-def _pm_milestone_lock_guard(root: Path, *node_ids: str | None) -> None:
+def _pm_milestone_lock_guard(
+    root: Path, *node_ids: str | None, nodes: list[dict[str, Any]] | None = None
+) -> None:
     """Refuse a mutation that would touch a node under an active milestone.
 
     Wraps ``load_roadmap`` so a transiently-broken roadmap (corrupt chunk,
@@ -43,20 +45,24 @@ def _pm_milestone_lock_guard(root: Path, *node_ids: str | None) -> None:
     with a hint to re-validate, rather than as a bare FastAPI 500. The PM
     UI already retries 412/409, so a 409 here is the right way to ask the
     user to fix the tree before retrying.
+
+    ``nodes`` lets a caller that has already loaded the graph hand it over
+    rather than paying for a second full load of the same files.
     """
     ids = [x for x in node_ids if isinstance(x, str) and x.strip()]
     if not ids:
         return
-    try:
-        nodes = load_roadmap(root)["nodes"]
-    except (OSError, ValueError, RuntimeError, KeyError) as e:
-        raise HTTPException(
-            status_code=409,
-            detail=(
-                "roadmap unreadable; cannot verify milestone lock — "
-                f"re-run `specy-road validate` and retry: {e}"
-            ),
-        ) from e
+    if nodes is None:
+        try:
+            nodes = load_roadmap(root)["nodes"]
+        except (OSError, ValueError, RuntimeError, KeyError) as e:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "roadmap unreadable; cannot verify milestone lock — "
+                    f"re-run `specy-road validate` and retry: {e}"
+                ),
+            ) from e
     try:
         assert_pm_nodes_not_milestone_locked(nodes, *ids)
     except ValueError as e:
@@ -91,7 +97,7 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     nodes = load_roadmap(root)["nodes"]
     by_id = {n["id"]: n for n in nodes}
     ref = body.reference_node_id
-    _pm_milestone_lock_guard(root, ref)
+    _pm_milestone_lock_guard(root, ref, nodes=nodes)
     if ref not in by_id:
         raise HTTPException(status_code=404, detail="reference node not found")
     ref_node = by_id[ref]
@@ -120,7 +126,7 @@ def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
     insert_at = ix if body.position == "above" else ix + 1
 
     new_id = next_child_id(nodes, parent_id)
-    if new_id in merged_ids(root):
+    if any(n["id"] == new_id for n in nodes):
         raise HTTPException(status_code=409, detail="generated id already exists")
 
     new_node: dict[str, Any] = {

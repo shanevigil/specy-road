@@ -27,10 +27,7 @@ from roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.node_activity import node_activity
 from specy_road.git_workflow_config import build_git_workflow_status
-from specy_road.pm_gui_fingerprint import (
-    outline_mutation_fingerprint,
-    pm_gui_mutation_fingerprint,
-)
+from specy_road.pm_gui_fingerprint import outline_and_view_fingerprints
 from specy_road.registry_remote_overlay import (
     describe_integration_branch_auto_ff,
     last_registry_auto_fetch_status,
@@ -69,10 +66,8 @@ def _stringified_fingerprints(root: Path) -> dict[str, str]:
     ``2**53`` and would lose precision when round-tripped through the
     browser's IEEE 754 ``Number`` type, producing spurious 412s.
     """
-    return {
-        "fingerprint": str(outline_mutation_fingerprint(root)),
-        "view_fingerprint": str(pm_gui_mutation_fingerprint(root)),
-    }
+    outline, view = outline_and_view_fingerprints(root)
+    return {"fingerprint": str(outline), "view_fingerprint": str(view)}
 
 
 def _apply_rollup_on_wire(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:

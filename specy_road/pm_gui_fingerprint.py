@@ -38,11 +38,29 @@ if str(_BUNDLED) not in sys.path:
     sys.path.insert(0, str(_BUNDLED))
 
 from roadmap_chunk_utils import iter_roadmap_fingerprint_files  # noqa: E402
-from roadmap_gui_lib import pm_gui_mutation_fingerprint_base  # noqa: E402
+from roadmap_gui_lib import (  # noqa: E402
+    pm_gui_mutation_fingerprint_base,
+    roadmap_files_fingerprint,
+)
 
 from specy_road.registry_remote_overlay_merge import (  # noqa: E402
     roadmap_fingerprint_with_remote_refs,
 )
+
+
+def outline_and_view_fingerprints(repo_root: Path) -> tuple[int, int]:
+    """``(narrow outline token, broad view token)`` from one walk.
+
+    The narrow token's file set is a strict subset of the broad one's, so the
+    polled endpoint that returns both used to stat the manifest and every chunk
+    twice per request. The two tokens stay distinct -- that split is deliberate,
+    see the module docstring -- they just share the walk now.
+    """
+    base = roadmap_files_fingerprint(repo_root)
+    view = roadmap_fingerprint_with_remote_refs(
+        repo_root, pm_gui_mutation_fingerprint_base(repo_root, base)
+    )
+    return base, view
 
 
 def pm_gui_mutation_fingerprint(repo_root: Path) -> int:
