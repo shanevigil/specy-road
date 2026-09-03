@@ -118,6 +118,35 @@ def render_archive_index(doc: dict[str, Any]) -> str:
     return render_canonical_json(doc)
 
 
+def records_or_empty(root: Path) -> list[dict[str, Any]]:
+    """Ledger records, or ``[]`` if the ledger is missing or unreadable.
+
+    :func:`load_archive_index` raises, which is right for ``validate`` and wrong
+    for everyone else: a digest, a brief, a search index and a history walk all
+    have to render without the ledger rather than fail. Four callers wrapped it
+    in the same ``try/except Exception`` to say so; this says it once.
+    """
+    try:
+        return index_records(load_archive_index(root))
+    except Exception:  # noqa: BLE001 - a broken ledger is validate's to report
+        return []
+
+
+def iter_archived_summaries(root: Path) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """``(record, node summary)`` for every archived node, best-effort.
+
+    The nested walk into ``nodes_summary`` was written out at four call sites,
+    each projecting it differently -- by key, by id, as pairs. The traversal is
+    shared here; the projection stays with the caller that needs it.
+    """
+    return [
+        (record, summary)
+        for record in records_or_empty(root)
+        for summary in record.get("nodes_summary") or []
+        if isinstance(summary, dict)
+    ]
+
+
 def write_archive_index(root: Path, doc: dict[str, Any]) -> Path:
     """Validate then write the index, creating ``roadmap/archive/`` if needed."""
     validate_archive_index(doc)

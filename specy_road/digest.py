@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.archive_index import records_or_empty
 
 BANNER = (
     "<!-- specy-road: generated context digest — do not edit by hand. "
@@ -187,12 +188,7 @@ def _history_events(root: Path, *, kinds: set[str]) -> list[dict[str, Any]]:
 
 def _section_archived(root: Path) -> list[str]:
     """Work that left the live graph — invisible everywhere else."""
-    try:
-        from specy_road.archive_index import index_records, load_archive_index
-
-        records = index_records(load_archive_index(root))
-    except Exception:  # noqa: BLE001 - a broken ledger must not break the digest
-        return []
+    records = records_or_empty(root)
     if not records:
         return []
 

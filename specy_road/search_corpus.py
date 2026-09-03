@@ -38,6 +38,7 @@ from specy_road.text_sections import (
     read_text_safely,
     split_sections,
 )
+from specy_road.archive_index import iter_archived_summaries
 
 SCOPE_LIVE = "live"
 SCOPE_ARCHIVED = "archived"
@@ -160,18 +161,7 @@ def _live_nodes(root: Path) -> list[dict[str, Any]]:
 
 
 def _archived_summaries(root: Path) -> list[tuple[dict[str, Any], dict[str, Any]]]:
-    try:
-        from specy_road.archive_index import index_records, load_archive_index
-
-        records = index_records(load_archive_index(root))
-    except Exception:  # noqa: BLE001 - a broken ledger must not empty the corpus
-        return []
-    out = []
-    for record in records:
-        for summary in record.get("nodes_summary") or []:
-            if isinstance(summary, dict):
-                out.append((record, summary))
-    return out
+    return iter_archived_summaries(root)
 
 
 def _ancestor_titles(node_id: str, by_id: dict[str, dict[str, Any]]) -> list[str]:

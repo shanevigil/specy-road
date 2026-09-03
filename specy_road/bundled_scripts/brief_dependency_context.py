@@ -36,6 +36,7 @@ from roadmap_layout import effective_dependency_keys
 from roadmap_node_keys import build_key_to_node
 
 from specy_road.text_sections import find_section, normalize_heading, read_text_safely
+from specy_road.archive_index import iter_archived_summaries
 
 
 # ---------------------------------------------------------------------------
@@ -191,11 +192,6 @@ def _archived_dep_lines(
     visibly lists one. Naming the archived work preserves the context without
     reopening it.
     """
-    try:
-        from specy_road.archive_index import index_records, load_archive_index
-    except Exception:  # noqa: BLE001 - the brief must render without the ledger
-        return []
-
     live = {
         n.get("node_key")
         for n in by_id.values()
@@ -209,16 +205,11 @@ def _archived_dep_lines(
     if not wanted:
         return []
 
-    try:
-        records = index_records(load_archive_index(repo_root))
-    except Exception:  # noqa: BLE001 - see above
-        return []
-    summary: dict[str, tuple[str, str]] = {}
-    for rec in records:
-        for n in rec.get("nodes_summary") or []:
-            key = n.get("node_key")
-            if isinstance(key, str):
-                summary[key] = (str(n.get("id") or "?"), str(n.get("title") or ""))
+    summary: dict[str, tuple[str, str]] = {
+        n["node_key"]: (str(n.get("id") or "?"), str(n.get("title") or ""))
+        for _rec, n in iter_archived_summaries(repo_root)
+        if isinstance(n.get("node_key"), str)
+    }
 
     lines = [f"- **{summary[k][0]}** — {summary[k][1]} _(archived)_" for k in sorted(wanted) if k in summary]
     if not lines:
