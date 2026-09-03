@@ -54,7 +54,6 @@ export function devColumnDetailTitle(
   nid: string,
   registryByNode: Record<string, Record<string, unknown>> | undefined,
   gitEnrichment: Record<string, Record<string, unknown>>,
-  prHints: Record<string, string>,
 ): string | undefined {
   const lines: string[] = [];
   const reg = registryByNode?.[nid];
@@ -92,9 +91,6 @@ export function devColumnDetailTitle(
     const h = String(g.hint_line).trim();
     if (h) lines.push(h);
   }
-
-  const ph = prHints[nid]?.replace(/<br>/g, " · ").trim();
-  if (ph) lines.push(ph);
 
   const seen = new Set<string>();
   const deduped = lines.filter((l) => {

@@ -81,7 +81,6 @@ type Props = {
   /** Outline/Gantt display status after registry + phase subtree rollup (when enabled). */
   pmDisplayStatusResolved?: string;
   gitEnrichment?: Record<string, Record<string, unknown>>;
-  prHints?: Record<string, string>;
   onClose: () => void;
   /** Open another task in a new dialog (dependency id). */
   onOpenNode?: (nodeId: string) => void;
@@ -157,7 +156,6 @@ function gitWorkSummary(
   nid: string,
   registryByNode: Record<string, Record<string, unknown>> | undefined,
   gitEnrichment: Record<string, Record<string, unknown>> | undefined,
-  prHints: Record<string, string> | undefined,
 ): string | null {
   const g = gitEnrichment?.[nid];
   if (g?.kind === "github_pr" || g?.kind === "gitlab_mr") {
@@ -171,8 +169,8 @@ function gitWorkSummary(
     ].filter(Boolean);
     if (bits.length) return bits.join(" · ");
   }
-  const hint = prHints?.[nid];
-  if (hint) return hint.replace(/<br>/g, " · ");
+  const hint = g?.hint_line;
+  if (typeof hint === "string" && hint.trim()) return hint.trim();
   const reg = registryByNode?.[nid];
   const branch = reg?.branch as string | undefined;
   const started = reg?.started;
@@ -221,7 +219,6 @@ export function EditModal({
   registryByNode,
   pmDisplayStatusResolved,
   gitEnrichment,
-  prHints,
   onClose,
   onOpenNode,
   onPersisted,
@@ -577,8 +574,7 @@ export function EditModal({
     node.id,
     registryByNode,
     gitEnrichment,
-    prHints,
-  );
+    );
 
   const runLlmReview = () => {
     if (!node || readOnlyCheckout) return;

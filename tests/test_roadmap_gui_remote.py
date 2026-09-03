@@ -43,7 +43,6 @@ def test_enrichment_is_mr_rejected(entry: dict | None, expected: bool) -> None:
 
 
 def test_github_pr_detail_open_pr(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     open_pr = _gh_pr(state="open", merged=False)
     resp = MagicMock()
@@ -61,7 +60,6 @@ def test_github_pr_detail_open_pr(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_github_pr_detail_merged_from_state_all(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     merged = _gh_pr(state="closed", merged=True, merged_at="2026-01-10T00:00:00Z")
     empty = MagicMock()
@@ -80,7 +78,6 @@ def test_github_pr_detail_merged_from_state_all(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_github_pr_detail_rejected_closed_unmerged(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     rej = _gh_pr(state="closed", merged=False, merged_at=None)
     empty = MagicMock()
@@ -102,7 +99,6 @@ def test_github_pr_detail_open_not_list_falls_through_to_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Non-list JSON on the open query must not crash; state=all still runs."""
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     merged = _gh_pr(state="closed", merged=True, merged_at="2026-01-10T00:00:00Z")
     bad_open = MagicMock()
@@ -120,7 +116,6 @@ def test_github_pr_detail_open_not_list_falls_through_to_all(
 
 
 def test_gitlab_mr_detail_opened_mr(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
     mr = {
         "title": "m",
         "web_url": "http://gl/m/1",
@@ -144,7 +139,6 @@ def test_gitlab_mr_detail_opened_mr(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_gitlab_mr_detail_merged_after_empty_opened(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
     merged_mr = {
         "title": "m",
         "web_url": "http://gl/m/1",
@@ -172,7 +166,6 @@ def test_gitlab_mr_detail_merged_after_empty_opened(monkeypatch: pytest.MonkeyPa
 def test_gitlab_mr_detail_rejected_closed_without_merge_commit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
     closed_mr = {
         "title": "m",
         "web_url": "http://gl/m/1",

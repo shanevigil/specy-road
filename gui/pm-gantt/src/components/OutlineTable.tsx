@@ -702,7 +702,6 @@ type Props = {
   nodesById: Record<string, RoadmapNode>;
   rowDepths: number[];
   selectedId: string | null;
-  prHints: Record<string, string>;
   gitEnrichment: Record<string, Record<string, unknown>>;
   dependencyInheritance?: Record<string, DependencyInheritanceEntry>;
   registryByNode?: Record<string, Record<string, unknown>>;
@@ -757,7 +756,6 @@ export function OutlineTable({
   nodesById,
   rowDepths,
   selectedId,
-  prHints,
   gitEnrichment,
   dependencyInheritance,
   registryByNode,
@@ -815,7 +813,6 @@ export function OutlineTable({
       return bits.join(" · ") || (g.hint_line as string) || "";
     }
     if (g?.hint_line) return String(g.hint_line);
-    if (prHints[nid]) return prHints[nid].replace(/<br>/g, " · ");
     return "";
   };
 
@@ -1316,8 +1313,7 @@ export function OutlineTable({
         rowId,
         registryByNode,
         gitEnrichment,
-        prHints,
-      ),
+            ),
       titleEditLocked: titlePlanLocked,
       isDepCandidate: isCandidate,
       titleEditing: editingTitleId === rowId,

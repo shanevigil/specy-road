@@ -14,7 +14,7 @@ from roadmap_gui_lib import (
     registry_by_node_id,
     repo_settings_id,
 )
-from roadmap_gui_remote import build_pr_hints, build_registry_enrichment
+from roadmap_gui_remote import build_registry_enrichment
 from roadmap_gui_tree import can_indent_outline, can_outdent_outline
 from roadmap_layout import (
     compute_dependency_steps,
@@ -121,7 +121,6 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     by_reg = registry_by_node_id(reg)
     settings = load_settings(root)
     gr = settings.get("git_remote") or {}
-    pr_hints = build_pr_hints(by_reg, gr)
     gw = build_git_workflow_status(root)
     resolved = gw.get("resolved") or {}
     rm_raw = resolved.get("remote")
@@ -149,7 +148,6 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
         "edges": edges,
         "ordered_ids": [n["id"] for n in ordered],
         "row_depths": row_depths,
-        "pr_hints": pr_hints,
         "git_enrichment": git_enrichment,
         "dependency_inheritance": dep_inheritance,
         "outline_actions": _outline_actions_for(nodes),
