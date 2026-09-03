@@ -418,7 +418,6 @@ export async function getSettings() {
 
 export async function putSettings(payload: {
   inherit_llm: boolean;
-  inherit_git_remote: boolean;
   inherit_pm_gui?: boolean;
   llm: Record<string, string>;
   git_remote: Record<string, string>;

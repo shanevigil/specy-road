@@ -17,6 +17,7 @@ from roadmap_gui_settings_scope import (
     git_effective as _git_effective,
     read_settings_file_struct_with_git_migration as _read_settings_file_struct_with_git_migration,
 )
+from roadmap_gui_settings_scope import default_project_entry
 
 SETTINGS_DIR = Path.home() / ".specy-road"
 SETTINGS_PATH = SETTINGS_DIR / "gui-settings.json"
@@ -156,20 +157,12 @@ def _get_project_entry(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
         raw = {}
     p = raw.get(repo_id)
     if not isinstance(p, dict):
-        return {
-            "inherit_llm": True,
-            "inherit_git_remote": False,
-            "inherit_pm_gui": True,
-            "llm": {},
-            "git_remote": {},
-            "pm_gui": {},
-        }
+        return default_project_entry()
     plm = p["llm"] if isinstance(p.get("llm"), dict) else {}
     pgr = p["git_remote"] if isinstance(p.get("git_remote"), dict) else {}
     ppm = p["pm_gui"] if isinstance(p.get("pm_gui"), dict) else {}
     return {
         "inherit_llm": bool(p.get("inherit_llm", True)),
-        "inherit_git_remote": bool(p.get("inherit_git_remote", False)),
         "inherit_pm_gui": bool(p.get("inherit_pm_gui", True)),
         "llm": plm,
         "git_remote": pgr,
@@ -225,7 +218,6 @@ def settings_api_payload(repo_root: Path) -> dict[str, Any]:
         "repo_id": rid,
         "repo_root": str(repo_root.resolve()),
         "inherit_llm": proj["inherit_llm"],
-        "inherit_git_remote": False,
         "inherit_pm_gui": proj["inherit_pm_gui"],
         "llm": eff["llm"],
         "git_remote": eff["git_remote"],
@@ -243,7 +235,6 @@ def save_settings_for_repo(
     repo_root: Path,
     *,
     inherit_llm: bool,
-    inherit_git_remote: bool = False,
     inherit_pm_gui: bool = True,
     llm: dict[str, Any],
     git_remote: dict[str, Any],
@@ -251,7 +242,7 @@ def save_settings_for_repo(
 ) -> None:
     """Persist settings: global LLM when inheriting; project-only LLM overlay otherwise.
 
-    Git remote is always stored per repository only (``inherit_git_remote`` is ignored).
+    Git remote is always stored per repository only.
     """
     old_git_eff = effective_settings_for_repo(repo_root)["git_remote"]
     struct = _read_settings_file_struct_with_git_migration(repo_root)
@@ -270,14 +261,7 @@ def save_settings_for_repo(
 
     entry = struct["projects"].get(rid)
     if not isinstance(entry, dict):
-        entry = {
-            "inherit_llm": True,
-            "inherit_git_remote": False,
-            "inherit_pm_gui": True,
-            "llm": {},
-            "git_remote": {},
-            "pm_gui": {},
-        }
+        entry = default_project_entry()
     if "inherit_pm_gui" not in entry:
         entry["inherit_pm_gui"] = True
     if not isinstance(entry.get("pm_gui"), dict):
@@ -292,7 +276,6 @@ def save_settings_for_repo(
         entry["llm"] = _overlay_diff(llm, blank_llm)
 
     # Git remote: always per-repository (never write global.git_remote from the GUI).
-    entry["inherit_git_remote"] = False
     entry["git_remote"] = _overlay_diff(git_remote, d["git_remote"])
 
     if inherit_pm_gui:

@@ -39,7 +39,6 @@ def test_registry_remote_overlay_enabled_true_when_gates_satisfied(
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=True,
         inherit_pm_gui=True,
         llm=d["llm"],
         git_remote=gr,
@@ -73,7 +72,6 @@ def test_registry_remote_overlay_enabled_false_without_repo_and_token(
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=True,
         inherit_pm_gui=True,
         llm=d["llm"],
         git_remote=gr,
@@ -106,7 +104,6 @@ def test_save_settings_clears_git_remote_tested_ok_when_git_remote_identity_chan
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=True,
         inherit_pm_gui=True,
         llm=d["llm"],
         git_remote={**d["git_remote"], "repo": "a/b", "token": "t"},
@@ -118,7 +115,6 @@ def test_save_settings_clears_git_remote_tested_ok_when_git_remote_identity_chan
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=True,
         inherit_pm_gui=True,
         llm=d["llm"],
         git_remote={**d["git_remote"], "repo": "c/d", "token": "t"},
@@ -138,7 +134,6 @@ def test_save_settings_preserves_git_remote_tested_ok_when_only_non_git_fields_c
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=True,
         inherit_pm_gui=True,
         llm=d["llm"],
         git_remote=gr,
@@ -148,7 +143,6 @@ def test_save_settings_preserves_git_remote_tested_ok_when_only_non_git_fields_c
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=True,
         inherit_pm_gui=True,
         llm={**d["llm"], "openai_model": "gpt-4o"},
         git_remote=gr,

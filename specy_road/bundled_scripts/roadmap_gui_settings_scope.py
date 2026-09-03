@@ -6,6 +6,20 @@ from pathlib import Path
 from typing import Any
 
 
+def default_project_entry() -> dict[str, Any]:
+    """A per-repository settings entry with nothing overridden yet.
+
+    Written out verbatim in four places before this existed.
+    """
+    return {
+        "inherit_llm": True,
+        "inherit_pm_gui": True,
+        "llm": {},
+        "git_remote": {},
+        "pm_gui": {},
+    }
+
+
 def blank_llm_base() -> dict[str, Any]:
     """Same keys as default LLM settings; empty strings (backend stays openai for UI)."""
     import roadmap_gui_settings as m
@@ -41,19 +55,11 @@ def migrate_global_git_into_project_if_needed(
         raw = {}
     proj = raw.get(repo_id)
     if not isinstance(proj, dict):
-        proj = {
-            "inherit_llm": True,
-            "inherit_git_remote": False,
-            "inherit_pm_gui": True,
-            "llm": {},
-            "git_remote": {},
-            "pm_gui": {},
-        }
+        proj = default_project_entry()
     pg = proj.get("git_remote") if isinstance(proj.get("git_remote"), dict) else {}
     p_full = git_effective(d_git, pg)
     if p_full != d_git:
         return False
-    proj["inherit_git_remote"] = False
     proj["git_remote"] = m._overlay_diff(g_full, d_git)
     if "projects" not in struct or not isinstance(struct["projects"], dict):
         struct["projects"] = {}

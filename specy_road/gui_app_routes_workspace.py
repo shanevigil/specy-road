@@ -163,7 +163,6 @@ def register_settings_and_remote(api: APIRouter) -> None:
         save_settings_for_repo(
             get_repo_root(),
             inherit_llm=body.inherit_llm,
-            inherit_git_remote=body.inherit_git_remote,
             inherit_pm_gui=body.inherit_pm_gui,
             llm=body.llm,
             git_remote=body.git_remote,

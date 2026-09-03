@@ -7,6 +7,7 @@ without a circular import at module load.
 from __future__ import annotations
 
 from typing import Any
+from roadmap_gui_settings_scope import default_project_entry
 
 
 def git_remote_identity(gr: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -38,14 +39,7 @@ def set_git_remote_tested_ok(repo_root, ok: bool) -> None:
         struct["projects"] = {}
     entry = struct["projects"].get(rid)
     if not isinstance(entry, dict):
-        entry = {
-            "inherit_llm": True,
-            "inherit_git_remote": False,
-            "inherit_pm_gui": True,
-            "llm": {},
-            "git_remote": {},
-            "pm_gui": {},
-        }
+        entry = default_project_entry()
     entry["git_remote_tested_ok"] = ok
     struct["projects"][rid] = entry
     m._write_settings_file_struct(struct)
