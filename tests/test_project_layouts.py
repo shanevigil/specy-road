@@ -236,3 +236,18 @@ def test_init_project_after_specyrd_init_still_ends_up_prefixed(
     assert f"{prefix}roadmap/archive/" in text
     if prefix:
         assert "\nroadmap/archive/" not in text
+
+def test_history_reports_events_in_both_layouts(layout: tuple[Path, Path]) -> None:
+    """The git-derived history must survive the git-root/project-root split.
+
+    ``git log --name-only`` prints paths relative to the **git** root while
+    roadmap paths are relative to the **project** root, so every lookup in a
+    nested layout depends on ``rebase_to_project``. When that rebasing is wrong
+    the walk does not raise — it silently reports no events, which is
+    indistinguishable from a young repository. Asserting on both layouts is
+    what makes the nested one a real check.
+    """
+    _git_root, project = layout
+    r = _run("history_cli.py", ["--repo-root", str(project)], cwd=project)
+    assert r.returncode == 0, r.stderr
+    assert "created as M0.3" in r.stdout, r.stdout
