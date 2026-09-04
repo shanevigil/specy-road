@@ -212,7 +212,7 @@ In **Settings**, use **This repository** toggles:
 - **Use global LLM settings for this repository** — when **on**, LLM fields you edit are saved as **global** defaults shared by any checkout that keeps this toggle on. When **off**, the LLM form is **empty for this repository** until you enter values; those values are stored **only** for this resolved root (not global).
 - **Use global PM GUI options for this repository** — when off, **Merge registry from remote feature branches** and **Fast-forward integration branch** are stored per checkout (see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md) and [design-notes/pm-gui-integration-branch-auto-ff.md](design-notes/pm-gui-integration-branch-auto-ff.md)).
 
-**Which tree am I editing?** The dashboard does **not** follow “the folder open in the IDE.” It uses the same **resolved project root** as the CLI: **`specy-road gui --repo-root DIR`**, or discovery from the shell’s current directory (`roadmap/manifest.json` upward, else the git worktree root). In **Settings**, the line **Open repository:** shows the absolute path for the running server. If that path is not the checkout you meant (for example you wanted a nested `playground/` consumer tree but started the GUI from the parent clone), stop the server and relaunch with **`--repo-root`** or **`cd`** into the intended directory first.
+**Which tree am I editing?** The dashboard does **not** follow “the folder open in the IDE.” It uses the same **resolved project root** as the CLI, in this order: **`specy-road gui --repo-root DIR`**, else **`SPECY_ROAD_REPO_ROOT`**, else the root recorded in **`.specyrd/manifest.json`**, else discovery from the shell’s current directory (`roadmap/manifest.json` upward), else the git worktree root, else the working directory. In **Settings**, the line **Open repository:** shows the absolute path for the running server. If that path is not the checkout you meant (for example you wanted a nested `playground/` consumer tree but started the GUI from the parent clone), stop the server and relaunch with **`--repo-root`** or **`cd`** into the intended directory first.
 
 **When LLM fields match another project:** If **Open repository** is correct but LLM values look shared, the **Use global LLM settings for this repository** toggle is probably **on**—turn it **off** to get a blank, project-only LLM form. **Git remote** fields are never global; if they look wrong, confirm **Open repository** matches the checkout you intend (restart the GUI with `--repo-root` if not).
 
@@ -347,7 +347,7 @@ sweeps everything complete for 90+ days. See [Archiving](archiving.md).
 
 Resolve these **before** developers reach them:
 
-1. Open the node with `execution_subtask: human-gate`.
+1. Open the blocking **`type: gate`** node.
 2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
 3. Set the task status to `Complete`, then validate and export.
 

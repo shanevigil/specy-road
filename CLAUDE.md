@@ -50,7 +50,7 @@ specy-road file-limits
 pytest
 ```
 
-**PM Gantt UI** ([`gui/pm-gantt/`](gui/pm-gantt/)): after changing React/TypeScript, from that directory run `npm ci && npm run lint && npm test && npm run build` (same sequence as [`.github/workflows/validate.yml`](.github/workflows/validate.yml); see [`docs/setup.md`](docs/setup.md#dependency-and-security-checks)). Lint uses **ESLint 10** with [`@eslint-react/eslint-plugin`](https://www.npmjs.com/package/@eslint-react/eslint-plugin) in [`gui/pm-gantt/eslint.config.js`](gui/pm-gantt/eslint.config.js) — not `eslint-plugin-react-hooks` (incompatible peers with ESLint 10).
+**PM Gantt UI** ([`gui/pm-gantt/`](gui/pm-gantt/)): after changing React/TypeScript, from that directory run `npm ci && npm run lint && npm test && npm run build` (same sequence as [`.github/workflows/validate.yml`](.github/workflows/validate.yml); see [`docs/contributor-guide.md`](docs/contributor-guide.md#supply-chain--dependency-audits)). Lint uses **ESLint 10** with [`@eslint-react/eslint-plugin`](https://www.npmjs.com/package/@eslint-react/eslint-plugin) in [`gui/pm-gantt/eslint.config.js`](gui/pm-gantt/eslint.config.js) — not `eslint-plugin-react-hooks` (incompatible peers with ESLint 10).
 
 ## Where to look
 

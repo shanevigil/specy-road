@@ -199,8 +199,11 @@ covers only what's needed to install and start it.
 
 `specy-road brief <NODE_ID>` produces a comprehensive **work-packet brief**
 (F-004): node metadata, ancestor context chain, every relevant planning
-sheet inlined, every shared contract inlined, dependency list, and a
-touch-zone discovery instruction for the implementing agent. Output is
+sheet inlined, `shared/README.md` plus only the shared contracts the
+planning chain cites under `## References` (the rest are listed as paths;
+`--all-contracts` restores full inlining), a git-derived history section
+(`--no-history` skips it), dependency list, and a touch-zone discovery
+instruction for the implementing agent. Output is
 deterministic — same inputs → same bytes.
 
 ```bash

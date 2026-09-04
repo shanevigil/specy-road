@@ -31,7 +31,8 @@ flowchart TD
 |-------|------|
 | `constitution/` | Purpose and principles (human norms, not machine-enforced) |
 | `constraints/` | Machine-readable limits; `file-limits.yaml` enforced by `specy-road file-limits` |
-| `roadmap/` | `manifest.json`, JSON chunk files (e.g. `phases/*.json`), `registry.yaml` |
+| `roadmap/` | `manifest.json`, JSON chunk files (e.g. `phases/*.json`), `registry.yaml`, and `archive/` (retired subtrees plus the `index.json` ledger — see [`archiving.md`](archiving.md)) |
+| `roadmap-context.md` | Generated agent digest (`specy-road digest`); a git-tracked standing summary of the live outline, gates, decisions and archived work |
 | `schemas/` | JSON Schema for roadmap and registry |
 | `shared/` | Contracts cited from tasks |
 | `specy_road/` (install) | Python package; `specy-road` CLI; `bundled_scripts/` implements validate/brief/export |
