@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import yaml
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 

@@ -200,3 +200,31 @@ def test_shared_readme_constant_matches_the_discovered_path(tmp_path: Path) -> N
     """Guards the always-inline rule against a rename of either side."""
     root = _repo(tmp_path)
     assert SHARED_README in all_contracts(root)
+
+def test_shipped_planning_templates_cite_nothing_by_themselves(tmp_path: Path) -> None:
+    """A scaffolded sheet must start with zero citations.
+
+    The feature-sheet template's ``## References`` section used to carry the
+    instructional example ``shared/api-contract.md``. The citation reader
+    matches inline-code paths, so every sheet scaffolded from it silently
+    cited that file -- inlining it into every brief whether or not the node
+    had anything to do with it, which is precisely the brief bloat the
+    cited-contracts change exists to remove.
+
+    Note the trap this pins down: a comment or a code fence does not help,
+    because the reader matches on the path text wherever it appears. The only
+    safe template is one with no real ``shared/`` path in it at all.
+    """
+    root = tmp_path
+    (root / "shared").mkdir()
+    (root / "shared" / "api-contract.md").write_text("contract\n", encoding="utf-8")
+    (root / "planning").mkdir()
+
+    templates = Path("specy_road/templates/planning-node")
+    for name in ("feature-sheet.md.template", "gate-sheet.md.template"):
+        sheet = root / "planning" / f"{name}.md"
+        sheet.write_text(
+            (templates / name).read_text(encoding="utf-8").replace("{{NODE_ID}}", "M9.1"),
+            encoding="utf-8",
+        )
+        assert cited_contracts([sheet], root) == [], f"{name} cites a contract on its own"

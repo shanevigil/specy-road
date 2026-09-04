@@ -45,9 +45,14 @@ ARCHIVE_DIR = "roadmap/archive"
 def iter_source_files(root: Path) -> list[SourceFile]:
     """Every file the index watches, sorted, with its stat for change detection."""
     rels: list[str] = []
+    # ``shared/`` is walked recursively to agree with
+    # :func:`contract_citations.all_contracts`. A brief lists every un-inlined
+    # contract with a ``specy-road search --kind shared`` pointer, so a repo
+    # that files contracts under ``shared/contracts/`` would otherwise be told
+    # to search for something the index never saw.
     for pattern, subdir in (
         ("*.md", "planning"),
-        ("*.md", "shared"),
+        ("**/*.md", "shared"),
         ("*.md", "constitution"),
     ):
         base = root / subdir

@@ -11,7 +11,6 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     OVERFLOW_REASON,
@@ -19,7 +18,6 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
     PHASE_ROOT_REASON,
     build_node_chunk_map,
     load_json_chunk,
-    load_manifest_mapping,
     phase_root_chunk_rel,
     render_json_chunk,
     roadmap_dir,

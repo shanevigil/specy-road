@@ -22,7 +22,7 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 
 Do not grep `planning/` or `work/` directly. Those directories hold a great deal
 of duplicated text — a brief inlines its ancestor planning sheets and every
-`shared/*.md` verbatim, and a pr-body re-inlines the whole brief — so a raw
+the `shared/*.md` files it cites, and a pr-body re-inlines the whole brief — so a raw
 search returns the same passage many times over. Use the ranked, deduplicated
 index instead:
 

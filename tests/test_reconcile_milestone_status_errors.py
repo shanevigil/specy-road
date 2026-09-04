@@ -22,7 +22,6 @@ import pytest
 
 from tests.helpers import REPO
 
-_BUNDLED = REPO / "specy_road" / "bundled_scripts"
 
 
 def _stage_dogfood(tmp_path: Path) -> Path:
@@ -62,8 +61,6 @@ def _attach_active_milestone_executions(repo_root: Path, *, ids: list[str]) -> N
 
 def _import_reconcile():
     """Fresh import of the bundled script as a regular module."""
-    if str(_BUNDLED) not in sys.path:
-        sys.path.insert(0, str(_BUNDLED))
     sys.modules.pop("reconcile_milestone_status", None)
     from specy_road.bundled_scripts import reconcile_milestone_status as rms  # type: ignore[import-not-found]
 

@@ -21,6 +21,7 @@ from specy_road.archive_plan import plan_archive, plan_summary
 from specy_road.archive_restore import restore_archive
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
+from specy_road.registry_yaml import read_registry, registry_path
 
 def _reexport_roadmap_md(root: Path) -> None:
     """Keep ``roadmap.md`` in step so the repo does not drift into a failing CI."""
@@ -65,12 +66,49 @@ def _eligible(root: Path) -> list[dict[str, Any]]:
     nodes = load_roadmap(root)["nodes"]
     rollup = compute_rollup_status(nodes)
     locked = locked_node_ids(nodes)
+    blocked = _ids_with_claimed_descendant(root, nodes)
     out = []
     for n in nodes:
         nid = n.get("id")
-        if isinstance(nid, str) and rollup.get(nid) == "Complete" and nid not in locked:
+        if not isinstance(nid, str):
+            continue
+        if rollup.get(nid) == "Complete" and nid not in locked and nid not in blocked:
             out.append({"node_id": nid, "title": n.get("title") or ""})
     return out
+
+
+def _ids_with_claimed_descendant(root: Path, nodes: list[dict[str, Any]]) -> set[str]:
+    """Every node whose subtree still carries an open registry claim.
+
+    ``plan_archive`` refuses these (``_refuse_if_claimed``), and archiving takes
+    the whole subtree, so a claim anywhere beneath a node disqualifies the node
+    itself. Walking up from each claim is linear in claims x depth rather than
+    re-deriving a subtree per candidate.
+    """
+    try:
+        entries = read_registry(registry_path(root)).get("entries") or []
+    except Exception:  # noqa: BLE001 - a registry problem is validate's to report
+        return set()
+    claimed = {
+        e["node_id"] for e in entries
+        if isinstance(e, dict) and isinstance(e.get("node_id"), str)
+    }
+    if not claimed:
+        return set()
+    parent = {
+        n["id"]: n.get("parent_id")
+        for n in nodes
+        if isinstance(n.get("id"), str)
+    }
+    blocked: set[str] = set()
+    for nid in claimed:
+        seen = 0
+        cur: Any = nid
+        while isinstance(cur, str) and cur not in blocked and seen <= len(parent):
+            blocked.add(cur)
+            cur = parent.get(cur)
+            seen += 1
+    return blocked
 
 
 def _auto_settings(root: Path) -> tuple[bool, int]:

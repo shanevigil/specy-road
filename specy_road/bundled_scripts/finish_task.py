@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import yaml
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
@@ -28,7 +27,7 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
-from specy_road.registry_yaml import read_registry, registry_path, write_registry
+from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,

@@ -20,7 +20,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, road
 from specy_road.bundled_scripts.roadmap_load import load_manifest_mapping, load_roadmap
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.registry_yaml import registry_path
-from specy_road.runtime_paths import add_repo_root_arg
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
 NS = uuid.UUID("01234567-89ab-cdef-0123-456789abcdef")
@@ -69,7 +69,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     add_repo_root_arg(parser)
     args = parser.parse_args()
-    root = args.repo_root.resolve()
+    root = resolve_repo_root(args)
     doc = load_roadmap(root)
     id_to_key: dict[str, str] = {}
     for n in doc["nodes"]:

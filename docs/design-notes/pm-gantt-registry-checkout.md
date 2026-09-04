@@ -2,7 +2,7 @@
 
 ## Data flow
 
-- The FastAPI **`GET /api/roadmap`** handler loads `roadmap/registry.yaml` with [`read_registry()`](../../specy_road/registry_yaml.py) from the **repository root** resolved for the GUI ([`get_repo_root()`](../../specy_road/gui_app_helpers.py): `SPECY_ROAD_REPO_ROOT`, else roadmap discovery from cwd).
+- The FastAPI **`GET /api/roadmap`** handler loads `roadmap/registry.yaml` with [`read_registry()`](../../specy_road/registry_yaml.py) from the **repository root** resolved for the GUI ([`get_repo_root()`](../../specy_road/gui_app_helpers.py), a delegate to [`runtime_paths.project_root()`](../../specy_road/runtime_paths.py): `--repo-root`, else `SPECY_ROAD_REPO_ROOT`, else the root recorded in `.specyrd/manifest.json`, else roadmap discovery upward from cwd, else the git root, else cwd).
 - When [**remote registry overlay**](registry-hydration-remote-refs.md) is enabled (default in GUI defaults, gated by Git remote + **Test Git**), the server **merges** `registry.yaml` from **`refs/remotes/<remote>/<integration_branch>`** and from **`refs/remotes/<remote>/feature/rm-*`** into the payload. **`registry`**, **`registry_by_node`**, and **`git_enrichment`** then reflect that **merged** view. HEAD entries win on duplicate **`node_id`**; remote integration ref then feature refs fill gaps.
 
 ## Green outline accent (developers vs PMs)

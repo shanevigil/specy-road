@@ -270,3 +270,19 @@ def test_a_missing_planning_directory_is_not_an_error(tmp_path: Path) -> None:
     (tmp_path / "shared" / "x.md").write_text("## A\n\nbody\n", encoding="utf-8")
 
     assert [c.kind for c in all_chunks(tmp_path)] == [KIND_SHARED]
+
+def test_shared_subdirectory_contracts_are_indexed(tmp_path: Path) -> None:
+    """A brief lists nested contracts and points at ``search --kind shared``.
+
+    ``contract_citations.all_contracts`` walks ``shared/`` recursively, so a
+    repo filing contracts under ``shared/contracts/`` gets them listed in the
+    brief. The index used a flat glob, so the pointer the brief prints led
+    nowhere for exactly those files.
+    """
+    (tmp_path / "shared" / "contracts").mkdir(parents=True)
+    (tmp_path / "shared" / "top.md").write_text("top\n", encoding="utf-8")
+    (tmp_path / "shared" / "contracts" / "nested.md").write_text("nested\n", encoding="utf-8")
+
+    rels = {sf.path for sf in iter_source_files(tmp_path)}
+    assert "shared/top.md" in rels
+    assert "shared/contracts/nested.md" in rels

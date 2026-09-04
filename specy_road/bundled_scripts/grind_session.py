@@ -22,7 +22,6 @@ import sys
 import time
 from pathlib import Path
 
-import yaml
 
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.bundled_scripts.grind_session_events import (

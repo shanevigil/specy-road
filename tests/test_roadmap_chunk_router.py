@@ -4,17 +4,14 @@ from __future__ import annotations
 
 import json
 import shutil
-import sys
 from pathlib import Path
 
 import pytest
 
 # Bundled scripts live outside ``specy_road`` for flat imports — mirror the
 # helper in tests/helpers.py so router/atomic modules are importable.
-from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS  # noqa: E402
+from tests.helpers import REPO, SCHEMAS
 
-if str(BUNDLED_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(BUNDLED_SCRIPTS))
 
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.bundled_scripts.roadmap_chunk_router import (

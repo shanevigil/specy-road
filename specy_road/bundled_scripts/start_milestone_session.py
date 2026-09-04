@@ -21,7 +21,7 @@ from specy_road.milestone_session import (
 )
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch, working_tree_clean
+from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
 
 _CODENAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 

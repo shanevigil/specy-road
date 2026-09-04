@@ -6,7 +6,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import yaml
 from specy_road.bundled_scripts.do_next_available import (
     _available,
     _load_branch_enrichment,
@@ -56,7 +55,7 @@ from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch, working_tree_clean
+from specy_road.bundled_scripts.repo_ops import current_branch, git_run, sync_integration_branch
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make

@@ -219,8 +219,10 @@ body. Keep section bodies focused; link to PRs for detail.
 - **The outline editor refused a gate reparent that `validate` accepts.**
   `validate_roadmap_gates` allows a gate under a vision, phase **or milestone**;
   `roadmap_outline_renumber` allowed only vision or phase, so moving a gate
-  under a milestone in the PM GUI was rejected for a shape the schema and the
-  docs both describe as correct. Both now read one `NODE_KINDS` table.
+  under a milestone in the PM GUI was rejected for a shape `validate` has
+  accepted since before v0.1.4. Both now read one `NODE_KINDS` table.
+  `docs/roadmap-authoring.md` had documented the narrower rule and is corrected
+  to match.
 - **A deep archive's reference file escaped non-ASCII titles the capsule did
   not.** `archive_deep` rendered the ref file with an inline `json.dumps` that
   had lost `ensure_ascii=False`, so a node titled in Japanese was written as

@@ -8,7 +8,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, road
 from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id, outdent_parent_id
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
-from specy_road.bundled_scripts.roadmap_load import load_manifest_mapping, load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
 from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
