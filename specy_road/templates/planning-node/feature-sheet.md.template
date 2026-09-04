@@ -13,6 +13,9 @@ Constraints, major steps, and how you will verify done.
 ## References
 
 - Roadmap chunk for `{{NODE_ID}}`
-- Cite each contract this node conforms to by filename, e.g. `shared/api-contract.md`.
-  `specy-road brief` inlines exactly what is listed here and links the rest, so a
-  bare `shared/` cites nothing. Find one with `specy-road search "<query>" --kind shared`.
+- Add one line per contract this node conforms to, naming its path under
+  `shared/`. `specy-road brief` inlines exactly the ones named here and lists
+  the rest as paths, so a bare `shared/` cites nothing. Find one with
+  `specy-road search "<query>" --kind shared`. Do not leave an example path in
+  this section — anything matching a real file under `shared/` counts as a
+  citation, including inside a comment or a code fence.
