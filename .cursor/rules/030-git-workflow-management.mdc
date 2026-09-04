@@ -72,7 +72,7 @@ Cutting a release from a `cursor/...`, `feature/...`, or unprefixed branch will 
 The full step-by-step playbook lives in **[`docs/release-runbook.md`](../../docs/release-runbook.md)**. That document is the canonical source of truth for:
 
 - The two flows (RC → TestPyPI; final → PyPI).
-- The agent-vs-human matrix (which steps the agent runs autonomously and which steps require the user to act — most notably the **manual tag re-push** required to trigger `release-publish.yml`, because GitHub policy does not fire downstream workflows for tags created by `GITHUB_TOKEN`).
+- The agent-vs-human matrix (which steps the agent runs autonomously and which steps require the user to act — most notably the **manual tag re-push** when `RELEASE_TAG_TOKEN` is unset, and the **`pypi` environment approval** on finals).
 - The recovery section listing every observed failure mode with its fix.
 
 When the user asks the agent to cut a release, the agent follows the runbook verbatim. Do **not** improvise the release process.

@@ -156,7 +156,18 @@ jobs:
           TITLE_RE: ${{ env.RELEASE_TITLE_RE }}
           LABEL_RE: ${{ env.RELEASE_LABEL_RE }}
           VERSION_RE: ${{ env.VERSION_RE }}
+          # Empty unless RELEASE_TAG_TOKEN is configured; used only for the
+          # operator-facing notice at the end.
+          HAS_RELEASE_TAG_TOKEN: ${{ secrets.RELEASE_TAG_TOKEN != '' }}
         with:
+          # Refs created with GITHUB_TOKEN do not start workflow runs (GitHub's
+          # anti-recursion guard), so the tag lands but release-publish.yml never
+          # fires and someone has to delete and re-push the tag by hand. A PAT or
+          # GitHub App token in RELEASE_TAG_TOKEN is a different identity, so the
+          # tag push does trigger the publish. Falls back to the built-in token
+          # when the secret is absent, which keeps the previous behavior rather
+          # than failing the release.
+          github-token: ${{ secrets.RELEASE_TAG_TOKEN || github.token }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -259,7 +270,25 @@ jobs:
             });
 
             const isPrerelease = version.includes("-");
+            const registry = isPrerelease ? "TestPyPI" : "PyPI";
+            const autoPublishes = process.env.HAS_RELEASE_TAG_TOKEN === "true";
             core.notice(
               `Created release tag '${tagRef}' for commit ${sha} from merged PR #${pr.number}. ` +
-              `release-publish.yml will publish to ${isPrerelease ? "TestPyPI" : "PyPI"}.`
+              `Target registry: ${registry}.`
             );
+            if (autoPublishes) {
+              core.notice(
+                `Tag pushed with RELEASE_TAG_TOKEN, so release-publish.yml starts on its own. ` +
+                `No manual tag re-push needed.`
+              );
+            } else {
+              core.warning(
+                `RELEASE_TAG_TOKEN is not configured, so this tag was created with GITHUB_TOKEN ` +
+                `and release-publish.yml will NOT start (GitHub does not run workflows for refs ` +
+                `created by GITHUB_TOKEN). Nothing is published until someone re-pushes the tag:\n` +
+                `  git fetch origin --tags\n` +
+                `  git push origin :refs/tags/${tagRef}\n` +
+                `  git push origin ${tagRef}\n` +
+                `See docs/release-runbook.md §6 footgun 4.`
+              );
+            }

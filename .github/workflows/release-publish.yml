@@ -12,9 +12,15 @@ name: Release publish
 #   - TestPyPI: https://test.pypi.org/manage/account/publishing/
 #               trusted publisher: shanevigil/specy-road, workflow=release-publish.yml,
 #               environment=testpypi
-#   - GitHub:   Settings -> Environments -> create 'pypi' (deployment tag rule
-#               'v[0-9]+.[0-9]+.[0-9]+'; required reviewer optional) and 'testpypi'
-#               (tag rule 'v[0-9]+.[0-9]+.[0-9]+-*'; no reviewers).
+#   - GitHub:   Settings -> Environments -> 'pypi' (tag rule 'v*.*.*';
+#               required reviewer: yes — finals to the immutable index pause)
+#               and 'testpypi' (tag rule 'v*.*.*'; no reviewers — RCs publish
+#               unattended). Keep docs/release-runbook.md step 2.12a in sync:
+#               a waiting job reports as in-progress, not blocked.
+#   - GitHub:   Settings -> Secrets -> RELEASE_TAG_TOKEN (optional PAT / App
+#               token with Contents: write). Without it the tag that
+#               main-release-tag-gate.yml creates cannot start this workflow;
+#               see that file and release-runbook.md §6 footgun ④.
 
 on:
   push:
