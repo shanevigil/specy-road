@@ -205,3 +205,38 @@ def test_listing_survives_a_failing_candidate_scan(
     assert r.status_code == 200
     assert r.json()["auto"]["candidates"] == []
     assert r.json()["records"] == []
+
+def test_eligible_withholds_a_subtree_with_an_open_claim(tmp_path: Path) -> None:
+    """The Archive button must not appear on something the CLI refuses.
+
+    ``plan_archive._refuse_if_claimed`` rejects a subtree carrying an open
+    registry claim. ``_eligible`` checked only rollup status and the milestone
+    lock, so the GUI offered the action and the request then failed.
+    """
+    import shutil
+
+    import yaml
+
+    from specy_road.gui_app_routes_archive import _eligible
+    from tests.helpers import DOGFOOD
+
+    root = tmp_path / "repo"
+    shutil.copytree(DOGFOOD, root)
+    reg_path = root / "roadmap" / "registry.yaml"
+
+    before = {e["node_id"] for e in _eligible(root)}
+    assert "M0.1" in before
+
+    reg = yaml.safe_load(reg_path.read_text(encoding="utf-8")) or {"version": 1, "entries": []}
+    reg.setdefault("entries", []).append(
+        {
+            "node_id": "M0.1",
+            "codename": "contracts-bootstrap",
+            "branch": "feature/rm-contracts-bootstrap",
+        }
+    )
+    reg_path.write_text(yaml.safe_dump(reg, sort_keys=False), encoding="utf-8")
+
+    after = {e["node_id"] for e in _eligible(root)}
+    assert "M0.1" not in after
+    assert "M0.3" in after, "unclaimed siblings must still be offered"
