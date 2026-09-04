@@ -14,7 +14,7 @@ The schema uses small enums; this is how they usually map to product thinking:
 |---------------|-------------------|
 | `phase` | A major arc or release train (often spans multiple deliverables). |
 | `milestone` | A shippable slice or **feature**-sized outcome (codename, touch zones, dependencies). |
-| `task` | **Sub-feature** or implementation slice (often `execution_subtask`-tagged). |
+| `task` | **Sub-feature** or implementation slice. |
 | `vision` | Program-level narrative when you use that layer. |
 
 Dependencies and `parallel_tracks` express what can run in parallel vs what must wait — not the `includes` order alone.
@@ -49,7 +49,7 @@ flowchart TB
 | **Phase** | `phase` | Time-bounded arc; execution milestone gate. |
 | **Milestone** | `milestone` | Atomic delivery unit in the index status table; goal, acceptance, codename, touch zones. |
 | **Parallel tracks / dependencies** | (node fields) | Concurrent vs. sequenced work — set `parallel_tracks` and `dependencies`. |
-| **Sub-tasks** | `task` (depth 3) | Checklist granularity; tagged `execution_subtask`. **Immutable** IDs. |
+| **Sub-tasks** | `task` (depth 3) | Checklist granularity. **Immutable** IDs. |
 | **Fourth-level** | `task` (depth 4) | Additive only; same immutability rules as sub-tasks. |
 
 ---
@@ -183,7 +183,6 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. |
 | `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | **Advisory** dominant work type: `Human-led` / `Agentic-led` / `Mixed`. Read by humans and by the PM UI; it does **not** gate pickup — use a `type: gate` dependency for that. |
-| `execution_subtask` | Sub-task tag: `human` / `agentic` / `human-gate` |
 | `touch_zones` | Paths or areas this node modifies (enables overlap detection). |
 | `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). |
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
@@ -192,15 +191,16 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `risks` | List of known risks or blockers to surface during planning. |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
-| `agentic_checklist` | **Required** when `execution_subtask: agentic`. See below. |
 
 **Dropped status:** `Cancelled` is no longer a valid `status`. To retire a feature, remove the node (for example `specy-road archive-node <id> --hard-remove` after team agreement) or set an appropriate status such as **Complete** / **Blocked** with notes.
+
+**Retiring finished work is a different operation.** To get completed milestones out of the working tree without deleting anything, use `specy-road archive <id>` — it moves the subtree into `roadmap/archive/`, drops its chunk from `manifest.json`'s `includes`, and restores byte-for-byte on demand. Live nodes may keep depending on archived work; see [Archiving](archiving.md).
 
 ### Gate (`type: gate`)
 
 A **Gate** is a **leaf-only** human hold point: it has a **planning sheet** (`planning_dir`) for PM notes (scaffolded with the **gate** template—why the hold exists, criteria to clear, decisions, resolution—not the full feature-sheet task outline), but it is **not** claimed via `do-next-available-task`, and **`roadmap/registry.yaml` must not** reference a Gate’s `node_id`.
 
-- **Placement:** Parent must be **`vision` or `phase`** only (not `milestone` or `task`). A Gate cannot have child rows.
+- **Placement:** Parent must be **`vision`, `phase` or `milestone`** (not `task`). A Gate cannot have child rows.
 - **Scoped dev hold:** List the Gate’s **`node_key`** in `dependencies` on the **phase** (or an ancestor milestone) that covers the work you want to pause. Descendant agentic leaves **inherit** that prerequisite; until the Gate is **`Complete`**, those leaves are not actionable for automated pickup. Clear the hold by setting the Gate to **Complete** (or remove the Gate node if you must unwind the freeze — not preferred).
 
 ### Decision block (`decision`)
@@ -220,13 +220,17 @@ Rendered in exported phase markdown as `> Decision pending` or `> Decided (date)
 
 ## Execution type tagging
 
-Tag every sub-task so authors and agents know what needs a person vs. autonomous execution.
-
-| Tag (`execution_subtask`) | Meaning |
-|---------------------------|---------|
-| `human` | Judgment, research, policy, sign-off — a person must do it. |
-| `agentic` | Executable from specs without mid-task human input. |
-| `human-gate` | **Blocking** decision — dependent `agentic` work must not start until resolved. |
+> **Removed field.** `execution_subtask` is **not authorable**. It is listed in
+> `validate_self_heal._DEPRECATED_FIELDS`, so `specy-road validate` **strips it
+> from your chunk file on disk**, and `roadmap.schema.json` sets
+> `additionalProperties: false`. Express the same intents with what the toolkit
+> actually enforces:
+>
+> | Old tag | Use instead |
+> |---------|-------------|
+> | `human` | Say so in the node's planning sheet; `execution_milestone` carries the advisory signal at milestone level. |
+> | `agentic` | The default — nothing to tag. |
+> | `human-gate` | A **`type: gate`** node that the work depends on. Gates are never pickable and block their dependents until `specy-road set-gate-status … --status Complete`. |
 
 Milestone-level (`execution_milestone`) reflects the dominant work type for the whole milestone: `Human-led`, `Agentic-led`, or `Mixed`. It is **documentation, not enforcement**: `specy-road do-next-available-task` will still offer a leaf under a `Human-led` parent once its dependencies are met. To hold work back until a person clears it, add a `type: gate` node and make the work depend on it — gates are never pickable and block their dependents until you run `specy-road set-gate-status … --status Complete`.
 
@@ -250,28 +254,30 @@ Milestone-level (`execution_milestone`) reflects the dominant work type for the 
 
 An agent can implement without clarifying questions; every ambiguous noun resolves to an entity, spec section, endpoint, or constraint.
 
-### Five required elements (`agentic_checklist`)
+### Five questions the planning sheet must answer
 
-| Field | Answers |
-|-------|---------|
-| `artifact_action` | What exactly is built or changed (named component, route, record). |
-| `contract_citation` | Which doc, section, entity, or contract to conform to. |
-| `interface_contract` | Inputs → outputs (API body, DB fields, component props, files). |
-| `constraints_note` | Security, logging, performance, UX rules that bind the work. |
-| `dependency_note` | Prior sub-task, stub, or merged milestone required first. **Reference by codename or display id** — do not paraphrase the prerequisite's intent here; `specy-road brief` inlines each effective dependency's `## Intent` under section 6. |
+These belong in the node's **planning sheet**, not in the node JSON — see the
+note below on why. A sheet that leaves one of them open is a planning gap.
 
-**Optional fields:**
+| Question | Answers |
+|----------|---------|
+| What is built | Exactly what is built or changed (named component, route, record). |
+| Which contract | Which doc, section, entity, or contract to conform to — cite it under `## References`. |
+| Interface | Inputs → outputs (API body, DB fields, component props, files). |
+| Constraints | Security, logging, performance, UX rules that bind the work. |
+| Dependencies | Prior sub-task, stub, or merged milestone required first. **Reference by codename or display id** — do not paraphrase the prerequisite's intent here; `specy-road brief` inlines each effective dependency's `## Intent` under section 6. |
 
-| Field | Purpose |
-|-------|---------|
-| `success_signal` | Observable test or behavior confirming the task is done correctly. |
-| `forbidden_patterns` | Patterns explicitly prohibited (e.g. "do not call live service — use stub"). |
+Worth adding when they apply: an observable **success signal**, and any
+**forbidden patterns** (e.g. "do not call the live service — use the stub").
 
-**Contract traceability:** Each `agentic` task should map to at least one contract doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the contract write-up may be missing — flag before writing the task. Validation emits a warning when `contract_citation` does not reference a known path prefix. Use `contract_citation` in `agentic_checklist` (not alternate keys).
+**Contract traceability:** Each `agentic` task should map to at least one contract doc under `shared/`, `docs/`, `specs/`, or `adr/`. If it cannot, the contract write-up may be missing — flag before writing the task.
 
-**Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Use `dependency_note` for *what must exist* (cited by codename or display id), and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
+**Cite contracts in the planning sheet's `## References`, not in the node JSON.** The old `agentic_checklist` object (and its `contract_citation` field) is **gone**: it is absent from `schemas/roadmap.schema.json`, which sets `additionalProperties: false`, and `specy-road validate` strips it from chunk files via `validate_self_heal`. Nothing reads it. Cite by filename in the sheet instead — `- Contract this node conforms to: shared/api-contract.md` — a plain path in **your** project; the brief matches on the `shared/…` filename, so a bare path is enough. `specy-road brief` reads `## References` from the node's own sheet **and every ancestor's**, and inlines exactly the `shared/…` paths it names, plus `shared/README.md` as the index. Everything else under `shared/` is listed as a path with a `specy-road search --kind shared` pointer rather than inlined — that is what keeps a brief's size tracking the task instead of the repository. A bare `shared/` cites nothing; `--all-contracts` inlines the whole tree.
 
-**Example (JSON node excerpt):**
+**Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Say *what must exist* (cited by codename or display id) under `## References`, and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
+
+**Example (JSON node excerpt).** The detail lives in the sheet at
+`planning_dir`; the node stays small:
 
 ```json
 {
@@ -279,16 +285,10 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
   "parent_id": "M1.2",
   "type": "task",
   "title": "Auto-save for entry form",
-  "execution_subtask": "agentic",
-  "agentic_checklist": {
-    "artifact_action": "Add PUT /entries/{id} partial-update handler per API contract entries section.",
-    "contract_citation": "shared/api-contract.md — entries",
-    "interface_contract": "Body: {field_name: value} dirty fields only. Response: {status, updated_at}. First save sets status In Progress.",
-    "constraints_note": "Do not log field values server-side. Stubs only until staging permits live integration.",
-    "dependency_note": "After M1.1 auth middleware; Entry table migrated.",
-    "success_signal": "PUT returns 200 with updated_at; repeated save is idempotent.",
-    "forbidden_patterns": "Do not call live external service in tests."
-  }
+  "codename": "entry-autosave",
+  "status": "Not Started",
+  "dependencies": ["M1.1"],
+  "planning_dir": "planning/M1.2.3-entry-autosave.md"
 }
 ```
 
@@ -352,7 +352,7 @@ Multiple developers and multiple agents per developer are assumed.
 
 ## PM editing workflow
 
-1. Read [`vision.md`](../vision.md) for invariants before editing.
+1. Read your project's `vision.md` for invariants before editing.
 2. Edit the **JSON chunk** for the relevant phase; reorder **`includes`** in [`manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) when you want a different chunk merge order.
 3. When editing chunks **by hand**, avoid arbitrary renumbering of display **`id`** values; gaps are allowed. Outline tools (e.g. PM UI) may still **rewrite display ids** for the whole tree; stable identity remains **`node_key`**.
 4. Split oversized chunk files at ~500 lines, along milestone or theme boundaries; add new paths to the manifest.

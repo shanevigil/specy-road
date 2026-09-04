@@ -9,27 +9,25 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from roadmap_gui_lib import (
-    load_registry,
+from specy_road.bundled_scripts.roadmap_gui_lib import (
     load_settings,
     registry_by_node_id,
     repo_settings_id,
 )
-from roadmap_gui_remote import build_pr_hints, build_registry_enrichment
-from roadmap_gui_tree import can_indent_outline, can_outdent_outline
-from roadmap_layout import (
+from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment
+from specy_road.bundled_scripts.roadmap_gui_tree import can_indent_outline, can_outdent_outline
+from specy_road.bundled_scripts.roadmap_layout import (
     compute_dependency_steps,
     dependency_edges_detailed,
     dependency_inheritance_display,
     ordered_tree_rows,
 )
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
+from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.node_activity import node_activity
 from specy_road.git_workflow_config import build_git_workflow_status
-from specy_road.pm_gui_fingerprint import (
-    outline_mutation_fingerprint,
-    pm_gui_mutation_fingerprint,
-)
+from specy_road.pm_gui_fingerprint import outline_and_view_fingerprints
 from specy_road.registry_remote_overlay import (
     describe_integration_branch_auto_ff,
     last_registry_auto_fetch_status,
@@ -68,10 +66,8 @@ def _stringified_fingerprints(root: Path) -> dict[str, str]:
     ``2**53`` and would lose precision when round-tripped through the
     browser's IEEE 754 ``Number`` type, producing spurious 412s.
     """
-    return {
-        "fingerprint": str(outline_mutation_fingerprint(root)),
-        "view_fingerprint": str(pm_gui_mutation_fingerprint(root)),
-    }
+    outline, view = outline_and_view_fingerprints(root)
+    return {"fingerprint": str(outline), "view_fingerprint": str(view)}
 
 
 def _apply_rollup_on_wire(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -108,7 +104,7 @@ def _outline_actions_for(nodes: list[dict[str, Any]]) -> dict[str, dict[str, boo
 def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     """Assemble the ``GET /api/roadmap`` JSON body (``doc`` from ``load_roadmap``)."""
     nodes = _apply_rollup_on_wire(doc.get("nodes") or [])
-    head_reg = load_registry(root)
+    head_reg = read_registry(registry_path(root))
     reg = head_reg
     registry_overlay_meta: dict[str, Any] | None = None
     if registry_remote_overlay_enabled(root):
@@ -120,7 +116,6 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
     by_reg = registry_by_node_id(reg)
     settings = load_settings(root)
     gr = settings.get("git_remote") or {}
-    pr_hints = build_pr_hints(by_reg, gr)
     gw = build_git_workflow_status(root)
     resolved = gw.get("resolved") or {}
     rm_raw = resolved.get("remote")
@@ -148,11 +143,14 @@ def _roadmap_payload(root: Path, doc: dict[str, Any]) -> dict[str, Any]:
         "edges": edges,
         "ordered_ids": [n["id"] for n in ordered],
         "row_depths": row_depths,
-        "pr_hints": pr_hints,
         "git_enrichment": git_enrichment,
         "dependency_inheritance": dep_inheritance,
         "outline_actions": _outline_actions_for(nodes),
         "git_workflow": gw,
+        # {node_key: {at, source}} — derived from git history, not stored.
+        # Memoized on HEAD, so repeat polls do not re-walk. See
+        # specy_road/node_activity.py.
+        "activity": node_activity(root, nodes),
     }
     if registry_overlay_meta is not None:
         fetch_status = last_registry_auto_fetch_status(root)

@@ -7,7 +7,7 @@ import sys
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
-import generate_brief as gb
+from specy_road.bundled_scripts import generate_brief as gb
 
 
 def test_render_brief_m02_contains_title() -> None:
@@ -45,14 +45,66 @@ def test_render_brief_inlines_planning_sheet_body() -> None:
     assert "## Intent" in text
 
 
-def test_render_brief_inlines_shared_contracts() -> None:
-    """F-004: brief inlines shared/*.md bodies in deterministic order."""
+def test_render_brief_inlines_cited_shared_contracts() -> None:
+    """A contract named in the chain's ``## References`` is inlined bodily."""
     nodes = gb.load_nodes(DOGFOOD)
     by_id = gb.index(nodes)
     text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
-    assert "## 4. Shared contracts (inlined, deterministic order)" in text
-    # The dogfood ships a shared/api-contract.md.
-    assert "shared/api-contract.md" in text
+    assert "## 4. Shared contracts (cited)" in text
+    # M0.3's sheet cites shared/api-contract.md; its body must be present.
+    assert "### `shared/api-contract.md`" in text
+    assert "Error codes (enum)" in text  # a heading from inside that contract
+
+
+def test_render_brief_lists_uncited_contracts_without_inlining_them() -> None:
+    """The fix for the 436 KB brief: uncited contracts cost a path, not a body.
+
+    M0.2 is about CI and cites no contract, so the api-contract body must not
+    appear — but its path must, or the brief would silently hide it.
+    """
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD)
+    assert "### `shared/api-contract.md`" not in text
+    assert "Error codes (enum)" not in text
+    assert "`shared/api-contract.md`" in text
+    assert "**Not inlined**" in text
+    assert "--kind shared" in text
+
+
+def test_render_brief_always_inlines_the_shared_readme() -> None:
+    """AGENTS.md's load order: the index, then cited contracts only."""
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD)
+    assert "### `shared/README.md`" in text
+
+
+def test_render_brief_all_contracts_restores_inlining_everything() -> None:
+    """The escape hatch has to be a real restoration, not an approximation."""
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    scoped = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD)
+    every = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD, all_contracts=True)
+    assert "### `shared/api-contract.md`" in every
+    assert "**Not inlined**" not in every
+    assert len(every) > len(scoped)
+
+
+def test_render_brief_finds_contracts_in_shared_subdirectories(tmp_path) -> None:
+    """The opposite bug: a flat glob never saw shared/<dir>/*.md at all."""
+    import shutil
+
+    dest = tmp_path / "repo"
+    shutil.copytree(DOGFOOD, dest)
+    nested = dest / "shared" / "contracts" / "auth-model.md"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("# Auth model\n", encoding="utf-8")
+
+    by_id = gb.index(gb.load_nodes(dest))
+    text = gb.render_brief("M0.2", by_id, repo_root=dest)
+
+    assert "`shared/contracts/auth-model.md`" in text
 
 
 def test_render_brief_includes_touch_zone_instruction() -> None:
@@ -115,3 +167,67 @@ def test_unknown_node_exits() -> None:
         env=script_subprocess_env(),
     )
     assert proc.returncode != 0
+
+
+# --- ## 9. History (derived from git) ---------------------------------------
+
+
+def test_render_brief_includes_the_history_section() -> None:
+    """The section header is a stable landmark even with nothing to report."""
+    from specy_road.bundled_scripts import generate_brief as gb
+
+    by_id = gb.index(gb.load_nodes(DOGFOOD))
+    text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
+
+    assert "## 9. History (derived from git)" in text
+
+
+def test_render_brief_no_history_omits_the_section() -> None:
+    from specy_road.bundled_scripts import generate_brief as gb
+
+    by_id = gb.index(gb.load_nodes(DOGFOOD))
+    text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD, include_history=False)
+
+    assert "## 9. History" not in text
+    assert "## 8. Rollup semantics (reference)" in text  # still complete
+
+
+def test_render_brief_history_degrades_outside_a_git_worktree(tmp_path) -> None:
+    """A brief must still render where git cannot answer."""
+    import shutil
+
+    from specy_road.bundled_scripts import generate_brief as gb
+
+    dest = tmp_path / "no-git"
+    shutil.copytree(DOGFOOD, dest)
+    by_id = gb.index(gb.load_nodes(dest))
+
+    text = gb.render_brief("M0.3", by_id, repo_root=dest)
+
+    assert "## 9. History (derived from git)" in text
+    assert "no git history available" in text
+
+
+def test_render_brief_history_reports_archived_work_in_the_subtree(tmp_path) -> None:
+    """The signal that is invisible any other way: this phase used to be bigger."""
+    from specy_road.bundled_scripts import generate_brief as gb
+    from specy_road.archive_ops import archive_node
+    from specy_road.history_index import clear_memo
+    from tests.test_history_walk import commit, git
+
+    dest = tmp_path / "repo"
+    import shutil
+
+    shutil.copytree(DOGFOOD, dest)
+    git(dest, "init", "-q", "-b", "main")
+    commit(dest, "baseline")
+    archive_node(dest, "M0.1")  # already Complete in the fixture
+    commit(dest, "archive M0.1")
+    clear_memo()
+
+    by_id = gb.index(gb.load_nodes(dest))
+    text = gb.render_brief("M0", by_id, repo_root=dest)
+
+    assert "Related work that left the live roadmap" in text
+    assert "M0.1 archived" in text
+    assert "specy-road show-archive M0.1-" in text

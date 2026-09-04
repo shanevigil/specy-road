@@ -6,7 +6,6 @@ Includes roadmap CRUD, planning files, and settings endpoints.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -14,28 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-
-def _scripts_dir() -> Path:
-    """Locate bundled roadmap Python modules (``bundled_scripts/``)."""
-    env = os.environ.get("SPECY_ROAD_SCRIPTS")
-    if env:
-        p = Path(env).resolve()
-        if p.is_dir():
-            return p
-    pkg = Path(__file__).resolve().parent
-    bundled = pkg / "bundled_scripts"
-    if bundled.is_dir():
-        return bundled
-    raise RuntimeError(
-        "Cannot locate bundled_scripts/ (roadmap modules). "
-        "Reinstall specy-road, "
-        "or set SPECY_ROAD_SCRIPTS to that directory.",
-    )
-
-
-_SCRIPTS = _scripts_dir()
-if str(_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_SCRIPTS))
 
 from specy_road.gui_app_api import make_api_router  # noqa: E402
 

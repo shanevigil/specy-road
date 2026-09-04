@@ -10,6 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import __version__
+from specy_road.agent_ignores import apply_and_report
+from specy_road.runtime_paths import (
+    discover_project_root,
+    prefix_within,
+    recorded_project_root,
+)
 
 AGENT_CHOICES = frozenset({"cursor", "claude-code", "generic"})
 ROLE_CHOICES = frozenset({"pm", "dev", "both"})
@@ -52,6 +58,9 @@ COMMAND_FILES = (
     "specyrd-show-node.md",
     "specyrd-add-node.md",
     "specyrd-review-node.md",
+    "specyrd-search.md",
+    "specyrd-digest.md",
+    "specyrd-history.md",
 )
 
 # Stubs installed per role; omit to install all.
@@ -66,6 +75,9 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-show-node.md",
         "specyrd-add-node.md",
         "specyrd-review-node.md",
+        "specyrd-search.md",
+        "specyrd-digest.md",
+        "specyrd-history.md",
     ),
     "dev": (
         "specyrd-validate.md",
@@ -76,6 +88,9 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-do-next-task.md",
         "specyrd-grind-session.md",
         "specyrd-abort-task-pickup.md",
+        "specyrd-search.md",
+        "specyrd-digest.md",
+        "specyrd-history.md",
     ),
 }
 
@@ -154,32 +169,14 @@ class InitResult:
 
 
 def _normalize_manifest_dict(data: dict[str, Any]) -> dict[str, Any]:
-    if "specyr_version" in data and "specyrd_version" not in data:
-        data["specyrd_version"] = data.pop("specyr_version")
     if "specyrd_version" not in data:
         data["specyrd_version"] = __version__
     return data
 
 
-def _remove_legacy_specyr_manifest(repo_root: Path) -> None:
-    """Drop pre-rename ``.specyr/manifest.json`` once ``.specyrd/`` is canonical."""
-    legacy = repo_root / ".specyr" / "manifest.json"
-    if not legacy.is_file():
-        return
-    try:
-        legacy.unlink()
-    except OSError:
-        return
-    try:
-        legacy.parent.rmdir()
-    except OSError:
-        pass
-
-
 def _load_manifest(repo_root: Path) -> dict[str, Any]:
-    """Load ``.specyrd/manifest.json``; migrate from ``.specyr/manifest.json`` if needed."""
+    """Load ``.specyrd/manifest.json``."""
     primary = repo_root / ".specyrd" / "manifest.json"
-    legacy = repo_root / ".specyr" / "manifest.json"
     empty: dict[str, Any] = {"specyrd_version": __version__, "agents": {}}
 
     def _parse(path: Path) -> dict[str, Any] | None:
@@ -195,18 +192,7 @@ def _load_manifest(repo_root: Path) -> dict[str, Any]:
         return data
 
     if primary.is_file():
-        data = _parse(primary) or empty
-        _remove_legacy_specyr_manifest(repo_root)
-        return data
-
-    if legacy.is_file():
-        data = _parse(legacy) or empty
-        primary.parent.mkdir(parents=True, exist_ok=True)
-        data["specyrd_version"] = __version__
-        primary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-        _remove_legacy_specyr_manifest(repo_root)
-        return data
-
+        return _parse(primary) or empty
     return empty
 
 
@@ -358,6 +344,16 @@ def run_init(
         skipped=skipped,
     )
 
+    # The project tree may sit below the checkout (the nested layout). Prefer
+    # the root `init project` recorded: discovery only walks *upward*, so run
+    # from the git root of a nested repo it cannot see `sr/` at all — which is
+    # how the ignore blocks came out unprefixed.
+    project = recorded_project_root(repo_root) or discover_project_root(target)
+    prefix = prefix_within(repo_root, project or repo_root)
+
+    if not dry_run:
+        apply_and_report(repo_root, prefix, written)
+
     readme_rel = Path(".specyrd/README.md")
     if not dry_run:
         agents: dict[str, list[str]] = manifest.setdefault("agents", {})
@@ -366,6 +362,7 @@ def run_init(
         agents[agent] = canonical
         if role is not None:
             manifest["role"] = role
+        manifest["project_root"] = prefix.rstrip("/") or "."
         _save_manifest(repo_root, manifest)
 
     return InitResult(written=written, skipped=skipped, dry_run=dry_run)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import do_next_task as dnt
+from specy_road.bundled_scripts import do_next_task as dnt
 
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_GATE = "55555555-5555-4555-8555-555555555555"

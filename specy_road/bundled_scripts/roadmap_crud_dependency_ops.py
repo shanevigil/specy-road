@@ -5,9 +5,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import find_chunk_path
-from roadmap_crud_ops import edit_node_set_pairs, repo_root, unknown_node_msg
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
+from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs, repo_root, unknown_node_msg
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 
 def merged_node_by_id(root: Path, node_id: str) -> dict | None:
@@ -20,6 +20,16 @@ def merged_node_by_id(root: Path, node_id: str) -> dict | None:
 def _dependencies_patch_value(keys: list[str]) -> str:
     """String for ``dependencies=`` patches (same ordering as the PM GUI)."""
     return " ".join(sorted(keys))
+
+
+def _archived_keys(root) -> set[str]:
+    """Archived node_keys, or empty when the ledger is absent/unreadable."""
+    try:
+        from specy_road.archive_index import archived_node_keys
+
+        return archived_node_keys(root)
+    except Exception:  # noqa: BLE001 - listing must not depend on the ledger
+        return set()
 
 
 def cmd_list_dependencies(args: object) -> None:
@@ -47,7 +57,12 @@ def cmd_list_dependencies(args: object) -> None:
             title = str(row.get("title", ""))[:72]
             print(f"{dk}\t{oid}\t{title}")
         else:
-            print(f"{dk}\t?\t(missing node_key in roadmap)")
+            label = (
+                "(archived — restore-archive to bring it back)"
+                if dk in _archived_keys(root)
+                else "(missing node_key in roadmap)"
+            )
+            print(f"{dk}\t?\t{label}")
 
 
 def cmd_set_dependencies(args: object) -> None:

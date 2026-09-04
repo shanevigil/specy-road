@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/archive.schema.json",
+  "title": "specy-road roadmap archive index",
+  "description": "Ledger of archived roadmap subtrees. Toolkit-owned and validated against this bundled copy — never against <repo_root>/schemas/ — so adopters pick up new fields by upgrading the package rather than hand-editing a schema.",
+  "type": "object",
+  "required": ["version", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "records": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/record" }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "record": {
+      "type": "object",
+      "required": [
+        "archive_id",
+        "depth",
+        "root_node_id",
+        "root_node_key",
+        "archived_at",
+        "node_keys",
+        "nodes_summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "archive_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "minLength": 1,
+          "description": "Stable handle used by list/show/restore and as the chunk, bundle, and ref filename stem."
+        },
+        "depth": {
+          "type": "string",
+          "enum": ["shallow", "deep"],
+          "description": "shallow: nodes still readable as JSON under archive/chunks/. deep: bundled into archive/deep/ with only archive/refs/ left behind."
+        },
+        "root_node_id": {
+          "type": "string",
+          "pattern": "^M[0-9]+(\\.[0-9]+)*$"
+        },
+        "root_node_key": { "$ref": "#/$defs/uuid" },
+        "archived_at": {
+          "type": "string",
+          "description": "ISO 8601 UTC timestamp of the archive operation."
+        },
+        "node_keys": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/uuid" },
+          "minItems": 1,
+          "description": "Every node_key in the archived subtree. validate_dependency_ids treats these as satisfied so live nodes may keep depending on archived work."
+        },
+        "nodes_summary": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node_summary" },
+          "minItems": 1,
+          "description": "Enough per-node identity to render the archive in the PM GUI without unpacking a deep bundle."
+        },
+        "chunk": {
+          "type": ["string", "null"],
+          "description": "Repo-relative path to the archived chunk JSON. Present while depth is shallow; null once deep."
+        },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/source" },
+          "description": "Where each archived node sat before it moved. Restore replays these exactly — same chunk, same position — so a round trip leaves no diff, including when the subtree spanned several chunks or shared one with live nodes."
+        },
+        "planning": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/planning_move" },
+          "description": "Planning sheets moved out of planning/ into roadmap/archive/planning/<archive_id>/. Emptied when deep (the bundle carries them instead)."
+        },
+        "bundle": {
+          "type": ["object", "null"],
+          "required": ["path", "sha256"],
+          "additionalProperties": false,
+          "properties": {
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "description": "Deep archive capsule: one canonical JSON file holding the archived nodes and planning-sheet bodies. Deliberately uncompressed \u2014 git already compresses and deltas blobs, and text keeps archived work greppable and diffable. Canonical formatting makes the sha256 reproducible; it is verified before any restore unfolds it."
+        },
+        "git": { "$ref": "#/$defs/git_provenance" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["chunk", "node_key", "index"],
+      "additionalProperties": false,
+      "properties": {
+        "chunk": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Manifest-relative chunk path, e.g. phases/M0.json."
+        },
+        "node_key": { "$ref": "#/$defs/uuid" },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Position this node held in that chunk's nodes array."
+        }
+      }
+    },
+    "planning_move": {
+      "type": "object",
+      "required": ["origin", "stored"],
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repo-relative path the sheet came from, e.g. planning/M0.2_roadmap-ci_<key>.md. Restore puts it back here exactly."
+        },
+        "stored": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repo-relative path inside the archive. Archived sheets live under roadmap/archive/planning/ rather than planning/archive/ because validate forbids any subdirectory under planning/."
+        }
+      }
+    },
+    "node_summary": {
+      "type": "object",
+      "required": ["id", "node_key", "title", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^M[0-9]+(\\.[0-9]+)*$" },
+        "node_key": { "$ref": "#/$defs/uuid" },
+        "title": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["vision", "phase", "milestone", "task", "gate"]
+        },
+        "status": { "type": "string" }
+      }
+    },
+    "git_provenance": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Refs the archived work was delivered on, read from milestone_execution and git at archive time. Every field is best-effort: a repo with no rollup history archives fine with nulls.",
+      "properties": {
+        "rollup_branch": { "type": ["string", "null"] },
+        "integration_branch": { "type": ["string", "null"] },
+        "rollup_tip": { "type": ["string", "null"] },
+        "merge_commit": { "type": ["string", "null"] },
+        "nearest_tag": { "type": ["string", "null"] },
+        "closed_at": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

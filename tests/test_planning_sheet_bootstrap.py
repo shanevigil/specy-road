@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from planning_artifacts import expected_planning_rel, resolve_planning_path
-from planning_sheet_bootstrap import (
+from specy_road.bundled_scripts.planning_artifacts import expected_planning_rel, resolve_planning_path
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     ensure_planning_sheet_for_new_node,
     feature_sheet_level2_titles,
     gate_sheet_level2_titles,

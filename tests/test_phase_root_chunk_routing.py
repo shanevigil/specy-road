@@ -11,8 +11,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from roadmap_chunk_router_pick import pick_target_chunk
-from roadmap_chunk_utils import phase_root_chunk_rel
+from specy_road.bundled_scripts.roadmap_chunk_router_pick import pick_target_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import phase_root_chunk_rel
 
 
 def _fixture(root: Path, chunks: dict[str, list[dict]]) -> None:

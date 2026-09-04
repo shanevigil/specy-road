@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import roadmap_gui_remote as rgr
+from specy_road.bundled_scripts import roadmap_gui_remote as rgr
 
 
 def _gh_pr(
@@ -43,14 +43,13 @@ def test_enrichment_is_mr_rejected(entry: dict | None, expected: bool) -> None:
 
 
 def test_github_pr_detail_open_pr(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     open_pr = _gh_pr(state="open", merged=False)
     resp = MagicMock()
     resp.status_code = 200
     resp.json.return_value = [open_pr]
 
-    with patch("roadmap_gui_remote.requests.get", return_value=resp) as g:
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", return_value=resp) as g:
         out = rgr._github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
@@ -61,7 +60,6 @@ def test_github_pr_detail_open_pr(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_github_pr_detail_merged_from_state_all(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     merged = _gh_pr(state="closed", merged=True, merged_at="2026-01-10T00:00:00Z")
     empty = MagicMock()
@@ -71,7 +69,7 @@ def test_github_pr_detail_merged_from_state_all(monkeypatch: pytest.MonkeyPatch)
     all_resp.status_code = 200
     all_resp.json.return_value = [merged]
 
-    with patch("roadmap_gui_remote.requests.get", side_effect=[empty, all_resp]):
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", side_effect=[empty, all_resp]):
         out = rgr._github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
@@ -80,7 +78,6 @@ def test_github_pr_detail_merged_from_state_all(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_github_pr_detail_rejected_closed_unmerged(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     rej = _gh_pr(state="closed", merged=False, merged_at=None)
     empty = MagicMock()
@@ -90,7 +87,7 @@ def test_github_pr_detail_rejected_closed_unmerged(monkeypatch: pytest.MonkeyPat
     all_resp.status_code = 200
     all_resp.json.return_value = [rej]
 
-    with patch("roadmap_gui_remote.requests.get", side_effect=[empty, all_resp]):
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", side_effect=[empty, all_resp]):
         out = rgr._github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
@@ -102,7 +99,6 @@ def test_github_pr_detail_open_not_list_falls_through_to_all(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Non-list JSON on the open query must not crash; state=all still runs."""
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
 
     merged = _gh_pr(state="closed", merged=True, merged_at="2026-01-10T00:00:00Z")
     bad_open = MagicMock()
@@ -112,7 +108,7 @@ def test_github_pr_detail_open_not_list_falls_through_to_all(
     all_resp.status_code = 200
     all_resp.json.return_value = [merged]
 
-    with patch("roadmap_gui_remote.requests.get", side_effect=[bad_open, all_resp]):
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", side_effect=[bad_open, all_resp]):
         out = rgr._github_pr_detail("o/r", "feature/x", "tok")
 
     assert out is not None
@@ -120,7 +116,6 @@ def test_github_pr_detail_open_not_list_falls_through_to_all(
 
 
 def test_gitlab_mr_detail_opened_mr(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
     mr = {
         "title": "m",
         "web_url": "http://gl/m/1",
@@ -133,7 +128,7 @@ def test_gitlab_mr_detail_opened_mr(monkeypatch: pytest.MonkeyPatch) -> None:
     resp.json.return_value = [mr]
 
     gr = {"provider": "gitlab", "repo": "g/p", "token": "t", "base_url": ""}
-    with patch("roadmap_gui_remote.requests.get", return_value=resp) as g:
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", return_value=resp) as g:
         out = rgr._gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
 
     assert out is not None
@@ -144,7 +139,6 @@ def test_gitlab_mr_detail_opened_mr(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_gitlab_mr_detail_merged_after_empty_opened(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
     merged_mr = {
         "title": "m",
         "web_url": "http://gl/m/1",
@@ -161,7 +155,7 @@ def test_gitlab_mr_detail_merged_after_empty_opened(monkeypatch: pytest.MonkeyPa
     merged_resp.json.return_value = [merged_mr]
 
     gr = {"provider": "gitlab", "repo": "g/p", "token": "t", "base_url": ""}
-    with patch("roadmap_gui_remote.requests.get", side_effect=[empty, merged_resp]):
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", side_effect=[empty, merged_resp]):
         out = rgr._gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
 
     assert out is not None
@@ -172,7 +166,6 @@ def test_gitlab_mr_detail_merged_after_empty_opened(monkeypatch: pytest.MonkeyPa
 def test_gitlab_mr_detail_rejected_closed_without_merge_commit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(rgr, "fetch_pr_hint", lambda _gr, _br: "hint")
     closed_mr = {
         "title": "m",
         "web_url": "http://gl/m/1",
@@ -192,7 +185,7 @@ def test_gitlab_mr_detail_rejected_closed_without_merge_commit(
     e3.json.return_value = [closed_mr]
 
     gr = {"provider": "gitlab", "repo": "g/p", "token": "t", "base_url": ""}
-    with patch("roadmap_gui_remote.requests.get", side_effect=[e1, e2, e3]):
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", side_effect=[e1, e2, e3]):
         out = rgr._gitlab_mr_detail(gr, "g/p", "feature/y", "tok")
 
     assert out is not None
@@ -203,7 +196,7 @@ def test_gitlab_mr_detail_rejected_closed_without_merge_commit(
 def test_test_git_remote_github_ok() -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    with patch("roadmap_gui_remote.requests.get", return_value=mock_resp) as g:
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", return_value=mock_resp) as g:
         ok, msg = rgr.test_git_remote(
             {"provider": "github", "repo": "o/r", "token": "t"},
         )
@@ -217,7 +210,7 @@ def test_test_git_remote_github_not_200() -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 401
     mock_resp.text = "nope"
-    with patch("roadmap_gui_remote.requests.get", return_value=mock_resp):
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", return_value=mock_resp):
         ok, msg = rgr.test_git_remote(
             {"provider": "github", "repo": "o/r", "token": "t"},
         )
@@ -243,7 +236,7 @@ def test_test_git_remote_missing_repo() -> None:
 def test_test_git_remote_gitlab_ok(provider: str, url_part: str) -> None:
     mock_resp = MagicMock()
     mock_resp.status_code = 200
-    with patch("roadmap_gui_remote.requests.get", return_value=mock_resp) as g:
+    with patch("specy_road.bundled_scripts.roadmap_gui_remote.requests.get", return_value=mock_resp) as g:
         ok, msg = rgr.test_git_remote(
             {
                 "provider": provider,
@@ -262,7 +255,7 @@ def test_test_llm_connection_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_ping() -> None:
         return None
 
-    with patch("review_node.ping_llm", fake_ping):
+    with patch("specy_road.bundled_scripts.review_node.ping_llm", fake_ping):
         ok, msg = rgr.test_llm_connection({"backend": "openai"})
     assert ok is True
     assert "responded" in msg.lower()
@@ -274,7 +267,7 @@ def test_test_llm_connection_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def bad_ping() -> None:
         raise RuntimeError("refused")
 
-    with patch("review_node.ping_llm", bad_ping):
+    with patch("specy_road.bundled_scripts.review_node.ping_llm", bad_ping):
         ok, msg = rgr.test_llm_connection({})
     assert ok is False
     assert "refused" in msg

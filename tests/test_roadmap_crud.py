@@ -8,8 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
-from roadmap_crud_ops import append_node_to_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_crud_ops import append_node_to_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 
@@ -366,7 +366,7 @@ def test_add_node_auto_creates_chunk_when_target_full(tmp_path: Path) -> None:
     # Tighten the cap so the existing 3-node chunk fits but adding any
     # non-trivial node would push it over the limit.
     cur = load_json_chunk(tmp_path / "roadmap" / "phases" / "T.json")
-    from roadmap_chunk_router_pick import simulate_chunk_lines
+    from specy_road.bundled_scripts.roadmap_chunk_router_pick import simulate_chunk_lines
 
     current_lines = simulate_chunk_lines(cur)
     cap = current_lines + 5  # tight: another node won't fit

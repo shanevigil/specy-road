@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-import do_next_available as dna
-import do_next_task as dnt
-import do_next_task_interactive as dnti
+from specy_road.bundled_scripts import do_next_available as dna
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts import do_next_task_interactive as dnti
 
 # dependencies[] reference node_key UUIDs (not display ids)
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
@@ -135,10 +135,10 @@ def test_available_prioritizes_blocked_before_not_started() -> None:
 def test_load_branch_enrichment_returns_empty_on_registry_failure(
     monkeypatch: pytest.MonkeyPatch, tmp_path,
 ) -> None:
-    def boom(_root):
+    def boom(_path, **_kw):
         raise RuntimeError("no registry")
 
-    monkeypatch.setattr(dna, "load_registry", boom)
+    monkeypatch.setattr(dna, "read_registry", boom)
     assert dna._load_branch_enrichment(tmp_path) == {}
 
 

@@ -9,11 +9,9 @@ from pathlib import Path
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
 
-if str(BUNDLED_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(BUNDLED_SCRIPTS))
 
-from roadmap_chunk_utils import load_json_chunk, load_manifest_mapping  # noqa: E402
-from roadmap_rebalance import build_pack_plan  # noqa: E402
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, load_manifest_mapping
+from specy_road.bundled_scripts.roadmap_rebalance import build_pack_plan
 
 
 def _copy_dogfood(dest: Path) -> Path:

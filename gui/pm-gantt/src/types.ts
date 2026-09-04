@@ -122,7 +122,6 @@ export type RoadmapResponse = {
   edges: DependencyEdge[];
   ordered_ids: string[];
   row_depths: number[];
-  pr_hints: Record<string, string>;
   git_enrichment: Record<string, Record<string, unknown>>;
   dependency_inheritance?: Record<string, DependencyInheritanceEntry>;
   outline_actions?: Record<string, OutlineActionsEntry>;
@@ -131,4 +130,68 @@ export type RoadmapResponse = {
   integration_branch_auto_ff?: IntegrationBranchAutoFfPayload;
   /** Set when the server scheduled deferred ``git fetch`` / integration FF (non-blocking). */
   sync?: { scheduled?: boolean };
+  /**
+   * Last-worked-on per node, keyed by ``node_key``. Derived from git history
+   * server-side and memoized on HEAD, so polling does not re-walk.
+   */
+  activity?: Record<string, ActivityEntry>;
+};
+
+/** One archived subtree, as recorded in `roadmap/archive/index.json`. */
+export type ArchiveRecord = {
+  archive_id: string;
+  /** `shallow`: nodes browsable as JSON. `deep`: folded into one capsule. */
+  depth: "shallow" | "deep";
+  root_node_id: string;
+  root_node_key: string;
+  archived_at: string;
+  node_keys: string[];
+  nodes_summary: {
+    id: string;
+    node_key: string;
+    title: string;
+    type: string;
+    status?: string;
+  }[];
+  chunk?: string | null;
+  planning?: { origin: string; stored: string }[];
+  bundle?: { path: string; sha256: string } | null;
+  /** Best-effort; every field may be null (no rollup history, deleted branch, no tags). */
+  git?: {
+    rollup_branch?: string | null;
+    integration_branch?: string | null;
+    rollup_tip?: string | null;
+    merge_commit?: string | null;
+    nearest_tag?: string | null;
+    closed_at?: string | null;
+  } | null;
+};
+
+export type ArchivesResponse = {
+  records: ArchiveRecord[];
+  /** Subtrees the server would accept an archive for (rollup Complete, unlocked). */
+  eligible: { node_id: string; title: string }[];
+  /**
+   * Auto-archive suggestions from the saved `pm_gui` preferences. Only
+   * populated when `auto_archive_completed` is on; archiving moves files, so
+   * these are offered for one click, never applied on their own.
+   */
+  auto?: {
+    enabled: boolean;
+    older_than_days: number;
+    candidates: { node_id: string; completed_at: string }[];
+  };
+};
+
+/**
+ * When a node was last worked on. Keyed by `node_key`, not display id.
+ *
+ * Derived from git history on the server, never stored: there is no sidecar
+ * file, so an existing repo is populated on first load with nothing to seed.
+ * `source` says which commit answered — the node's own planning sheet
+ * (precise) or, only when that was never committed, its roadmap chunk.
+ */
+export type ActivityEntry = {
+  at: string;
+  source: "planning" | "chunk";
 };

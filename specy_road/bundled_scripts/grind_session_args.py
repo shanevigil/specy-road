@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
+from specy_road.runtime_paths import add_repo_root_arg
 
 
 def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
@@ -61,8 +61,7 @@ def _add_implement_args(p: argparse.ArgumentParser) -> None:
 
 
 def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--repo-root", type=Path, default=None, metavar="DIR",
-                   help="Repository root (default: git root or cwd).")
+    add_repo_root_arg(p)
     p.add_argument("--base", default=None, metavar="BRANCH",
                    help="Integration branch (default: roadmap/git-workflow.yaml).")
     p.add_argument("--remote", default=None, metavar="NAME",

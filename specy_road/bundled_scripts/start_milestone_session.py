@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.milestone_chunk_io import (
     build_active_milestone_execution,
@@ -20,45 +20,15 @@ from specy_road.milestone_session import (
     write_milestone_session,
 )
 from specy_road.milestone_subtree import structural_leaf_ids
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.bundled_scripts.repo_ops import git_run, sync_integration_branch
 
 _CODENAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _working_tree_clean() -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return not r.stdout.strip()
-
-
-def _sync_integration_branch(base: str, remote: str) -> None:
-    if not _working_tree_clean():
-        print(
-            "error: working tree is not clean (commit, stash, or discard changes first).",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    _git("fetch", remote)
-    _git("checkout", base)
-    try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
-    except subprocess.CalledProcessError:
-        print(
-            f"error: could not fast-forward local {base!r} to {remote}/{base}.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
 
 
 def _branch_exists(name: str) -> bool:
@@ -105,13 +75,13 @@ def _validate_parent(nodes: list[dict], parent_id: str) -> dict:
 
 def _ensure_rollup_branch(rollup: str, base: str, remote: str) -> None:
     if not _branch_exists(rollup):
-        _git("checkout", "-b", rollup)
+        git_run(ROOT, "checkout", "-b", rollup)
         print(f"[ok] created branch {rollup!r} from {base!r}")
-        _git("checkout", base)
+        git_run(ROOT, "checkout", base)
         return
-    _git("checkout", rollup)
+    git_run(ROOT, "checkout", rollup)
     try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
+        git_run(ROOT, "merge", "--ff-only", f"{remote}/{base}")
     except subprocess.CalledProcessError:
         print(
             f"error: could not fast-forward {rollup!r} to {remote}/{base}.",
@@ -121,10 +91,10 @@ def _ensure_rollup_branch(rollup: str, base: str, remote: str) -> None:
             "  Resolve manually (e.g. merge or reset the rollup branch), then retry.",
             file=sys.stderr,
         )
-        _git("checkout", base)
+        git_run(ROOT, "checkout", base)
         raise SystemExit(1)
     print(f"[ok] fast-forwarded {rollup!r} to match {remote}/{base}")
-    _git("checkout", base)
+    git_run(ROOT, "checkout", base)
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -139,13 +109,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         metavar="PARENT_NODE_ID",
         help="Roadmap id of the milestone parent (e.g. M7).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--base",
         default=None,
@@ -164,7 +128,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = _parse_args(argv)
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
+    ROOT = resolve_repo_root(args)
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
         explicit_base=args.base,
@@ -193,7 +157,12 @@ def main(argv: list[str] | None = None) -> None:
     codename = str(parent["codename"]).strip()
     rollup = f"feature/rm-{codename}"
 
-    _sync_integration_branch(base, remote)
+    sync_integration_branch(
+        ROOT,
+        base,
+        remote,
+        retry_hint="retry start-milestone-session",
+    )
     _ensure_rollup_branch(rollup, base, remote)
 
     work_dir = ROOT / "work"

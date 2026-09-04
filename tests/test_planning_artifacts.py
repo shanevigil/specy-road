@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from planning_artifacts import (
+from specy_road.bundled_scripts.planning_artifacts import (
     collect_planning_artifact_errors,
     normalize_planning_dir,
     split_frontmatter,
 )
-from roadmap_edit_fields import apply_set
+from specy_road.bundled_scripts.roadmap_edit_fields import apply_set
 
 
 def _minimal_sheet(_node_id: str, _node_key: str) -> str:

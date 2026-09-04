@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scaffold_planning import scaffold_planning_for_node
+from specy_road.bundled_scripts.scaffold_planning import scaffold_planning_for_node
 
 from tests.test_roadmap_crud import _fixture_repo
 

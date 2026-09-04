@@ -5,12 +5,12 @@ from __future__ import annotations
 import yaml
 import pytest
 
-import abort_task_pickup as atp
+from specy_road.bundled_scripts import abort_task_pickup as atp
 
 
 def _claimed(monkeypatch: pytest.MonkeyPatch) -> None:
     """A feature branch with a resolvable registry claim."""
-    monkeypatch.setattr(atp, "_current_branch", lambda: "feature/rm-ab")
+    monkeypatch.setattr(atp, "current_branch", lambda _root: "feature/rm-ab")
     monkeypatch.setattr(
         atp,
         "resolve_feature_rm_registry_context",
@@ -66,7 +66,7 @@ def test_abort_refuses_non_feature_branch(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
-    monkeypatch.setattr(atp, "_current_branch", lambda: "main")
+    monkeypatch.setattr(atp, "current_branch", lambda _root: "main")
     monkeypatch.setattr(
         atp,
         "resolve_integration_defaults",
@@ -80,7 +80,7 @@ def test_abort_refuses_ahead_of_remote_without_force(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
-    monkeypatch.setattr(atp, "_current_branch", lambda: "feature/rm-x")
+    monkeypatch.setattr(atp, "current_branch", lambda _root: "feature/rm-x")
     monkeypatch.setattr(
         atp,
         "resolve_integration_defaults",
@@ -96,7 +96,7 @@ def test_abort_refuses_ahead_of_remote_without_force(
             [],
         ),
     )
-    monkeypatch.setattr(atp, "_git", lambda *_a, **_k: None)
+    monkeypatch.setattr(atp, "git_run", lambda *_a, **_k: None)
     monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 2)
     with pytest.raises(SystemExit):
         atp.main(["--repo-root", str(tmp_path)])
@@ -105,12 +105,12 @@ def test_abort_refuses_ahead_of_remote_without_force(
 def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     calls: list[list[str]] = []
 
-    def fake_git(*args: str) -> None:
+    def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
     branches = iter(["feature/rm-ab", "dev"])
 
-    def fake_branch() -> str:
+    def fake_branch(_root) -> str:
         return next(branches)
 
     reg_doc = {
@@ -131,7 +131,7 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
     )
 
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
-    monkeypatch.setattr(atp, "_current_branch", fake_branch)
+    monkeypatch.setattr(atp, "current_branch", fake_branch)
     monkeypatch.setattr(
         atp,
         "resolve_integration_defaults",
@@ -144,7 +144,7 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
     )
     monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 0)
     monkeypatch.setattr(atp, "_sync_integration_branch_ff", lambda *_a, **_k: None)
-    monkeypatch.setattr(atp, "_git", fake_git)
+    monkeypatch.setattr(atp, "git_run", fake_git)
     monkeypatch.setattr(atp, "_delete_feature_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(atp, "_remove_pickup_work_files", lambda *_a, **_k: None)
 
@@ -160,12 +160,12 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
 def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     calls: list[str] = []
 
-    def fake_git(*args: str) -> None:
+    def fake_git(_root, *args: str) -> None:
         calls.append(args[0])
 
     branches = iter(["feature/rm-ab", "dev"])
 
-    def fake_branch() -> str:
+    def fake_branch(_root) -> str:
         return next(branches)
 
     reg_doc = {
@@ -186,7 +186,7 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
     )
 
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
-    monkeypatch.setattr(atp, "_current_branch", fake_branch)
+    monkeypatch.setattr(atp, "current_branch", fake_branch)
     monkeypatch.setattr(
         atp,
         "resolve_integration_defaults",
@@ -204,7 +204,7 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
     )
     monkeypatch.setattr(atp, "_count_commits_ahead_of_remote_base", lambda *_a, **_k: 3)
     monkeypatch.setattr(atp, "_sync_integration_branch_ff", lambda *_a, **_k: None)
-    monkeypatch.setattr(atp, "_git", fake_git)
+    monkeypatch.setattr(atp, "git_run", fake_git)
     monkeypatch.setattr(atp, "_delete_feature_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(atp, "_remove_pickup_work_files", lambda *_a, **_k: None)
 

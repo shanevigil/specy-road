@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from roadmap_layout import sibling_sort_key
+from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
+from specy_road.node_kinds import allows_children, parent_type_allowed
 
 # Maximum dot-separated segments in a display id (M0.1.2 = 3 segments).
 MAX_OUTLINE_DEPTH = 8
@@ -41,9 +42,9 @@ def can_indent_to_parent(
     p = by_id.get(new_parent_id)
     if not n or not p:
         return False
-    if p.get("type") == "gate":
+    if not allows_children(p):
         return False
-    if n.get("type") == "gate" and p.get("type") not in ("vision", "phase"):
+    if not parent_type_allowed(n.get("type"), p.get("type")):
         return False
     parent_seg = outline_depth_from_id(new_parent_id)
     # After reparent: node sits at parent_seg+1; deepest descendant adds edges below node.

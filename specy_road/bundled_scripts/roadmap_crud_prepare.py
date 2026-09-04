@@ -15,7 +15,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 
 def heal_before_mutation(root: Path) -> None:
@@ -24,7 +24,7 @@ def heal_before_mutation(root: Path) -> None:
     Idempotent and silent when there is nothing to fix, so legacy repos keep
     self-repairing without smuggling untracked writes into a transaction.
     """
-    from validate_self_heal import auto_heal_roadmap
+    from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 
     try:
         auto_heal_roadmap(root)
@@ -45,7 +45,7 @@ def derive_codename_with_collision_suffix(
     (e.g. empty or all-punctuation titles); callers may leave the node
     unnamed so ``validate`` can re-visit it later.
     """
-    from roadmap_edit_fields import title_to_codename
+    from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 
     slug = title_to_codename(title)
     if not slug:

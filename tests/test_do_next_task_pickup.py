@@ -5,8 +5,8 @@ from __future__ import annotations
 import yaml
 import pytest
 
-import do_next_task as dnt
-from registration_pickup_commit import (
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts.registration_pickup_commit import (
     REGISTRATION_COMMIT_CI_SKIP_SUFFIX,
     registration_commit_message,
 )
@@ -30,7 +30,7 @@ def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     """brief → register commit on integration → checkout -b feature (push mocked out)."""
     calls: list[list[str]] = []
 
-    def fake_git(*args: str) -> None:
+    def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
     (tmp_path / "roadmap").mkdir(parents=True)
@@ -42,11 +42,10 @@ def test_pickup_git_order_after_sync(monkeypatch: pytest.MonkeyPatch, tmp_path) 
     node = _pickup_test_node()
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
     monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
@@ -83,7 +82,7 @@ def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp
     """Default: add → commit (with CI skip suffix) → push integration → checkout -b feature."""
     calls: list[list[str]] = []
 
-    def fake_git(*args: str) -> None:
+    def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
     (tmp_path / "roadmap").mkdir(parents=True)
@@ -95,10 +94,9 @@ def test_pickup_git_order_pushes_by_default(monkeypatch: pytest.MonkeyPatch, tmp
     node = _pickup_test_node()
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
@@ -131,7 +129,7 @@ def test_pickup_registers_leaf_claim_only(
 ) -> None:
     calls: list[list[str]] = []
 
-    def fake_git(*args: str) -> None:
+    def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
     (tmp_path / "roadmap").mkdir(parents=True)
@@ -153,11 +151,10 @@ def test_pickup_registers_leaf_claim_only(
     leaf["parent_id"] = "M9"
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [parent, leaf]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
     monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(
@@ -224,10 +221,9 @@ def test_pickup_rejects_non_leaf_when_available_returns_parent(
     )
     monkeypatch.setattr(dnt, "_available", misconfigured_available)
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(
         dnt,
@@ -269,7 +265,7 @@ def test_registration_commit_message_ci_skip_toggle() -> None:
 def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     calls: list[list[str]] = []
 
-    def fake_git(*args: str) -> None:
+    def fake_git(_root, *args: str) -> None:
         calls.append(list(args))
 
     (tmp_path / "roadmap").mkdir(parents=True)
@@ -281,11 +277,10 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
     node = _pickup_test_node()
     monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
     monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "_sync_integration_branch", lambda _b, _r: None)
-    monkeypatch.setattr(dnt, "_assert_working_tree_clean", lambda: None)
+    monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
     monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
     monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
-    monkeypatch.setattr(dnt, "_git", fake_git)
+    monkeypatch.setattr(dnt, "git_run", fake_git)
     monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
     monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
     monkeypatch.setattr(

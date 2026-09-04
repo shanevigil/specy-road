@@ -22,10 +22,9 @@ import sys
 import time
 from pathlib import Path
 
-import yaml
 
-from grind_session_args import parse_grind_session_args
-from grind_session_events import (
+from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
+from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
     EXIT_NO_LEAVES,
@@ -34,11 +33,13 @@ from grind_session_events import (
     EXIT_PRE_FINISH_FAILED,
     EventEmitter,
 )
-from session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
-from session_plan_render import render_session_plan_text
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
+from specy_road.bundled_scripts.repo_ops import current_branch
 
 
 # ---------------------------------------------------------------------------
@@ -46,17 +47,9 @@ from specy_road.runtime_paths import default_user_repo_root
 # ---------------------------------------------------------------------------
 
 
-def _load_registry(repo_root: Path) -> dict:
-    path = repo_root / "roadmap" / "registry.yaml"
-    if not path.is_file():
-        return {"version": 1, "entries": []}
-    with path.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 def gather_plan(repo_root: Path, under: str | None) -> tuple[list[dict], dict, SessionPlan]:
     nodes = load_roadmap(repo_root)["nodes"]
-    reg = _load_registry(repo_root)
+    reg = read_registry(registry_path(repo_root))
     return nodes, reg, compute_session_plan(nodes, reg, under=under)
 
 
@@ -75,14 +68,6 @@ def _run_cli(repo_root: Path, cli_args: list[str]) -> int:
 def _run_shell(cmd: str, env: dict, repo_root: Path) -> int:
     proc = subprocess.run(cmd, shell=True, cwd=repo_root, env=env)
     return proc.returncode
-
-
-def _current_branch(repo_root: Path) -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=repo_root, capture_output=True, text=True, check=False,
-    )
-    return (r.stdout or "").strip()
 
 
 def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
@@ -161,7 +146,7 @@ def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
     if not branch.startswith("feature/rm-"):
         return fallback_id
     codename = branch[len("feature/rm-"):]
-    reg = _load_registry(repo_root)
+    reg = read_registry(registry_path(repo_root))
     for e in reg.get("entries") or []:
         if e.get("codename") == codename and e.get("node_id"):
             return e["node_id"]
@@ -188,7 +173,7 @@ def _do_cycle(args, repo_root: Path, emitter: EventEmitter, nodes: list[dict],
     if rc != 0:
         emitter.emit("hook_failed", phase="pickup", node_id=target_id, rc=rc)
         return None, EXIT_PICKUP_FAILED
-    branch = _current_branch(repo_root) or f"feature/rm-{codename}"
+    branch = current_branch(repo_root) or f"feature/rm-{codename}"
     node_id = _resolve_picked(repo_root, branch, target_id)
     ctx = {
         "node_id": node_id,

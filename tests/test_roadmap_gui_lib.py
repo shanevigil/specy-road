@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-import roadmap_gui_lib as m
-import roadmap_gui_settings as st
+from specy_road.bundled_scripts import roadmap_gui_lib as m
+from specy_road.bundled_scripts import roadmap_gui_settings as st
 
 
 def test_apply_llm_env_anthropic(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,7 +141,6 @@ def test_llm_inherit_off_is_blank_without_project_overlay(
     m.save_settings_for_repo(
         repo,
         inherit_llm=False,
-        inherit_git_remote=False,
         llm=blank,
         git_remote=m.default_settings()["git_remote"],
     )
@@ -173,7 +172,6 @@ def test_git_remote_is_per_repository_only(
     m.save_settings_for_repo(
         repo,
         inherit_llm=True,
-        inherit_git_remote=False,
         llm=d["llm"],
         git_remote={**d["git_remote"], "repo": "my/o"},
     )
@@ -201,7 +199,6 @@ def test_per_repo_llm_overlay(
     m.save_settings_for_repo(
         repo_a,
         inherit_llm=False,
-        inherit_git_remote=False,
         llm={**d["llm"], "openai_api_key": "key-a"},
         git_remote={**d["git_remote"]},
     )

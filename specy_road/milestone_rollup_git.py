@@ -2,51 +2,26 @@
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
-
-def _git_run(repo: Path, *args: str) -> tuple[int, str]:
-    r = subprocess.run(
-        ["git", *args],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    err = (r.stderr or r.stdout or "").strip()
-    return r.returncode, err
+from specy_road.git_subprocess import git_checked, git_code
 
 
 def current_branch(repo: Path) -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return r.stdout.strip()
+    return git_checked(["rev-parse", "--abbrev-ref", "HEAD"], repo)
 
 
 def rev_parse_head(repo: Path) -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return r.stdout.strip()
+    return git_checked(["rev-parse", "HEAD"], repo)
 
 
 def branch_exists(repo: Path, branch: str) -> bool:
-    code, _ = _git_run(repo, "rev-parse", "--verify", branch)
+    code, _ = git_code(["rev-parse", "--verify", branch], repo)
     return code == 0
 
 
 def push_branch(repo: Path, remote: str, branch: str) -> tuple[bool, str]:
-    code, out = _git_run(repo, "push", "-u", remote, branch)
+    code, out = git_code(["push", "-u", remote, branch], repo)
     if code != 0:
         return False, out or "git push failed"
     return True, ""
@@ -64,37 +39,37 @@ def cherry_pick_bookkeeping_to_integration(
     Move to integration, fast-forward from remote, cherry-pick bookkeeping commit, push.
     Ends on ``integration_branch``.
     """
-    code, out = _git_run(repo, "fetch", remote)
+    code, out = git_code(["fetch", remote], repo)
     if code != 0:
         return False, f"git fetch {remote} failed: {out}"
 
-    code, out = _git_run(repo, "checkout", integration_branch)
+    code, out = git_code(["checkout", integration_branch], repo)
     if code != 0:
-        _git_run(repo, "checkout", leaf_branch)
+        git_code(["checkout", leaf_branch], repo)
         return False, f"git checkout {integration_branch} failed: {out}"
 
     rr = f"{remote}/{integration_branch}"
-    code, out = _git_run(repo, "merge", "--ff-only", rr)
+    code, out = git_code(["merge", "--ff-only", rr], repo)
     if code != 0:
-        _git_run(repo, "checkout", leaf_branch)
+        git_code(["checkout", leaf_branch], repo)
         return (
             False,
             f"fast-forward {integration_branch} to {rr} failed: {out}",
         )
 
-    code, out = _git_run(repo, "cherry-pick", bookkeeping_commit)
+    code, out = git_code(["cherry-pick", bookkeeping_commit], repo)
     if code != 0:
-        _git_run(repo, "cherry-pick", "--abort")
-        _git_run(repo, "checkout", leaf_branch)
+        git_code(["cherry-pick", "--abort"], repo)
+        git_code(["checkout", leaf_branch], repo)
         return (
             False,
             f"cherry-pick {bookkeeping_commit[:8]} onto {integration_branch} failed "
             f"(resolve conflicts on {integration_branch}, then continue): {out}",
         )
 
-    code, out = _git_run(repo, "push", remote, integration_branch)
+    code, out = git_code(["push", remote, integration_branch], repo)
     if code != 0:
-        _git_run(repo, "checkout", leaf_branch)
+        git_code(["checkout", leaf_branch], repo)
         return False, f"git push {remote} {integration_branch} failed: {out}"
 
     return True, ""
@@ -111,26 +86,26 @@ def merge_leaf_into_rollup(
     """
     Check out rollup, merge leaf, push rollup. Ends on ``integration_branch``.
     """
-    code, out = _git_run(repo, "fetch", remote)
+    code, out = git_code(["fetch", remote], repo)
     if code != 0:
         return False, f"git fetch {remote} failed: {out}"
 
-    code, out = _git_run(repo, "checkout", rollup_branch)
+    code, out = git_code(["checkout", rollup_branch], repo)
     if code != 0:
         return False, f"git checkout {rollup_branch} failed: {out}"
 
-    code, out = _git_run(repo, "merge", "--no-edit", leaf_branch)
+    code, out = git_code(["merge", "--no-edit", leaf_branch], repo)
     if code != 0:
-        _git_run(repo, "merge", "--abort")
-        _git_run(repo, "checkout", integration_branch)
+        git_code(["merge", "--abort"], repo)
+        git_code(["checkout", integration_branch], repo)
         return False, f"git merge {leaf_branch} into {rollup_branch} failed: {out}"
 
-    code, out = _git_run(repo, "push", remote, rollup_branch)
+    code, out = git_code(["push", remote, rollup_branch], repo)
     if code != 0:
-        _git_run(repo, "checkout", integration_branch)
+        git_code(["checkout", integration_branch], repo)
         return False, f"git push {remote} {rollup_branch} failed: {out}"
 
-    code, out = _git_run(repo, "checkout", integration_branch)
+    code, out = git_code(["checkout", integration_branch], repo)
     if code != 0:
         return False, f"git checkout {integration_branch} after rollup merge failed: {out}"
 

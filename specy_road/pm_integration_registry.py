@@ -9,13 +9,13 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_subprocess import git_ok
-from specy_road.git_workflow_config import (
+from specy_road.git_subprocess import (
     current_branch_name,
+    git_ok,
     is_git_worktree,
-    resolve_integration_defaults,
     working_tree_clean,
 )
+from specy_road.git_workflow_config import resolve_integration_defaults
 
 REGISTRY_REL = Path("roadmap") / "registry.yaml"
 

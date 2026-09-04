@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-from tests.helpers import BUNDLED_SCRIPTS
 
-if str(BUNDLED_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(BUNDLED_SCRIPTS))
-import pm_gui_git_remote_verify as _pm_git  # noqa: E402
+from specy_road.bundled_scripts import pm_gui_git_remote_verify as _pm_git
 
 from specy_road.registry_remote_overlay import (
     merge_registry_with_remote_overlay,
@@ -23,9 +19,9 @@ from specy_road.registry_remote_overlay import (
     roadmap_fingerprint_with_remote_refs,
     list_remote_feature_rm_refs,
 )
-import specy_road.registry_remote_overlay as _registry_overlay  # noqa: E402
-import roadmap_gui_settings as _rgs  # noqa: E402
-from roadmap_gui_lib import roadmap_fingerprint
+import specy_road.registry_remote_overlay as _registry_overlay
+from specy_road.bundled_scripts import roadmap_gui_settings as _rgs
+from specy_road.bundled_scripts.roadmap_gui_lib import roadmap_fingerprint
 
 
 def _isolate_gui_settings(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

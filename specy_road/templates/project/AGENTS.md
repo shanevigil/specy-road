@@ -1,5 +1,9 @@
 # Agents — load order
 
+0. `roadmap-context.md` — the current state of the roadmap in one file: what is
+   done, what was decided, which gates are open, which dependencies were dropped,
+   and what has been archived. Read this before crawling `planning/` or `work/`.
+   Regenerate with `specy-road digest`.
 1. `constitution/purpose.md` — why this exists
 2. `constitution/principles.md` — how we decide
 3. `constraints/README.md` — enforced rules
@@ -13,6 +17,25 @@ Focused brief:
 ```bash
 specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md
 ```
+
+## Finding things
+
+Do not grep `planning/` or `work/` directly. Those directories hold a great deal
+of duplicated text — a brief inlines its ancestor planning sheets and every
+the `shared/*.md` files it cites, and a pr-body re-inlines the whole brief — so a raw
+search returns the same passage many times over. Use the ranked, deduplicated
+index instead:
+
+```bash
+specy-road search "<query>"                    # live + archived, current work first
+specy-road search "<query>" --scope archived   # completed work, hidden from IDE indexing
+specy-road search <NODE_ID>                    # everything about one node
+specy-road history <NODE_ID>                   # how it reached its current state
+```
+
+Archived roadmap material is deliberately excluded from IDE indexing (see
+`.cursorindexingignore`) so it cannot crowd out current decisions. It is still
+fully readable — search returns a path, and you open it.
 
 The brief inlines each effective dependency's `## Intent` block under `## 6. Dependency context (intent of upstream work)` — read it before opening dependency planning sheets directly. When **authoring** a planning sheet, do not paraphrase what dependencies deliver; the brief carries that for the coding agent automatically.
 

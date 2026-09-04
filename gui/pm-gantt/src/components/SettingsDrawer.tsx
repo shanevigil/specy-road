@@ -189,6 +189,9 @@ export function SettingsDrawer({
   const [inheritPmGui, setInheritPmGui] = useState(true);
   const [registryRemoteOverlay, setRegistryRemoteOverlay] = useState(false);
   const [integrationBranchAutoFf, setIntegrationBranchAutoFf] = useState(false);
+  const [autoHideCompleted, setAutoHideCompleted] = useState(false);
+  const [autoArchiveCompleted, setAutoArchiveCompleted] = useState(false);
+  const [autoArchiveAfterDays, setAutoArchiveAfterDays] = useState("90");
   const [gitRemoteTestedOk, setGitRemoteTestedOk] = useState(false);
   const [repoLabel, setRepoLabel] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -231,6 +234,13 @@ export function SettingsDrawer({
         setGitRemoteTestedOk(tested);
         setRegistryRemoteOverlay(pmGuiOverlayPersistedRef.current && tested);
         setIntegrationBranchAutoFf(pm.integration_branch_auto_ff === true);
+        setAutoHideCompleted(pm.auto_hide_completed === true);
+        setAutoArchiveCompleted(pm.auto_archive_completed === true);
+        setAutoArchiveAfterDays(
+          pm.auto_archive_after_days == null
+            ? "90"
+            : String(pm.auto_archive_after_days),
+        );
         const root = typeof s.repo_root === "string" ? s.repo_root : "";
         setRepoLabel(root);
         setLlm(
@@ -262,7 +272,6 @@ export function SettingsDrawer({
         : pmGuiOverlayPersistedRef.current;
       putSettings({
         inherit_llm: inheritLlm,
-        inherit_git_remote: false,
         inherit_pm_gui: inheritPmGui,
         llm: buildLlmPayload(llm),
         git_remote: {
@@ -274,6 +283,14 @@ export function SettingsDrawer({
         pm_gui: {
           registry_remote_overlay: overlayOutbound,
           integration_branch_auto_ff: integrationBranchAutoFf,
+          auto_hide_completed: autoHideCompleted,
+          auto_archive_completed: autoArchiveCompleted,
+          // Guard the floor: a 0-day threshold would sweep work the moment it
+          // finished, which is exactly what the age gate exists to prevent.
+          auto_archive_after_days: Math.max(
+            1,
+            Number.parseInt(autoArchiveAfterDays, 10) || 90,
+          ),
         },
       })
         .then(() => {
@@ -301,6 +318,9 @@ export function SettingsDrawer({
     inheritPmGui,
     registryRemoteOverlay,
     integrationBranchAutoFf,
+    autoHideCompleted,
+    autoArchiveCompleted,
+    autoArchiveAfterDays,
     open,
   ]);
 
@@ -400,6 +420,31 @@ export function SettingsDrawer({
         label="Fast-forward integration branch (git fetch + merge --ff-only)"
         optionTitle="When you are checked out on the integration branch from roadmap/git-workflow.yaml and the working tree is clean, the server periodically runs git fetch and merge --ff-only so the PM chart matches the remote trunk (throttled; interval matches registry fetch by default, overridable via SPECY_ROAD_GUI_INTEGRATION_FF_INTERVAL_S). Ignored on other branches or with local changes."
       />
+      <h3 className="settings-archive-title">Completed work</h3>
+      <SettingsToggleRow
+        checked={autoHideCompleted}
+        onChange={setAutoHideCompleted}
+        label="Hide completed work by default"
+        optionTitle="Starts each session with the Hide Complete filter on. This is a view filter only — it hides rows and touches no files. The toolbar toggle still works normally."
+      />
+      <SettingsToggleRow
+        checked={autoArchiveCompleted}
+        onChange={setAutoArchiveCompleted}
+        label="Auto-archive work completed long ago"
+        optionTitle="Offers completed subtrees for archiving once they are older than the threshold below. Archiving MOVES FILES out of roadmap/phases and planning/ into roadmap/archive/ — it is reversible, but it is not a view filter."
+      />
+      <label className="settings-number-row">
+        <span title="Only subtrees complete for longer than this are eligible for auto-archiving. Age comes from the milestone rollup close date, or from the node's last commit in git history.">
+          Archive after (days)
+        </span>
+        <input
+          type="number"
+          min={1}
+          value={autoArchiveAfterDays}
+          disabled={!autoArchiveCompleted}
+          onChange={(e) => setAutoArchiveAfterDays(e.target.value)}
+        />
+      </label>
       <h3 className="settings-appearance-title">Appearance</h3>
       <ThemeModeSegmented value={themeMode} onChange={onThemeModeChange} />
       <h3

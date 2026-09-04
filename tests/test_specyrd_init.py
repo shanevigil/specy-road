@@ -39,48 +39,6 @@ def test_specyrd_init_dry_run_cursor(tmp_path: Path) -> None:
     assert not (tmp_path / ".cursor").exists()
 
 
-def test_specyrd_migrates_legacy_dot_specyr_manifest(tmp_path: Path) -> None:
-    """``.specyr/manifest.json`` is copied to ``.specyrd/`` and the legacy file is removed."""
-    leg = tmp_path / ".specyr"
-    leg.mkdir()
-    (leg / "manifest.json").write_text(
-        json.dumps({"specyr_version": "0.0.1", "agents": {"cursor": ["old"]}}),
-        encoding="utf-8",
-    )
-    run_init(
-        target=tmp_path,
-        agent="cursor",
-        dry_run=False,
-        force=False,
-        ai_commands_dir=None,
-    )
-    primary = tmp_path / ".specyrd" / "manifest.json"
-    assert primary.is_file()
-    data = json.loads(primary.read_text(encoding="utf-8"))
-    assert "specyrd_version" in data
-    assert "cursor" in data["agents"]
-    assert not (leg / "manifest.json").is_file()
-
-
-def test_specyrd_init_removes_stale_legacy_when_primary_exists(tmp_path: Path) -> None:
-    (tmp_path / ".specyrd").mkdir(parents=True)
-    (tmp_path / ".specyrd" / "manifest.json").write_text(
-        json.dumps({"specyrd_version": "9.9.9", "agents": {}}),
-        encoding="utf-8",
-    )
-    leg = tmp_path / ".specyr"
-    leg.mkdir()
-    (leg / "manifest.json").write_text("{}", encoding="utf-8")
-    run_init(
-        target=tmp_path,
-        agent="cursor",
-        dry_run=False,
-        force=False,
-        ai_commands_dir=None,
-    )
-    assert not (leg / "manifest.json").is_file()
-
-
 def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
     run_init(
         target=tmp_path,
@@ -294,3 +252,34 @@ def test_specyrd_cli_extras_dry_run_skips_pip(monkeypatch: pytest.MonkeyPatch, t
         check=True,
     )
     assert not called
+
+
+def test_every_command_template_is_registered_for_install() -> None:
+    """A template with no COMMAND_FILES entry ships in the wheel and never installs.
+
+    Nothing else catches that: packaging globs the whole templates directory, so
+    the file is present but no code path ever copies it.
+    """
+    from specy_road.runtime_paths import specy_road_package_dir
+    from specy_road.specyrd_init import COMMAND_FILES
+
+    directory = specy_road_package_dir() / "templates" / "specyrd" / "commands"
+    on_disk = {p.name for p in directory.glob("specyrd-*.md")}
+
+    assert on_disk == set(COMMAND_FILES)
+
+
+def test_every_role_stub_is_a_real_command_file() -> None:
+    from specy_road.specyrd_init import COMMAND_FILES, ROLE_COMMAND_FILES
+
+    for role, names in ROLE_COMMAND_FILES.items():
+        assert set(names) <= set(COMMAND_FILES), role
+
+
+def test_the_context_tools_install_for_both_roles() -> None:
+    """search/digest/history are how an agent avoids drowning in the corpus."""
+    from specy_road.specyrd_init import ROLE_COMMAND_FILES
+
+    context_tools = {"specyrd-search.md", "specyrd-digest.md", "specyrd-history.md"}
+    for role in ("pm", "dev"):
+        assert context_tools <= set(ROLE_COMMAND_FILES[role]), role

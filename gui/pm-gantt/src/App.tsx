@@ -22,6 +22,7 @@ import {
   PmGuiConcurrencyError,
   postPublish,
   setPmGuiFingerprintGetter,
+  getSettings,
 } from "./api";
 import {
   computeSpawnRect,
@@ -110,6 +111,11 @@ const SharedDocEditModal = lazy(() =>
 const VisionDrawer = lazy(() =>
   import("./components/VisionDrawer").then((m) => ({ default: m.VisionDrawer })),
 );
+const ArchiveDrawer = lazy(() =>
+  import("./components/ArchiveDrawer").then((m) => ({
+    default: m.ArchiveDrawer,
+  })),
+);
 const WorkNotesDrawer = lazy(() =>
   import("./components/WorkNotesDrawer").then((m) => ({
     default: m.WorkNotesDrawer,
@@ -170,6 +176,27 @@ export default function App() {
   const preTileRectsRef = useRef<Record<string, ModalRect>>({});
   const headerRef = useRef<HTMLElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
+  // Seed the Hide Complete filter from the saved preference, once on mount.
+  // It only sets the initial value: the toolbar toggle stays fully in charge
+  // afterwards, and this is a view filter — it never archives anything.
+  useEffect(() => {
+    let cancelled = false;
+    void getSettings()
+      .then((s) => {
+        const pm = (s.pm_gui as Record<string, unknown>) || {};
+        if (!cancelled && pm.auto_hide_completed === true) {
+          setHideCompleteActive(true);
+        }
+      })
+      .catch(() => {
+        /* preference is a convenience; a failed read just means "off" */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [constitutionOpen, setConstitutionOpen] = useState(false);
   const [visionOpen, setVisionOpen] = useState(false);
   const [sharedDocsOpen, setSharedDocsOpen] = useState(false);
@@ -1312,6 +1339,16 @@ export default function App() {
             </button>
             <button
               type="button"
+              className="app-header-icon-btn app-header-tile-btn"
+              disabled={queueOverloaded}
+              title="Move completed subtrees out of the live roadmap (reversible)"
+              aria-label="Archive"
+              onClick={() => setArchiveOpen(true)}
+            >
+              Archive
+            </button>
+            <button
+              type="button"
               className="app-header-icon-btn"
               aria-label="Settings"
               title="Settings"
@@ -1557,7 +1594,6 @@ export default function App() {
               reorderLocked={hideCompleteActive}
               interactionLocked={queueOverloaded}
               selectedId={selectedId}
-              prHints={displayData.pr_hints}
               gitEnrichment={displayData.git_enrichment}
               dependencyInheritance={displayData.dependency_inheritance}
               registryByNode={displayData.registry_by_node}
@@ -1585,6 +1621,7 @@ export default function App() {
               onWaitMessage={triggerWaitMessage}
               onGapInsert={onGapInsert}
               parentNodeIds={parentNodeIds}
+              activity={displayData?.activity}
             />
           </div>
           <div
@@ -1669,8 +1706,7 @@ export default function App() {
                   dependencyInheritance={displayData.dependency_inheritance?.[nodeId]}
                   registryByNode={displayData.registry_by_node}
                   gitEnrichment={displayData.git_enrichment}
-                  prHints={displayData.pr_hints}
-                  onClose={() => closeEditNode(nodeId)}
+                      onClose={() => closeEditNode(nodeId)}
                   onOpenNode={openEditNode}
                   minimized={minimizedTaskIds.includes(nodeId)}
                   onMinimize={() => minimizeEditNode(nodeId)}
@@ -1712,6 +1748,11 @@ export default function App() {
         <WorkNotesDrawer
           open={workNotesOpen}
           onClose={() => setWorkNotesOpen(false)}
+        />
+        <ArchiveDrawer
+          open={archiveOpen}
+          onClose={() => setArchiveOpen(false)}
+          onChanged={() => void loadSnapshot()}
         />
         <SettingsDrawer
           open={settingsOpen}

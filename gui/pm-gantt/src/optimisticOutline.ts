@@ -280,7 +280,7 @@ function orderedTreeRows(
  * list after one or more optimistic ops have been applied.
  *
  * The other ``RoadmapResponse`` fields (``edges``, ``dependency_depths``,
- * ``pr_hints``, ``registry``, etc.) are left untouched — they're either
+ * ``registry``, etc.) are left untouched — they're either
  * derived from the registry (server-truth, unrelated to the local
  * tree shape) or re-fetched by ``loadSnapshot`` after the mutation
  * resolves.

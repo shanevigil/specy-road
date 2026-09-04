@@ -9,12 +9,13 @@ from pathlib import Path
 
 import yaml
 
-from refresh_schemas import warn_if_schemas_stale
-from roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
-from roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
+from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
+from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.registry_yaml import registry_path
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.runtime_paths import default_user_repo_root
-from validate_roadmap_checks import (
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
     load_schema,
     run_validation,
@@ -25,8 +26,8 @@ from validate_roadmap_checks import (
     validate_unique_titles,
     warn_stale_parent_status,
 )
-from validate_roadmap_gates import validate_gates
-from validate_self_heal import auto_heal_roadmap
+from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
+from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 
 __all__ = [
     "cycle_check",
@@ -77,7 +78,7 @@ def validate_at(
     codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
     e.g. in a read-only CI drift check.
     """
-    reg_path = root / "roadmap" / "registry.yaml"
+    reg_path = registry_path(root)
     if require_registry and not reg_path.is_file():
         print(f"missing {reg_path}", file=sys.stderr)
         raise SystemExit(1)
@@ -127,13 +128,7 @@ def main() -> None:
             "because the authored chunk value is what a reviewer reads."
         ),
     )
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
     validate_at(

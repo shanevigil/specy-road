@@ -14,4 +14,4 @@ Test-fixture roadmap validation uses the consumer-shaped sample tree under [`tes
 
 **Non-Python files** matched by `applies_to_globs` are checked for **line count per file** only. Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** sources in this toolkit; use your stack’s analyzers in CI for other languages.
 
-**Skipped before `applies_to_globs` is applied:** git-ignored files (opt out with `--no-respect-gitignore`) and the toolkit's own `work/` session artifacts. See [`specy_road/file_limits_engine.py`](../specy_road/file_limits_engine.py) (`SESSION_ARTIFACT_GLOBS`).
+**Skipped before `applies_to_globs` is applied:** git-ignored files (opt out with `--no-respect-gitignore`), the toolkit's own `work/` session artifacts, and archived roadmap material under `roadmap/archive/` (a scaffold's `**/*.md` glob would otherwise keep flagging planning sheets for milestones that shipped years ago). See [`specy_road/file_limits_engine.py`](../specy_road/file_limits_engine.py) (`SESSION_ARTIFACT_GLOBS`).

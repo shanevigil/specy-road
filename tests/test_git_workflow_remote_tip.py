@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import roadmap_gui_remote as rgr
+from specy_road.bundled_scripts import roadmap_gui_remote as rgr
 
 from specy_road.git_workflow_config import (
     git_branch_tip_author,

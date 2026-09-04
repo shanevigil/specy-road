@@ -6,57 +6,27 @@ from __future__ import annotations
 import argparse
 import datetime
 import re
-import subprocess
 import sys
 from pathlib import Path
 
-import yaml
-from roadmap_load import load_roadmap
 from specy_road.git_workflow_config import require_implementation_review_before_finish
-from specy_road.registry_yaml import write_registry
-from specy_road.runtime_paths import default_user_repo_root
-from work_dir_stash import (
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.registry_yaml import registry_path, write_registry
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.bundled_scripts.work_dir_stash import (
     restore_work_dir_changes as _restore_work,
     stash_work_dir_changes as _stash_work,
 )
+from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
-
-
-def _current_branch() -> str:
-    r = subprocess.run(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-        capture_output=True,
-        text=True,
-        cwd=ROOT,
-        check=True,
-    )
-    return r.stdout.strip()
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _load_registry() -> dict:
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
 
 
 def _save_registry(doc: dict) -> None:
-    write_registry(REGISTRY_PATH, doc)
-
-
-def _working_tree_clean() -> bool:
-    r = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return not r.stdout.strip()
+    write_registry(registry_path(ROOT), doc)
 
 
 def _stash_work_dir_changes() -> bool:
@@ -65,37 +35,6 @@ def _stash_work_dir_changes() -> bool:
 
 def _restore_work_dir_changes(stashed: bool) -> None:
     _restore_work(ROOT, stashed)
-
-
-def _resolve_context(branch: str) -> tuple[str, dict, dict]:
-    """Return (codename, registry_doc, entry) or raise SystemExit."""
-    codename = branch[len("feature/rm-"):]
-    reg = _load_registry()
-    entries = reg.get("entries") or []
-    entry = next((e for e in entries if e.get("codename") == codename), None)
-    if not entry:
-        print(f"error: no registry entry for codename '{codename}'.", file=sys.stderr)
-        print("  Is roadmap/registry.yaml up to date?", file=sys.stderr)
-        raise SystemExit(1)
-    node_id = entry["node_id"]
-    nodes = load_roadmap(ROOT)["nodes"]
-    if not any(n["id"] == node_id for n in nodes):
-        print(f"error: node '{node_id}' not found in roadmap.", file=sys.stderr)
-        raise SystemExit(1)
-    reg_branch = entry.get("branch")
-    if not reg_branch:
-        print(
-            "error: registry entry is missing 'branch' — fix roadmap/registry.yaml.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    if reg_branch != branch:
-        print(
-            f"error: registry says branch {reg_branch!r} but HEAD is {branch!r}.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-    return codename, reg, entry
 
 
 def _summary_path(node_id: str) -> Path:
@@ -215,8 +154,8 @@ def _commit_registry_approved(codename: str, reg: dict) -> None:
     _save_registry(reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
-    _git("add", str(REGISTRY_PATH.relative_to(ROOT)))
-    _git(
+    git_run(ROOT, "add", str(registry_path(ROOT).relative_to(ROOT)))
+    git_run(ROOT, 
         "commit",
         "-m",
         f"chore(rm-{codename}): mark implementation reviewed",
@@ -243,21 +182,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Allow approving when the implementation summary file is missing (loud warning).",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     return p.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH
+    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    ROOT = resolve_repo_root(args)
 
     if not require_implementation_review_before_finish(ROOT):
         print(
@@ -270,7 +202,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(0)
 
-    branch = _current_branch()
+    branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
         print(
             f"error: current branch '{branch}' is not a roadmap feature branch "
@@ -279,7 +211,7 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(1)
 
-    codename, reg, entry = _resolve_context(branch)
+    codename, reg, entry, _nodes = resolve_feature_rm_registry_context(ROOT, branch)
     node_id = entry["node_id"]
 
     spath = _summary_path(node_id)
@@ -307,7 +239,7 @@ def main(argv: list[str] | None = None) -> None:
     # then restore on top of the feature branch (where they belong).
     stashed = _stash_work_dir_changes()
     try:
-        if not _working_tree_clean():
+        if not working_tree_clean(ROOT):
             print(
                 "error: working tree is not clean (commit, stash, or "
                 "discard changes outside work/ first).",

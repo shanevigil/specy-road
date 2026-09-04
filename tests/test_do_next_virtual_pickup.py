@@ -4,19 +4,14 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import BUNDLED_SCRIPTS
 
-if str(BUNDLED_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(BUNDLED_SCRIPTS))
-
-import do_next_available as dna  # noqa: E402
-import do_next_task as dnt  # noqa: E402
-from roadmap_load_at_ref import load_roadmap_nodes_at_ref  # noqa: E402
+from specy_road.bundled_scripts import do_next_available as dna
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_A = "22222222-2222-4222-8222-222222222222"
@@ -360,7 +355,7 @@ def _repo_registry_virtual_complete_pickup(tmp_path: Path) -> tuple[Path, dict]:
 def test_virtual_complete_from_registry_and_pickup_prefers_dependent_leaf(
     tmp_path: Path,
 ) -> None:
-    import roadmap_load as rl
+    from specy_road.bundled_scripts import roadmap_load as rl
 
     repo, reg = _repo_registry_virtual_complete_pickup(tmp_path)
 

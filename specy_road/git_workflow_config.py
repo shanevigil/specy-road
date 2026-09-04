@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
+from functools import cache
 from pathlib import Path
 from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
+
+from specy_road.git_subprocess import current_branch_name, git_ok, is_git_worktree
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _GIT_WORKFLOW_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "git-workflow.schema.json"
@@ -24,9 +26,16 @@ def git_workflow_yaml_path(repo_root: Path) -> Path:
     return (repo_root / GIT_WORKFLOW_REL).resolve()
 
 
+@cache
 def _schema_validator() -> Draft202012Validator:
-    raw = _GIT_WORKFLOW_SCHEMA.read_text(encoding="utf-8")
-    schema = json.loads(raw)
+    """The compiled git-workflow validator.
+
+    Cached because it was rebuilt -- schema file read, JSON parsed, validator
+    compiled -- on *every* ``load_git_workflow_config``, which finish-this-task
+    and do-next-available-task each call five times per run. The schema ships
+    inside the wheel, so it cannot change while the process is alive.
+    """
+    schema = json.loads(_GIT_WORKFLOW_SCHEMA.read_text(encoding="utf-8"))
     return Draft202012Validator(schema)
 
 
@@ -93,33 +102,32 @@ def resolve_integration_defaults(
     return base, remote, warnings
 
 
-def merge_request_requires_manual_approval(repo_root: Path) -> bool:
-    """True when ``roadmap/git-workflow.yaml`` sets ``merge_request_requires_manual_approval``."""
+def _flag(repo_root: Path, key: str, *, default: bool) -> bool:
+    """A boolean from ``roadmap/git-workflow.yaml``, or ``default``.
+
+    An unreadable config yields the default, so a repo without one behaves as
+    if every flag were unset.
+    """
     data, err = load_git_workflow_config(repo_root)
     if err or not data:
-        return False
-    v = data.get("merge_request_requires_manual_approval")
-    return v is True
+        return default
+    v = data.get(key)
+    return default if v is None else bool(v)
+
+
+def merge_request_requires_manual_approval(repo_root: Path) -> bool:
+    """True when ``roadmap/git-workflow.yaml`` opts into manual MR approval."""
+    return _flag(repo_root, "merge_request_requires_manual_approval", default=False)
 
 
 def require_implementation_review_before_finish(repo_root: Path) -> bool:
-    """True when ``roadmap/git-workflow.yaml`` sets ``require_implementation_review_before_finish``."""
-    data, err = load_git_workflow_config(repo_root)
-    if err or not data:
-        return False
-    v = data.get("require_implementation_review_before_finish")
-    return v is True
+    """True when finishing a task requires an implementation review first."""
+    return _flag(repo_root, "require_implementation_review_before_finish", default=False)
 
 
 def cleanup_work_artifacts_on_finish(repo_root: Path) -> bool:
-    """True unless ``cleanup_work_artifacts_on_finish`` is explicitly false in git-workflow.yaml."""
-    data, err = load_git_workflow_config(repo_root)
-    if err or not data:
-        return True
-    v = data.get("cleanup_work_artifacts_on_finish")
-    if v is False:
-        return False
-    return True
+    """True unless ``cleanup_work_artifacts_on_finish`` is explicitly false."""
+    return _flag(repo_root, "cleanup_work_artifacts_on_finish", default=True)
 
 
 def should_cleanup_work_artifacts_on_finish(
@@ -166,98 +174,53 @@ def resolve_on_complete(
     return on_complete_from_git_workflow(repo_root)
 
 
-def _git_ok(args: list[str], cwd: Path) -> tuple[bool, str]:
-    try:
-        r = subprocess.run(
-            ["git", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=False,
-        )
-        if r.returncode != 0:
-            return False, (r.stderr or r.stdout or "").strip()
-        return True, r.stdout.strip()
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return False, str(e)
-
-
-def is_git_worktree(repo_root: Path) -> bool:
-    ok, out = _git_ok(["rev-parse", "--is-inside-work-tree"], repo_root)
-    return ok and out.lower() == "true"
-
-
-def current_branch_name(repo_root: Path) -> str | None:
-    """Named branch checked out, or None (detached HEAD / not git)."""
-    if not is_git_worktree(repo_root):
+def current_head_short_sha(
+    repo_root: Path, *, is_worktree: bool | None = None
+) -> str | None:
+    if not (is_git_worktree(repo_root) if is_worktree is None else is_worktree):
         return None
-    ok, out = _git_ok(["branch", "--show-current"], repo_root)
-    if ok and out.strip():
-        return out.strip()
-    return None
-
-
-def working_tree_clean(repo_root: Path) -> bool:
-    """True when ``git status --porcelain`` is empty (no staged/unstaged/untracked noise)."""
-    if not is_git_worktree(repo_root):
-        return False
-    ok, out = _git_ok(["status", "--porcelain"], repo_root)
-    if not ok:
-        return False
-    return not (out or "").strip()
-
-
-def current_head_short_sha(repo_root: Path) -> str | None:
-    if not is_git_worktree(repo_root):
-        return None
-    ok, sha = _git_ok(["rev-parse", "--short", "HEAD"], repo_root)
+    ok, sha = git_ok(["rev-parse", "--short", "HEAD"], repo_root)
     return sha if ok else None
 
 
-def git_config_user_name(repo_root: Path) -> str | None:
+def git_config_user_name(
+    repo_root: Path, *, is_worktree: bool | None = None
+) -> str | None:
     """Local ``git config user.name`` for this repo (developer identity on this clone)."""
-    if not is_git_worktree(repo_root):
+    if not (is_git_worktree(repo_root) if is_worktree is None else is_worktree):
         return None
-    ok, out = _git_ok(["config", "--get", "user.name"], repo_root)
+    ok, out = git_ok(["config", "--get", "user.name"], repo_root)
     if not ok or not (out or "").strip():
         return None
     return (out or "").strip()
 
 
-def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
-    """Author name (``%an``) of the latest commit on ``refs/remotes/<remote>/<branch>``."""
+def _tip_author(repo_root: Path, ref: str) -> str | None:
+    """Author (``%an``) of the tip of ``ref``, when that ref exists."""
     if not is_git_worktree(repo_root):
         return None
+    ok, _ = git_ok(["show-ref", "--verify", ref], repo_root)
+    if not ok:
+        return None
+    ok2, line = git_ok(["log", "-1", "--format=%an", ref], repo_root)
+    return (line or "").strip() or None if ok2 else None
+
+
+def git_remote_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
+    """Author name (``%an``) of the latest commit on ``refs/remotes/<remote>/<branch>``."""
     rm = (remote or "").strip()
     br = (branch or "").strip()
     if not rm or not br:
         return None
-    ref = f"refs/remotes/{rm}/{br}"
-    ok, _ = _git_ok(["show-ref", "--verify", ref], repo_root)
-    if not ok:
-        return None
-    ok2, line = _git_ok(["log", "-1", "--format=%an", ref], repo_root)
-    if not ok2 or not (line or "").strip():
-        return None
-    return (line or "").strip()
+    return _tip_author(repo_root, f"refs/remotes/{rm}/{br}")
 
 
 def git_local_branch_tip_author(repo_root: Path, branch: str) -> str | None:
     """Latest commit author (%an) on ``refs/heads/<branch>`` when that ref exists."""
-    if not is_git_worktree(repo_root):
-        return None
     br = (branch or "").strip()
     if not br:
         return None
-    ref = f"refs/heads/{br}"
-    ok, _ = _git_ok(["show-ref", "--verify", ref], repo_root)
-    if not ok:
-        return None
-    ok2, line = _git_ok(["log", "-1", "--format=%an", ref], repo_root)
-    if not ok2 or not (line or "").strip():
-        return None
-    return (line or "").strip()
+    return _tip_author(repo_root, f"refs/heads/{br}")
 
 
 def git_branch_tip_author(repo_root: Path, remote: str, branch: str) -> str | None:
@@ -275,34 +238,32 @@ def integration_refs_present(
 ) -> tuple[bool, str]:
     """True if local remote-tracking ref or local branch exists for integration trunk."""
     rr = f"refs/remotes/{remote}/{integration_branch}"
-    ok, _ = _git_ok(["show-ref", "--verify", rr], repo_root)
+    ok, _ = git_ok(["show-ref", "--verify", rr], repo_root)
     if ok:
         return True, rr
     hb = f"refs/heads/{integration_branch}"
-    ok2, _ = _git_ok(["show-ref", "--verify", hb], repo_root)
+    ok2, _ = git_ok(["show-ref", "--verify", hb], repo_root)
     if ok2:
         return True, hb
     return False, ""
 
 
+#: Optional config fields echoed in the status payload, with how to coerce each.
+_STATUS_FIELDS: tuple[tuple[str, type], ...] = (
+    ("merge_request_requires_manual_approval", bool),
+    ("require_implementation_review_before_finish", bool),
+    ("cleanup_work_artifacts_on_finish", bool),
+    ("on_complete", str),
+)
+
+
 def _optional_git_workflow_config_fields(data: dict[str, Any]) -> dict[str, Any]:
-    """Optional booleans exposed in status payload (subset of schema)."""
-    out: dict[str, Any] = {}
-    if "merge_request_requires_manual_approval" in data:
-        out["merge_request_requires_manual_approval"] = bool(
-            data["merge_request_requires_manual_approval"],
-        )
-    if "require_implementation_review_before_finish" in data:
-        out["require_implementation_review_before_finish"] = bool(
-            data["require_implementation_review_before_finish"],
-        )
-    if "cleanup_work_artifacts_on_finish" in data:
-        out["cleanup_work_artifacts_on_finish"] = bool(
-            data["cleanup_work_artifacts_on_finish"],
-        )
-    if "on_complete" in data and isinstance(data.get("on_complete"), str):
-        out["on_complete"] = data["on_complete"]
-    return out
+    """Optional fields exposed in the status payload (subset of schema)."""
+    return {
+        key: kind(data[key])
+        for key, kind in _STATUS_FIELDS
+        if key in data and (kind is not str or isinstance(data[key], str))
+    }
 
 
 def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
@@ -311,9 +272,13 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
     config: dict[str, Any] | None = None
     path = git_workflow_yaml_path(repo_root)
 
-    branch_current = current_branch_name(repo_root)
-    head_short = current_head_short_sha(repo_root)
-    git_user_name = git_config_user_name(repo_root)
+    # One worktree probe for the whole payload: this used to run
+    # `rev-parse --is-inside-work-tree` five times, three of them inside the
+    # helpers below, on every GET /api/roadmap.
+    in_worktree = is_git_worktree(repo_root)
+    branch_current = current_branch_name(repo_root, is_worktree=in_worktree)
+    head_short = current_head_short_sha(repo_root, is_worktree=in_worktree)
+    git_user_name = git_config_user_name(repo_root, is_worktree=in_worktree)
 
     if not path.is_file():
         issues.append(
@@ -342,7 +307,7 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
                 **_optional_git_workflow_config_fields(data),
             }
 
-    if not is_git_worktree(repo_root):
+    if not in_worktree:
         issues.append(
             {
                 "code": "not_git_repo",
@@ -353,7 +318,7 @@ def build_git_workflow_status(repo_root: Path) -> dict[str, Any]:
 
     ib = config["integration_branch"] if config else "main"
     rm = config["remote"] if config else "origin"
-    if is_git_worktree(repo_root) and config:
+    if in_worktree and config:
         ok_ref, _which = integration_refs_present(repo_root, rm, ib)
         if not ok_ref:
             issues.append(

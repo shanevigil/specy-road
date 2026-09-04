@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
-from roadmap_crud_dependency_ops import (
+from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     cmd_add_dependency,
     cmd_list_dependencies,
     cmd_remove_dependency,
     cmd_set_dependencies,
 )
-from roadmap_edit_fields import ROADMAP_NODE_STATUSES
+from specy_road.bundled_scripts.roadmap_edit_fields import ROADMAP_NODE_STATUSES
 
-from roadmap_crud_ops import (
+from specy_road.bundled_scripts.roadmap_crud_ops import (
     cmd_add,
     cmd_archive,
     cmd_edit,
@@ -21,6 +20,7 @@ from roadmap_crud_ops import (
     cmd_set_gate_status,
     cmd_show,
 )
+from specy_road.runtime_paths import add_repo_root_arg
 
 
 def _p_list(sub: argparse._SubParsersAction) -> None:
@@ -179,12 +179,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="PM-oriented roadmap CRUD: list/show/add/edit/archive nodes.",
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     sub = p.add_subparsers(dest="cmd", required=True)
     _p_list(sub)
     _p_show(sub)

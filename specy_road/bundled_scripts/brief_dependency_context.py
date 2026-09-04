@@ -28,13 +28,16 @@ Design notes (intent-only by default):
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
-from planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
-from roadmap_layout import effective_dependency_keys
-from roadmap_node_keys import build_key_to_node
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path, split_frontmatter
+from specy_road.bundled_scripts.planning_sheet_bootstrap import feature_sheet_level2_titles, gate_sheet_level2_titles
+from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys
+from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+
+from specy_road.text_sections import find_section, normalize_heading, read_text_safely
+from specy_road.archive_index import iter_archived_summaries
+from specy_road.node_kinds import is_gate
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +52,7 @@ def _intent_titles_for(node_type: str | None) -> tuple[str, ...]:
     sheets contribute ``## Why this gate exists``. Other titles are reserved
     for a future opt-in.
     """
-    if str(node_type or "").strip().lower() == "gate":
+    if is_gate(node_type):
         gate = gate_sheet_level2_titles()
         return (gate[0],) if gate else ("Why this gate exists",)
     feat = feature_sheet_level2_titles()
@@ -57,19 +60,8 @@ def _intent_titles_for(node_type: str | None) -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Heading parser
+# Intent extraction
 # ---------------------------------------------------------------------------
-
-
-_LEVEL2_RE = re.compile(r"^\s*##\s+(?P<title>.+?)\s*:?\s*$")
-
-
-def _normalize_heading(raw: str) -> str:
-    """Lowercase + collapse internal whitespace; strip trailing colon."""
-    s = " ".join(raw.strip().lower().split())
-    if s.endswith(":"):
-        s = s[:-1].rstrip()
-    return s
 
 
 def extract_intent_block(planning_text: str, node_type: str | None) -> str | None:
@@ -78,36 +70,15 @@ def extract_intent_block(planning_text: str, node_type: str | None) -> str | Non
     The body is everything between the matched ``## Heading`` line and the
     next ``## …`` heading (or end of file), with leading/trailing blank
     lines trimmed. If multiple matching headings exist, the first wins.
+
+    The parsing itself lives in :mod:`specy_road.text_sections`, shared with
+    the search index — both jobs cut these sheets on the same ``##`` boundaries.
     """
     if not planning_text:
         return None
     _frontmatter, body = split_frontmatter(planning_text)
-    wanted = {_normalize_heading(t) for t in _intent_titles_for(node_type)}
-    if not wanted:
-        return None
-
-    lines = body.splitlines()
-    capture: list[str] | None = None
-    for line in lines:
-        m = _LEVEL2_RE.match(line)
-        if m:
-            heading_norm = _normalize_heading(m.group("title"))
-            if capture is not None:
-                # We were capturing — a new ## heading ends the block.
-                break
-            if heading_norm in wanted:
-                capture = []
-            continue
-        if capture is not None:
-            capture.append(line)
-    if capture is None:
-        return None
-    # Trim leading + trailing blanks while preserving inner structure.
-    while capture and not capture[0].strip():
-        capture.pop(0)
-    while capture and not capture[-1].strip():
-        capture.pop()
-    return "\n".join(capture) if capture else None
+    wanted = {normalize_heading(t) for t in _intent_titles_for(node_type)}
+    return find_section(body, wanted)
 
 
 # ---------------------------------------------------------------------------
@@ -149,15 +120,6 @@ def effective_dep_nodes(
 # ---------------------------------------------------------------------------
 
 
-def _read_text_safely(path: Path) -> tuple[str, bool]:
-    if not path.is_file():
-        return "", False
-    try:
-        return path.read_text(encoding="utf-8"), True
-    except (OSError, UnicodeDecodeError):
-        return "", False
-
-
 def _fallback_snippet(text: str, max_lines: int = 8) -> str:
     """First N non-blank, non-heading lines (used when ## Intent is missing)."""
     out: list[str] = []
@@ -192,7 +154,7 @@ def _render_one_dep(repo_root: Path, dep: dict) -> list[str]:
         out.append(f"_(invalid planning_dir on dep: {e})_")
         out.append("")
         return out
-    text, ok = _read_text_safely(sheet)
+    text, ok = read_text_safely(sheet)
     rel = sheet.relative_to(repo_root) if sheet.is_absolute() else sheet
     if not ok:
         out.append(f"_(planning file not present on disk: `{rel}`)_")
@@ -218,6 +180,48 @@ def _render_one_dep(repo_root: Path, dep: dict) -> list[str]:
     out.append(f"_(planning sheet `{rel}` is empty.)_")
     out.append("")
     return out
+
+
+def _archived_dep_lines(
+    active_node: dict, by_id: dict[str, dict], repo_root: Path
+) -> list[str]:
+    """Name dependencies that were archived rather than omitting them.
+
+    ``effective_dependency_keys`` drops keys absent from the live graph, which
+    is right for readiness — archived implies Complete implies satisfied — but
+    would otherwise tell an implementer "no dependencies" for a node that
+    visibly lists one. Naming the archived work preserves the context without
+    reopening it.
+    """
+    live = {
+        n.get("node_key")
+        for n in by_id.values()
+        if isinstance(n.get("node_key"), str)
+    }
+    wanted = {
+        d
+        for d in (active_node.get("dependencies") or [])
+        if isinstance(d, str) and d not in live
+    }
+    if not wanted:
+        return []
+
+    summary: dict[str, tuple[str, str]] = {
+        n["node_key"]: (str(n.get("id") or "?"), str(n.get("title") or ""))
+        for _rec, n in iter_archived_summaries(repo_root)
+        if isinstance(n.get("node_key"), str)
+    }
+
+    lines = [f"- **{summary[k][0]}** — {summary[k][1]} _(archived)_" for k in sorted(wanted) if k in summary]
+    if not lines:
+        return []
+    return [
+        "**Archived dependencies** (complete; moved out of the live roadmap — "
+        "`specy-road show-archive` for detail):",
+        "",
+        *lines,
+        "",
+    ]
 
 
 def render_dependency_context_section(
@@ -248,10 +252,17 @@ def render_dependency_context_section(
         "",
     ]
     deps = effective_dep_nodes(active_node, by_id)
+    archived = _archived_dep_lines(active_node, by_id, repo_root)
     if not deps:
-        out.append("- _no effective dependencies_")
+        out.append(
+            "- _no effective dependencies_"
+            if not archived
+            else "- _no effective dependencies still in the live roadmap_"
+        )
         out.append("")
+        out.extend(archived)
         return out
     for dep in deps:
         out.extend(_render_one_dep(repo_root, dep))
+    out.extend(archived)
     return out

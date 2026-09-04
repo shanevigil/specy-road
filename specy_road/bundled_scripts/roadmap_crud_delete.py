@@ -6,6 +6,10 @@ cap; the ``roadmap_crud_*`` modules follow the same pattern.
 A node and its planning sheet go in one transaction. Unlinking the sheet before
 validating the resulting graph would leave a repo that cannot validate whenever
 the removal is refused (for example because another node still depends on it).
+
+Not to be confused with ``specy-road archive`` (:mod:`specy_road.archive_ops`),
+which moves completed work out of the live graph **reversibly**. The name
+collision is historical.
 """
 
 from __future__ import annotations
@@ -13,10 +17,10 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from planning_artifacts import normalize_planning_dir, resolve_planning_path
-from roadmap_chunk_atomic import AtomicWritePlan
-from roadmap_chunk_utils import find_chunk_path, load_json_chunk
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
+from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
 
 def can_hard_remove(root: Path, node_id: str) -> tuple[bool, str]:
@@ -53,9 +57,9 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
     Raises ``ValueError`` if not found, not removable, or if the resulting graph
     fails validation — in which case nothing is removed from disk.
     """
-    from roadmap_chunk_router import validate_callback
-    from roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
-    from roadmap_crud_prepare import heal_before_mutation
+    from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
+    from specy_road.bundled_scripts.roadmap_crud_ops import node_index_in_chunk, unknown_node_msg
+    from specy_road.bundled_scripts.roadmap_crud_prepare import heal_before_mutation
 
     heal_before_mutation(root)
     chunk = find_chunk_path(root, node_id)
@@ -81,7 +85,7 @@ def delete_roadmap_node_hard(root: Path, node_id: str) -> None:
 
 
 def cmd_archive(args: object) -> None:
-    from roadmap_crud_ops import repo_root
+    from specy_road.bundled_scripts.roadmap_crud_ops import repo_root
 
     root = repo_root(args)
     nid = args.node_id
@@ -95,8 +99,11 @@ def cmd_archive(args: object) -> None:
         return
     print(
         "error: archive-node without --hard-remove is no longer supported "
-        "(Cancelled was removed from the roadmap schema). "
-        "Remove the node with --hard-remove after team agreement, or edit the JSON chunk.",
+        "(Cancelled was removed from the roadmap schema).\n"
+        "  To retire completed work reversibly, use the archive feature instead:\n"
+        "    specy-road archive <NODE_ID>       (restore with: restore-archive)\n"
+        "  To delete a node outright, pass --hard-remove after team agreement, "
+        "or edit the JSON chunk.",
         file=sys.stderr,
     )
     raise SystemExit(1)

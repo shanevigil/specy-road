@@ -28,23 +28,23 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-from roadmap_chunk_atomic import AtomicWritePlan
-from roadmap_chunk_router import validate_callback
-from roadmap_chunk_router_pick import (
+from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
+from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
+from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
     chunk_max_lines,
     load_merged_nodes,
     phase_ancestor_id,
     simulate_chunk_lines,
     strip_partN_suffix,
 )
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     build_node_chunk_map,
     load_manifest_mapping,
     render_json_chunk,
     roadmap_dir,
 )
-from roadmap_layout import ordered_tree_rows
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 @dataclass
@@ -256,13 +256,7 @@ def apply_pack_plan(root: Path, plan: _PackPlan) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(parser)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -279,7 +273,7 @@ def main(argv: list[str] | None = None) -> None:
     # to close the milestone (specy-road reconcile-milestone-status
     # --apply) first.
     from specy_road.milestone_lock import milestone_lock_parent_ids
-    from roadmap_load import load_roadmap
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     nodes = load_roadmap(root)["nodes"]
     locked_parents = milestone_lock_parent_ids(nodes)

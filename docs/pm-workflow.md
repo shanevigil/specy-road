@@ -101,7 +101,17 @@ Use the **Gantt PM UI** (split outline + dependency timeline, drag-drop sibling 
 
 ### Gantt PM UI (FastAPI + React)
 
-**Working directory:** run `specy-road gui` from your **project repository root** (the folder that contains `roadmap/`). The UI discovers that root the same way as other CLI commands (git worktree from the current directory, or the current directory if not in git). If that resolves to the wrong tree—nested checkouts, monorepos—pass `--repo-root /path/to/repo` or set `SPECY_ROAD_REPO_ROOT`.
+**Working directory:** run `specy-road gui` from anywhere in your project's checkout. The UI and every CLI command now share one resolver, which takes the first of these that answers:
+
+1. an explicit `--repo-root /path/to/project`;
+2. the `SPECY_ROAD_REPO_ROOT` environment variable;
+3. the `project_root` recorded in `.specyrd/manifest.json` (written by `specy-road init project`);
+4. the nearest ancestor of the working directory containing `roadmap/manifest.json`;
+5. the git worktree root, then the working directory.
+
+Steps 2–4 are new in 0.2.1. Before that the GUI read the environment variable and discovered upward while the CLI did neither, so the two could disagree about which tree they were looking at — and this page told you to set a variable the CLI ignored.
+
+**Two layouts, both supported**, chosen per project: **embedded**, with `roadmap/`, `planning/` and `shared/` at the repository root, or **nested**, with the same tree under a subfolder (`sr/`) so the coding root stays uncluttered. `specy-road init project sr` scaffolds the nested form and records it, after which every command resolves it with no flag from any working directory. Keep the two roots straight: the **git root** owns `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`; the **project root** owns `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and `constraints/`. Entries written to the first that name paths in the second are prefixed automatically. One consequence: `constraints/file-limits.yaml` is read from the project root, but its `applies_to_globs` resolve against the git root — so a glob stays `frontend/**/*.tsx` rather than `../frontend/**/*.tsx`.
 
 **One-time setup:** the wheel ships a built UI; from a **clone** with `gui/pm-gantt/`, `init gui --install-gui` also compiles that tree. After `pip install specy-road`:
 
@@ -119,7 +129,7 @@ specy-road gui
 
 The terminal prints the URL (default **[http://127.0.0.1:8765](http://127.0.0.1:8765)**). Options: `specy-road gui --help` for `--host`, `--port`, and `--repo-root`. If **address already in use** on port 8765, stop the other process or run `specy-road gui --port 8766` and open that port in the browser.
 
-**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `PYTHONPATH=scripts python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
+**Contributors / UI development** (git clone, hot reload): install extras from the clone (`pip install -e ".[gui-next]"`), rebuild the Vite app when you change React code (`cd gui/pm-gantt && npm install && npm run build` — output goes to `specy_road/pm_gantt_static/`). For local dev with reload: in one terminal, `python -m uvicorn specy_road.gui_app:app --reload --port 8765` from the repo root; in another, `cd gui/pm-gantt && npm run dev` (Vite proxies `/api` to the Python server).
 
 ### Multi-writer behavior (optimistic concurrency)
 
@@ -202,7 +212,7 @@ In **Settings**, use **This repository** toggles:
 - **Use global LLM settings for this repository** — when **on**, LLM fields you edit are saved as **global** defaults shared by any checkout that keeps this toggle on. When **off**, the LLM form is **empty for this repository** until you enter values; those values are stored **only** for this resolved root (not global).
 - **Use global PM GUI options for this repository** — when off, **Merge registry from remote feature branches** and **Fast-forward integration branch** are stored per checkout (see [design-notes/registry-hydration-remote-refs.md](design-notes/registry-hydration-remote-refs.md) and [design-notes/pm-gui-integration-branch-auto-ff.md](design-notes/pm-gui-integration-branch-auto-ff.md)).
 
-**Which tree am I editing?** The dashboard does **not** follow “the folder open in the IDE.” It uses the same **resolved project root** as the CLI: **`specy-road gui --repo-root DIR`**, or discovery from the shell’s current directory (`roadmap/manifest.json` upward, else the git worktree root). In **Settings**, the line **Open repository:** shows the absolute path for the running server. If that path is not the checkout you meant (for example you wanted a nested `playground/` consumer tree but started the GUI from the parent clone), stop the server and relaunch with **`--repo-root`** or **`cd`** into the intended directory first.
+**Which tree am I editing?** The dashboard does **not** follow “the folder open in the IDE.” It uses the same **resolved project root** as the CLI, in this order: **`specy-road gui --repo-root DIR`**, else **`SPECY_ROAD_REPO_ROOT`**, else the root recorded in **`.specyrd/manifest.json`**, else discovery from the shell’s current directory (`roadmap/manifest.json` upward), else the git worktree root, else the working directory. In **Settings**, the line **Open repository:** shows the absolute path for the running server. If that path is not the checkout you meant (for example you wanted a nested `playground/` consumer tree but started the GUI from the parent clone), stop the server and relaunch with **`--repo-root`** or **`cd`** into the intended directory first.
 
 **When LLM fields match another project:** If **Open repository** is correct but LLM values look shared, the **Use global LLM settings for this repository** toggle is probably **on**—turn it **off** to get a blank, project-only LLM form. **Git remote** fields are never global; if they look wrong, confirm **Open repository** matches the checkout you intend (restart the GUI with `--repo-root` if not).
 
@@ -245,7 +255,10 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road show-node M0.1.1`                      | Print one item as JSON (replace `M0.1.1` with a real id).                                                                                   |
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
-| `specy-road archive-node M0.1.1 --hard-remove`    | Remove the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema).                      |
+| `specy-road archive M0.1`                          | Move a **Complete** subtree out of the live roadmap into `roadmap/archive/`, reversibly. See [Archiving](archiving.md).                     |
+| `specy-road history M0.1`                          | How a node got here: status changes, dependency edges, renumbering, archived work. Derived from git. See [Roadmap history](roadmap-history.md). |
+| `specy-road list-archives`                         | What is archived. `show-archive <ID>` for detail, `restore-archive <ID>` to bring it back.                                                  |
+| `specy-road archive-node M0.1.1 --hard-remove`    | **Destructive**, and unrelated to `archive` above: removes the node from the roadmap JSON after team agreement (the old “soft cancel” status was removed from the schema). |
 | `specy-road list-dependencies M0.1.1`            | Print this node’s **explicit** `dependencies` as **node_key** values (with id/title); same field the PM GUI edits.                         |
 | `specy-road set-dependencies M0.1.1 --clear`      | Clear explicit dependencies on that node (runs validate after save).                                                                       |
 | `specy-road set-dependencies M0.1.1 --deps "…"`   | Replace explicit dependencies with a space/comma-separated list of **node_key** strings (same rules as `edit-node … dependencies=…`).       |
@@ -311,16 +324,22 @@ Agentic development moves fast. Your job is **not** to approve every pull reques
 **Signs the runway is too short:**
 
 - People wait on a contract or decision before starting a node
-- `agentic` nodes missing `agentic_checklist` fields
+- `agentic` nodes whose planning sheet leaves what to build, or which contract it conforms to, open
 - `human-gate` tasks not resolved before execution reaches them
 
 **Suggested batch cadence:**
 
 1. Check depth via `roadmap.md` or the dashboard.
-2. Add or refine nodes in chunk files; fill all five `agentic_checklist` fields for agentic tasks.
+2. Add or refine nodes in chunk files, and fill in each agentic task's planning sheet — including the contracts it conforms to, under `## References`.
 3. Resolve `human-gate` items before you stop for the day.
 4. `specy-road validate`, then `specy-road export`.
 5. Commit with something like: `chore(roadmap): short description of change`
+
+**Trimming the far end.** On a long-running roadmap the completed end grows
+without limit and starts pushing chunks toward their line cap. `specy-road
+archive <NODE_ID>` moves a finished subtree into `roadmap/archive/`, reversibly
+and without breaking live dependencies on it; `specy-road archive --auto`
+sweeps everything complete for 90+ days. See [Archiving](archiving.md).
 
 ---
 
@@ -328,7 +347,7 @@ Agentic development moves fast. Your job is **not** to approve every pull reques
 
 Resolve these **before** developers reach them:
 
-1. Open the node with `execution_subtask: human-gate`.
+1. Open the blocking **`type: gate`** node.
 2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
 3. Set the task status to `Complete`, then validate and export.
 

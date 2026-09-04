@@ -8,24 +8,19 @@ from typing import Any
 
 from specy_road.git_subprocess import git_ok
 from specy_road.registry_remote_overlay_merge import PER_SHOW_TIMEOUT_S
+from specy_road.roadmap_json import nodes_from_chunk_doc
 
 
 def _parse_chunk_json(text: str) -> list[dict[str, Any]] | None:
-    """Parse chunk JSON (same shapes as ``load_json_chunk`` on disk)."""
+    """Parse chunk JSON, or ``None`` if it is not a chunk this repo understands."""
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
         return None
-    if isinstance(data, list):
-        out = [n for n in data if isinstance(n, dict)]
-        return out if out or not data else None
-    if isinstance(data, dict):
-        nodes = data.get("nodes")
-        if isinstance(nodes, list):
-            return [n for n in nodes if isinstance(n, dict)]
-        if "id" in data:
-            return [data]
-    return None
+    nodes = nodes_from_chunk_doc(data)
+    if not nodes and isinstance(data, list) and data:
+        return None  # a non-empty list holding no objects is not a chunk
+    return nodes
 
 
 def load_roadmap_nodes_at_ref(

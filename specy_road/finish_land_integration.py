@@ -10,24 +10,13 @@ of misleading PR instructions.
 
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 
-
-def _git_run(repo: Path, *args: str) -> tuple[int, str]:
-    r = subprocess.run(
-        ["git", *args],
-        cwd=repo,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    err = (r.stderr or r.stdout or "").strip()
-    return r.returncode, err
+from specy_road.git_subprocess import git_code
 
 
 def _ref_exists_local(repo: Path, ref: str) -> bool:
-    code, _ = _git_run(repo, "rev-parse", "--verify", ref)
+    code, _ = git_code(["rev-parse", "--verify", ref], repo)
     return code == 0
 
 
@@ -57,7 +46,7 @@ def land_merge_feature_into_integration(
     messages are structured so callers can surface a hard error rather than
     silently falling back to PR instructions (F-012).
     """
-    code, out = _git_run(repo, "fetch", remote)
+    code, out = git_code(["fetch", remote], repo)
     if code != 0:
         return False, f"git fetch {remote} failed: {out}"
 
@@ -77,36 +66,36 @@ def land_merge_feature_into_integration(
             f"{remote}/{integration_branch}",
         )
 
-    code, out = _git_run(repo, "checkout", integration_branch)
+    code, out = git_code(["checkout", integration_branch], repo)
     if code != 0:
         return False, f"git checkout {integration_branch} failed: {out}"
 
     rr = f"{remote}/{integration_branch}"
     if _ref_exists_local(repo, f"refs/remotes/{rr}"):
-        code, out = _git_run(repo, "merge", "--ff-only", rr)
+        code, out = git_code(["merge", "--ff-only", rr], repo)
         if code != 0:
-            _git_run(repo, "checkout", feature_branch)
+            git_code(["checkout", feature_branch], repo)
             return (
                 False,
                 f"fast-forward {integration_branch} to {rr} failed "
                 f"(sync the integration branch locally, then retry): {out}",
             )
 
-    code, out = _git_run(repo, "merge", "--no-edit", feature_branch)
+    code, out = git_code(["merge", "--no-edit", feature_branch], repo)
     if code != 0:
-        _git_run(repo, "merge", "--abort")
-        _git_run(repo, "checkout", feature_branch)
+        git_code(["merge", "--abort"], repo)
+        git_code(["checkout", feature_branch], repo)
         return False, f"git merge {feature_branch} into {integration_branch} failed: {out}"
 
-    code, out = _git_run(repo, "push", remote, integration_branch)
+    code, out = git_code(["push", remote, integration_branch], repo)
     if code != 0:
-        _git_run(repo, "checkout", feature_branch)
+        git_code(["checkout", feature_branch], repo)
         return (
             False,
             f"git push {remote} {integration_branch} failed (local merge may exist): {out}",
         )
 
-    code, out = _git_run(repo, "checkout", feature_branch)
+    code, out = git_code(["checkout", feature_branch], repo)
     if code != 0:
         return False, f"git checkout {feature_branch} after merge failed: {out}"
     return True, ""

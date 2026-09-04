@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -29,10 +28,7 @@ import pytest
 from tests.helpers import DOGFOOD
 
 _ROOT = Path(__file__).resolve().parent.parent
-_SCRIPTS = _ROOT / "specy_road" / "bundled_scripts"
-if str(_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(_SCRIPTS))
-from roadmap_layout import natural_id_sort_key  # noqa: E402
+from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 
 
 def _git(args: list[str], cwd: Path) -> str:

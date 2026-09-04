@@ -81,7 +81,6 @@ describe("devColumnDetailTitle", () => {
           hint_line: "feature/rm-foo · bar",
         },
       },
-      {},
     );
     expect(t).toContain("Branch: feature/rm-foo");
     expect(t).toContain("Started: bar");

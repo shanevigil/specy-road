@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
+import yaml
 
 
 SKIP_DIR_NAMES = frozenset(
@@ -36,7 +37,31 @@ SESSION_ARTIFACT_GLOBS = (
     "work/pr-body-*.md",
     "work/.on-complete-*.yaml",
     "work/.milestone-session.yaml",
+    # Archived roadmap material. Getting finished work to stop counting against
+    # line limits is a large part of why archiving exists — a scaffold's
+    # `**/*.md` glob would otherwise keep flagging planning sheets for
+    # milestones that shipped years ago.
+    "roadmap/archive/**/*.json",
+    "roadmap/archive/**/*.md",
 )
+
+
+def roadmap_line_limit(root: Path, key: str, default: int = 500) -> int:
+    """A ``roadmap_*_max_lines`` limit from ``constraints/file-limits.yaml``.
+
+    Three readers parsed this file for one key each, two of them on adjacent
+    lines of the same function -- so the loader read and parsed the same YAML
+    twice to learn two numbers out of it.
+    """
+    cfg_path = root / "constraints" / "file-limits.yaml"
+    if not cfg_path.is_file():
+        return default
+    try:
+        with cfg_path.open(encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+    except (OSError, yaml.YAMLError):
+        return default
+    return _int_limit(cfg.get(key) if isinstance(cfg, dict) else None, default)
 
 
 def _int_limit(val: object, default: int) -> int:

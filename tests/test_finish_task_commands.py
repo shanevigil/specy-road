@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 import yaml
 
-import finish_task as ft
-import mark_implementation_reviewed as mir
+from specy_road.bundled_scripts import finish_task as ft
+from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road import feature_rm_registry as frm
 
 
@@ -143,10 +143,10 @@ def test_finish_blocks_when_implementation_review_pending(
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
     monkeypatch.setattr(ft, "require_implementation_review_before_finish", lambda _r: True)
-    monkeypatch.setattr(ft, "_current_branch", lambda: "feature/rm-example")
+    monkeypatch.setattr(ft, "current_branch", lambda _root: "feature/rm-example")
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
     monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
-    monkeypatch.setattr(ft, "_git", lambda *_a, **_k: None)
+    monkeypatch.setattr(ft, "git_run", lambda *_a, **_k: None)
     with pytest.raises(SystemExit) as ei:
         ft.main(["--repo-root", str(tmp_path)])
     assert ei.value.code == 1
@@ -155,7 +155,7 @@ def test_finish_blocks_when_implementation_review_pending(
 def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None:
     import json
 
-    from roadmap_chunk_utils import load_json_chunk
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
 
     (tmp_path / "roadmap" / "phases").mkdir(parents=True)
     (tmp_path / "roadmap" / "manifest.json").write_text(

@@ -11,6 +11,412 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.1-rc1] - 2026-09-04
+
+First prerelease for v0.2.1. Routed to TestPyPI by `release-publish.yml`.
+Smoke install:
+
+    pip install --pre --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.2.1rc1
+
+### Headline (vs v0.1.4)
+
+- **Archive tiers** — `archive`, `deepen-archive`, `restore-archive`,
+  `list-archives`, `show-archive`, plus a PM GUI archive drawer. Deep archives
+  compress to hashed text capsules and restore byte-for-byte.
+- **Roadmap history from git** — `specy-road history` derives per-node
+  timelines with an incremental, invalidation-safe cache.
+- **Agent context** — `specy-road digest` writes a ~6 KB `roadmap-context.md`
+  standing in for hundreds of KB of session output; `specy-road search` is
+  ranked SQLite-FTS5 search over sheets, contracts, nodes, summaries and
+  archives, returning pointers and snippets rather than file bodies.
+- **Briefs cite instead of copying** — only the `shared/` contracts a node's
+  sheet chain names under `## References` are inlined. `--all-contracts`
+  restores the old behaviour; `--no-history` skips the git-derived section.
+- **One project-root resolver** — `--repo-root`, `SPECY_ROAD_REPO_ROOT`,
+  `.specyrd/manifest.json`, upward discovery, git root, cwd, in that order, for
+  CLI and GUI alike, and `--repo-root --help` finally says so.
+- **A codebase-wide simplification pass** (net −640 lines) and a full
+  pre-release audit that fixed seven defects and cleared two security
+  advisories. See Fixed/Removed below.
+
+### Added
+
+- **Agent context: `specy-road digest` and `specy-road search`.** A long-running
+  project generates far more documentation than its roadmap describes, and most
+  of the volume is duplicated — on a real 48-node repo, `work/` is 58% of the
+  bytes and roughly 70% of it is a copy, because a brief inlines its ancestor
+  planning sheets and every `shared/*.md` verbatim and a pr-body re-inlines the
+  whole brief. An IDE index built over that returns the same passage from a dozen
+  near-identical files, while archived work — the material most likely to be
+  settled — has left the live graph entirely.
+  - **`specy-road digest`** writes `roadmap-context.md`: one generated,
+    git-tracked file with the live outline and rolled-up status, decisions taken,
+    open gates, dependencies that were removed, what is archived, and what is
+    claimed. About 6 KB for a 48-node roadmap, against the ~800 KB it stands in
+    for. `--check` is a CI drift gate, like `export --check`.
+  - **`specy-road search`** is ranked, deduplicated search over planning sheets,
+    shared contracts, governance docs, roadmap-node prose, implementation
+    summaries and archived work. Output is a pointer plus a snippet, never file
+    contents, so an agent pulls the rest only if it needs it.
+  - **No embeddings, deliberately.** The backend is SQLite FTS5 with BM25 from
+    the standard library — no new dependency — with an in-memory fallback for
+    builds without FTS5. Vector search brings staleness, privacy and reliability
+    problems to a corpus that changes on every commit, and the identifiers people
+    search for here (`M1.2`, a codename, a `node_key`) are exactly what lexical
+    matching does best.
+  - **Context is derived, not generated.** Contextual Retrieval pays an LLM to
+    write a per-chunk summary because generic prose has no structure to read.
+    Every sheet here already maps to a node, so the context line — id, title,
+    type, status, codename, ancestor chain, archive state — is derived: free,
+    exact, and unable to drift. It is indexed as its own weighted column, which
+    is why "payments backoff" finds a section whose body never says "payments".
+  - Ranking fuses BM25 with structural identifier matches via Reciprocal Rank
+    Fusion, so `specy-road search M1.2` needs no special code path. Archived hits
+    are demoted rather than hidden — often they are the *final* decision.
+  - The index at `.specyrd/cache/search-index.sqlite3` is gitignored and
+    disposable, rebuilt incrementally from `(mtime, size)` per file and tracking
+    the **working tree** rather than `HEAD`, so uncommitted edits are searchable.
+    296 chunks, 0.3s cold build, ~9ms per query on the repo above.
+  - How much the ignore block removes depends on the repo's `.gitignore`, since
+    an index already skips what git ignores. With the shipped scaffold, which
+    tracks briefs on purpose, excluding them takes the indexed corpus from
+    ~351 KB to ~205 KB (42%) on a 48-node project; a repo that already ignores
+    briefs sees little until it starts archiving.
+  - **`specyrd init` now maintains a marked block** in `.cursorindexingignore`
+    (`roadmap/archive/`, `work/brief-*.md`, `roadmap.md`) and in `.gitignore`
+    (`.specyrd/cache/`). Content outside the markers is never touched and
+    re-running is a no-op. `.cursorindexingignore` — not `.cursorignore` — because
+    it removes files from Cursor's index while leaving them readable when
+    referenced; blocking reads would break every path search returns. Claude Code
+    gets no read-denials: it builds no index, and deny rules would break the same
+    pointers.
+  - **Fixes an upgrade gap:** `init project` skips a `.gitignore` that already
+    exists, so a repo scaffolded before these caches existed would have shown
+    `.specyrd/cache/` as untracked forever. The managed block repairs that.
+  - New stubs `specyrd-search`, `specyrd-digest` and the previously missing
+    `specyrd-history`, installed for both `pm` and `dev` roles. A test now
+    cross-checks the command templates against the install registry, which
+    nothing did before — a template with no entry shipped in the wheel and never
+    installed.
+  - The `##`-section parser is lifted out of `brief_dependency_context` into
+    `specy_road.text_sections`, shared with the index; brief output is unchanged.
+  - Docs: [`docs/agent-search.md`](docs/agent-search.md).
+
+- **Roadmap history, derived from git.** `specy-road history [NODE_ID]` answers
+  how the roadmap got to its current shape: status transitions, dependency edges
+  added and later dropped, renumbering, planning-sheet revisions, and archived
+  work. Without it an agent re-derives decisions that were already made and
+  unmade, and archived subtrees look like work that was never done.
+  - **Events are keyed by `node_key`, not `id`.** An `id` is a position in the
+    outline and renumbers freely, so an id-keyed history would lose a node's past
+    every time a milestone was inserted above it. Renumbering is recorded as an
+    ordinary event and the node's story stays continuous across it.
+  - An id that several nodes have held, and none holds now, **exits 2 and lists
+    the candidates** rather than guessing which node's past to show.
+  - **Nothing is committed.** The index is cached at
+    `.specyrd/cache/roadmap-history.json` (gitignored; `.specyrd/manifest.json`
+    stays tracked) and rebuilt whenever git disagrees with it — a moved `HEAD`
+    appends only the new commits, a rewritten history rebuilds, and an
+    unrecognised `cache_version` rebuilds, so there is no migration to write.
+  - Cost is one `git log --raw` pass plus one long-lived `git cat-file --batch`
+    process for the whole history, with parsed chunks memoised by blob SHA.
+    Planning-sheet events are free: the flat-`planning/` naming rule puts the
+    `node_key` in the filename.
+  - The walk follows `--first-parent`, so each step is a state the integration
+    branch actually passed through and a merged branch arrives as one step.
+    Walking `--no-merges` instead interleaves parallel branches and manufactures
+    flip-flop events.
+  - `specy-road brief` gains a `## 9. History` section from the same index,
+    including archived work on the node's branch of the outline. Suppress it
+    with `--no-history`.
+  - Docs: [`docs/roadmap-history.md`](docs/roadmap-history.md).
+
+- **Archive completed roadmap subtrees.** Long-running roadmaps accumulate
+  finished milestones that keep loading, validating, exporting and rendering
+  forever, eventually pushing chunks toward `roadmap_json_chunk_max_lines`.
+  `specy-road archive <NODE_ID>` now moves a subtree whose rollup status is
+  `Complete` out of the live graph into `roadmap/archive/`, with
+  `list-archives`, `show-archive`, and `restore-archive` alongside it, plus
+  `archive --auto [--older-than-days N]` to sweep everything finished longer
+  than a threshold. This is unrelated to the PM GUI's **Hide Complete** button,
+  which remains a pure view filter, and to the legacy destructive
+  `archive-node --hard-remove`.
+  - The live/archived boundary is `manifest.json`'s existing `includes` list,
+    which the roadmap loader already treats as authoritative — archiving needs
+    no loader change.
+  - **Live nodes may keep depending on archived work.**
+    `validate_dependency_ids` would otherwise hard-fail on the dangling
+    `node_key`. Rather than rewriting dependency edges, `roadmap/archive/index.json`
+    records every archived key and validation accepts it as satisfied
+    (archived implies Complete). Live `dependencies` arrays are left untouched,
+    which is what makes restore lossless. **That index is not disposable** —
+    deleting it turns every such edge into a validation error.
+  - Restore replays each node's recorded chunk **and index within that chunk**,
+    so an archive/restore round trip leaves no diff, including when the subtree
+    shared a chunk with live nodes or spanned several chunks. A chunk the
+    archive emptied is recreated and re-added to `includes`.
+  - Archived planning sheets land under `roadmap/archive/planning/`, not
+    `planning/archive/`: `validate` rejects any subdirectory or nested `.md`
+    under `planning/`.
+  - Records capture best-effort git provenance (rollup branch, integration
+    branch, merge commit, nearest tag, `closed_at`) read from
+    `milestone_execution` and existing refs. **No git objects are created.**
+  - An active `milestone_execution` blocks archiving its subtree and `--force`
+    does not override that, since moving files out from under an in-flight
+    rollup would strand the branch.
+  - New bundled schema `specy_road/schemas/archive.schema.json`, validated from
+    the wheel rather than from `<repo_root>/schemas/`, so adopters pick up new
+    archive fields by upgrading the package instead of hand-editing a
+    consumer-owned schema. `scripts/verify_wheel_contents.py` and
+    `tests/test_package_data_schemas.py` guard that it ships.
+  - Docs: [`docs/archiving.md`](docs/archiving.md).
+
+- **Deep archive tier.** `specy-road archive <NODE_ID> --deep` (or
+  `deepen-archive <ARCHIVE_ID>` afterwards) folds an archived chunk and its
+  planning sheets into a single capsule file,
+  `roadmap/archive/deep/<archive_id>.json`, removes the loose files, and leaves
+  a standalone `roadmap/archive/refs/<archive_id>.json` naming the nodes and the
+  git refs they were delivered on. Deep archives are not browsable in the PM
+  GUI; their reference file is.
+  - **The capsule is uncompressed text, deliberately.** The tier exists to cut
+    file count, not bytes. Git already zlib-compresses and delta-compresses
+    blobs, so a compressed archive would be opaque to that — stored in full on
+    every change, with `diff`, `blame`, `log -p` and `git grep` all lost on
+    content someone would later want to read. Canonical JSON formatting also
+    makes the capsule byte-reproducible, which a gzipped tarball could not be
+    (gzip headers carry a timestamp; tar headers carry per-file mtime/uid/gid).
+  - The index record keeps its `node_keys` and `nodes_summary` through
+    deepening, so a deep archive stays listable and keeps satisfying live
+    dependencies without opening the capsule.
+  - `restore-archive` handles both tiers in one command — on a deep archive it
+    unfolds and then restores.
+  - **The capsule `sha256` is verified before anything unfolds.** A mismatch is
+    refused outright rather than partially restored; the archive stays deep and
+    the live roadmap is untouched.
+
+- **Last-worked-on for roadmap nodes, derived from git.** The PM GUI shows a
+  **Last worked** column on leaf rows. It is computed from commit dates on
+  demand and **never stored**, so an existing repo is fully populated the first
+  time it is opened — there is no seeding step, no migration, and no file added
+  to the consumer repo.
+  - Per node: the last commit touching its planning sheet (precise), falling
+    back to its roadmap chunk only when the sheet was never committed. The two
+    are not blended — a chunk holds many nodes, so crediting its date to all of
+    them would make every sibling look freshly worked whenever one node's
+    status changed.
+  - Merge commits do not count as a touch, or every node would look freshly
+    worked after each integration merge.
+  - Reflects **committed work only**, so it is a lower bound; the Dev column
+    and `roadmap/registry.yaml` show active claims.
+  - One `git log --name-only` walk per roadmap, memoized on `HEAD` (commit
+    dates cannot move while `HEAD` is still). Asking git per node is linear in
+    node count: ~31s on a 400-node roadmap against ~0.17s for a single walk.
+  - `archive --auto` uses the same derived date when a subtree has no
+    `milestone_execution.closed_at`, so it now reaches work that never went
+    through a rollup.
+
+- **PM GUI archive surface.** An **Archive** toolbar button opens a drawer that
+  lists archived subtrees, offers eligible ones, previews a plan before
+  committing to it, and restores or deep-archives in one click. Eligibility is
+  computed server-side from the same gate the CLI uses, so the drawer never
+  offers something `specy-road archive` would refuse. Every write carries the
+  usual `X-PM-Gui-Fingerprint` token — archiving moves roadmap files, so a stale
+  tab must not be able to fire one.
+  - New `pm_gui` preferences under **Settings → Completed work**:
+    `auto_hide_completed` (seeds the Hide Complete filter — a **view filter**,
+    no files move), `auto_archive_completed` and `auto_archive_after_days`
+    (which **do** move files, always bounded by the age threshold).
+  - **`Hide Complete` is unchanged.** It remains a pure view filter; the new
+    preference only sets its initial state.
+  - The outline gains a **Last worked** column on leaf rows, with the exact
+    timestamp and the reason in the cell tooltip.
+
+### Fixed
+
+- **The milestone stub template scaffolded JSON that fails `specy-road validate`.**
+  `templates/planning-node/milestone-stub.md.template` told PMs to author
+  `agentic_checklist` and `execution_subtask`. Both are in
+  `validate_self_heal._DEPRECATED_FIELDS` — stripped from chunk files on disk —
+  and `roadmap.schema.json` sets `additionalProperties: false`, so following the
+  shipped template produced a repository that fails its own validation.
+  `docs/roadmap-authoring.md` was worse: it called `agentic_checklist`
+  "**Required** when `execution_subtask: agentic`" forty lines above declaring
+  it deprecated. The five questions that make a task implementable now live in
+  the planning sheet, which is where `specy-road brief` already reads cited
+  contracts from.
+- **The outline editor refused a gate reparent that `validate` accepts.**
+  `validate_roadmap_gates` allows a gate under a vision, phase **or milestone**;
+  `roadmap_outline_renumber` allowed only vision or phase, so moving a gate
+  under a milestone in the PM GUI was rejected for a shape `validate` has
+  accepted since before v0.1.4. Both now read one `NODE_KINDS` table.
+  `docs/roadmap-authoring.md` had documented the narrower rule and is corrected
+  to match.
+- **A deep archive's reference file escaped non-ASCII titles the capsule did
+  not.** `archive_deep` rendered the ref file with an inline `json.dumps` that
+  had lost `ensure_ascii=False`, so a node titled in Japanese was written as
+  `\uXXXX` escapes in `roadmap/archive/refs/*.json` and as UTF-8 in the capsule
+  beside it. One `render_canonical_json` now writes both.
+- **A missing `roadmap/registry.yaml` raised a traceback in three commands.**
+  `finish-this-task`, `mark-implementation-reviewed` and the `feature/rm-*`
+  resolver let `FileNotFoundError` reach the user, while four other readers of
+  the same file treated absent as empty. All now go through
+  `registry_yaml.read_registry`, and a repo with no claims yet reports the real
+  problem instead.
+- **Archived files no longer trip the roadmap chunk line limit.**
+  `validate_roadmap_line_limits` scans every `*.json` under `roadmap/`, so
+  `roadmap/archive/` was checked against `roadmap_json_chunk_max_lines` (500).
+  Archiving writes a whole subtree into one file and the ledger grows per
+  record, so **one archive of a 31-node phase was enough to make `validate`,
+  `export --check` and every CRUD command exit 1** — on exactly the repositories
+  archiving exists to help, with no way to split the files. `file-limits`
+  reported OK throughout, because only the other scanner had been exempted.
+- **Archiving an ancestor of a locked milestone is refused.** The milestone
+  lock marks a milestone and its descendants, so a root-only check passed when
+  archiving an *ancestor* and carried the locked subtree out from under an
+  in-flight rollup branch.
+- **Archiving the last live subtree is refused.** It would leave
+  `manifest.json` with `"includes": []`, which the loader reads as the legacy
+  "nodes live in the manifest" layout — a repository that cannot load at all.
+- **`restore-archive` validates before destroying the archive.** It previously
+  deleted the chunk, planning sheets and ledger record and only then validated,
+  so a validation failure destroyed the only copy on the way to reporting the
+  error.
+- **Dependencies can still be edited on a node that depends on archived work.**
+  Every dependency write sends the full set, and the edit path rejected keys
+  absent from the live graph — so one archived dependency made a node's
+  `dependencies` permanently uneditable from both the CLI and the PM GUI.
+- **Archiving a node with an open registry claim is refused.** It used to
+  apply fully and only then fail validation (`registry: entry … references
+  unknown node_id`), leaving the repository failing `validate` with no hint why
+  and stranding the claimant's feature branch. Now caught before anything moves.
+- **`specy-road brief` names archived dependencies** instead of reporting "no
+  effective dependencies" for a node that visibly lists one.
+- **`list-dependencies` labels an archived dependency as archived** rather than
+  "missing node_key in roadmap", which pointed the PM at the one edit that
+  breaks restore.
+- **Last worked is populated when the roadmap is not the git repo root.**
+  `git log --name-only` prints repository-relative paths while roadmap paths are
+  project-relative, so in a monorepo — or any `SPECY_ROAD_REPO_ROOT` pointing at
+  a subdirectory — every lookup missed and the column went silently blank.
+- **The outline's drag-drop rows span the full table again.** `TABLE_COLS` was
+  left at 5 when the sixth column was added, truncating the root drop zone and
+  every gap row.
+- **The auto-archive preferences now do something.** `auto_archive_completed`
+  and `auto_archive_after_days` were saved and read back but consumed by
+  nothing. The Archive drawer now surfaces subtrees past the threshold with a
+  one-click action — surfaced, never applied on its own, because archiving
+  moves files.
+
+### Changed
+
+- **`bundled_scripts` is a real package.** The scripts imported each other by
+  bare module name, which resolved only because eleven modules mutated
+  `sys.path` on the way past — `ensure_bundled_scripts_on_path()` at 24 call
+  sites, seven hand-rolled equivalents, a `PYTHONPATH` prefix built in
+  `cli._run`, another in the test harness, and a pytest `pythonpath` entry.
+  They are now imported as `specy_road.bundled_scripts.<name>`, and the CLI runs
+  them with `-m` so a child process resolves imports the way its parent did.
+  Anything importing these modules by bare name needs the package path.
+- **`--repo-root` now documents what it actually does.** Twenty-six parsers
+  spelled the flag out by hand and its stated default had drifted four ways
+  ("git root or cwd", "git discovery / cwd", "cwd", "current working
+  directory"). Every one was wrong once `project_root()` took over resolution.
+  One definition, one help string, and it names the real order.
+- **Faster where it was repeating itself.** The git-workflow and archive JSON
+  schema validators were re-read from the wheel and recompiled on *every* call —
+  five times per `finish-this-task`, four per `specy-road archive`.
+  `constraints/file-limits.yaml` was parsed twice on adjacent lines to read two
+  keys. The PM GUI ran `rev-parse --is-inside-work-tree` five times per payload,
+  walked the roadmap twice per fingerprint poll, and loaded the merged graph
+  three times per node insert.
+- **One project-root resolver, and both layouts work without a flag.** The CLI
+  and the PM GUI resolved the project by different rules, and the CLI's was the
+  weaker one: `default_user_repo_root` was git-toplevel-or-cwd and never read
+  `SPECY_ROAD_REPO_ROOT` at all, although `docs/pm-workflow.md` told people to
+  set it. It had no discovery either, so a project living in a subfolder needed
+  an explicit `--repo-root` on every single invocation.
+  - `runtime_paths.project_root()` is now the single resolver, and both
+    surfaces call it. Order: explicit `--repo-root`, then
+    `SPECY_ROAD_REPO_ROOT`, then the `project_root` recorded in
+    `.specyrd/manifest.json`, then discovery upward from the working directory,
+    then the git root, then the working directory.
+  - **The layout is recorded, not guessed.** `init project` writes
+    `project_root` to the already-tracked `.specyrd/manifest.json`, because a
+    repository can contain two roadmaps and a scan would eventually pick the
+    wrong one silently. A recorded root that escapes its checkout is ignored.
+  - **The git root and the project root are now named apart.** The git root owns
+    `.gitignore`, `.cursorindexingignore`, `.claude/` and `.cursor/`; the project
+    root owns `roadmap/`, `planning/`, `shared/`, `work/`, `constitution/` and
+    `constraints/`. `runtime_paths.project_prefix` bridges them.
+  - **Fixed: the ignore blocks broke in a nested layout.** `agent_ignores` wrote
+    root-relative entries such as `roadmap/archive/` into files that land at the
+    git root, so under a nested project none of them matched and archived
+    material silently stayed in the IDE index. Entries are now prefixed.
+  - **Fixed: `file-limits` would have enforced nothing in a nested layout.**
+    `constraints/file-limits.yaml` is read from the project root, but its
+    `applies_to_globs` name the consumer's own source and now resolve against
+    the git root. Pointing `--repo-root` at an arbitrary subdirectory still
+    scans only that subtree.
+  - A parametrized suite runs the real commands in both layouts, from three
+    working directories, with no `--repo-root` at all.
+- **A brief now inlines only the contracts its node cites.** `specy-road brief`
+  globbed all of `shared/` into every brief regardless of the task, so a brief's
+  size tracked the repository rather than the work: measured on a repo with
+  444 KB of contracts, one leaf task's brief came to 436 KB — roughly 109,000
+  tokens — of which the node itself contributed about 3 KB. That is the opposite
+  of what `AGENTS.md` asks for on its first line, and unlike a slow command it
+  does not degrade, it fails outright at exactly the scale specy-road exists to
+  serve.
+  - Citations are read from the `## References` section of the node's own
+    planning sheet **and every ancestor's** — a section both sheet templates
+    already ship and real repos already fill in. `shared/README.md` is always
+    inlined as the index, matching the load order `AGENTS.md` already documents.
+  - Everything else under `shared/` is listed as a path with its size and a
+    `specy-road search --kind shared` pointer. Nothing became unreachable, only
+    un-inlined. On a real 48-node repo a brief for an unrelated node went from
+    28.7 KB to 8.3 KB, while the node that genuinely cites the large contract
+    was unchanged.
+  - **`--all-contracts`** restores the previous behaviour exactly.
+  - Contract discovery is now recursive, fixing the same bug in the opposite
+    direction: the old flat `shared/*.md` glob never saw `shared/<dir>/*.md` at
+    all, so a repo that filed contracts in subfolders got none of them.
+- **Archive and restore is now net-zero.** Restoring the last archive removes
+  `roadmap/archive/` instead of leaving an empty ledger behind for the user to
+  explain in review.
+- **`file-limits` skips archived material.** `roadmap/archive/**` is added to
+  the session-artifact skip list: a scaffold's `**/*.md` glob would otherwise
+  keep flagging planning sheets for milestones that shipped years ago, which
+  defeats much of the point of archiving.
+- **The destructive `archive-node --hard-remove` error message now points at
+  `specy-road archive`** for retiring completed work. The path itself lives in
+  `specy_road/bundled_scripts/roadmap_crud_delete.py` (split out in v0.1.4) and
+  keeps its atomic behavior; the two commands remain unrelated despite the
+  similar names.
+
+### Removed
+
+- **`pr_hints` is gone from the `GET /api/roadmap` payload.** It duplicated
+  `git_enrichment[<id>].hint_line`, which the PM UI already preferred — the
+  client used `pr_hints` only as a tail fallback and carried explicit de-dup
+  logic to suppress the overlap. Building it cost a second GitHub/GitLab request
+  per registered node, and `hint_line` itself cost a third, re-fetching a PR the
+  server already had in hand. Removing it drops **2N forge API calls per roadmap
+  load** and fills in `hint_line` for merged and closed PRs, which the old
+  `state=open` query never returned.
+- **`inherit_git_remote` is gone from the settings API.** The React client
+  hardcoded it to `false`; it travelled through a Pydantic field, a route
+  handler and a keyword argument whose own docstring said it was ignored, and
+  nothing ever read it.
+- **The `.specyr/` → `.specyrd/` manifest migration is gone.** `git log -S '".specyr"'`
+  over `specy_road/` returns exactly the `v0.1.0-rc1` commit that introduced the
+  string as the legacy name to migrate *from*; no tagged release ever wrote
+  `.specyr/`.
+- **`SPECY_ROAD_SCRIPTS` no longer does anything.** It was honoured by one of
+  the eleven places that put `bundled_scripts/` on `sys.path`, so setting it
+  produced a half-redirected process.
+
 ## [v0.1.4] - 2026-08-31
 
 First stable **v0.1.4** release on **PyPI**. Promotes the work validated in

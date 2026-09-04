@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.runtime_paths import bundled_scripts_dir, specy_road_package_dir
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, resolve_repo_root
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -23,6 +23,8 @@ _USAGE_TEXT = (
     "Authoring / validation:\n"
     "  validate             — validate merged roadmap graph and registry\n"
     "  brief <NODE_ID>      — generate focused brief for a node\n"
+    "    (inlines shared/ contracts cited in the chain's `## References`;\n"
+    "     --all-contracts inlines every shared/**/*.md instead)\n"
     "  export               — regenerate roadmap.md index from merged graph\n"
     "  file-limits          — check line-count constraints\n"
     "\n"
@@ -35,7 +37,32 @@ _USAGE_TEXT = (
     "    (--chunk is now optional; specy-road auto-routes to a valid chunk)\n"
     "  edit-node ...\n"
     "  set-gate-status <NODE_ID> --status … — gate nodes only (Not Started|In Progress|Complete|Blocked)\n"
-    "  archive-node ...\n"
+    "  archive-node ...         — legacy hard-remove; see `archive` below to archive completed work\n"
+    "\n"
+    "Archiving (long-running roadmaps):\n"
+    "  archive <NODE_ID>    — move a Complete subtree out of the live graph into roadmap/archive/\n"
+    "    (optional: --deep --dry-run --force | --auto [--older-than-days N])\n"
+    "  deepen-archive <ARCHIVE_ID> — fold a shallow archive into one capsule file + reference\n"
+    "  list-archives        — list archive records (optional: --json)\n"
+    "  show-archive <ARCHIVE_ID> — one record in detail, including git provenance\n"
+    "  restore-archive <ARCHIVE_ID> — bring an archived subtree back (optional: --dry-run)\n"
+    "\n"
+    "History (derived from git, cached under .specyrd/cache/):\n"
+    "  history [NODE_ID]    — how a node got here: status changes, dependency edges,\n"
+    "    renumbering, archived work. Omit NODE_ID for a roadmap-wide feed.\n"
+    "    (optional: --since DATE --archived --limit N --json --rebuild --repo-root DIR)\n"
+    "\n"
+    "Agent context (keeps IDE indexing small):\n"
+    "  search <QUERY>       — ranked search over planning sheets, shared contracts,\n"
+    "    roadmap nodes, implementation summaries and archived work\n"
+    "    (optional: --scope live|archived|all --kind K --node ID --limit N --json\n"
+    "     --stats --rebuild --repo-root DIR)\n"
+    "  digest               — write roadmap-context.md: the current state in one file,\n"
+    "    for an agent to read instead of crawling planning/ and work/\n"
+    "    (optional: -o FILE | -o - for stdout | --check --repo-root DIR)\n"
+    "\n"
+    "Roadmap editing:\n"
+
     "  list-dependencies <NODE_ID>\n"
     "  set-dependencies <NODE_ID> (--clear | --deps \"KEY …\")\n"
     "  add-dependency <NODE_ID> <DEP_NODE_KEY>\n"
@@ -79,6 +106,15 @@ _USAGE_TEXT = (
     "  reconcile-milestone-status — dry-run milestone delivery vs git; --apply to close/sync (see -h)\n"
     "  open-milestone-pr       — print gh/glab one-line PR from rollup branch to integration\n"
 )
+
+
+# Commands whose bundled script owns its own argparse. The command name is
+# forwarded so `specy-road <cmd> -h` prints that subcommand's help.
+_FORWARDED = {
+    "history": "history_cli.py",
+    "digest": "digest_cli.py",
+    "search": "search_cli.py",
+}
 
 
 def _run_init_cli(rest: list[str]) -> None:
@@ -142,24 +178,21 @@ def _args_repo_root_first(args: list[str]) -> list[str]:
 
 
 def _run(script: str, args: list[str]) -> None:
-    d = bundled_scripts_dir()
-    script_path = d / script
-    if not script_path.is_file():
+    """Run a bundled entrypoint in its own process.
+
+    ``-m`` on the installed package, so the child resolves imports the same way
+    the parent did. This used to exec the file by path with a hand-built
+    PYTHONPATH prefix, which was the only thing making the scripts'
+    bare-module-name imports resolve.
+    """
+    module = f"specy_road.bundled_scripts.{script.removesuffix('.py')}"
+    if not (bundled_scripts_dir() / script).is_file():
         print(
-            f"error: missing bundled script {script_path} (broken install).",
+            f"error: missing bundled script {script} (broken install).",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    env = os.environ.copy()
-    sep = os.pathsep
-    prev = env.get("PYTHONPATH", "")
-    # Parent of the `specy_road` package dir so `import specy_road` works for
-    # bundled scripts; `d` keeps flat imports (do_next_available, …).
-    repo_or_site = str(specy_road_package_dir().parent)
-    prefix = f"{repo_or_site}{sep}{d}"
-    env["PYTHONPATH"] = prefix + (sep + prev if prev else "")
-    cmd = [sys.executable, str(script_path), *args]
-    proc = subprocess.run(cmd, env=env)
+    proc = subprocess.run([sys.executable, "-m", module, *args])
     if proc.returncode != 0:
         # Avoid chaining from CalledProcessError: bundled scripts already print
         # stderr messages; surfacing subprocess.check_call adds a noisy traceback.
@@ -176,19 +209,14 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
             "(human judgment; not validated by specy-road). Skips files that already exist unless --force."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: current working directory)",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--force",
         action="store_true",
         help="Overwrite existing purpose.md and/or principles.md.",
     )
     ns = p.parse_args(rest)
-    root = (ns.repo_root or Path.cwd()).resolve()
+    root = resolve_repo_root(ns)
     try:
         result = write_constitution(root, force=ns.force)
     except ConstitutionExistsError as e:
@@ -204,12 +232,7 @@ def _cmd_gui(rest: list[str]) -> None:
     p = argparse.ArgumentParser(prog="specy-road gui")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8765)
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        help="Repository root (default: git discovery / cwd)",
-    )
+    add_repo_root_arg(p)
     ns = p.parse_args(rest)
     uvicorn_spec = importlib.util.find_spec("uvicorn")
     if uvicorn_spec is None:
@@ -316,6 +339,16 @@ def main(argv: list[str] | None = None) -> None:
         "remove-dependency",
     ):
         _run("roadmap_crud.py", _args_repo_root_first([cmd, *rest]))
+    elif cmd in (
+        "archive",
+        "deepen-archive",
+        "list-archives",
+        "show-archive",
+        "restore-archive",
+    ):
+        _run("archive_cli.py", [cmd, *rest])
+    elif cmd in _FORWARDED:
+        _run(_FORWARDED[cmd], [cmd, *rest])
     elif cmd == "rebalance-chunks":
         _run("roadmap_rebalance.py", rest)
     elif cmd == "refresh-schemas":

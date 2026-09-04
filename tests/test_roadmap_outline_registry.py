@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from roadmap_outline_ops import sync_registry_node_ids
+from specy_road.bundled_scripts.roadmap_outline_ops import sync_registry_node_ids
 
 
 def test_sync_registry_node_ids_updates_entries(tmp_path: Path) -> None:

@@ -6,15 +6,15 @@ import json
 import sys
 from pathlib import Path
 
-import yaml
 
-from roadmap_chunk_utils import (
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
     discover_manifest_path,
     load_chunk_nodes,
     load_json_chunk,
     load_manifest_mapping,
 )
 from specy_road.runtime_paths import default_user_repo_root
+from specy_road.file_limits_engine import line_count, roadmap_line_limit
 
 
 # Status precedence used to aggregate non-leaf rollup status. Higher rank =
@@ -134,13 +134,6 @@ def annotate_rollup_status(nodes: list[dict]) -> list[dict]:
     return nodes
 
 
-def line_count(path: Path) -> int:
-    text = path.read_text(encoding="utf-8", errors="replace")
-    if not text:
-        return 0
-    return text.count("\n") + (0 if text.endswith("\n") else 1)
-
-
 def _fail(msg: str) -> None:
     print(msg, file=sys.stderr)
     raise SystemExit(1)
@@ -217,32 +210,28 @@ def _check_oversized_manifest_file(root: Path, path: Path, max_lines: int) -> bo
     return False
 
 
-def _roadmap_manifest_max_lines(root: Path) -> int:
-    config_path = root / "constraints" / "file-limits.yaml"
-    if config_path.is_file():
-        with config_path.open(encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-        val = cfg.get("roadmap_manifest_max_lines")
-        if isinstance(val, int) and val > 0:
-            return val
-    return 500
-
-
-def _roadmap_json_chunk_max_lines(root: Path) -> int:
-    config_path = root / "constraints" / "file-limits.yaml"
-    if config_path.is_file():
-        with config_path.open(encoding="utf-8") as f:
-            cfg = yaml.safe_load(f) or {}
-        val = cfg.get("roadmap_json_chunk_max_lines")
-        if isinstance(val, int) and val > 0:
-            return val
-    return 500
+#: Subdirectory of ``roadmap/`` holding archived subtrees. Its JSON is not
+#: roadmap *source*: nothing there is in ``manifest.json``'s ``includes``, so
+#: the loader never reads it and no one edits it by hand.
+_ARCHIVE_DIRNAME = "archive"
 
 
 def _line_limit_json_chunks(root: Path, base: Path, json_max: int) -> bool:
+    """Enforce the chunk cap on roadmap source files only.
+
+    ``roadmap/archive/`` is skipped. Archiving deliberately writes a whole
+    subtree into one file, and the ledger grows with every record, so scanning
+    them against the per-chunk cap would fail on exactly the repositories the
+    feature exists to help — and the operator cannot split those files, because
+    the archive owns their layout. The cap protects files humans edit and the
+    loader merges; archived files are neither.
+    """
+    archive_dir = base / _ARCHIVE_DIRNAME
     failed = False
     for path in sorted(base.rglob("*.json")):
         if path.name == "manifest.json":
+            continue
+        if archive_dir in path.parents:
             continue
         try:
             path.relative_to(base)
@@ -276,8 +265,8 @@ def validate_roadmap_line_limits(
     ``.json`` chunk files under ``roadmap/``.
     """
     root = root or default_user_repo_root()
-    manifest_max = max_lines if max_lines is not None else _roadmap_manifest_max_lines(root)
-    json_max = max_lines if max_lines is not None else _roadmap_json_chunk_max_lines(root)
+    manifest_max = max_lines or roadmap_line_limit(root, "roadmap_manifest_max_lines")
+    json_max = max_lines or roadmap_line_limit(root, "roadmap_json_chunk_max_lines")
     base = root / "roadmap"
     failed = False
     try:

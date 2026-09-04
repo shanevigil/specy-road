@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from roadmap_chunk_utils import load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
 
 

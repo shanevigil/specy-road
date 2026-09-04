@@ -4,27 +4,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
-from roadmap_crud_ops import run_validate_raise
-from roadmap_gui_tree import indent_parent_id, outdent_parent_id
-from roadmap_layout import sibling_sort_key
-from roadmap_load import load_manifest_mapping, load_roadmap
-from roadmap_node_keys import build_key_to_node
-from roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
-from sync_planning_artifacts import sync_planning_artifacts
-
-
-def _chunk_includes(root: Path) -> list[str]:
-    doc = load_manifest_mapping(root)
-    inc = doc.get("includes") or []
-    return [x for x in inc if isinstance(x, str) and x.strip()]
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, roadmap_dir, write_json_chunk
+from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id, outdent_parent_id
+from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
+from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
+from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
+from specy_road.registry_yaml import registry_path
+from specy_road.node_kinds import allows_children, is_gate, parent_type_allowed
+from specy_road.bundled_scripts.roadmap_chunk_utils import manifest_includes
 
 
 def persist_merged_nodes(root: Path, merged: list[dict]) -> None:
     """Write merged node list back to JSON chunks (match by ``node_key``, preserve chunk order)."""
     by_key = {n["node_key"]: n for n in merged}
     base = roadmap_dir(root)
-    for rel in _chunk_includes(root):
+    for rel in manifest_includes(root):
         path = (base / rel).resolve()
         if not path.is_file() or path.suffix.lower() != ".json":
             continue
@@ -90,13 +87,13 @@ def _validate_reparent_target(
         cur = by_id.get(cur, {}).get("parent_id")
     if new_parent_id is not None:
         parent = by_id.get(new_parent_id)
-        if parent and parent.get("type") == "gate":
+        if parent and not allows_children(parent):
             raise ValueError("cannot move node under a gate")
-    if moved_type == "gate":
+    if is_gate(moved_type):
         if new_parent_id is None:
             raise ValueError("gate must have a vision, phase, or milestone parent")
         np = by_id.get(new_parent_id)
-        if not np or np.get("type") not in ("vision", "phase", "milestone"):
+        if not np or not parent_type_allowed(moved_type, np.get("type")):
             raise ValueError(
                 "gate must be a direct child of vision, phase, or milestone"
             )
@@ -210,7 +207,7 @@ def apply_outdent(repo_root: Path, node_id: str) -> bool:
 
 def sync_registry_node_ids(root: Path, old_to_new: dict[str, str]) -> None:
     """Update roadmap/registry.yaml entry ``node_id`` when display ids change."""
-    reg_path = root / "roadmap" / "registry.yaml"
+    reg_path = registry_path(root)
     if not reg_path.is_file():
         return
     if not old_to_new:

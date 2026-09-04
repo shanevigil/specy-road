@@ -8,37 +8,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-import yaml
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.git_workflow_config import resolve_integration_defaults
-from specy_road.registry_yaml import write_registry
+from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
 )
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
 
+#: Rebound by :func:`main` before any helper runs; this is only a placeholder
+#: so the name exists at import. Resolving the real root here would make
+#: importing the module shell out to git.
 ROOT = Path.cwd()
-REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
-
-
-def _git(*args: str) -> None:
-    subprocess.check_call(["git", *args], cwd=ROOT)
-
-
-def _git_capture(*args: str) -> str:
-    r = subprocess.run(
-        ["git", *args],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return r.stdout
-
-
-def _current_branch() -> str:
-    return _git_capture("rev-parse", "--abbrev-ref", "HEAD").strip()
 
 
 def _pickup_artifact_rel_paths(node_id: str) -> set[str]:
@@ -92,20 +75,13 @@ def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None
     raise SystemExit(1)
 
 
-def _load_registry() -> dict:
-    if not REGISTRY_PATH.is_file():
-        return {"version": 1, "entries": []}
-    with REGISTRY_PATH.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"version": 1, "entries": []}
-
-
 def _save_registry(doc: dict) -> None:
-    write_registry(REGISTRY_PATH, doc)
+    write_registry(registry_path(ROOT), doc)
 
 
 def _count_commits_ahead_of_remote_base(remote: str, base: str) -> int:
     upstream = f"{remote}/{base}"
-    out = _git_capture("rev-list", "--count", f"{upstream}..HEAD").strip()
+    out = git_capture(ROOT, "rev-list", "--count", f"{upstream}..HEAD").strip()
     return int(out) if out else 0
 
 
@@ -122,9 +98,9 @@ def _log_commits_ahead_of_remote_base(remote: str, base: str) -> str:
 
 
 def _sync_integration_branch_ff(remote: str, base: str) -> None:
-    _git("checkout", base)
+    git_run(ROOT, "checkout", base)
     try:
-        _git("merge", "--ff-only", f"{remote}/{base}")
+        git_run(ROOT, "merge", "--ff-only", f"{remote}/{base}")
     except subprocess.CalledProcessError:
         print(
             f"error: could not fast-forward local '{base}' to {remote}/{base}.",
@@ -139,7 +115,7 @@ def _sync_integration_branch_ff(remote: str, base: str) -> None:
 
 def _delete_feature_branch(branch: str, *, force: bool) -> None:
     if force:
-        _git("branch", "-D", branch)
+        git_run(ROOT, "branch", "-D", branch)
         return
     r = subprocess.run(
         ["git", "branch", "-d", branch],
@@ -183,13 +159,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "files under work/."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--base",
         default=None,
@@ -215,7 +185,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 
 def _require_feature_rm_branch_or_exit() -> str:
-    branch = _current_branch()
+    branch = current_branch(ROOT)
     if branch == "HEAD":
         print(
             "error: detached HEAD — check out your feature/rm-<codename> branch first.",
@@ -264,7 +234,7 @@ def _exit_if_unpushed_commits_without_force(
 
 
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
-    reg = _load_registry()
+    reg = read_registry(registry_path(ROOT))
     entries = reg.get("entries") or []
     if not next((e for e in entries if e.get("codename") == codename), None):
         print(
@@ -279,18 +249,17 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
         raise SystemExit(1)
     reg["entries"] = [e for e in entries if e.get("codename") != codename]
     _save_registry(reg)
-    rel_reg = str(REGISTRY_PATH.relative_to(ROOT))
-    _git("add", rel_reg)
-    _git("commit", "-m", f"chore(rm-{codename}): abort task pickup")
+    rel_reg = str(registry_path(ROOT).relative_to(ROOT))
+    git_run(ROOT, "add", rel_reg)
+    git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup")
     print(f"-> git push {remote} {base}")
-    _git("push", remote, base)
+    git_run(ROOT, "push", remote, base)
 
 
 def main(argv: list[str] | None = None) -> None:
-    global ROOT, REGISTRY_PATH
+    global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
-    ROOT = (args.repo_root or default_user_repo_root()).resolve()
-    REGISTRY_PATH = ROOT / "roadmap" / "registry.yaml"
+    ROOT = resolve_repo_root(args)
 
     base, remote, gw_warns = resolve_integration_defaults(
         ROOT,
@@ -312,7 +281,7 @@ def main(argv: list[str] | None = None) -> None:
     node_id = entry["node_id"]
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
 
-    _git("fetch", remote)
+    git_run(ROOT, "fetch", remote)
     ahead = _count_commits_ahead_of_remote_base(remote, base)
     _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
 
@@ -322,7 +291,7 @@ def main(argv: list[str] | None = None) -> None:
     _delete_feature_branch(branch, force=args.force)
     _remove_pickup_work_files(node_id, force=args.force)
 
-    print(f"\n[ok] pickup aborted; on branch {_current_branch()}")
+    print(f"\n[ok] pickup aborted; on branch {current_branch(ROOT)}")
 
 
 if __name__ == "__main__":

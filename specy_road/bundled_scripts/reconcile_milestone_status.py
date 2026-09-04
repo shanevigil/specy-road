@@ -7,15 +7,15 @@ import argparse
 import sys
 from pathlib import Path
 
-from roadmap_crud_ops import edit_node_set_pairs
-from roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.git_milestone_delivery import rollup_merged_into_integration
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.milestone_chunk_io import (
     maybe_promote_milestone_to_pending_mr,
     patch_milestone_execution_state,
 )
-from specy_road.runtime_paths import default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
@@ -27,13 +27,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "(e.g. local-only merges). Dry-run prints planned actions unless --apply."
         ),
     )
-    p.add_argument(
-        "--repo-root",
-        type=Path,
-        default=None,
-        metavar="DIR",
-        help="Repository root (default: git root or cwd).",
-    )
+    add_repo_root_arg(p)
     p.add_argument(
         "--apply",
         action="store_true",
