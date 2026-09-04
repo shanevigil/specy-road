@@ -1,16 +1,12 @@
 """Tests for scripts/roadmap_layout.py (tree order with sibling_order)."""
 
 from pathlib import Path
-import sys
 
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ROOT / "specy_road" / "bundled_scripts"
-if str(SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS))
 
-from specy_road.bundled_scripts.roadmap_layout import (  # noqa: E402
+from specy_road.bundled_scripts.roadmap_layout import (
     compute_dependency_steps,
     dependency_edges_detailed,
     ordered_tree_rows,

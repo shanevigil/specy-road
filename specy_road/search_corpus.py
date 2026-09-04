@@ -28,16 +28,10 @@ query return the same passage a dozen times. Only the dev-authored
 from __future__ import annotations
 
 import hashlib
-import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
-from specy_road.text_sections import (
-    normalize_heading,
-    read_text_safely,
-    split_sections,
-)
 from specy_road.archive_index import iter_archived_summaries
 
 SCOPE_LIVE = "live"

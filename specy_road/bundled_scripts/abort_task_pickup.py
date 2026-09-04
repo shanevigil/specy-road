@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import yaml
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path, write_registry

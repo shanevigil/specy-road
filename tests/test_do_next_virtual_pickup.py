@@ -4,19 +4,14 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import BUNDLED_SCRIPTS
 
-if str(BUNDLED_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(BUNDLED_SCRIPTS))
-
-from specy_road.bundled_scripts import do_next_available as dna  # noqa: E402
-from specy_road.bundled_scripts import do_next_task as dnt  # noqa: E402
-from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref  # noqa: E402
+from specy_road.bundled_scripts import do_next_available as dna
+from specy_road.bundled_scripts import do_next_task as dnt
+from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 
 _NK_PREREQ = "11111111-1111-4111-8111-111111111111"
 _NK_A = "22222222-2222-4222-8222-222222222222"

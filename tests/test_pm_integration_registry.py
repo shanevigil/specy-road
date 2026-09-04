@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 import yaml
 
-from tests.helpers import BUNDLED_SCRIPTS
 
-if str(BUNDLED_SCRIPTS) not in sys.path:
-    sys.path.insert(0, str(BUNDLED_SCRIPTS))
-from specy_road.bundled_scripts import roadmap_gui_settings as _rgs  # noqa: E402
+from specy_road.bundled_scripts import roadmap_gui_settings as _rgs
 
 from specy_road.pm_integration_registry import describe_integration_branch_auto_ff
 from specy_road.registry_remote_overlay import merge_registry_with_remote_overlay

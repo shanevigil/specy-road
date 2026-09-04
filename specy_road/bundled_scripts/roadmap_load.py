@@ -6,7 +6,6 @@ import json
 import sys
 from pathlib import Path
 
-import yaml
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     discover_manifest_path,

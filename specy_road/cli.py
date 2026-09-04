@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from specy_road.cli_init_argparse import build_specy_road_init_parser
-from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, resolve_repo_root
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
@@ -216,7 +216,7 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
         help="Overwrite existing purpose.md and/or principles.md.",
     )
     ns = p.parse_args(rest)
-    root = (ns.repo_root or Path.cwd()).resolve()
+    root = resolve_repo_root(ns)
     try:
         result = write_constitution(root, force=ns.force)
     except ConstitutionExistsError as e:

@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import yaml
 
 from specy_road.registry_yaml import read_registry, write_registry
 

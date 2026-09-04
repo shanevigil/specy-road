@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg

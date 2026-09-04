@@ -1,7 +1,4 @@
-"""Path and ID helpers for the PM Gantt HTTP API.
-
-Requires ``bundled_scripts`` on ``sys.path``.
-"""
+"""Path and ID helpers for the PM Gantt HTTP API."""
 
 from __future__ import annotations
 

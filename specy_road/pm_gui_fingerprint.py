@@ -2,8 +2,9 @@
 
 Two tokens are exposed:
 
-* :func:`pm_gui_mutation_fingerprint` — broad token (``view_fingerprint`` on
-  the wire) that bakes in roadmap + planning/constitution/vision/shared +
+* the **broad** token (``view_fingerprint`` on the wire), returned by
+  :func:`outline_and_view_fingerprints`, which bakes in roadmap +
+  planning/constitution/vision/shared +
   ``git HEAD`` + remote overlay ref tips. The PM GUI **polling refresh** hook
   compares this value to detect "something changed" (including after a
   **deferred** ``git fetch`` completed). It is **not** sent on mutating
@@ -49,17 +50,6 @@ def outline_and_view_fingerprints(repo_root: Path) -> tuple[int, int]:
         repo_root, pm_gui_mutation_fingerprint_base(repo_root, base)
     )
     return base, view
-
-
-def pm_gui_mutation_fingerprint(repo_root: Path) -> int:
-    """Broad token for view-refresh signalling.
-
-    Includes roadmap + planning/constitution/vision/shared + git HEAD +
-    (optionally) remote overlay refs. NOT used directly by the mutation
-    guard — see :func:`outline_mutation_fingerprint`.
-    """
-    base = pm_gui_mutation_fingerprint_base(repo_root)
-    return roadmap_fingerprint_with_remote_refs(repo_root, base)
 
 
 def outline_mutation_fingerprint(repo_root: Path) -> int:

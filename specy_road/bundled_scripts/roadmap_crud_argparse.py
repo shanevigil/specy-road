@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     cmd_add_dependency,

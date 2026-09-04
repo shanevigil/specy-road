@@ -9,7 +9,6 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
