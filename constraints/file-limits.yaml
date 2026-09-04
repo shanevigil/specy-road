@@ -27,11 +27,15 @@ override_limits:
       - "tests/test_roadmap_crud.py"
     max_lines_per_file: 600
   # Canonical release playbook. Single-file by design so operators can
-  # Ctrl+F during a release rather than navigate cross-doc links.
+  # Ctrl+F during a release rather than navigate cross-doc links — which
+  # means it grows whenever the release process gains a documented step or
+  # recovery path. Raised to 900 when footgun ⑨ (environment approval)
+  # was added after a required reviewer silently stalled v0.1.4-rc2, and
+  # again when the pypi/testpypi reviewer polarity was corrected.
   - name: release_runbook
     file_globs:
       - "docs/release-runbook.md"
-    max_lines_per_file: 800
+    max_lines_per_file: 900
 
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500
