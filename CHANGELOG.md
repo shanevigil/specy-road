@@ -11,6 +11,36 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.1-rc1] - 2026-09-04
+
+First prerelease for v0.2.1. Routed to TestPyPI by `release-publish.yml`.
+Smoke install:
+
+    pip install --pre --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.2.1rc1
+
+### Headline (vs v0.1.4)
+
+- **Archive tiers** — `archive`, `deepen-archive`, `restore-archive`,
+  `list-archives`, `show-archive`, plus a PM GUI archive drawer. Deep archives
+  compress to hashed text capsules and restore byte-for-byte.
+- **Roadmap history from git** — `specy-road history` derives per-node
+  timelines with an incremental, invalidation-safe cache.
+- **Agent context** — `specy-road digest` writes a ~6 KB `roadmap-context.md`
+  standing in for hundreds of KB of session output; `specy-road search` is
+  ranked SQLite-FTS5 search over sheets, contracts, nodes, summaries and
+  archives, returning pointers and snippets rather than file bodies.
+- **Briefs cite instead of copying** — only the `shared/` contracts a node's
+  sheet chain names under `## References` are inlined. `--all-contracts`
+  restores the old behaviour; `--no-history` skips the git-derived section.
+- **One project-root resolver** — `--repo-root`, `SPECY_ROAD_REPO_ROOT`,
+  `.specyrd/manifest.json`, upward discovery, git root, cwd, in that order, for
+  CLI and GUI alike, and `--repo-root --help` finally says so.
+- **A codebase-wide simplification pass** (net −640 lines) and a full
+  pre-release audit that fixed seven defects and cleared two security
+  advisories. See Fixed/Removed below.
+
 ### Added
 
 - **Agent context: `specy-road digest` and `specy-road search`.** A long-running
