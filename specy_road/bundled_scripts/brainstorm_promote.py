@@ -29,9 +29,9 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     append_node_to_chunk,
     run_validate_raise,
 )
+from specy_road.bundled_scripts.roadmap_layout import next_child_id
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
-from specy_road.gui_app_helpers import next_child_id
 
 #: Gates are human holds, not work, so an idea never becomes one.
 PROMOTABLE_TYPES = ("vision", "phase", "milestone", "task")
