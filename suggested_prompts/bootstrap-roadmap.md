@@ -11,7 +11,7 @@ You are migrating **roadmap-like** information from an existing project into **s
 1. **`specy-road init project --dry-run`** — Lists every scaffold path; use as checklist.
 2. **`docs/roadmap-authoring.md`** — Manifest, chunks, immutability, line limits, planning feature sheets.
 3. **`docs/git-workflow.md`** — Register on the integration branch, then `feature/rm-<codename>`, touch zones.
-4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`. These are copied in by `init project` and do **not** follow toolkit upgrades — if `specy-road validate` warns that a schema is behind, run **`specy-road refresh-schemas`** (never `init project --force`, which rewrites the whole scaffold).
+4. **JSON Schema** (consumer copy under `schemas/`): `roadmap.schema.json`, `manifest.schema.json`, `registry.schema.json`. These are copied in by `init project` and do **not** follow toolkit upgrades — if `specy-road validate` warns that a schema is behind, run **`specy-road refresh-schemas`** (never `init project --force`, which rewrites the whole scaffold). The IDE stubs from `specyrd init` have the same problem and the same shape of fix: **`specy-road refresh-stubs`**, never `specyrd init --force`.
 
 ## Mental model (do not confuse these)
 
@@ -99,6 +99,7 @@ From `[REPO_ROOT]`:
 ```bash
 specy-road validate
 specy-road export --check
+specy-road digest --check
 specy-road file-limits
 ```
 

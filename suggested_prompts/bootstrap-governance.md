@@ -60,6 +60,7 @@ From `[REPO_ROOT]`:
 ```bash
 specy-road validate
 specy-road export --check
+specy-road digest --check
 specy-road file-limits
 ```
 

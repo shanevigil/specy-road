@@ -10,13 +10,19 @@ dependencies are re-added, and archived work looks like work that was never done
 `specy-road history` answers those questions from git.
 
 ```bash
-specy-road history M1.2                 # one node's timeline
-specy-road history                      # roadmap-wide feed, newest first
+specy-road history M1.2                 # one node's timeline, OLDEST first
+specy-road history                      # roadmap-wide feed, NEWEST first
+specy-road history M1.2 --reverse       # flip either view
 specy-road history --since 2026-01-01
 specy-road history --archived           # only work that left the live graph
 specy-road history --json               # for tooling
 specy-road history --rebuild            # discard the cache and re-walk
 ```
+
+**The two views are ordered differently on purpose.** A roadmap-wide feed reads
+like a changelog, so the newest event is first; a single node's timeline reads
+like a story, so it starts at the beginning. `--reverse` flips whichever view
+you asked for, and `--limit N` means the N most recent events in both.
 
 Every brief also carries a `## 9. History` section built from the same index, so
 an implementing agent gets this context without asking for it. `specy-road brief

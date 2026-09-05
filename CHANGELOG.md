@@ -11,6 +11,102 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.1-rc2] - 2026-09-05
+
+Second prerelease for v0.2.1, responding to an adopter's `0.1.4 -> 0.2.1rc1`
+upgrade report against a real 107-node consumer repository. Full analysis in
+[`docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md`](docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md).
+
+### Fixed
+
+- **`specyrd init --force` no longer replaces a consumer's `CLAUDE.md`.** It
+  rewrote the whole file from a template — a file `--force`'s help text never
+  claimed and `.specyrd/manifest.json` never listed. `CLAUDE.md` now gets the
+  treatment `.gitignore` already had: one delimited managed block, rewritten in
+  place, with everything outside the markers never read and never touched. The
+  block is recorded in the manifest, so `--force`'s blast radius is exactly what
+  the manifest says it is. `managed_block` grew a `MarkerStyle` for this; the
+  ignore files keep their existing bytes.
+- **`--force` no longer clobbers `~/.specy-road/gui-settings.json`.** It
+  replaced saved OpenAI/Anthropic API keys with an empty stub — outside the
+  repository, so `git checkout --` could not undo it.
+- **`specyrd init --dry-run` previews the managed blocks.** The block pass was
+  inside `if not dry_run:`, so a dry run under-reported what a real run would
+  change.
+- **The agent guide is correct in a nested layout.** The project prefix was
+  applied only to the ignore blocks, so a project under `sr/` got a guide whose
+  every pointer was wrong. It also cited `docs/git-workflow.md` and
+  `docs/roadmap-authoring.md`, which `init project` does not scaffold.
+- **`edit-node --set title=` keeps a hand-picked codename.** It re-derived
+  unconditionally, renaming the planning sheet and repointing `planning_dir` —
+  but the codename is the branch identity (`feature/rm-<codename>`) and the
+  registry key, so a retitle silently moved a live branch off its node. A
+  derived or absent codename still follows the title; a chosen one stands, with
+  a note naming both values. `--sync-codename` overrides. The PM GUI's node
+  PATCH shares this path and inherits the guard.
+- **Outline moves are atomic.** `move_node_outline` persisted chunks, renamed
+  planning sheets and rewrote the registry before validating, so a rejected move
+  left all three behind and the roadmap unloadable — the defect `edit-node` was
+  fixed for in `v0.1.4`, never fixed here. The PM GUI's drag, indent and outdent
+  are repaired with it.
+- **The dogfood fixture's derived cache is gitignored.** `.specyrd/cache/` is
+  anchored to the git root, so the fixture's cache showed as untracked whenever
+  a command ran against it by hand.
+
+### Added
+
+- **`specy-road refresh-stubs`** — update the specyrd-managed IDE stubs from the
+  installed version. After `pip install -U specy-road` there was no way to pick
+  up stubs added since a repo was scaffolded: `update` is a git-clone
+  fast-forward, `refresh-schemas` covers `schemas/`, and `init` skips existing
+  files — which left `init --force` as the only apparent route. Built on
+  `refresh-schemas`: same shape, same flags (`--repo-root`, `--dry-run`, and
+  deliberately no `--force`). Reads `.specyrd/manifest.json` for the installed
+  packs and role, rewrites only those paths, adds newly-shipped stubs (`v0.2.1`
+  added `specyrd-search`, `specyrd-digest`, `specyrd-history`), re-applies every
+  managed block, and bumps `specyrd_version`. Stubs no longer installed for the
+  recorded role are **reported, not deleted**.
+  - `specyrd init` on an initialized repo now names `refresh-stubs` first.
+  - `specy-road validate` warns while the recorded `specyrd_version` lags.
+- **`specy-road move-node <NODE_ID> --to-parent <PARENT|null> [--index N]`** —
+  re-parent a subtree from the CLI. `edit-node --set parent_id=` moved the edge
+  and left the display id behind, so re-parenting meant hand-editing two chunk
+  files and renaming a planning sheet. The move/renumber logic already existed
+  for the PM GUI's outline drag. Because a move renumbers the subtree and both
+  sibling ranges, the `old -> new` id map is printed rather than applied
+  silently.
+- **`specy-road history --reverse`** — flip whichever view is active.
+- **`edit-node --sync-codename`** — re-derive the codename from a new title even
+  when it was chosen by hand.
+- **`specy-road digest --check` in release CI**, and the dogfood fixture's
+  `roadmap-context.md` is now committed. The repo gated on `export --check` and
+  not on `digest --check`, which is the asymmetry an adopter reasoned from when
+  asking whether the file was meant to be tracked.
+
+### Documentation
+
+- **`history`'s two sort orders are stated.** The roadmap-wide feed is
+  newest-first and one node's timeline is oldest-first — a feed reads like a
+  changelog, a node reads like a story. Both are now in `-h`, along with the
+  first `help=` string `--limit` has ever had.
+- **`roadmap-context.md` is generated *and committed*,** like `roadmap.md`. Said
+  in `digest -h`, in `--check`'s help, in the scaffold `.gitignore` as a comment
+  rather than a silent omission, and in a rewritten `.specyrd/README.md`.
+- **`--under` accepts a leaf id,** not just a parent — it scopes to exactly that
+  leaf, which is how a human picks work out of outline order. The metavar is now
+  `NODE_ID` and the empty-scope message no longer says "parent".
+- **Finishing the last open leaf under a parent closes that parent** in the same
+  bookkeeping commit — true since `v0.1.4` but never documented, and silent when
+  there is nothing to close, so it looked absent. The exception is a
+  `milestone_execution` node, closed by `reconcile-milestone-status` once its
+  rollup branch is proven merged.
+- **`--push` does not open the PR**, said plainly in its help text.
+- `.specyrd/README.md` and `docs/optional-ai-tooling-patterns.md` state exactly
+  what `--force` may touch, and which three files are the consumer's with one
+  managed block inside.
+- `suggested_prompts/` acceptance gates include `digest --check`, and name
+  `search`, `history` and `refresh-stubs`.
+
 ## [v0.2.1-rc1] - 2026-09-04
 
 First prerelease for v0.2.1. Routed to TestPyPI by `release-publish.yml`.

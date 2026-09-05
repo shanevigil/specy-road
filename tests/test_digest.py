@@ -198,7 +198,19 @@ def test_cli_writes_the_default_file(repo: Path, capsys) -> None:
     assert "Wrote" in capsys.readouterr().out
 
 
+def _forget_the_committed_digest(repo: Path) -> None:
+    """Drop the fixture's tracked digest to model a repo that has none yet.
+
+    The dogfood fixture commits `roadmap-context.md` — that is the documented
+    contract and this repo dogfoods it — so a test about the *absence* of the
+    file has to say so rather than assume it.
+    """
+    (repo / DEFAULT_OUTPUT).unlink(missing_ok=True)
+
+
 def test_cli_stdout_mode_writes_no_file(repo: Path, capsys) -> None:
+    _forget_the_committed_digest(repo)
+
     assert run_cli(["digest", "-o", "-"], repo) == 0
 
     assert not (repo / DEFAULT_OUTPUT).exists()
@@ -225,6 +237,31 @@ def test_check_fails_once_the_roadmap_moves(repo: Path, capsys) -> None:
 def test_check_reports_a_missing_file_rather_than_writing_one(
     repo: Path, capsys
 ) -> None:
+    _forget_the_committed_digest(repo)
+
     assert run_cli(["digest", "--check"], repo) == 1
     assert not (repo / DEFAULT_OUTPUT).exists()
     assert "missing" in capsys.readouterr().err
+
+
+def test_the_dogfood_fixture_digest_is_committed_and_current() -> None:
+    """`roadmap-context.md` is generated *and* tracked, so drift is a defect.
+
+    The adopter who upgraded to v0.2.1rc1 could not tell whether the file was
+    meant to be committed: `digest --check` says "missing … run: specy-road
+    digest", `roadmap.md` is generated-and-committed with a drift gate, and
+    `init project` gitignores `.specyrd/cache/` but not this. It is meant to be
+    committed — so this repo dogfoods that, the way it dogfoods `export
+    --check`.
+    """
+    from tests.helpers import DOGFOOD
+
+    committed = DOGFOOD / DEFAULT_OUTPUT
+    assert committed.is_file(), (
+        f"{DEFAULT_OUTPUT} is missing from the dogfood fixture. "
+        "Run: specy-road digest --repo-root tests/fixtures/specy_road_dogfood"
+    )
+    assert committed.read_text(encoding="utf-8") == render_digest(DOGFOOD), (
+        f"{DEFAULT_OUTPUT} has drifted from the fixture roadmap. "
+        "Run: specy-road digest --repo-root tests/fixtures/specy_road_dogfood"
+    )

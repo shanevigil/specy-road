@@ -19,8 +19,15 @@ def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument("--until", default=None, metavar="NODE_ID",
                    help="Stop after successfully finishing this node id (inclusive).")
-    p.add_argument("--under", default=None, metavar="PARENT_NODE_ID",
-                   help="Only pick leaves under this roadmap parent subtree (e.g. M7).")
+    p.add_argument(
+        "--under",
+        default=None,
+        metavar="NODE_ID",
+        help=(
+            "Only pick leaves under this roadmap node (e.g. M7). A parent id\n"
+            "scopes to its subtree; a single leaf id targets exactly that leaf."
+        ),
+    )
     p.add_argument("--max-leaves", type=int, default=None, metavar="N",
                    help="Stop after N successful finish cycles.")
     p.add_argument("--max-cycles", type=int, default=100, metavar="N",

@@ -195,7 +195,7 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | --- | --- |
 | `--until NODE_ID` | that node has been finished (inclusive) |
 | `--max-leaves N` | N leaves have been finished this session |
-| `--under PARENT` | only leaves under `PARENT` are considered |
+| `--under NODE_ID` | only leaves under `NODE_ID` are considered — a parent scopes to its subtree, a leaf id targets exactly that leaf |
 | `--max-cycles N` | safety bound on iterations (default 100) |
 | *(default)* | no actionable leaves remain |
 

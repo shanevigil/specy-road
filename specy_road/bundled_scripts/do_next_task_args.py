@@ -89,10 +89,9 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument(
         "--under",
         default=None,
-        metavar="PARENT_NODE_ID",
+        metavar="NODE_ID",
         help=(
-            "Limit pickup to actionable leaves under this roadmap parent id "
-            "(e.g. M7). If work/.milestone-session.yaml exists, it must match this parent."
+            "Limit pickup to leaves under this roadmap node (e.g. M7). Pass a parent id to scope to its whole subtree, or a single leaf id to target exactly that leaf — the scope includes the node itself. If work/.milestone-session.yaml exists, it must match this node."
         ),
     )
     return p.parse_args(argv if argv is not None else sys.argv[1:])

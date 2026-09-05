@@ -12,6 +12,13 @@ work/prompt-*.md
 work/pr-body-*.md
 work/.milestone-session.yaml
 
-# Derived roadmap-history index (see docs/roadmap-history.md). Rebuilt from git
-# on demand, so it is never committed; .specyrd/manifest.json stays tracked.
+# Derived indexes for `specy-road history` and `specy-road search`. Rebuilt
+# from git and the working tree on demand, so they are never committed;
+# .specyrd/manifest.json stays tracked.
+#
+# roadmap.md and roadmap-context.md are deliberately absent from this file.
+# Both are generated, and both are COMMITTED: `roadmap.md` is the human index
+# and `roadmap-context.md` (specy-road digest) is what an agent reads instead of
+# crawling planning/ and work/. Regenerate them when the graph changes; gate CI
+# on `specy-road export --check` and `specy-road digest --check`.
 .specyrd/cache/
