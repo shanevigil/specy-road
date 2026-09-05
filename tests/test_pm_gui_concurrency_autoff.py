@@ -62,7 +62,11 @@ def autoff_repo(tmp_path: Path) -> tuple[Path, Path]:
     work = tmp_path / "work"
     shutil.copytree(DOGFOOD, work)
     bare = tmp_path / "remote.git"
-    _git(["init", "--bare", "-q", str(bare)], tmp_path)
+    # -b master: the bare repo's HEAD has to name the one branch this
+    # fixture ever pushes. Left to the git build's init.defaultBranch it
+    # can point at main, and the clone below then lands on an unborn
+    # main with no local master to push.
+    _git(["init", "--bare", "-q", "-b", "master", str(bare)], tmp_path)
     _git(["init", "-q", "-b", "master"], work)
     _git(["add", "-A"], work)
     _git(["commit", "-q", "-m", "initial"], work)
