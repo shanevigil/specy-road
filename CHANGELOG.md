@@ -11,6 +11,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.1-rc2] - 2026-09-05
+
+Second prerelease for v0.2.1. It adds roadmap brainstorming for PMs, and
+responds to an adopter's `0.1.4 -> 0.2.1rc1` upgrade report against a real
+107-node consumer repository. Full analysis in
+[`docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md`](docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md).
+
 ### Added
 
 - **`specy-road brainstorm` — roadmap brainstorming for PMs.** A two-mode
@@ -43,12 +50,6 @@ body. Keep section bodies focused; link to PRs for detail.
 - New `specyrd-brainstorm` IDE stub (PM role), [`docs/brainstorming.md`](docs/brainstorming.md),
   [`docs/pm-gui-brainstorm.md`](docs/pm-gui-brainstorm.md), and
   [`suggested_prompts/brainstorm-roadmap.md`](suggested_prompts/brainstorm-roadmap.md).
-
-## [v0.2.1-rc2] - 2026-09-05
-
-Second prerelease for v0.2.1, responding to an adopter's `0.1.4 -> 0.2.1rc1`
-upgrade report against a real 107-node consumer repository. Full analysis in
-[`docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md`](docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md).
 
 ### Fixed
 
