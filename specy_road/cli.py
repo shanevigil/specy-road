@@ -71,6 +71,9 @@ _USAGE_TEXT = (
     "    exceeds the line cap (optional: --repo-root DIR --dry-run)\n"
     "  refresh-schemas      — update schemas/ from this specy-road version; touches\n"
     "    nothing else (optional: --repo-root DIR --dry-run)\n"
+    "  refresh-stubs        — update the IDE stubs .specyrd/manifest.json records,\n"
+    "    add ones shipped since, re-apply the managed blocks; touches nothing else\n"
+    "    (optional: --repo-root DIR --dry-run)\n"
     "  review-node <NODE_ID> — advisory LLM review (requires pip install specy-road[review])\n"
     "  scaffold-planning <NODE_ID> — create planning/<id>_<slug>_<node_key>.md; set planning_dir\n"
     "    (optional: --planning-dir PATH --force; see specy_road/bundled_scripts/scaffold_planning.py -h)\n"
@@ -107,6 +110,31 @@ _USAGE_TEXT = (
     "  open-milestone-pr       — print gh/glab one-line PR from rollup branch to integration\n"
 )
 
+
+# Commands that are exactly "run this script with these args". A table rather
+# than a chain of elifs: the chain was one branch from the per-function line cap
+# and every new command pushed it over.
+_SCRIPTS = {
+    "validate": "validate_roadmap.py",
+    "brief": "generate_brief.py",
+    "export": "export_roadmap_md.py",
+    "update": "update_specy_road.py",
+    "file-limits": "validate_file_limits.py",
+    "do-next-available-task": "do_next_task.py",
+    "abort-task-pickup": "abort_task_pickup.py",
+    "mark-implementation-reviewed": "mark_implementation_reviewed.py",
+    "finish-this-task": "finish_task.py",
+    "grind-session": "grind_session.py",
+    "start-milestone-session": "start_milestone_session.py",
+    "open-milestone-pr": "open_milestone_pr.py",
+    "reconcile-milestone-status": "reconcile_milestone_status.py",
+    "sync": "pm_sync.py",
+    "rebalance-chunks": "roadmap_rebalance.py",
+    "refresh-schemas": "refresh_schemas.py",
+    "refresh-stubs": "refresh_stubs.py",
+    "review-node": "review_node.py",
+    "scaffold-planning": "scaffold_planning.py",
+}
 
 # Commands whose bundled script owns its own argparse. The command name is
 # forwarded so `specy-road <cmd> -h` prints that subcommand's help.
@@ -298,34 +326,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"specy-road {__version__}")
         raise SystemExit(0)
     cmd, *rest = argv
-    if cmd == "validate":
-        _run("validate_roadmap.py", rest)
-    elif cmd == "brief":
-        _run("generate_brief.py", rest)
-    elif cmd == "export":
-        _run("export_roadmap_md.py", rest)
-    elif cmd == "update":
-        _run("update_specy_road.py", rest)
-    elif cmd == "file-limits":
-        _run("validate_file_limits.py", rest)
-    elif cmd == "do-next-available-task":
-        _run("do_next_task.py", rest)
-    elif cmd == "abort-task-pickup":
-        _run("abort_task_pickup.py", rest)
-    elif cmd == "mark-implementation-reviewed":
-        _run("mark_implementation_reviewed.py", rest)
-    elif cmd == "finish-this-task":
-        _run("finish_task.py", rest)
-    elif cmd == "grind-session":
-        _run("grind_session.py", rest)
-    elif cmd == "start-milestone-session":
-        _run("start_milestone_session.py", rest)
-    elif cmd == "open-milestone-pr":
-        _run("open_milestone_pr.py", rest)
-    elif cmd == "reconcile-milestone-status":
-        _run("reconcile_milestone_status.py", rest)
-    elif cmd == "sync":
-        _run("pm_sync.py", rest)
+    if cmd in _SCRIPTS:
+        _run(_SCRIPTS[cmd], rest)
     elif cmd in (
         "list-nodes",
         "show-node",
@@ -349,14 +351,6 @@ def main(argv: list[str] | None = None) -> None:
         _run("archive_cli.py", [cmd, *rest])
     elif cmd in _FORWARDED:
         _run(_FORWARDED[cmd], [cmd, *rest])
-    elif cmd == "rebalance-chunks":
-        _run("roadmap_rebalance.py", rest)
-    elif cmd == "refresh-schemas":
-        _run("refresh_schemas.py", rest)
-    elif cmd == "review-node":
-        _run("review_node.py", rest)
-    elif cmd == "scaffold-planning":
-        _run("scaffold_planning.py", rest)
     elif cmd == "scaffold-constitution":
         _cmd_scaffold_constitution(rest)
     elif cmd == "init":
