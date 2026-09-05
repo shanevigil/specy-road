@@ -36,6 +36,9 @@ _USAGE_TEXT = (
     "  add-node ...         — see: python specy_road/bundled_scripts/roadmap_crud.py add-node -h\n"
     "    (--chunk is now optional; specy-road auto-routes to a valid chunk)\n"
     "  edit-node ...\n"
+    "  move-node <NODE_ID> --to-parent <PARENT_NODE_ID|null> — re-parent a subtree and\n"
+    "    renumber display ids; renames planning sheets and updates registry claims\n"
+    "    (optional: --index N --repo-root DIR). edit-node --set parent_id= does NOT renumber.\n"
     "  set-gate-status <NODE_ID> --status … — gate nodes only (Not Started|In Progress|Complete|Blocked)\n"
     "  archive-node ...         — legacy hard-remove; see `archive` below to archive completed work\n"
     "\n"
@@ -134,6 +137,7 @@ _SCRIPTS = {
     "refresh-stubs": "refresh_stubs.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
+    "move-node": "roadmap_move_node.py",
 }
 
 # Commands whose bundled script owns its own argparse. The command name is
