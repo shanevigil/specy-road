@@ -121,6 +121,11 @@ const WorkNotesDrawer = lazy(() =>
     default: m.WorkNotesDrawer,
   })),
 );
+const BrainstormDrawer = lazy(() =>
+  import("./components/BrainstormDrawer").then((m) => ({
+    default: m.BrainstormDrawer,
+  })),
+);
 
 function readLegacyThemeMode(): ThemeMode {
   const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.themeMode);
@@ -177,6 +182,7 @@ export default function App() {
   const headerRef = useRef<HTMLElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [brainstormOpen, setBrainstormOpen] = useState(false);
 
   // Seed the Hide Complete filter from the saved preference, once on mount.
   // It only sets the initial value: the toolbar toggle stays fully in charge
@@ -1570,6 +1576,15 @@ export default function App() {
                   Session notes
                 </button>
               </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
+                  onClick={() => setBrainstormOpen(true)}
+                >
+                  Brainstorm
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1748,6 +1763,11 @@ export default function App() {
         <WorkNotesDrawer
           open={workNotesOpen}
           onClose={() => setWorkNotesOpen(false)}
+        />
+        <BrainstormDrawer
+          open={brainstormOpen}
+          onClose={() => setBrainstormOpen(false)}
+          onPromoted={() => void loadSnapshot()}
         />
         <ArchiveDrawer
           open={archiveOpen}

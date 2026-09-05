@@ -77,6 +77,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/architecture.md](docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
 | [docs/roadmap-authoring.md](docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
 | [docs/brainstorming.md](docs/brainstorming.md) | Diverge/converge idea generation with an agent (`brainstorm`), then promote to nodes |
+| [docs/pm-gui-brainstorm.md](docs/pm-gui-brainstorm.md) | The same flow in the browser: chat panel, idea triage, Bing search settings |
 | [docs/archiving.md](docs/archiving.md) | Move completed subtrees out of the live roadmap (`archive`, `restore-archive`) |
 | [docs/agent-search.md](docs/agent-search.md) | Generated agent context (`digest`) and ranked corpus search (`search`) |
 | [docs/roadmap-history.md](docs/roadmap-history.md) | Per-node timelines derived from git (`history`) |

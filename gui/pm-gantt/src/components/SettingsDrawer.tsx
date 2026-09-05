@@ -6,7 +6,13 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { getSettings, postGitTest, putSettings, testLlmSettings } from "../api";
+import {
+  getSettings,
+  postGitTest,
+  putSettings,
+  testLlmSettings,
+  testResearchSettings,
+} from "../api";
 import { getDefaultSettingsModalRect } from "../modalRect";
 import { IconMonitor, IconMoon, IconSun } from "../toolbarIcons";
 import { ModalFrame } from "./ModalFrame";
@@ -170,6 +176,21 @@ function buildLlmPayload(llm: Record<string, string>) {
   };
 }
 
+const DEFAULT_BING_ENDPOINT = "https://api.bing.microsoft.com/v7.0/search";
+
+function buildResearchPayload(
+  research: Record<string, string>,
+  enabled: boolean,
+) {
+  return {
+    provider: research.provider || "bing",
+    bing_endpoint: research.bing_endpoint || DEFAULT_BING_ENDPOINT,
+    bing_api_key: research.bing_api_key || "",
+    max_results: research.max_results || "5",
+    enabled,
+  };
+}
+
 export function SettingsDrawer({
   open,
   onClose,
@@ -184,6 +205,8 @@ export function SettingsDrawer({
 }: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
+  const [research, setResearch] = useState<Record<string, string>>({});
+  const [researchOn, setResearchOn] = useState(false);
   const [gitHelpOpen, setGitHelpOpen] = useState(false);
   const [inheritLlm, setInheritLlm] = useState(true);
   const [inheritPmGui, setInheritPmGui] = useState(true);
@@ -253,6 +276,15 @@ export function SettingsDrawer({
             Object.entries(g).map(([k, v]) => [k, v == null ? "" : String(v)]),
           ),
         );
+        const res = (s.research as Record<string, unknown>) || {};
+        setResearchOn(res.enabled === true);
+        setResearch(
+          Object.fromEntries(
+            Object.entries(res)
+              .filter(([k]) => k !== "enabled")
+              .map(([k, v]) => [k, v == null ? "" : String(v)]),
+          ),
+        );
       })
       .catch((e: unknown) => setMsg(String(e)))
       .finally(() => {
@@ -292,6 +324,7 @@ export function SettingsDrawer({
             Number.parseInt(autoArchiveAfterDays, 10) || 90,
           ),
         },
+        research: buildResearchPayload(research, researchOn),
       })
         .then(() => {
           pmGuiOverlayPersistedRef.current = overlayOutbound;
@@ -314,6 +347,8 @@ export function SettingsDrawer({
   }, [
     llm,
     git,
+    research,
+    researchOn,
     inheritLlm,
     inheritPmGui,
     registryRemoteOverlay,
@@ -333,6 +368,18 @@ export function SettingsDrawer({
     try {
       const out = await testLlmSettings(buildLlmPayload(llm));
       setMsg(out.message || "LLM endpoint responded.");
+    } catch (e: unknown) {
+      setMsg(String(e));
+    }
+  };
+
+  const testResearch = async () => {
+    setMsg(null);
+    try {
+      const out = await testResearchSettings(
+        buildResearchPayload(research, true),
+      );
+      setMsg(out.message || "Search endpoint responded.");
     } catch (e: unknown) {
       setMsg(String(e));
     }
@@ -811,6 +858,57 @@ export function SettingsDrawer({
           ) : null}
         </>
       ) : null}
+      <hr className="settings-section-rule" aria-hidden="true" />
+      <div className="settings-section-heading">
+        <h3>Research (optional)</h3>
+        <button type="button" onClick={() => void testResearch()}>
+          Test search
+        </button>
+      </div>
+      <p className="outline-meta">
+        Web search for the Brainstorm panel. A coding agent in your IDE brings
+        its own search tool; the browser dashboard needs an endpoint. Bing Web
+        Search v7 shape. Stored globally, not per repository.
+      </p>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={researchOn}
+          onChange={(e) => setResearchOn(e.target.checked)}
+        />
+        Let the Brainstorm assistant search the web
+      </label>
+      <label>
+        Endpoint
+        <input
+          value={research.bing_endpoint || ""}
+          onChange={(e) =>
+            setResearch({ ...research, bing_endpoint: e.target.value })
+          }
+          placeholder={DEFAULT_BING_ENDPOINT}
+        />
+      </label>
+      <label>
+        Subscription key
+        <input
+          type="password"
+          value={research.bing_api_key || ""}
+          onChange={(e) =>
+            setResearch({ ...research, bing_api_key: e.target.value })
+          }
+          autoComplete="off"
+        />
+      </label>
+      <label>
+        Results per search
+        <input
+          value={research.max_results || ""}
+          onChange={(e) =>
+            setResearch({ ...research, max_results: e.target.value })
+          }
+          placeholder="5"
+        />
+      </label>
     </ModalFrame>
   );
 }

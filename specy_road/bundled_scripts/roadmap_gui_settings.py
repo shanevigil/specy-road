@@ -10,7 +10,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.roadmap_gui_settings_tokens import (
     _decode_tokens_in_struct,
-    _obfuscate_llm_git,
+    obfuscate_block,
 )
 from specy_road.bundled_scripts.roadmap_gui_settings_scope import (
     blank_llm_base as _blank_llm_base,
@@ -46,6 +46,17 @@ def default_settings() -> dict[str, Any]:
             "token": "",
             "base_url": "",
         },
+        # Web search for the PM GUI brainstorm panel. A coding agent in an IDE
+        # brings its own search tool; the GUI talks to a provider API directly
+        # and has none, so the endpoint is configured here. Global scope only:
+        # a search subscription is a user credential, not a per-repo one.
+        "research": {
+            "provider": "bing",
+            "bing_endpoint": "https://api.bing.microsoft.com/v7.0/search",
+            "bing_api_key": "",
+            "enabled": False,
+            "max_results": "5",
+        },
         "pm_gui": {
             "registry_remote_overlay": True,
             "integration_branch_auto_ff": False,
@@ -63,7 +74,7 @@ def repo_settings_id(repo_root: Path) -> str:
 def _empty_settings_file_struct() -> dict[str, Any]:
     return {
         "version": SETTINGS_FILE_VERSION,
-        "global": {"llm": {}, "git_remote": {}, "pm_gui": {}},
+        "global": {"llm": {}, "git_remote": {}, "pm_gui": {}, "research": {}},
         "projects": {},
     }
 
@@ -76,24 +87,23 @@ def _migrate_raw_to_v2(raw: dict[str, Any]) -> dict[str, Any]:
         if "projects" not in out or not isinstance(out["projects"], dict):
             out["projects"] = {}
         g = out["global"]
-        if not isinstance(g.get("llm"), dict):
-            g["llm"] = {}
-        if not isinstance(g.get("git_remote"), dict):
-            g["git_remote"] = {}
-        if not isinstance(g.get("pm_gui"), dict):
-            g["pm_gui"] = {}
+        for name in ("llm", "git_remote", "pm_gui", "research"):
+            if not isinstance(g.get(name), dict):
+                g[name] = {}
         return out
     llm = raw.get("llm") if isinstance(raw.get("llm"), dict) else {}
     gr = (
         raw.get("git_remote") if isinstance(raw.get("git_remote"), dict) else {}
     )
     pm = raw.get("pm_gui") if isinstance(raw.get("pm_gui"), dict) else {}
+    res = raw.get("research") if isinstance(raw.get("research"), dict) else {}
     return {
         "version": SETTINGS_FILE_VERSION,
         "global": {
             "llm": copy.deepcopy(llm),
             "git_remote": copy.deepcopy(gr),
             "pm_gui": copy.deepcopy(pm),
+            "research": copy.deepcopy(res),
         },
         "projects": {},
     }
@@ -115,23 +125,14 @@ def _write_settings_file_struct(struct: dict[str, Any]) -> None:
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
     out = copy.deepcopy(struct)
     out["version"] = SETTINGS_FILE_VERSION
-    g = out.get("global") or {}
-    gl_ok = isinstance(g.get("llm"), dict)
-    gr_ok = isinstance(g.get("git_remote"), dict)
-    if gl_ok and gr_ok:
-        g["llm"], g["git_remote"] = _obfuscate_llm_git(g["llm"], g["git_remote"])
+    scopes = [out.get("global") or {}]
     projs = out.get("projects") or {}
     if isinstance(projs, dict):
-        for _pid, entry in projs.items():
-            if not isinstance(entry, dict):
-                continue
-            el_ok = isinstance(entry.get("llm"), dict)
-            er_ok = isinstance(entry.get("git_remote"), dict)
-            if el_ok and er_ok:
-                entry["llm"], entry["git_remote"] = _obfuscate_llm_git(
-                    entry["llm"],
-                    entry["git_remote"],
-                )
+        scopes.extend(e for e in projs.values() if isinstance(e, dict))
+    for scope in scopes:
+        for name in ("llm", "git_remote", "research"):
+            if isinstance(scope.get(name), dict):
+                scope[name] = obfuscate_block(name, scope[name])
     SETTINGS_PATH.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
 
 def _merged_global_llm_git(
@@ -149,6 +150,13 @@ def _merged_global_pm_gui(struct: dict[str, Any]) -> dict[str, Any]:
     d, g = default_settings(), struct.get("global") or {}
     gp = g.get("pm_gui") if isinstance(g.get("pm_gui"), dict) else {}
     return {**d["pm_gui"], **gp}
+
+
+def _merged_global_research(struct: dict[str, Any]) -> dict[str, Any]:
+    """Research is global-only — a search subscription is not per-repository."""
+    d, g = default_settings(), struct.get("global") or {}
+    gr = g.get("research") if isinstance(g.get("research"), dict) else {}
+    return {**d["research"], **gr}
 
 
 def _get_project_entry(struct: dict[str, Any], repo_id: str) -> dict[str, Any]:
@@ -188,7 +196,12 @@ def _effective_from_struct(struct: dict[str, Any], repo_id: str) -> dict[str, An
         out_pm = g_pm
     else:
         out_pm = {**g_pm, **pp}
-    return {"llm": out_llm, "git_remote": out_git, "pm_gui": out_pm}
+    return {
+        "llm": out_llm,
+        "git_remote": out_git,
+        "pm_gui": out_pm,
+        "research": _merged_global_research(struct),
+    }
 
 def effective_settings_for_repo(repo_root: Path) -> dict[str, Any]:
     struct = _read_settings_file_struct_with_git_migration(repo_root)
@@ -222,6 +235,7 @@ def settings_api_payload(repo_root: Path) -> dict[str, Any]:
         "llm": eff["llm"],
         "git_remote": eff["git_remote"],
         "pm_gui": eff["pm_gui"],
+        "research": eff["research"],
         "git_remote_tested_ok": get_git_remote_tested_ok(repo_root),
         "global_llm": g_llm,
         "global_git_remote": g_git,
@@ -239,10 +253,11 @@ def save_settings_for_repo(
     llm: dict[str, Any],
     git_remote: dict[str, Any],
     pm_gui: dict[str, Any] | None = None,
+    research: dict[str, Any] | None = None,
 ) -> None:
     """Persist settings: global LLM when inheriting; project-only LLM overlay otherwise.
 
-    Git remote is always stored per repository only.
+    Git remote is always stored per repository only; research always globally.
     """
     old_git_eff = effective_settings_for_repo(repo_root)["git_remote"]
     struct = _read_settings_file_struct_with_git_migration(repo_root)
@@ -254,6 +269,8 @@ def save_settings_for_repo(
         struct["projects"] = {}
     if not isinstance(struct["global"].get("pm_gui"), dict):
         struct["global"]["pm_gui"] = {}
+    if research is not None:
+        struct["global"]["research"] = {**d["research"], **research}
 
     g_base_pm = {**d["pm_gui"], **(struct["global"].get("pm_gui") or {})}
     blank_llm = _blank_llm_base()
@@ -309,6 +326,7 @@ def load_settings(repo_root: Path | None = None) -> dict[str, Any]:
     base["llm"] = {**d["llm"], **gl}
     base["git_remote"] = {**d["git_remote"], **gg}
     base["pm_gui"] = {**d["pm_gui"], **gpm}
+    base["research"] = _merged_global_research(struct)
     return base
 
 def save_settings(data: dict[str, Any]) -> None:
@@ -319,8 +337,10 @@ def save_settings(data: dict[str, Any]) -> None:
     llm = data.get("llm") if isinstance(data.get("llm"), dict) else {}
     gr = data.get("git_remote") if isinstance(data.get("git_remote"), dict) else {}
     pm = data.get("pm_gui") if isinstance(data.get("pm_gui"), dict) else {}
+    res = data.get("research") if isinstance(data.get("research"), dict) else {}
     g = struct["global"]
     g["llm"], g["git_remote"] = {**d["llm"], **llm}, {**d["git_remote"], **gr}
     g["pm_gui"] = {**d["pm_gui"], **pm}
+    g["research"] = {**d["research"], **res}
     struct["version"] = SETTINGS_FILE_VERSION
     _write_settings_file_struct(struct)
