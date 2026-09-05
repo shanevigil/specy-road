@@ -4,11 +4,35 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.specyrd_init import run_init
+from specy_road.specyrd_init import resolve_repo_root, run_init
+
+
+def _note_if_already_initialized(target: Path) -> None:
+    """Point an existing repo at ``refresh-stubs`` before ``init`` rewrites it.
+
+    Re-running ``init`` on an initialized repo is a supported flow (adding a
+    second ``--ai`` pack), so this is a note, not a refusal — but reaching for
+    ``--force`` to pick up newly shipped stubs is what a refresh command is for.
+    """
+    manifest = resolve_repo_root(target) / ".specyrd" / "manifest.json"
+    if not manifest.is_file():
+        return
+    try:
+        recorded = json.loads(manifest.read_text(encoding="utf-8"))
+        version = str(recorded.get("specyrd_version") or "unknown")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        version = "unknown"
+    print(
+        f"note: this repo is already initialized (specyrd {version}).\n"
+        "  To pick up stubs from this version, run: specy-road refresh-stubs\n"
+        "  To add another IDE pack, keep going with --ai <other>.",
+        file=sys.stderr,
+    )
 
 
 def _parse_extras(s: str) -> list[str]:
@@ -91,7 +115,14 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
     init.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite existing specyrd-managed command files and README.",
+        help=(
+            "Overwrite the command stubs and .specyrd/README.md that this tool "
+            "installed — exactly the paths .specyrd/manifest.json records, and "
+            "nothing else. Consumer-owned files (CLAUDE.md, .gitignore, "
+            ".cursorindexingignore) are always merged inside their managed "
+            "block, never replaced, with or without this flag. To refresh an "
+            "already-initialized repo, prefer specy-road refresh-stubs."
+        ),
     )
     init.add_argument(
         "--ai-commands-dir",
@@ -169,6 +200,8 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
         raise SystemExit(2)
+
+    _note_if_already_initialized(target)
 
     extras = _parse_extras(args.extras or "")
     role = args.role

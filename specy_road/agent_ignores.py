@@ -75,7 +75,7 @@ def _prefixed(lines: list[str], prefix: str) -> list[str]:
 
 
 def apply_agent_ignores(
-    git_root: Path, project_prefix: str = ""
+    git_root: Path, project_prefix: str = "", *, dry_run: bool = False
 ) -> dict[str, str]:
     """Write both managed blocks at the git root. Returns ``{filename: outcome}``.
 
@@ -90,23 +90,28 @@ def apply_agent_ignores(
             git_root / CURSOR_INDEXING_IGNORE,
             _prefixed(INDEXING_IGNORE_LINES, project_prefix),
             note=_INDEXING_NOTE,
+            dry_run=dry_run,
         ),
         GITIGNORE: apply_managed_block(
             git_root / GITIGNORE,
             _prefixed(GITIGNORE_LINES, project_prefix),
             note=_GITIGNORE_NOTE,
+            dry_run=dry_run,
         ),
     }
 
 
 def apply_and_report(
-    git_root: Path, prefix: str, written: list[str]
+    git_root: Path, prefix: str, written: list[str], *, dry_run: bool = False
 ) -> None:
     """:func:`apply_agent_ignores`, appending a line per file actually changed.
 
     Lives here rather than in ``specyrd_init`` so that the reporting wording
-    stays next to the thing being reported.
+    stays next to the thing being reported. Under ``dry_run`` the outcomes are
+    computed and reported without writing, so a dry run previews these blocks
+    instead of omitting them.
     """
-    for name, outcome in sorted(apply_agent_ignores(git_root, prefix).items()):
+    outcomes = apply_agent_ignores(git_root, prefix, dry_run=dry_run)
+    for name, outcome in sorted(outcomes.items()):
         if outcome != UNCHANGED:
             written.append(f"{name} ({outcome})")

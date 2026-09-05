@@ -12,8 +12,23 @@ The **`specyrd`** CLI (installed with this package) can lay down **thin** markdo
 
 - **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
 - **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
-- **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value; use `--force` to overwrite stubs from a previous run.
+- **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value.
+- **After upgrading specy-road:** Run **`specy-road refresh-stubs`**, not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade).
 - **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root.
+
+### What `--force` may touch
+
+`--force` overwrites the paths listed in `.specyrd/manifest.json` for the pack being installed — the command stubs and `.specyrd/README.md` — and nothing else.
+
+Three files belong to **you**, and `specyrd init` only maintains one delimited block inside each, marked `>>> specy-road managed block — do not edit inside <<<`:
+
+| File | Block contents |
+| --- | --- |
+| `.gitignore` | `.specyrd/cache/` (derived, disposable indexes) |
+| `.cursorindexingignore` | archived and duplicated material, excluded from the IDE index but still readable |
+| `CLAUDE.md` | the specy-road load order, roadmap model, and non-negotiables |
+
+Everything outside those markers is never read and never rewritten, with or without `--force`. Re-running is a no-op when the block is already current, and `--dry-run` reports what each block would do.
 
 See `.specyrd/README.md` after init for a short pointer (and `manifest.json` for which packs were applied).
 
