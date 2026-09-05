@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, planning_filename_for_node
@@ -129,14 +130,50 @@ def update_planning_dir_to_canonical(node: dict) -> None:
         node["planning_dir"] = new_path
 
 
-def maybe_sync_codename_from_title(node: dict) -> None:
+def codename_was_derived(codename: str | None, old_title: str | None) -> bool:
+    """Whether ``codename`` looks auto-derived rather than chosen by a human.
+
+    There is no provenance field on a node — the schema is
+    ``additionalProperties: false`` — but there does not need to be: a codename
+    equal to its own title's slug is one specy-road derived (or one a human
+    picked that is indistinguishable from it, which is the same thing for this
+    decision). Anything else was chosen deliberately.
     """
-    When the user edits ``title``, set ``codename`` to ``title_to_codename(title)`` so the
-    stored codename, filename slug, and PM GUI title-bar slug stay aligned. If the title does
-    not yield a valid kebab slug, clear ``codename`` (planning filename uses ``unnamed``).
+    if not codename:
+        return True
+    return codename == title_to_codename(old_title or "")
+
+
+def maybe_sync_codename_from_title(
+    node: dict,
+    *,
+    old_title: str | None,
+    force: bool = False,
+    notify: Callable[[str], None] | None = None,
+) -> None:
+    """Re-derive ``codename`` from a new ``title`` — unless a human chose it.
+
+    Keeping the codename aligned with the title keeps the filename slug and the
+    PM GUI title bar honest, which is why this ran on every title edit. But the
+    codename is also the *branch* identity (``feature/rm-<codename>``) and the
+    registry key, so silently rewriting a hand-picked one broke a contract that
+    branch names, doc sections and the registry are all keyed on.
+
+    So it re-derives only when the old codename was itself title-derived or
+    absent. Otherwise the codename stands and ``notify`` is told; ``force``
+    (``edit-node --sync-codename``) overrides. If the new title yields no valid
+    kebab slug, a derived codename is cleared (the filename uses ``unnamed``).
     """
-    new_title = str(node.get("title") or "")
-    new_tc = title_to_codename(new_title)
+    old = node.get("codename")
+    new_tc = title_to_codename(str(node.get("title") or ""))
+    if not force and not codename_was_derived(old, old_title):
+        if notify is not None and new_tc and new_tc != old:
+            notify(
+                f"codename kept: {old!r} (title-derived would be {new_tc!r}); "
+                "pass --sync-codename to change it. The branch name "
+                f"feature/rm-{old} and the registry key stay as they are."
+            )
+        return
     if new_tc:
         node["codename"] = new_tc
     else:
@@ -257,12 +294,15 @@ def apply_set(
     all_ids: set[str],
     all_node_keys: set[str],
     self_id: str,
+    sync_codename: bool = False,
+    notify: Callable[[str], None] | None = None,
 ) -> None:
     if dotted_key not in EDIT_WHITELIST:
         raise ValueError(f"key not allowed for --set: {dotted_key!r}")
     parts = dotted_key.split(".")
     if len(parts) == 1:
         key = parts[0]
+        old_title = str(node.get("title") or "")
         _apply_scalar_top_level(
             node,
             key,
@@ -272,7 +312,9 @@ def apply_set(
             self_id=self_id,
         )
         if key == "title":
-            maybe_sync_codename_from_title(node)
+            maybe_sync_codename_from_title(
+                node, old_title=old_title, force=sync_codename, notify=notify
+            )
         _maybe_resync_planning_dir_after_edit(node, key)
         return
     if parts[0] == "decision" and len(parts) == 2:
