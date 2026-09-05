@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
+from specy_road.bundled_scripts.refresh_stubs import warn_if_stubs_stale
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
@@ -87,6 +88,7 @@ def validate_at(
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
     warn_if_schemas_stale(root)
+    warn_if_stubs_stale(root)
 
     if auto_heal:
         changed, _logs = auto_heal_roadmap(root)
