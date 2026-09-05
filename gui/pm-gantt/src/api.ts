@@ -1,6 +1,10 @@
 import type {
   ArchiveRecord,
   ArchivesResponse,
+  BrainstormChatMessage,
+  BrainstormChatReply,
+  BrainstormPromotion,
+  BrainstormSession,
   PublishStatusPayload,
   RoadmapResponse,
 } from "./types";
@@ -422,6 +426,8 @@ export async function putSettings(payload: {
   llm: Record<string, string>;
   git_remote: Record<string, string>;
   pm_gui?: Record<string, unknown>;
+  /** Web search for brainstorm. Global scope; omit to leave it untouched. */
+  research?: Record<string, unknown>;
 }) {
   const r = await fetch(`${API}/settings`, {
     method: "PUT",
@@ -665,4 +671,131 @@ export async function autoArchive(
     candidates?: { node_id: string; completed_at: string }[];
     archived?: ArchiveRecord[];
   }>;
+}
+
+/* ---------------------------------------------------------------- brainstorm */
+
+/** Unwrap `{detail}` error bodies the same way the LLM helpers above do. */
+async function brainstormJson<T>(r: Response): Promise<T> {
+  const raw = (await r.json()) as T & { detail?: unknown };
+  if (!r.ok) {
+    const d = raw.detail;
+    const msg =
+      typeof d === "string"
+        ? d
+        : d != null
+          ? JSON.stringify(d)
+          : JSON.stringify(raw);
+    throw new Error(msg);
+  }
+  return raw;
+}
+
+export async function fetchBrainstormSlugs(): Promise<string[]> {
+  const r = await fetch(`${API}/brainstorm/sessions`);
+  if (!r.ok) throw new Error(await r.text());
+  return (await r.json()).slugs as string[];
+}
+
+export async function fetchBrainstormSession(
+  slug: string,
+): Promise<BrainstormSession> {
+  const r = await fetch(
+    `${API}/brainstorm/session?slug=${encodeURIComponent(slug)}`,
+  );
+  return brainstormJson<BrainstormSession>(r);
+}
+
+export async function putBrainstormSession(payload: {
+  slug?: string;
+  topic?: string;
+  under?: string | null;
+  mode?: "brainstorm" | "roadmap";
+}): Promise<BrainstormSession> {
+  const r = await fetch(`${API}/brainstorm/session`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  return brainstormJson<BrainstormSession>(r);
+}
+
+export async function postBrainstormChat(payload: {
+  slug: string;
+  messages: BrainstormChatMessage[];
+  llm: Record<string, unknown>;
+  research?: Record<string, unknown> | null;
+  count?: number;
+}): Promise<BrainstormChatReply> {
+  const r = await fetch(`${API}/brainstorm/chat`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  return brainstormJson<BrainstormChatReply>(r);
+}
+
+export async function postBrainstormIdea(payload: {
+  slug: string;
+  title: string;
+  rationale?: string;
+  kind?: string;
+  effort?: string;
+  evidence?: string[];
+}): Promise<BrainstormSession> {
+  const r = await fetch(`${API}/brainstorm/idea`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  return brainstormJson<BrainstormSession>(r);
+}
+
+export async function postBrainstormTriage(payload: {
+  slug: string;
+  idea_id: string;
+  status?: string;
+  title?: string;
+  rationale?: string;
+  recommendation?: string;
+}): Promise<BrainstormSession> {
+  const r = await fetch(`${API}/brainstorm/triage`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  return brainstormJson<BrainstormSession>(r);
+}
+
+export async function postBrainstormPromote(payload: {
+  slug: string;
+  under?: string | null;
+  type?: string;
+  dry_run?: boolean;
+}): Promise<{
+  promoted: BrainstormPromotion[];
+  dry_run: boolean;
+  session: BrainstormSession;
+}> {
+  const r = await fetch(`${API}/brainstorm/promote`, {
+    method: "POST",
+    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(payload),
+  });
+  return brainstormJson(r);
+}
+
+export async function testResearchSettings(
+  research: Record<string, unknown>,
+): Promise<{ ok: boolean; message: string }> {
+  const r = await fetch(`${API}/research/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ research }),
+  });
+  const raw = await brainstormJson<{ ok?: boolean; message?: string }>(r);
+  return {
+    ok: Boolean(raw.ok),
+    message: typeof raw.message === "string" ? raw.message : "",
+  };
 }
