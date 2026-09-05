@@ -100,12 +100,33 @@ def _validate_and_export() -> None:
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Mark the current roadmap task complete, validate, export, commit.",
+        description=(
+            "Mark the current roadmap task complete, validate, export, commit.\n"
+            "\n"
+            "Finishing the last open leaf under a parent also flips that parent "
+            "to Complete, in the same bookkeeping commit, walking up as far as "
+            "the rollup reaches. Nothing is printed when there is nothing to "
+            "close, so a run that leaves other leaves open looks the same as "
+            "one with no parents to close.\n"
+            "\n"
+            "The exception is a node carrying a milestone_execution block "
+            "(written by start-milestone-session): its status belongs to the "
+            "milestone-rollup state machine, which closes it only once the "
+            "rollup branch is proven merged. Use "
+            "specy-road reconcile-milestone-status for those.\n"
+            "\n"
+            "--push pushes the branch; it does not open the PR. The printed "
+            "gh/glab command is pasteable."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
         "--push",
         action="store_true",
-        help="After bookkeeping commit, run git push -u <remote> <branch>.",
+        help=(
+            "After the bookkeeping commit, run git push -u <remote> <branch>. "
+            "Does not open the PR — the gh/glab line is printed for you."
+        ),
     )
     p.add_argument(
         "--remote",

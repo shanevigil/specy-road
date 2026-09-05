@@ -363,5 +363,8 @@ def test_exit_no_leaves_under_parent_also_names_the_branch(
     with pytest.raises(SystemExit):
         dnt._exit_no_leaves_under_parent("M7", after_sync=True, integration_branch="trunk")
     err = capsys.readouterr().err
-    assert "No actionable leaf tasks under parent 'M7'" in err
+    assert "No actionable leaf tasks in the scope 'M7'" in err
+    # --under takes a leaf id too, so "parent" here sent adopters looking for
+    # the wrong mistake when they had passed one that was already claimed.
+    assert "a parent (its whole subtree) or a single leaf" in err
     assert "pickup reads the roadmap from trunk after syncing" in err

@@ -153,6 +153,7 @@ jobs:
           /tmp/smoke/bin/specy-road --help
           /tmp/smoke/bin/specy-road validate --repo-root tests/fixtures/specy_road_dogfood
           /tmp/smoke/bin/specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
+          /tmp/smoke/bin/specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood
       - name: Upload built distributions
         uses: actions/upload-artifact@v7
         with:

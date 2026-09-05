@@ -71,12 +71,15 @@ def exit_no_leaves_under_parent(
 ) -> None:
     phase = "after sync" if after_sync else "before sync"
     print(
-        f"No actionable leaf tasks under parent {parent_id!r} ({phase}).",
+        f"No actionable leaf tasks in the scope {parent_id!r} ({phase}).",
         file=sys.stderr,
     )
+    # --under takes a parent id *or* a leaf id; saying "parent" here sent
+    # adopters looking for the wrong kind of mistake when they had passed a
+    # leaf that was simply already claimed or Complete.
     print(
-        "  Try another parent, finish in-progress work, or clear "
-        "dependencies.",
+        "  --under accepts a parent (its whole subtree) or a single leaf. "
+        "Try another node, finish in-progress work, or clear dependencies.",
         file=sys.stderr,
     )
     # A freshly authored subtree is the most likely reason a --under filter comes
