@@ -9,7 +9,6 @@ from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 from specy_road.bundled_scripts.roadmap_gui_tree import indent_parent_id, outdent_parent_id
 from specy_road.bundled_scripts.roadmap_layout import sibling_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
 from specy_road.bundled_scripts.roadmap_outline_renumber import can_indent_to_parent, renumber_display_ids_inplace
 from specy_road.bundled_scripts.sync_planning_artifacts import sync_planning_artifacts
 from specy_road.registry_yaml import registry_path
@@ -146,25 +145,16 @@ def move_node_outline(
     """
     Reparent ``node_key`` under ``new_parent_id`` (None = root) at sibling index ``new_index``.
     Renumbers display ids for the whole roadmap. Subtree moves with the node.
+
+    Atomic: the chunk rewrites, planning-sheet renames and registry update are
+    staged together and validated before any of them reaches disk. This used to
+    persist all three and validate afterwards, so a rejected move left the
+    roadmap unloadable — the same defect ``edit-node`` was fixed for in
+    ``v0.1.4``. See ``bundled_scripts/roadmap_move_node.py``.
     """
-    nodes = list(load_roadmap(root)["nodes"])
-    by_key = build_key_to_node(nodes)
-    if node_key not in by_key:
-        raise ValueError(f"unknown node_key {node_key!r}")
-    by_id = {n["id"]: n for n in nodes}
-    moved = by_key[node_key]
-    old_id = moved["id"]
-    _validate_reparent_target(
-        by_id, old_id, new_parent_id, moved_type=moved.get("type")
-    )
-    old_parent = moved.get("parent_id")
-    _detach_reindex_old_parent(nodes, by_id, old_parent, old_id)
-    _attach_at_index(nodes, by_id, moved, old_id, new_parent_id, new_index)
-    old_to_new = renumber_display_ids_inplace(nodes)
-    sync_planning_artifacts(root, nodes)
-    persist_merged_nodes(root, nodes)
-    sync_registry_node_ids(root, old_to_new)
-    run_validate_raise(root)
+    from specy_road.bundled_scripts.roadmap_move_node import move_node
+
+    move_node(root, node_key, new_parent_id, new_index)
 
 
 def apply_indent(repo_root: Path, node_id: str) -> bool:

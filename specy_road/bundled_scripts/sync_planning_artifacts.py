@@ -10,23 +10,15 @@ from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir
 from specy_road.bundled_scripts.roadmap_edit_fields import sync_planning_dir_filename
 
 
-def sync_planning_artifacts(repo_root: Path, nodes: list[dict]) -> None:
+def plan_planning_artifact_moves(nodes: list[dict]) -> list[tuple[str, str, str]]:
+    """Canonicalize every ``planning_dir`` in ``nodes``; return the sheet moves.
+
+    Pure except for mutating ``nodes`` in place: no file is read or written, so
+    a caller staging an atomic transaction can learn what would move before
+    anything reaches disk. Returns ``(node_key, old_rel, new_rel)`` per node
+    whose canonical path differs from what it had.
     """
-    For every node that has ``planning_dir`` set, set it to the canonical path from
-    ``planning/<id>_<slug>_<node_key>.md`` and rename files on disk when the path changes.
-
-    Uses a temporary directory at the repo root (not under ``planning/``) so swaps and
-    chains of renames do not clobber files and validators do not see stray ``*.md``.
-    Safe to call when display ``id`` values changed (e.g. after
-    ``renumber_display_ids_inplace``). Mutates ``nodes`` in place.
-
-    If the old path had no file (already wrong), only updates JSON; if the new path
-    already exists and is not the source of another move, leaves disk unchanged for
-    that edge (validator may report issues).
-    """
-    root = repo_root.resolve()
-    moves: list[tuple[str, str, str]] = []  # node_key, old_rel, new_rel
-
+    moves: list[tuple[str, str, str]] = []
     for n in nodes:
         pd = n.get("planning_dir")
         if not isinstance(pd, str) or not pd.strip():
@@ -44,6 +36,25 @@ def sync_planning_artifacts(repo_root: Path, nodes: list[dict]) -> None:
         n["planning_dir"] = canon
         if old_norm != canon:
             moves.append((nk, old_norm, canon))
+    return moves
+
+
+def sync_planning_artifacts(repo_root: Path, nodes: list[dict]) -> None:
+    """
+    For every node that has ``planning_dir`` set, set it to the canonical path from
+    ``planning/<id>_<slug>_<node_key>.md`` and rename files on disk when the path changes.
+
+    Uses a temporary directory at the repo root (not under ``planning/``) so swaps and
+    chains of renames do not clobber files and validators do not see stray ``*.md``.
+    Safe to call when display ``id`` values changed (e.g. after
+    ``renumber_display_ids_inplace``). Mutates ``nodes`` in place.
+
+    If the old path had no file (already wrong), only updates JSON; if the new path
+    already exists and is not the source of another move, leaves disk unchanged for
+    that edge (validator may report issues).
+    """
+    root = repo_root.resolve()
+    moves = plan_planning_artifact_moves(nodes)
 
     if not moves:
         return
