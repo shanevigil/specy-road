@@ -6,6 +6,7 @@ import contextlib
 import io
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
@@ -257,7 +258,14 @@ def _planning_rename_plan(
     return src, dst
 
 
-def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) -> None:
+def edit_node_set_pairs(
+    root: Path,
+    node_id: str,
+    pairs: list[tuple[str, str]],
+    *,
+    sync_codename: bool = False,
+    notify: Callable[[str], None] | None = None,
+) -> None:
     """
     Patch whitelisted fields on a node, then save its chunk atomically.
 
@@ -304,6 +312,8 @@ def edit_node_set_pairs(root: Path, node_id: str, pairs: list[tuple[str, str]]) 
             all_ids=ids,
             all_node_keys=nkeys,
             self_id=node_id,
+            sync_codename=sync_codename,
+            notify=notify,
         )
     rename = _planning_rename_plan(root, planning_dir_before, node.get("planning_dir"))
 
@@ -330,7 +340,13 @@ def cmd_edit(args: object) -> None:
         k, _, v = pair.partition("=")
         pairs.append((k.strip(), v.strip()))
     try:
-        edit_node_set_pairs(root, nid, pairs)
+        edit_node_set_pairs(
+            root,
+            nid,
+            pairs,
+            sync_codename=bool(getattr(args, "sync_codename", False)),
+            notify=lambda msg: print(f"[note] {msg}", file=sys.stderr),
+        )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None

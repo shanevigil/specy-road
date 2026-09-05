@@ -180,7 +180,7 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 
 | Field | When to use |
 |-------|-------------|
-| `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. |
+| `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. Auto-derived from `title` when omitted, and re-derived when the title changes — **unless you chose it yourself**, in which case `edit-node --set title=…` keeps it and says so. Pass `--sync-codename` to re-derive anyway. It is the branch identity and the registry key, so renaming it mid-flight desynchronizes a live `feature/rm-*` from its node. |
 | `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | **Advisory** dominant work type: `Human-led` / `Agentic-led` / `Mixed`. Read by humans and by the PM UI; it does **not** gate pickup — use a `type: gate` dependency for that. |
 | `touch_zones` | Paths or areas this node modifies (enables overlap detection). |
