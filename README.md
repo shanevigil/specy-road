@@ -25,7 +25,8 @@ Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install
 ### For PMs
 
 1. Prefer **`specy-road gui`** for the dashboard, or edit `roadmap/` and `planning/` directly ([docs/pm-gui.md](docs/pm-gui.md)).
-2. Run **`specy-road export`** and **`specy-road validate`** before you commit.
+2. Shape what goes on the roadmap with **`specy-road brainstorm`** — diverge with an agent, then promote what you keep ([docs/brainstorming.md](docs/brainstorming.md)).
+3. Run **`specy-road export`** and **`specy-road validate`** before you commit.
 
 More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review** in the Gantt UI: [docs/pm-llm-review.md](docs/pm-llm-review.md).
 
@@ -75,6 +76,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md) | What the kit promises and what it leaves to you |
 | [docs/architecture.md](docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
 | [docs/roadmap-authoring.md](docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
+| [docs/brainstorming.md](docs/brainstorming.md) | Diverge/converge idea generation with an agent (`brainstorm`), then promote to nodes |
 | [docs/archiving.md](docs/archiving.md) | Move completed subtrees out of the live roadmap (`archive`, `restore-archive`) |
 | [docs/agent-search.md](docs/agent-search.md) | Generated agent context (`digest`) and ranked corpus search (`search`) |
 | [docs/roadmap-history.md](docs/roadmap-history.md) | Per-node timelines derived from git (`history`) |

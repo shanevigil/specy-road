@@ -11,6 +11,39 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- **`specy-road brainstorm` — roadmap brainstorming for PMs.** A two-mode
+  workflow for deciding what belongs on the roadmap, before anything is
+  authored. `start` writes a **divergent** prompt that opens with Socratic
+  questioning, asks for a floor of ideas (`--count`), works through named
+  lenses (SCAMPER, analogous domains, inversion, pre-mortem, constraint
+  removal, 10x/0.1x), sends the agent to its own web search tool for
+  competitor and technology research, and explicitly forbids ranking.
+  `recommend` writes the **convergent** prompt over what was captured:
+  cluster, flag overlaps with existing nodes, and record a `strong` /
+  `consider` / `park` verdict per idea. Splitting the two is the point — an
+  agent asked to generate and filter at once filters first.
+- **Ideas live in `work/brainstorm-<slug>.yaml`**, tracked on purpose: what was
+  rejected is as much a part of the reasoning trail as what shipped. The
+  regenerated prompt beside it is gitignored.
+- **`brainstorm promote` turns accepted ideas into real nodes.** It routes
+  through the same atomic path as `add-node` (chunk, manifest and planning
+  sheet in one transaction), seeds the new sheet's `## Intent` from the idea's
+  rationale and its `## References` from the sources the agent cited, then
+  validates the batch. An unusable `--under` promotes nothing rather than half
+  the list, and `gate` is refused as a target since a gate is a hold, not work.
+- **PM GUI brainstorm panel.** The same two modes as a chat interface, running
+  against the model already configured in Settings. Ideas are accepted,
+  rejected, and revised in place, and promoted to nodes from the panel.
+- **Bing web search for the PM GUI.** A new Research section in Settings
+  (endpoint, key, result cap) gives the GUI the research capability the IDE
+  agent already has from its own tools. Off by default; the key is obfuscated
+  at rest like the existing LLM and git credentials.
+- New `specyrd-brainstorm` IDE stub (PM role), [`docs/brainstorming.md`](docs/brainstorming.md),
+  [`docs/pm-gui-brainstorm.md`](docs/pm-gui-brainstorm.md), and
+  [`suggested_prompts/brainstorm-roadmap.md`](suggested_prompts/brainstorm-roadmap.md).
+
 ## [v0.2.1-rc2] - 2026-09-05
 
 Second prerelease for v0.2.1, responding to an adopter's `0.1.4 -> 0.2.1rc1`

@@ -29,6 +29,11 @@ _USAGE_TEXT = (
     "  file-limits          — check line-count constraints\n"
     "\n"
     "PM workflow:\n"
+    "  brainstorm           — generate roadmap ideas with an agent, then promote\n"
+    "    the ones you keep. `start` diverges (quantity, Socratic questioning,\n"
+    "    research); `recommend` converges (cluster and rank); accept/reject/revise\n"
+    "    is the PM's triage; `promote` writes accepted ideas into the graph.\n"
+    "    (see: specy-road brainstorm -h)\n"
     "  sync                 — fetch/merge integration branch, validate, export\n"
     "    (optional: --base BRANCH --remote NAME)\n"
     "  list-nodes           — list nodes and chunk paths (pass-through to roadmap CRUD)\n"
@@ -153,6 +158,7 @@ _FORWARDED = {
     "history": "history_cli.py",
     "digest": "digest_cli.py",
     "search": "search_cli.py",
+    "brainstorm": "brainstorm_cli.py",
 }
 
 
