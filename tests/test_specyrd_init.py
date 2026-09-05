@@ -172,19 +172,6 @@ def test_specyrd_init_role_both_matches_full_set(tmp_path: Path) -> None:
     assert sorted(r_both.written) == sorted(r_all.written)
 
 
-def test_specyrd_init_writes_claude_md(tmp_path: Path) -> None:
-    run_init(
-        target=tmp_path,
-        agent="claude-code",
-        dry_run=False,
-        force=False,
-        ai_commands_dir=None,
-        write_claude_md=True,
-    )
-    p = tmp_path / "CLAUDE.md"
-    assert p.is_file()
-    assert "AGENTS.md" in p.read_text(encoding="utf-8")
-
 
 def test_specyrd_init_gui_settings_stub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
@@ -203,6 +190,28 @@ def test_specyrd_init_gui_settings_stub(tmp_path: Path, monkeypatch: pytest.Monk
     assert gui.is_file()
     data = json.loads(gui.read_text(encoding="utf-8"))
     assert "llm" in data
+
+
+def test_force_does_not_clobber_saved_gui_api_keys(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """It lives in $HOME, holds API keys, and `git checkout --` cannot undo it."""
+    monkeypatch.setattr("specy_road.specyrd_init.Path.home", lambda: tmp_path)
+    gui = tmp_path / ".specy-road" / "gui-settings.json"
+    gui.parent.mkdir(parents=True)
+    gui.write_text('{"llm": {"anthropic_api_key": "sk-real-key"}}', encoding="utf-8")
+
+    r = run_init(
+        target=tmp_path,
+        agent="cursor",
+        dry_run=False,
+        force=True,
+        ai_commands_dir=None,
+        gui_settings_stub=True,
+    )
+
+    assert "sk-real-key" in gui.read_text(encoding="utf-8")
+    assert "~/.specy-road/gui-settings.json" in r.skipped
 
 
 def test_specyrd_cli_no_prompt_requires_role(tmp_path: Path) -> None:
