@@ -181,3 +181,33 @@ def test_session_and_prompt_live_in_work(tmp_path: Path) -> None:
 )
 def test_slugify_matches_codename_rules(text: str, expected: str) -> None:
     assert slugify(text) == expected
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "../../../../tmp/escaped",
+        "x/../../roadmap/registry",
+        "a/b",
+        "..",
+        "Has Spaces",
+        "trailing-",
+        "",
+    ],
+)
+def test_a_slug_can_never_name_a_file_outside_work(slug: str, tmp_path: Path) -> None:
+    """A slug is interpolated into a filename and reaches us from `--slug` and
+    from a GUI request body, so anything but a bare name is a write primitive:
+    `x/../../roadmap/registry` lands on the tracked registry."""
+    with pytest.raises(BrainstormError):
+        session_path(tmp_path, slug)
+    with pytest.raises(BrainstormError):
+        prompt_path(tmp_path, slug)
+    with pytest.raises(BrainstormError):
+        resolve_slug(tmp_path, slug)
+
+
+def test_an_ordinary_slug_still_lands_in_work(tmp_path: Path) -> None:
+    assert session_path(tmp_path, "how-do-we-expand-payments").parent == (
+        tmp_path / "work"
+    )

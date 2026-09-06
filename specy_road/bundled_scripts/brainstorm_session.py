@@ -12,6 +12,7 @@ than by a ``schemas/*.json``. Nothing outside the brainstorm modules reads it.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,14 @@ MODES = ("brainstorm", "roadmap")
 #: Ideas the converge pass keeps: `promote` turns exactly these into nodes.
 PROMOTABLE_STATUSES = ("accepted",)
 
+#: What `slugify` can emit, and therefore all a slug is ever allowed to be.
+#: A slug reaches us straight from `--slug` or from a GUI request body and is
+#: interpolated into a filename, so anything with a separator or a `..` in it
+#: would write outside `work/` — `x/../../roadmap/registry` resolves onto the
+#: tracked registry file.
+SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SLUG_MAX_LEN = 80
+
 
 class BrainstormError(ValueError):
     """A brainstorm session could not be read, written, or mutated.
@@ -52,14 +61,37 @@ def work_dir(root: Path) -> Path:
     return root / "work"
 
 
+def validate_slug(slug: str) -> str:
+    """The slug, or raise if it is not a bare kebab-case name.
+
+    Every path this module builds goes through here, so a slug can only ever
+    name a file directly inside ``work/``.
+    """
+    cleaned = (slug or "").strip()
+    if not cleaned:
+        raise BrainstormError("session slug is empty")
+    if len(cleaned) > SLUG_MAX_LEN:
+        raise BrainstormError(
+            f"session slug is longer than {SLUG_MAX_LEN} characters"
+        )
+    if not SLUG_RE.match(cleaned):
+        raise BrainstormError(
+            f"invalid session slug {cleaned!r} — expected lowercase letters, "
+            "digits and single hyphens, as `slugify` produces"
+        )
+    return cleaned
+
+
 def session_path(root: Path, slug: str) -> Path:
     """Path to ``work/brainstorm-<slug>.yaml``."""
-    return work_dir(root) / f"{SESSION_PREFIX}{slug}{SESSION_SUFFIX}"
+    safe = validate_slug(slug)
+    return work_dir(root) / f"{SESSION_PREFIX}{safe}{SESSION_SUFFIX}"
 
 
 def prompt_path(root: Path, slug: str) -> Path:
     """Path to ``work/brainstorm-<slug>-prompt.md`` (regenerated, gitignored)."""
-    return work_dir(root) / f"{SESSION_PREFIX}{slug}{PROMPT_SUFFIX}"
+    safe = validate_slug(slug)
+    return work_dir(root) / f"{SESSION_PREFIX}{safe}{PROMPT_SUFFIX}"
 
 
 def list_slugs(root: Path) -> list[str]:
@@ -82,7 +114,7 @@ def resolve_slug(root: Path, slug: str | None) -> str:
     open — but guessing between several would silently triage the wrong one.
     """
     if slug and slug.strip():
-        return slug.strip()
+        return validate_slug(slug)
     found = list_slugs(root)
     if not found:
         raise BrainstormError(

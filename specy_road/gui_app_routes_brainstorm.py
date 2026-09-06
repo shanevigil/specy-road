@@ -217,4 +217,7 @@ def register_brainstorm_routes(api: APIRouter) -> None:
     api.post("/brainstorm/idea", dependencies=guard)(_api_idea)
     api.post("/brainstorm/triage", dependencies=guard)(_api_triage)
     api.post("/brainstorm/promote", dependencies=guard)(_api_promote)
-    api.post("/research/test")(_api_research_test)
+    # Guarded like the write routes: it takes a caller-supplied URL and fetches
+    # it, so leaving it open let any page in the browser use the GUI to probe
+    # the host's network.
+    api.post("/research/test", dependencies=guard)(_api_research_test)
