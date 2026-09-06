@@ -378,3 +378,4 @@ def test_cli_grind_session_plan_json() -> None:
     payload = json.loads(r.stdout.strip().splitlines()[0])
     assert payload["event"] == "plan"
     assert "ready" in payload and "waves" in payload and "parallel_batches" in payload
+

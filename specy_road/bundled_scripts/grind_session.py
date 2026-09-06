@@ -25,6 +25,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
+from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
@@ -196,7 +197,14 @@ def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
 def _implement(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int:
     emitter.emit("implementing", node_id=ctx["node_id"], mode=args.implement_mode)
     if args.implement_mode == "hook":
-        return _run_shell(args.implement_cmd, _hook_env(repo_root, **ctx), repo_root)
+        return run_implement_hook(
+            args.implement_cmd,
+            _hook_env(repo_root, **ctx),
+            repo_root,
+            emitter=emitter,
+            node_id=ctx["node_id"],
+            run_shell=_run_shell,
+        )
     return 0 if _wait_for_signal(repo_root, args.ready_signal, args.signal_timeout) else 1
 
 
