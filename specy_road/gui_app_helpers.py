@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from specy_road.bundled_scripts.roadmap_layout import next_child_id
 from specy_road.runtime_paths import project_root
 
 #: Retained for callers that imported it before the resolver was unified.
@@ -76,25 +77,7 @@ def assert_planning_file_api_path(repo_root: Path, path: Path) -> None:
     )
 
 
-def next_child_id(nodes: list[dict], parent_id: str | None) -> str:
-    """Next display id: ``M{n}`` at root, ``<parent>.<n>`` when nested."""
-    children = [n["id"] for n in nodes if n.get("parent_id") == parent_id]
-    if parent_id is None:
-        nums: list[int] = []
-        for cid in children:
-            if cid.startswith("M") and "." not in cid[1:]:
-                try:
-                    nums.append(int(cid[1:]))
-                except ValueError:
-                    continue
-        n = max(nums, default=-1) + 1
-        return f"M{n}"
-    prefix = parent_id + "."
-    nums = []
-    for cid in children:
-        if cid.startswith(prefix):
-            tail = cid[len(prefix):]
-            if tail.isdigit():
-                nums.append(int(tail))
-    n = max(nums, default=0) + 1
-    return f"{parent_id}.{n}"
+#: Re-exported: this used to live here, so GUI callers still import it from
+#: this module. It moved to keep it reachable from the CLI, which has no
+#: fastapi to satisfy this module's import.
+__all__ = ["get_repo_root", "next_child_id"]

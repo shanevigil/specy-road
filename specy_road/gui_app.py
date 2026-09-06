@@ -24,7 +24,12 @@ def create_app() -> FastAPI:
     app = FastAPI(title="specy-road PM Gantt API", version="1.0.0")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        # Loopback only. The built UI is served from this same origin, so the
+        # regex exists for the Vite dev server. With `allow_origins=["*"]` and
+        # credentials, Starlette echoes back whichever Origin asked, so any
+        # page the user had open could read `/api/settings` — which carries
+        # their LLM and git tokens.
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

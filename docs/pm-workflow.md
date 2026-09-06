@@ -2,7 +2,7 @@
 
 This guide is for **product managers, program leads, and tech leads** who shape what gets built and in what order. You do not need to be a developer; you need a copy of the project on your machine and a way to run a few commands (or use the visual dashboard).
 
-Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [install-and-usage.md](install-and-usage.md).
+Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [install-and-usage.md](install-and-usage.md). Deciding **what belongs on the roadmap** in the first place has its own guide: [brainstorming.md](brainstorming.md).
 
 What ships for the browser dashboard (FastAPI, static build, package layout): [pm-gui.md](pm-gui.md).
 

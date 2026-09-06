@@ -93,6 +93,8 @@ def cmd_history(ns: argparse.Namespace) -> int:
 def _cmd_feed(ns: argparse.Namespace, index: dict) -> int:
     kinds = {ARCHIVED, RESTORED} if ns.archived else None
     events = feed(index, since=ns.since, kinds=kinds, limit=ns.limit)
+    if ns.reverse:
+        events = list(reversed(events))
     if ns.json:
         print(json.dumps({"events": events}, indent=2, sort_keys=True))
         return 0
@@ -116,6 +118,8 @@ def _cmd_node(ns: argparse.Namespace, root: Path, index: dict) -> int:
         events = [e for e in events if str(e.get("at") or "") >= ns.since]
     if ns.limit:
         events = events[-ns.limit:]
+    if ns.reverse:
+        events = list(reversed(events))
 
     if ns.json:
         payload = {"node_key": key, "ids": ids_ever_held(index, key), "events": events}
@@ -168,14 +172,21 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road history",
         description=(
             "How the roadmap got here: status changes, dependency edges, "
-            "renumbering, and archived work, derived from git history."
+            "renumbering, and archived work, derived from git history. "
+            "The two views are ordered differently on purpose: the "
+            "roadmap-wide feed is newest first, because it reads like a "
+            "changelog, and one node's timeline is oldest first, because it "
+            "reads like a story. --reverse flips whichever you asked for."
         ),
     )
     p.add_argument(
         "node",
         metavar="NODE_ID",
         nargs="?",
-        help="A node id (M1.2) or node_key. Omit for a roadmap-wide feed.",
+        help=(
+            "A node id (M1.2) or node_key; its timeline, oldest event first. "
+            "Omit for a roadmap-wide feed, newest event first."
+        ),
     )
     p.add_argument(
         "--since",
@@ -188,7 +199,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Only archive/restore events — work that left the live graph.",
     )
-    p.add_argument("--limit", type=int, default=None, metavar="N")
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "Keep only the N most recent events. Both views agree on which "
+            "events those are; they differ only in the order they print."
+        ),
+    )
+    p.add_argument(
+        "--reverse",
+        action="store_true",
+        help="Flip the order of whichever view you asked for.",
+    )
     p.add_argument("--json", action="store_true", help="Machine-readable output.")
     p.add_argument(
         "--rebuild",

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import __version__
+from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report
 from specy_road.agent_ignores import apply_and_report
 from specy_road.runtime_paths import (
     discover_project_root,
@@ -58,6 +59,7 @@ COMMAND_FILES = (
     "specyrd-show-node.md",
     "specyrd-add-node.md",
     "specyrd-review-node.md",
+    "specyrd-brainstorm.md",
     "specyrd-search.md",
     "specyrd-digest.md",
     "specyrd-history.md",
@@ -75,6 +77,7 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
         "specyrd-show-node.md",
         "specyrd-add-node.md",
         "specyrd-review-node.md",
+        "specyrd-brainstorm.md",
         "specyrd-search.md",
         "specyrd-digest.md",
         "specyrd-history.md",
@@ -133,18 +136,6 @@ def _read_template(name: str) -> str:
         t = _commands_traversable() / name
         text = t.read_text(encoding="utf-8")
     return text.replace("{{SPECYRD_VERSION}}", __version__)
-
-
-def _read_claude_template() -> str:
-    pkg_dir = _package_templates_dir()
-    path = pkg_dir / "CLAUDE.md.template"
-    if path.is_file():
-        return path.read_text(encoding="utf-8")
-    return (
-        resources.files("specy_road")
-        .joinpath("templates", "specyrd", "CLAUDE.md.template")
-        .read_text(encoding="utf-8")
-    )
 
 
 def _read_dot_specyrd_readme() -> str:
@@ -244,13 +235,11 @@ def _append_command_stub_installs(
         written.append(str(rel_file))
 
 
-def _maybe_write_readme_claude_and_gui_stub(
+def _write_readme_and_gui_stub(
     repo_root: Path,
     *,
-    agent: str,
     force: bool,
     dry_run: bool,
-    write_claude_md: bool,
     gui_settings_stub: bool,
     written: list[str],
     skipped: list[str],
@@ -268,28 +257,22 @@ def _maybe_write_readme_claude_and_gui_stub(
             readme_path.write_text(readme_content, encoding="utf-8")
             written.append(str(readme_rel))
 
-    claude_rel = Path("CLAUDE.md")
-    claude_path = repo_root / claude_rel
-    if write_claude_md and agent == "claude-code":
-        if claude_path.is_file() and not force:
-            skipped.append(str(claude_rel))
-        else:
-            body = _read_claude_template()
-            if dry_run:
-                written.append(str(claude_rel))
-            else:
-                claude_path.write_text(body, encoding="utf-8")
-                written.append(str(claude_rel))
-
+    # Never overwritten, not even with --force: this file lives in $HOME rather
+    # than the repo, holds the user's API keys, is absent from the manifest, and
+    # `git checkout --` cannot bring it back.
+    if not gui_settings_stub:
+        return
     gui_home = Path.home() / ".specy-road" / "gui-settings.json"
-    if gui_settings_stub:
-        gui_display = "~/.specy-road/gui-settings.json"
-        if dry_run:
-            written.append(gui_display)
-        elif not gui_home.is_file() or force:
-            gui_home.parent.mkdir(parents=True, exist_ok=True)
-            gui_home.write_text(DEFAULT_GUI_SETTINGS_JSON, encoding="utf-8")
-            written.append(gui_display)
+    gui_display = "~/.specy-road/gui-settings.json"
+    if gui_home.is_file():
+        skipped.append(gui_display)
+        return
+    if dry_run:
+        written.append(gui_display)
+        return
+    gui_home.parent.mkdir(parents=True, exist_ok=True)
+    gui_home.write_text(DEFAULT_GUI_SETTINGS_JSON, encoding="utf-8")
+    written.append(gui_display)
 
 
 def run_init(
@@ -333,12 +316,10 @@ def run_init(
     _append_command_stub_installs(
         repo_root, rel_dest, files_to_install, force, dry_run, written, skipped
     )
-    _maybe_write_readme_claude_and_gui_stub(
+    _write_readme_and_gui_stub(
         repo_root,
-        agent=agent,
         force=force,
         dry_run=dry_run,
-        write_claude_md=write_claude_md,
         gui_settings_stub=gui_settings_stub,
         written=written,
         skipped=skipped,
@@ -351,18 +332,56 @@ def run_init(
     project = recorded_project_root(repo_root) or discover_project_root(target)
     prefix = prefix_within(repo_root, project or repo_root)
 
-    if not dry_run:
-        apply_and_report(repo_root, prefix, written)
+    # Both managed blocks report under --dry-run too: a dry run that silently
+    # omitted them is what let the CLAUDE.md overwrite go unnoticed.
+    if write_claude_md:
+        apply_guide_and_report(
+            repo_root, prefix, written, agent=agent, dry_run=dry_run
+        )
+    apply_and_report(repo_root, prefix, written, dry_run=dry_run)
 
-    readme_rel = Path(".specyrd/README.md")
     if not dry_run:
-        agents: dict[str, list[str]] = manifest.setdefault("agents", {})
-        cmd_paths = [str(rel_dest / n) for n in files_to_install]
-        canonical = cmd_paths + [str(readme_rel)]
-        agents[agent] = canonical
-        if role is not None:
-            manifest["role"] = role
-        manifest["project_root"] = prefix.rstrip("/") or "."
-        _save_manifest(repo_root, manifest)
+        _record_manifest(
+            repo_root,
+            manifest,
+            agent=agent,
+            managed=managed_paths(rel_dest, files_to_install, agent=agent),
+            role=role,
+            prefix=prefix,
+        )
 
     return InitResult(written=written, skipped=skipped, dry_run=dry_run)
+
+
+def managed_paths(
+    rel_dest: Path, files_to_install: tuple[str, ...], *, agent: str
+) -> list[str]:
+    """Every repo path this pack owns, in the order the manifest records them.
+
+    The manifest is what makes ``--force`` answerable: a file listed here is
+    the kit's to rewrite, and a file that is not is the consumer's. ``CLAUDE.md``
+    used to be written without being listed, which is precisely how ``--force``
+    came to destroy one.
+    """
+    paths = [str(rel_dest / n) for n in files_to_install]
+    paths.append(str(Path(".specyrd/README.md")))
+    if agent in GUIDE_AGENTS:
+        paths.append(AGENT_GUIDE)
+    return paths
+
+
+def _record_manifest(
+    repo_root: Path,
+    manifest: dict[str, Any],
+    *,
+    agent: str,
+    managed: list[str],
+    role: str | None,
+    prefix: str,
+) -> None:
+    agents: dict[str, list[str]] = manifest.setdefault("agents", {})
+    agents[agent] = managed
+    if role is not None:
+        manifest["role"] = role
+    manifest["project_root"] = prefix.rstrip("/") or "."
+    _save_manifest(repo_root, manifest)

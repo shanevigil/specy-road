@@ -81,7 +81,9 @@ Do **not** invent a parallel roadmap format (e.g. YAML merge file) in agent rule
 If `CLAUDE.md` exists, **merge** specy-road guidance:
 
 - Roadmap model: merged graph = `manifest.json` + chunks; `git-workflow.yaml` = CLI/PM git defaults; `registry.yaml` = claims overlay, not a graph chunk.
-- Commands: `specy-road validate`, `specy-road export --check`, `specy-road file-limits`, `specy-road brief <NODE_ID> -o work/brief-...`.
+- Commands: `specy-road validate`, `specy-road export --check`, `specy-road digest --check`, `specy-road file-limits`, `specy-road brief <NODE_ID> -o work/brief-...`.
+- Finding things: `specy-road search "<query>"` (ranked over planning sheets, contracts, nodes, summaries and archived work) and `specy-road history <NODE_ID>` (how a node got here, from git). Both are read-only.
+- Reading current state: `roadmap-context.md`, written by `specy-road digest`. Generated **and committed**, like `roadmap.md`.
 - Pointer to `AGENTS.md` as the canonical load order.
 
 **Required mini-section — `specy-road (consumer)`:** Add a short section (merge, don’t replace the rest of the file) so agents don’t confuse this app repo with a nested toolkit tree. Use the package stub as a starting point (`specy_road/templates/adoption/specy-road-consumer-claude-snippet.md`) or this template:
@@ -130,6 +132,7 @@ If a **`specy-road/`** clone exists at the repo root, consider adding **`specy-r
 ```bash
 specy-road validate
 specy-road export --check
+specy-road digest --check
 ```
 
 - When validation or export fails, **first distinguish**:

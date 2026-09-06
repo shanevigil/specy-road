@@ -468,3 +468,44 @@ def test_add_node_refuses_when_parent_in_locked_milestone(tmp_path: Path) -> Non
     # Node was NOT added.
     nodes_after = load_json_chunk(chunk)
     assert all(n["id"] != "M99.4" for n in nodes_after)
+
+
+def _edit(tmp_path: Path, *args: str):
+    return _run_crud(tmp_path, "--repo-root", str(tmp_path), "edit-node", "M99.1", *args)
+
+
+def test_edit_node_cli_keeps_a_hand_picked_codename(tmp_path: Path) -> None:
+    """A retitle must not silently move the node off feature/rm-<codename>."""
+    _fixture_repo(tmp_path)
+    assert _edit(tmp_path, "--set", "codename=custom-slug").returncode == 0
+
+    r = _edit(tmp_path, "--set", "title=Renamed One Task")
+
+    assert r.returncode == 0, r.stderr
+    assert "codename kept: 'custom-slug'" in r.stderr
+    assert "--sync-codename" in r.stderr
+    shown = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert '"codename": "custom-slug"' in shown.stdout
+
+
+def test_edit_node_cli_sync_codename_rewrites_it(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+    assert _edit(tmp_path, "--set", "codename=custom-slug").returncode == 0
+
+    r = _edit(tmp_path, "--sync-codename", "--set", "title=Renamed One Task")
+
+    assert r.returncode == 0, r.stderr
+    shown = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert '"codename": "renamed-one-task"' in shown.stdout
+
+
+def test_edit_node_cli_still_derives_a_title_derived_codename(tmp_path: Path) -> None:
+    """M99.1 ships codename 'one' for title 'One' — derived, so it follows along."""
+    _fixture_repo(tmp_path)
+
+    r = _edit(tmp_path, "--set", "title=Renamed One Task")
+
+    assert r.returncode == 0, r.stderr
+    assert "codename kept" not in r.stderr
+    shown = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert '"codename": "renamed-one-task"' in shown.stdout

@@ -32,26 +32,61 @@ def test_apply_set_title_syncs_codename_and_planning_dir() -> None:
     assert node["planning_dir"] == f"planning/M0_first-phase-planning-and-contract_{_NK}.md"
 
 
-def test_apply_set_title_overwrites_stale_codename() -> None:
-    """Migrated or legacy codename must not stay when title implies a different slug."""
-    nk = "20000000-0000-4000-8000-000000000002"
-    node = {
+_NK2 = "20000000-0000-4000-8000-000000000002"
+
+
+def _hand_picked_node() -> dict:
+    """A node whose codename is *not* its title's slug — so a human chose it."""
+    return {
         "id": "M0.1",
-        "node_key": nk,
+        "node_key": _NK2,
         "title": "First milestone",
         "codename": "first-deliverable",
-        "planning_dir": f"planning/M0.1_first-deliverable_{nk}.md",
+        "planning_dir": f"planning/M0.1_first-deliverable_{_NK2}.md",
     }
+
+
+def _retitle(node: dict, title: str, **kw) -> None:
     apply_set(
         node,
         "title",
-        "Renamed milestone title",
-        all_ids={"M0.1"},
-        all_node_keys={nk},
-        self_id="M0.1",
+        title,
+        all_ids={node["id"]},
+        all_node_keys={node["node_key"]},
+        self_id=node["id"],
+        **kw,
     )
+
+
+def test_a_hand_picked_codename_survives_a_title_edit() -> None:
+    """The codename is the branch identity; rewriting it breaks feature/rm-*."""
+    node = _hand_picked_node()
+    notes: list[str] = []
+
+    _retitle(node, "Renamed milestone title", notify=notes.append)
+
+    assert node["codename"] == "first-deliverable"
+    assert node["planning_dir"] == f"planning/M0.1_first-deliverable_{_NK2}.md"
+    assert notes and "first-deliverable" in notes[0]
+    assert "--sync-codename" in notes[0]
+
+
+def test_sync_codename_forces_the_rewrite() -> None:
+    node = _hand_picked_node()
+
+    _retitle(node, "Renamed milestone title", sync_codename=True)
+
     assert node["codename"] == "renamed-milestone-title"
-    assert node["planning_dir"] == f"planning/M0.1_renamed-milestone-title_{nk}.md"
+    assert node["planning_dir"] == f"planning/M0.1_renamed-milestone-title_{_NK2}.md"
+
+
+def test_a_missing_codename_is_still_derived() -> None:
+    node = _hand_picked_node()
+    node.pop("codename")
+
+    _retitle(node, "Renamed milestone title")
+
+    assert node["codename"] == "renamed-milestone-title"
 
 
 def test_edit_title_renames_planning_file_on_disk(tmp_path: Path) -> None:
