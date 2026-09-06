@@ -11,6 +11,92 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.2] - 2026-09-06
+
+Patch release responding to a consumer report written after running four real
+leaves through `0.2.1-rc2` on the live integration branch of a 100-node
+repository. Seven findings, all fixed. Full analysis in
+[`docs/design-notes/v0-2-1-consumer-report-triage.md`](docs/design-notes/v0-2-1-consumer-report-triage.md).
+
+    pip install --upgrade specy-road
+
+No migration needed. Adopters upgrading from `0.1.4` or earlier should still run
+**`specy-road refresh-stubs`** once so IDE stubs match the installed toolkit.
+
+### Fixed
+
+- **`finish-this-task` and `sync` now regenerate `roadmap-context.md`.** They ran
+  `validate` and `export` but not `digest`, so `digest --check` reported drift
+  immediately after every finish — while the toolkit's own help, the scaffolded
+  `.gitignore` and the release CI all say to gate on it exactly like
+  `export --check`. Every finish handed CI a failure the dev never saw. Both
+  commands now run all three, and the bookkeeping commit stages
+  `roadmap-context.md` next to `roadmap.md`.
+- **`grind-session` ends on the integration branch.** A merge-mode session used to
+  finish on the last feature branch, leaving every `feature/rm-*` it had merged
+  behind, locally and on the remote. `finish-this-task` is unchanged: staying on
+  the branch is right for one task done by hand, and wrong for an unattended loop.
+- **`grind-session --plan` lists leaves in the order the loop takes them.**
+  "Dispatch now" was sorted by id while the loop claims in roadmap outline order,
+  so the first leaf printed was not the first leaf taken. Batches now follow
+  pickup order; `waves` stay sorted by id, since they are a layering to read.
+- **`grind-session --json` emits clean JSONL.** Sub-command output — the pickup
+  banner, the finish log, git — was interleaved with the events. In `--json` mode
+  it is redirected to stderr. Every event also carries `ts` (UTC, to the second).
+- **`specy-road show-node` output pipes into a parser.** It printed a
+  `# chunk: …` comment line before the JSON, in a command the IDE stub describes
+  as "Show one roadmap node as JSON". stdout is now exactly one JSON document;
+  the chunk path goes to stderr, so a terminal still shows it.
+
+### Added
+
+- **`grind-session --delete-merged-branches`.** Deletes the `feature/rm-*`
+  branches the session finished: locally with `git branch -d`, and on the remote
+  too when `--push` was given. Only branches the integration branch already
+  contains are touched — `finish --push` gives a branch an upstream, so
+  `git branch -d` alone would delete one that never got past a PR. Off by
+  default; without it the loop prints the exact command. Neither the cleanup nor
+  the checkout runs after a failed cycle.
+- **`validate` warns when a generated-and-committed file is gitignored.**
+  `roadmap.md` and `roadmap-context.md` are both generated *and* committed, which
+  is unusual enough that adopters gitignore them. `digest --check` then passes
+  locally while a fresh clone and CI see the file missing. Detection uses
+  `git check-ignore --no-index`, because plain `check-ignore` stays silent once a
+  file is tracked. `finish-this-task` skips staging such a file rather than
+  aborting its commit on `git add` of an ignored path.
+- **`grind-session` survives a Claude timed session limit.** An unattended grind
+  assumes the implementer returns; Claude Code does not when the account's
+  session limit is reached, and the loop used to end there — overnight, with the
+  leaf half done. When `--implement-cmd` is the Claude CLI, the loop now waits
+  for the stated reset and resumes the same Claude session. Detection is the
+  command itself, so Cursor and every other agent keep their current behaviour
+  exactly: one run, and a non-zero exit stops the session. A spend limit stops
+  rather than waits, since nothing lifts it; wording the parser does not
+  recognise stops **loudly**, because a grind that stalls for hours on a format
+  change is worse than one that says so. Bounded to three waits per leaf and six
+  hours per wait, with the user's own flags passed through untouched and
+  `--dangerously-skip-permissions` never added. Run it in a terminal, not an IDE
+  agent pane. New `usage_limited` JSON event; see
+  [`docs/grind-session.md`](docs/grind-session.md).
+- **`validate` warns when a touch zone matches nothing on disk.** Zones are
+  authored before the code exists and were never checked against the working
+  tree; two zones in a consumer repo named files that were never created. Paths
+  and globs are both understood, and settled nodes are skipped, since work that
+  landed and files since renamed is not a mistake to act on. A glob is checked
+  only when it is bounded — at most one `**`, behind a real directory — because
+  an unmatched `**` walks the whole tree, and this check runs inside every
+  pickup and every node edit.
+
+### Changed
+
+- **The CLI brainstorm prompt says plainly whose tools do the work.**
+  `specy-road brainstorm` calls no model and no search API: it writes a prompt for
+  the agent already driving the IDE, and now tells that agent to use its own
+  brainstorming slash commands and skills alongside web search. The PM GUI panel
+  is the surface that uses a configured LLM and search provider, because a
+  browser panel has no IDE agent to lean on. Documented in
+  [`docs/brainstorming.md`](docs/brainstorming.md).
+
 ## [v0.2.1] - 2026-09-06
 
 First stable **v0.2.1** release on **PyPI**. Promotes the work validated in
@@ -1419,7 +1505,8 @@ the package wheel is correct.
   only cares that `integration_branch` is declared; the rest is the
   user's git hygiene. (F-005)
 
-[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/shanevigil/specy-road/compare/v0.2.2...HEAD
+[v0.2.2]: https://github.com/shanevigil/specy-road/releases/tag/v0.2.2
 [v0.1.3]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.3
 [v0.1.2]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.2
 [v0.1.1]: https://github.com/shanevigil/specy-road/releases/tag/v0.1.1
