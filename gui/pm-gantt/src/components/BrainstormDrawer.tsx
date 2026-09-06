@@ -15,6 +15,8 @@ import { researchIsComplete } from "../researchProviders";
 import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { BrainstormIdeaList } from "./BrainstormIdeaList";
 import { ModalFrame } from "./ModalFrame";
+import { ModalPersistStatusFooter } from "./ModalPersistStatusFooter";
+import type { ModalRect } from "../modalRect";
 import type {
   BrainstormChatMessage,
   BrainstormSession,
@@ -25,6 +27,28 @@ type Props = {
   onClose: () => void;
   /** Refresh the outline after ideas land in the graph. */
   onPromoted: () => void;
+  // Brainstorm sits in the same window stack as the task dialogs, so it takes
+  // the same chrome contract they do; see `EditModal` for the counterparts.
+  /** Stacking order among open windows. */
+  stackZIndex?: number;
+  /** Do not dim or block the app when other windows are visible. */
+  backdropPassThrough?: boolean;
+  /** Only the front window should answer Escape. */
+  closeOnEscape?: boolean;
+  /** One-time rect for a freshly opened window, offset from the anchor. */
+  spawnInitialRect?: ModalRect;
+  editTileMode?: boolean;
+  tileRect?: ModalRect | null;
+  resumeFreeRect?: ModalRect | null;
+  onTileToggle?: () => void;
+  tileMode?: boolean;
+  tileToggleDisabled?: boolean;
+  /** Accent the title bar while this is the focused window. */
+  titleBarActive?: boolean;
+  onActivate?: () => void;
+  onRectCommit?: (r: ModalRect) => void;
+  minimized?: boolean;
+  onMinimize?: () => void;
 };
 
 const MODE_HELP: Record<string, string> = {
@@ -36,7 +60,26 @@ const MODE_HELP: Record<string, string> = {
     "and recommends. Accepting is still your call.",
 };
 
-export function BrainstormDrawer({ open, onClose, onPromoted }: Props) {
+export function BrainstormDrawer({
+  open,
+  onClose,
+  onPromoted,
+  stackZIndex,
+  backdropPassThrough,
+  closeOnEscape,
+  spawnInitialRect,
+  editTileMode = false,
+  tileRect = null,
+  resumeFreeRect = null,
+  onTileToggle,
+  tileMode = false,
+  tileToggleDisabled = false,
+  titleBarActive,
+  onActivate,
+  onRectCommit,
+  minimized = false,
+  onMinimize,
+}: Props) {
   const { onConcurrencyConflict } = usePmGuiHandlers();
   const [session, setSession] = useState<BrainstormSession | null>(null);
   const [slugs, setSlugs] = useState<string[]>([]);
@@ -215,6 +258,30 @@ export function BrainstormDrawer({ open, onClose, onPromoted }: Props) {
 
   const counts = session ? ideaCounts(session.ideas) : null;
   const ready = session != null && llmReady;
+  const promotable = session ? promotableCount(session.ideas) : 0;
+
+  const titleBarAction =
+    onTileToggle != null ? (
+      <button
+        type="button"
+        className="modal-titlebar-tile-btn"
+        aria-pressed={tileMode}
+        disabled={tileToggleDisabled}
+        title={
+          tileMode
+            ? "Restore windows to their positions before tiling"
+            : "Tile open windows left to right"
+        }
+        aria-label={tileMode ? "Untile windows" : "Tile windows"}
+        onClick={(e) => {
+          e.stopPropagation();
+          onTileToggle();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {tileMode ? "Untile" : "Tile"}
+      </button>
+    ) : null;
 
   return (
     <ModalFrame
@@ -223,27 +290,40 @@ export function BrainstormDrawer({ open, onClose, onPromoted }: Props) {
       onClose={onClose}
       storageKey="brainstorm"
       bodyClassName="modal-body--brainstorm"
+      initialRectOverride={spawnInitialRect}
+      forcedRect={editTileMode && tileRect ? tileRect : null}
+      resumeFreeRect={resumeFreeRect}
+      suppressPositionPersist={editTileMode}
+      titleBarActive={titleBarActive}
+      onActivate={onActivate}
+      onRectCommit={onRectCommit}
+      titleBarAction={titleBarAction}
+      zIndex={stackZIndex}
+      backdropPassThrough={backdropPassThrough}
+      closeOnEscape={closeOnEscape && !minimized}
+      taskWindowChrome
+      minimized={minimized}
+      onMinimize={onMinimize}
+      maximizeConstrained={editTileMode && Boolean(tileRect)}
       footer={
         <div className="brainstorm-footer">
-          {msg ? <span className="brainstorm-msg">{msg}</span> : null}
-          {session ? (
-            <>
-              <button
-                type="button"
-                disabled={busy || promotableCount(session.ideas) === 0}
-                onClick={() => void promote(true)}
-              >
-                Preview promotion
-              </button>
-              <button
-                type="button"
-                disabled={busy || promotableCount(session.ideas) === 0}
-                onClick={() => void promote(false)}
-              >
-                Promote {promotableCount(session.ideas)} to roadmap
-              </button>
-            </>
-          ) : null}
+          <ModalPersistStatusFooter msg={msg} persistMsg={busy ? "Working…" : ""} />
+          {/* Rendered disabled rather than omitted before a session exists, so
+              the footer keeps one height and the body below does not jump. */}
+          <button
+            type="button"
+            disabled={!session || busy || promotable === 0}
+            onClick={() => void promote(true)}
+          >
+            Preview promotion
+          </button>
+          <button
+            type="button"
+            disabled={!session || busy || promotable === 0}
+            onClick={() => void promote(false)}
+          >
+            {promotable > 0 ? `Promote ${promotable} to roadmap` : "Promote to roadmap"}
+          </button>
         </div>
       }
     >

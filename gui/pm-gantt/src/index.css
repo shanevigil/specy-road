@@ -3761,8 +3761,10 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
   width: 100%;
 }
 
-.brainstorm-msg {
+/* The shared status strip is width:100% on its own, which would push the
+   promote buttons out of this row. Here it takes only the leftover space. */
+.brainstorm-footer .modal-persist-status-footer {
   flex: 1 1 auto;
-  font-size: 0.82rem;
-  color: var(--muted);
+  width: auto;
+  min-width: 0;
 }

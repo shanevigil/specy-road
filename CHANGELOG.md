@@ -43,6 +43,11 @@ responds to an adopter's `0.1.4 -> 0.2.1rc1` upgrade report against a real
 - **PM GUI brainstorm panel.** The same two modes as a chat interface, running
   against the model already configured in Settings. Ideas are accepted,
   rejected, and revised in place, and promoted to nodes from the panel.
+  It opens as a task window rather than a drawer, sharing one window stack with
+  the task dialogs: minimize to the dock, maximize, tile beside the task the
+  session is about, and click to raise. Minimizing keeps the conversation and
+  the captured ideas. Tiling puts the task dialogs in dependency order and
+  Brainstorm to their right, since it is not a step in that chain.
 - **Web search for the PM GUI, across seven providers.** A new Research section
   in Settings gives the GUI the research capability the IDE agent already has
   from its own tools: **Bing/Azure, Tavily, Brave, Serper, Exa, Firecrawl and

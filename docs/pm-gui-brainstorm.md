@@ -78,6 +78,17 @@ The loop is bounded: at most 3 rounds of at most 4 queries per message. A
 failed search becomes text the model reads ("search failed: …") rather than an
 error that ends the conversation.
 
+## The window
+
+Brainstorm opens as a task window, not a drawer: it has the same traffic-light
+controls, tiling, and stacking as the task dialogs, and shares one window stack
+with them. So it can sit beside the task it is about — **Tile** lays the open
+windows out left to right, with the task dialogs in dependency order and
+Brainstorm on the right, since it is not a step in that chain. **Minimize**
+sends it to the strip at the bottom of the screen; the conversation and the
+captured ideas are still there when you bring it back. Pressing the Brainstorm
+button again raises it rather than doing nothing.
+
 ## Using the panel
 
 1. **Set the topic and anchor**, then **Start session**. The anchor is the node
