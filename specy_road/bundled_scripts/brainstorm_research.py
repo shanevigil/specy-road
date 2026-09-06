@@ -12,8 +12,11 @@ the Azure-hosted variants and the compatible proxies people run.
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import requests
 
@@ -75,6 +78,51 @@ def _require(settings: dict[str, Any] | None) -> tuple[str, str, int]:
     return endpoint, key, _max_results(settings)
 
 
+def _resolves_off_host(host: str) -> bool:
+    """True when ``host`` points anywhere on this machine or its network.
+
+    The GUI binds to loopback but is reachable from any page in the browser,
+    so an unchecked endpoint turns "Test search" into a probe of whatever the
+    machine can reach — cloud metadata services included.
+    """
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return True
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return True
+        if (
+            addr.is_private
+            or addr.is_loopback
+            or addr.is_link_local
+            or addr.is_reserved
+            or addr.is_multicast
+            or addr.is_unspecified
+        ):
+            return True
+    return False
+
+
+def validate_endpoint(endpoint: str) -> str:
+    """The endpoint, or raise if it is not a public ``https`` URL."""
+    parts = urlsplit(endpoint)
+    if parts.scheme != "https":
+        raise ResearchError(
+            "search endpoint must be an https:// URL "
+            f"(got {parts.scheme or 'no'} scheme)"
+        )
+    if not parts.hostname:
+        raise ResearchError("search endpoint has no host")
+    if _resolves_off_host(parts.hostname):
+        raise ResearchError(
+            f"search endpoint host {parts.hostname!r} is not a public address"
+        )
+    return endpoint
+
+
 def _parse(payload: Any, limit: int) -> list[SearchResult]:
     pages = payload.get("webPages") if isinstance(payload, dict) else None
     values = pages.get("value") if isinstance(pages, dict) else None
@@ -107,6 +155,7 @@ def _safe_error(exc: BaseException) -> str:
 def search(query: str, settings: dict[str, Any] | None) -> list[SearchResult]:
     """Run one search. Raises :class:`ResearchError` rather than returning junk."""
     endpoint, key, limit = _require(settings)
+    validate_endpoint(endpoint)
     q = query.strip()
     if not q:
         raise ResearchError("empty search query")
@@ -116,6 +165,9 @@ def search(query: str, settings: dict[str, Any] | None) -> list[SearchResult]:
             params={"q": q, "count": limit},
             headers={"Ocp-Apim-Subscription-Key": key},
             timeout=_TIMEOUT_SECONDS,
+            # A redirect would carry the key to a host that never passed
+            # `validate_endpoint`, which is the whole check undone.
+            allow_redirects=False,
         )
     except requests.RequestException as e:
         raise ResearchError(f"search request failed: {_safe_error(e)}") from e
@@ -123,6 +175,11 @@ def search(query: str, settings: dict[str, Any] | None) -> list[SearchResult]:
         raise ResearchError("search endpoint rejected the API key (401)")
     if resp.status_code == 403:
         raise ResearchError("search endpoint refused the request (403)")
+    if 300 <= resp.status_code < 400:
+        raise ResearchError(
+            f"search endpoint redirected (HTTP {resp.status_code}); "
+            "point the setting at the final URL"
+        )
     if resp.status_code >= 400:
         raise ResearchError(f"search endpoint returned HTTP {resp.status_code}")
     try:

@@ -22,9 +22,11 @@ from specy_road.bundled_scripts.brainstorm_chat import (
     system_prompt_for,
 )
 from specy_road.bundled_scripts.brainstorm_research import (
+    DEFAULT_ENDPOINT,
     ResearchError,
     is_configured,
     search,
+    validate_endpoint,
 )
 from tests.helpers import DOGFOOD
 
@@ -272,10 +274,43 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
 
 
 def test_testing_an_unconfigured_endpoint_is_a_400(api_client: TestClient) -> None:
-    r = api_client.post("/api/research/test", json={"research": {"enabled": False}})
+    r = api_client.post(
+        "/api/research/test",
+        json={"research": {"enabled": False}},
+        headers=_headers(api_client),
+    )
 
     assert r.status_code == 400
     assert "Settings" in r.json()["detail"]
+
+
+def test_testing_an_endpoint_needs_the_write_header(api_client: TestClient) -> None:
+    """It fetches a caller-supplied URL, so it is guarded like a write."""
+    r = api_client.post("/api/research/test", json={"research": RESEARCH_ON})
+
+    assert r.status_code == 428
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "http://169.254.169.254/latest/meta-data/",
+        "https://127.0.0.1:9999/search",
+        "https://localhost/search",
+        "https://192.168.1.1/search",
+        "file:///etc/passwd",
+        "https:///search",
+    ],
+)
+def test_the_endpoint_cannot_point_at_this_machine(endpoint: str) -> None:
+    """The GUI is reachable from any page in the browser, so an unchecked
+    endpoint turns search into a probe of the host's own network."""
+    with pytest.raises(ResearchError):
+        validate_endpoint(endpoint)
+
+
+def test_the_default_endpoint_is_accepted() -> None:
+    assert validate_endpoint(DEFAULT_ENDPOINT) == DEFAULT_ENDPOINT
 
 
 def test_research_is_only_configured_when_complete() -> None:
