@@ -13,7 +13,7 @@ Exit codes (documented contract for automations / CI wrappers):
 from __future__ import annotations
 
 import json
-import sys
+from datetime import datetime, timezone
 
 EXIT_OK = 0
 EXIT_GENERIC = 1
@@ -21,6 +21,11 @@ EXIT_NO_LEAVES = 2
 EXIT_BLOCKED = 3
 EXIT_PRE_FINISH_FAILED = 4
 EXIT_PICKUP_FAILED = 5
+
+
+def _now_iso() -> str:
+    """UTC, to the second. Monkeypatched in tests to freeze event timestamps."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class EventEmitter:
@@ -31,7 +36,7 @@ class EventEmitter:
 
     def emit(self, event: str, **fields) -> None:
         if self.as_json:
-            payload = {"event": event, **fields}
+            payload = {"event": event, "ts": _now_iso(), **fields}
             print(json.dumps(payload, sort_keys=False), flush=True)
             return
         print(self._human(event, fields), flush=True)
@@ -65,10 +70,36 @@ class EventEmitter:
             return f"{prefix}: {fields.get('reason')}" + (f" at {node}" if node else "")
         if event == "plan":
             return fields.get("text", prefix)
+        if event == "cleanup":
+            return _human_cleanup(prefix, fields)
+        if event == "usage_limited":
+            minutes = int(fields.get("wait_seconds", 0) // 60)
+            return (
+                f"{prefix}: {node} — the implementer hit a usage limit that "
+                f"resets at {fields.get('reset_at')}. Waiting {minutes} min, "
+                f"then resuming (attempt {fields.get('attempt')})."
+            )
         return f"{prefix}: {fields}"
 
 
-def fail(emitter: EventEmitter, reason: str, code: int, **fields) -> int:
-    """Emit a ``stopped`` event with ``reason`` and return ``code``."""
-    emitter.emit("stopped", reason=reason, **fields)
-    return code
+def _human_cleanup(prefix: str, fields: dict) -> str:
+    """The end-of-session line: where we ended up, and what was tidied away."""
+    local = fields.get("deleted_local") or []
+    remote = fields.get("deleted_remote") or []
+    where = (
+        f"on {fields.get('integration_branch')}"
+        if fields.get("checked_out")
+        else f"could NOT return to {fields.get('integration_branch')}"
+    )
+    lines = [f"{prefix}: {where}; deleted {len(local)} local / {len(remote)} remote branch(es)"]
+    for failure in fields.get("failed") or []:
+        lines.append(
+            f"  warning: {failure.get('step')} {failure.get('branch')}: "
+            f"{failure.get('message')}"
+        )
+    for warning in fields.get("warnings") or []:
+        lines.append(f"  {warning}")
+    hint = fields.get("hint")
+    if hint:
+        lines.append(f"  to clean up the branches this session merged: {hint}")
+    return "\n".join(lines)

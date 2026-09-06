@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import grind_session as gs
+from specy_road.bundled_scripts import grind_session_cleanup as gsc
+from specy_road.bundled_scripts import grind_session_events as gse
 
 REPO = Path(__file__).resolve().parent.parent
 DOGFOOD = REPO / "tests" / "fixtures" / "specy_road_dogfood"
@@ -22,6 +24,10 @@ from specy_road.bundled_scripts.grind_session_events import (
     EXIT_PRE_FINISH_FAILED,
 )
 from specy_road.bundled_scripts.session_plan import BlockedLeaf, SessionPlan, Wave
+
+
+#: Frozen event timestamp so `ts` can be asserted exactly.
+TS = "2026-09-06T00:00:00Z"
 
 
 def _node(nid, codename=None):
@@ -54,6 +60,9 @@ class _Harness:
         self.idx = 0
         self.cli_calls: list[list[str]] = []
         self.shell_calls: list[str] = []
+        self.git_calls: list[list[str]] = []
+        #: Per-git-verb return codes for the end-of-session cleanup.
+        self.git_rc: dict[str, int] = {}
         self.implement_rc = implement_rc
         self.pre_finish_rc = pre_finish_rc
         self.pickup_rc = pickup_rc
@@ -91,6 +100,13 @@ class _Harness:
         def fake_wait(repo_root, rel, timeout):
             return self.implement_rc == 0
 
+        def fake_git(git_args, repo_root):
+            self.git_calls.append(list(git_args))
+            return self.git_rc.get(git_args[0], 0), ""
+
+        monkeypatch.setattr(gsc, "git_code", fake_git)
+        monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+        monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
         monkeypatch.setattr(gs, "gather_plan", fake_gather)
         monkeypatch.setattr(gs, "_run_cli", fake_run_cli)
         monkeypatch.setattr(gs, "_run_shell", fake_run_shell)
@@ -109,6 +125,11 @@ def _run(argv):
 def _events(capsys):
     out = capsys.readouterr().out.strip().splitlines()
     return [json.loads(line) for line in out if line.strip()]
+
+
+def _event(evs, name):
+    """The last event of one kind. `cleanup` now trails `stopped`."""
+    return [e for e in evs if e["event"] == name][-1]
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +162,9 @@ def test_loop_hook_mode_max_leaves(monkeypatch, capsys):
     evs = _events(capsys)
     finished = [e for e in evs if e["event"] == "finished"]
     assert [e["node_id"] for e in finished] == ["M1.1", "M1.2"]
-    assert evs[-1] == {"event": "stopped", "reason": "max_leaves", "node_id": "M1.2"}
+    assert _event(evs, "stopped") == {
+        "event": "stopped", "ts": TS, "reason": "max_leaves", "node_id": "M1.2",
+    }
     pickups = [c for c in h.cli_calls if c[0] == "do-next-available-task"]
     assert len(pickups) == 2
 
@@ -153,7 +176,9 @@ def test_loop_until_stops_after_node(monkeypatch, capsys):
                  "--until", "M1.2", "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
     evs = _events(capsys)
-    assert evs[-1] == {"event": "stopped", "reason": "until_reached", "node_id": "M1.2"}
+    assert _event(evs, "stopped") == {
+        "event": "stopped", "ts": TS, "reason": "until_reached", "node_id": "M1.2",
+    }
 
 
 def test_loop_runs_until_no_work(monkeypatch, capsys):
@@ -163,8 +188,7 @@ def test_loop_runs_until_no_work(monkeypatch, capsys):
                  "--json", "--repo-root", "/tmp/x"])
     assert code == EXIT_OK
     evs = _events(capsys)
-    assert evs[-1]["event"] == "stopped"
-    assert evs[-1]["reason"] == "no_work"
+    assert _event(evs, "stopped")["reason"] == "no_work"
 
 
 # ---------------------------------------------------------------------------
@@ -354,3 +378,4 @@ def test_cli_grind_session_plan_json() -> None:
     payload = json.loads(r.stdout.strip().splitlines()[0])
     assert payload["event"] == "plan"
     assert "ready" in payload and "waves" in payload and "parallel_batches" in payload
+

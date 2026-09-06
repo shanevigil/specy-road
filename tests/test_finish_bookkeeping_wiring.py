@@ -40,7 +40,7 @@ def _repo_with_tracked_session_files(tmp_path: Path, monkeypatch) -> list[list[s
     monkeypatch.setattr(ft, "ROOT", tmp_path)
     monkeypatch.setattr(ft, "git_run", lambda _root, *a: git_calls.append(list(a)))
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _n: [])
-    monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
+    monkeypatch.setattr(ft, "_validate_export_digest", lambda: None)
     monkeypatch.setattr(ft, "_save_registry", lambda _d: None)
     return git_calls
 
@@ -107,3 +107,61 @@ def test_sidecar_goes_even_with_no_cleanup_work(tmp_path, monkeypatch) -> None:
     assert cleanup_called == []
     assert sidecar_called == [True]
     assert "work/.on-complete-M1.1.yaml" in _staged(git_calls)
+
+
+def test_bookkeeping_stages_both_generated_files(tmp_path, monkeypatch) -> None:
+    """roadmap.md AND roadmap-context.md, so `digest --check` passes after finish."""
+    git_calls = _repo_with_tracked_session_files(tmp_path, monkeypatch)
+    monkeypatch.setattr(ft, "cleanup_work_artifacts", lambda *_a: [])
+    monkeypatch.setattr(ft, "cleanup_session_sidecar", lambda *_a: [])
+    monkeypatch.setattr(ft, "unstageable_generated_files", lambda _r: [])
+
+    ft._bookkeeping_commit_phase(
+        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+    )
+
+    staged = _staged(git_calls)
+    assert "roadmap.md" in staged
+    assert "roadmap-context.md" in staged
+
+
+def test_bookkeeping_skips_an_untracked_gitignored_file(tmp_path, monkeypatch) -> None:
+    """`git add` of an ignored *untracked* path aborts the commit; stage the rest."""
+    git_calls = _repo_with_tracked_session_files(tmp_path, monkeypatch)
+    monkeypatch.setattr(ft, "cleanup_work_artifacts", lambda *_a: [])
+    monkeypatch.setattr(ft, "cleanup_session_sidecar", lambda *_a: [])
+    monkeypatch.setattr(
+        ft, "unstageable_generated_files", lambda _r: ["roadmap-context.md"]
+    )
+
+    ft._bookkeeping_commit_phase(
+        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+    )
+
+    staged = _staged(git_calls)
+    assert "roadmap.md" in staged
+    assert "roadmap-context.md" not in staged
+    assert any(c and c[0] == "commit" for c in git_calls)
+
+
+def test_a_tracked_but_ignored_generated_file_is_still_staged(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """`git add` accepts it, and dropping it would strand the regenerated copy.
+
+    This is the reported case exactly: committed, and also matched by a rule.
+    Skipping it would leave the file modified-but-uncommitted after every finish
+    — the drift this release exists to end.
+    """
+    git_calls = _repo_with_tracked_session_files(tmp_path, monkeypatch)
+    monkeypatch.setattr(ft, "cleanup_work_artifacts", lambda *_a: [])
+    monkeypatch.setattr(ft, "cleanup_session_sidecar", lambda *_a: [])
+    # Ignored by a rule, but tracked — so `unstageable` (untracked only) is empty.
+    monkeypatch.setattr(ft, "unstageable_generated_files", lambda _r: [])
+
+    ft._bookkeeping_commit_phase(
+        _args(), "cn", "M1.1", "feature/rm-cn", {"entries": []}, sess_path=None
+    )
+
+    assert "roadmap-context.md" in _staged(git_calls)
+    assert "not staging" not in capsys.readouterr().out

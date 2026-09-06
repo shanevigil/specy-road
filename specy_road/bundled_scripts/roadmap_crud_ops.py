@@ -131,7 +131,9 @@ def cmd_show(args: object) -> None:
     if not chunk:
         print(f"error: {unknown_node_msg(nid)}", file=sys.stderr)
         raise SystemExit(1)
-    print(f"# chunk: {chunk.relative_to(root)}\n")
+    # stdout stays pure JSON so `show-node | jq` works; the provenance
+    # line goes to stderr, where a terminal still shows it.
+    print(f"# chunk: {chunk.relative_to(root)}", file=sys.stderr)
     if chunk.suffix.lower() == ".json":
         nodes = load_json_chunk(chunk)
         idx = node_index_in_chunk(nodes, nid)

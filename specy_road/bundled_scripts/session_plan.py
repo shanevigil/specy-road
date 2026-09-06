@@ -195,7 +195,6 @@ def _classify(
         "gate_keys": gate_keys,
         "claimed": claimed,
         "scope": scope,
-        "ready_set": ready_set,
         "gates_open": gates_open,
     }
 
@@ -283,11 +282,21 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
     return waves
 
 
-def _parallel_batches(waves: list[Wave], ready_set: set[str]) -> list[list[str]]:
-    """Per wave, the ready+unclaimed leaves an orchestrator can dispatch now."""
+def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[str]]:
+    """Per wave, the ready+unclaimed leaves an orchestrator can dispatch now.
+
+    Ordered as pickup will actually claim them (tier, then roadmap outline
+    order), not by id: ``waves`` are id-sorted so the human wave listing reads
+    predictably, but a reader who dispatches ``parallel_batches[0]`` in order
+    must see the same first leaf that ``grind-session`` takes.
+    """
+    position = {nid: i for i, nid in enumerate(ready_order)}
     out: list[list[str]] = []
     for w in waves:
-        dispatchable = [nid for nid in w.node_ids if nid in ready_set]
+        dispatchable = sorted(
+            (nid for nid in w.node_ids if nid in position),
+            key=position.__getitem__,
+        )
         if dispatchable:
             out.append(dispatchable)
     return out
@@ -307,7 +316,7 @@ def compute_session_plan(
     ctx = _classify(nodes, reg, under=under)
     buckets = ctx["buckets"]
     waves = _compute_waves(nodes, ctx)
-    batches = _parallel_batches(waves, ctx["ready_set"])
+    batches = _parallel_batches(waves, buckets["ready"])
     plan = SessionPlan(
         under=under,
         ready=list(buckets["ready"]),

@@ -27,6 +27,7 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
@@ -88,20 +89,24 @@ def _update_chunk_status(node_id: str) -> list[str]:
     return []
 
 
-def _validate_and_export() -> None:
+def _validate_export_digest() -> None:
+    """validate, export, digest — every generated-and-committed file refreshed.
+
+    digest belongs here for the same reason export does: ``digest --check`` is
+    advertised as a CI drift gate, so a finish that leaves ``roadmap-context.md``
+    stale hands CI a failure the dev never saw.
+    """
     rr = ["--repo-root", str(ROOT)]
-    subprocess.check_call(
-        [sys.executable, "-m", "specy_road.cli", "validate", *rr], cwd=ROOT
-    )
-    subprocess.check_call(
-        [sys.executable, "-m", "specy_road.cli", "export", *rr], cwd=ROOT
-    )
+    for command in ("validate", "export", "digest"):
+        subprocess.check_call(
+            [sys.executable, "-m", "specy_road.cli", command, *rr], cwd=ROOT
+        )
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
-            "Mark the current roadmap task complete, validate, export, commit.\n"
+            "Mark the current roadmap task complete, validate, export, digest, commit.\n"
             "\n"
             "Finishing the last open leaf under a parent also flips that parent "
             "to Complete, in the same bookkeeping commit, walking up as far as "
@@ -140,7 +145,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Keep work/brief-, work/prompt-, and work/implementation-summary- for this node "
-            "(default: delete after successful validate/export)."
+            "(default: delete after successful validate/export/digest)."
         ),
     )
     p.add_argument(
@@ -236,6 +241,25 @@ def _maybe_write_pr_body(
     )
 
 
+def _stageable_generated_files() -> list[str]:
+    """The regenerated files to commit, minus any ``git add`` would refuse.
+
+    Only an ignored *untracked* path aborts the whole ``git add``, and dropping
+    more than that would be worse than the problem: a file that is ignored but
+    already tracked stages fine, and skipping it would leave the regenerated
+    copy out of every commit for good. The preceding ``validate`` has already
+    warned about the ignore rule itself, so this stays quiet about that.
+    """
+    refused = set(unstageable_generated_files(ROOT))
+    for name in refused:
+        print(
+            f"[warn] not staging {name}: it is gitignored and untracked, so "
+            f"`git add` would refuse it and abort this commit. "
+            f"Track it once with: git add -f {name}"
+        )
+    return [name for name in GENERATED_COMMITTED if name not in refused]
+
+
 def _bookkeeping_commit_phase(
     args: argparse.Namespace,
     codename: str,
@@ -256,7 +280,8 @@ def _bookkeeping_commit_phase(
     print(f"[ok] removed registry entry for '{codename}'\n")
     print("-> specy-road validate")
     print("-> specy-road export")
-    _validate_and_export()
+    print("-> specy-road digest")
+    _validate_export_digest()
     if pr_body_path is not None:
         # Print AFTER export so the dev sees a clean post-commit pointer.
         rel = pr_body_path.relative_to(ROOT)
@@ -269,7 +294,7 @@ def _bookkeeping_commit_phase(
     ):
         work_tracked_removals = cleanup_work_artifacts(ROOT, node_id)
     work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
-    changed_files.append("roadmap.md")
+    changed_files.extend(_stageable_generated_files())
     changed_files.extend(work_tracked_removals)
     git_run(ROOT, "add", *changed_files)
     git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): complete, deregister")

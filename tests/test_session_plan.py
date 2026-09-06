@@ -5,8 +5,9 @@ from __future__ import annotations
 from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
 
 
-def _leaf(nid, key, *, status="Not Started", deps=None, codename=None, ntype="task", parent=None):
-    return {
+def _leaf(nid, key, *, status="Not Started", deps=None, codename=None, ntype="task",
+          parent=None, sibling_order=None):
+    node = {
         "id": nid,
         "node_key": key,
         "type": ntype,
@@ -16,6 +17,9 @@ def _leaf(nid, key, *, status="Not Started", deps=None, codename=None, ntype="ta
         "dependencies": list(deps or []),
         "parent_id": parent,
     }
+    if sibling_order is not None:
+        node["sibling_order"] = sibling_order
+    return node
 
 
 # node_key helpers (valid-ish UUID4 shapes)
@@ -150,3 +154,29 @@ def test_to_dict_is_json_serializable():
     s = json.dumps(d)  # must not raise
     assert json.loads(s)["totals"]["ready"] == 2
     assert d["blocked"][0]["waiting_on"]
+
+
+def test_parallel_batch_follows_pickup_order_not_id_order():
+    """`--plan` said M10.3 first; the loop took M10.4. They must agree."""
+    nodes = [
+        _leaf("M10", "10000000-0000-4000-8000-000000000010", ntype="phase"),
+        _leaf("M10.3", K["M10.3"], parent="M10", sibling_order=2),
+        _leaf("M10.4", K["M10.4"], parent="M10", sibling_order=1),
+    ]
+
+    plan = compute_session_plan(nodes, _empty_reg())
+
+    assert plan.ready == ["M10.4", "M10.3"]
+    # Waves stay id-sorted: they are the human-readable dependency layering.
+    assert plan.waves[0].node_ids == ["M10.3", "M10.4"]
+    assert plan.parallel_batches[0] == ["M10.4", "M10.3"]
+
+
+def test_every_batch_is_an_ordered_subsequence_of_ready():
+    nodes = _chain_nodes()
+
+    plan = compute_session_plan(nodes, _empty_reg())
+
+    for batch in plan.parallel_batches:
+        remaining = iter(plan.ready)
+        assert all(nid in remaining for nid in batch)

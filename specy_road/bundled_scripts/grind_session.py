@@ -24,6 +24,8 @@ from pathlib import Path
 
 
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
+from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
+from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
@@ -58,16 +60,42 @@ def gather_plan(repo_root: Path, under: str | None) -> tuple[list[dict], dict, S
 # ---------------------------------------------------------------------------
 
 
+#: In ``--json`` mode stdout carries JSONL and nothing else, so child output
+#: (pickup banner, finish log, git) is redirected to stderr. Set per run by
+#: :func:`run_session`; a module-level flag rather than an argument because the
+#: two spawn helpers below are monkeypatched in tests by signature.
+CHILD_STDOUT_TO_STDERR = False
+
+
+def _spawn(cmd, *, cwd: Path, env: dict | None = None, shell: bool = False) -> int:
+    """Run a child process, keeping our stdout clean when emitting JSONL."""
+    if not CHILD_STDOUT_TO_STDERR:
+        return subprocess.run(cmd, cwd=cwd, env=env, shell=shell).returncode
+    sys.stderr.flush()
+    try:
+        fd = sys.stderr.fileno()
+    except (AttributeError, ValueError, OSError):
+        # No real file descriptor (pytest capture, embedded streams). Buffer
+        # instead: streaming is lost, but stdout still never sees child output.
+        proc = subprocess.run(
+            cmd, cwd=cwd, env=env, shell=shell,
+            stdout=subprocess.PIPE, text=True,
+        )
+        if proc.stdout:
+            sys.stderr.write(proc.stdout)
+            sys.stderr.flush()
+        return proc.returncode
+    return subprocess.run(cmd, cwd=cwd, env=env, shell=shell, stdout=fd).returncode
+
+
 def _run_cli(repo_root: Path, cli_args: list[str]) -> int:
-    proc = subprocess.run(
+    return _spawn(
         [sys.executable, "-m", "specy_road.cli", *cli_args], cwd=repo_root
     )
-    return proc.returncode
 
 
 def _run_shell(cmd: str, env: dict, repo_root: Path) -> int:
-    proc = subprocess.run(cmd, shell=True, cwd=repo_root, env=env)
-    return proc.returncode
+    return _spawn(cmd, cwd=repo_root, env=env, shell=True)
 
 
 def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
@@ -77,8 +105,16 @@ def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
         path.unlink()
         return True
     if sys.stdin and sys.stdin.isatty():
+        # input() writes its prompt to stdout, which in --json mode is the
+        # event stream. Ask on stderr instead, or the first cycle puts a
+        # non-JSON line into a pipe the caller is parsing.
+        prompt = f"  Implement the task, then press Enter (or create {rel})... "
         try:
-            input(f"  Implement the task, then press Enter (or create {rel})... ")
+            if CHILD_STDOUT_TO_STDERR:
+                print(prompt, file=sys.stderr, end="", flush=True)
+                input()
+            else:
+                input(prompt)
         except EOFError:
             pass
         if path.exists():
@@ -161,18 +197,25 @@ def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
 def _implement(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int:
     emitter.emit("implementing", node_id=ctx["node_id"], mode=args.implement_mode)
     if args.implement_mode == "hook":
-        return _run_shell(args.implement_cmd, _hook_env(repo_root, **ctx), repo_root)
+        return run_implement_hook(
+            args.implement_cmd,
+            _hook_env(repo_root, **ctx),
+            repo_root,
+            emitter=emitter,
+            node_id=ctx["node_id"],
+            run_shell=_run_shell,
+        )
     return 0 if _wait_for_signal(repo_root, args.ready_signal, args.signal_timeout) else 1
 
 
 def _do_cycle(args, repo_root: Path, emitter: EventEmitter, nodes: list[dict],
-              target_id: str) -> tuple[str | None, int | None]:
+              target_id: str) -> tuple[str | None, str | None, int | None]:
     by_id = {n["id"]: n for n in nodes}
     codename = (by_id.get(target_id, {}) or {}).get("codename") or ""
     rc = _run_cli(repo_root, _pickup_args(args, repo_root))
     if rc != 0:
         emitter.emit("hook_failed", phase="pickup", node_id=target_id, rc=rc)
-        return None, EXIT_PICKUP_FAILED
+        return None, None, EXIT_PICKUP_FAILED
     branch = current_branch(repo_root) or f"feature/rm-{codename}"
     node_id = _resolve_picked(repo_root, branch, target_id)
     ctx = {
@@ -185,19 +228,19 @@ def _do_cycle(args, repo_root: Path, emitter: EventEmitter, nodes: list[dict],
     rc = _implement(args, repo_root, emitter, ctx)
     if rc != 0:
         emitter.emit("hook_failed", phase="implement", node_id=node_id, rc=rc)
-        return None, EXIT_GENERIC
+        return None, None, EXIT_GENERIC
     if args.pre_finish_cmd:
         emitter.emit("pre_finish", node_id=node_id)
         rc = _run_shell(args.pre_finish_cmd, _hook_env(repo_root, **ctx), repo_root)
         if rc != 0:
             emitter.emit("hook_failed", phase="pre_finish", node_id=node_id, rc=rc)
-            return None, EXIT_PRE_FINISH_FAILED
+            return None, None, EXIT_PRE_FINISH_FAILED
     rc = _run_cli(repo_root, _finish_args(args, repo_root))
     if rc != 0:
         emitter.emit("hook_failed", phase="finish", node_id=node_id, rc=rc)
-        return None, EXIT_GENERIC
+        return None, None, EXIT_GENERIC
     emitter.emit("finished", node_id=node_id)
-    return node_id, None
+    return node_id, branch, None
 
 
 def _pin_loop_mode(repo_root: Path, args) -> str | None:
@@ -249,8 +292,34 @@ def _emit_plan(emitter: EventEmitter, plan: SessionPlan) -> None:
         emitter.emit("plan", text=render_session_plan_text(plan).rstrip())
 
 
+def _run_loop(
+    args, repo_root: Path, emitter: EventEmitter, finished_branches: list[str]
+) -> tuple[int, bool]:
+    """Drive cycles until a bound is hit. Returns (exit code, failed)."""
+    for _cycle in range(max(1, args.max_cycles)):
+        nodes, _reg, plan = gather_plan(repo_root, args.under)
+        if not plan.ready:
+            return _handle_no_ready(emitter, plan, len(finished_branches)), False
+        node_id, branch, terminal = _do_cycle(
+            args, repo_root, emitter, nodes, plan.ready[0]
+        )
+        if terminal is not None:
+            return terminal, True
+        finished_branches.append(branch or "")
+        if args.until and node_id == args.until:
+            emitter.emit("stopped", reason="until_reached", node_id=node_id)
+            return EXIT_OK, False
+        if args.max_leaves and len(finished_branches) >= args.max_leaves:
+            emitter.emit("stopped", reason="max_leaves", node_id=node_id)
+            return EXIT_OK, False
+    emitter.emit("stopped", reason="max_cycles")
+    return EXIT_OK, False
+
+
 def run_session(args) -> int:
+    global CHILD_STDOUT_TO_STDERR
     repo_root = (args.repo_root or default_user_repo_root()).resolve()
+    CHILD_STDOUT_TO_STDERR = bool(args.json)
     emitter = EventEmitter(as_json=args.json)
     if args.plan:
         _nodes, _reg, plan = gather_plan(repo_root, args.under)
@@ -260,23 +329,14 @@ def run_session(args) -> int:
     if mode_error is not None:
         print(f"error: {mode_error}", file=sys.stderr)
         return EXIT_GENERIC
-    finished = 0
-    for _cycle in range(max(1, args.max_cycles)):
-        nodes, _reg, plan = gather_plan(repo_root, args.under)
-        if not plan.ready:
-            return _handle_no_ready(emitter, plan, finished)
-        node_id, terminal = _do_cycle(args, repo_root, emitter, nodes, plan.ready[0])
-        if terminal is not None:
-            return terminal
-        finished += 1
-        if args.until and node_id == args.until:
-            emitter.emit("stopped", reason="until_reached", node_id=node_id)
-            return EXIT_OK
-        if args.max_leaves and finished >= args.max_leaves:
-            emitter.emit("stopped", reason="max_leaves", node_id=node_id)
-            return EXIT_OK
-    emitter.emit("stopped", reason="max_cycles")
-    return EXIT_OK
+    finished_branches: list[str] = []
+    code, failed = _run_loop(args, repo_root, emitter, finished_branches)
+    # Only when the loop got somewhere and stopped on its own terms. After a
+    # failure the dev needs the feature branch exactly as it was left, and in
+    # milestone-subtree mode finish lands on the rollup branch, not integration.
+    if not failed and finished_branches and not args.milestone_subtree:
+        run_session_cleanup(args, repo_root, emitter, finished_branches)
+    return code
 
 
 def main(argv: list[str] | None = None) -> None:
