@@ -79,6 +79,18 @@ def test_mutations_require_the_fingerprint_header(api_client: TestClient) -> Non
     assert r.status_code in (412, 428)
 
 
+def test_a_traversing_slug_is_a_400_not_a_crash(api_client: TestClient) -> None:
+    """Refused, and refused cleanly — the slug is the caller's input."""
+    r = api_client.post(
+        "/api/brainstorm/session",
+        json={"topic": "x", "slug": "a/../../roadmap/registry"},
+        headers=_headers(api_client),
+    )
+
+    assert r.status_code == 400
+    assert "slug" in r.json()["detail"]
+
+
 def test_reading_an_unknown_session_is_a_404(api_client: TestClient) -> None:
     r = api_client.get("/api/brainstorm/session", params={"slug": "ghost"})
 

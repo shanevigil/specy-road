@@ -87,7 +87,12 @@ def _api_session_post(body: BrainstormSessionBody) -> dict[str, Any]:
     slug = (body.slug or "").strip() or slugify(body.topic or "")
     if not slug:
         raise HTTPException(status_code=400, detail="give the session a topic or a slug")
-    if session_path(root, slug).is_file():
+    try:
+        exists = session_path(root, slug).is_file()
+    except BrainstormError as e:
+        # A rejected slug is the caller's mistake, not a server fault.
+        raise _bad_request(e) from e
+    if exists:
         session = _load(root, slug)
         if body.topic:
             session.topic = body.topic.strip()
