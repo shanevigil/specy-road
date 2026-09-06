@@ -241,8 +241,11 @@ def test_show_node_cli(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
     assert r.returncode == 0
-    assert "# chunk: roadmap/phases/T.json" in r.stdout
-    assert '"id": "M99.1"' in r.stdout
+    # stdout is pure JSON so the output pipes into a parser; the chunk
+    # provenance line goes to stderr.
+    assert "# chunk: roadmap/phases/T.json" in r.stderr
+    assert "# chunk:" not in r.stdout
+    assert json.loads(r.stdout)["id"] == "M99.1"
 
 
 def test_archive_node_without_hard_remove_is_rejected(tmp_path: Path) -> None:
