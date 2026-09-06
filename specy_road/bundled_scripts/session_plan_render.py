@@ -43,8 +43,9 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
     if plan.parallel_batches:
         first = plan.parallel_batches[0]
         lines.append(
-            f"**Dispatch now (parallel):** {_fmt(first)}  "
-            f"— {len(first)} independent leaf/leaves, all dependencies satisfied."
+            f"**Dispatch now (parallel, in pickup order):** {_fmt(first)}  "
+            f"— {len(first)} independent leaf/leaves, all dependencies satisfied, "
+            "listed in the order the loop will claim them."
         )
     else:
         lines.append(

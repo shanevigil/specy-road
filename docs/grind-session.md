@@ -57,7 +57,9 @@ classification plus a dependency **wave** layout. No git, no pickup.
 - **`waves`** — all schedulable leaves layered by dependency depth. Wave `k`
   unlocks only when **every** leaf in waves `< k` is `Complete`.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
-  **in parallel right now**.
+  **in parallel right now**, in the order pickup will claim them (the same order
+  as `ready`). `waves` stay sorted by id, because they are the dependency
+  layering you read rather than a dispatch order.
 - **`gated`** / **`gates_open`** — leaves stuck behind an open human gate, and
   the gate ids that need a PM decision.
 
@@ -95,6 +97,7 @@ dispatched until `M10.5` completes.
 ```json
 {
   "event": "plan",
+  "ts": "2026-09-06T12:00:00Z",
   "under": null,
   "ready": ["M10.3", "M10.4"],
   "blocked": [
@@ -132,7 +135,8 @@ flowchart LR
   pre --> finish[finish-this-task]
   finish --> stop{stop condition?}
   stop -- no --> plan
-  stop -- yes --> done[exit 0]
+  stop -- yes --> tidy[checkout integration branch\n+ optional branch cleanup]
+  tidy --> done[exit 0]
 ```
 
 Before each pickup the planner re-runs, so the loop **stops at blocked work and
@@ -153,6 +157,22 @@ gates instead of failing a pickup**: if nothing is ready but leaves are blocked
 `--pre-finish-cmd "make test && specy-road validate"` runs after implementation,
 before `finish-this-task`. A non-zero exit stops the session (exit `4`) and leaves
 the feature branch intact so you can fix and resume.
+
+### Ending the session
+
+A session that stops on its own terms — a bound reached, or no work left — ends by
+checking out the **integration branch**. `finish-this-task` deliberately leaves you
+on the feature branch, which is right for one task by hand and wrong for a loop that
+merged a dozen.
+
+`--delete-merged-branches` also deletes the `feature/rm-*` branches the session
+finished: locally with `git branch -d`, and on the remote too when `--push` was
+given. A branch is deleted only if the integration branch already contains it, so a
+leaf that fell back to a PR keeps its branch. Without the flag the loop prints the
+exact command instead.
+
+Nothing here changes the exit code, and none of it runs after a failed cycle — a
+failure leaves the feature branch exactly as it was so you can fix and resume.
 
 ### Requirements for autonomous (hook) runs
 
@@ -213,13 +233,19 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 ## JSON events (`--json`)
 
 One JSON object per line. `event` is one of: `plan`, `picked`, `implementing`,
-`pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`.
+`pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`, `cleanup`. Every
+event carries `ts`, UTC to the second, right after `event`.
+
+**stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
+banner, the finish log, git — is redirected to **stderr**, so the stream stays
+parseable as JSONL. Redirect stderr to a file if you want to keep it.
 
 ```json
-{"event":"picked","node_id":"M10.2","branch":"feature/rm-vault-mcp-secrets","brief":"work/brief-M10.2.md","prompt":"work/prompt-M10.2.md"}
-{"event":"finished","node_id":"M10.2"}
-{"event":"blocked","reason":"dependency","waiting_on":["M10.5"],"count":1,"node_id":"M11.1"}
-{"event":"stopped","reason":"until_reached","node_id":"M11.6"}
+{"event":"picked","ts":"2026-09-06T12:00:04Z","node_id":"M10.2","branch":"feature/rm-vault-mcp-secrets","brief":"work/brief-M10.2.md","prompt":"work/prompt-M10.2.md"}
+{"event":"finished","ts":"2026-09-06T12:31:18Z","node_id":"M10.2"}
+{"event":"blocked","ts":"2026-09-06T12:31:20Z","reason":"dependency","waiting_on":["M10.5"],"count":1,"node_id":"M11.1"}
+{"event":"stopped","ts":"2026-09-06T12:31:20Z","reason":"until_reached","node_id":"M11.6"}
+{"event":"cleanup","ts":"2026-09-06T12:31:22Z","integration_branch":"dev","remote":"origin","checked_out":true,"deleted_local":["feature/rm-vault-mcp-secrets"],"deleted_remote":["feature/rm-vault-mcp-secrets"],"failed":[],"warnings":[],"hint":null}
 ```
 
 ---
