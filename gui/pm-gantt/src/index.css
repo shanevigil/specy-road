@@ -3552,10 +3552,22 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
 
 /* ---------------------------------------------------------- brainstorm panel */
 
+/* The panel fills the window rather than scrolling as one long page: the
+   transcript and the idea list each keep their own scrollbar, so neither can
+   push the composer off the bottom. */
 .modal-body--brainstorm {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.brainstorm-setup,
+.brainstorm-warning,
+.brainstorm-modes,
+.brainstorm-compose {
+  flex: 0 0 auto;
 }
 
 .brainstorm-setup {
@@ -3600,10 +3612,12 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
   font-weight: 600;
 }
 
-/* Fixed height so the idea list below stays reachable as the chat grows. */
+/* The conversation is what the PM is actually reading, so it takes the lion's
+   share of any height the window has: it grows three times as fast as the idea
+   list, which keeps its own scrollbar below. */
 .brainstorm-transcript {
-  flex: 0 0 auto;
-  height: 16rem;
+  flex: 3 1 0;
+  min-height: 7rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -3639,10 +3653,23 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
   align-items: flex-end;
 }
 
+/* Height is set from the content by the auto-grow effect, so no manual resize
+   handle to fight it. The cap there is what keeps it from eating the chat.
+   `min-height` is reset because the shared `.modal-window textarea` floor of
+   200px is meant for the editors, and would pin this open at seven lines. */
 .brainstorm-compose textarea {
   flex: 1 1 auto;
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
+  min-height: 0;
   font: inherit;
+}
+
+.brainstorm-ideas {
+  flex: 1 1 0;
+  min-height: 5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .brainstorm-ideas h3 {
@@ -3652,13 +3679,18 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
   margin: 0 0 0.4rem;
 }
 
+/* Scrolls under its own heading, so the idea count stays visible while you
+   work down the list. */
 .brainstorm-idea-list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 0 0.15rem 0 0;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .brainstorm-idea {

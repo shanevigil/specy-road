@@ -89,6 +89,11 @@ sends it to the strip at the bottom of the screen; the conversation and the
 captured ideas are still there when you bring it back. Pressing the Brainstorm
 button again raises it rather than doing nothing.
 
+Inside, height goes to the conversation: it takes roughly three times the share
+the idea list does as the window grows, and the idea list scrolls under its own
+heading. The composer starts one line tall and grows as you type, up to about
+eight lines. **Enter** sends and **Shift+Enter** starts a new line.
+
 ## Using the panel
 
 1. **Set the topic and anchor**, then **Start session**. The anchor is the node

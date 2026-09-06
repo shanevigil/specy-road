@@ -51,6 +51,9 @@ type Props = {
   onMinimize?: () => void;
 };
 
+/** Roughly eight lines: enough to review a long message, not enough to bury the chat. */
+const COMPOSER_MAX_PX = 160;
+
 const MODE_HELP: Record<string, string> = {
   brainstorm:
     "Diverge: quantity over quality. The assistant is told to question the " +
@@ -91,6 +94,7 @@ export function BrainstormDrawer({
   const [msg, setMsg] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   const llm = (settings?.llm ?? {}) as Record<string, unknown>;
   const research = (settings?.research ?? null) as Record<
@@ -145,6 +149,16 @@ export function BrainstormDrawer({
     const el = transcriptRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // Grow the composer with what is typed, and shrink it back once the draft is
+  // sent. Capped so a long paste cannot squeeze out the conversation above it;
+  // past the cap the textarea scrolls instead.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, COMPOSER_MAX_PX)}px`;
+  }, [draft, open]);
 
   const openSession = async (slug: string) => {
     setBusy(true);
@@ -419,16 +433,19 @@ export function BrainstormDrawer({
 
           <div className="brainstorm-compose">
             <textarea
+              ref={composerRef}
               value={draft}
-              rows={3}
+              rows={1}
               disabled={!ready || busy}
-              placeholder="Message the assistant…"
+              placeholder="Message the assistant…  (Shift+Enter for a new line)"
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  void send();
-                }
+                if (e.key !== "Enter" || e.shiftKey) return;
+                // An IME uses Enter to accept the highlighted candidate, so
+                // sending on it would post the sentence half-written.
+                if (e.nativeEvent.isComposing) return;
+                e.preventDefault();
+                void send();
               }}
             />
             <button type="button" disabled={!ready || busy} onClick={() => void send()}>
