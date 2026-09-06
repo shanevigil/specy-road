@@ -27,8 +27,9 @@ from specy_road.bundled_scripts.brainstorm_research import (
 
 RESEARCH_ON = {
     "enabled": True,
-    "bing_endpoint": DEFAULT_ENDPOINT,
-    "bing_api_key": "k",
+    "provider": "bing",
+    "endpoint": DEFAULT_ENDPOINT,
+    "api_key": "k",
     "max_results": 3,
 }
 
@@ -58,7 +59,7 @@ def test_the_default_endpoint_is_accepted() -> None:
 def test_research_is_only_configured_when_complete() -> None:
     assert is_configured(RESEARCH_ON)
     assert not is_configured({**RESEARCH_ON, "enabled": False})
-    assert not is_configured({**RESEARCH_ON, "bing_api_key": ""})
+    assert not is_configured({**RESEARCH_ON, "api_key": ""})
     assert not is_configured(None)
 
 

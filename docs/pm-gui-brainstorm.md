@@ -25,14 +25,46 @@ than invent sources.
 | Field | Meaning |
 |-------|---------|
 | Enabled | Whether the assistant may search at all |
-| Endpoint | Bing Web Search v7 URL. Azure-hosted variants and compatible proxies work — anything answering `?q=&count=` with `{"webPages": {"value": […]}}` |
-| Subscription key | Sent as `Ocp-Apim-Subscription-Key`. Obfuscated at rest like the LLM and git credentials |
+| Provider | Which back end to call — see the table below |
+| Endpoint | Leave blank to use the provider's default; SearXNG has none, so fill it in |
+| API key | Obfuscated at rest like the LLM and git credentials |
+| Self-hosted endpoint | Permits a private or localhost address. Off by default — see below |
 | Results per search | Capped at 20 |
 
 **Test search** verifies the endpoint before you rely on it.
 
 Research is stored **globally**, not per repository — a search subscription is
 a user credential, and unlike a git remote it does not differ between projects.
+
+### Providers
+
+| Provider | Default endpoint | Key |
+|----------|------------------|-----|
+| Bing / Azure Web Search | `api.bing.microsoft.com/v7.0/search` | `Ocp-Apim-Subscription-Key` |
+| Tavily | `api.tavily.com/search` | `Authorization: Bearer` |
+| Brave Search | `api.search.brave.com/res/v1/web/search` | `X-Subscription-Token` |
+| Serper (Google) | `google.serper.dev/search` | `X-API-KEY` |
+| Exa | `api.exa.ai/search` | `x-api-key` |
+| Firecrawl | `api.firecrawl.dev/v1/search` | `Authorization: Bearer` |
+| SearXNG (self-hosted) | none — supply your own | usually none |
+
+Switching provider clears the endpoint, so you get the new provider's default
+rather than the previous one's URL.
+
+Settings written before this existed used `bing_endpoint` and `bing_api_key`;
+those are still read, so an existing configuration keeps working untouched.
+
+### Self-hosted endpoints
+
+The dashboard refuses a search endpoint that resolves to a private, loopback,
+or link-local address, and requires `https`. That is deliberate: the GUI is
+reachable from any page open in your browser, so an unchecked endpoint would
+turn search into a way to probe your own network.
+
+A SearXNG instance you run yourself is exactly the case that restriction gets
+wrong, so **Self-hosted endpoint** lifts it — permitting private addresses and
+plain `http`, since a LAN box rarely has a certificate. Leave it off unless the
+endpoint is one you operate.
 
 ### How the assistant searches
 
