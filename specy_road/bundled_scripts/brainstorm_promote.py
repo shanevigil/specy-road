@@ -20,6 +20,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     Idea,
     PROMOTABLE_STATUSES,
+    write_session,
 )
 from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
@@ -157,9 +158,14 @@ def promote_session(
 ) -> list[Promotion]:
     """Promote every pending accepted idea, newest ids allocated as we go.
 
-    Mutates ``session`` in place, setting ``promoted_node_key``; the caller
-    persists it. Raises :class:`BrainstormError` before touching the graph when
-    the anchor is unusable, so a bad ``--under`` promotes nothing.
+    Raises :class:`BrainstormError` before touching the graph when the anchor is
+    unusable, so a bad ``--under`` promotes nothing.
+
+    Each node is its own transaction — the router's choice of chunk depends on
+    what the previous write left on disk, so the batch cannot be one. The
+    session is therefore saved after every node rather than by the caller at the
+    end: if idea three fails, the two already on the graph are recorded as
+    promoted, and re-running promotes the rest instead of duplicating them.
     """
     if node_type not in PROMOTABLE_TYPES:
         raise BrainstormError(
@@ -182,6 +188,7 @@ def promote_session(
             chunk_path = append_node_to_chunk(root, None, node)
             seed_planning_sheet(root, node, idea)
             idea.promoted_node_key = node["node_key"]
+            write_session(root, session)
             chunk = str(chunk_path.relative_to(root))
             nodes = _load_nodes(root)
         out.append(

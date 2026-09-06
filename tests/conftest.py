@@ -26,6 +26,26 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def gui_settings_never_touch_the_real_home(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Never read or write the developer's own ``~/.specy-road/gui-settings.json``.
+
+    ``SETTINGS_PATH`` is resolved from ``Path.home()`` at import, so any test
+    that saves settings without redirecting it first lands in the real file.
+    Most already redirect; the ones that did not had appended a project entry
+    per run, each carrying a copy of the developer's git token, until the file
+    was thousands of dead entries and megabytes long. It is a credential store,
+    so the default has to be the safe one.
+    """
+    import specy_road.bundled_scripts.roadmap_gui_settings as settings
+
+    home = tmp_path_factory.mktemp("gui-settings-home")
+    monkeypatch.setattr(settings, "SETTINGS_DIR", home)
+    monkeypatch.setattr(settings, "SETTINGS_PATH", home / "gui-settings.json")
+
+
+@pytest.fixture(autouse=True)
 def history_cache_stays_out_of_the_source_tree(monkeypatch: pytest.MonkeyPatch) -> None:
     """Never write the derived history cache inside this checkout.
 
