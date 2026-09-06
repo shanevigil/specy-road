@@ -82,8 +82,15 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                    help="Pass through to pickup (uses work/.milestone-session.yaml).")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
+    p.add_argument("--delete-merged-branches", action="store_true",
+                   help="When the session ends cleanly, delete the feature/rm-* "
+                        "branches it finished: locally with 'git branch -d', and "
+                        "on the remote too when --push was given. Only branches "
+                        "the integration branch already contains are touched. "
+                        "Off by default; the loop prints the command instead.")
     p.add_argument("--json", action="store_true",
-                   help="Emit one JSON event per line (picked/finished/blocked/stopped/...).")
+                   help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
+                        "stdout carries only JSON; sub-command output goes to stderr.")
 
 
 def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
