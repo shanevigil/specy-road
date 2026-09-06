@@ -72,6 +72,13 @@ class EventEmitter:
             return fields.get("text", prefix)
         if event == "cleanup":
             return _human_cleanup(prefix, fields)
+        if event == "usage_limited":
+            minutes = int(fields.get("wait_seconds", 0) // 60)
+            return (
+                f"{prefix}: {node} — the implementer hit a usage limit that "
+                f"resets at {fields.get('reset_at')}. Waiting {minutes} min, "
+                f"then resuming (attempt {fields.get('attempt')})."
+            )
         return f"{prefix}: {fields}"
 
 

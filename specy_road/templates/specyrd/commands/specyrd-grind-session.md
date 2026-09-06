@@ -46,6 +46,15 @@ Human-in-the-loop (manual mode: implement, then `touch work/.session-ready`):
 specy-road grind-session --max-leaves 1 --on-complete merge
 ```
 
+**Run unattended grinds in a terminal, not in this chat pane.** A hook grind
+needs a process that can be waited on and resumed; an IDE agent panel cannot be.
+Copy the command into a terminal instead.
+
+When `--implement-cmd` is the **Claude CLI** (`claude -p …`), the loop waits out a
+timed session limit and resumes the same Claude session, so one leaf surviving a
+limit does not end the run. A spend limit, or wording the parser does not
+recognise, stops the session and says why. Other agents are unaffected.
+
 A session that ends on its own terms checks out the **integration branch**; add
 **`--delete-merged-branches`** to also delete the `feature/rm-*` branches it
 merged (locally, and on the remote when `--push` was given). Without the flag it

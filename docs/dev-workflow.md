@@ -135,11 +135,10 @@ To run **many** leaf cycles without re-invoking pickup/finish by hand, use
 **`specy-road grind-session`** — it orchestrates the approved primitives
 (`do-next-available-task` → implement → optional `--pre-finish-cmd` →
 `finish-this-task`) until a stop condition, with stable exit codes and `--json`
-events, and never edits the registry itself. **`grind-session --plan [--json]`**
-is a read-only planner reporting ready / blocked / active leaves plus dependency
-**waves** and **parallel batches**, so an orchestrator can dispatch independent
-work and skip waves whose dependencies are unmet. Full guide:
-**[grind-session.md](grind-session.md)**.
+events, never editing the registry itself. **`--plan [--json]`** is a read-only
+planner reporting ready / blocked / active leaves plus dependency **waves** and
+**parallel batches**. Run it in a **terminal**, not an IDE pane; a **Claude CLI**
+hook waits out a timed session limit. Guide: **[grind-session.md](grind-session.md)**.
 
 ### Abort pickup (`abort-task-pickup`)
 

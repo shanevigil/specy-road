@@ -1,0 +1,2 @@
+{"type":"assistant","sessionId":"3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50","message":{"content":[{"type":"text","text":"Starting on M10.2."}]}}
+{"type":"system","sessionId":"3f2c9a7e-15b8-4d21-9c44-77aa10bd3e50","subtype":"limit","text":"You've hit your Claude Code session limit. Your limit resets 1:20am (Europe/Amsterdam)."}
