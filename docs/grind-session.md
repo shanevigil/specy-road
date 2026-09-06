@@ -72,7 +72,7 @@ error. A worked example — `M10.3, M10.4` are ready, `M10.5` depends on both, a
 ```text
 ## Suggested sub-agent batches
 
-**Dispatch now (parallel):** M10.3, M10.4  — 2 independent leaves…
+**Dispatch now (parallel, in pickup order):** M10.3, M10.4  — 2 independent leaf/leaves, all dependencies satisfied, listed in the order the loop will claim them.
 
 **Later waves (do NOT start until every leaf in the prior wave is Complete):**
 - wave 1: M10.5

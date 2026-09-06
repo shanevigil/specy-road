@@ -46,6 +46,7 @@ specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md --repo-root tests/fixtures
 ```bash
 specy-road validate --repo-root tests/fixtures/specy_road_dogfood
 specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
+specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood
 specy-road file-limits
 pytest
 ```

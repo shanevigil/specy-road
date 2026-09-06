@@ -13,7 +13,6 @@ Exit codes (documented contract for automations / CI wrappers):
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime, timezone
 
 EXIT_OK = 0
@@ -97,9 +96,3 @@ def _human_cleanup(prefix: str, fields: dict) -> str:
     if hint:
         lines.append(f"  to clean up the branches this session merged: {hint}")
     return "\n".join(lines)
-
-
-def fail(emitter: EventEmitter, reason: str, code: int, **fields) -> int:
-    """Emit a ``stopped`` event with ``reason`` and return ``code``."""
-    emitter.emit("stopped", reason=reason, **fields)
-    return code

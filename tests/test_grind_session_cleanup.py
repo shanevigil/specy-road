@@ -14,6 +14,7 @@ import os
 import pytest
 
 from specy_road.bundled_scripts import grind_session as gs
+from specy_road.bundled_scripts import grind_session_cleanup as gsc
 from specy_road.bundled_scripts import grind_session_events as gse
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_NO_LEAVES,
@@ -258,3 +259,69 @@ def test_stdout_stays_parseable_as_jsonl(monkeypatch, capsys):
 
     for line in capsys.readouterr().out.strip().splitlines():
         assert json.loads(line)["event"]
+
+
+def test_a_rejected_remote_delete_keeps_the_local_one_and_warns(monkeypatch, capsys):
+    """Branch protection on the remote must not undo or hide the local delete."""
+    h = _one_leaf(monkeypatch)
+    h.git_rc["push"] = 1
+
+    code = _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
+
+    assert code == EXIT_OK
+    event = _event(_events(capsys), "cleanup")
+    assert event["deleted_local"] == [BR1]
+    assert event["deleted_remote"] == []
+    assert event["failed"][0]["step"] == "push_delete"
+
+
+def test_the_remote_branch_must_also_be_contained_in_the_integration_branch(
+    monkeypatch, capsys
+):
+    """Someone else's commit on the same branch must not vanish with our delete."""
+    h = _one_leaf(monkeypatch)
+
+    def fake_git(git_args, repo_root):
+        h.git_calls.append(list(git_args))
+        # The local branch is merged; the remote-tracking ref is not.
+        if git_args[0] == "merge-base" and git_args[2].startswith("origin/"):
+            return 1, ""
+        return 0, ""
+
+    monkeypatch.setattr(gsc, "git_code", fake_git)
+
+    _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1"])
+
+    assert ["merge-base", "--is-ancestor", f"origin/{BR1}", "main"] in h.git_calls
+    assert "push" not in _verbs(h)
+    event = _event(_events(capsys), "cleanup")
+    assert event["deleted_local"] == [BR1]
+    assert event["deleted_remote"] == []
+    assert "not contained in main" in event["failed"][0]["message"]
+
+
+def test_the_human_summary_names_the_branch_and_the_cleanup_command(
+    monkeypatch, capsys
+):
+    """Without --json this line is the only report the session gives."""
+    _one_leaf(monkeypatch)
+
+    _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd",
+          "true", "--repo-root", "/tmp/x", "--max-leaves", "1"])
+
+    out = capsys.readouterr().out
+    assert "cleanup: on main" in out
+    assert "deleted 0 local / 0 remote" in out
+    assert f"git branch -d {BR1}" in out
+
+
+def test_the_human_summary_reports_a_failed_checkout(monkeypatch, capsys):
+    h = _one_leaf(monkeypatch)
+    h.git_rc["checkout"] = 1
+
+    _run(["--on-complete", "merge", "--implement-mode", "hook", "--implement-cmd",
+          "true", "--repo-root", "/tmp/x", "--max-leaves", "1"])
+
+    out = capsys.readouterr().out
+    assert "could NOT return to main" in out
+    assert "warning: checkout main" in out

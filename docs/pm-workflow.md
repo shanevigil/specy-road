@@ -247,7 +247,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 
 | Command                                            | In plain English                                                                                                                            |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `specy-road sync`                                  | Fast-forward your integration branch from the remote (defaults from `roadmap/git-workflow.yaml`, else `main`/`origin`), then validate and refresh the Markdown export. Use before a big editing session. |
+| `specy-road sync`                                  | Fast-forward your integration branch from the remote (defaults from `roadmap/git-workflow.yaml`, else `main`/`origin`), then validate and refresh the generated `roadmap.md` and `roadmap-context.md`. It commits nothing — review and commit what changed. Use before a big editing session. |
 | `specy-road scaffold-constitution`                 | Create starter `constitution/purpose.md` and `constitution/principles.md` if missing (`--force` overwrites).                               |
 | `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check. Parent and phase **effective** completion follows **F-013 rollup** (every leaf descendant `Complete`), same as the PM GUI wire model — a phase chunk may still store `Not Started` / `In Progress` until someone edits it; validation does **not** warn for that. The `--no-phase-status-warn` flag is deprecated and ignored (kept for backward-compatible CLI scripts). |
 | `specy-road export`                                | Regenerate `roadmap.md` from the merged graph — shareable index for stakeholders.                                            |
@@ -349,7 +349,7 @@ Resolve these **before** developers reach them:
 
 1. Open the blocking **`type: gate`** node.
 2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
-3. Set the task status to `Complete`, then validate and export.
+3. Set the task status to `Complete`, then validate, export and digest.
 
 ---
 

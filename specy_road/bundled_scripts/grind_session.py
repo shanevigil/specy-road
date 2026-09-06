@@ -104,8 +104,16 @@ def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
         path.unlink()
         return True
     if sys.stdin and sys.stdin.isatty():
+        # input() writes its prompt to stdout, which in --json mode is the
+        # event stream. Ask on stderr instead, or the first cycle puts a
+        # non-JSON line into a pipe the caller is parsing.
+        prompt = f"  Implement the task, then press Enter (or create {rel})... "
         try:
-            input(f"  Implement the task, then press Enter (or create {rel})... ")
+            if CHILD_STDOUT_TO_STDERR:
+                print(prompt, file=sys.stderr, end="", flush=True)
+                input()
+            else:
+                input(prompt)
         except EOFError:
             pass
         if path.exists():
