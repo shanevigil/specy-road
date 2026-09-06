@@ -37,4 +37,4 @@ When the user asks to publish (RC or final), follow [`docs/release-runbook.md`](
 - *"Publish v0.2.0-rc1 to TestPyPI"* → runbook §A (RC flow). Tag form `v0.2.0-rc1`; pyproject `0.2.0rc1`; routes to TestPyPI.
 - *"Publish v0.2.0 to PyPI"* → runbook §B (final flow). Tag form `v0.2.0`; pyproject `0.2.0`; routes to PyPI; back-merge to `dev` is mandatory.
 
-The user owns two steps explicitly (runbook §2 matrix): the **manual tag re-push** that fires `release-publish.yml` (footgun ④ — GitHub policy), and the **final live-on-(Test)PyPI confirmation**. The agent prints the exact commands and waits.
+The user owns these runbook §2 steps: the **manual tag re-push** when `RELEASE_TAG_TOKEN` is unset (footgun ④), the **`pypi` environment approval** on finals (footgun ⑨), and the **live-on-(Test)PyPI confirmation**. The agent prints the exact commands and waits. Check whether 2.12 / 2.12a apply before starting — see the runbook matrix.

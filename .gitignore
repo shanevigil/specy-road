@@ -42,6 +42,12 @@ agent-transcripts/
 sample-apps/
 /playground-dev/
 
-# Derived roadmap-history index (see docs/roadmap-history.md). Rebuilt from git
-# on demand, so it is never committed; .specyrd/manifest.json stays tracked.
+# Derived indexes for `specy-road history` and `specy-road search`. Rebuilt
+# from git and the working tree on demand, so never committed;
+# .specyrd/manifest.json stays tracked.
+#
+# The unanchored form matters here and not in a consumer repo: a consumer has
+# one project at (or under) its git root, while this checkout also holds the
+# dogfood fixture, which builds its own cache when a command runs against it.
 .specyrd/cache/
+**/.specyrd/cache/

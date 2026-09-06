@@ -167,6 +167,7 @@ def register_settings_and_remote(api: APIRouter) -> None:
             llm=body.llm,
             git_remote=body.git_remote,
             pm_gui=body.pm_gui,
+            research=body.research,
         )
         return {"ok": "true"}
 

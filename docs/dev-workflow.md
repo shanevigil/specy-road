@@ -116,7 +116,7 @@ Use this when you want **one integration PR** for **all leaf work under a parent
 2. **`specy-road start-milestone-session <PARENT_NODE_ID>`** — syncs the integration branch, creates or fast-forwards **`feature/rm-<parent-codename>`** from the remote integration tip, writes **`work/.milestone-session.yaml`**, and records **`milestone_execution`** on the parent roadmap node (commit that chunk change with the session so the PM UI can enforce the subtree lock).
 3. **Pick work** — from a clean tree on the integration branch:
    - **`specy-road do-next-available-task --milestone-subtree`** (uses the session file), or
-   - **`specy-road do-next-available-task --under <PARENT_NODE_ID>`** (one-shot filter; must match the session file if one exists).
+   - **`specy-road do-next-available-task --under <NODE_ID>`** (one-shot filter; must match the session file if one exists). `--under` accepts a **parent** — scoping to its whole subtree — or a **single leaf id**, which targets exactly that leaf. The latter is how you pick work out of outline order by hand.
    Claims still **register and push on the integration branch** as usual.
 4. **Finish each leaf** — on **`feature/rm-<leaf-codename>`**, run **`specy-road finish-this-task`** as usual. When the session file is present and the leaf is **under** the session parent, the tool:
    - pushes the leaf branch;
@@ -217,6 +217,9 @@ specy-road finish-this-task
 #          specy-road finish-this-task --push --remote origin
 #          specy-road finish-this-task --no-cleanup-work   # keep work/brief-, prompt-, implementation-summary-
 ```
+
+**Parents close themselves.** Finishing the *last* open leaf under a parent also flips that parent to **Complete** in the same bookkeeping commit, walking up as far as the rollup reaches, so nothing downstream stays blocked on a phase whose work is done. It prints a line per ancestor it closes and nothing at all when there is none to close — so a run that leaves other leaves open looks exactly like a run with no parent to close. The one exception is a node carrying **`milestone_execution`** (written by `start-milestone-session`): its status belongs to the milestone-rollup state machine, which closes it only once the rollup branch is **proven merged** — use **`specy-road reconcile-milestone-status`** there. `specy-road validate` warns whenever a node's own status disagrees with its rollup.
+**`--push` does not open the PR.** It pushes the branch; the printed `gh pr create` / `glab mr create` line already references `work/pr-body-<NODE_ID>.md` via `--body-file`, so it is pasteable as-is.
 
 **IDE slash commands:**
 

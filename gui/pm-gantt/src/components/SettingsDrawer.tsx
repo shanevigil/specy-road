@@ -6,8 +6,15 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { getSettings, postGitTest, putSettings, testLlmSettings } from "../api";
+import {
+  getSettings,
+  postGitTest,
+  putSettings,
+  testLlmSettings,
+  testResearchSettings,
+} from "../api";
 import { getDefaultSettingsModalRect } from "../modalRect";
+import { RESEARCH_PROVIDERS, researchProvider } from "../researchProviders";
 import { IconMonitor, IconMoon, IconSun } from "../toolbarIcons";
 import { ModalFrame } from "./ModalFrame";
 
@@ -170,6 +177,23 @@ function buildLlmPayload(llm: Record<string, string>) {
   };
 }
 
+function buildResearchPayload(
+  research: Record<string, string>,
+  enabled: boolean,
+) {
+  const provider = researchProvider(research.provider);
+  return {
+    provider: provider.key,
+    // Blank is meaningful: it tells the server to use the provider's default,
+    // so a later change of default is picked up rather than frozen here.
+    endpoint: (research.endpoint || "").trim(),
+    api_key: research.api_key || "",
+    allow_private_endpoint: Boolean(research.allow_private_endpoint),
+    max_results: research.max_results || "5",
+    enabled,
+  };
+}
+
 export function SettingsDrawer({
   open,
   onClose,
@@ -184,6 +208,9 @@ export function SettingsDrawer({
 }: Props) {
   const [llm, setLlm] = useState<Record<string, string>>({});
   const [git, setGit] = useState<Record<string, string>>({});
+  const [research, setResearch] = useState<Record<string, string>>({});
+  const [researchOn, setResearchOn] = useState(false);
+  const researchSelected = researchProvider(research.provider);
   const [gitHelpOpen, setGitHelpOpen] = useState(false);
   const [inheritLlm, setInheritLlm] = useState(true);
   const [inheritPmGui, setInheritPmGui] = useState(true);
@@ -253,6 +280,20 @@ export function SettingsDrawer({
             Object.entries(g).map(([k, v]) => [k, v == null ? "" : String(v)]),
           ),
         );
+        const res = (s.research as Record<string, unknown>) || {};
+        setResearchOn(res.enabled === true);
+        setResearch(
+          Object.fromEntries(
+            Object.entries(res)
+              .filter(([k]) => k !== "enabled")
+              // This state is all strings, and `String(false)` is truthy —
+              // a false flag has to become "" or every checkbox reads ticked.
+              .map(([k, v]) => [
+                k,
+                v == null || v === false ? "" : v === true ? "1" : String(v),
+              ]),
+          ),
+        );
       })
       .catch((e: unknown) => setMsg(String(e)))
       .finally(() => {
@@ -292,6 +333,7 @@ export function SettingsDrawer({
             Number.parseInt(autoArchiveAfterDays, 10) || 90,
           ),
         },
+        research: buildResearchPayload(research, researchOn),
       })
         .then(() => {
           pmGuiOverlayPersistedRef.current = overlayOutbound;
@@ -314,6 +356,8 @@ export function SettingsDrawer({
   }, [
     llm,
     git,
+    research,
+    researchOn,
     inheritLlm,
     inheritPmGui,
     registryRemoteOverlay,
@@ -333,6 +377,18 @@ export function SettingsDrawer({
     try {
       const out = await testLlmSettings(buildLlmPayload(llm));
       setMsg(out.message || "LLM endpoint responded.");
+    } catch (e: unknown) {
+      setMsg(String(e));
+    }
+  };
+
+  const testResearch = async () => {
+    setMsg(null);
+    try {
+      const out = await testResearchSettings(
+        buildResearchPayload(research, true),
+      );
+      setMsg(out.message || "Search endpoint responded.");
     } catch (e: unknown) {
       setMsg(String(e));
     }
@@ -811,6 +867,91 @@ export function SettingsDrawer({
           ) : null}
         </>
       ) : null}
+      <hr className="settings-section-rule" aria-hidden="true" />
+      <div className="settings-section-heading">
+        <h3>Research (optional)</h3>
+        <button type="button" onClick={() => void testResearch()}>
+          Test search
+        </button>
+      </div>
+      <p className="outline-meta">
+        Web search for the Brainstorm panel. A coding agent in your IDE brings
+        its own search tool; the browser dashboard needs one of these. Stored
+        globally, not per repository.
+      </p>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={researchOn}
+          onChange={(e) => setResearchOn(e.target.checked)}
+        />
+        Let the Brainstorm assistant search the web
+      </label>
+      <label>
+        Provider
+        <select
+          value={researchSelected.key}
+          onChange={(e) =>
+            // Drop the endpoint: it belonged to the old provider, and blank
+            // means "use this one's default".
+            setResearch({ ...research, provider: e.target.value, endpoint: "" })
+          }
+        >
+          {RESEARCH_PROVIDERS.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Endpoint
+        <input
+          value={research.endpoint || ""}
+          onChange={(e) => setResearch({ ...research, endpoint: e.target.value })}
+          placeholder={
+            researchSelected.defaultEndpoint || "https://searx.example/search"
+          }
+        />
+      </label>
+      <label>
+        {researchSelected.keyLabel}
+        <input
+          type="password"
+          value={research.api_key || ""}
+          onChange={(e) => setResearch({ ...research, api_key: e.target.value })}
+          autoComplete="off"
+        />
+      </label>
+      <label className="settings-check">
+        <input
+          type="checkbox"
+          checked={Boolean(research.allow_private_endpoint)}
+          onChange={(e) =>
+            setResearch({
+              ...research,
+              allow_private_endpoint: e.target.checked ? "1" : "",
+            })
+          }
+        />
+        Self-hosted endpoint (allow a private or localhost address)
+      </label>
+      {research.allow_private_endpoint ? (
+        <p className="outline-meta">
+          The dashboard will call an address on your own network. Only tick this
+          for an instance you run yourself.
+        </p>
+      ) : null}
+      <label>
+        Results per search
+        <input
+          value={research.max_results || ""}
+          onChange={(e) =>
+            setResearch({ ...research, max_results: e.target.value })
+          }
+          placeholder="5"
+        />
+      </label>
     </ModalFrame>
   );
 }

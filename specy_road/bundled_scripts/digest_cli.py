@@ -59,7 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road digest",
         description=(
             "Generate a compact current-state summary of the roadmap for agents "
-            "to read instead of crawling planning/ and work/."
+            "to read instead of crawling planning/ and work/. "
+            "roadmap-context.md is generated AND committed, exactly like "
+            "roadmap.md: agents read it out of the tree they clone, so it must "
+            "be tracked. Regenerate it whenever the graph changes and gate CI "
+            "on --check, the way you gate on export --check."
         ),
     )
     p.add_argument(
@@ -73,7 +77,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--check",
         action="store_true",
-        help="Exit 1 if the file on disk has drifted from the graph (CI gate).",
+        help=(
+            "Exit 1 if the committed file is missing or has drifted from the "
+            "graph (CI gate; mirrors export --check)."
+        ),
     )
     add_repo_root_arg(p)
     p.set_defaults(func=cmd_digest)

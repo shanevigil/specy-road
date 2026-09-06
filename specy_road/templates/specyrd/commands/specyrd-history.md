@@ -15,7 +15,9 @@ specy-road history <NODE_ID>
 Useful variants:
 
 ```bash
-specy-road history                    # roadmap-wide feed, newest first
+specy-road history                    # roadmap-wide feed, NEWEST first
+specy-road history <NODE_ID>          # one node's timeline, OLDEST first
+specy-road history <NODE_ID> --reverse  # flip either view
 specy-road history --archived         # only work that left the live graph
 specy-road history <NODE_ID> --json   # machine-readable
 ```

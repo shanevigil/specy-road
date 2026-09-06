@@ -7,7 +7,7 @@ alwaysApply: false
 ## Stack
 
 - **ESLint 10** with flat config: [`gui/pm-gantt/eslint.config.js`](../../gui/pm-gantt/eslint.config.js).
-- React rules come from **`@eslint-react/eslint-plugin`** (`recommended-typescript` preset). Do **not** add `eslint-plugin-react-hooks` for ESLint 10 — it only peers through ESLint 9.
+- React rules come from **`@eslint-react/eslint-plugin` v5** (`recommended-typescript` preset). Do **not** add `eslint-plugin-react-hooks` for ESLint 10 — it only peers through ESLint 9.
 - Inline disables for hook/exhaustive-deps style rules use **`@eslint-react/...`** rule ids (not `react-hooks/...`).
 
 ## Verification

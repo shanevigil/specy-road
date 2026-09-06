@@ -11,6 +11,188 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.1-rc2] - 2026-09-05
+
+Second prerelease for v0.2.1. It adds roadmap brainstorming for PMs, and
+responds to an adopter's `0.1.4 -> 0.2.1rc1` upgrade report against a real
+107-node consumer repository. Full analysis in
+[`docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md`](docs/design-notes/v0-2-1-rc1-adopter-feedback-triage.md).
+
+### Added
+
+- **`specy-road brainstorm` — roadmap brainstorming for PMs.** A two-mode
+  workflow for deciding what belongs on the roadmap, before anything is
+  authored. `start` writes a **divergent** prompt that opens with Socratic
+  questioning, asks for a floor of ideas (`--count`), works through named
+  lenses (SCAMPER, analogous domains, inversion, pre-mortem, constraint
+  removal, 10x/0.1x), sends the agent to its own web search tool for
+  competitor and technology research, and explicitly forbids ranking.
+  `recommend` writes the **convergent** prompt over what was captured:
+  cluster, flag overlaps with existing nodes, and record a `strong` /
+  `consider` / `park` verdict per idea. Splitting the two is the point — an
+  agent asked to generate and filter at once filters first.
+- **Ideas live in `work/brainstorm-<slug>.yaml`**, tracked on purpose: what was
+  rejected is as much a part of the reasoning trail as what shipped. The
+  regenerated prompt beside it is gitignored.
+- **`brainstorm promote` turns accepted ideas into real nodes.** It routes
+  through the same atomic path as `add-node` (chunk, manifest and planning
+  sheet in one transaction), seeds the new sheet's `## Intent` from the idea's
+  rationale and its `## References` from the sources the agent cited, then
+  validates the batch. An unusable `--under` promotes nothing rather than half
+  the list, and `gate` is refused as a target since a gate is a hold, not work.
+- **PM GUI brainstorm panel.** The same two modes as a chat interface, running
+  against the model already configured in Settings. Ideas are accepted,
+  rejected, and revised in place, and promoted to nodes from the panel.
+  It opens as a task window rather than a drawer, sharing one window stack with
+  the task dialogs: minimize to the dock, maximize, tile beside the task the
+  session is about, and click to raise. Minimizing keeps the conversation and
+  the captured ideas. Tiling puts the task dialogs in dependency order and
+  Brainstorm to their right, since it is not a step in that chain.
+- **Web search for the PM GUI, across seven providers.** A new Research section
+  in Settings gives the GUI the research capability the IDE agent already has
+  from its own tools: **Bing/Azure, Tavily, Brave, Serper, Exa, Firecrawl and
+  self-hosted SearXNG**. Pick a provider and the endpoint defaults with it;
+  only SearXNG needs one supplied, and it needs no key. Off by default, and the
+  key is obfuscated at rest like the existing LLM and git credentials.
+  Configurations written against the earlier Bing-only fields keep working.
+- **Self-hosted search endpoints are an explicit opt-in.** Search endpoints must
+  normally be `https` on a public address; ticking **Self-hosted endpoint**
+  permits a private or loopback address over plain `http`, for a SearXNG
+  instance you run yourself. Off by default — see the reasoning under Security.
+- New `specyrd-brainstorm` IDE stub (PM role), [`docs/brainstorming.md`](docs/brainstorming.md),
+  [`docs/pm-gui-brainstorm.md`](docs/pm-gui-brainstorm.md), and
+  [`suggested_prompts/brainstorm-roadmap.md`](suggested_prompts/brainstorm-roadmap.md).
+
+### Security
+
+- **The PM GUI no longer hands its credentials to any website you have open.**
+  CORS was `allow_origins=["*"]` with `allow_credentials=True`, a combination
+  that makes Starlette echo back whichever `Origin` asked. Any page in the
+  browser could therefore read `GET /api/settings` while the GUI was running and
+  take the configured LLM key and git token, which that endpoint returns
+  decoded. Access is now restricted to loopback, which is all the built UI and
+  the Vite dev server ever needed. **If you have run the GUI from an earlier
+  build, treat the credentials in `~/.specy-road/gui-settings.json` as exposed
+  and rotate them.**
+- **A brainstorm `--slug` can no longer write outside `work/`.** The slug was
+  interpolated straight into a filename and arrives from the CLI flag or a GUI
+  request body, so `x/../../roadmap/registry` resolved onto the tracked registry
+  file. Slugs must now be the bare kebab-case name `slugify` already produces.
+- **`POST /api/research/test` is no longer an open redirect into your network.**
+  It fetched a caller-supplied URL with no guard, no scheme check and no host
+  check, which made the GUI an unauthenticated probe of whatever the machine
+  could reach, cloud metadata endpoints included. The endpoint must now be a
+  public `https` URL, redirects are refused so the key cannot follow one
+  off-host, and the route is guarded like the write routes. A self-hosted back
+  end is the one legitimate case that rule blocks, so it has a deliberate
+  opt-in rather than a hole: **Self-hosted endpoint** in Settings → Research,
+  off by default.
+- **The test suite no longer writes to your real `~/.specy-road/gui-settings.json`.**
+  `SETTINGS_PATH` resolves from `Path.home()` at import; tests that did not
+  redirect it appended a project entry per run, each carrying a copy of the
+  developer's git token.
+
+### Fixed
+
+- **The GUI brainstorm panel now actually captures ideas.** The mode prompts are
+  written for an IDE agent and tell it to run `specy-road brainstorm add-idea` —
+  in a chat window that is just text, so no idea ever reached the session and
+  triage and promote stayed empty. The assistant now emits `IDEA:` blocks, the
+  same text-protocol trade already made for `SEARCH:`, and the chat route
+  records them. Capture happens only while diverging, so the converge pass
+  cannot quietly add to the board it is judging.
+- **A failed `brainstorm promote` part-way through a batch no longer duplicates
+  on the next run.** Chunk routing depends on what the previous write left on
+  disk, so each node is its own transaction; the session is now saved after
+  every node, making a partial batch resumable rather than repeatable.
+- **`specyrd init --force` no longer replaces a consumer's `CLAUDE.md`.** It
+  rewrote the whole file from a template — a file `--force`'s help text never
+  claimed and `.specyrd/manifest.json` never listed. `CLAUDE.md` now gets the
+  treatment `.gitignore` already had: one delimited managed block, rewritten in
+  place, with everything outside the markers never read and never touched. The
+  block is recorded in the manifest, so `--force`'s blast radius is exactly what
+  the manifest says it is. `managed_block` grew a `MarkerStyle` for this; the
+  ignore files keep their existing bytes.
+- **`--force` no longer clobbers `~/.specy-road/gui-settings.json`.** It
+  replaced saved OpenAI/Anthropic API keys with an empty stub — outside the
+  repository, so `git checkout --` could not undo it.
+- **`specyrd init --dry-run` previews the managed blocks.** The block pass was
+  inside `if not dry_run:`, so a dry run under-reported what a real run would
+  change.
+- **The agent guide is correct in a nested layout.** The project prefix was
+  applied only to the ignore blocks, so a project under `sr/` got a guide whose
+  every pointer was wrong. It also cited `docs/git-workflow.md` and
+  `docs/roadmap-authoring.md`, which `init project` does not scaffold.
+- **`edit-node --set title=` keeps a hand-picked codename.** It re-derived
+  unconditionally, renaming the planning sheet and repointing `planning_dir` —
+  but the codename is the branch identity (`feature/rm-<codename>`) and the
+  registry key, so a retitle silently moved a live branch off its node. A
+  derived or absent codename still follows the title; a chosen one stands, with
+  a note naming both values. `--sync-codename` overrides. The PM GUI's node
+  PATCH shares this path and inherits the guard.
+- **Outline moves are atomic.** `move_node_outline` persisted chunks, renamed
+  planning sheets and rewrote the registry before validating, so a rejected move
+  left all three behind and the roadmap unloadable — the defect `edit-node` was
+  fixed for in `v0.1.4`, never fixed here. The PM GUI's drag, indent and outdent
+  are repaired with it.
+- **The dogfood fixture's derived cache is gitignored.** `.specyrd/cache/` is
+  anchored to the git root, so the fixture's cache showed as untracked whenever
+  a command ran against it by hand.
+
+### Added
+
+- **`specy-road refresh-stubs`** — update the specyrd-managed IDE stubs from the
+  installed version. After `pip install -U specy-road` there was no way to pick
+  up stubs added since a repo was scaffolded: `update` is a git-clone
+  fast-forward, `refresh-schemas` covers `schemas/`, and `init` skips existing
+  files — which left `init --force` as the only apparent route. Built on
+  `refresh-schemas`: same shape, same flags (`--repo-root`, `--dry-run`, and
+  deliberately no `--force`). Reads `.specyrd/manifest.json` for the installed
+  packs and role, rewrites only those paths, adds newly-shipped stubs (`v0.2.1`
+  added `specyrd-search`, `specyrd-digest`, `specyrd-history`), re-applies every
+  managed block, and bumps `specyrd_version`. Stubs no longer installed for the
+  recorded role are **reported, not deleted**.
+  - `specyrd init` on an initialized repo now names `refresh-stubs` first.
+  - `specy-road validate` warns while the recorded `specyrd_version` lags.
+- **`specy-road move-node <NODE_ID> --to-parent <PARENT|null> [--index N]`** —
+  re-parent a subtree from the CLI. `edit-node --set parent_id=` moved the edge
+  and left the display id behind, so re-parenting meant hand-editing two chunk
+  files and renaming a planning sheet. The move/renumber logic already existed
+  for the PM GUI's outline drag. Because a move renumbers the subtree and both
+  sibling ranges, the `old -> new` id map is printed rather than applied
+  silently.
+- **`specy-road history --reverse`** — flip whichever view is active.
+- **`edit-node --sync-codename`** — re-derive the codename from a new title even
+  when it was chosen by hand.
+- **`specy-road digest --check` in release CI**, and the dogfood fixture's
+  `roadmap-context.md` is now committed. The repo gated on `export --check` and
+  not on `digest --check`, which is the asymmetry an adopter reasoned from when
+  asking whether the file was meant to be tracked.
+
+### Documentation
+
+- **`history`'s two sort orders are stated.** The roadmap-wide feed is
+  newest-first and one node's timeline is oldest-first — a feed reads like a
+  changelog, a node reads like a story. Both are now in `-h`, along with the
+  first `help=` string `--limit` has ever had.
+- **`roadmap-context.md` is generated *and committed*,** like `roadmap.md`. Said
+  in `digest -h`, in `--check`'s help, in the scaffold `.gitignore` as a comment
+  rather than a silent omission, and in a rewritten `.specyrd/README.md`.
+- **`--under` accepts a leaf id,** not just a parent — it scopes to exactly that
+  leaf, which is how a human picks work out of outline order. The metavar is now
+  `NODE_ID` and the empty-scope message no longer says "parent".
+- **Finishing the last open leaf under a parent closes that parent** in the same
+  bookkeeping commit — true since `v0.1.4` but never documented, and silent when
+  there is nothing to close, so it looked absent. The exception is a
+  `milestone_execution` node, closed by `reconcile-milestone-status` once its
+  rollup branch is proven merged.
+- **`--push` does not open the PR**, said plainly in its help text.
+- `.specyrd/README.md` and `docs/optional-ai-tooling-patterns.md` state exactly
+  what `--force` may touch, and which three files are the consumer's with one
+  managed block inside.
+- `suggested_prompts/` acceptance gates include `digest --check`, and name
+  `search`, `history` and `refresh-stubs`.
+
 ## [v0.2.1-rc1] - 2026-09-04
 
 First prerelease for v0.2.1. Routed to TestPyPI by `release-publish.yml`.

@@ -12,9 +12,15 @@ name: Release publish
 #   - TestPyPI: https://test.pypi.org/manage/account/publishing/
 #               trusted publisher: shanevigil/specy-road, workflow=release-publish.yml,
 #               environment=testpypi
-#   - GitHub:   Settings -> Environments -> create 'pypi' (deployment tag rule
-#               'v[0-9]+.[0-9]+.[0-9]+'; required reviewer optional) and 'testpypi'
-#               (tag rule 'v[0-9]+.[0-9]+.[0-9]+-*'; no reviewers).
+#   - GitHub:   Settings -> Environments -> 'pypi' (tag rule 'v*.*.*';
+#               required reviewer: yes — finals to the immutable index pause)
+#               and 'testpypi' (tag rule 'v*.*.*'; no reviewers — RCs publish
+#               unattended). Keep docs/release-runbook.md step 2.12a in sync:
+#               a waiting job reports as in-progress, not blocked.
+#   - GitHub:   Settings -> Secrets -> RELEASE_TAG_TOKEN (optional PAT / App
+#               token with Contents: write). Without it the tag that
+#               main-release-tag-gate.yml creates cannot start this workflow;
+#               see that file and release-runbook.md §6 footgun ④.
 
 on:
   push:
@@ -60,7 +66,7 @@ jobs:
       target: ${{ steps.ctx.outputs.target }}
       dry_run: ${{ steps.ctx.outputs.dry_run }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Compute release context
@@ -104,11 +110,11 @@ jobs:
       sdist_name: ${{ steps.find.outputs.sdist_name }}
       wheel_name: ${{ steps.find.outputs.wheel_name }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -147,6 +153,7 @@ jobs:
           /tmp/smoke/bin/specy-road --help
           /tmp/smoke/bin/specy-road validate --repo-root tests/fixtures/specy_road_dogfood
           /tmp/smoke/bin/specy-road export --check --repo-root tests/fixtures/specy_road_dogfood
+          /tmp/smoke/bin/specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood
       - name: Upload built distributions
         uses: actions/upload-artifact@v7
         with:
@@ -204,7 +211,7 @@ jobs:
     if: ${{ always() && needs.resolve.outputs.target != 'dry-run' && (needs.publish-pypi.result == 'success' || needs.publish-testpypi.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: dist
@@ -252,7 +259,7 @@ jobs:
     needs: [resolve, publish-pypi]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: dev
           fetch-depth: 0

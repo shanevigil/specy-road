@@ -79,23 +79,43 @@ specy-road export
 It refuses to overwrite an existing scaffold unless you pass `--force`.
 Preview without writing: `--dry-run`.
 
-### Keeping `schemas/` current after an upgrade
+### Keeping a consumer repo current after an upgrade
 
-`init project` copies the JSON schemas into your repo once. They do **not**
-update when you upgrade specy-road, so a repo scaffolded against an older
-version can reject output the current CLI legitimately produces (for example
-`type: gate` nodes, or the `implementation_review` fields that
-`mark-implementation-reviewed` writes). `specy-road validate` warns when it
-notices this. To fix it:
+`pip install -U specy-road` upgrades the CLI. Two things it copied into your
+repo do **not** follow along, and each has its own command. Both are safe to run
+on every upgrade: they are idempotent, they report what they would change with
+`--dry-run`, and neither has a `--force`, because neither needs one.
 
 ```bash
-specy-road refresh-schemas --dry-run   # see which schemas would change
-specy-road refresh-schemas             # copy them, then review the diff
+pip install -U specy-road
+
+specy-road refresh-schemas --dry-run   # then without --dry-run
+specy-road refresh-stubs    --dry-run   # then without --dry-run
 ```
 
-`refresh-schemas` touches `schemas/` and nothing else. Do **not** use
-`init project --force` for this — it overwrites every scaffold file, including
-`roadmap/manifest.json` and your phase chunks.
+**`refresh-schemas` — `schemas/`.** `init project` copies the JSON schemas in
+once, so a repo scaffolded against an older version can reject output the
+current CLI legitimately produces (for example `type: gate` nodes, or the
+`implementation_review` fields that `mark-implementation-reviewed` writes).
+`specy-road validate` warns when it notices this. The command touches
+`schemas/` and nothing else.
+
+**`refresh-stubs` — the IDE stubs from `specyrd init`.** Command stubs under
+`.claude/commands/` or `.cursor/commands/`, plus `.specyrd/README.md`. It
+rewrites exactly the paths `.specyrd/manifest.json` records as managed, installs
+stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
+`specyrd-digest` and `specyrd-history`), re-applies the managed blocks in
+`.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, and bumps the recorded
+`specyrd_version`. `specy-road validate` warns while the manifest lags.
+
+Stubs this version no longer installs for your recorded `--role` are **listed,
+not deleted** — they are yours to remove.
+
+**Neither `--force` is the tool for this.** `init project --force` overwrites
+every scaffold file, including `roadmap/manifest.json` and your phase chunks.
+`specyrd init --force` overwrites the stubs the manifest records; it is fine,
+but `refresh-stubs` is narrower and needs no flag. Neither one will touch
+anything outside a `>>> specy-road managed block <<<` in a file you own.
 
 The bundled `.gitignore` ignores **only** the session-scoped files
 (`work/.on-complete-*.yaml`, `work/prompt-*.md`, `work/pr-body-*.md`,

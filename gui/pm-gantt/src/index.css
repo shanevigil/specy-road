@@ -3549,3 +3549,254 @@ ul.pm-tiptap-task-list > li.pm-tiptap-task-item > label > input[type="checkbox"]
   border-left: 3px solid rgba(120, 80, 200, 0.55);
   border-radius: 4px;
 }
+
+/* ---------------------------------------------------------- brainstorm panel */
+
+/* The panel fills the window rather than scrolling as one long page: the
+   transcript and the idea list each keep their own scrollbar, so neither can
+   push the composer off the bottom. */
+.modal-body--brainstorm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.brainstorm-setup,
+.brainstorm-warning,
+.brainstorm-modes,
+.brainstorm-compose {
+  flex: 0 0 auto;
+}
+
+.brainstorm-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.brainstorm-setup label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.brainstorm-setup input,
+.brainstorm-setup select {
+  min-width: 14rem;
+}
+
+.brainstorm-warning {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--bar-mr-pending);
+  border-radius: 4px;
+  background: rgba(239, 108, 0, 0.08);
+  font-size: 0.85rem;
+}
+
+.brainstorm-modes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.brainstorm-mode.is-active {
+  border-color: var(--accent);
+  background: var(--sel-bg);
+  font-weight: 600;
+}
+
+/* The conversation is what the PM is actually reading, so it takes the lion's
+   share of any height the window has: it grows three times as fast as the idea
+   list, which keeps its own scrollbar below. */
+.brainstorm-transcript {
+  flex: 3 1 0;
+  min-height: 7rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.brainstorm-turn {
+  white-space: pre-wrap;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  max-width: 90%;
+}
+
+.brainstorm-turn--user {
+  align-self: flex-end;
+  background: var(--sel-bg);
+}
+
+.brainstorm-turn--assistant {
+  align-self: flex-start;
+  border: 1px solid var(--border);
+}
+
+.brainstorm-compose {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+/* Height is set from the content by the auto-grow effect, so no manual resize
+   handle to fight it. The cap there is what keeps it from eating the chat.
+   `min-height` is reset because the shared `.modal-window textarea` floor of
+   200px is meant for the editors, and would pin this open at seven lines. */
+.brainstorm-compose textarea {
+  flex: 1 1 auto;
+  resize: none;
+  overflow-y: auto;
+  min-height: 0;
+  font: inherit;
+}
+
+.brainstorm-ideas {
+  flex: 1 1 0;
+  min-height: 5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.brainstorm-ideas h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.4rem;
+}
+
+/* Scrolls under its own heading, so the idea count stays visible while you
+   work down the list. */
+.brainstorm-idea-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.15rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.brainstorm-idea {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+}
+
+.brainstorm-idea--accepted {
+  border-left: 3px solid var(--bar-in-progress);
+}
+
+.brainstorm-idea--rejected {
+  border-left: 3px solid var(--bar-blocked);
+  opacity: 0.6;
+}
+
+.brainstorm-idea--revised {
+  border-left: 3px solid var(--bar-mr-pending);
+}
+
+.brainstorm-idea-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.brainstorm-idea-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.brainstorm-idea-title {
+  font-weight: 600;
+}
+
+.brainstorm-idea-kind,
+.brainstorm-idea-status {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.brainstorm-idea-rationale {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.brainstorm-idea-sources {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.brainstorm-idea-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+
+.brainstorm-idea-actions .brainstorm-idea-status {
+  margin-left: auto;
+}
+
+.brainstorm-idea-promoted {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.brainstorm-chip {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  border: 1px solid currentcolor;
+}
+
+.brainstorm-chip--strong {
+  color: var(--bar-in-progress);
+}
+
+.brainstorm-chip--consider {
+  color: var(--bar-mr-pending);
+}
+
+.brainstorm-chip--park {
+  color: var(--muted);
+}
+
+.brainstorm-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+/* The shared status strip is width:100% on its own, which would push the
+   promote buttons out of this row. Here it takes only the leftover space. */
+.brainstorm-footer .modal-persist-status-footer {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}

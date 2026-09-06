@@ -75,8 +75,26 @@ line in the body.
 ## 2. Agent vs human matrix
 
 When the user asks the agent (me) to *"publish vX.Y.Z[-rcN]"*, the
-agent owns every step in this matrix **except** the two explicitly
-flagged "user runs this".
+agent owns every step in this matrix except those flagged **user**.
+
+Steps **2.12** and **2.12a** are conditional on repository
+configuration. Intended Settings (keep in sync; a waiting job
+reports as in-progress, not blocked):
+
+- `testpypi`: no required reviewers (RCs publish unattended)
+- `pypi`: required reviewer (finals to the immutable index pause)
+- `RELEASE_TAG_TOKEN`: optional. Unset → step 2.12 applies.
+
+Confirm before starting:
+
+```bash
+gh secret list | grep RELEASE_TAG_TOKEN || echo "unset: step 2.12 applies"
+gh api repos/<owner>/<repo>/environments \
+  --jq '.environments[] | "\(.name): \([.protection_rules[]?.type]|join(","))"'
+```
+
+Step **2.18** stays with the user regardless: it is a judgement call,
+not a mechanical gate.
 
 | # | Step | Owner | Why |
 |---|------|-------|-----|
@@ -92,7 +110,8 @@ flagged "user runs this".
 | 2.9 | Wait for CI; resolve any failures | agent | runbook §6 covers each footgun. |
 | 2.10 | Merge the PR (when CI is CLEAN/MERGEABLE) | agent | `gh pr merge --merge` is allowed for release PRs the agent opened. |
 | 2.11 | Wait for `main-release-tag-gate.yml` `tag-main-commit` job | agent | watch the workflow. |
-| 2.12 | **Manually re-push the tag** so `release-publish.yml` triggers | **user** | GitHub anti-recursion: the tag created by `GITHUB_TOKEN` does **not** fire downstream workflows. The agent prints the exact two-line command; the user runs it from their local clone. See §6, footgun ④. |
+| 2.12 | **Re-push the tag** so `release-publish.yml` triggers | **user, only when `RELEASE_TAG_TOKEN` is unset** | GitHub anti-recursion: a tag created by `GITHUB_TOKEN` does **not** fire downstream workflows. With the secret configured the gate pushes the tag as a different identity and the publish starts on its own; the job's own notice says which path it took. **Do not** re-push if a publish run has already started. See §6, footgun ④. |
+| 2.12a | **Approve the deployment** if the target environment has required reviewers | **user, finals only (`pypi`)** | The `pypi` environment requires a reviewer; `testpypi` does not. The publish job sits in `waiting`, not `failed`, so nothing alerts you. See §6, footgun ⑨. |
 | 2.13 | Verify `release-publish.yml` ran and `Publish to PyPI` (or `TestPyPI`) succeeded | agent | `gh run watch` on the new tag. |
 | 2.14 | Smoke-install from PyPI/TestPyPI in a fresh venv; verify `__version__` | agent | catches bad wheels. |
 | 2.15 | If a final: open the README cleanup PR if the workflow couldn't | agent | runbook §6, footgun ⑥. |
@@ -402,14 +421,24 @@ gh pr merge <N> --merge
 
 After the merge:
 
-1. **`main-release-tag-gate.yml` `tag-main-commit`** runs and
-   *creates* tag `v0.2.0-rc1` on the merge commit. **GitHub policy:
-   tags created by `GITHUB_TOKEN` do NOT trigger downstream
-   workflows** (anti-recursion). So `release-publish.yml` does **not**
-   fire automatically.
+1. **`main-release-tag-gate.yml` `tag-main-commit`** creates tag
+   `v0.2.0-rc1` on the merge commit. Read the job notice:
+   - *Tag pushed with RELEASE_TAG_TOKEN…* → `release-publish.yml`
+     starts on its own. **Do not** delete and re-push the tag
+     (that starts a second publish; the duplicate upload then
+     fails because the artifacts already exist).
+   - *RELEASE_TAG_TOKEN is not configured…* → GitHub's
+     anti-recursion guard applies (`GITHUB_TOKEN` tags do not
+     start workflows). Continue to step 2.
 
-2. **The user manually re-pushes the tag.** The agent prints the
-   commands and waits:
+2. **Only if `release-publish.yml` has not started**, the user
+   re-pushes the tag. Check first:
+
+   ```bash
+   gh run list --workflow release-publish.yml --branch v0.2.0-rc1 --limit 1
+   ```
+
+   If that is empty, the agent prints these commands and waits:
 
    ```bash
    git fetch origin --tags
@@ -417,10 +446,9 @@ After the merge:
    git push origin v0.2.0-rc1
    ```
 
-   This is the **one mandatory human step in every release** until
-   the harness's Layer 2 hardening lands. It uses your local
-   credentials, not `GITHUB_TOKEN`, so the tag push fires
-   `release-publish.yml`.
+   See §6, footgun ④. RCs (`testpypi`) have no required reviewer
+   and do not pause after the workflow starts. Finals do — see
+   B.3 and footgun ⑨.
 
 3. **The agent verifies** `release-publish.yml` ran successfully:
 
@@ -528,6 +556,9 @@ PR title: `release: v0.2.0`. Same base/body shape as A.2.
 Identical to A.3 with these adjustments:
 
 - The tag is `v0.2.0` (not `-rcN`).
+- The `pypi` environment requires a reviewer (step 2.12a). After
+  the publish job appears, a listed reviewer approves **Review
+  deployments** on the run page. Do not treat `waiting` as a hang.
 - After `release-publish.yml` succeeds, **also check the
   `followup-readme-cleanup` job result**:
   - SUCCESS → the workflow opened (or re-opened, idempotently) the
@@ -619,23 +650,56 @@ RCs are `X.Y.ZrcN`, no dash). Push the fix to the same branch.
 trigger workflow runs (anti-recursion guard). The tag exists on the
 remote but `on.push.tags` did not fire.
 
-**Fix (the user runs this from a local clone):**
+**Permanent fix:** set a `RELEASE_TAG_TOKEN` repository secret to a
+fine-grained PAT or GitHub App token with **Contents: write** here.
+`tag-main-commit` passes it to `actions/github-script`, so the tag is
+created by that identity and the publish starts on its own. The job
+falls back to `GITHUB_TOKEN` when the secret is absent, so an unset
+secret degrades to the manual path below rather than failing the
+release, and its notice says which path it took.
+
+**Before deleting the tag, check that no publish run exists:**
+
+```bash
+gh run list --workflow release-publish.yml --branch vX.Y.Z --limit 1
+```
+
+If a run is already in progress or complete, stop — a second tag
+push starts a second publish, and the duplicate upload fails.
+
+**One-off fix (no secret, no run yet):** re-push the tag from a
+local clone so it carries a different identity.
 
 ```bash
 git fetch origin --tags
 git push origin :refs/tags/vX.Y.Z   # or vX.Y.Z-rcN
-git push origin vX.Y.Z              # re-push from your local credentials
+git push origin vX.Y.Z
 ```
 
-This pushes the tag with the user's git credentials (not
-`GITHUB_TOKEN`), which DOES fire the workflow. The agent will print
-this exact two-line block and wait for the user's "done" before
-proceeding.
+### ⑨ The publish job sits in `waiting` and never starts
 
-> **Note:** This is a permanent step in every release until the
-> Layer 2 hardening (Option 1: PAT, Option 2: GitHub App, both
-> documented in the workspace's `PLAN.md`) is provisioned. The user
-> has chosen **Option 3 (manual)** for now.
+**Symptom:** `release-publish.yml` fired and `Validate` + `Build
+distribution` are green, but the publish job shows a clock icon and
+`gh run view` reports `status=waiting`, **not** `failed`. Nothing looks
+wrong at a glance and no notification is sent.
+
+**Cause:** the target environment has **required reviewers**, so the
+deployment is paused for approval. Intended policy: `pypi` (finals)
+has a reviewer; `testpypi` (RCs) does not.
+
+```bash
+gh api repos/<owner>/<repo>/actions/runs/<run-id>/pending_deployments \
+  --jq '.[] | "env=\(.environment.name) can_approve=\(.current_user_can_approve) reviewers=\([.reviewers[].reviewer.login]|join(","))"'
+```
+
+**Fix:** a listed reviewer approves from the run page ("Review
+deployments"). Only they can — anyone else sees
+`current_user_can_approve: false`.
+
+**To change the gate:** Settings → Environments → add or remove
+**Required reviewers**. Then update step 2.12a so the matrix matches
+reality. Do not leave `pypi` without a reviewer: a PyPI upload cannot
+be deleted or replaced.
 
 ### ⑤ `tag-main-commit` "No PR found for commit" race
 

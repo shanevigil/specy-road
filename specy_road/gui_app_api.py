@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from specy_road.gui_app_routes_archive import register_archive_routes
+from specy_road.gui_app_routes_brainstorm import register_brainstorm_routes
 from specy_road.gui_app_routes_core import register_core
 from specy_road.gui_app_routes_nodes import (
     register_add_node,
@@ -28,4 +29,5 @@ def make_api_router() -> APIRouter:
     register_settings_and_remote(api)
     register_publish_routes(api)
     register_archive_routes(api)
+    register_brainstorm_routes(api)
     return api

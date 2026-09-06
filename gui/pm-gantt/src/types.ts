@@ -195,3 +195,57 @@ export type ActivityEntry = {
   at: string;
   source: "planning" | "chunk";
 };
+
+/** One brainstormed idea, before it is (or is not) promoted to a node. */
+export type BrainstormIdea = {
+  id: string;
+  title: string;
+  rationale: string;
+  kind: "feature" | "capability" | "risk" | "research" | "experiment";
+  effort: string;
+  evidence: string[];
+  status: "proposed" | "accepted" | "rejected" | "revised";
+  recommendation: "strong" | "consider" | "park" | null;
+  /** Set once the idea has landed in the graph; it can no longer be triaged. */
+  promoted_node_key: string | null;
+};
+
+/**
+ * A brainstorm session as the server sees it (`work/brainstorm-<slug>.yaml`).
+ *
+ * `mode` decides which prompt the model is given: `brainstorm` asks for volume
+ * and forbids ranking, `roadmap` asks for judgement and forbids new ideas.
+ */
+export type BrainstormSession = {
+  slug: string;
+  topic: string;
+  under: string | null;
+  mode: "brainstorm" | "roadmap";
+  ideas: BrainstormIdea[];
+  pending_promotion: string[];
+};
+
+export type BrainstormChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type BrainstormChatReply = {
+  reply: string;
+  messages: BrainstormChatMessage[];
+  /** Queries the server actually ran on the model's behalf. */
+  searched: string[];
+  sources: string[];
+  /** Ideas parsed out of this reply and added to the board. */
+  ideas: { title: string }[];
+  /** The session as it stands after those ideas were recorded. */
+  session: BrainstormSession;
+};
+
+export type BrainstormPromotion = {
+  idea_id: string;
+  node_id: string;
+  node_key: string;
+  title: string;
+  parent_id: string | null;
+};

@@ -131,10 +131,11 @@ maintainer setup:
 2. **TestPyPI:** same thing at
    `https://test.pypi.org/manage/account/publishing/` with environment
    `testpypi`.
-3. **GitHub:** Settings → Environments → create `pypi` (deployment tag
-   rule `v[0-9]+.[0-9]+.[0-9]+`; required reviewer optional but
-   recommended) and `testpypi` (tag rule
-   `v[0-9]+.[0-9]+.[0-9]+-*`; no reviewers).
+3. **GitHub:** Settings → Environments → `pypi` (tag rule `v*.*.*`;
+   **required reviewer** — finals to the immutable index pause) and
+   `testpypi` (tag rule `v*.*.*`; **no reviewers** — RCs publish
+   unattended). Keep [`release-runbook.md`](release-runbook.md)
+   step 2.12a in sync with whatever reviewers are actually set.
 
 Renaming the workflow file or the environments will break publishing
 until the trust on `pypi.org` and `test.pypi.org` is updated. The

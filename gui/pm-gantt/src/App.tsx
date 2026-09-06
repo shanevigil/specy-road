@@ -25,9 +25,10 @@ import {
   getSettings,
 } from "./api";
 import {
+  BRAINSTORM_WINDOW_ID,
   computeSpawnRect,
   computeTileRects,
-  sortOpenIdsByDependencyOrder,
+  orderWindowsForTile,
 } from "./editModalLayout";
 import type { ModalRect } from "./modalRect";
 import type {
@@ -121,6 +122,11 @@ const WorkNotesDrawer = lazy(() =>
     default: m.WorkNotesDrawer,
   })),
 );
+const BrainstormDrawer = lazy(() =>
+  import("./components/BrainstormDrawer").then((m) => ({
+    default: m.BrainstormDrawer,
+  })),
+);
 
 function readLegacyThemeMode(): ThemeMode {
   const s = readLegacyBrowserPref(BROWSER_PREF_KEYS.themeMode);
@@ -177,6 +183,10 @@ export default function App() {
   const headerRef = useRef<HTMLElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  // Brainstorm has no state of its own: it is a window in `editOpenIds` like
+  // any task dialog, which is what makes focus, z-order, minimize and Escape
+  // behave the same for it without a second set of rules.
+  const brainstormOpen = editOpenIds.includes(BRAINSTORM_WINDOW_ID);
 
   // Seed the Hide Complete filter from the saved preference, once on mount.
   // It only sets the initial value: the toolbar toggle stays fully in charge
@@ -991,7 +1001,7 @@ export default function App() {
     if (visibleForTile.length === 0) return;
     if (!editTileMode) {
       preTileRectsRef.current = { ...editRectsRef.current };
-      const sorted = sortOpenIdsByDependencyOrder(
+      const sorted = orderWindowsForTile(
         visibleForTile,
         byId,
         displayData.ordered_ids,
@@ -1044,7 +1054,7 @@ export default function App() {
       setTileRects(null);
       return;
     }
-    const sorted = sortOpenIdsByDependencyOrder(
+    const sorted = orderWindowsForTile(
       visibleForTile,
       byId,
       displayData.ordered_ids,
@@ -1570,6 +1580,18 @@ export default function App() {
                   Session notes
                 </button>
               </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
+                  // Re-pressing raises and un-minimizes rather than doing
+                  // nothing, which is what the button appears to promise once
+                  // the window can be sent to the dock.
+                  onClick={() => openEditNode(BRAINSTORM_WINDOW_ID)}
+                >
+                  Brainstorm
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1749,6 +1771,26 @@ export default function App() {
           open={workNotesOpen}
           onClose={() => setWorkNotesOpen(false)}
         />
+        <BrainstormDrawer
+          open={brainstormOpen}
+          onClose={() => closeEditNode(BRAINSTORM_WINDOW_ID)}
+          onPromoted={() => void loadSnapshot()}
+          stackZIndex={200 + editOpenIds.indexOf(BRAINSTORM_WINDOW_ID)}
+          backdropPassThrough={editStackVisibleIds.length > 1}
+          closeOnEscape={topVisibleEditId === BRAINSTORM_WINDOW_ID}
+          spawnInitialRect={spawnRects[BRAINSTORM_WINDOW_ID]}
+          tileRect={tileRects?.[BRAINSTORM_WINDOW_ID] ?? null}
+          resumeFreeRect={resumeAfterUntile?.[BRAINSTORM_WINDOW_ID] ?? null}
+          editTileMode={editTileMode}
+          tileMode={editTileMode}
+          tileToggleDisabled={queueOverloaded}
+          onTileToggle={toggleTileLayout}
+          titleBarActive={focusedEditNodeId === BRAINSTORM_WINDOW_ID}
+          onActivate={() => focusEditNode(BRAINSTORM_WINDOW_ID)}
+          onRectCommit={(r) => handleEditRectCommit(BRAINSTORM_WINDOW_ID, r)}
+          minimized={minimizedTaskIds.includes(BRAINSTORM_WINDOW_ID)}
+          onMinimize={() => minimizeEditNode(BRAINSTORM_WINDOW_ID)}
+        />
         <ArchiveDrawer
           open={archiveOpen}
           onClose={() => setArchiveOpen(false)}
@@ -1775,11 +1817,13 @@ export default function App() {
           headerMinTop={0}
         />
       </Suspense>
-      {displayData && minimizedTaskIds.length > 0 ? (
+      {/* Not gated on the roadmap having loaded: the dock is the only way back
+          to a minimized window, and Brainstorm can be minimized without one. */}
+      {minimizedTaskIds.length > 0 ? (
         <div
           className="task-minimized-dock"
           role="region"
-          aria-label="Minimized tasks"
+          aria-label="Minimized windows"
         >
           {minimizedTaskIds.map((nid) => {
             const n = byId[nid];
@@ -1794,7 +1838,9 @@ export default function App() {
                 }}
                 title="Restore"
               >
-                {n?.title?.trim() || n?.id || nid}
+                {n?.title?.trim() ||
+                  n?.id ||
+                  (nid === BRAINSTORM_WINDOW_ID ? "Brainstorm" : nid)}
               </button>
             );
           })}

@@ -93,6 +93,18 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         required=True,
         metavar="KEY=VALUE",
     )
+    sp.add_argument(
+        "--sync-codename",
+        action="store_true",
+        help=(
+            "Re-derive the codename from a new --set title even when the "
+            "current one was chosen by hand. Editing a title re-derives a "
+            "title-derived codename automatically; a hand-picked one is kept, "
+            "because the codename is the branch identity "
+            "(feature/rm-<codename>) and the registry key. Renaming it "
+            "mid-flight desynchronizes a live branch from its node."
+        ),
+    )
     sp.set_defaults(func=cmd_edit)
 
 

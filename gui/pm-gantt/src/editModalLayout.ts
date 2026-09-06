@@ -8,6 +8,20 @@ import type { RoadmapNode } from "./types";
 const SPAWN_DX = 28;
 const SPAWN_DY = 28;
 
+/**
+ * The Brainstorm window's id in the open-window stack.
+ *
+ * Every other window in that stack is a roadmap node id, so this needs a shape
+ * a node id can never take. Sharing the stack is what gives Brainstorm the same
+ * focus order, z-order, minimize dock and Escape handling as a task window.
+ */
+export const BRAINSTORM_WINDOW_ID = "@brainstorm";
+
+/** True for a window that is not a roadmap node, so has no place in the graph. */
+export function isGraphWindow(id: string): boolean {
+  return !id.startsWith("@");
+}
+
 /** Offset a new dialog from the anchor rect so it is visibly stacked. */
 export function computeSpawnRect(
   anchor: ModalRect | undefined,
@@ -87,6 +101,26 @@ export function sortOpenIdsByDependencyOrder(
     return [...out, ...rest];
   }
   return out;
+}
+
+/**
+ * Tile order for a stack that may hold windows outside the graph.
+ *
+ * Dependency order only means something for nodes, so the non-graph windows
+ * are not sorted into it — they keep their stack order and sit to the right,
+ * where a reader is not invited to read them as a step in the chain.
+ */
+export function orderWindowsForTile(
+  openIds: string[],
+  nodesById: Record<string, RoadmapNode>,
+  orderedIds: string[],
+): string[] {
+  const graph = openIds.filter(isGraphWindow);
+  const others = openIds.filter((id) => !isGraphWindow(id));
+  return [
+    ...sortOpenIdsByDependencyOrder(graph, nodesById, orderedIds),
+    ...others,
+  ];
 }
 
 /** Horizontal tiles across the viewport, left to right (may use space above the app header). */
