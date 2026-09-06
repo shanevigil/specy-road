@@ -53,7 +53,10 @@ error that ends the conversation.
    creates the same `work/brainstorm-<slug>.yaml` the CLI uses.
 2. **Stay in Brainstorm mode** while generating. The assistant is given the
    divergent prompt: it will question the topic before generating, then produce
-   volume without ranking.
+   volume without ranking. Ideas it proposes are written to the session as they
+   arrive and appear in the Ideas list — the panel reports how many each reply
+   added. Capture only happens in this mode, so the converge pass cannot
+   quietly add to the board while it is judging it.
 3. **Switch to Roadmap mode** when you have enough. The assistant is given the
    convergent prompt instead — clustering, overlap detection, and a `strong` /
    `consider` / `park` verdict per idea. It is told not to add new ideas.

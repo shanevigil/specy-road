@@ -149,10 +149,15 @@ export function BrainstormDrawer({ open, onClose, onPromoted }: Props) {
         research,
       });
       setMessages(reply.messages);
-      if (reply.searched.length > 0) {
-        setMsg(`Searched: ${reply.searched.join("; ")}`);
+      setSession(reply.session);
+      const notes: string[] = [];
+      if (reply.ideas.length > 0) {
+        notes.push(`Captured ${reply.ideas.length} idea(s).`);
       }
-      setSession(await fetchBrainstormSession(session.slug));
+      if (reply.searched.length > 0) {
+        notes.push(`Searched: ${reply.searched.join("; ")}`);
+      }
+      setMsg(notes.length > 0 ? notes.join(" ") : null);
     } catch (e: unknown) {
       fail(e);
     }

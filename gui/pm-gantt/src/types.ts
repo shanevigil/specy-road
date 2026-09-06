@@ -236,6 +236,10 @@ export type BrainstormChatReply = {
   /** Queries the server actually ran on the model's behalf. */
   searched: string[];
   sources: string[];
+  /** Ideas parsed out of this reply and added to the board. */
+  ideas: { title: string }[];
+  /** The session as it stands after those ideas were recorded. */
+  session: BrainstormSession;
 };
 
 export type BrainstormPromotion = {

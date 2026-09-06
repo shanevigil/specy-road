@@ -108,18 +108,51 @@ def _api_chat(body: BrainstormChatBody) -> dict[str, Any]:
     root = get_repo_root()
     session = _load(root, body.slug)
     apply_llm_env_from_settings(body.llm)
-    if session.mode == "roadmap":
-        base = render_recommend_prompt(root, session)
-    else:
+    diverging = session.mode != "roadmap"
+    if diverging:
         base = render_brainstorm_prompt(root, session, count=body.count)
+    else:
+        base = render_recommend_prompt(root, session)
     try:
-        return chat_turn(
+        turn = chat_turn(
             [m.model_dump() for m in body.messages],
             system_prompt=base,
             research=body.research,
+            # Only while diverging: the converge pass judges what is already on
+            # the board, and should not be quietly adding to it.
+            capture_ideas=diverging,
         )
     except ReviewError as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
+    return {**turn, "session": _record_ideas(root, session, turn.get("ideas") or [])}
+
+
+def _record_ideas(
+    root: Path,
+    session: BrainstormSession,
+    ideas: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Put the reply's ideas on the board and persist them.
+
+    A malformed idea is skipped rather than failing the turn: the PM still has
+    the reply in front of them, and losing the whole exchange over one bad
+    block would be worse than losing the block.
+    """
+    if not ideas:
+        return _payload(session)
+    for idea in ideas:
+        try:
+            add_idea(
+                session,
+                title=str(idea.get("title") or ""),
+                rationale=str(idea.get("rationale") or ""),
+                kind=str(idea.get("kind") or "feature"),
+                effort=str(idea.get("effort") or ""),
+                evidence=list(idea.get("evidence") or []),
+            )
+        except BrainstormError:
+            continue
+    return _saved(root, session)
 
 
 def _api_idea(body: BrainstormIdeaBody) -> dict[str, Any]:

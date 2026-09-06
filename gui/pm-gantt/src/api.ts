@@ -735,22 +735,6 @@ export async function postBrainstormChat(payload: {
   return brainstormJson<BrainstormChatReply>(r);
 }
 
-export async function postBrainstormIdea(payload: {
-  slug: string;
-  title: string;
-  rationale?: string;
-  kind?: string;
-  effort?: string;
-  evidence?: string[];
-}): Promise<BrainstormSession> {
-  const r = await fetch(`${API}/brainstorm/idea`, {
-    method: "POST",
-    headers: pmGuiMutationHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
-  });
-  return brainstormJson<BrainstormSession>(r);
-}
-
 export async function postBrainstormTriage(payload: {
   slug: string;
   idea_id: string;

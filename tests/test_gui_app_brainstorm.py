@@ -18,6 +18,7 @@ from specy_road.bundled_scripts.brainstorm_chat import (
     NO_RESEARCH_NOTICE,
     RESEARCH_INSTRUCTIONS,
     chat_turn,
+    extract_ideas,
     extract_queries,
     system_prompt_for,
 )
@@ -329,6 +330,110 @@ def test_the_system_prompt_states_which_research_exists() -> None:
     """A model told it can search when it cannot will invent sources."""
     assert RESEARCH_INSTRUCTIONS in system_prompt_for("BASE", RESEARCH_ON)
     assert NO_RESEARCH_NOTICE in system_prompt_for("BASE", None)
+
+
+_REPLY_WITH_IDEAS = """Three angles worth considering.
+
+IDEA: Stored payment vault
+WHY: Repeat buyers abandon at card entry.
+KIND: feature
+EFFORT: M
+SOURCE: https://example.com/cart-abandonment
+
+Some prose in between that is not part of any block.
+
+IDEA: Chargeback exposure review
+KIND: risk
+EFFORT: S
+
+IDEA:
+WHY: a block with no title should be dropped
+"""
+
+
+def test_idea_blocks_are_parsed_out_of_a_reply() -> None:
+    ideas = extract_ideas(_REPLY_WITH_IDEAS)
+
+    assert [i["title"] for i in ideas] == [
+        "Stored payment vault",
+        "Chargeback exposure review",
+    ]
+    assert ideas[0]["kind"] == "feature"
+    assert ideas[0]["effort"] == "M"
+    assert ideas[0]["evidence"] == ["https://example.com/cart-abandonment"]
+    assert ideas[0]["rationale"].startswith("Repeat buyers")
+    # No SOURCE line, and prose between blocks must not leak into the next one.
+    assert ideas[1]["evidence"] == []
+    assert ideas[1]["kind"] == "risk"
+
+
+def test_an_unknown_kind_falls_back_rather_than_failing() -> None:
+    ideas = extract_ideas("IDEA: Something\nKIND: wishlist")
+
+    assert ideas[0]["kind"] == "feature"
+
+
+def test_ideas_are_only_captured_when_asked_for(monkeypatch) -> None:
+    """The CLI's agent records ideas by running the command, so it opts out."""
+    import specy_road.bundled_scripts.brainstorm_chat as mod
+
+    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: "IDEA: One")
+
+    without = chat_turn([{"role": "user", "content": "go"}], system_prompt="B")
+    with_capture = chat_turn(
+        [{"role": "user", "content": "go"}], system_prompt="B", capture_ideas=True
+    )
+
+    assert without["ideas"] == []
+    assert [i["title"] for i in with_capture["ideas"]] == ["One"]
+
+
+def test_chatting_puts_the_models_ideas_on_the_board(
+    api_client: TestClient, monkeypatch
+) -> None:
+    """The panel's whole point: without this, triage and promote stay empty."""
+    import specy_road.bundled_scripts.brainstorm_chat as mod
+
+    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: _REPLY_WITH_IDEAS)
+    slug = _session(api_client)["slug"]
+
+    r = api_client.post(
+        "/api/brainstorm/chat",
+        json={
+            "slug": slug,
+            "messages": [{"role": "user", "content": "go"}],
+            "llm": {},
+        },
+        headers=_headers(api_client),
+    )
+
+    assert r.status_code == 200, r.text
+    titles = [i["title"] for i in r.json()["session"]["ideas"]]
+    assert titles == ["Stored payment vault", "Chargeback exposure review"]
+    # Persisted, not just echoed: reopening the session has to show them.
+    reopened = api_client.get(f"/api/brainstorm/session?slug={slug}").json()
+    assert [i["title"] for i in reopened["ideas"]] == titles
+
+
+def test_converging_does_not_quietly_add_ideas(
+    api_client: TestClient, monkeypatch
+) -> None:
+    import specy_road.bundled_scripts.brainstorm_chat as mod
+
+    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: _REPLY_WITH_IDEAS)
+    slug = _session(api_client, mode="roadmap")["slug"]
+
+    r = api_client.post(
+        "/api/brainstorm/chat",
+        json={
+            "slug": slug,
+            "messages": [{"role": "user", "content": "go"}],
+            "llm": {},
+        },
+        headers=_headers(api_client),
+    )
+
+    assert r.json()["session"]["ideas"] == []
 
 
 def test_search_requests_are_parsed_and_capped() -> None:
