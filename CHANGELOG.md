@@ -51,8 +51,45 @@ responds to an adopter's `0.1.4 -> 0.2.1rc1` upgrade report against a real
   [`docs/pm-gui-brainstorm.md`](docs/pm-gui-brainstorm.md), and
   [`suggested_prompts/brainstorm-roadmap.md`](suggested_prompts/brainstorm-roadmap.md).
 
+### Security
+
+- **The PM GUI no longer hands its credentials to any website you have open.**
+  CORS was `allow_origins=["*"]` with `allow_credentials=True`, a combination
+  that makes Starlette echo back whichever `Origin` asked. Any page in the
+  browser could therefore read `GET /api/settings` while the GUI was running and
+  take the configured LLM key and git token, which that endpoint returns
+  decoded. Access is now restricted to loopback, which is all the built UI and
+  the Vite dev server ever needed. **If you have run the GUI from an earlier
+  build, treat the credentials in `~/.specy-road/gui-settings.json` as exposed
+  and rotate them.**
+- **A brainstorm `--slug` can no longer write outside `work/`.** The slug was
+  interpolated straight into a filename and arrives from the CLI flag or a GUI
+  request body, so `x/../../roadmap/registry` resolved onto the tracked registry
+  file. Slugs must now be the bare kebab-case name `slugify` already produces.
+- **`POST /api/research/test` is no longer an open redirect into your network.**
+  It fetched a caller-supplied URL with no guard, no scheme check and no host
+  check, which made the GUI an unauthenticated probe of whatever the machine
+  could reach, cloud metadata endpoints included. The endpoint must now be a
+  public `https` URL, redirects are refused so the key cannot follow one
+  off-host, and the route is guarded like the write routes.
+- **The test suite no longer writes to your real `~/.specy-road/gui-settings.json`.**
+  `SETTINGS_PATH` resolves from `Path.home()` at import; tests that did not
+  redirect it appended a project entry per run, each carrying a copy of the
+  developer's git token.
+
 ### Fixed
 
+- **The GUI brainstorm panel now actually captures ideas.** The mode prompts are
+  written for an IDE agent and tell it to run `specy-road brainstorm add-idea` —
+  in a chat window that is just text, so no idea ever reached the session and
+  triage and promote stayed empty. The assistant now emits `IDEA:` blocks, the
+  same text-protocol trade already made for `SEARCH:`, and the chat route
+  records them. Capture happens only while diverging, so the converge pass
+  cannot quietly add to the board it is judging.
+- **A failed `brainstorm promote` part-way through a batch no longer duplicates
+  on the next run.** Chunk routing depends on what the previous write left on
+  disk, so each node is its own transaction; the session is now saved after
+  every node, making a partial batch resumable rather than repeatable.
 - **`specyrd init --force` no longer replaces a consumer's `CLAUDE.md`.** It
   rewrote the whole file from a template — a file `--force`'s help text never
   claimed and `.specyrd/manifest.json` never listed. `CLAUDE.md` now gets the
