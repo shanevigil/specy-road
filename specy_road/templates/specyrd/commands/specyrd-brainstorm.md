@@ -22,7 +22,9 @@ specy-road brainstorm start --topic "How do we expand payments?" --under M3
 This writes `work/brainstorm-<slug>-prompt.md`. **Read that file and follow
 it.** It asks you to interrogate the question with the PM before generating,
 then to produce volume using named divergence lenses, and to research with your
-own web search tool. Record every idea as you go:
+own tools — web search, plus any brainstorming or ideation slash commands and
+skills this IDE gives you. specy-road calls no model and no search API here; you
+are the one doing this. Record every idea as you go:
 
 ```bash
 specy-road brainstorm add-idea --title "…" --rationale "…" --evidence "https://…"

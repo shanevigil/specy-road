@@ -99,6 +99,15 @@ def test_the_diverge_prompt_sends_the_agent_to_its_search_tool(repo: Path) -> No
     assert "--evidence" in text
 
 
+def test_the_diverge_prompt_points_at_the_ide_agents_own_tools(repo: Path) -> None:
+    """The CLI calls no model and no search API; the IDE agent does the work."""
+    _start(repo)
+
+    text = _prompt(repo)
+    assert "slash commands and skills" in text
+    assert "specy-road calls no model and no search API from the CLI" in text
+
+
 def test_the_prompt_lists_the_existing_roadmap(repo: Path) -> None:
     """Ideas that restate committed work waste the PM's triage."""
     _start(repo)
