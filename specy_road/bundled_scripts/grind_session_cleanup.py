@@ -48,6 +48,19 @@ def _delete_one(
         return False, False, {"branch": branch, "step": "branch_d", "message": out}
     if not push:
         return True, False, None
+    # The local check says our copy is merged; it says nothing about theirs.
+    # Someone else pushing to the same feature branch after our merge would
+    # lose that commit, and a deleted remote branch is not recoverable here.
+    tracking = f"{remote}/{branch}"
+    if not _merged_into(repo_root, tracking, base):
+        return True, False, {
+            "branch": branch,
+            "step": "push_delete",
+            "message": (
+                f"{tracking} is not contained in {base} (or is unknown here); "
+                "left on the remote. Delete it yourself once you have checked it."
+            ),
+        }
     code, out = git_code(["push", remote, "--delete", branch], repo_root)
     if code != 0:
         return True, False, {"branch": branch, "step": "push_delete", "message": out}

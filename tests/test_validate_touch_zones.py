@@ -8,7 +8,10 @@ time, which is late. These warnings catch them at `specy-road validate`.
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
+
+import pytest
 
 from specy_road.bundled_scripts.validate_touch_zones import (
     warn_touch_zones_match_nothing,
@@ -97,3 +100,57 @@ def test_a_zone_outside_the_project_root_is_reported(tmp_path: Path, capsys) -> 
 
 def test_nodes_without_zones_are_skipped(tmp_path: Path, capsys) -> None:
     assert _warn([_node(), _node(touch_zones=None)], tmp_path, capsys) == ""
+
+
+def test_an_empty_zone_is_not_this_check_s_problem(tmp_path: Path, capsys) -> None:
+    assert _warn([_node(touch_zones=["   ", ""])], tmp_path, capsys) == ""
+
+
+def test_a_filesystem_error_never_becomes_a_traceback(tmp_path: Path, capsys) -> None:
+    """validate runs inside every pickup and node edit; advisory must stay advisory."""
+    too_long = "x" * 300
+
+    assert _warn([_node(touch_zones=[too_long])], tmp_path, capsys) == ""
+
+
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        "**/*.nomatch",          # walks everything, ignore rules and all
+        "**/**/*.nomatch",       # each extra ** multiplies the walk
+        "./**/**/**/*.nomatch",  # a "." prefix prunes nothing
+        "*/**/**/*.nomatch",     # nor does a wildcard prefix
+        "src/**/**/*.nomatch",   # concrete prefix, but still two **
+    ],
+)
+def test_an_unbounded_glob_is_refused_rather_than_walked(
+    tmp_path: Path, capsys, pattern: str
+) -> None:
+    """validate runs on every pickup and node edit; it may not hang there."""
+    (tmp_path / "src").mkdir()
+    for i in range(30):
+        deep = tmp_path / f"d{i}" / "nested" / "deeper"
+        deep.mkdir(parents=True)
+        (deep / f"f{i}.txt").write_text("x", encoding="utf-8")
+
+    started = time.monotonic()
+    err = _warn([_node(touch_zones=[pattern])], tmp_path, capsys)
+
+    assert err == ""
+    assert time.monotonic() - started < 1.0
+
+
+def test_a_glob_below_a_real_directory_is_still_checked(tmp_path: Path, capsys) -> None:
+    """One ** under a concrete directory is bounded, so it is worth checking."""
+    (tmp_path / "src").mkdir()
+
+    assert "src/**/*.py" in _warn(
+        [_node(touch_zones=["src/**/*.py"])], tmp_path, capsys
+    )
+
+
+def test_a_bounded_glob_that_matches_stays_quiet(tmp_path: Path, capsys) -> None:
+    (tmp_path / "src" / "deep").mkdir(parents=True)
+    (tmp_path / "src" / "deep" / "a.py").write_text("x", encoding="utf-8")
+
+    assert _warn([_node(touch_zones=["src/**/*.py"])], tmp_path, capsys) == ""

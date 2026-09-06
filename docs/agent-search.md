@@ -53,10 +53,12 @@ Commit it. It is meant to be the thing your IDE indexes *instead of* the corpus.
 `--check` fails if it has drifted, exactly like `specy-road export --check`,
 because a stale digest is worse than none: an agent will believe it.
 
-`specy-road finish-this-task` and `specy-road sync` regenerate it and stage it in
-their bookkeeping commit, next to `roadmap.md`, so the CI gate is one you pass by
-working normally. If the file is gitignored, `specy-road validate` says so: it is
-generated **and** committed, so a rule that hides it leaves CI looking at nothing.
+`specy-road finish-this-task` regenerates it and stages it in the bookkeeping
+commit, next to `roadmap.md`, so the CI gate is one you pass by working normally.
+`specy-road sync` regenerates both files too, but commits nothing — review and
+commit them yourself. If the file is gitignored, `specy-road validate` says so:
+it is generated **and** committed, so a rule that hides it leaves CI looking at
+nothing.
 
 ## `specy-road search`
 

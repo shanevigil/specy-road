@@ -27,7 +27,7 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
-from specy_road.generated_files import GENERATED_COMMITTED, warn_if_generated_files_ignored
+from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
@@ -145,7 +145,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Keep work/brief-, work/prompt-, and work/implementation-summary- for this node "
-            "(default: delete after successful validate/export)."
+            "(default: delete after successful validate/export/digest)."
         ),
     )
     p.add_argument(
@@ -242,13 +242,22 @@ def _maybe_write_pr_body(
 
 
 def _stageable_generated_files() -> list[str]:
-    """The regenerated files to commit, minus any the repo gitignores.
+    """The regenerated files to commit, minus any ``git add`` would refuse.
 
-    ``git add`` of an ignored path aborts the whole bookkeeping commit, so a
-    repo that gitignored one of these gets the warning and keeps its commit.
+    Only an ignored *untracked* path aborts the whole ``git add``, and dropping
+    more than that would be worse than the problem: a file that is ignored but
+    already tracked stages fine, and skipping it would leave the regenerated
+    copy out of every commit for good. The preceding ``validate`` has already
+    warned about the ignore rule itself, so this stays quiet about that.
     """
-    ignored = set(warn_if_generated_files_ignored(ROOT))
-    return [name for name in GENERATED_COMMITTED if name not in ignored]
+    refused = set(unstageable_generated_files(ROOT))
+    for name in refused:
+        print(
+            f"[warn] not staging {name}: it is gitignored and untracked, so "
+            f"`git add` would refuse it and abort this commit. "
+            f"Track it once with: git add -f {name}"
+        )
+    return [name for name in GENERATED_COMMITTED if name not in refused]
 
 
 def _bookkeeping_commit_phase(

@@ -24,20 +24,56 @@ _GLOB_CHARS = "*?["
 _SETTLED = {"complete", "archived", "cancelled"}
 
 
+def _glob_is_bounded(root: Path, pattern: str) -> bool:
+    """Whether this pattern can be matched without walking the whole tree.
+
+    ``Path.glob`` is not ignore-aware, so an unmatched ``**`` walks `.git/`,
+    `node_modules/` and every virtualenv — about a second per zone here, and
+    roughly five times that per extra ``**``. This check runs inside every
+    ``validate``, which runs inside every pickup and every node edit, so an
+    unbounded pattern is refused rather than timed.
+
+    Bounded means: at most one ``**``, and a concrete existing directory before
+    it to prune the walk. Anything else is treated as unverifiable — the check
+    is advisory, and a missing warning beats a hung gate.
+    """
+    segments = pattern.split("/")
+    recursive = [i for i, seg in enumerate(segments) if "**" in seg]
+    if not recursive:
+        return True  # plain wildcards stay within their own directory level
+    if len(recursive) > 1:
+        return False
+    prefix = segments[: recursive[0]]
+    if not prefix or any(seg in (".", "") for seg in prefix):
+        return False
+    if any(c in seg for seg in prefix for c in _GLOB_CHARS):
+        return False
+    return root.joinpath(*prefix).is_dir()
+
+
 def _zone_matches(root: Path, zone: str) -> bool:
-    """Whether ``zone`` names anything under ``root``, as a path or a glob."""
+    """Whether ``zone`` names anything under ``root``, as a path or a glob.
+
+    Any filesystem complaint means "cannot tell", and cannot-tell must read as a
+    match: this is an advisory check that runs inside ``validate``, which runs
+    inside every pickup and every node edit. A zone long enough to raise
+    ``ENAMETOOLONG``, or under a directory we may not traverse, is not worth
+    turning a gate into a traceback.
+    """
     cleaned = zone.strip().rstrip("/")
     if not cleaned:
         return True  # an empty zone is a different problem; not ours to report
-    candidate = Path(cleaned)
-    if candidate.is_absolute() or ".." in candidate.parts:
-        return False
-    if any(c in cleaned for c in _GLOB_CHARS):
-        try:
-            return any(root.glob(cleaned))
-        except (ValueError, OSError):
+    try:
+        candidate = Path(cleaned)
+        if candidate.is_absolute() or ".." in candidate.parts:
             return False
-    return (root / candidate).exists()
+        if any(c in cleaned for c in _GLOB_CHARS):
+            if not _glob_is_bounded(root, cleaned):
+                return True
+            return any(root.glob(cleaned))
+        return (root / candidate).exists()
+    except (ValueError, OSError):
+        return True
 
 
 def _is_settled(node: dict) -> bool:

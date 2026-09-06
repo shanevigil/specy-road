@@ -29,22 +29,40 @@ _REGENERATED_BY = {
 }
 
 
-def ignored_generated_files(root: Path) -> list[str]:
-    """The names in :data:`GENERATED_COMMITTED` that ``.gitignore`` matches.
+def _check_ignore(root: Path, name: str, *, no_index: bool) -> bool:
+    """Whether ``git check-ignore`` reports ``name``. False when git cannot say.
 
-    ``--no-index`` is what makes this useful: plain ``check-ignore`` stays
-    silent for a file that is already tracked, which is exactly the case we
-    need to flag (committed, and also matched by a rule, so a teammate who
-    regenerates it sees nothing to add). Silent outside a git worktree.
+    Exit 0 means matched, 1 means not; 128 (not a worktree) and -1 (git missing
+    or timed out) mean we have no answer, and no answer must never provoke a
+    warning or change what gets staged.
     """
-    hits: list[str] = []
-    for name in GENERATED_COMMITTED:
-        result = git_run(["check-ignore", "--no-index", "-q", "--", name], root)
-        # 0 = matched by a rule, 1 = not matched; 128 (not a repo) and -1
-        # (git missing/timeout) mean we cannot trust the answer.
-        if result.code == 0:
-            hits.append(name)
-    return hits
+    args = ["check-ignore", "-q"]
+    if no_index:
+        args.append("--no-index")
+    return git_run([*args, "--", name], root).code == 0
+
+
+def ignored_generated_files(root: Path) -> list[str]:
+    """The names in :data:`GENERATED_COMMITTED` that a ``.gitignore`` rule matches.
+
+    ``--no-index`` is what makes this useful: plain ``check-ignore`` stays silent
+    for a file that is already tracked, and tracked-but-ignored is exactly the
+    state worth reporting — the file is committed, so it looks fine here, while
+    the rule hides it from anyone who regenerates it.
+    """
+    return [n for n in GENERATED_COMMITTED if _check_ignore(root, n, no_index=True)]
+
+
+def unstageable_generated_files(root: Path) -> list[str]:
+    """The names ``git add`` would refuse: ignored **and** not yet tracked.
+
+    Deliberately narrower than :func:`ignored_generated_files`. ``git add``
+    accepts a tracked file whose path also matches an ignore rule, so skipping
+    that one would strand the regenerated copy outside every commit — the drift
+    this release exists to end. Only an ignored *untracked* path aborts the
+    whole ``git add``, and only that one may be dropped.
+    """
+    return [n for n in GENERATED_COMMITTED if _check_ignore(root, n, no_index=False)]
 
 
 def warn_if_generated_files_ignored(root: Path) -> list[str]:

@@ -25,6 +25,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
+from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
@@ -104,8 +105,16 @@ def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
         path.unlink()
         return True
     if sys.stdin and sys.stdin.isatty():
+        # input() writes its prompt to stdout, which in --json mode is the
+        # event stream. Ask on stderr instead, or the first cycle puts a
+        # non-JSON line into a pipe the caller is parsing.
+        prompt = f"  Implement the task, then press Enter (or create {rel})... "
         try:
-            input(f"  Implement the task, then press Enter (or create {rel})... ")
+            if CHILD_STDOUT_TO_STDERR:
+                print(prompt, file=sys.stderr, end="", flush=True)
+                input()
+            else:
+                input(prompt)
         except EOFError:
             pass
         if path.exists():
@@ -188,7 +197,14 @@ def _resolve_picked(repo_root: Path, branch: str, fallback_id: str) -> str:
 def _implement(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int:
     emitter.emit("implementing", node_id=ctx["node_id"], mode=args.implement_mode)
     if args.implement_mode == "hook":
-        return _run_shell(args.implement_cmd, _hook_env(repo_root, **ctx), repo_root)
+        return run_implement_hook(
+            args.implement_cmd,
+            _hook_env(repo_root, **ctx),
+            repo_root,
+            emitter=emitter,
+            node_id=ctx["node_id"],
+            run_shell=_run_shell,
+        )
     return 0 if _wait_for_signal(repo_root, args.ready_signal, args.signal_timeout) else 1
 
 

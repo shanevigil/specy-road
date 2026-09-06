@@ -195,7 +195,6 @@ def _classify(
         "gate_keys": gate_keys,
         "claimed": claimed,
         "scope": scope,
-        "ready_set": ready_set,
         "gates_open": gates_open,
     }
 

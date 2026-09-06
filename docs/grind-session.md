@@ -72,7 +72,7 @@ error. A worked example — `M10.3, M10.4` are ready, `M10.5` depends on both, a
 ```text
 ## Suggested sub-agent batches
 
-**Dispatch now (parallel):** M10.3, M10.4  — 2 independent leaves…
+**Dispatch now (parallel, in pickup order):** M10.3, M10.4  — 2 independent leaf/leaves, all dependencies satisfied, listed in the order the loop will claim them.
 
 **Later waves (do NOT start until every leaf in the prior wave is Complete):**
 - wave 1: M10.5
@@ -158,6 +158,45 @@ gates instead of failing a pickup**: if nothing is ready but leaves are blocked
 before `finish-this-task`. A non-zero exit stops the session (exit `4`) and leaves
 the feature branch intact so you can fix and resume.
 
+### Running Claude as the implementer
+
+Claude Code is a valid `--implement-cmd`, with one wrinkle no other agent has: a
+Claude account hits **timed session limits**, and the hook then exits non-zero
+through no fault of the implementation. An overnight grind should not end there,
+so when the command is the Claude CLI the loop reads its output, waits for the
+stated reset, and resumes **the same Claude session**:
+
+```bash
+specy-road grind-session --until M7.6 --on-complete merge --json \
+  --implement-mode hook \
+  --implement-cmd 'claude -p --permission-mode acceptEdits "$(cat "$SPECY_ROAD_PROMPT")"'
+```
+
+Detection is by the command itself — the first word must be `claude`. Cursor and
+every other agent keep today's behaviour exactly: one run, and a non-zero exit
+stops the session.
+
+What the loop will and will not wait for:
+
+| Claude said | grind-session does |
+| --- | --- |
+| a limit with a reset time | emits `usage_limited`, waits until it lifts (plus two minutes), resumes the session |
+| a spend limit | stops — no reset time exists to wait for |
+| a limit it cannot parse | stops **loudly**, saying the output format may have changed |
+| anything else non-zero | stops as it always has |
+
+Bounds: at most three waits per leaf, and no single wait longer than six hours.
+Your own flags are passed through untouched — the loop adds `--resume` and never
+adds `--dangerously-skip-permissions`.
+
+**Run it in a terminal, not in an IDE agent pane.** An unattended grind needs a
+process that can be waited on and resumed; a chat panel cannot be. The machine
+also has to stay awake for the wait — use `caffeinate`, and `tmux` if you detach.
+
+If you are on Claude Code 2.1.234 or later with *"Continue automatically at usage
+limit"* enabled, Claude may ride out the limit itself and exit 0. That is fine:
+the loop treats a zero exit as success and does not resume a second time.
+
 ### Ending the session
 
 A session that stops on its own terms — a bound reached, or no work left — ends by
@@ -233,8 +272,9 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 ## JSON events (`--json`)
 
 One JSON object per line. `event` is one of: `plan`, `picked`, `implementing`,
-`pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`, `cleanup`. Every
-event carries `ts`, UTC to the second, right after `event`.
+`pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`, `cleanup`,
+`usage_limited`. Every event carries `ts`, UTC to the second, right after
+`event`.
 
 **stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
 banner, the finish log, git — is redirected to **stderr**, so the stream stays
@@ -245,6 +285,7 @@ parseable as JSONL. Redirect stderr to a file if you want to keep it.
 {"event":"finished","ts":"2026-09-06T12:31:18Z","node_id":"M10.2"}
 {"event":"blocked","ts":"2026-09-06T12:31:20Z","reason":"dependency","waiting_on":["M10.5"],"count":1,"node_id":"M11.1"}
 {"event":"stopped","ts":"2026-09-06T12:31:20Z","reason":"until_reached","node_id":"M11.6"}
+{"event":"usage_limited","ts":"2026-09-06T12:10:05Z","node_id":"M10.2","reset_at":"2026-09-06T23:20:00Z","wait_seconds":40620,"attempt":1}
 {"event":"cleanup","ts":"2026-09-06T12:31:22Z","integration_branch":"dev","remote":"origin","checked_out":true,"deleted_local":["feature/rm-vault-mcp-secrets"],"deleted_remote":["feature/rm-vault-mcp-secrets"],"failed":[],"warnings":[],"hint":null}
 ```
 
