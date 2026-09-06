@@ -23,6 +23,7 @@ from specy_road.bundled_scripts.brainstorm_research import (
     is_configured,
     search,
 )
+from specy_road.bundled_scripts.brainstorm_session import IDEA_KINDS
 from specy_road.bundled_scripts.review_node import (
     ReviewError,
     _anthropic_max_completion_tokens,
@@ -34,7 +35,18 @@ from specy_road.bundled_scripts.review_node import (
     _openai_chat_completions_create,
 )
 
-_SEARCH_RE = re.compile(r"^\s*SEARCH:\s*(.+?)\s*$", re.MULTILINE)
+# `[ \t]` rather than `\s`: `\s` matches the newline too, so a bare `SEARCH:`
+# or `IDEA:` line would reach forward and swallow the line beneath it as its
+# own value.
+_SEARCH_RE = re.compile(r"^[ \t]*SEARCH:[ \t]*(.+?)[ \t]*$", re.MULTILINE)
+_IDEA_RE = re.compile(r"^[ \t]*IDEA:[ \t]*(.*?)[ \t]*$", re.MULTILINE)
+_FIELD_RE = re.compile(
+    r"^[ \t]*(WHY|KIND|EFFORT|SOURCE):[ \t]*(.+?)[ \t]*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+#: One reply should not be able to flood the board.
+MAX_IDEAS_PER_TURN = 25
 
 #: How many search rounds one user turn may trigger. Each round is a full
 #: model call, so an unbounded loop is a bill as much as a hang.
@@ -50,6 +62,25 @@ RESEARCH_INSTRUCTIONS = (
     "for competitor moves, public complaints, technology shifts, and incoming "
     "regulation. Cite the URL you used in the idea it produced. Do not claim "
     "you searched when you did not."
+)
+
+#: The GUI has no shell. The mode prompts are written for an IDE agent and tell
+#: it to run `specy-road brainstorm add-idea`, which in a chat window is just
+#: text that scrolls past — the panel's idea list would never fill and triage
+#: and promote would have nothing to act on. Same trade as `SEARCH:`: a text
+#: protocol every backend can honour, rather than per-provider tool schemas.
+IDEA_INSTRUCTIONS = (
+    "\n\n## Recording ideas\n"
+    "You are talking to a panel, not a terminal: shell commands you write are "
+    "not run. To put an idea on the board, emit a block of exactly this form, "
+    "one block per idea, alongside whatever prose you want:\n\n"
+    "IDEA: short title\n"
+    "WHY: one or two sentences of rationale\n"
+    "KIND: one of feature, capability, risk, research, experiment\n"
+    "EFFORT: one of S, M, L\n"
+    "SOURCE: a URL you actually used (omit the line if none)\n\n"
+    "Only WHY is optional to keep short; IDEA is required. The PM accepts or "
+    "rejects each one, so err towards recording it."
 )
 
 NO_RESEARCH_NOTICE = (
@@ -116,6 +147,37 @@ def extract_queries(reply: str) -> list[str]:
     return seen[:MAX_QUERIES_PER_ROUND]
 
 
+def extract_ideas(reply: str) -> list[dict[str, Any]]:
+    """The ``IDEA:`` blocks in a reply, in the order the model wrote them.
+
+    A block runs from its ``IDEA:`` line to the next one, so the ``WHY``/
+    ``KIND``/``EFFORT``/``SOURCE`` lines in between attach to it and prose
+    around them is ignored.
+    """
+    text = reply or ""
+    starts = [(m.start(), m.group(1).strip()) for m in _IDEA_RE.finditer(text)]
+    out: list[dict[str, Any]] = []
+    for i, (pos, title) in enumerate(starts):
+        if not title:
+            continue
+        end = starts[i + 1][0] if i + 1 < len(starts) else len(text)
+        fields = {
+            k.upper(): v for k, v in _FIELD_RE.findall(text[pos:end])
+        }
+        kind = fields.get("KIND", "").strip().lower()
+        source = fields.get("SOURCE", "").strip()
+        out.append(
+            {
+                "title": title,
+                "rationale": fields.get("WHY", "").strip(),
+                "kind": kind if kind in IDEA_KINDS else "feature",
+                "effort": fields.get("EFFORT", "").strip(),
+                "evidence": [source] if source.startswith("http") else [],
+            }
+        )
+    return out[:MAX_IDEAS_PER_TURN]
+
+
 def _is_search_request(reply: str, queries: list[str]) -> bool:
     """A search turn is one whose content is only ``SEARCH:`` lines."""
     if not queries:
@@ -146,9 +208,20 @@ def run_searches(
     return f"Search results:\n\n{body}\n\nContinue.", collected
 
 
-def system_prompt_for(base_prompt: str, settings: dict[str, Any] | None) -> str:
-    """The mode prompt plus whichever research capability actually exists."""
+def system_prompt_for(
+    base_prompt: str,
+    settings: dict[str, Any] | None,
+    *,
+    capture_ideas: bool = False,
+) -> str:
+    """The mode prompt plus whichever research capability actually exists.
+
+    ``capture_ideas`` adds the text protocol the GUI needs; the CLI leaves it
+    off because its agent records ideas by running the command itself.
+    """
     tail = RESEARCH_INSTRUCTIONS if is_configured(settings) else NO_RESEARCH_NOTICE
+    if capture_ideas:
+        tail += IDEA_INSTRUCTIONS
     return base_prompt + tail
 
 
@@ -157,16 +230,19 @@ def chat_turn(
     *,
     system_prompt: str,
     research: dict[str, Any] | None = None,
+    capture_ideas: bool = False,
 ) -> dict[str, Any]:
     """Answer one user turn, resolving any searches the model asks for.
 
     Returns the assistant reply plus the transcript additions the search loop
     produced, so the caller can persist a conversation that replays identically.
+    When ``capture_ideas`` is set the reply's ``IDEA:`` blocks come back under
+    ``ideas`` for the caller to record.
     """
     convo = list(messages)
     searched: list[str] = []
     sources: list[SearchResult] = []
-    system = system_prompt_for(system_prompt, research)
+    system = system_prompt_for(system_prompt, research, capture_ideas=capture_ideas)
 
     for _ in range(MAX_SEARCH_ROUNDS):
         reply = complete_chat(convo, system_prompt=system)
@@ -177,6 +253,7 @@ def chat_turn(
                 "messages": convo + [{"role": "assistant", "content": reply}],
                 "searched": searched,
                 "sources": [s.url for s in sources],
+                "ideas": extract_ideas(reply) if capture_ideas else [],
             }
         results_text, found = run_searches(queries, research)
         searched.extend(queries)
@@ -200,4 +277,5 @@ def chat_turn(
         "messages": convo + [{"role": "assistant", "content": reply}],
         "searched": searched,
         "sources": [s.url for s in sources],
+        "ideas": extract_ideas(reply) if capture_ideas else [],
     }
