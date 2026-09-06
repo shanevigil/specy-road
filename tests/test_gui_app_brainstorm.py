@@ -19,8 +19,9 @@ from tests.test_brainstorm_chat import REPLY_WITH_IDEAS
 
 RESEARCH_ON = {
     "enabled": True,
-    "bing_endpoint": "https://example.invalid/search",
-    "bing_api_key": "k",
+    "provider": "bing",
+    "endpoint": "https://example.invalid/search",
+    "api_key": "k",
     "max_results": "3",
 }
 
@@ -239,7 +240,8 @@ def test_settings_carry_the_research_block(api_client: TestClient) -> None:
     research = r.json()["research"]
     assert research["provider"] == "bing"
     assert research["enabled"] is False
-    assert research["bing_api_key"] == ""
+    assert research["api_key"] == ""
+    assert research["allow_private_endpoint"] is False
 
 
 def test_research_settings_round_trip_and_obfuscate_the_key(
@@ -259,15 +261,15 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
             "llm": {},
             "git_remote": {},
             "pm_gui": {},
-            "research": {**RESEARCH_ON, "bing_api_key": "secret-key"},
+            "research": {**RESEARCH_ON, "api_key": "secret-key"},
         },
     )
 
     assert r.status_code == 200, r.text
     raw = json.loads((tmp_path / "cfg" / "gui-settings.json").read_text())
-    assert raw["global"]["research"]["bing_api_key"].startswith("__b64__:")
-    assert "secret-key" not in raw["global"]["research"]["bing_api_key"]
-    assert api_client.get("/api/settings").json()["research"]["bing_api_key"] == (
+    assert raw["global"]["research"]["api_key"].startswith("__b64__:")
+    assert "secret-key" not in raw["global"]["research"]["api_key"]
+    assert api_client.get("/api/settings").json()["research"]["api_key"] == (
         "secret-key"
     )
 

@@ -21,7 +21,9 @@ _B64_PREFIX = "__b64__:"
 TOKEN_FIELDS: dict[str, tuple[str, ...]] = {
     "llm": ("openai_api_key", "azure_api_key", "anthropic_api_key"),
     "git_remote": ("token",),
-    "research": ("bing_api_key",),
+    # `bing_api_key` is the pre-provider name, still obfuscated so an existing
+    # settings file is not left holding a plaintext key.
+    "research": ("api_key", "bing_api_key"),
 }
 
 

@@ -52,8 +52,13 @@ def default_settings() -> dict[str, Any]:
         # a search subscription is a user credential, not a per-repo one.
         "research": {
             "provider": "bing",
-            "bing_endpoint": "https://api.bing.microsoft.com/v7.0/search",
-            "bing_api_key": "",
+            # Blank means "this provider's default"; only a self-hosted back
+            # end such as SearXNG has no default and must be filled in.
+            "endpoint": "",
+            "api_key": "",
+            # Lets the endpoint check accept a private address. Off by
+            # default: the GUI is reachable from any page in the browser.
+            "allow_private_endpoint": False,
             "enabled": False,
             "max_results": "5",
         },

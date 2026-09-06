@@ -80,7 +80,7 @@ Only `--title` is required. `--evidence` repeats.
 
 > **In the PM GUI:** the same prompts run against the model configured in
 > Settings, with the chat panel in place of the CLI. Web research there uses
-> the Bing endpoint you configure rather than the agent's own tool — see
+> the search provider you configure rather than the agent's own tool — see
 > [pm-gui-brainstorm.md](pm-gui-brainstorm.md).
 
 ## 2. Converge

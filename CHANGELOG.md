@@ -43,10 +43,17 @@ responds to an adopter's `0.1.4 -> 0.2.1rc1` upgrade report against a real
 - **PM GUI brainstorm panel.** The same two modes as a chat interface, running
   against the model already configured in Settings. Ideas are accepted,
   rejected, and revised in place, and promoted to nodes from the panel.
-- **Bing web search for the PM GUI.** A new Research section in Settings
-  (endpoint, key, result cap) gives the GUI the research capability the IDE
-  agent already has from its own tools. Off by default; the key is obfuscated
-  at rest like the existing LLM and git credentials.
+- **Web search for the PM GUI, across seven providers.** A new Research section
+  in Settings gives the GUI the research capability the IDE agent already has
+  from its own tools: **Bing/Azure, Tavily, Brave, Serper, Exa, Firecrawl and
+  self-hosted SearXNG**. Pick a provider and the endpoint defaults with it;
+  only SearXNG needs one supplied, and it needs no key. Off by default, and the
+  key is obfuscated at rest like the existing LLM and git credentials.
+  Configurations written against the earlier Bing-only fields keep working.
+- **Self-hosted search endpoints are an explicit opt-in.** Search endpoints must
+  normally be `https` on a public address; ticking **Self-hosted endpoint**
+  permits a private or loopback address over plain `http`, for a SearXNG
+  instance you run yourself. Off by default — see the reasoning under Security.
 - New `specyrd-brainstorm` IDE stub (PM role), [`docs/brainstorming.md`](docs/brainstorming.md),
   [`docs/pm-gui-brainstorm.md`](docs/pm-gui-brainstorm.md), and
   [`suggested_prompts/brainstorm-roadmap.md`](suggested_prompts/brainstorm-roadmap.md).
@@ -71,7 +78,10 @@ responds to an adopter's `0.1.4 -> 0.2.1rc1` upgrade report against a real
   check, which made the GUI an unauthenticated probe of whatever the machine
   could reach, cloud metadata endpoints included. The endpoint must now be a
   public `https` URL, redirects are refused so the key cannot follow one
-  off-host, and the route is guarded like the write routes.
+  off-host, and the route is guarded like the write routes. A self-hosted back
+  end is the one legitimate case that rule blocks, so it has a deliberate
+  opt-in rather than a hole: **Self-hosted endpoint** in Settings → Research,
+  off by default.
 - **The test suite no longer writes to your real `~/.specy-road/gui-settings.json`.**
   `SETTINGS_PATH` resolves from `Path.home()` at import; tests that did not
   redirect it appended a project entry per run, each carrying a copy of the

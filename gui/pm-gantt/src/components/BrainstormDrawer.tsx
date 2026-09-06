@@ -11,6 +11,7 @@ import {
 } from "../api";
 import { ideaCounts, promotableCount } from "../brainstormIdeas";
 import { hasLlmConfigured } from "../llmConfigured";
+import { researchIsComplete } from "../researchProviders";
 import { usePmGuiHandlers } from "../usePmGuiHandlers";
 import { BrainstormIdeaList } from "./BrainstormIdeaList";
 import { ModalFrame } from "./ModalFrame";
@@ -54,7 +55,11 @@ export function BrainstormDrawer({ open, onClose, onPromoted }: Props) {
     unknown
   > | null;
   const llmReady = hasLlmConfigured(llm);
-  const researchOn = Boolean(research?.enabled) && Boolean(research?.bing_api_key);
+  // Not just "has a key": SearXNG has none, and the key field is named the
+  // same for every provider now.
+  const researchOn =
+    Boolean(research?.enabled) &&
+    researchIsComplete((research ?? {}) as Record<string, string>);
 
   const fail = useCallback(
     (e: unknown) => {
