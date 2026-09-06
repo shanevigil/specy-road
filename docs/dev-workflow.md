@@ -21,7 +21,7 @@ specy-road do-next-available-task   # sync, brief, register leaf claim on base, 
 specy-road abort-task-pickup        # undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/
 
 specy-road mark-implementation-reviewed  # human gate: after work/implementation-summary-<NODE_ID>.md
-specy-road finish-this-task         # complete, validate, export, commit, PR hint (--push optional)
+specy-road finish-this-task         # complete, validate, export, digest, commit, PR hint (--push optional)
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
 specy-road export                   # regenerate roadmap.md
@@ -234,7 +234,7 @@ specy-road finish-this-task
 2. Resolve **`on_complete`** (`pr`, `merge`, or `auto`): CLI **`--on-complete`** wins, then **`work/.on-complete-<NODE_ID>.yaml`** from **`do-next-available-task`**, then **`SPECY_ROAD_ON_COMPLETE`**, then **`roadmap/git-workflow.yaml`**, else **`pr`**. See [git-workflow.md](git-workflow.md) (PR and MR are the same idea on different forges).
 3. Update the node `status` to `Complete` in the roadmap chunk file.
 4. Remove the registry entry.
-5. Run `specy-road validate` and `specy-road export`.
+5. Run `specy-road validate`, `specy-road export` and `specy-road digest`.
 6. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked).
 7. Commit the bookkeeping changes on the feature branch.
 8. If **`--push`** was passed, push the feature branch.
@@ -390,7 +390,7 @@ but say so when you finish.
 When multiple developers or agents are running simultaneously:
 
 - `do-next-available-task` filters out already-claimed nodes — safe to run in parallel; the CLI **pushes the integration branch by default** after registering so others see claims quickly. If two pickups race on push, pull/rebase the integration branch and retry.
-- `specy-road validate` warns on overlapping touch zones between registry entries.
+- `specy-road validate` warns on overlapping touch zones between registry entries, and on a zone that matches nothing in the working tree (a zone authored against a file that was never created).
 - **Prefer git worktrees** for parallel agents on one machine — isolated working trees
   on disjoint branches.
 - **Milestone dependencies are hard stops** — In JSON, `dependencies` lists **`node_key` UUIDs**

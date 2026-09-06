@@ -145,7 +145,7 @@ def test_finish_blocks_when_implementation_review_pending(
     monkeypatch.setattr(ft, "require_implementation_review_before_finish", lambda _r: True)
     monkeypatch.setattr(ft, "current_branch", lambda _root: "feature/rm-example")
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
-    monkeypatch.setattr(ft, "_validate_and_export", lambda: None)
+    monkeypatch.setattr(ft, "_validate_export_digest", lambda: None)
     monkeypatch.setattr(ft, "git_run", lambda *_a, **_k: None)
     with pytest.raises(SystemExit) as ei:
         ft.main(["--repo-root", str(tmp_path)])
@@ -181,3 +181,18 @@ def test_update_chunk_status_json_writes_complete(tmp_path, monkeypatch) -> None
     assert changed == ["roadmap/phases/x.json"]
     out = load_json_chunk(tmp_path / "roadmap" / "phases" / "x.json")
     assert out[0]["status"] == "Complete"
+
+
+def test_validate_export_digest_runs_all_three_in_order(tmp_path, monkeypatch) -> None:
+    """digest is a CI drift gate, so finish must refresh roadmap-context.md too."""
+    calls: list[list[str]] = []
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        ft.subprocess, "check_call", lambda argv, **_k: calls.append(list(argv))
+    )
+
+    ft._validate_export_digest()
+
+    assert [c[3] for c in calls] == ["validate", "export", "digest"]
+    assert all(c[1:3] == ["-m", "specy_road.cli"] for c in calls)
+    assert all(c[4:] == ["--repo-root", str(tmp_path)] for c in calls)

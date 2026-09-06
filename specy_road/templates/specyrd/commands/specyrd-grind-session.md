@@ -46,6 +46,12 @@ Human-in-the-loop (manual mode: implement, then `touch work/.session-ready`):
 specy-road grind-session --max-leaves 1 --on-complete merge
 ```
 
+A session that ends on its own terms checks out the **integration branch**; add
+**`--delete-merged-branches`** to also delete the `feature/rm-*` branches it
+merged (locally, and on the remote when `--push` was given). Without the flag it
+prints the command. With `--json`, stdout is JSONL only — sub-command output goes
+to stderr.
+
 Stop conditions: `--until NODE`, `--under PARENT`, `--max-leaves N`, or default
 (no actionable work). Stable exit codes: `0` ok, `1` generic failure (including
 a refused `pr` mode), `2` no leaves, `3` blocked on dependency/gate (human

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PM workflow: sync integration branch from remote, then validate and export roadmap."""
+"""PM workflow: sync integration branch from remote, then validate, export and digest."""
 
 from __future__ import annotations
 
@@ -18,16 +18,14 @@ from specy_road.bundled_scripts.repo_ops import sync_integration_branch
 ROOT = Path.cwd()
 
 
-def _validate_and_export() -> None:
+def _validate_export_digest() -> None:
+    """validate, export, digest — leave no generated-and-committed file stale."""
     rr = ["--repo-root", str(ROOT)]
-    subprocess.check_call(
-        [sys.executable, "-m", "specy_road.cli", "validate", *rr],
-        cwd=ROOT,
-    )
-    subprocess.check_call(
-        [sys.executable, "-m", "specy_road.cli", "export", *rr],
-        cwd=ROOT,
-    )
+    for command in ("validate", "export", "digest"):
+        subprocess.check_call(
+            [sys.executable, "-m", "specy_road.cli", command, *rr],
+            cwd=ROOT,
+        )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -74,8 +72,11 @@ def main(argv: list[str] | None = None) -> None:
 
     print("-> specy-road validate")
     print("-> specy-road export")
-    _validate_and_export()
-    print("\n[ok] roadmap validated and markdown export refreshed.")
+    print("-> specy-road digest")
+    _validate_export_digest()
+    print(
+        "\n[ok] roadmap validated; roadmap.md and roadmap-context.md refreshed."
+    )
 
 
 if __name__ == "__main__":

@@ -9,4 +9,11 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road show-node NODE_ID
 ```
 
+**stdout is pure JSON.** The source chunk path is printed to stderr, so the
+output pipes straight into a parser:
+
+```bash
+specy-road show-node NODE_ID | jq .status
+```
+
 See `docs/pm-workflow.md`.

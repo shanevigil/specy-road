@@ -252,7 +252,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check. Parent and phase **effective** completion follows **F-013 rollup** (every leaf descendant `Complete`), same as the PM GUI wire model — a phase chunk may still store `Not Started` / `In Progress` until someone edits it; validation does **not** warn for that. The `--no-phase-status-warn` flag is deprecated and ignored (kept for backward-compatible CLI scripts). |
 | `specy-road export`                                | Regenerate `roadmap.md` from the merged graph — shareable index for stakeholders.                                            |
 | `specy-road list-nodes`                            | Table of all items with type, status, title, and which file they live in.                                                                   |
-| `specy-road show-node M0.1.1`                      | Print one item as JSON (replace `M0.1.1` with a real id).                                                                                   |
+| `specy-road show-node M0.1.1`                      | Print one item as JSON on stdout (replace `M0.1.1` with a real id). The source chunk path goes to stderr, so the output pipes into a parser. |
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
 | `specy-road archive M0.1`                          | Move a **Complete** subtree out of the live roadmap into `roadmap/archive/`, reversibly. See [Archiving](archiving.md).                     |
@@ -356,7 +356,7 @@ Resolve these **before** developers reach them:
 ## Monitoring execution (not approving PRs)
 
 - `**roadmap/registry.yaml`** — Who claimed what and which areas of the repo are “in use.” Stale entries may mean a blocked branch; check with the developer.
-- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths.
+- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths, and about a touch zone on an open node that matches nothing on disk.
 - `**specy-road export**` and `**roadmap.md**` — Stakeholder-friendly snapshot of status.
 
 ---
