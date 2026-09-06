@@ -11,6 +11,35 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.1] - 2026-09-06
+
+First stable **v0.2.1** release on **PyPI**. Promotes the work validated in
+`v0.2.1-rc1` and `v0.2.1-rc2` with no post-rc2 code changes. Smoke install:
+
+    pip install specy-road==0.2.1
+
+**Adopters upgrading from `0.1.4` or earlier:** run **`specy-road refresh-stubs`**
+once after upgrading so IDE stubs and managed blocks match the installed
+toolkit. If you ran the PM GUI from an `0.2.1-rc1` or earlier build, rotate
+any LLM and git credentials that were stored in `~/.specy-road/gui-settings.json`
+(CORS was tightened in rc2 — see the rc2 Security section).
+
+### Headline (vs v0.1.4)
+
+- **Roadmap brainstorming** — CLI (`specy-road brainstorm`) and PM GUI panel
+  for divergent idea generation and convergent recommendations, with ideas
+  promoted to roadmap nodes when accepted.
+- **Pluggable web search in the PM GUI** — seven providers (Bing/Azure, Tavily,
+  Brave, Serper, Exa, Firecrawl, self-hosted SearXNG) for research during
+  brainstorm sessions.
+- **`specy-road move-node` and `refresh-stubs`** — CLI re-parenting with printed
+  id maps, and a safe path to pick up new IDE stubs after `pip install -U`.
+- **Security and reliability fixes from rc2** — CORS restricted to loopback,
+  brainstorm slug validation, SSRF guard on research test, resumable promote,
+  and GUI idea capture via the `IDEA:` protocol.
+
+See the `v0.2.1-rc1` and `v0.2.1-rc2` sections below for full detail.
+
 ## [v0.2.1-rc2] - 2026-09-05
 
 Second prerelease for v0.2.1. It adds roadmap brainstorming for PMs, and
