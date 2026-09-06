@@ -1,7 +1,7 @@
 # Roadmap brainstorming
 
 For **product managers** who want to widen the option space before committing
-to a roadmap, with an LLM doing the generating and the research.
+to a roadmap, with an agent doing the generating and the research.
 
 The command is `specy-road brainstorm`. It runs in two modes, and keeping them
 apart is the whole design: an agent asked to generate *and* filter in one pass
@@ -9,11 +9,24 @@ filters first, and hands back five safe ideas instead of forty.
 
 | Mode | Command | What the agent is asked for |
 |------|---------|------------------------------|
-| Diverge | `brainstorm start` | Volume. Socratic questioning, named divergence lenses, web research. Ranking is forbidden. |
+| Diverge | `brainstorm start` | Volume. Socratic questioning, named divergence lenses, research with the agent's own tools. Ranking is forbidden. |
 | Converge | `brainstorm recommend` | Judgement. Clustering, overlap detection, a verdict per idea. New ideas are forbidden. |
 
 Between the two, and after them, the PM triages. Accepting and rejecting is
 never the agent's call.
+
+### CLI and PM GUI do the thinking differently
+
+The CLI never calls a model or a search API. It assembles repo context, writes a
+prompt, and hands it to **the agent already driving your IDE** — which does the
+generating with its own tools: web search, and any brainstorming or ideation
+slash commands and skills the IDE offers. Whatever your agent can do, the CLI
+brainstorm can do.
+
+The **PM GUI** panel runs the same prompt text against its own **configured LLM**
+and its **configured search provider** (see [pm-gui-brainstorm.md](pm-gui-brainstorm.md)),
+because a browser panel has no IDE agent to lean on. That is the only difference
+between them: same modes, same session file, same triage.
 
 ---
 

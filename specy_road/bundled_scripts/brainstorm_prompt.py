@@ -180,6 +180,12 @@ def _research_lines() -> list[str]:
         "already know; the point of researching is to import ideas that are "
         "not in the room.",
         "",
+        "Use whatever your IDE gives you here: its brainstorming or ideation "
+        "slash commands and skills, if it has any, alongside your own search. "
+        "specy-road calls no model and no search API from the CLI — you are "
+        "the one doing this, and the tools you already have are the ones to "
+        "reach for.",
+        "",
         "- What have comparable products shipped in this area recently?",
         "- What are users complaining about, in public, for this class of "
         "product?",
