@@ -21,6 +21,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     add_idea,
+    read_session,
 )
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
@@ -97,6 +98,49 @@ def test_promotion_happens_once(repo: Path) -> None:
 
     assert pending_ideas(s) == []
     assert promote_session(repo, s) == []
+
+
+def test_a_failure_mid_batch_does_not_duplicate_on_the_next_run(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The batch cannot be one transaction, so it has to be resumable.
+
+    Chunk routing reads what the previous write left on disk, so each node is
+    its own commit. If the session were only saved once the whole batch
+    succeeded, a failure part-way would leave nodes on the graph that no idea
+    claimed — and re-running would promote them a second time.
+    """
+    import specy_road.bundled_scripts.brainstorm_promote as mod
+
+    s = _accepted_session(under="M1")
+    add_idea(s, title="Second idea").status = "accepted"
+    add_idea(s, title="Third idea").status = "accepted"
+
+    real = mod.append_node_to_chunk
+    calls = {"n": 0}
+
+    def _fail_on_third(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("chunk write blew up")
+        return real(*a, **k)
+
+    monkeypatch.setattr(mod, "append_node_to_chunk", _fail_on_third)
+    with pytest.raises(RuntimeError):
+        promote_session(repo, s)
+
+    # The two that landed are recorded, on disk, as already promoted.
+    reloaded = read_session(repo, s.slug)
+    done = [i for i in reloaded.ideas if i.promoted_node_key]
+    assert len(done) == 2
+
+    monkeypatch.undo()
+    again = promote_session(repo, reloaded)
+
+    assert [r.title for r in again] == ["Third idea"]
+    titles = [n["title"] for n in _by_id(repo).values()]
+    for t in ("Second idea", "Third idea"):
+        assert titles.count(t) == 1
 
 
 def test_the_planning_sheet_is_seeded_from_the_idea(repo: Path) -> None:
