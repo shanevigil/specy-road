@@ -39,6 +39,8 @@ def test_validate_script_is_quiet_when_no_parent_status_drifted() -> None:
     )
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert "rolls up to" not in (r.stderr or "")
+    # The fixture's touch zones name real directories, so nothing is reported.
+    assert "matches nothing" not in (r.stderr or "")
 
 
 def test_warn_stale_parent_status_reports_drift_without_failing(capsys) -> None:

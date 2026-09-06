@@ -13,6 +13,7 @@ from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.runtime_paths import default_user_repo_root
 
+from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.node_kinds import is_gate
 
@@ -362,6 +363,7 @@ def run_validation(
                 raise SystemExit(1)
 
     warn_stale_parent_status(nodes)
+    warn_touch_zones_match_nothing(nodes, r)
     if registry.get("entries") and not no_overlap_warn:
         touch_zone_overlap(registry["entries"])
 
