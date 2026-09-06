@@ -390,7 +390,7 @@ but say so when you finish.
 When multiple developers or agents are running simultaneously:
 
 - `do-next-available-task` filters out already-claimed nodes — safe to run in parallel; the CLI **pushes the integration branch by default** after registering so others see claims quickly. If two pickups race on push, pull/rebase the integration branch and retry.
-- `specy-road validate` warns on overlapping touch zones between registry entries.
+- `specy-road validate` warns on overlapping touch zones between registry entries, and on a zone that matches nothing in the working tree (a zone authored against a file that was never created).
 - **Prefer git worktrees** for parallel agents on one machine — isolated working trees
   on disjoint branches.
 - **Milestone dependencies are hard stops** — In JSON, `dependencies` lists **`node_key` UUIDs**

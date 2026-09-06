@@ -27,6 +27,7 @@ from specy_road.bundled_scripts.validate_roadmap_checks import (
     validate_unique_title_slugs,
     validate_unique_titles,
     warn_stale_parent_status,
+    warn_touch_zones_match_nothing,
 )
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
@@ -41,6 +42,7 @@ __all__ = [
     "validate_unique_title_slugs",
     "validate_unique_titles",
     "warn_stale_parent_status",
+    "warn_touch_zones_match_nothing",
 ]
 
 

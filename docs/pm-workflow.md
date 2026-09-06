@@ -356,7 +356,7 @@ Resolve these **before** developers reach them:
 ## Monitoring execution (not approving PRs)
 
 - `**roadmap/registry.yaml`** — Who claimed what and which areas of the repo are “in use.” Stale entries may mean a blocked branch; check with the developer.
-- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths.
+- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths, and about a touch zone on an open node that matches nothing on disk.
 - `**specy-road export**` and `**roadmap.md**` — Stakeholder-friendly snapshot of status.
 
 ---
