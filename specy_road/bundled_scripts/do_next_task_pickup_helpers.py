@@ -16,6 +16,7 @@ from specy_road.bundled_scripts.do_next_task_self_heal import (
     emit_stale_claim_warning,
 )
 from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
+from specy_road.git_subprocess import commits_behind, local_branch_exists
 from specy_road.on_complete_session import (
     on_complete_session_path,
     write_on_complete_session,
@@ -62,6 +63,17 @@ def register_and_commit(
     git_runner("commit", "-m", commit_message)
 
 
+def announce_resumed_branch(repo_root: Path, branch: str, base: str) -> None:
+    """Say plainly that this pickup adopted a branch rather than creating one."""
+    print(f"branch {branch} already exists — checking it out instead of creating it")
+    behind = commits_behind(repo_root, branch, base)
+    if behind:
+        print(
+            f"  note: it is {behind} commit(s) behind {base}; "
+            f"`git merge {base}` before implementing if that matters."
+        )
+
+
 def push_and_branch_with_self_heal(
     *,
     repo_root: Path,
@@ -69,23 +81,46 @@ def push_and_branch_with_self_heal(
     git_runner,
     push_integration_branch_fn,
     checkout_new_branch_fn,
+    checkout_existing_branch_fn,
     push_registry: bool,
     base: str,
     remote: str,
     branch: str,
     node_id: str,
     codename: str,
+    branch_exists=None,
 ) -> None:
-    """F-014: push integration, create feature branch; self-heal on failure."""
-    branch_created = False
+    """F-014: push integration, then reach the feature branch; roll back on failure.
+
+    An **existing** feature branch is checked out rather than created, and that
+    is the opposite of the previous behaviour rather than a refinement of it.
+    ``git checkout -b`` failing with "a branch named … already exists" used to
+    raise into the rollback path, which strips the claim this pickup just
+    registered — so the node became available again, the branch was still there,
+    and the next pickup failed the same way. The loop had no exit.
+
+    The branch survives its claim whenever a claim is released without deleting
+    it: a crashed finish, a hand-edited registry, an interrupted run. In each of
+    those the branch is the work, and the claim is the thing that went missing.
+
+    Rollback is unchanged for every other failure. A push that fails, or a
+    checkout blocked by a dirty tree, still means the pickup did not complete,
+    and leaving the claim behind would strand the node.
+    """
+    branch_ready = False
+    resuming = (branch_exists or local_branch_exists)(repo_root, branch)
     try:
         if push_registry:
             print(f"-> git push {remote} {base}")
             push_integration_branch_fn(remote, base)
-        checkout_new_branch_fn(branch)
-        branch_created = True
+        if resuming:
+            announce_resumed_branch(repo_root, branch, base)
+            checkout_existing_branch_fn(branch)
+        else:
+            checkout_new_branch_fn(branch)
+        branch_ready = True
     except BaseException:
-        if not branch_created:
+        if not branch_ready:
             ok = attempt_self_cleanup(
                 repo_root=repo_root,
                 registry_path=registry_path,

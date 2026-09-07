@@ -128,7 +128,7 @@ Each cycle:
 ```mermaid
 flowchart LR
   plan[compute plan] --> ready{ready leaf?}
-  ready -- no --> blocked[blocked? -> exit 3\nelse no work -> exit 0/2]
+  ready -- no --> blocked[own claim? -> resume or exit 6\nblocked? -> exit 3\nelse no work -> exit 0/2]
   ready -- yes --> pickup[do-next-available-task]
   pickup --> impl[implement: manual signal | hook cmd]
   impl --> pre[pre-finish-cmd?]
@@ -142,6 +142,60 @@ flowchart LR
 Before each pickup the planner re-runs, so the loop **stops at blocked work and
 gates instead of failing a pickup**: if nothing is ready but leaves are blocked
 (dependency or gate), it stops with exit code `3`.
+
+### Blocked, or just already busy?
+
+Running out of ready leaves has two very different causes, reported separately.
+An **open claim of your own** — you picked a leaf up and never finished it — is
+exit `6` and an `in_flight` event naming the node and its branch:
+
+```text
+[grind-session] in_flight: nothing pickable — this worktree already holds a claim on M1.3.2 (feature/rm-tradelog-rest-complete).
+  finish it (specy-road finish-this-task), release it (specy-road abort-task-pickup), or re-run with --resume-in-flight.
+```
+
+A **dependency or gate block** is exit `3`, and genuinely needs a human to go
+and complete something else first.
+
+The two are checked in that order, and the order matters: they are not mutually
+exclusive. Every leaf downstream of your in-flight one is blocked *on it*, so in
+a normal grind both buckets are non-empty when the loop stops, and only the claim
+tells you what to do next.
+
+**`--resume-in-flight`** turns the first case into a resumed cycle: the branch is
+checked out, the brief and prompt are restored if they went missing, and the leaf
+goes straight to implement and finish without a second pickup. Only claims
+registered to a branch that **exists in this clone** qualify — a claim held by
+another lane reaches `active` through the shared registry or an *In Progress*
+status, and resuming one would put two implementers on the same node.
+
+### Asking about one node (`why-blocked`, `list-gates`)
+
+`--plan` answers for the whole session; these two answer narrower questions
+without rendering the plan and reading it back.
+
+**`specy-road why-blocked <NODE_ID>`** explains why one node is not pickable.
+Unlike the plan's `waiting_on`, which lists only immediate dependencies, it walks
+the chain **transitively** — the item actually worth working is usually two or
+three hops down — and covers the reasons that are not dependencies at all: an
+open gate, an existing claim (naming the branch holding it), a container node
+that is never picked up directly, or a missing codename.
+
+```text
+M2.4 is waiting on 1 unmet dependency/dependencies.
+
+waiting on:
+  - M2.3 [Not Started] Ledger export
+    - M2.1 [In Progress] Trade log REST — claimed on feature/rm-tradelog-rest
+```
+
+It exits `1` when the node really is blocked or gated, `0` when it is pickable or
+already closed, and `2` for an unknown id, so a supervisor can branch on the
+answer without parsing prose. `--json` returns the same structure.
+
+**`specy-road list-gates`** lists gate nodes that are not `Complete` and what each
+blocks. `--under <NODE_ID>` scopes by the **work being blocked**, not by where the
+gate is defined, because a phase is routinely held by a gate defined elsewhere.
 
 ### Implement modes
 
@@ -183,11 +237,34 @@ What the loop will and will not wait for:
 | a limit with a reset time | emits `usage_limited`, waits until it lifts (plus two minutes), resumes the session |
 | a spend limit | stops — no reset time exists to wait for |
 | a limit it cannot parse | stops **loudly**, saying the output format may have changed |
+| nothing at all, on a signal-shaped exit | emits `implementer_vanished`, re-runs the command after a short backoff — a fresh run, never a `--resume`, because there is no session id to trust |
 | anything else non-zero | stops as it always has |
 
-Bounds: at most three waits per leaf, and no single wait longer than six hours.
-Your own flags are passed through untouched — the loop adds `--resume` and never
+That second-to-last row is deliberately narrow: it needs **both** empty output
+**and** a signal-shaped exit code (negative, or 128+). A task that fails and
+explains itself still stops the run on the first attempt. What it catches is
+something outside the run killing the process — an OOM kill, a machine that
+slept, a closed terminal.
+
+Your own flags are passed through untouched. The loop splices `--resume <id>` in
+behind the executable and copies the rest of your command byte for byte, so a
+`"$(cat "$SPECY_ROAD_PROMPT")"` is re-evaluated on the resumed attempt — the
+prompt file is still on disk, because `finish-this-task` has not run. It never
 adds `--dangerously-skip-permissions`.
+
+Bounds — CLI flag wins over `roadmap/git-workflow.yaml`, which wins over the
+default:
+
+| Bound | CLI flag | `roadmap/git-workflow.yaml` | Default |
+| --- | --- | --- | --- |
+| waits per leaf | `--max-limit-waits N` | `grind_session_max_limit_waits` | 3 |
+| ceiling on any one wait | `--max-limit-wait-hours H` | `grind_session_max_limit_wait_hours` | 6 |
+| grace after the stated reset | `--limit-wait-grace-seconds S` | `grind_session_limit_wait_grace_seconds` | 120 |
+| re-runs when it dies silently | `--max-empty-retries N` | `grind_session_max_empty_retries` | 2 |
+
+If your plan's limit resets on an **8-hour** cadence, the 6h default ceiling
+stops the run rather than waiting the extra two hours. Pass
+`--max-limit-wait-hours 9`.
 
 **Run it in a terminal, not in an IDE agent pane.** An unattended grind needs a
 process that can be waited on and resumed; a chat panel cannot be. The machine
@@ -268,13 +345,14 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | `3` | Blocked on a dependency or gate — human action required |
 | `4` | `--pre-finish-cmd` failed |
 | `5` | Pickup (`do-next-available-task`) register/commit/git failed |
+| `6` | Nothing pickable because **this worktree already holds a claim** |
 
 ## JSON events (`--json`)
 
-One JSON object per line. `event` is one of: `plan`, `picked`, `implementing`,
-`pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`, `cleanup`,
-`usage_limited`. Every event carries `ts`, UTC to the second, right after
-`event`.
+One JSON object per line. `event` is one of: `plan`, `picked`, `resumed`,
+`implementing`, `pre_finish`, `finished`, `blocked`, `in_flight`, `hook_failed`,
+`stopped`, `cleanup`, `usage_limited`, `implementer_vanished`. Every event carries
+`ts`, UTC to the second, right after `event`.
 
 **stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
 banner, the finish log, git — is redirected to **stderr**, so the stream stays
@@ -284,8 +362,10 @@ parseable as JSONL. Redirect stderr to a file if you want to keep it.
 {"event":"picked","ts":"2026-09-06T12:00:04Z","node_id":"M10.2","branch":"feature/rm-vault-mcp-secrets","brief":"work/brief-M10.2.md","prompt":"work/prompt-M10.2.md"}
 {"event":"finished","ts":"2026-09-06T12:31:18Z","node_id":"M10.2"}
 {"event":"blocked","ts":"2026-09-06T12:31:20Z","reason":"dependency","waiting_on":["M10.5"],"count":1,"node_id":"M11.1"}
+{"event":"in_flight","ts":"2026-09-06T12:31:20Z","node_id":"M1.3.2","codename":"tradelog-rest-complete","branch":"feature/rm-tradelog-rest-complete","count":1,"others":[]}
 {"event":"stopped","ts":"2026-09-06T12:31:20Z","reason":"until_reached","node_id":"M11.6"}
 {"event":"usage_limited","ts":"2026-09-06T12:10:05Z","node_id":"M10.2","reset_at":"2026-09-06T23:20:00Z","wait_seconds":40620,"attempt":1}
+{"event":"implementer_vanished","ts":"2026-09-06T12:12:00Z","node_id":"M10.2","rc":137,"attempt":1,"max_retries":2,"retry_in_seconds":30}
 {"event":"cleanup","ts":"2026-09-06T12:31:22Z","integration_branch":"dev","remote":"origin","checked_out":true,"deleted_local":["feature/rm-vault-mcp-secrets"],"deleted_remote":["feature/rm-vault-mcp-secrets"],"failed":[],"warnings":[],"hint":null}
 ```
 

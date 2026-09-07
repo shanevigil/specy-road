@@ -152,6 +152,10 @@ def test_rewritten_history_rebuilds_rather_than_appending(repo: Path) -> None:
 
 def test_an_unwritable_cache_still_returns_results(repo: Path, monkeypatch) -> None:
     """A read-only checkout costs a rebuild each time, never a failed command."""
+    # The fixture is copied wholesale, so it carries a .specyrd/cache/ left
+    # behind by any maintainer who ran a CLI command with --repo-root pointed
+    # at it; this test asserts the cache is absent.
+    cache_path(repo).unlink(missing_ok=True)
     monkeypatch.setattr("specy_road.history_index.save_cache", lambda *a, **k: False)
     clear_memo()
 

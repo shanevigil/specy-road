@@ -99,7 +99,7 @@ not a mechanical gate.
 | # | Step | Owner | Why |
 |---|------|-------|-----|
 | 2.1 | `git fetch && git checkout dev && git pull --ff-only` | agent | sync. |
-| 2.2 | Decide RC vs final, choose version number | agent (with user) | needs user intent. |
+| 2.2 | Decide RC vs final, choose version number | **user** | The maintainer picks the exact tag. The agent must highlight published PyPI vs declared checkout vs latest git tag (and an optional proposal) and **wait** — see [`AGENTS.md`](../AGENTS.md) (Version numbers). |
 | 2.2a | Complete the mandatory pre-release checks branch (§3) | agent | prompt-driven cleanup/compliance + 3-app user testing must pass before any release branch is cut. |
 | 2.3 | Cut `chore/release-vX-Y-Z[-rcN]` branch | agent | naming is load-bearing. |
 | 2.4 | Bump `pyproject.toml` `project.version` to PEP 440 form | agent | exact format matters. |

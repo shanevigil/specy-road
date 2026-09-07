@@ -49,7 +49,7 @@ def test_a_missing_path_is_reported_with_the_node_and_the_fix(
 
     assert "M1.1" in err
     assert "schemas/prose.py" in err
-    assert "specy-road edit-node M1.1" in err
+    assert "specy-road edit-node" in err
 
 
 def test_every_missing_zone_is_named_in_one_line(tmp_path: Path, capsys) -> None:
@@ -65,6 +65,24 @@ def test_every_missing_zone_is_named_in_one_line(tmp_path: Path, capsys) -> None
     assert "schemas/outline.py" in err
     assert "schemas/prose.py" in err
     assert "'src/'" not in err
+
+
+def test_many_drifted_nodes_share_one_header_and_one_fix_line(
+    tmp_path: Path, capsys
+) -> None:
+    """This runs inside every pickup and edit; it may not flood the terminal."""
+    nodes = [_node(id=f"M1.{i}", touch_zones=[f"gone/{i}"]) for i in range(1, 6)]
+
+    err = _warn(nodes, tmp_path, capsys)
+    lines = [ln for ln in err.splitlines() if ln.strip()]
+
+    assert err.count("warning") == 1
+    assert err.count("specy-road edit-node") == 1
+    # One header, one line per node, one line of guidance — nothing per-node
+    # repeated.
+    assert len(lines) == len(nodes) + 2
+    for i in range(1, 6):
+        assert f"M1.{i}" in err
 
 
 def test_a_glob_with_a_match_is_quiet(tmp_path: Path, capsys) -> None:

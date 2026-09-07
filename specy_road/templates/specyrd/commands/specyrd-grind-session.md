@@ -53,7 +53,10 @@ Copy the command into a terminal instead.
 When `--implement-cmd` is the **Claude CLI** (`claude -p …`), the loop waits out a
 timed session limit and resumes the same Claude session, so one leaf surviving a
 limit does not end the run. A spend limit, or wording the parser does not
-recognise, stops the session and says why. Other agents are unaffected.
+recognise, stops the session and says why. It also re-runs a hook that was
+killed from outside without printing anything at all — an OOM kill, a machine
+that slept — which is not a failed implementation. All of those bounds are
+tunable; see `docs/grind-session.md`. Other agents are unaffected.
 
 A session that ends on its own terms checks out the **integration branch**; add
 **`--delete-merged-branches`** to also delete the `feature/rm-*` branches it
