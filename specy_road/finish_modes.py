@@ -64,6 +64,30 @@ def print_finish_tail(
     print("-" * 60)
 
 
+def print_pr_gated_state(
+    *, node_id: str, branch: str, integration_branch: str
+) -> None:
+    """Spell out the two-branch state ``on_complete: pr`` leaves behind.
+
+    The node is Complete and the claim released on the feature branch, while
+    the integration branch still shows neither — correct under F-007, and the
+    single most misread moment in the workflow, because "finished" and
+    "available again" look identical from the integration branch alone.
+    """
+    print()
+    print(f"Where things stand (on_complete: pr) — until the PR merges into {integration_branch}:")
+    print(f"  {node_id:<22} Complete on {branch}; unchanged on {integration_branch}")
+    print(f"  {'registry claim':<22} released on {branch}; still held on {integration_branch}")
+    print(
+        "  The claim is what keeps this leaf off the available list, so leave "
+        "it in place.\n"
+        "  Merging the PR is what closes the node on "
+        f"{integration_branch}. Do not re-pick it,\n"
+        "  and do not abort it — `abort-task-pickup` deletes the branch and "
+        "the work with it."
+    )
+
+
 def apply_on_complete_mode(
     repo: Path,
     args: argparse.Namespace,
@@ -88,6 +112,9 @@ def apply_on_complete_mode(
             integration_branch=ib,
             mr_manual=mr_manual,
             pr_body_path=pr_body_path,
+        )
+        print_pr_gated_state(
+            node_id=node_id, branch=branch, integration_branch=ib
         )
         remove_on_complete_session(sess_path)
         return
