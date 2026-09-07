@@ -32,7 +32,11 @@ from pathlib import Path
 from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
-from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
+from specy_road.generated_files import (
+    GENERATED_COMMITTED,
+    gitignore_resolution_hint,
+    unstageable_generated_files,
+)
 from specy_road.git_subprocess import git_code, git_ok
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import REGISTRY_REL, registry_path, write_registry
@@ -149,9 +153,11 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
     for name in sorted(refused):
         print(
             f"[warn] not staging {name}: it is gitignored and untracked, so "
-            f"`git add` would refuse it and abort this merge commit. "
-            f"Track it once with: git add -f {name}"
+            f"`git add` would refuse it and abort this merge commit."
         )
+        hint = gitignore_resolution_hint(repo, name)
+        if hint:
+            print(f"  {hint}")
     return [n for n in GENERATED_COMMITTED if n not in refused]
 
 

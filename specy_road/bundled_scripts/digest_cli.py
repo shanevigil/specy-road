@@ -18,8 +18,21 @@ import sys
 from pathlib import Path
 
 from specy_road.digest import DEFAULT_OUTPUT, render_digest
+from specy_road.generated_files import gitignore_resolution_hint
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.cli_entry import run_forwarded_cli
+
+
+def _print_gitignore_hint(root: Path, name: str) -> None:
+    """Name the ignore rule when it is the reason ``--check`` cannot pass.
+
+    Regenerating fixes drift only if the result can be committed. A gitignored
+    and untracked digest fails this gate forever, and the message that says
+    "run: specy-road digest" is the one thing that will not help.
+    """
+    hint = gitignore_resolution_hint(root, name)
+    if hint:
+        print(f"  {hint}", file=sys.stderr)
 
 
 def cmd_digest(ns: argparse.Namespace) -> int:
@@ -37,6 +50,7 @@ def cmd_digest(ns: argparse.Namespace) -> int:
                 f"missing {out} — run: specy-road digest",
                 file=sys.stderr,
             )
+            _print_gitignore_hint(root, ns.output)
             return 1
         if out.read_text(encoding="utf-8") != body:
             print(
@@ -44,6 +58,7 @@ def cmd_digest(ns: argparse.Namespace) -> int:
                 "Run: specy-road digest",
                 file=sys.stderr,
             )
+            _print_gitignore_hint(root, ns.output)
             return 1
         print(f"OK: {ns.output} matches the roadmap.")
         return 0

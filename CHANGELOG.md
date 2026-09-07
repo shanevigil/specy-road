@@ -39,8 +39,33 @@ user error.
   so a registry could end up holding one leaf twice — which reads as two lanes
   owning it. Both are checked before the row is written.
 
+### Added
+
+- **`specy-road registry-prune`** — lists registry claims whose `feature/rm-*`
+  branch is absent from this clone, and removes ones you name with
+  **`--remove <CODENAME>`** (repeatable), committing on the integration branch
+  and pushing. `abort-task-pickup` only runs from the feature branch, so a claim
+  whose branch is gone had no command at all and the documented fallback was to
+  hand-edit `roadmap/registry.yaml`. **The report is advisory and removal is
+  never inferred from it:** pickup pushes the registry and then creates the
+  branch *locally, without pushing it*, so another clone's healthy claim looks
+  exactly like an orphan from here — which is why F-014 only ever warned. Every
+  removal names a codename, and one whose branch is still present is refused
+  with a pointer to `abort-task-pickup`.
+
 ### Changed
 
+- **One resolution for a gitignored generated file, worded the same in all four
+  places.** `roadmap.md` and `roadmap-context.md` are generated **and**
+  committed, and an adopter who gitignores one met three partial descriptions of
+  that single fact: `validate` named the ignore rule, `finish-this-task` said
+  only "track it once", and `export --check` / `digest --check` reported drift
+  while recommending the regeneration that cannot fix it. Read together they
+  looked like three problems with no resolution. All four now end on the same
+  two steps — remove the rule from `.gitignore`, then `git add -f <file>` — and
+  the two `--check` gates say so instead of sending you to regenerate again.
+  The policy is unchanged: both files are committed by contract, and there is no
+  opt-out.
 - **`grind-session --plan` names the leaf pickup would claim.** `ready` is the
   pickup queue, but the report only rendered wave 0's batch and the id-sorted
   waves, so "what does the loop take next" had to be inferred and was read as a
