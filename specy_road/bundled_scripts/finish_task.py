@@ -17,6 +17,7 @@ from specy_road.git_workflow_config import (
     resolve_on_complete,
     should_cleanup_work_artifacts_on_finish,
 )
+from specy_road.finish_implementation_check import implementation_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
@@ -160,6 +161,15 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--allow-empty-implementation",
+        action="store_true",
+        help=(
+            "Finish even though the branch changes no file under the node's "
+            "declared touch zones. For a leaf that genuinely needs no code "
+            "change; otherwise fix the zones or abort the pickup."
+        ),
+    )
+    p.add_argument(
         "--no-milestone-rollup",
         action="store_true",
         help=(
@@ -203,12 +213,17 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
         ROOT, cli=args.on_complete, session=session_oc,
     )
     _impl_review_or_exit(entry, node_id)
-    print(f"Finishing [{node_id}] {node.get('title', '')}")
-    print(f"Branch:   {branch}")
-    print(f"on_complete: {on_mode}\n")
     ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT, explicit_base=None, explicit_remote=None,
     )
+    implementation_or_exit(
+        ROOT, node=node, entry=entry, node_id=node_id,
+        remote=gw_remote, integration_branch=ib,
+        allow_empty=args.allow_empty_implementation,
+    )
+    print(f"Finishing [{node_id}] {node.get('title', '')}")
+    print(f"Branch:   {branch}")
+    print(f"on_complete: {on_mode}\n")
     return {
         "codename": codename, "reg": reg, "entry": entry, "nodes": nodes,
         "node": node, "node_id": node_id, "work_dir": work_dir,
