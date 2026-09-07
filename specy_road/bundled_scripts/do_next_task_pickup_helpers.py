@@ -32,6 +32,35 @@ def write_brief(work_dir: Path, node: dict, nodes: list[dict]) -> Path:
     return path
 
 
+def assert_not_already_claimed(reg: dict, node: dict) -> None:
+    """Refuse to write a second row for a node or codename already registered.
+
+    Selection filters claimed nodes by ``node_id`` while every release path —
+    finish, abort, self-heal — removes rows by ``codename``. Checking both here
+    means the two spellings cannot drift into a registry holding one node twice,
+    which reads as two lanes owning the same leaf.
+    """
+    node_id = node.get("id")
+    codename = node.get("codename")
+    for entry in reg.get("entries") or []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("node_id") == node_id:
+            field, value = "node_id", node_id
+        elif entry.get("codename") == codename:
+            field, value = "codename", codename
+        else:
+            continue
+        raise SystemExit(
+            f"error: roadmap/registry.yaml already has a row with {field} "
+            f"{value!r} (branch {entry.get('branch') or '?'}). Registering "
+            "again would claim one leaf twice.\n"
+            "  If that claim is yours and finished, land its branch.\n"
+            "  If it is stale, remove the row, commit and push the integration "
+            "branch, then retry."
+        )
+
+
 def register_and_commit(
     *,
     registry_path: Path,
@@ -47,6 +76,7 @@ def register_and_commit(
     F-009: touch_zones are optional; the brief / agent prompt instructs the
     coding agent to discover them via codebase scan when missing.
     """
+    assert_not_already_claimed(reg, node)
     codename = node["codename"]
     entry: dict = {
         "codename": codename,
