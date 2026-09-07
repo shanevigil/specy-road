@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -84,3 +85,29 @@ def print_pickup_footer(
     else:
         print("When done: specy-road finish-this-task")
     print("-" * 60)
+    print_orchestration_hint()
+
+
+def print_orchestration_hint() -> None:
+    """Point at ``grind-session`` from the one place everyone already looks.
+
+    The loop and its hook mode were documented only in ``docs/grind-session.md``,
+    which nothing on this path linked to, so operators reached for hand-rolled
+    sub-agents instead and never adopted the hook contract. Pickup is where they
+    are standing when the question comes up.
+
+    Suppressed inside a running loop, which exports ``SPECY_ROAD_GRIND_SESSION``:
+    advertising the loop to itself once per cycle is the flood this is trying not
+    to become.
+    """
+    if os.environ.get("SPECY_ROAD_GRIND_SESSION"):
+        return
+    print()
+    print("Running more than one leaf? specy-road grind-session drives this loop:")
+    print("  specy-road grind-session --plan            # ready/blocked leaves + waves")
+    print("  specy-road grind-session --on-complete merge \\")
+    print("      --implement-mode hook --implement-cmd '<your agent command>'")
+    print(
+        "  Hook mode hands each leaf's node id, branch, brief and prompt to that "
+        "command via SPECY_ROAD_* env vars. See docs/grind-session.md."
+    )

@@ -84,27 +84,45 @@ def _is_settled(node: dict) -> bool:
     return False
 
 
-def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
-    """One non-fatal line per open node whose touch zone matches nothing."""
+def _missing_zones(nodes: list[dict], root: Path) -> list[tuple[str, list[str]]]:
+    out: list[tuple[str, list[str]]] = []
     for node in nodes:
         zones = node.get("touch_zones")
-        if not isinstance(zones, list) or not zones:
-            continue
-        if _is_settled(node):
+        if not isinstance(zones, list) or not zones or _is_settled(node):
             continue
         missing = [
             z for z in zones
             if isinstance(z, str) and not _zone_matches(root, z)
         ]
-        if not missing:
-            continue
-        nid = node.get("id", "?")
-        listed = ", ".join(repr(z) for z in missing)
-        label = "touch zone" if len(missing) == 1 else "touch zones"
-        verb = "matches" if len(missing) == 1 else "match"
-        print(
-            f"roadmap: warning — {nid} {label} {listed} {verb} nothing in the "
-            "working tree. Zones are paths or globs relative to the project "
-            f"root. Run: specy-road edit-node {nid} --set touch_zones=<paths>",
-            file=sys.stderr,
-        )
+        if missing:
+            out.append((str(node.get("id", "?")), missing))
+    return out
+
+
+def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
+    """One non-fatal block naming every open node whose zones match nothing.
+
+    Reported as a single block rather than a self-contained warning per node.
+    This runs inside every ``validate``, which runs inside every pickup, every
+    node edit and every finish — and the per-node form repeated the same two
+    sentences of guidance each time, so a roadmap with five drifted nodes put
+    nineteen lines in front of an operator on every command. The guidance is
+    identical for all of them, so it is printed once, at the end.
+    """
+    missing = _missing_zones(nodes, root)
+    if not missing:
+        return
+    count = len(missing)
+    subject = "1 node has" if count == 1 else f"{count} nodes have"
+    print(
+        f"roadmap: warning — {subject} touch zones that match nothing in the "
+        "working tree:",
+        file=sys.stderr,
+    )
+    for nid, zones in missing:
+        print(f"  {nid}: {', '.join(repr(z) for z in zones)}", file=sys.stderr)
+    print(
+        "  Zones are paths or globs relative to the project root. Fix one with: "
+        "specy-road edit-node <NODE_ID> --set touch_zones=<paths>",
+        file=sys.stderr,
+    )
