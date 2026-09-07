@@ -11,6 +11,31 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.3-rc1] - 2026-09-07
+
+First prerelease for v0.2.3. Routed to TestPyPI by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.2.3rc1
+
+No migration needed, and no change to any file format. The four new
+`grind_session_*` settings in `roadmap/git-workflow.yaml` are optional.
+`require_implementation_before_finish` **defaults true**.
+
+### Headline changes vs v0.2.2
+
+- Concurrent `grind-session` lanes can finish against one integration branch
+  without corrupting `registry.yaml`.
+- An in-flight claim of your own is exit **6**, not a dependency block (exit 3).
+- Pickup resumes an existing `feature/rm-*` branch instead of rolling the claim
+  back.
+- `finish-this-task` refuses a branch that implemented nothing under its
+  `touch_zones`.
+- Query CLI: `why-blocked`, `list-gates`, `list-nodes --status`.
+- Claude hook resume copies the command you wrote; vanished implementers retry.
+
 Responds to a second consumer report, written after a day-long milestone grind
 (M1 through a human gate at M2.14) driven by many short-lived agents against one
 roadmap. Full analysis, including the two items deliberately not acted on, in
@@ -92,7 +117,7 @@ One behaviour change to know about before upgrading: `finish-this-task` now
   what can run in parallel, which was read as a pick order it never was.
   `--interactive` and `--under` are how you cut a seam first.
 
-## [v0.2.3] - 2026-09-07
+### Also in this RC (unattended multi-lane)
 
 Responds to a report written after running two parallel `grind-session` lanes —
 separate clones, one roadmap phase each, one integration branch — unattended
@@ -100,12 +125,7 @@ overnight for about six hours and a dozen leaves. Three findings, all fixed.
 Full analysis in
 [`docs/design-notes/v0-2-2-unattended-multi-lane-triage.md`](docs/design-notes/v0-2-2-unattended-multi-lane-triage.md).
 
-    pip install --upgrade specy-road
-
-No migration needed, and no change to any file format. The four new
-`grind_session_*` settings in `roadmap/git-workflow.yaml` are optional.
-
-### Fixed
+### Fixed (unattended multi-lane)
 
 - **Concurrent lanes can finish against one integration branch.** Landing a
   finish no longer 3-way-merges `roadmap/registry.yaml`, `roadmap.md` or
