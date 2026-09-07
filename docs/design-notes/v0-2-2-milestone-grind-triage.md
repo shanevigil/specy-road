@@ -1,7 +1,12 @@
 # Triage: `v0.2.2` milestone-grind report
 
-> **Status:** assessment only. Nothing here is fixed yet; the calls below are
-> the proposed dispositions, not a changelog.
+> **Status:** acted on. Findings 30, 31, 32, 34, 35, 36, 37, 38 and 39 are
+> implemented on the `0.3.0` line; see the `[Unreleased]` section of
+> [`CHANGELOG.md`](../../CHANGELOG.md) for the shipped behaviour and its
+> escape hatches. Finding 33 remains out of scope as stated, and finding 40 was
+> already closed by `v0.2.3`. Where the implementation reasoned past what this
+> note proposed, the note is left as written — it records the assessment, and
+> the code and its tests are the current contract.
 
 Assessment of a report written after a single-lane grind through two roadmap
 phases — M1 start to the M2.14 human gate, thirteen of fourteen agentic
