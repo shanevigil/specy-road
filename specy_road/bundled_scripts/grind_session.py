@@ -369,6 +369,9 @@ def run_session(args) -> int:
     if mode_error is not None:
         print(f"error: {mode_error}", file=sys.stderr)
         return EXIT_GENERIC
+    # Inherited by every child. Pickup's footer advertises this loop, which is
+    # noise once you are already inside it.
+    os.environ["SPECY_ROAD_GRIND_SESSION"] = "1"
     finished_branches: list[str] = []
     code, failed = _run_loop(args, repo_root, emitter, finished_branches)
     # Only when the loop got somewhere and stopped on its own terms. After a
