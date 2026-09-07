@@ -31,7 +31,7 @@ from specy_road.bundled_scripts.grind_session_events import (
     EXIT_NO_LEAVES,
     EXIT_OK,
 )
-from specy_road.git_subprocess import git_code, git_ok
+from specy_road.git_subprocess import git_code, local_branch_exists
 
 
 @dataclass(frozen=True)
@@ -41,13 +41,6 @@ class InFlightClaim:
     node_id: str
     codename: str
     branch: str
-
-
-def local_branch_exists(repo_root: Path, branch: str) -> bool:
-    ok, _ = git_ok(
-        ["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], repo_root
-    )
-    return ok
 
 
 def own_in_flight_claims(
