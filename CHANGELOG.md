@@ -11,6 +11,68 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-09-07
+
+Responds to a report written after running two parallel `grind-session` lanes —
+separate clones, one roadmap phase each, one integration branch — unattended
+overnight for about six hours and a dozen leaves. Three findings, all fixed.
+Full analysis in
+[`docs/design-notes/v0-2-2-unattended-multi-lane-triage.md`](docs/design-notes/v0-2-2-unattended-multi-lane-triage.md).
+
+    pip install --upgrade specy-road
+
+No migration needed, and no change to any file format. The four new
+`grind_session_*` settings in `roadmap/git-workflow.yaml` are optional.
+
+### Fixed
+
+- **Concurrent lanes can finish against one integration branch.** Landing a
+  finish no longer 3-way-merges `roadmap/registry.yaml`, `roadmap.md` or
+  `roadmap-context.md`. The registry is a keyed collection — one row per active
+  claim — and the other two are generated in full, so a line-based merge either
+  conflicted, leaving the finish half-done with the branch pushed and the claim
+  never cleared from shared truth, or succeeded while keeping a row a lane had
+  removed. The merge is now staged, the registry recomputed as *the integration
+  branch's registry minus the finishing node's row*, the two generated files
+  re-rendered from the merged graph, and only then is the merge commit created.
+  Conflicts anywhere else still fail hard, with the F-012 wording unchanged.
+  The milestone rollup path, which cherry-picks bookkeeping, is fixed the same
+  way. One consequence to expect: the feature merge is now always a merge
+  commit, never a fast-forward, because a fast-forward leaves nowhere to record
+  the resolved registry.
+- **`grind-session` resumes the command you actually wrote.** A Claude implement
+  hook was rebuilt through `shlex.split` + `shlex.quote` before `--resume` was
+  added, which round-trips *text* rather than shell syntax. The invocation the
+  docs recommend — `claude -p "$(cat "$SPECY_ROAD_PROMPT")"` — came back as the
+  single-quoted literal `'$(cat $SPECY_ROAD_PROMPT)'`, so a session resumed
+  after a usage limit was handed 26 characters of shell source as its task,
+  exited 0, and looked like ordinary work. The first attempt always ran the
+  original string, so only a genuine overnight resume was ever affected.
+  `--resume` is now spliced in behind the executable and the rest of the line
+  copied byte for byte.
+- **`docs/git-workflow.md` described the pre-F-012 `merge` behaviour.** The
+  `on_complete: merge` bullet still said a failure exits with "merge pending"
+  and the same PR/MR hints as `pr`, which is exactly the fallback F-012
+  removed.
+
+### Added
+
+- **`grind-session` survives an implementer killed from outside.** A Claude hook
+  whose process tree is killed before it prints anything (an OOM kill, a machine
+  that slept, a closed terminal) exited with a signal code and no output, which
+  read as an ordinary task failure and ended the unattended run. That exact
+  shape — empty output *and* a signal-shaped exit code — is now a distinct
+  bounded category: up to two re-runs with a linear backoff, a new
+  `implementer_vanished` JSON event, and a fresh run rather than a guessed
+  `--resume`, since with no output there is no session id to trust. A task that
+  fails and says why still stops the run on the first attempt.
+- **The Claude wait bounds are tunable.** `--max-limit-waits`,
+  `--max-limit-wait-hours`, `--limit-wait-grace-seconds` and
+  `--max-empty-retries`, each also settable as a `grind_session_*` key in
+  `roadmap/git-workflow.yaml` (the CLI flag wins). A plan whose limit resets on
+  an 8-hour cadence used to hit the hardcoded 6h ceiling and stop the run rather
+  than wait the extra two hours.
+
 ## [v0.2.2] - 2026-09-06
 
 Patch release responding to a consumer report written after running four real
