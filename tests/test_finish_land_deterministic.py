@@ -17,6 +17,7 @@ from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
 from specy_road.finish_land_integration import land_merge_feature_into_integration
+from specy_road.milestone_rollup_git import cherry_pick_bookkeeping_to_integration
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from tests.test_finish_merge_mode import _bootstrap, _commit, _git
 
@@ -203,3 +204,54 @@ def test_codename_from_branch() -> None:
     assert codename_from_branch("feature/rm-alpha") == "alpha"
     assert codename_from_branch("feature/other") is None
     assert codename_from_branch("feature/rm-") is None
+
+
+def _rollup(repo: Path, codename: str, sha: str) -> tuple[bool, str]:
+    return cherry_pick_bookkeeping_to_integration(
+        repo,
+        remote="origin",
+        integration_branch="master",
+        bookkeeping_commit=sha,
+        leaf_branch=f"feature/rm-{codename}",
+    )
+
+
+def test_two_lanes_rolling_up_bookkeeping_both_land(tmp_path: Path) -> None:
+    """The milestone path cherry-picks, which is a 3-way merge just the same."""
+    repo, _bare = _bootstrap(tmp_path)
+    _seed(repo, "alpha", "beta")
+    _lane(repo, "alpha", "beta")
+    alpha_sha = _out(repo, "rev-parse", "HEAD")
+    _lane(repo, "beta", "alpha")
+    beta_sha = _out(repo, "rev-parse", "HEAD")
+
+    ok, err = _rollup(repo, "alpha", alpha_sha)
+    assert ok, err
+    _git(repo, "push", "-q", "origin", "master")
+    ok, err = _rollup(repo, "beta", beta_sha)
+    assert ok, err
+
+    _git(repo, "checkout", "-q", "master")
+    assert _rows(repo) == set()
+
+
+def test_a_rollup_conflict_outside_the_deterministic_paths_still_fails(
+    tmp_path: Path,
+) -> None:
+    repo, _bare = _bootstrap(tmp_path)
+    _seed(repo, "alpha")
+    _git(repo, "checkout", "-q", "-b", "feature/rm-alpha")
+    (repo / "src.py").write_text("lane\n")
+    _commit(repo, "lane edits source")
+    sha = _out(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-q", "master")
+    (repo / "src.py").write_text("integration\n")
+    _commit(repo, "integration edits the same source")
+    _git(repo, "push", "-q", "origin", "master")
+    before = _out(repo, "rev-parse", "master")
+
+    ok, err = _rollup(repo, "alpha", sha)
+    assert ok is False
+    assert "cherry-pick" in err
+    assert _out(repo, "status", "--porcelain") == ""
+    assert _out(repo, "rev-parse", "master") == before

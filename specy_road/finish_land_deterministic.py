@@ -92,7 +92,7 @@ def _has_roadmap_graph(repo: Path) -> bool:
     return True
 
 
-def _resolve_registry(repo: Path, codename: str | None) -> str | None:
+def _resolve_registry(repo: Path, codename: str | None, other_ref: str) -> str | None:
     """Write integration's registry minus ``codename``. Rel path, or ``None``.
 
     ``None`` means this repo has no registry on either side of the merge -- a
@@ -104,7 +104,7 @@ def _resolve_registry(repo: Path, codename: str | None) -> str | None:
     that is guaranteed clean.
     """
     head = read_registry_at_ref(repo, "HEAD", _REF_READ_TIMEOUT)
-    theirs = read_registry_at_ref(repo, "MERGE_HEAD", _REF_READ_TIMEOUT)
+    theirs = read_registry_at_ref(repo, other_ref, _REF_READ_TIMEOUT)
     if head is None and theirs is None:
         return None
     rel = REGISTRY_REL.as_posix()
@@ -155,7 +155,9 @@ def _regenerate_generated_files(repo: Path) -> list[str]:
     return [n for n in GENERATED_COMMITTED if n not in refused]
 
 
-def resolve_deterministic_paths(repo: Path, *, codename: str | None) -> list[str]:
+def resolve_deterministic_paths(
+    repo: Path, *, codename: str | None, other_ref: str = "MERGE_HEAD"
+) -> list[str]:
     """Resolve all three paths in the staged merge. Returns paths to stage.
 
     Registry first, then the derived files: ``render_digest`` reads the
@@ -164,7 +166,7 @@ def resolve_deterministic_paths(repo: Path, *, codename: str | None) -> list[str
     silently reintroduces the drift.
     """
     staged: list[str] = []
-    rel = _resolve_registry(repo, codename)
+    rel = _resolve_registry(repo, codename, other_ref)
     if rel is not None:
         staged.append(rel)
     staged.extend(_regenerate_generated_files(repo))
@@ -209,6 +211,22 @@ def _reconcile_digest(repo: Path) -> bool:
     git_code(["add", "--", DEFAULT_OUTPUT], repo)
     git_code(["commit", "--amend", "--no-edit"], repo)
     return True
+
+
+def reconcile_or_rollback(repo: Path, pre_sha: str) -> str | None:
+    """Reconcile the digest against the new commit. Error text, or ``None``.
+
+    On failure the branch is reset to where it was: nothing has been pushed
+    yet, so rolling back is strictly better than leaving a commit whose digest
+    we know is stale.
+    """
+    try:
+        if _reconcile_digest(repo):
+            print(f"[ok] {DEFAULT_OUTPUT} reconciled against the new commit")
+    except (Exception, SystemExit) as exc:  # noqa: BLE001 - see module docstring
+        git_code(["reset", "--hard", pre_sha], repo)
+        return f"could not reconcile {DEFAULT_OUTPUT}: {exc}"
+    return None
 
 
 def _commit_message(feature_branch: str, integration_branch: str, codename: str | None) -> list[str]:
@@ -282,14 +300,10 @@ def merge_feature_deterministically(
     if code != 0:
         return _failed(repo, integration_branch, feature_branch, f"commit: {out}")
 
-    try:
-        if _reconcile_digest(repo):
-            print(f"[ok] {DEFAULT_OUTPUT} reconciled against the merge commit")
-    except (Exception, SystemExit) as exc:  # noqa: BLE001 - see module docstring
-        git_code(["reset", "--hard", pre_sha], repo)  # nothing pushed yet
+    problem = reconcile_or_rollback(repo, pre_sha)
+    if problem is not None:
         return (
             False,
-            f"git merge {feature_branch} into {integration_branch} failed while "
-            f"reconciling {DEFAULT_OUTPUT}: {exc}",
+            f"git merge {feature_branch} into {integration_branch} failed: {problem}",
         )
     return True, ""
