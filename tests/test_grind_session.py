@@ -365,8 +365,20 @@ def test_cli_grind_session_help() -> None:
     )
     for flag in ("--plan", "--until", "--under", "--max-leaves",
                  "--implement-mode", "--implement-cmd", "--pre-finish-cmd",
-                 "--on-complete", "--json"):
+                 "--on-complete", "--json", "--max-limit-waits",
+                 "--max-limit-wait-hours", "--limit-wait-grace-seconds",
+                 "--max-empty-retries"):
         assert flag in r.stdout, flag
+
+
+def test_cli_grind_session_rejects_negative_limit_flags() -> None:
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "grind-session",
+         "--max-limit-wait-hours", "-1", "--repo-root", str(DOGFOOD)],
+        cwd=REPO, capture_output=True, text=True,
+    )
+    assert r.returncode == 2
+    assert "--max-limit-wait-hours must not be negative" in r.stderr
 
 
 def test_cli_grind_session_plan_json() -> None:

@@ -67,6 +67,40 @@ def _add_implement_args(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_implement_limit_args(p: argparse.ArgumentParser) -> None:
+    """Bounds for a Claude CLI implement hook; ignored for any other hook.
+
+    Every default is ``None`` so the resolver can tell "not asked for" from
+    "asked for the same number as the default" and fall through to
+    ``roadmap/git-workflow.yaml``.
+    """
+    p.add_argument(
+        "--max-limit-waits", type=int, default=None, metavar="N",
+        help="Claude hook: how many times one leaf may wait out a usage limit "
+             "before the run stops (default 3; yaml "
+             "grind_session_max_limit_waits).",
+    )
+    p.add_argument(
+        "--max-limit-wait-hours", type=float, default=None, metavar="H",
+        help="Claude hook: longest single wait for a stated reset (default 6). "
+             "A reset further out stops the run rather than waiting "
+             "unattended (yaml grind_session_max_limit_wait_hours).",
+    )
+    p.add_argument(
+        "--limit-wait-grace-seconds", type=int, default=None, metavar="S",
+        help="Claude hook: slack added after the stated reset, because clocks "
+             "disagree (default 120; yaml "
+             "grind_session_limit_wait_grace_seconds).",
+    )
+    p.add_argument(
+        "--max-empty-retries", type=int, default=None, metavar="N",
+        help="Claude hook: re-runs when the command dies without printing "
+             "anything at all — killed from outside, not a failed "
+             "implementation (default 2; yaml "
+             "grind_session_max_empty_retries).",
+    )
+
+
 def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
     add_repo_root_arg(p)
     p.add_argument("--base", default=None, metavar="BRANCH",
@@ -104,8 +138,18 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     )
     _add_mode_and_stop_args(p)
     _add_implement_args(p)
+    _add_implement_limit_args(p)
     _add_passthrough_args(p)
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
     if ns.implement_mode == "hook" and not ns.implement_cmd and not ns.plan:
         p.error("--implement-mode hook requires --implement-cmd")
+    for name in (
+        "max_limit_waits",
+        "max_limit_wait_hours",
+        "limit_wait_grace_seconds",
+        "max_empty_retries",
+    ):
+        value = getattr(ns, name)
+        if value is not None and value < 0:
+            p.error(f"--{name.replace('_', '-')} must not be negative")
     return ns
