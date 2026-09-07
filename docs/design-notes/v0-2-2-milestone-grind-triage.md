@@ -12,7 +12,7 @@ to the reporter never discovering the hook path at all (finding 35), and the
 stall pattern they describe — sub-agents that `git pull`, read the brief, and
 stop — is the failure mode the hook contract exists to prevent.
 
-The run was against **`v0.2.2`**. `v0.3.0` has since landed and closes one of
+The run was against **`v0.2.2`**. `v0.2.3` has since landed and closes one of
 the reported items outright; see finding 40.
 
 Confirmed working, and worth preserving: `grind-session --plan` as a read-only
@@ -227,11 +227,11 @@ warnings have pushed the failure off the visible tail.
 ## 40. Already fixed, or working as intended
 
 **Merge fallback** — "M1.4.2 finish succeeded on paper but dev wasn't merged" is
-finding 27 from the previous note, and it was fixed in `v0.3.0`: landing a
+finding 27 from the previous note, and it was fixed in `v0.2.3`: landing a
 finish no longer 3-way-merges `roadmap/registry.yaml`, which was the mechanism
 by which a finish ended half-done with the branch pushed and nothing merged.
 The reporter ran `v0.2.2`, one release short of it. Recommend confirming against
-`v0.3.0` before treating this as open — and if it reproduces there, it is a new
+`v0.2.3` before treating this as open — and if it reproduces there, it is a new
 finding with a different cause, not this one.
 
 **Auto-pick order vs wave order** — this shipped in `v0.2.2` and the reporter

@@ -11,7 +11,7 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
-## [v0.3.0] - 2026-09-07
+## [v0.2.3] - 2026-09-07
 
 Responds to a report written after running two parallel `grind-session` lanes —
 separate clones, one roadmap phase each, one integration branch — unattended

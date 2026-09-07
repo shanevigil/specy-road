@@ -172,6 +172,10 @@ def _checkout_new_branch(branch: str) -> None:
     git_run(ROOT, "checkout", "-b", branch)
 
 
+def _checkout_existing_branch(branch: str) -> None:
+    git_run(ROOT, "checkout", branch)
+
+
 def _register_and_commit(
     node: dict,
     branch: str,
@@ -216,6 +220,7 @@ def _push_and_branch_with_self_heal(**kwargs) -> None:
         git_runner=lambda *a: git_run(ROOT, *a),
         push_integration_branch_fn=_push_integration_branch,
         checkout_new_branch_fn=_checkout_new_branch,
+        checkout_existing_branch_fn=_checkout_existing_branch,
         **kwargs,
     )
 
