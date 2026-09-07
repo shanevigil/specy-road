@@ -183,11 +183,34 @@ What the loop will and will not wait for:
 | a limit with a reset time | emits `usage_limited`, waits until it lifts (plus two minutes), resumes the session |
 | a spend limit | stops — no reset time exists to wait for |
 | a limit it cannot parse | stops **loudly**, saying the output format may have changed |
+| nothing at all, on a signal-shaped exit | emits `implementer_vanished`, re-runs the command after a short backoff — a fresh run, never a `--resume`, because there is no session id to trust |
 | anything else non-zero | stops as it always has |
 
-Bounds: at most three waits per leaf, and no single wait longer than six hours.
-Your own flags are passed through untouched — the loop adds `--resume` and never
+That second-to-last row is deliberately narrow: it needs **both** empty output
+**and** a signal-shaped exit code (negative, or 128+). A task that fails and
+explains itself still stops the run on the first attempt. What it catches is
+something outside the run killing the process — an OOM kill, a machine that
+slept, a closed terminal.
+
+Your own flags are passed through untouched. The loop splices `--resume <id>` in
+behind the executable and copies the rest of your command byte for byte, so a
+`"$(cat "$SPECY_ROAD_PROMPT")"` is re-evaluated on the resumed attempt — the
+prompt file is still on disk, because `finish-this-task` has not run. It never
 adds `--dangerously-skip-permissions`.
+
+Bounds — CLI flag wins over `roadmap/git-workflow.yaml`, which wins over the
+default:
+
+| Bound | CLI flag | `roadmap/git-workflow.yaml` | Default |
+| --- | --- | --- | --- |
+| waits per leaf | `--max-limit-waits N` | `grind_session_max_limit_waits` | 3 |
+| ceiling on any one wait | `--max-limit-wait-hours H` | `grind_session_max_limit_wait_hours` | 6 |
+| grace after the stated reset | `--limit-wait-grace-seconds S` | `grind_session_limit_wait_grace_seconds` | 120 |
+| re-runs when it dies silently | `--max-empty-retries N` | `grind_session_max_empty_retries` | 2 |
+
+If your plan's limit resets on an **8-hour** cadence, the 6h default ceiling
+stops the run rather than waiting the extra two hours. Pass
+`--max-limit-wait-hours 9`.
 
 **Run it in a terminal, not in an IDE agent pane.** An unattended grind needs a
 process that can be waited on and resumed; a chat panel cannot be. The machine
@@ -273,7 +296,7 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 
 One JSON object per line. `event` is one of: `plan`, `picked`, `implementing`,
 `pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`, `cleanup`,
-`usage_limited`. Every event carries `ts`, UTC to the second, right after
+`usage_limited`, `implementer_vanished`. Every event carries `ts`, UTC to the second, right after
 `event`.
 
 **stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
@@ -286,6 +309,7 @@ parseable as JSONL. Redirect stderr to a file if you want to keep it.
 {"event":"blocked","ts":"2026-09-06T12:31:20Z","reason":"dependency","waiting_on":["M10.5"],"count":1,"node_id":"M11.1"}
 {"event":"stopped","ts":"2026-09-06T12:31:20Z","reason":"until_reached","node_id":"M11.6"}
 {"event":"usage_limited","ts":"2026-09-06T12:10:05Z","node_id":"M10.2","reset_at":"2026-09-06T23:20:00Z","wait_seconds":40620,"attempt":1}
+{"event":"implementer_vanished","ts":"2026-09-06T12:12:00Z","node_id":"M10.2","rc":137,"attempt":1,"max_retries":2,"retry_in_seconds":30}
 {"event":"cleanup","ts":"2026-09-06T12:31:22Z","integration_branch":"dev","remote":"origin","checked_out":true,"deleted_local":["feature/rm-vault-mcp-secrets"],"deleted_remote":["feature/rm-vault-mcp-secrets"],"failed":[],"warnings":[],"hint":null}
 ```
 

@@ -35,6 +35,26 @@
       "type": "string",
       "enum": ["auto", "merge", "pr"],
       "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
+    },
+    "grind_session_max_limit_waits": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "grind-session: how many times one leaf may wait out a Claude usage limit before the run stops (default 3). CLI --max-limit-waits wins."
+    },
+    "grind_session_max_limit_wait_hours": {
+      "type": "number",
+      "minimum": 0,
+      "description": "grind-session: longest single wait for a stated Claude reset, in hours (default 6). A reset further out stops the run rather than waiting unattended. CLI --max-limit-wait-hours wins."
+    },
+    "grind_session_limit_wait_grace_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "grind-session: slack added after the stated reset, because clocks disagree (default 120). CLI --limit-wait-grace-seconds wins."
+    },
+    "grind_session_max_empty_retries": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "grind-session: how many times to re-run a Claude implement command that died on a signal without printing anything (default 2). Not a retry for failed implementations - those still stop the run. CLI --max-empty-retries wins."
     }
   }
 }

@@ -28,11 +28,26 @@ Optional field **`require_implementation_review_before_finish`** (boolean): when
 
 Optional field **`cleanup_work_artifacts_on_finish`** (boolean): when **true** or omitted (default), `finish-this-task` deletes per-node **`work/brief-`**, **`work/prompt-`**, and **`work/implementation-summary-`** files after validate/export/digest, staging deletions when tracked. Set **false** or pass **`--no-cleanup-work`** to keep them. See [dev-workflow.md](dev-workflow.md).
 
+Optional fields **`grind_session_max_limit_waits`** (integer, default 3), **`grind_session_max_limit_wait_hours`** (number, default 6), **`grind_session_limit_wait_grace_seconds`** (integer, default 120) and **`grind_session_max_empty_retries`** (integer, default 2): bounds for a `grind-session` run whose `--implement-cmd` is the Claude CLI — how many times one leaf may wait out a usage limit, the ceiling on any single wait, the slack added after a stated reset, and how many times to re-run a hook killed from outside without printing anything. The matching CLI flags override this file. Ignored for any other implement command. See [grind-session.md](grind-session.md).
+
 Optional field **`on_complete`** (`pr`, `merge`, or `auto`; default **`pr`**): controls how **`specy-road finish-this-task`** lands work after the bookkeeping commit on the feature branch.
 
 - **`pr`** — Print guidance to push (if needed) and open a **pull request** or **merge request** targeting the integration branch. On GitHub this is a **PR**; on GitLab and many other hosts it is an **MR**. They are the same kind of integration review; this doc uses **PR/MR** when the forge is unspecified.
-- **`merge`** — After bookkeeping, try **`git merge`** of the feature branch into the **integration branch** locally, then **`git push`** the integration branch. On failure (conflicts, non-fast-forward integration branch, push rejected), exit with **merge pending** and the same PR/MR hints as **`pr`**.
+- **`merge`** — After bookkeeping, try **`git merge`** of the feature branch into the **integration branch** locally, then **`git push`** the integration branch. On failure (a source conflict, a non-fast-forward integration branch, a rejected push) it **exits non-zero with the reason and does not fall back to PR/MR hints** — `merge` means merge (F-012). Use **`auto`** if you want the fallback.
 - **`auto`** — Try the **`merge`** path first; if landing the merge fails, fall back to the PR/MR guidance (**merge pending**) instead of only failing.
+
+**Bookkeeping is resolved, not merged.** Landing a finish never 3-way-merges
+**`roadmap/registry.yaml`**, **`roadmap.md`** or **`roadmap-context.md`**. The
+registry is a keyed collection (one row per active claim) and the other two are
+generated in full, so a line-based merge of any of them can conflict — leaving a
+finish half-done, with the branch pushed and the claim never cleared — or
+succeed while keeping a row a lane had removed. Instead the merge is staged, the
+registry is recomputed as *the integration branch's registry minus the finishing
+node's row*, the two generated files are re-rendered from the merged graph, and
+only then is the merge commit created. Conflicts anywhere else still fail hard.
+This is what makes **concurrent lanes** against one integration branch safe; see
+[grind-session.md](grind-session.md). Merging by hand still means removing your
+own row yourself.
 
 **Precedence for `finish-this-task`:** CLI **`--on-complete`** overrides **`work/.on-complete-<NODE_ID>.yaml`** (written by **`do-next-available-task`** for that task) overrides environment **`SPECY_ROAD_ON_COMPLETE`** overrides **`on_complete`** in this file, else **`pr`**.
 

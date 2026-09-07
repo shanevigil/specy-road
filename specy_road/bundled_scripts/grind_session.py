@@ -26,6 +26,9 @@ from pathlib import Path
 from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
 from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
 from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
+from specy_road.bundled_scripts.grind_session_limits import (
+    resolve_implement_limits,
+)
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_GENERIC,
@@ -204,6 +207,13 @@ def _implement(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int:
             emitter=emitter,
             node_id=ctx["node_id"],
             run_shell=_run_shell,
+            limits=resolve_implement_limits(
+                repo_root,
+                max_limit_waits=args.max_limit_waits,
+                max_limit_wait_hours=args.max_limit_wait_hours,
+                limit_wait_grace_seconds=args.limit_wait_grace_seconds,
+                max_empty_retries=args.max_empty_retries,
+            ),
         )
     return 0 if _wait_for_signal(repo_root, args.ready_signal, args.signal_timeout) else 1
 

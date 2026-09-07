@@ -17,3 +17,8 @@ cleanup_work_artifacts_on_finish: true
 # mode, because pr never merges between cycles and the next pickup cannot see the
 # work the last one finished. See docs/git-workflow.md and docs/grind-session.md.
 on_complete: pr
+# Optional grind-session bounds for a Claude CLI implement hook. CLI flags win.
+# grind_session_max_limit_waits: 3             # waits per leaf before stopping
+# grind_session_max_limit_wait_hours: 6        # ceiling on any one wait
+# grind_session_limit_wait_grace_seconds: 120  # slack after the stated reset
+# grind_session_max_empty_retries: 2           # re-runs when it dies silently

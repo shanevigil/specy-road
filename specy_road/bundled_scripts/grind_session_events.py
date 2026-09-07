@@ -79,6 +79,14 @@ class EventEmitter:
                 f"resets at {fields.get('reset_at')}. Waiting {minutes} min, "
                 f"then resuming (attempt {fields.get('attempt')})."
             )
+        if event == "implementer_vanished":
+            return (
+                f"{prefix}: {node} — the implement command exited "
+                f"{fields.get('rc')} without printing anything, so something "
+                "outside the run killed it. Re-running in "
+                f"{fields.get('retry_in_seconds')}s (attempt "
+                f"{fields.get('attempt')} of {fields.get('max_retries')})."
+            )
         return f"{prefix}: {fields}"
 
 
