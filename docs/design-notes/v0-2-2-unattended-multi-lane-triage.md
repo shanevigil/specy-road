@@ -1,6 +1,6 @@
 # Triage: `v0.2.2` unattended multi-lane report
 
-> **Outcome:** all three findings were fixed in **`v0.3.0`**. See the
+> **Outcome:** all three findings were fixed in **`v0.2.3`**. See the
 > [CHANGELOG](../../CHANGELOG.md) entry for that release.
 
 Assessment of a report written after running `grind-session --implement-mode

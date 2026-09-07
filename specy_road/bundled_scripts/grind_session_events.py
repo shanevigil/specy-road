@@ -8,6 +8,13 @@ Exit codes (documented contract for automations / CI wrappers):
 * 3  blocked on a dependency or gate — human action required
 * 4  --pre-finish-cmd failed
 * 5  pickup (do-next-available-task) register/commit/git failed
+* 6  nothing pickable because this worktree already holds a claim
+
+6 is deliberately not folded into 3. A dependency block needs a human to go do
+something else; an open claim needs ``finish-this-task`` or
+``abort-task-pickup`` and a re-run, which a supervisor can drive unattended.
+Widening 3 to cover both would silently change what it means for the external
+supervisors already built against these codes.
 """
 
 from __future__ import annotations
@@ -21,6 +28,7 @@ EXIT_NO_LEAVES = 2
 EXIT_BLOCKED = 3
 EXIT_PRE_FINISH_FAILED = 4
 EXIT_PICKUP_FAILED = 5
+EXIT_IN_FLIGHT = 6
 
 
 def _now_iso() -> str:
@@ -61,6 +69,10 @@ class EventEmitter:
                 f"{fields.get('count', 0)} leaf/leaves waiting (e.g. on {wait}). "
                 "Human action required."
             )
+        if event == "in_flight":
+            return _human_in_flight(prefix, node, fields)
+        if event == "resumed":
+            return f"{prefix}: {node} -> {fields.get('branch')}"
         if event == "hook_failed":
             return (
                 f"{prefix}: phase={fields.get('phase')} "
@@ -88,6 +100,27 @@ class EventEmitter:
                 f"{fields.get('attempt')} of {fields.get('max_retries')})."
             )
         return f"{prefix}: {fields}"
+
+
+def _human_in_flight(prefix: str, node, fields: dict) -> str:
+    """Why the loop stopped, when the answer is "you already hold a claim".
+
+    Names the node and its branch, because the whole complaint this replaces
+    was that the operator was told to look at a dependency while the actual
+    blocker was a claim of their own sitting one command away from resolution.
+    """
+    lines = [
+        f"{prefix}: nothing pickable — this worktree already holds a claim on "
+        f"{node} ({fields.get('branch') or '?'})."
+    ]
+    others = fields.get("others") or []
+    if others:
+        lines.append(f"  also claimed here: {', '.join(others)}")
+    lines.append(
+        "  finish it (specy-road finish-this-task), release it "
+        "(specy-road abort-task-pickup), or re-run with --resume-in-flight."
+    )
+    return "\n".join(lines)
 
 
 def _human_cleanup(prefix: str, fields: dict) -> str:

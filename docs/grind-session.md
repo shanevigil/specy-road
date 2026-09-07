@@ -128,7 +128,7 @@ Each cycle:
 ```mermaid
 flowchart LR
   plan[compute plan] --> ready{ready leaf?}
-  ready -- no --> blocked[blocked? -> exit 3\nelse no work -> exit 0/2]
+  ready -- no --> blocked[own claim? -> resume or exit 6\nblocked? -> exit 3\nelse no work -> exit 0/2]
   ready -- yes --> pickup[do-next-available-task]
   pickup --> impl[implement: manual signal | hook cmd]
   impl --> pre[pre-finish-cmd?]
@@ -142,6 +142,35 @@ flowchart LR
 Before each pickup the planner re-runs, so the loop **stops at blocked work and
 gates instead of failing a pickup**: if nothing is ready but leaves are blocked
 (dependency or gate), it stops with exit code `3`.
+
+### Blocked, or just already busy?
+
+Running out of ready leaves has two very different causes, and the loop reports
+them separately.
+
+An **open claim of your own** — you picked a leaf up and never finished it — is
+exit `6` and an `in_flight` event naming the node and its branch:
+
+```text
+[grind-session] in_flight: nothing pickable — this worktree already holds a claim on M1.3.2 (feature/rm-tradelog-rest-complete).
+  finish it (specy-road finish-this-task), release it (specy-road abort-task-pickup), or re-run with --resume-in-flight.
+```
+
+A **dependency or gate block** is exit `3`, and genuinely needs a human to go
+and complete something else first.
+
+The two are checked in that order, and the order matters: they are not mutually
+exclusive. Every leaf downstream of your in-flight one is blocked *on it*, so in
+a normal grind both buckets are non-empty at the moment the loop stops, and only
+the claim tells you what to do next.
+
+**`--resume-in-flight`** turns the first case into a resumed cycle: the branch is
+checked out, the brief and prompt are restored if they went missing, and the leaf
+goes straight to implement and finish without a second pickup. Only claims
+registered to a branch that **exists in this clone** qualify. A claim held by
+another lane reaches `active` through the shared registry or an *In Progress*
+status, and resuming one would put two implementers on the same node — so those
+are reported, never resumed.
 
 ### Implement modes
 
@@ -291,13 +320,14 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | `3` | Blocked on a dependency or gate — human action required |
 | `4` | `--pre-finish-cmd` failed |
 | `5` | Pickup (`do-next-available-task`) register/commit/git failed |
+| `6` | Nothing pickable because **this worktree already holds a claim** |
 
 ## JSON events (`--json`)
 
-One JSON object per line. `event` is one of: `plan`, `picked`, `implementing`,
-`pre_finish`, `finished`, `blocked`, `hook_failed`, `stopped`, `cleanup`,
-`usage_limited`, `implementer_vanished`. Every event carries `ts`, UTC to the second, right after
-`event`.
+One JSON object per line. `event` is one of: `plan`, `picked`, `resumed`,
+`implementing`, `pre_finish`, `finished`, `blocked`, `in_flight`, `hook_failed`,
+`stopped`, `cleanup`, `usage_limited`, `implementer_vanished`. Every event carries
+`ts`, UTC to the second, right after `event`.
 
 **stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
 banner, the finish log, git — is redirected to **stderr**, so the stream stays
@@ -307,6 +337,7 @@ parseable as JSONL. Redirect stderr to a file if you want to keep it.
 {"event":"picked","ts":"2026-09-06T12:00:04Z","node_id":"M10.2","branch":"feature/rm-vault-mcp-secrets","brief":"work/brief-M10.2.md","prompt":"work/prompt-M10.2.md"}
 {"event":"finished","ts":"2026-09-06T12:31:18Z","node_id":"M10.2"}
 {"event":"blocked","ts":"2026-09-06T12:31:20Z","reason":"dependency","waiting_on":["M10.5"],"count":1,"node_id":"M11.1"}
+{"event":"in_flight","ts":"2026-09-06T12:31:20Z","node_id":"M1.3.2","codename":"tradelog-rest-complete","branch":"feature/rm-tradelog-rest-complete","count":1,"others":[]}
 {"event":"stopped","ts":"2026-09-06T12:31:20Z","reason":"until_reached","node_id":"M11.6"}
 {"event":"usage_limited","ts":"2026-09-06T12:10:05Z","node_id":"M10.2","reset_at":"2026-09-06T23:20:00Z","wait_seconds":40620,"attempt":1}
 {"event":"implementer_vanished","ts":"2026-09-06T12:12:00Z","node_id":"M10.2","rc":137,"attempt":1,"max_retries":2,"retry_in_seconds":30}

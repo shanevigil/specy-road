@@ -28,6 +28,15 @@ def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
             "scopes to its subtree; a single leaf id targets exactly that leaf."
         ),
     )
+    p.add_argument(
+        "--resume-in-flight", action="store_true",
+        help=(
+            "When nothing is ready because this worktree already holds a claim,\n"
+            "check that branch out and implement/finish it instead of stopping\n"
+            "with exit 6. Only claims registered to a branch that exists locally\n"
+            "qualify: a claim held by another clone is never resumed."
+        ),
+    )
     p.add_argument("--max-leaves", type=int, default=None, metavar="N",
                    help="Stop after N successful finish cycles.")
     p.add_argument("--max-cycles", type=int, default=100, metavar="N",
