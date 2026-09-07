@@ -11,6 +11,72 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+Responds to a consumer evaluation of `v0.2.3rc1` run against a multi-agent
+application repo with `on_complete: pr`. One defect, one guard, and the
+documentation for three things the report got wrong — each of which had cost
+the evaluator a wrong turn, which makes them documentation defects rather than
+user error.
+
+### Fixed
+
+- **A leaf finished on an unmerged feature branch is no longer offered again.**
+  Pickup's only defence against claiming such a leaf twice was its registry
+  row, and the row is the part most likely to be gone: `abort-task-pickup`
+  removes it, F-014 self-heal removes it, and a hand-edited registry can drop
+  it. Every one of those paths leaves the **branch**, so the branch tip is the
+  durable record that the work was done. Selection now reads
+  `feature/rm-<codename>` — local head preferred over its remote-tracking ref,
+  since a finish commits before it pushes — and skips any candidate the tip
+  already marks `Complete`, naming the branch and what to do about it. Not
+  specific to `pr`: a node's own tier comes from its status in the
+  integration-branch graph, never from the `status_overrides` that carry
+  feature-tip Complete, so no mode consulted the tip for the finished node
+  itself. `pr` only makes the window easy to reach, because the gap between
+  finished and merged is a human review.
+- **Registration refuses to write a second row for a node it already holds.**
+  Selection filtered claimed leaves by `node_id` while finish, abort and
+  self-heal all remove rows by `codename`. Neither spelling checked the other,
+  so a registry could end up holding one leaf twice — which reads as two lanes
+  owning it. Both are checked before the row is written.
+
+### Changed
+
+- **`grind-session --plan` names the leaf pickup would claim.** `ready` is the
+  pickup queue, but the report only rendered wave 0's batch and the id-sorted
+  waves, so "what does the loop take next" had to be inferred and was read as a
+  disagreement between the two commands. The plan now prints **`Next
+  auto-pick`** with the exact `do-next-available-task` invocation, and says
+  plainly that it is a snapshot of the local tree while pickup syncs first —
+  the actual reason the two can differ.
+- **`finish-this-task` spells out the state `on_complete: pr` leaves behind.**
+  The node is `Complete` and the claim released on the feature branch while the
+  integration branch shows neither, which is correct under F-007 and
+  indistinguishable from *unclaimed* if you only look at the integration
+  branch. Finish now reports both sides, says the row is what keeps the leaf off
+  the available list, and warns that `abort-task-pickup` would delete the branch
+  the work lives on.
+
+### Documentation
+
+- **Installing a release candidate**, in
+  [`docs/install-and-usage.md`](docs/install-and-usage.md) where adopters
+  actually look — the recipe previously existed only in the maintainer release
+  runbook and in per-release CHANGELOG smoke snippets. Covers that `--pre` is
+  **not** needed for an exact prerelease pin (only for asking after the latest
+  one), that `uv pip` needs `--index-strategy unsafe-best-match` because uv
+  considers only the first index carrying a package at all, that the flag
+  relaxes dependency-confusion protection for the whole resolution and so
+  belongs in a throwaway environment, and that `uv venv` / `uv sync` produce a
+  virtualenv with no pip (`python -m ensurepip --upgrade`).
+- **Why the plan and the pickup can look like they disagree**, in
+  [`docs/grind-session.md`](docs/grind-session.md): snapshot versus synced
+  state, repo-wide outline order versus a scoped `--under`, and `waves` being
+  id-sorted while `ready` and `parallel_batches` are in claim order.
+- **What `on_complete: pr` leaves behind**, in
+  [`docs/git-workflow.md`](docs/git-workflow.md), as a two-column table of the
+  feature branch against the integration branch, with the two things not to do
+  while a PR is open.
+
 ## [v0.2.3-rc1] - 2026-09-07
 
 First prerelease for v0.2.3. Routed to TestPyPI by

@@ -36,6 +36,15 @@ override_limits:
     file_globs:
       - "docs/release-runbook.md"
     max_lines_per_file: 900
+  # Reference for one command whose surface keeps growing: plan buckets, the
+  # loop, implement/pre-finish hooks, stop conditions, exit codes and the JSON
+  # event stream all have to be documented where an operator reads about
+  # `grind-session`. It sat one line under the 400 cap, so the plan-versus-
+  # pickup section that a consumer evaluation asked for did not fit.
+  - name: grind_session_reference
+    file_globs:
+      - "docs/grind-session.md"
+    max_lines_per_file: 500
 
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500

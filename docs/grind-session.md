@@ -63,6 +63,21 @@ classification plus a dependency **wave** layout. No git, no pickup.
 - **`gated`** / **`gates_open`** — leaves stuck behind an open human gate, and
   the gate ids that need a PM decision.
 
+### When the plan and the pickup seem to disagree
+
+`ready` **is** the pickup queue — one function, so the *set* cannot drift — and
+`--plan` prints its head as **`Next auto-pick`**. When the two still look
+different, it is scope or timing rather than disagreement:
+
+- **The plan is a snapshot; pickup syncs first.** `--plan` reads your local
+  working tree, while `do-next-available-task` fetches and fast-forwards the
+  integration branch before selecting. A leaf shown **in flight** becomes the
+  next pick once its claim is released.
+- **Pickup without `--under` is repo-wide**, in roadmap outline order, so an
+  earlier milestone wins over a later one even when both are ready. Pass the
+  same `--under` to both, or pick by number with `--interactive`. There is no
+  "prefer this subtree" flag: outline order is the delivery order by design.
+
 ### Orchestration pattern (sub-agents)
 
 The planner is designed so a parent agent can parallelize without trial and
