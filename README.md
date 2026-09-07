@@ -35,6 +35,7 @@ More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review**
 1. Pick up work with **`specy-road do-next-available-task`**, or **`specy-road brief <NODE_ID>`** for a specific node ([docs/dev-workflow.md](docs/dev-workflow.md)).
 2. Finish with **`specy-road finish-this-task`**, then land changes with your team’s PR process ([docs/git-workflow.md](docs/git-workflow.md)).
 3. Run many leaves (or plan sub-agent batches) with **`specy-road grind-session`** — orchestrates pickup→implement→finish, and **`--plan`** reports ready/blocked leaves and dependency waves ([docs/grind-session.md](docs/grind-session.md)).
+4. When something will not start, ask **`specy-road why-blocked <NODE_ID>`** for the transitive chain of unmet dependencies, or **`specy-road list-gates`** for the gates still holding work back ([docs/grind-session.md](docs/grind-session.md#asking-about-one-node-why-blocked-list-gates)).
 
 ## Install
 

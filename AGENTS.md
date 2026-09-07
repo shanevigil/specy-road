@@ -30,6 +30,12 @@ For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/
 
 If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.
 
+## Version numbers (human-owned)
+
+Do **not** choose, bump, or retarget a toolkit version unless the user has stated the exact number in this conversation. That includes `pyproject.toml` `project.version`, `CHANGELOG.md` `## [v…]` headings, git tags, `WIP/improvements-x-y-z` names, and `chore/release-v*` branches.
+
+When a bump appears needed: stop, highlight **published PyPI version**, **declared checkout version**, **latest git tag**, and (optionally) a **proposed** next version, then wait. Patch vs minor vs major is not the agent's call. Cursor agents: [`.cursor/rules/027-version-numbers-require-human.mdc`](.cursor/rules/027-version-numbers-require-human.mdc).
+
 ## Cutting a release
 
 When the user asks to publish (RC or final), follow [`docs/release-runbook.md`](docs/release-runbook.md) verbatim. Do **not** improvise. Two examples:
@@ -37,4 +43,4 @@ When the user asks to publish (RC or final), follow [`docs/release-runbook.md`](
 - *"Publish v0.2.0-rc1 to TestPyPI"* → runbook §A (RC flow). Tag form `v0.2.0-rc1`; pyproject `0.2.0rc1`; routes to TestPyPI.
 - *"Publish v0.2.0 to PyPI"* → runbook §B (final flow). Tag form `v0.2.0`; pyproject `0.2.0`; routes to PyPI; back-merge to `dev` is mandatory.
 
-The user owns these runbook §2 steps: the **manual tag re-push** when `RELEASE_TAG_TOKEN` is unset (footgun ④), the **`pypi` environment approval** on finals (footgun ⑨), and the **live-on-(Test)PyPI confirmation**. The agent prints the exact commands and waits. Check whether 2.12 / 2.12a apply before starting — see the runbook matrix.
+The user owns these runbook §2 steps: **choosing the exact version/tag (2.2)**, the **manual tag re-push** when `RELEASE_TAG_TOKEN` is unset (footgun ④), the **`pypi` environment approval** on finals (footgun ⑨), and the **live-on-(Test)PyPI confirmation**. The agent prints the exact commands and waits. Check whether 2.12 / 2.12a apply before starting — see the runbook matrix.

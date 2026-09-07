@@ -193,6 +193,14 @@ When something goes wrong mid-pickup, specy-road auto-rolls-back the stale
 registry claim (F-014). If the auto-rollback itself fails, follow the
 printed instructions or run `specy-road abort-task-pickup --force`.
 
+One case is deliberately **not** a rollback: if the feature branch already
+exists, pickup checks it out instead of creating it, and keeps the claim. A
+branch outlives its claim whenever a claim is released without deleting the
+branch — a crashed finish, a hand-edited registry — and rolling back there put
+the node straight back on the available list with the branch still in the way,
+so the next pickup failed the same way forever. The command says so when it
+happens, and tells you how far behind the integration branch you are.
+
 ---
 
 ## Everyday workflow (GUI)

@@ -10,7 +10,7 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 
 `do-next-available-task` considers **effective** dependencies (each leaf’s explicit `dependencies` plus prerequisites listed on **ancestors**), matching the PM Gantt. A dependency on a **phase or milestone** is satisfied when that node’s leaf descendants are all `Complete` — the same **F-013 rollup** `roadmap.md` displays — not when its own `status` field says so, so a finished phase never silently blocks the work downstream of it. A **`type: gate`** node is never a pickup target; PMs clear a scoped hold by marking that Gate **Complete** (see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate)).
 
-**Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism.
+**Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism. Outline order is **delivery** order, not the order you would choose to *design* in: to cut a seam first, pick by number with **`--interactive`** or scope with **`--under <NODE_ID>`**. `grind-session --plan` reports dependency **waves**, which is what can run in parallel — not the order auto-pick will walk.
 
 ## Quick reference
 
@@ -25,6 +25,7 @@ specy-road finish-this-task         # complete, validate, export, digest, commit
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
 specy-road export                   # regenerate roadmap.md
+specy-road why-blocked <NODE_ID>    # why one node is not pickable; specy-road list-gates for open gates
 
 #Optional:
 specy-road do-next-available-task --interactive   # choose task by number (same git steps)

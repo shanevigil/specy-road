@@ -161,6 +161,9 @@ def test_rebuild_starts_from_nothing(repo: Path) -> None:
 
 
 def test_an_unwritable_cache_location_degrades_to_no_results(repo: Path) -> None:
+    # The fixture is copied wholesale, so it carries a .specyrd/ left behind by
+    # any maintainer who ran a CLI command with --repo-root pointed at it.
+    shutil.rmtree(repo / ".specyrd", ignore_errors=True)
     (repo / ".specyrd").write_text("this is a file, not a directory", encoding="utf-8")
 
     assert refresh(repo) is None

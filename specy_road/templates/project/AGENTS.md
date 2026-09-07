@@ -47,4 +47,16 @@ Three selection rules that are easy to read backwards:
 - **`execution_milestone` (`Human-led` / …) is advisory.** It documents intent; it does not gate pickup. `type: gate` is the enforcing mechanism.
 - **A dependency on a phase or milestone is satisfied by its rollup** — every leaf descendant `Complete` — not by that node's own `status` field.
 
-After Blocked and MR-rejected, auto-pick follows **outline (tree) order**, not raw merged chunk order (`docs/roadmap-authoring.md`).
+After Blocked and MR-rejected, auto-pick follows **outline (tree) order**, not raw merged chunk order (`docs/roadmap-authoring.md`). That is delivery order, not the order you would choose to *design* in — if you want to cut a seam first, use `--interactive` to choose by number, or `--under <NODE_ID>` to scope to one subtree.
+
+**Running many leaves:** do not hand-roll an orchestrator around `do-next-available-task`. **`specy-road grind-session`** already runs the loop — pickup → implement → optional pre-finish check → `finish-this-task` — with stable exit codes and `--json` events, and it never edits the registry itself.
+
+```bash
+specy-road grind-session --plan                 # read-only: ready/blocked leaves, dependency waves
+specy-road grind-session --on-complete merge \
+    --implement-mode hook --implement-cmd '<your agent command>'
+```
+
+**Hook mode** is how an agent plugs in. Each cycle runs `--implement-cmd` once with `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`, `SPECY_ROAD_PROMPT` and `SPECY_ROAD_REPO_ROOT` in the environment; a non-zero exit stops the session rather than finishing a leaf that failed. Without it (`--implement-mode manual`, the default) the loop waits for a ready-signal file between cycles.
+
+**When nothing is pickable:** exit `3` is a real dependency or gate block and needs a human elsewhere. Exit `6` means this clone already holds a claim — finish it, `specy-road abort-task-pickup`, or re-run with `--resume-in-flight`. Ask about one node with **`specy-road why-blocked <NODE_ID>`**, or list what gates are holding work with **`specy-road list-gates`**. See `docs/grind-session.md`.

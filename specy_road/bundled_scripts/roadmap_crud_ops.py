@@ -110,6 +110,7 @@ def cmd_list(args: object) -> None:
     root = repo_root(args)
     merged = load_roadmap(root)["nodes"]
     chunk_map = build_node_chunk_map(root)
+    wanted = {s.lower() for s in (getattr(args, "status", None) or [])}
     print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
     for n in sorted(merged, key=lambda x: natural_id_sort_key(x["id"])):
         nid = n["id"]
@@ -118,6 +119,8 @@ def cmd_list(args: object) -> None:
         title = str(n.get("title", ""))[:60]
         own = str(n.get("status", ""))
         rollup = str(n.get("rollup_status") or own)
+        if wanted and rollup.lower() not in wanted:
+            continue
         print(
             f"{nid:12}  {n.get('type', ''):10}  "
             f"{own:12}  {rollup:12}  {title}  [{rel}]",

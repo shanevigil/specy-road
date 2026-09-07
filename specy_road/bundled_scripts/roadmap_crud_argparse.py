@@ -25,6 +25,18 @@ from specy_road.runtime_paths import add_repo_root_arg
 
 def _p_list(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser("list-nodes", help="List all nodes with chunk path")
+    sp.add_argument(
+        "--status",
+        action="append",
+        choices=sorted(ROADMAP_NODE_STATUSES),
+        metavar="STATUS",
+        help=(
+            "Keep only nodes with this ROLLUP status — what roadmap.md and the "
+            "PM GUI show, which for a parent is rolled up from its leaves rather "
+            "than read off its own field. Repeatable. One of: "
+            + ", ".join(sorted(ROADMAP_NODE_STATUSES))
+        ),
+    )
     sp.set_defaults(func=cmd_list)
 
 

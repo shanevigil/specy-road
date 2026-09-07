@@ -1,0 +1,32 @@
+---
+description: Version and tag numbers are a human decision; highlight and wait
+alwaysApply: true
+---
+
+# Version / tag numbers require an explicit human choice
+
+Never choose, bump, or retarget a toolkit version on your own. That includes:
+
+- [`pyproject.toml`](../../pyproject.toml) `[project] version`
+- `## [vX.Y.Z]` headings in [`CHANGELOG.md`](../../CHANGELOG.md)
+- git tags, `chore/release-v*` branches, and `WIP/improvements-x-y-z` names
+- prose that treats an unpublished checkout as a released version
+
+Patch vs minor vs major is **not** the agent's call. Chat history, “this feels like a minor,” or matching a WIP branch name is not approval.
+
+## When a number is needed
+
+Stop. Print a highlighted block, then wait for the user to reply with the exact version/tag:
+
+```text
+VERSION DECISION NEEDED
+- Published on PyPI: <pip index / pypi.org>
+- Declared in this checkout (`pyproject.toml`): <project.version>
+- Git tags on this clone: <latest v* tag>
+- Proposed next (optional, not chosen): <X.Y.Z or vX.Y.Z-rcN>
+Please confirm the exact version/tag. I will not edit version files until you reply with the number.
+```
+
+Do not edit those files, create the tag/branch, or proceed with a release until the reply contains the number.
+
+The user stating a number in this conversation **is** approval for that number only (example: “work on 0.2.3”).

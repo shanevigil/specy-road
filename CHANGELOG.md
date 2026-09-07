@@ -11,6 +11,149 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+Responds to a second consumer report, written after a day-long milestone grind
+(M1 through a human gate at M2.14) driven by many short-lived agents against one
+roadmap. Full analysis, including the two items deliberately not acted on, in
+[`docs/design-notes/v0-2-2-milestone-grind-triage.md`](docs/design-notes/v0-2-2-milestone-grind-triage.md).
+
+One behaviour change to know about before upgrading: `finish-this-task` now
+**refuses** to close a node whose branch changed nothing under its declared
+`touch_zones`. See *Added* below for the escape hatches.
+
+### Fixed
+
+- **An open claim of your own is no longer reported as a dependency block.**
+  `grind-session` checked its blocked bucket and never consulted its active one,
+  so a leaf you had picked up and not finished came back as *"12 leaves
+  waiting… Human action required"* while `--plan` listed it as in flight. The
+  ordering was the bug, and reordering alone would not have fixed it: the two
+  buckets are not mutually exclusive, because every leaf downstream of the
+  in-flight one is blocked *on it*. An own claim now emits an `in_flight` event
+  naming the node and its branch, and exits **6** — a new code rather than a
+  wider meaning for 3, since external supervisors are built on these.
+- **An existing feature branch resumes a pickup instead of rolling it back.**
+  `git checkout -b` failing with *"a branch named … already exists"* raised into
+  the F-014 rollback, which strips the claim the same pickup had just
+  registered: the node went back on the available list with the branch still in
+  the way, and the next pickup failed identically — a loop with no exit. A
+  branch outlives its claim whenever a claim is released without deleting the
+  branch, and in those cases the branch is the work. Pickup now checks it out,
+  keeps the row, and reports how far behind integration it is. Rollback is
+  unchanged for a failed push or a checkout blocked by a dirty tree.
+- **Touch-zone warnings no longer flood every command.** The check repeated two
+  identical sentences of guidance per drifted node, inside `validate`, which
+  runs inside every pickup, edit and finish — five drifted nodes put nineteen
+  lines in front of every command. Now one header, one line per node, and the
+  guidance once.
+
+### Added
+
+- **`specy-road why-blocked <NODE_ID>`** — why one node is not pickable, without
+  rendering a whole session plan. Walks unmet dependencies **transitively**,
+  which `--plan` does not: its `waiting_on` lists only immediate ones, and the
+  item worth working is usually two or three hops down. Also covers the reasons
+  that are not dependencies — an open gate, an existing claim and the branch
+  holding it, a container node, a missing codename. Exits `1` when blocked or
+  gated, `0` when pickable or closed, `2` for an unknown id; `--json` for the
+  same answer as a structure.
+- **`specy-road list-gates`** — gate nodes that are not `Complete`, and what
+  each blocks. `--under <NODE_ID>` scopes by the **work being blocked**, not by
+  where the gate is defined, because a phase is routinely held by a gate that
+  lives elsewhere in the graph.
+- **`specy-road list-nodes --status STATUS`** (repeatable) — filters on the
+  `ROLLUP` column, the one `roadmap.md` and the PM GUI show.
+- **`grind-session --resume-in-flight`** — turns exit 6 into a resumed cycle:
+  checks the branch out, restores the brief and prompt if they went missing, and
+  goes straight to implement and finish without a second pickup. Only claims
+  registered to a branch that **exists in this clone** qualify; a claim held by
+  another lane is reported, never resumed.
+- **`finish-this-task` refuses a branch that implemented nothing.** Closing a
+  node whose branch changes no file under its declared `touch_zones`, measured
+  against the merge base with integration, now fails instead of marking the node
+  `Complete` with nothing behind it. Controlled by
+  **`require_implementation_before_finish`** in `roadmap/git-workflow.yaml`
+  (**defaults `true`**) and **`--allow-empty-implementation`** per run. Skipped
+  entirely when a node declares no zones — they are optional — or when git
+  cannot compute the diff.
+- **An unknown command suggests the right one.** `specy-road grind` now points
+  at `grind-session`. Prefix matches are offered ahead of `difflib`, which on
+  its own scores that pair at 0.55 and would suggest nothing.
+
+### Changed
+
+- **Pickup points at the loop it belongs to.** `grind-session` and its hook
+  contract were documented only in `docs/grind-session.md`, which nothing on the
+  pickup path linked to, so operators hand-rolled orchestration and never
+  adopted the hook. The post-pickup footer now names the loop, the hook flags
+  and the `SPECY_ROAD_*` env contract; the scaffolded `AGENTS.md` carries the
+  same pointer plus the exit-3-versus-exit-6 distinction. Suppressed inside a
+  running loop, which exports `SPECY_ROAD_GRIND_SESSION`.
+- **Auto-pick order is documented as delivery order.** `--plan`'s waves report
+  what can run in parallel, which was read as a pick order it never was.
+  `--interactive` and `--under` are how you cut a seam first.
+
+## [v0.2.3] - 2026-09-07
+
+Responds to a report written after running two parallel `grind-session` lanes —
+separate clones, one roadmap phase each, one integration branch — unattended
+overnight for about six hours and a dozen leaves. Three findings, all fixed.
+Full analysis in
+[`docs/design-notes/v0-2-2-unattended-multi-lane-triage.md`](docs/design-notes/v0-2-2-unattended-multi-lane-triage.md).
+
+    pip install --upgrade specy-road
+
+No migration needed, and no change to any file format. The four new
+`grind_session_*` settings in `roadmap/git-workflow.yaml` are optional.
+
+### Fixed
+
+- **Concurrent lanes can finish against one integration branch.** Landing a
+  finish no longer 3-way-merges `roadmap/registry.yaml`, `roadmap.md` or
+  `roadmap-context.md`. The registry is a keyed collection — one row per active
+  claim — and the other two are generated in full, so a line-based merge either
+  conflicted, leaving the finish half-done with the branch pushed and the claim
+  never cleared from shared truth, or succeeded while keeping a row a lane had
+  removed. The merge is now staged, the registry recomputed as *the integration
+  branch's registry minus the finishing node's row*, the two generated files
+  re-rendered from the merged graph, and only then is the merge commit created.
+  Conflicts anywhere else still fail hard, with the F-012 wording unchanged.
+  The milestone rollup path, which cherry-picks bookkeeping, is fixed the same
+  way. One consequence to expect: the feature merge is now always a merge
+  commit, never a fast-forward, because a fast-forward leaves nowhere to record
+  the resolved registry.
+- **`grind-session` resumes the command you actually wrote.** A Claude implement
+  hook was rebuilt through `shlex.split` + `shlex.quote` before `--resume` was
+  added, which round-trips *text* rather than shell syntax. The invocation the
+  docs recommend — `claude -p "$(cat "$SPECY_ROAD_PROMPT")"` — came back as the
+  single-quoted literal `'$(cat $SPECY_ROAD_PROMPT)'`, so a session resumed
+  after a usage limit was handed 26 characters of shell source as its task,
+  exited 0, and looked like ordinary work. The first attempt always ran the
+  original string, so only a genuine overnight resume was ever affected.
+  `--resume` is now spliced in behind the executable and the rest of the line
+  copied byte for byte.
+- **`docs/git-workflow.md` described the pre-F-012 `merge` behaviour.** The
+  `on_complete: merge` bullet still said a failure exits with "merge pending"
+  and the same PR/MR hints as `pr`, which is exactly the fallback F-012
+  removed.
+
+### Added
+
+- **`grind-session` survives an implementer killed from outside.** A Claude hook
+  whose process tree is killed before it prints anything (an OOM kill, a machine
+  that slept, a closed terminal) exited with a signal code and no output, which
+  read as an ordinary task failure and ended the unattended run. That exact
+  shape — empty output *and* a signal-shaped exit code — is now a distinct
+  bounded category: up to two re-runs with a linear backoff, a new
+  `implementer_vanished` JSON event, and a fresh run rather than a guessed
+  `--resume`, since with no output there is no session id to trust. A task that
+  fails and says why still stops the run on the first attempt.
+- **The Claude wait bounds are tunable.** `--max-limit-waits`,
+  `--max-limit-wait-hours`, `--limit-wait-grace-seconds` and
+  `--max-empty-retries`, each also settable as a `grind_session_*` key in
+  `roadmap/git-workflow.yaml` (the CLI flag wins). A plan whose limit resets on
+  an 8-hour cadence used to hit the hardcoded 6h ceiling and stop the run rather
+  than wait the extra two hours.
+
 ## [v0.2.2] - 2026-09-06
 
 Patch release responding to a consumer report written after running four real

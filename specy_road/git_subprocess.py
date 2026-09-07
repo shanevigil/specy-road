@@ -148,6 +148,25 @@ def git_checked(
     return r.out.strip()
 
 
+def local_branch_exists(repo_root: Path, branch: str) -> bool:
+    """Whether ``branch`` is present in this clone as a local ref."""
+    r = run(["rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], repo_root)
+    return r.ok
+
+
+def commits_behind(repo_root: Path, branch: str, base: str) -> int | None:
+    """How many commits ``base`` has that ``branch`` does not, or ``None``.
+
+    ``None`` means the question could not be answered — no such ref, not a
+    worktree — which callers treat as "say nothing" rather than "zero".
+    """
+    out = git_text(["rev-list", "--count", f"{branch}..{base}"], repo_root)
+    try:
+        return int(out) if out else None
+    except ValueError:
+        return None
+
+
 def is_git_worktree(repo_root: Path) -> bool:
     """Whether ``repo_root`` is inside a git worktree."""
     return (git_text(["rev-parse", "--is-inside-work-tree"], repo_root) or "").lower() == "true"

@@ -6,12 +6,23 @@ integration_branch did not exist locally). This module now validates the
 integration branch ref **before** any state-changing git operations and
 returns a structured error so the caller can surface a hard failure instead
 of misleading PR instructions.
+
+Registry and generated files are resolved, not merged. ``roadmap/registry.yaml``
+is a keyed collection and ``roadmap.md`` / ``roadmap-context.md`` are generated
+in full, so a line-based 3-way merge of any of them can conflict -- leaving a
+finish half-done -- or succeed while keeping a claim row both lanes removed. The
+merge is therefore staged, those three paths are recomputed from the integration
+branch plus the merged graph, and only then is the merge commit created. See
+:mod:`specy_road.finish_land_deterministic`.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.finish_land_deterministic import (
+    merge_feature_deterministically,
+)
 from specy_road.git_subprocess import git_code
 
 
@@ -81,11 +92,14 @@ def land_merge_feature_into_integration(
                 f"(sync the integration branch locally, then retry): {out}",
             )
 
-    code, out = git_code(["merge", "--no-edit", feature_branch], repo)
-    if code != 0:
-        git_code(["merge", "--abort"], repo)
+    ok, out = merge_feature_deterministically(
+        repo,
+        integration_branch=integration_branch,
+        feature_branch=feature_branch,
+    )
+    if not ok:
         git_code(["checkout", feature_branch], repo)
-        return False, f"git merge {feature_branch} into {integration_branch} failed: {out}"
+        return False, out
 
     code, out = git_code(["push", remote, integration_branch], repo)
     if code != 0:
