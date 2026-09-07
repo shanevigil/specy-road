@@ -25,6 +25,7 @@ specy-road finish-this-task         # complete, validate, export, digest, commit
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
 specy-road export                   # regenerate roadmap.md
+specy-road why-blocked <NODE_ID>    # why one node is not pickable; specy-road list-gates for open gates
 
 #Optional:
 specy-road do-next-available-task --interactive   # choose task by number (same git steps)

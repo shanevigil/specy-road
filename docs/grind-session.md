@@ -145,9 +145,7 @@ gates instead of failing a pickup**: if nothing is ready but leaves are blocked
 
 ### Blocked, or just already busy?
 
-Running out of ready leaves has two very different causes, and the loop reports
-them separately.
-
+Running out of ready leaves has two very different causes, reported separately.
 An **open claim of your own** — you picked a leaf up and never finished it — is
 exit `6` and an `in_flight` event naming the node and its branch:
 
@@ -161,16 +159,43 @@ and complete something else first.
 
 The two are checked in that order, and the order matters: they are not mutually
 exclusive. Every leaf downstream of your in-flight one is blocked *on it*, so in
-a normal grind both buckets are non-empty at the moment the loop stops, and only
-the claim tells you what to do next.
+a normal grind both buckets are non-empty when the loop stops, and only the claim
+tells you what to do next.
 
 **`--resume-in-flight`** turns the first case into a resumed cycle: the branch is
 checked out, the brief and prompt are restored if they went missing, and the leaf
 goes straight to implement and finish without a second pickup. Only claims
-registered to a branch that **exists in this clone** qualify. A claim held by
+registered to a branch that **exists in this clone** qualify — a claim held by
 another lane reaches `active` through the shared registry or an *In Progress*
-status, and resuming one would put two implementers on the same node — so those
-are reported, never resumed.
+status, and resuming one would put two implementers on the same node.
+
+### Asking about one node (`why-blocked`, `list-gates`)
+
+`--plan` answers for the whole session; these two answer narrower questions
+without rendering the plan and reading it back.
+
+**`specy-road why-blocked <NODE_ID>`** explains why one node is not pickable.
+Unlike the plan's `waiting_on`, which lists only immediate dependencies, it walks
+the chain **transitively** — the item actually worth working is usually two or
+three hops down — and covers the reasons that are not dependencies at all: an
+open gate, an existing claim (naming the branch holding it), a container node
+that is never picked up directly, or a missing codename.
+
+```text
+M2.4 is waiting on 1 unmet dependency/dependencies.
+
+waiting on:
+  - M2.3 [Not Started] Ledger export
+    - M2.1 [In Progress] Trade log REST — claimed on feature/rm-tradelog-rest
+```
+
+It exits `1` when the node really is blocked or gated, `0` when it is pickable or
+already closed, and `2` for an unknown id, so a supervisor can branch on the
+answer without parsing prose. `--json` returns the same structure.
+
+**`specy-road list-gates`** lists gate nodes that are not `Complete` and what each
+blocks. `--under <NODE_ID>` scopes by the **work being blocked**, not by where the
+gate is defined, because a phase is routinely held by a gate defined elsewhere.
 
 ### Implement modes
 
