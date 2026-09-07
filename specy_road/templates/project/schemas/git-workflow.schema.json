@@ -27,6 +27,10 @@
       "type": "boolean",
       "description": "When true, finish-this-task requires a human-approved implementation review in registry.yaml and work/implementation-summary-<NODE_ID>.md before closing the task."
     },
+    "require_implementation_before_finish": {
+      "type": "boolean",
+      "description": "When true (default if omitted), finish-this-task refuses to close a node whose branch changes no file under its declared touch_zones. Skipped when the node declares no zones, or when git cannot compute the diff. CLI --allow-empty-implementation overrides it per run."
+    },
     "cleanup_work_artifacts_on_finish": {
       "type": "boolean",
       "description": "When true (default if omitted), finish-this-task removes work/brief-, work/prompt-, and work/implementation-summary- for the node after validate/export."

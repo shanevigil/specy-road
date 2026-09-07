@@ -125,6 +125,16 @@ def require_implementation_review_before_finish(repo_root: Path) -> bool:
     return _flag(repo_root, "require_implementation_review_before_finish", default=False)
 
 
+def require_implementation_before_finish(repo_root: Path) -> bool:
+    """True unless ``require_implementation_before_finish`` is explicitly false.
+
+    Defaults **on**, unlike the review gate next door, because it needs no human
+    in the loop and the failure it catches is silent: a node marked Complete with
+    nothing behind it looks exactly like a node that shipped.
+    """
+    return _flag(repo_root, "require_implementation_before_finish", default=True)
+
+
 def cleanup_work_artifacts_on_finish(repo_root: Path) -> bool:
     """True unless ``cleanup_work_artifacts_on_finish`` is explicitly false."""
     return _flag(repo_root, "cleanup_work_artifacts_on_finish", default=True)
@@ -252,6 +262,7 @@ def integration_refs_present(
 _STATUS_FIELDS: tuple[tuple[str, type], ...] = (
     ("merge_request_requires_manual_approval", bool),
     ("require_implementation_review_before_finish", bool),
+    ("require_implementation_before_finish", bool),
     ("cleanup_work_artifacts_on_finish", bool),
     ("on_complete", str),
 )
