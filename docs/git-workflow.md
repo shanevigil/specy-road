@@ -126,6 +126,19 @@ The **registration commit** contains **only** the registry update (or equivalent
 
 Only **after** registration (and branching) should you add implementation commits on the feature branch.
 
+### Releasing a claim whose branch is gone (`registry-prune`)
+
+**`abort-task-pickup`** is the command for releasing a claim you still hold: it runs from **`feature/rm-<codename>`**, deletes that branch, and cleans `work/`. It cannot help once the branch no longer exists, because it refuses to run anywhere else.
+
+**`specy-road registry-prune`** covers that case. With no arguments it lists registry rows whose **`feature/rm-*`** branch is absent from your clone. **`--remove <CODENAME>`** (repeatable) drops the named rows, commits on the integration branch and pushes — the same way registration published them.
+
+```bash
+specy-road registry-prune                            # report only
+specy-road registry-prune --remove trash-soft-delete # drop one, commit, push
+```
+
+**The report is advisory, and removal is never inferred from it.** Pickup pushes the *registry* and then creates the feature branch **locally, without pushing it**, so a perfectly healthy claim held by another clone is indistinguishable from an orphan when viewed from yours. That is why F-014 only warns, why this command lists rather than prunes, and why every removal has to name a codename. Confirm the lane is really gone before removing its row. If the branch is still in your clone, `registry-prune` refuses and points you at `abort-task-pickup`.
+
 ## While working
 
 - Stay within declared **touch zones** unless explicitly expanding scope with team agreement.
