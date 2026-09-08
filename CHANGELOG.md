@@ -11,6 +11,15 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.3-rc2] - 2026-09-07
+
+Second prerelease for v0.2.3. Routed to TestPyPI by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.2.3rc2
+
 Responds to a consumer evaluation of `v0.2.3rc1` run against a multi-agent
 application repo with `on_complete: pr`. One defect, one guard, and the
 documentation for three things the report got wrong — each of which had cost
