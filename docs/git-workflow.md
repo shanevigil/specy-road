@@ -51,6 +51,23 @@ This is what makes **concurrent lanes** against one integration branch safe; see
 [grind-session.md](grind-session.md). Merging by hand still means removing your
 own row yourself.
 
+### What `pr` leaves behind (read this before re-running pickup)
+
+Under **`pr`**, `finish-this-task` commits everything on the **feature branch** and touches the integration branch not at all. So the moment it returns, one node has two truths:
+
+| | feature branch | integration branch |
+| --- | --- | --- |
+| node status | `Complete` | unchanged (`Not Started` / `In Progress`) |
+| registry row | removed | **still there** |
+
+That is correct, and it is the most misread state in the workflow, because from the integration branch a *finished* leaf and an *unclaimed* leaf look identical. **Merging the PR is what reconciles them.** Until then:
+
+- **Leave the registry row alone.** It is what keeps the leaf off the available list.
+- **Do not run `abort-task-pickup`** to "clean up" the row. Abort deletes the local `feature/rm-*` branch, and under `pr` that branch is the only place the work exists.
+- `grind-session --plan` reports the leaf as **in flight**, not ready. That is the same fact from the other side.
+
+`do-next-available-task` will not re-offer the leaf even if the row goes missing: pickup also checks whether a `feature/rm-<codename>` branch already has the node `Complete`, and skips it with a line naming the branch. That check is the backstop for a row removed by an abort, by F-014 self-heal, or by hand — not a substitute for keeping the row.
+
 **Precedence for `finish-this-task`:** CLI **`--on-complete`** overrides **`work/.on-complete-<NODE_ID>.yaml`** (written by **`do-next-available-task`** for that task) overrides environment **`SPECY_ROAD_ON_COMPLETE`** overrides **`on_complete`** in this file, else **`pr`**.
 
 **`grind-session` refuses to run when that resolution lands on `pr`**, because `pr` never merges and the loop cannot see its own finished work on the next cycle. New scaffolds therefore write **`on_complete`** into this file explicitly rather than relying on the built-in default, so the mode is never implicit. See [grind-session.md](grind-session.md).
@@ -108,6 +125,19 @@ The **registration commit** contains **only** the registry update (or equivalent
 `specy-road do-next-available-task` appends common CI-skip tokens to the registration commit message by default (best-effort; your pipeline may still require `paths` / `paths-ignore` rules). Manual commits should use the same pattern if you want consistent CI behavior.
 
 Only **after** registration (and branching) should you add implementation commits on the feature branch.
+
+### Releasing a claim whose branch is gone (`registry-prune`)
+
+**`abort-task-pickup`** is the command for releasing a claim you still hold: it runs from **`feature/rm-<codename>`**, deletes that branch, and cleans `work/`. It cannot help once the branch no longer exists, because it refuses to run anywhere else.
+
+**`specy-road registry-prune`** covers that case. With no arguments it lists registry rows whose **`feature/rm-*`** branch is absent from your clone. **`--remove <CODENAME>`** (repeatable) drops the named rows, commits on the integration branch and pushes — the same way registration published them.
+
+```bash
+specy-road registry-prune                            # report only
+specy-road registry-prune --remove trash-soft-delete # drop one, commit, push
+```
+
+**The report is advisory, and removal is never inferred from it.** Pickup pushes the *registry* and then creates the feature branch **locally, without pushing it**, so a perfectly healthy claim held by another clone is indistinguishable from an orphan when viewed from yours. That is why F-014 only warns, why this command lists rather than prunes, and why every removal has to name a codename. Confirm the lane is really gone before removing its row. If the branch is still in your clone, `registry-prune` refuses and points you at `abort-task-pickup`.
 
 ## While working
 

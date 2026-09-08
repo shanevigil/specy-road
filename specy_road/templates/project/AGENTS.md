@@ -39,7 +39,9 @@ fully readable — search returns a path, and you open it.
 
 The brief inlines each effective dependency's `## Intent` block under `## 6. Dependency context (intent of upstream work)` — read it before opening dependency planning sheets directly. When **authoring** a planning sheet, do not paraphrase what dependencies deliver; the brief carries that for the coding agent automatically.
 
-**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push). The pickup target is always an actionable **leaf**; ancestors are context containers and roll up progress from descendants. To release a claim without finishing, use `specy-road abort-task-pickup` on `feature/rm-*` (see `docs/dev-workflow.md`).
+**Task pickup:** When using `specy-road do-next-available-task`, the command always **syncs** the integration branch, **registers**, **pushes** it, then creates `feature/rm-*` so the team sees the claim on the remote (there are no flags to skip sync or push). The pickup target is always an actionable **leaf**; ancestors are context containers and roll up progress from descendants. To release a claim without finishing, use `specy-road abort-task-pickup` on `feature/rm-*` (see `docs/dev-workflow.md`) — but **never as cleanup after `finish-this-task`**: abort deletes the feature branch, and under `on_complete: pr` that branch is the only place the finished work exists.
+
+**After `finish-this-task` with `on_complete: pr`:** the node is `Complete` and the claim released **on the feature branch**, while the integration branch still shows neither until the PR merges. Both are true at once. Leave the registry row on the integration branch alone — it is what keeps the leaf off the available list — and do not re-pick the node. Pickup also refuses a leaf whose `feature/rm-*` branch already marks it `Complete`, so a missing row is not a second chance.
 
 Three selection rules that are easy to read backwards:
 

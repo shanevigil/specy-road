@@ -29,6 +29,7 @@ _SCRIPTS = {
     "file-limits": "validate_file_limits.py",
     "do-next-available-task": "do_next_task.py",
     "abort-task-pickup": "abort_task_pickup.py",
+    "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",

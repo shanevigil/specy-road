@@ -40,6 +40,7 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
 )
+from specy_road.bundled_scripts.do_next_finished_unmerged import finished_unmerged_ids
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.do_next_milestone_pickup import (
     exit_no_leaves_under_parent as _exit_no_leaves_under_parent,
@@ -82,6 +83,26 @@ def _virtual_keys_for_mode(reg: dict, remote: str) -> tuple[set[str], list[str]]
     return _virtual_complete_from_registry(reg, repo_root=ROOT, remote=remote)
 
 
+def _drop_finished_unmerged(
+    available: list[dict], base: str, remote: str
+) -> list[dict]:
+    """Remove leaves a feature branch already finished but ``base`` has not merged.
+
+    The registry row is the only other thing standing between a finished leaf
+    and a second claim, and every release path — abort, self-heal, hand edit —
+    removes the row while leaving the branch. See
+    :mod:`specy_road.bundled_scripts.do_next_finished_unmerged`.
+    """
+    finished, logs = finished_unmerged_ids(
+        available, repo_root=ROOT, remote=remote, integration_branch=base
+    )
+    for line in logs:
+        print(line)
+    if not finished:
+        return available
+    return [n for n in available if n.get("id") not in finished]
+
+
 def _resync_and_select(
     base: str,
     remote: str,
@@ -110,6 +131,7 @@ def _resync_and_select(
         status_overrides=status_overrides or None,
         virtual_complete_keys=virtual_keys or None,
     )
+    available = _drop_finished_unmerged(available, base, remote)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
     if not available:

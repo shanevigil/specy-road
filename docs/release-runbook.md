@@ -311,6 +311,13 @@ pip install --index-url https://test.pypi.org/simple/ \
 (The `--extra-index-url` is required so transitive deps still resolve
 from real PyPI.)
 
+An exact prerelease pin needs no `--pre`; asking for the *latest* prerelease
+does, which is why §A.1 uses it against an unpinned name. The consumer-facing
+version of this recipe — including the extra flag `uv pip` needs and its
+supply-chain caveat — is
+[install-and-usage.md](install-and-usage.md#install-a-release-candidate-testpypi).
+Point adopters there rather than at this runbook.
+
 ### A.1 Pre-flight verification (the verify-then-cut pattern)
 
 Before bumping any version: confirm both registries are still serving

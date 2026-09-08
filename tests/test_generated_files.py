@@ -7,11 +7,14 @@ the file is tracked, so the detection here passes ``--no-index`` on purpose.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
+from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
+    gitignore_resolution_hint,
     ignored_generated_files,
     unstageable_generated_files,
     warn_if_generated_files_ignored,
@@ -95,3 +98,55 @@ def test_an_untracked_ignored_file_is_the_one_git_add_refuses(
 
 def test_outside_a_worktree_nothing_is_unstageable(tmp_path: Path) -> None:
     assert unstageable_generated_files(tmp_path) == []
+
+
+# --- one resolution, worded the same everywhere ----------------------------
+
+
+def test_the_hint_states_both_steps(repo: Path) -> None:  # noqa: F811
+    """Removing the rule and force-adding are both required; either alone fails."""
+    (repo / ".gitignore").write_text("roadmap-context.md\n", encoding="utf-8")
+
+    hint = gitignore_resolution_hint(repo, "roadmap-context.md")
+
+    assert hint is not None
+    assert "Remove that rule from .gitignore" in hint
+    assert "git add -f roadmap-context.md" in hint
+    assert "specy-road digest" in hint
+
+
+def test_the_hint_is_absent_when_no_rule_matches(repo: Path) -> None:  # noqa: F811
+    assert gitignore_resolution_hint(repo, "roadmap-context.md") is None
+
+
+def test_digest_check_names_the_ignore_rule(repo: Path, capsys) -> None:  # noqa: F811
+    """`specy-road digest` cannot clear drift the ignore rule causes, so say so."""
+    (repo / ".gitignore").write_text("roadmap-context.md\n", encoding="utf-8")
+    (repo / "roadmap-context.md").write_text("stale\n", encoding="utf-8")
+
+    code = cmd_digest(
+        argparse.Namespace(
+            repo_root=repo, output="roadmap-context.md", check=True
+        )
+    )
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert "drift" in err
+    assert "Remove that rule from .gitignore" in err
+
+
+def test_digest_check_drift_without_a_rule_says_only_regenerate(
+    repo: Path, capsys  # noqa: F811
+) -> None:
+    (repo / "roadmap-context.md").write_text("stale\n", encoding="utf-8")
+
+    code = cmd_digest(
+        argparse.Namespace(
+            repo_root=repo, output="roadmap-context.md", check=True
+        )
+    )
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert ".gitignore" not in err

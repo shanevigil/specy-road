@@ -28,7 +28,11 @@ from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
-from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
+from specy_road.generated_files import (
+    GENERATED_COMMITTED,
+    gitignore_resolution_hint,
+    unstageable_generated_files,
+)
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
@@ -262,16 +266,19 @@ def _stageable_generated_files() -> list[str]:
     Only an ignored *untracked* path aborts the whole ``git add``, and dropping
     more than that would be worse than the problem: a file that is ignored but
     already tracked stages fine, and skipping it would leave the regenerated
-    copy out of every commit for good. The preceding ``validate`` has already
-    warned about the ignore rule itself, so this stays quiet about that.
+    copy out of every commit for good.     The resolution is the same one ``validate``, ``export --check`` and
+    ``digest --check`` print, because leaving the file out of this commit is
+    what makes those two gates fail later.
     """
     refused = set(unstageable_generated_files(ROOT))
     for name in refused:
         print(
             f"[warn] not staging {name}: it is gitignored and untracked, so "
-            f"`git add` would refuse it and abort this commit. "
-            f"Track it once with: git add -f {name}"
+            f"`git add` would refuse it and abort this commit."
         )
+        hint = gitignore_resolution_hint(ROOT, name)
+        if hint:
+            print(f"  {hint}")
     return [name for name in GENERATED_COMMITTED if name not in refused]
 
 

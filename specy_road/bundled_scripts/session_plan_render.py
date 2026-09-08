@@ -52,6 +52,7 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
             "**Dispatch now:** _none ready._ See Blocked / gates below."
         )
     lines.append("")
+    lines.extend(_render_next_pick(plan))
     # Full dependency layering (includes leaves still blocked today) so an
     # orchestrator can see the whole plan and NOT spawn a later wave early.
     if len(plan.waves) > 1:
@@ -65,6 +66,29 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
         lines.append(f"_In flight (already claimed / In Progress):_ {_fmt(plan.active)}")
         lines.append("")
     return lines
+
+
+def _render_next_pick(plan: SessionPlan) -> list[str]:
+    """Name the leaf pickup would claim, and say that this plan is a snapshot.
+
+    ``ready`` is the pickup queue itself, so its head is the answer to "what
+    happens if I just run the loop". Printing it stops the plan from being read
+    as a *recommendation* that pickup then contradicts: the two disagree only
+    when state moved between the two commands, most often because a leaf listed
+    in flight here had its claim released before pickup ran.
+    """
+    if not plan.ready:
+        return []
+    scope = f" --under {plan.under}" if plan.under else ""
+    return [
+        f"**Next auto-pick:** `{plan.ready[0]}` — what "
+        f"`specy-road do-next-available-task{scope}` claims if you run it now.",
+        "",
+        "_This plan is a snapshot of the local working tree. Pickup syncs the "
+        "integration branch first, so a leaf shown in flight below can become "
+        "the next pick once its claim is released._",
+        "",
+    ]
 
 
 def _render_blocked(plan: SessionPlan) -> list[str]:

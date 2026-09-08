@@ -147,7 +147,7 @@ If you picked up a task with **`do-next-available-task`** and decide **not** to 
 
 The command **`git fetch`**es, verifies your branch matches **`roadmap/registry.yaml`**, refuses if your feature branch has **commits not on the remote integration branch** (unless **`--force`**), then **`git checkout`** the integration branch, **`git merge --ff-only`** to **`remote/<integration-branch>`**, removes your registry row, **commits** that change on the integration branch, and **`git push`** — so the team sees the claim released the same way pickup published it. It deletes the local **`feature/rm-<codename>`** branch and removes **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/.on-complete-<NODE_ID>.yaml`**. With **`--force`**, it also deletes **`work/implementation-summary-<NODE_ID>.md`** if present.
 
-If the registry row is already gone after syncing (someone else cleaned up), the command exits with an error; fix **`roadmap/registry.yaml`** or remove the local branch and work files manually.
+If the registry row is already gone after syncing (someone else cleaned up), the command exits with an error; remove the local branch and work files manually. For the opposite case — a row whose **`feature/rm-*`** branch no longer exists anywhere, so `abort-task-pickup` cannot run at all — use **`specy-road registry-prune`** to list such rows and **`--remove <CODENAME>`** to drop one (it commits on the integration branch and pushes). See [git-workflow.md](git-workflow.md).
 
 **Terminal:**
 

@@ -1,4 +1,4 @@
-"""F-015: finish_modes.print_finish_tail surfaces --body-file when given a path."""
+"""F-015 PR body plumbing, and the F-007 state report finish leaves behind."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import io
 import sys
 from pathlib import Path
 
-from specy_road.finish_modes import print_finish_tail
+from specy_road.finish_modes import print_finish_tail, print_pr_gated_state
 
 
 def _args(push: bool = True) -> argparse.Namespace:
@@ -59,3 +59,19 @@ def test_print_finish_tail_emits_body_file_when_path_supplied(tmp_path: Path) ->
     # Pointer line tells the dev where the snapshot lives.
     assert "Body snapshot:" in out
     assert "F-015" in out
+
+
+def test_pr_gated_state_names_both_branches_and_forbids_repick() -> None:
+    """Finish under `pr` must not leave "done" and "available" looking alike."""
+    out = _capture(lambda: print_pr_gated_state(
+        node_id="M12.9",
+        branch="feature/rm-trash-soft-delete",
+        integration_branch="dev",
+    ))
+    assert "M12.9" in out
+    assert "feature/rm-trash-soft-delete" in out
+    assert "dev" in out
+    assert "registry claim" in out
+    assert "Do not re-pick" in out
+    # Aborting here would delete the branch the work lives on.
+    assert "abort-task-pickup" in out

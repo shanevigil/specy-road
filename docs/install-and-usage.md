@@ -34,6 +34,58 @@ pip install "specy-road[gui-next]"  # PM Gantt UI deps
 pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
+### Install a release candidate (TestPyPI)
+
+Prereleases (`X.Y.ZrcN`) publish to **TestPyPI**, not PyPI. Pin the exact
+version and keep real PyPI as an extra index so dependencies still resolve:
+
+```bash
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "specy-road==0.2.3rc1"
+```
+
+**`--pre` is not needed when you pin an exact prerelease.** A specifier that
+names the prerelease itself (`==0.2.3rc1`) already permits it. Add `--pre` only
+when you are asking for *whatever the latest prerelease is* — an unpinned
+install, or `pip index versions specy-road`, both of which hide prereleases
+without it.
+
+**`uv pip` needs one extra flag.** By default uv only considers versions from
+the first index that contains a package at all — that is PyPI, which has no
+RC — so it reports `No solution found`:
+
+```bash
+uv pip install --index-url https://test.pypi.org/simple/ \
+               --extra-index-url https://pypi.org/simple/ \
+               --index-strategy unsafe-best-match \
+               "specy-road==0.2.3rc1"
+```
+
+That default is uv's protection against dependency-confusion attacks, and
+`unsafe-best-match` relaxes it for **every** package in the resolution, not just
+this one. Prefer plain `pip` in a throwaway virtualenv for RC evaluation, and
+keep RCs out of the environment that builds your product. See
+[supply-chain-security.md](supply-chain-security.md).
+
+**If the virtualenv has no pip** (`uv venv` and `uv sync` do not install one),
+bootstrap it first:
+
+```bash
+.venv/bin/python -m ensurepip --upgrade
+```
+
+Then verify what you actually got:
+
+```bash
+specy-road --version
+```
+
+RCs are for evaluation. Pin a final release for day-to-day work, and expect an
+RC to warn that IDE stubs and JSON schemas were written by an older version —
+`specy-road refresh-stubs` and `specy-road refresh-schemas` clear those once
+your team accepts the new pin.
+
 ## Install from source (toolkit contributors)
 
 ```bash

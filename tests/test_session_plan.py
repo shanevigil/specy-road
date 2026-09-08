@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
 
 
 def _leaf(nid, key, *, status="Not Started", deps=None, codename=None, ntype="task",
@@ -180,3 +181,37 @@ def test_every_batch_is_an_ordered_subsequence_of_ready():
     for batch in plan.parallel_batches:
         remaining = iter(plan.ready)
         assert all(nid in remaining for nid in batch)
+
+
+def test_render_names_the_next_auto_pick():
+    """The plan answers "what does the loop take next" without a second command."""
+    nodes = [
+        _leaf("M10.3", K["M10.3"], parent="M10", sibling_order=2),
+        _leaf("M10.4", K["M10.4"], parent="M10", sibling_order=1),
+    ]
+
+    text = render_session_plan_text(compute_session_plan(nodes, _empty_reg()))
+
+    assert "**Next auto-pick:** `M10.4`" in text
+    assert "do-next-available-task" in text
+    assert "snapshot of the local working tree" in text
+
+
+def test_render_scopes_the_next_pick_command_to_under():
+    nodes = [
+        {"id": "M10", "node_key": "aa", "type": "phase", "title": "M10",
+         "status": "Not Started", "dependencies": [], "parent_id": None, "codename": "m10"},
+        _leaf("M10.3", K["M10.3"], parent="M10"),
+    ]
+
+    text = render_session_plan_text(compute_session_plan(nodes, _empty_reg(), under="M10"))
+
+    assert "do-next-available-task --under M10" in text
+
+
+def test_render_omits_next_pick_when_nothing_is_ready():
+    nodes = [_leaf("M10.3", K["M10.3"], status="Complete")]
+
+    text = render_session_plan_text(compute_session_plan(nodes, _empty_reg()))
+
+    assert "Next auto-pick" not in text

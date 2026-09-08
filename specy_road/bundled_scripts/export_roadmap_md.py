@@ -14,6 +14,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.generated_files import gitignore_resolution_hint
 
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
@@ -155,6 +156,17 @@ def reexport_roadmap_md(root: Path) -> None:
     )
 
 
+def _print_gitignore_hint(root: Path) -> None:
+    """Name the ignore rule when it is the reason ``--check`` cannot pass.
+
+    Same wording as ``validate``, ``finish-this-task`` and ``digest --check``:
+    regenerating clears drift only if the result can be committed.
+    """
+    hint = gitignore_resolution_hint(root, "roadmap.md")
+    if hint:
+        print(f"  {hint}", file=sys.stderr)
+
+
 def _write_export(
     root: Path,
     index: str,
@@ -167,9 +179,11 @@ def _write_export(
             existing = out_index.read_text(encoding="utf-8")
             if existing != index:
                 print(f"drift: {out_index}", file=sys.stderr)
+                _print_gitignore_hint(root)
                 raise SystemExit(1)
         else:
             print(f"missing {out_index}", file=sys.stderr)
+            _print_gitignore_hint(root)
             raise SystemExit(1)
         print("OK: roadmap.md matches merged roadmap graph.")
         return

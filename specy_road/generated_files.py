@@ -65,15 +65,32 @@ def unstageable_generated_files(root: Path) -> list[str]:
     return [n for n in GENERATED_COMMITTED if _check_ignore(root, n, no_index=False)]
 
 
+def gitignore_resolution_hint(root: Path, name: str) -> str | None:
+    """The one resolution for a generated-and-committed file an ignore rule hides.
+
+    ``None`` when no rule matches. Every command that can trip over this state —
+    ``validate``, ``finish-this-task``, ``digest --check``, ``export --check`` —
+    ends on these same two steps, so an operator who meets it once recognises it
+    everywhere instead of reading three partial descriptions as three different
+    problems and hunting for a per-command opt-out. There is none: both names in
+    :data:`GENERATED_COMMITTED` are committed by contract.
+    """
+    if not _check_ignore(root, name, no_index=True):
+        return None
+    return (
+        f"{name} is matched by .gitignore, but it is generated AND committed "
+        f"({_REGENERATED_BY[name]}). Remove that rule from .gitignore, then: "
+        f"git add -f {name}"
+    )
+
+
 def warn_if_generated_files_ignored(root: Path) -> list[str]:
     """One non-fatal stderr line per generated-and-committed file that is ignored."""
     hits = ignored_generated_files(root)
     for name in hits:
         print(
-            f"roadmap: warning — {name} is matched by .gitignore, but it is "
-            f"generated AND committed ({_REGENERATED_BY[name]}). A fresh clone "
-            "and CI will see it missing. Remove the rule, then: "
-            f"git add -f {name}",
+            f"roadmap: warning — {gitignore_resolution_hint(root, name)} "
+            "(a fresh clone and CI will otherwise see it missing)",
             file=sys.stderr,
         )
     return hits

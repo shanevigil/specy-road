@@ -49,6 +49,10 @@ pip install specy-road
 #   pip install "specy-road[review]"    # LLM review (`specy-road review-node`)
 ```
 
+Release candidates (`X.Y.ZrcN`) publish to **TestPyPI** and need a different
+command — including one extra flag for `uv pip`. See
+[docs/install-and-usage.md](docs/install-and-usage.md#install-a-release-candidate-testpypi).
+
 The full install + everyday usage guide is at
 **[docs/install-and-usage.md](docs/install-and-usage.md)**. Building from
 source is documented in
