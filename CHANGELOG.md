@@ -11,6 +11,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Repeat `finish-this-task` after pr-mode finish** no longer fails with an
+  opaque missing-registry error when the branch tip is already Complete; it
+  explains that finish ran and points at merge/PR instead.
+- **`grind-session --plan` finished-claimed hint** no longer suggests re-running
+  finish when the branch is already Complete under an integration-branch claim.
+
 ## [v0.2.3-rc3] - 2026-09-08
 
 Third prerelease for v0.2.3. Routed to TestPyPI by

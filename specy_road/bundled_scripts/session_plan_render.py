@@ -108,8 +108,9 @@ def _render_finished_on_branch(plan: SessionPlan) -> list[str]:
     if plan.finished_claimed:
         lines.append(
             f"**Still claimed, Complete on branch:** {_fmt(plan.finished_claimed)}  "
-            "— work is done locally; merge the PR or run "
-            "`specy-road finish-this-task` on the feature branch. "
+            "— finish already ran on the feature branch; open or merge the PR to "
+            "close the node on the integration branch. Do not re-run "
+            "`finish-this-task` (the registry row here was released on finish). "
             "Do not abort-task-pickup (that deletes the branch)."
         )
         lines.append("")

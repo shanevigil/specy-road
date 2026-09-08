@@ -27,7 +27,7 @@ from specy_road.finish_work_artifacts import (
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
 from specy_road.finish_modes import apply_on_complete_mode
-from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
     gitignore_resolution_hint,
@@ -68,7 +68,7 @@ def _save_registry(doc: dict) -> None:
 
 def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
-    return resolve_feature_rm_registry_context(ROOT, branch)
+    return resolve_feature_rm_registry_context_for_finish(ROOT, branch)
 
 
 def _update_chunk_status(node_id: str) -> list[str]:

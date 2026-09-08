@@ -147,4 +147,33 @@ def test_render_shows_finished_on_branch_sections(repo: Path) -> None:
     text = render_session_plan_text(enriched)
     assert "Finished on branch (pickup skips)" in text
     assert "M1.1" in text
-    assert "Next auto-pick" not in text or "`M1.2`" in text
+    assert "Unclaimed" in text
+    assert "Next auto-pick" in text and "`M1.2`" in text
+
+
+def test_render_finished_claimed_says_merge_not_finish(repo: Path) -> None:
+    _git(repo, "checkout", "-q", "-b", "feature/rm-leaf-a")
+    _write_graph(repo, "Complete")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "done")
+    _git(repo, "checkout", "-q", "dev")
+
+    nodes = [_node("leaf-a")]
+    reg = {
+        "version": 1,
+        "entries": [
+            {
+                "codename": "leaf-a",
+                "node_id": "M1.1",
+                "branch": "feature/rm-leaf-a",
+            }
+        ],
+    }
+    plan = compute_session_plan(nodes, reg)
+    enriched = enrich_session_plan_with_git(
+        plan, nodes, repo_root=repo, remote="origin", integration_branch="dev"
+    )
+    text = render_session_plan_text(enriched)
+    assert "Still claimed, Complete on branch" in text
+    assert "open or merge the PR" in text
+    assert "Do not re-run" in text
