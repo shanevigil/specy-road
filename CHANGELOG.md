@@ -11,6 +11,19 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`grind-session --plan` matches pickup's finished-unmerged skip.** Leaves
+  already Complete on a local `feature/rm-*` tip are dropped from `ready`,
+  `parallel_batches`, and **Next auto-pick**, and listed under **Finished on
+  branch (pickup skips)** — unclaimed vs still-claimed.
+
+### Changed
+
+- **Exit 6 / `in_flight` when the claim's branch tip is already Complete**
+  names merge/finish steps and warns against `abort-task-pickup`, instead of
+  reading like work still needs implementing.
+
 ## [v0.2.3-rc2] - 2026-09-07
 
 Second prerelease for v0.2.3. Routed to TestPyPI by

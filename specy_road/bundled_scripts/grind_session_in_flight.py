@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from specy_road.bundled_scripts.do_next_finished_unmerged import node_complete_on_ref
 from specy_road.bundled_scripts.grind_session_events import (
     EXIT_BLOCKED,
     EXIT_IN_FLIGHT,
@@ -107,6 +108,7 @@ def handle_no_ready(
     claims = claims_fn(repo_root, reg, plan.active)
     if claims:
         first = claims[0]
+        branch_complete = node_complete_on_ref(repo_root, first.branch, first.node_id)
         emitter.emit(
             "in_flight",
             node_id=first.node_id,
@@ -114,6 +116,7 @@ def handle_no_ready(
             branch=first.branch,
             count=len(claims),
             others=[c.node_id for c in claims[1:]],
+            branch_complete=branch_complete,
         )
         return EXIT_IN_FLIGHT
     if plan.blocked:

@@ -116,6 +116,35 @@ def test_own_claim_wins_over_a_blocked_leaf_waiting_on_it(monkeypatch, capsys, t
     assert event["branch"] == "feature/rm-mine"
 
 
+def test_in_flight_emits_branch_complete_when_tip_is_done(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(gse, "_now_iso", lambda: TS)
+    monkeypatch.setattr(
+        gsif,
+        "node_complete_on_ref",
+        lambda _root, _ref, _nid: True,
+    )
+    plan = _plan(ready=[], active=["M1.1"])
+    code = handle_no_ready(
+        EventEmitter(as_json=True), plan, 0,
+        repo_root=tmp_path, reg=_reg(_entry("M1.1", "mine")),
+        claims_fn=lambda *_a, **_k: [InFlightClaim("M1.1", "mine", "feature/rm-mine")],
+    )
+    assert code == EXIT_IN_FLIGHT
+    event = _events(capsys)[-1]
+    assert event["branch_complete"] is True
+
+
+def test_human_in_flight_branch_complete_mentions_merge_not_abort():
+    text = gse._human_in_flight(
+        "[grind-session] in_flight",
+        "M17.1",
+        {"branch": "feature/rm-x", "branch_complete": True, "others": []},
+    )
+    assert "already Complete" in text
+    assert "registry-prune" in text
+    assert "Do not abort-task-pickup" in text
+
+
 def test_someone_elses_claim_still_reports_as_blocked(capsys, tmp_path):
     plan = _plan(
         ready=[],
