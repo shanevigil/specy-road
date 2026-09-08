@@ -194,7 +194,7 @@ def test_render_names_the_next_auto_pick():
 
     assert "**Next auto-pick:** `M10.4`" in text
     assert "do-next-available-task" in text
-    assert "snapshot of the local working tree" in text
+    assert "reads feature-branch tips locally" in text
 
 
 def test_render_scopes_the_next_pick_command_to_under():

@@ -70,9 +70,15 @@ classification plus a dependency **wave** layout. No git, no pickup.
 different, it is scope or timing rather than disagreement:
 
 - **The plan is a snapshot; pickup syncs first.** `--plan` reads your local
-  working tree, while `do-next-available-task` fetches and fast-forwards the
-  integration branch before selecting. A leaf shown **in flight** becomes the
-  next pick once its claim is released.
+  working tree (including local `feature/rm-*` branch tips), while
+  `do-next-available-task` fetches and fast-forwards the integration branch
+  before selecting. A leaf shown **in flight** becomes the next pick once its
+  claim is released.
+- **Leaves already Complete on an unmerged feature branch** are omitted from
+  `ready`, `parallel_batches`, and **Next auto-pick** — the same rule pickup
+  applies after sync. The plan lists them under **Finished on branch (pickup
+  skips)**: unclaimed (registry row gone) vs still claimed (merge the PR or
+  finish on the branch; do not `abort-task-pickup`).
 - **Pickup without `--under` is repo-wide**, in roadmap outline order, so an
   earlier milestone wins over a later one even when both are ready. Pass the
   same `--under` to both, or pick by number with `--interactive`. There is no
@@ -168,6 +174,10 @@ exit `6` and an `in_flight` event naming the node and its branch:
 [grind-session] in_flight: nothing pickable — this worktree already holds a claim on M1.3.2 (feature/rm-tradelog-rest-complete).
   finish it (specy-road finish-this-task), release it (specy-road abort-task-pickup), or re-run with --resume-in-flight.
 ```
+
+When the branch tip is already **Complete** but the integration branch has not
+merged it yet, the message instead points at merge/finish (not implement) and
+warns against `abort-task-pickup`, which would delete the finished work.
 
 A **dependency or gate block** is exit `3`, and genuinely needs a human to go
 and complete something else first.

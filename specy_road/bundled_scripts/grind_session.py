@@ -41,9 +41,9 @@ from specy_road.bundled_scripts.grind_session_in_flight import (
     own_in_flight_claims,
     prepare_resume,
 )
-from specy_road.bundled_scripts.session_plan import SessionPlan, compute_session_plan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan import SessionPlan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan_git import gather_session_plan as gather_plan
 from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
@@ -53,12 +53,6 @@ from specy_road.bundled_scripts.repo_ops import current_branch
 # ---------------------------------------------------------------------------
 # State loading (read-only) — monkeypatched in tests
 # ---------------------------------------------------------------------------
-
-
-def gather_plan(repo_root: Path, under: str | None) -> tuple[list[dict], dict, SessionPlan]:
-    nodes = load_roadmap(repo_root)["nodes"]
-    reg = read_registry(registry_path(repo_root))
-    return nodes, reg, compute_session_plan(nodes, reg, under=under)
 
 
 # ---------------------------------------------------------------------------

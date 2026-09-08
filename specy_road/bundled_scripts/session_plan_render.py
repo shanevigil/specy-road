@@ -33,6 +33,7 @@ def render_session_plan_text(plan: SessionPlan) -> str:
     lines.append("")
 
     lines.extend(_render_dispatch(plan))
+    lines.extend(_render_finished_on_branch(plan))
     lines.extend(_render_blocked(plan))
     lines.extend(_render_misc(plan))
     return "\n".join(lines) + "\n"
@@ -84,11 +85,35 @@ def _render_next_pick(plan: SessionPlan) -> list[str]:
         f"**Next auto-pick:** `{plan.ready[0]}` — what "
         f"`specy-road do-next-available-task{scope}` claims if you run it now.",
         "",
-        "_This plan is a snapshot of the local working tree. Pickup syncs the "
-        "integration branch first, so a leaf shown in flight below can become "
-        "the next pick once its claim is released._",
+        "_This plan reads feature-branch tips locally so ``ready`` and "
+        "``Next auto-pick`` match what pickup skips after sync. Pickup still "
+        "fetches the integration branch first, so a leaf listed in flight "
+        "below can become the next pick once its claim is released._",
         "",
     ]
+
+
+def _render_finished_on_branch(plan: SessionPlan) -> list[str]:
+    """Leaves Complete on an unmerged feature branch — same rule pickup uses."""
+    if not plan.finished_unmerged and not plan.finished_claimed:
+        return []
+    lines: list[str] = ["## Finished on branch (pickup skips)", ""]
+    if plan.finished_unmerged:
+        lines.append(
+            f"**Unclaimed, Complete on `feature/rm-*`:** {_fmt(plan.finished_unmerged)}  "
+            "— omitted from Dispatch now / Next auto-pick. Land the branch to "
+            "close the node on the integration branch, or delete it to redo."
+        )
+        lines.append("")
+    if plan.finished_claimed:
+        lines.append(
+            f"**Still claimed, Complete on branch:** {_fmt(plan.finished_claimed)}  "
+            "— work is done locally; merge the PR or run "
+            "`specy-road finish-this-task` on the feature branch. "
+            "Do not abort-task-pickup (that deletes the branch)."
+        )
+        lines.append("")
+    return lines
 
 
 def _render_blocked(plan: SessionPlan) -> list[str]:

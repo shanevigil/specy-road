@@ -109,9 +109,28 @@ def _human_in_flight(prefix: str, node, fields: dict) -> str:
     was that the operator was told to look at a dependency while the actual
     blocker was a claim of their own sitting one command away from resolution.
     """
+    branch = fields.get("branch") or "?"
+    if fields.get("branch_complete"):
+        lines = [
+            f"{prefix}: nothing pickable — {node} is already Complete on "
+            f"{branch}, but the integration branch has not merged it yet."
+        ]
+        others = fields.get("others") or []
+        if others:
+            lines.append(f"  also finished-but-unmerged here: {', '.join(others)}")
+        lines.append(
+            "  Open or merge the PR, or run specy-road finish-this-task on that "
+            "branch if you have not already. Do not abort-task-pickup — that "
+            "deletes the branch and the finished work with it."
+        )
+        lines.append(
+            "  To release a dead claim whose branch is gone: "
+            "specy-road registry-prune --remove <CODENAME>."
+        )
+        return "\n".join(lines)
     lines = [
         f"{prefix}: nothing pickable — this worktree already holds a claim on "
-        f"{node} ({fields.get('branch') or '?'})."
+        f"{node} ({branch})."
     ]
     others = fields.get("others") or []
     if others:

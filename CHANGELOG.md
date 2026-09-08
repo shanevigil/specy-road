@@ -11,6 +11,33 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.3-rc3] - 2026-09-08
+
+Third prerelease for v0.2.3. Routed to TestPyPI by
+release-publish.yml. Smoke install:
+
+    pip install --no-cache-dir \
+                --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.2.3rc3
+
+Follow-up to rc2 consumer feedback: plan/pickup parity and clearer stale-claim
+messaging. Final `0.2.3` on PyPI waits on clean reports from at least two
+developer projects.
+
+### Fixed
+
+- **`grind-session --plan` matches pickup's finished-unmerged skip.** Leaves
+  already Complete on a local `feature/rm-*` tip are dropped from `ready`,
+  `parallel_batches`, and **Next auto-pick**, and listed under **Finished on
+  branch (pickup skips)** — unclaimed vs still-claimed.
+
+### Changed
+
+- **Exit 6 / `in_flight` when the claim's branch tip is already Complete**
+  names merge/finish steps and warns against `abort-task-pickup`, instead of
+  reading like work still needs implementing.
+
 ## [v0.2.3-rc2] - 2026-09-07
 
 Second prerelease for v0.2.3. Routed to TestPyPI by

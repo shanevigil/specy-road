@@ -5,7 +5,9 @@ out **dependency waves** + **parallel batches** so an orchestrator can plan
 sub-agent work without trial-and-error pickup:
 
 * ``ready``    — deps satisfied, unclaimed: pickable *now* (same set/order as
-  ``do-next-available-task`` would claim).
+  ``do-next-available-task`` would claim after sync). When ``grind-session
+  --plan`` runs, :mod:`session_plan_git` drops leaves already Complete on an
+  unmerged ``feature/rm-*`` tip so ``ready`` / ``parallel_batches`` match pickup.
 * ``blocked``  — unmet effective dependencies; each carries ``waiting_on``
   (display ids) and a ``reason`` (``dependency`` or ``gate``).
 * ``active``   — already claimed (registry) or status *In Progress* (in flight).
@@ -67,6 +69,8 @@ class SessionPlan:
     needs_codename: list[str]
     waves: list[Wave]
     parallel_batches: list[list[str]]
+    finished_unmerged: list[str] = field(default_factory=list)
+    finished_claimed: list[str] = field(default_factory=list)
     totals: dict[str, int] = field(default_factory=dict)
 
 
@@ -355,5 +359,7 @@ def session_plan_to_dict(plan: SessionPlan) -> dict:
         "needs_codename": list(plan.needs_codename),
         "waves": [asdict(w) for w in plan.waves],
         "parallel_batches": [list(b) for b in plan.parallel_batches],
+        "finished_unmerged": list(plan.finished_unmerged),
+        "finished_claimed": list(plan.finished_claimed),
         "totals": dict(plan.totals),
     }

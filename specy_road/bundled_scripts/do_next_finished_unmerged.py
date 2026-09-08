@@ -57,6 +57,15 @@ def feature_refs_by_codename(repo_root: Path, remote: str) -> dict[str, str]:
     return refs
 
 
+def node_complete_on_ref(repo_root: Path, ref: str, node_id: str) -> bool:
+    """True when ``node_id`` is Complete in the roadmap graph at ``ref``."""
+    nodes = load_roadmap_nodes_at_ref(repo_root, ref)
+    if not nodes:
+        return False
+    matched = next((n for n in nodes if n.get("id") == node_id), None)
+    return matched is not None and (matched.get("status") or "").lower() == "complete"
+
+
 def finished_unmerged_ids(
     candidates: list[dict],
     *,
