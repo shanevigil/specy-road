@@ -141,8 +141,9 @@ def test_human_in_flight_branch_complete_mentions_merge_not_abort():
         {"branch": "feature/rm-x", "branch_complete": True, "others": []},
     )
     assert "already Complete" in text
+    assert "merge the PR" in text
+    assert "Do not re-run finish-this-task" in text
     assert "registry-prune" in text
-    assert "Do not abort-task-pickup" in text
 
 
 def test_someone_elses_claim_still_reports_as_blocked(capsys, tmp_path):

@@ -196,3 +196,38 @@ def test_validate_export_digest_runs_all_three_in_order(tmp_path, monkeypatch) -
     assert [c[3] for c in calls] == ["validate", "export", "digest"]
     assert all(c[1:3] == ["-m", "specy_road.cli"] for c in calls)
     assert all(c[4:] == ["--repo-root", str(tmp_path)] for c in calls)
+
+
+def test_finish_already_done_on_branch_when_complete_and_deregistered(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """After pr-mode finish, re-run finish explains merge instead of registry error."""
+    _write_registry(tmp_path, {"version": 1, "entries": []})
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        frm,
+        "load_roadmap",
+        lambda _p: {
+            "nodes": [
+                {
+                    "id": "M17.1",
+                    "title": "Privacy guard",
+                    "codename": "manuscript-privacy-guard",
+                    "status": "Complete",
+                }
+            ]
+        },
+    )
+    monkeypatch.setattr(ft, "ROOT", tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        ft._resolve_context("feature/rm-manuscript-privacy-guard")
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "already Complete" in out
+    assert "Do not run finish again" in out
+    assert "Where things stand (on_complete: pr)" in out

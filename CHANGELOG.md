@@ -11,6 +11,52 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.2.3] - 2026-09-09
+
+Stable **v0.2.3** on **PyPI**. Promotes the work validated in `v0.2.3-rc1`,
+`v0.2.3-rc2`, and `v0.2.3-rc3`, plus the post-rc3 pr-mode finish guidance fix.
+Smoke install:
+
+    pip install specy-road==0.2.3
+
+    pip install --upgrade specy-road
+
+No migration needed, and no change to any file format. The four new
+`grind_session_*` settings in `roadmap/git-workflow.yaml` are optional.
+`require_implementation_before_finish` **defaults true**.
+
+**Adopters upgrading from `0.2.2` or earlier:** run **`specy-road refresh-stubs`**
+once after upgrading so IDE stubs match the installed toolkit.
+
+### Headline (vs v0.2.2)
+
+- Concurrent `grind-session` lanes can finish against one integration branch
+  without corrupting `registry.yaml`.
+- An in-flight claim of your own is exit **6**, not a dependency block (exit 3).
+- Pickup skips leaves already Complete on an unmerged `feature/rm-*` branch;
+  `--plan` matches that skip and names **Next auto-pick**.
+- **`specy-road registry-prune`** for orphan registry claims whose branch is
+  gone.
+- Query CLI: `why-blocked`, `list-gates`, `list-nodes --status`.
+- `finish-this-task` refuses empty implementation under declared `touch_zones`
+  (committed changes, not staged-only).
+
+One behaviour change to know about before upgrading: `finish-this-task` now
+**refuses** to close a node whose branch changed nothing under its declared
+`touch_zones` unless you pass `--allow-empty-implementation`.
+
+See the `v0.2.3-rc1`, `v0.2.3-rc2`, and `v0.2.3-rc3` sections below for full
+detail. Milestone-grind triage:
+[`docs/design-notes/v0-2-2-milestone-grind-triage.md`](docs/design-notes/v0-2-2-milestone-grind-triage.md).
+
+### Fixed (since rc3)
+
+- **Repeat `finish-this-task` after pr-mode finish** no longer fails with an
+  opaque missing-registry error when the branch tip is already Complete; it
+  explains that finish ran and points at merge/PR instead.
+- **`grind-session --plan` finished-claimed hint** no longer suggests re-running
+  finish when the branch is already Complete under an integration-branch claim.
+
 ## [v0.2.3-rc3] - 2026-09-08
 
 Third prerelease for v0.2.3. Routed to TestPyPI by

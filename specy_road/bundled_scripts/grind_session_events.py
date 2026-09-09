@@ -119,9 +119,9 @@ def _human_in_flight(prefix: str, node, fields: dict) -> str:
         if others:
             lines.append(f"  also finished-but-unmerged here: {', '.join(others)}")
         lines.append(
-            "  Open or merge the PR, or run specy-road finish-this-task on that "
-            "branch if you have not already. Do not abort-task-pickup — that "
-            "deletes the branch and the finished work with it."
+            "  Open or merge the PR to close the node on the integration branch. "
+            "Do not re-run finish-this-task — the branch tip is already Complete "
+            "and the registry row was released on finish."
         )
         lines.append(
             "  To release a dead claim whose branch is gone: "
