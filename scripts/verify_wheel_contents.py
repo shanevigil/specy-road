@@ -32,6 +32,10 @@ REQUIRED_FILES = (
     # Toolkit-owned schema: the archive index validates against this copy, so a
     # wheel without it turns every archive command into a broken-install error.
     "specy_road/schemas/archive.schema.json",
+    # Same for the review hand-off files: review-packet, handoff status,
+    # review record, and the mark-implementation-reviewed gate read these.
+    "specy_road/schemas/handoff.schema.json",
+    "specy_road/schemas/review-record.schema.json",
 )
 REQUIRED_GLOBS = (
     "specy_road/pm_gantt_static/assets/index-",  # prefix match on at least one entry

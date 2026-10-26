@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/review-record.schema.json",
+  "title": "specy-road review record",
+  "description": "YAML front matter of work/reviews/<NODE_ID>/REVIEW-<model>.md: one reviewer's verdict on one implementation commit. The Markdown body below the front matter holds the reviewer's notes.",
+  "type": "object",
+  "required": [
+    "node_id", "model", "date", "verdict", "commit", "acceptance", "findings",
+    "fresh_session", "authored_fix", "is_coordinator"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "node_id": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Reviewer model id (roster id), or human." },
+    "family": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Filled from the roster by `specy-road review record`." },
+    "model_version": { "type": "string", "minLength": 1 },
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "verdict": { "enum": ["approve", "block"] },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "The commit reviewed. The gate counts a record only while this is the branch HEAD." },
+    "acceptance": {
+      "type": "object",
+      "description": "Result per acceptance id from the brief (A1..An).",
+      "propertyNames": { "pattern": "^A[1-9][0-9]*$" },
+      "additionalProperties": { "enum": ["pass", "fail", "n/a"] }
+    },
+    "findings": {
+      "type": "object",
+      "required": ["correctness", "regression", "boundary", "test_integrity"],
+      "additionalProperties": false,
+      "properties": {
+        "correctness": { "$ref": "#/$defs/notes" },
+        "regression": { "$ref": "#/$defs/notes" },
+        "boundary": { "$ref": "#/$defs/notes" },
+        "test_integrity": { "$ref": "#/$defs/notes" }
+      }
+    },
+    "commands_rerun": { "$ref": "#/$defs/notes", "description": "Commands the reviewer ran independently." },
+    "required_changes": { "$ref": "#/$defs/notes" },
+    "fresh_session": { "type": "boolean", "description": "The review ran in a session that saw only the review packet." },
+    "authored_fix": { "type": "boolean", "description": "The reviewing session wrote any part of the change under review." },
+    "is_coordinator": { "type": "boolean", "description": "The reviewing session is the coordinator's own session." },
+    "independence": { "enum": ["distinct-family", "same-family"], "description": "Written by `specy-road review record` when policy requires distinct families." }
+  },
+  "$defs": {
+    "notes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+  }
+}
