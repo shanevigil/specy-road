@@ -31,6 +31,7 @@ _SCRIPTS = {
     "abort-task-pickup": "abort_task_pickup.py",
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
+    "review-packet": "review_packet.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",
     "start-milestone-session": "start_milestone_session.py",
