@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/orchestration.schema.json",
+  "title": "specy-road orchestration contract",
+  "description": "roadmap/orchestration.yaml: who may coordinate, execute, and review leaves, and what the implementation review gate requires. A missing file means the default policy (one reviewer, any family, roster of one human).",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "roster": {
+      "type": "array",
+      "description": "Models (and humans) that may hold a role. A review counts toward the gate only when its model is rostered with the reviewer role, or is the substitute in an active substitution for that node.",
+      "items": { "$ref": "#/$defs/rosterEntry" }
+    },
+    "policy": { "$ref": "#/$defs/policy" },
+    "substitutions": {
+      "type": "array",
+      "description": "Recorded decisions to let a named substitute fill a reviewer slot, with a date and an expiry.",
+      "items": { "$ref": "#/$defs/substitution" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$" },
+    "rosterEntry": {
+      "type": "object",
+      "required": ["id", "family"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id", "description": "Model id as used in review records (e.g. claude-opus-5.5, human)." },
+        "family": { "$ref": "#/$defs/id", "description": "Vendor family; reviewer independence is judged by family (e.g. anthropic, openai, human)." },
+        "profile": { "type": "string", "minLength": 1, "description": "Repo-relative path to this model's profile (model-profiles/<family>/<api_id>.md)." },
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["coordinator", "executor", "reviewer"] }
+        },
+        "channels": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cli": { "type": "string", "minLength": 1, "description": "Headless invocation; {prompt} is replaced with the prompt file path." },
+            "paste": { "type": "string", "minLength": 1, "description": "Name of the IDE chat a prompt file is pasted into." },
+            "subagent": { "type": "boolean" }
+          }
+        },
+        "may_process": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Data sensitivity levels this model may receive (e.g. public, internal, restricted)."
+        },
+        "subagent_family_lock": { "$ref": "#/$defs/id", "description": "When set, this model may spawn only sub-agents of this family." },
+        "preflight": { "type": "string", "minLength": 1, "description": "Command that must succeed before a prompt is sent to this model." }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reviewers_required": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Approving review records at the branch HEAD needed before mark-implementation-reviewed succeeds. Default 1."
+        },
+        "reviewers_distinct_families": {
+          "type": "boolean",
+          "description": "When true, the approvals must come from that many distinct families. Default false."
+        },
+        "reviewer_fresh_session": {
+          "type": "boolean",
+          "description": "When true, a review record must attest it came from a fresh session. Default true."
+        }
+      }
+    },
+    "substitution": {
+      "type": "object",
+      "required": ["slot", "use", "decided"],
+      "additionalProperties": false,
+      "properties": {
+        "slot": { "type": "string", "minLength": 1, "description": "The reviewer slot being filled, e.g. reviewer-openai." },
+        "use": { "$ref": "#/$defs/id", "description": "Model id of the substitute." },
+        "scope": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Node ids the substitution covers. Omit to cover every node."
+        },
+        "decided": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "expires_when": { "type": "string", "minLength": 1, "description": "Human-readable expiry condition, e.g. 'gpt-5.6-sol has capacity'." },
+        "expires": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Machine-checked expiry: the substitution stops counting after this date." }
+      }
+    }
+  }
+}
