@@ -4,7 +4,9 @@
 F-004: ``specy-road brief`` is a deterministic agent-handoff document that
 inlines all the context an implementer needs (no separate file-opening):
 
-* node metadata (id, codename, title, status, rollup, touch zones)
+* node metadata (id, codename, title, status, rollup, touch zones), then its
+  ``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records
+  cite those ids — see ``brief_acceptance``)
 * ancestor context chain (program -> phase -> milestone -> task)
 * every ancestor planning sheet body, in chain order
 * this node's planning sheet body
@@ -30,6 +32,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from specy_road.bundled_scripts.brief_acceptance import render_goal_and_acceptance
 from specy_road.bundled_scripts.brief_dependency_context import render_dependency_context_section
 
 from specy_road import contract_citations
@@ -100,7 +103,7 @@ def _section_metadata(node: dict) -> list[str]:
         f"- **Execution (milestone hint):** {node.get('execution_milestone') or '—'}",
         f"- **Touch zones:** {tz_str}",
         "",
-    ]
+    ] + render_goal_and_acceptance(node)
 
 
 def _section_ancestor_chain(chain: list[dict]) -> list[str]:
