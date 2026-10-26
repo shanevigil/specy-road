@@ -278,7 +278,9 @@ covers only what's needed to install and start it.
 ## Brief generation
 
 `specy-road brief <NODE_ID>` produces a comprehensive **work-packet brief**
-(F-004): node metadata, ancestor context chain, every relevant planning
+(F-004): node metadata with the node's `goal` and its `acceptance` criteria
+numbered `A1..An` (review records cite those ids), ancestor context chain,
+every relevant planning
 sheet inlined, `shared/README.md` plus only the shared contracts the
 planning chain cites under `## References` (the rest are listed as paths;
 `--all-contracts` restores full inlining), a git-derived history section
