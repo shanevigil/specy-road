@@ -23,6 +23,16 @@ If you generate and filter in the same pass you will return five safe ideas
 instead of forty, and the session will have been worth nothing. The commands
 below enforce the split; do not shortcut them.
 
+## What you may write
+
+Until the PM runs `promote`, a brainstorm changes **only the session file**,
+and only through `specy-road brainstorm frame`, `add-idea`, `add-evidence`
+and `revise`. Do **not** edit code, tests or configuration (not even to try
+an idea), and do not touch `planning/`, `roadmap/`, `roadmap/registry.yaml`,
+`shared/` or `constitution/`; do not write under `work/` except through
+those commands. Proposals are not nodes, sheets or claims until the PM
+promotes them.
+
 ## Phase 1 — open the session
 
 From the repository root:
@@ -147,4 +157,7 @@ specy-road digest --check
   chunks and manifest atomically; hand edits break that.
 - **Do not register brainstormed work in `roadmap/registry.yaml`.** The
   registry is for active claims on work being implemented, not for proposals.
+- **Do not implement an idea during the session.** No code, test, config,
+  `planning/` or `shared/` edits until the PM has promoted it and assigned
+  the work through the normal roadmap flow.
 - **Do not promote ideas the PM has not accepted.**
