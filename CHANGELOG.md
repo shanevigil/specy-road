@@ -239,7 +239,8 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   fails open quietly.
 - `specy-road session start|touch|end|list|check`: presence records under
   `work/.sessions/` for work that is not a registry claim. `handoff status`
-  lists live sessions (its `--json` output is now `{sessions, nodes}`),
+  lists live sessions (its `--json` output is now `{sessions, workers, nodes}`
+  since slice 7),
   pickup warns when a live session's paths overlap the leaf's touch zones, and
   `session check` exits 1 when staged paths overlap another live session's —
   a pre-commit guard. New scaffolds gitignore `work/.sessions/`.

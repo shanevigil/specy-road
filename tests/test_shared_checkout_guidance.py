@@ -17,7 +17,7 @@ AGENTS = REPO / "specy_road" / "templates" / "specyrd" / "agents-md-block.md"
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 
 _SENTENCES = (
-    "Commit by explicit path (`git add <paths>`); never `git add -A` or `git commit -a`.",
+    "Commit by explicit path (`git commit --only <paths>`); never `git add -A`, `git commit -a`, or a bare",
     "switch branches in a tree another session may be using",
     "`base: <sha>`",
     "the toolkit's is the floor: stop and ask rather than relax it",
