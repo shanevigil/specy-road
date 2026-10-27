@@ -94,6 +94,16 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   step-mode protocol, including the review gate; hook mode stays the terminal
   path.
 
+### Fixed
+
+- `grind-session --implement-mode hook` with the Claude CLI: the hook's output
+  now streams to stderr line by line instead of appearing in one lump after
+  exit, so a long run and the wait before a limit message no longer look like
+  silence. The macOS banner on a limit wait fires for the first time: it was
+  built with single-quoted strings, which AppleScript rejects, and the error
+  was swallowed. The session id for `--resume` is found for repos whose path
+  contains `.` or `_`; the transcript-directory lookup mapped only `/`.
+
 ### Changed
 
 - The gate counts one vote per model (a block from any of a model's records
