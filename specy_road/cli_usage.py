@@ -76,6 +76,8 @@ USAGE_TEXT = (
     "    exceeds the line cap (optional: --repo-root DIR --dry-run)\n"
     "  refresh-schemas      — update schemas/ from this specy-road version; touches\n"
     "    nothing else (optional: --repo-root DIR --dry-run)\n"
+    "  refresh-profiles     — add model-profiles/ files this version ships that the repo\n"
+    "    lacks; never overwrites yours (optional: --dry-run | --force PATH)\n"
     "  refresh-stubs        — update the IDE stubs .specyrd/manifest.json records,\n"
     "    add ones shipped since, re-apply the managed blocks; touches nothing else\n"
     "    (optional: --repo-root DIR --dry-run)\n"

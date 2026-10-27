@@ -46,6 +46,7 @@ def _repo(tmp_path: Path) -> Path:
 def _run(mod, *args: str) -> int:
     with pytest.raises(SystemExit) as e:
         mod.main(list(args))
+        raise SystemExit(0)
     return e.value.code or 0
 
 
@@ -184,3 +185,34 @@ def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) 
     assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 1
     assert "no {prompt} placeholder" in capsys.readouterr().err
+
+
+# --- refresh-profiles ---------------------------------------------------------
+
+def test_refresh_profiles_adds_missing_and_keeps_edited(tmp_path: Path, capsys) -> None:
+    from specy_road.bundled_scripts import refresh_profiles as rp
+
+    repo = tmp_path / "r"
+    repo.mkdir()
+    written, kept = rp.refresh_profiles(repo)
+    assert len(written) == 17 and kept == []  # 16 profiles + README
+    mine = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    mine.write_text("---\nprofile_schema: 2\n---\nmy edits\n")
+    written, kept = rp.refresh_profiles(repo)
+    assert written == [] and len(kept) == 17
+    assert mine.read_text().endswith("my edits\n")
+    written, _ = rp.refresh_profiles(repo, force=["model-profiles/anthropic-claude/claude-opus-5-5.md"])
+    assert written == ["model-profiles/anthropic-claude/claude-opus-5-5.md"]
+    assert "my edits" not in mine.read_text()
+    assert _run(rp, "--repo-root", str(repo)) == 0
+    assert "already has every profile" in capsys.readouterr().out
+
+
+def test_refresh_profiles_dry_run_writes_nothing(tmp_path: Path, capsys) -> None:
+    from specy_road.bundled_scripts import refresh_profiles as rp
+
+    repo = tmp_path / "r"
+    repo.mkdir()
+    assert _run(rp, "--dry-run", "--repo-root", str(repo)) == 0
+    assert "would write model-profiles/README.md" in capsys.readouterr().out
+    assert not (repo / "model-profiles").exists()

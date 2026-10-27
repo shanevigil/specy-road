@@ -142,6 +142,7 @@ on every upgrade: they are idempotent, they report what they would change with
 pip install -U specy-road
 
 specy-road refresh-schemas --dry-run   # then without --dry-run
+specy-road refresh-profiles --dry-run  # model-profiles/ this version ships that you lack
 specy-road refresh-stubs    --dry-run   # then without --dry-run
 ```
 

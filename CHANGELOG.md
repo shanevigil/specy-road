@@ -78,6 +78,8 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   profile's `access.cli`. Stub: `/specyrd-prompt`.
 - `init project` scaffolds `model-profiles/` (16 profiles and the roster guide)
   into the adopter's repo; roster entries point at them with `profile:`.
+  `specy-road refresh-profiles` adds missing ones to a repo scaffolded earlier
+  without overwriting edited copies (`--force <path>` for one).
 - [`model-profiles/`](specy_road/templates/project/model-profiles/README.md), scaffolded by
   `init project` into the adopter's repo: a canonical guide to
   choosing models for coordinator, executor, and reviewer roles. It has one

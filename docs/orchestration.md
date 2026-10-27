@@ -112,7 +112,9 @@ in the review packet, and, like any commit that touches more than
 `init project` scaffolds `model-profiles/` into your repo: one schema-2 profile
 per model (limits, prices, headless CLI, role scores, prompting rules, failure
 modes) and a README that ranks models by role and gives each one's roster
-`family`. A roster entry points at its profile with `profile:`; the facts come
+`family`. A roster entry points at its profile with `profile:`. A repo scaffolded
+by an older version gets them with `specy-road refresh-profiles`, which adds
+what is missing and never overwrites your edited copies. The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
 

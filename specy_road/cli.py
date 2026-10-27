@@ -41,6 +41,7 @@ _SCRIPTS = {
     "sync": "pm_sync.py",
     "rebalance-chunks": "roadmap_rebalance.py",
     "refresh-schemas": "refresh_schemas.py",
+    "refresh-profiles": "refresh_profiles.py",
     "refresh-stubs": "refresh_stubs.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
