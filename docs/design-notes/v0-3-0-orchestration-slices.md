@@ -64,6 +64,28 @@ a team notices its copy aging; the toolkit's copy is refreshed by re-running
 the §7 prompt. Built: `models list|show|stale` and
 `prompt <NODE_ID> --model <id> --role <role> [--channel cli|paste|subagent]`.
 
+## Slice 3 status
+
+Built: `orchestrate plan` (`specy_road/orchestrate_plan.py`), routing enforced
+in `prompt` (sensitivity, availability, family lock, preflight), and the roster
+fields `class` and `unavailable_until`. The roster schema is read from the
+package, so these need no adopter action.
+
+Pending a maintainer decision: the node fields `sensitivity` and
+`executor_eligibility`. The planner and `prompt` read them through
+`node_sensitivity()` / `node_eligibility()` and default to `public` / `any`,
+but `roadmap.schema.json` is consumer-owned with `additionalProperties:
+false`, so setting them fails `validate` until the schema gains them and the
+adopter runs `refresh-schemas` (the path `type: gate` and
+`implementation_review` took). The alternative — keying them by node id in
+`orchestration.yaml` — avoids the schema step but puts the policy away from
+the work it describes. Eligibility values: `any`, or a roster `class` tag the
+team names (`senior`, `cheap`); `senior` is a tag, not a score threshold.
+
+Deferred: partial delegation (sub-tasks inside a leaf with their own touch
+zones) changes the node model in ways the brief and gate do not understand.
+Per-touch-zone sensitivity likewise; node-level only for now.
+
 ## Gaps found while scoping
 
 - `brief` did not render a node's `goal` or `acceptance`; the proposal assumes

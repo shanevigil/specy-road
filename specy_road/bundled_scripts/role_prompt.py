@@ -29,6 +29,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.model_profiles import ROLES, Profile, profile_for_entry
+from specy_road.orchestrate_plan import entry_may_process, is_available, may_handle, node_sensitivity
 from specy_road.orchestration_config import effective_config
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -60,9 +61,11 @@ def _precondition(role: str, node_id: str, t) -> list[str]:
     ]
 
 
-def _executor_preamble(node_id: str, zones: list[str]) -> list[str]:
+def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None = None) -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
-    return [
+    lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
+             "defeats the reason you were chosen.", ""] if family_lock else [])
+    return lock + [
         "## Your role: executor",
         "",
         f"You implement roadmap leaf `{node_id}` and nothing else. Touch zones: {z}.",
@@ -164,19 +167,25 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
         return "", None, f"{model!r} is not in the roster (roadmap/orchestration.yaml)"
     if role not in (entry.get("roles") or []):
         return "", None, f"{model!r} does not have the {role} role in the roster"
+    if not is_available(entry):
+        return "", None, f"{model!r} is marked unavailable until {entry.get('unavailable_until')} in the roster"
     try:
         t = resolve_target(root, node_id)
     except ReviewTargetError as e:
         if role != "coordinator":
             return "", None, str(e)
         t = None
+    if t and not may_handle(entry, node_sensitivity(t.node)):
+        return "", None, (f"{node_id} is {node_sensitivity(t.node)!r} and {model!r} may process only "
+                          f"{entry_may_process(entry)}; route it to a model that may "
+                          "(`specy-road orchestrate plan`)")
     prof = profile_for_entry(root, entry)
     zones = list(t.touch_zones) if t else []
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
     if t:
         lines += _precondition(role, node_id, t)
     if role == "executor":
-        lines += _executor_preamble(node_id, zones)
+        lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"))
     elif role == "reviewer":
         lines += _reviewer_preamble(node_id, model)
     else:
@@ -194,7 +203,16 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     return "\n".join(lines) + "\n", prof, None
 
 
-def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path) -> int:
+def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None) -> int:
+    if preflight:
+        # Proposal §3.6: e.g. confirm which process owns a local model's port.
+        # It runs before anything else is even inspected: a failed check stops
+        # the command whatever else is wrong.
+        print(f"preflight: {preflight}", file=sys.stderr)
+        rc = subprocess.run(preflight, shell=True, cwd=root, check=False).returncode
+        if rc != 0:
+            print(f"error: preflight failed (exit {rc}); nothing was sent", file=sys.stderr)
+            return rc
     cli = prof.cli() if prof else None
     if not cli:
         print("error: --channel cli needs an `access.cli` in the model's profile", file=sys.stderr)
@@ -223,13 +241,15 @@ def main(argv: list[str] | None = None) -> None:
     if err:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
+    config, _ = effective_config(root)
+    entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
     out = ns.output or root / "work" / f"prompt-{ns.node_id}-{ns.role}-{ns.model}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8")
     print(f"Wrote {out}")
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
-    raise SystemExit(run_cli_channel(prof, out, root) if ns.channel == "cli" else 0)
+    raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight")) if ns.channel == "cli" else 0)
 
 
 if __name__ == "__main__":

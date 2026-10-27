@@ -65,6 +65,9 @@ def _dates_to_iso(raw: dict[str, Any]) -> None:
         for key in ("decided", "expires"):
             if isinstance(sub.get(key), date):
                 sub[key] = sub[key].isoformat()
+    for entry in raw.get("roster") or []:
+        if isinstance(entry, dict) and isinstance(entry.get("unavailable_until"), date):
+            entry["unavailable_until"] = entry["unavailable_until"].isoformat()
 
 
 def _semantic_error(raw: dict[str, Any]) -> str | None:
