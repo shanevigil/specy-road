@@ -155,8 +155,10 @@ current CLI legitimately produces (for example `type: gate` nodes, or the
 `specy-road validate` warns when it notices this. The command touches
 `schemas/` and nothing else.
 
-**`refresh-stubs` — the IDE stubs from `specyrd init`.** Command stubs under
-`.claude/commands/` or `.cursor/commands/`, plus `.specyrd/README.md`. It
+**`refresh-stubs` — the skills from `specyrd init`.** One skill per command
+under `.agents/skills/<name>/SKILL.md`, read natively by Cursor and Codex and
+through a symlink per skill under `.claude/skills/` by Claude Code (or a flat
+directory for `--ai generic`), plus `.specyrd/README.md`. It
 rewrites exactly the paths `.specyrd/manifest.json` records as managed, installs
 stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
 `specyrd-digest` and `specyrd-history`), re-applies the managed blocks in
@@ -164,7 +166,10 @@ stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
 `specyrd_version`. `specy-road validate` warns while the manifest lags.
 
 Stubs this version no longer installs for your recorded `--role` are **listed,
-not deleted** — they are yours to remove.
+not deleted** — they are yours to remove. A repo initialised before 0.3.0 has
+its commands under `.cursor/commands/` or `.claude/commands/`; `refresh-stubs`
+writes the skills, lists those old files, and prints the `rm` that removes
+them, so each `/specyrd-…` entry exists once.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
 every scaffold file, including `roadmap/manifest.json` and your phase chunks.

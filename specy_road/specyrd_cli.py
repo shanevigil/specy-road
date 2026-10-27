@@ -103,9 +103,9 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
         "--ide",
         dest="agent",
         required=True,
-        choices=["cursor", "claude-code", "generic"],
+        choices=["cursor", "claude-code", "codex", "generic"],
         metavar="ID",
-        help="Agent pack: cursor | claude-code | generic",
+        help="Agent pack: cursor | claude-code | codex (skills under .agents/skills/) | generic",
     )
     init.add_argument(
         "--dry-run",

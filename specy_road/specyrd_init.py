@@ -1,4 +1,4 @@
-"""Install IDE command stubs that delegate to specy-road CLI or scripts."""
+"""Install the specyrd command skills (or stubs) that delegate to the specy-road CLI."""
 
 from __future__ import annotations
 
@@ -12,13 +12,20 @@ from typing import Any
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report
 from specy_road.agent_ignores import apply_and_report
+from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
+    SKILLS_REL,
+    _package_templates_dir,
+    _read_template,
+    install_stubs as _append_command_stub_installs,
+    managed_paths,
+)
 from specy_road.runtime_paths import (
     discover_project_root,
     prefix_within,
     recorded_project_root,
 )
 
-AGENT_CHOICES = frozenset({"cursor", "claude-code", "generic"})
+AGENT_CHOICES = frozenset({"cursor", "claude-code", "codex", "generic"})
 ROLE_CHOICES = frozenset({"pm", "dev", "both"})
 
 DEFAULT_GUI_SETTINGS_JSON = (
@@ -33,10 +40,12 @@ DEFAULT_GUI_SETTINGS_JSON = (
     '    "token": "",\n    "base_url": ""\n  }\n}\n'
 )
 
-# Relative to repo root per agent (generic uses --ai-commands-dir).
+# Where a pack's command files live, relative to the repo root. The skill packs
+# share one directory (see specyrd_skills); generic uses --ai-commands-dir.
 AGENT_REL_DEST: dict[str, Path | None] = {
-    "cursor": Path(".cursor/commands"),
-    "claude-code": Path(".claude/commands"),
+    "cursor": SKILLS_REL,
+    "claude-code": SKILLS_REL,
+    "codex": SKILLS_REL,
     "generic": None,
 }
 
@@ -109,18 +118,6 @@ ROLE_COMMAND_FILES: dict[str, tuple[str, ...]] = {
 }
 
 
-def _package_templates_dir() -> Path:
-    """Package directory for templates/specyrd/..."""
-    return Path(__file__).resolve().parent / "templates" / "specyrd"
-
-
-def _commands_traversable():
-    """Traversable for packaged command templates (filesystem fallback)."""
-    return resources.files("specy_road").joinpath(
-        "templates", "specyrd", "commands"
-    )
-
-
 def resolve_repo_root(start: Path) -> Path:
     """Prefer git worktree root; else the resolved start path."""
     start = start.resolve()
@@ -135,18 +132,6 @@ def resolve_repo_root(start: Path) -> Path:
         return Path(r.stdout.strip())
     except (subprocess.CalledProcessError, FileNotFoundError):
         return start
-
-
-def _read_template(name: str) -> str:
-    """Load a command template; substitute version placeholder."""
-    pkg_dir = _package_templates_dir()
-    path = pkg_dir / "commands" / name
-    if path.is_file():
-        text = path.read_text(encoding="utf-8")
-    else:
-        t = _commands_traversable() / name
-        text = t.read_text(encoding="utf-8")
-    return text.replace("{{SPECYRD_VERSION}}", __version__)
 
 
 def _read_dot_specyrd_readme() -> str:
@@ -220,30 +205,6 @@ def _validate_generic_commands_dir(repo_root: Path, rel: Path) -> Path:
             "--ai-commands-dir must resolve inside the repository root"
         ) from e
     return rel
-
-
-def _append_command_stub_installs(
-    repo_root: Path,
-    rel_dest: Path,
-    files_to_install: tuple[str, ...],
-    force: bool,
-    dry_run: bool,
-    written: list[str],
-    skipped: list[str],
-) -> None:
-    for name in files_to_install:
-        rel_file = rel_dest / name
-        dest_file = repo_root / rel_file
-        if dest_file.is_file() and not force:
-            skipped.append(str(rel_file))
-            continue
-        content = _read_template(name)
-        if dry_run:
-            written.append(str(rel_file))
-            continue
-        dest_file.parent.mkdir(parents=True, exist_ok=True)
-        dest_file.write_text(content, encoding="utf-8")
-        written.append(str(rel_file))
 
 
 def _write_readme_and_gui_stub(
@@ -325,7 +286,7 @@ def run_init(
     else:
         files_to_install = COMMAND_FILES
     _append_command_stub_installs(
-        repo_root, rel_dest, files_to_install, force, dry_run, written, skipped
+        repo_root, rel_dest, files_to_install, force, dry_run, written, skipped, agent=agent
     )
     _write_readme_and_gui_stub(
         repo_root,
@@ -362,23 +323,6 @@ def run_init(
         )
 
     return InitResult(written=written, skipped=skipped, dry_run=dry_run)
-
-
-def managed_paths(
-    rel_dest: Path, files_to_install: tuple[str, ...], *, agent: str
-) -> list[str]:
-    """Every repo path this pack owns, in the order the manifest records them.
-
-    The manifest is what makes ``--force`` answerable: a file listed here is
-    the kit's to rewrite, and a file that is not is the consumer's. ``CLAUDE.md``
-    used to be written without being listed, which is precisely how ``--force``
-    came to destroy one.
-    """
-    paths = [str(rel_dest / n) for n in files_to_install]
-    paths.append(str(Path(".specyrd/README.md")))
-    if agent in GUIDE_AGENTS:
-        paths.append(AGENT_GUIDE)
-    return paths
 
 
 def _record_manifest(

@@ -7,7 +7,7 @@ This directory is created by **`specyrd init`** from the **specy-road** kit. It 
 
 ## Adding another IDE later
 
-Run `specyrd init` again with a different `--ai` value (e.g. `cursor` then `claude-code`).
+Run `specyrd init` again with a different `--ai` value (`cursor`, `claude-code`, `codex`). The skills under `.agents/skills/` are one file per command shared by every pack; a second pack adds only its own links (Claude Code reads them through `.claude/skills/`).
 
 ## Updating after `pip install -U specy-road`
 

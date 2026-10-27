@@ -37,6 +37,8 @@ from specy_road.runtime_paths import (
     prefix_within,
     recorded_project_root,
 )
+from specy_road.managed_block import UNCHANGED
+from specy_road.specyrd_skills import ensure_link, is_link_path, render_skill
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
     COMMAND_FILES,
@@ -73,15 +75,22 @@ def _dest_dir(agent: str, recorded: list[str]) -> Path | None:
 def _content_for(rel: str) -> str | None:
     if rel == README_REL:
         return _read_dot_specyrd_readme()
-    name = Path(rel).name
-    if name in COMMAND_FILES:
-        return _read_template(name)
+    path = Path(rel)
+    if path.name == "SKILL.md" and f"{path.parent.name}.md" in COMMAND_FILES:
+        return render_skill(f"{path.parent.name}.md")
+    if path.name in COMMAND_FILES:
+        return _read_template(path.name)
     return None
 
 
 def _write_if_changed(
-    repo_root: Path, rel: str, *, dry_run: bool, written: list[str]
+    repo_root: Path, rel: str, *, dry_run: bool, written: list[str], agent: str = "generic"
 ) -> None:
+    if is_link_path(rel):
+        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run)
+        if outcome != UNCHANGED:
+            written.append(f"{rel} ({outcome})")
+        return
     content = _content_for(rel)
     if content is None:
         return
@@ -130,7 +139,7 @@ def refresh_stubs(
             continue
         current = managed_paths(rel_dest, _stub_set(role), agent=agent)
         for rel in current:
-            _write_if_changed(repo_root, rel, dry_run=dry_run, written=written)
+            _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent)
         orphans.extend(_orphans(recorded, current, repo_root))
         apply_guide_and_report(
             repo_root, prefix, written, agent=agent, dry_run=dry_run
@@ -195,6 +204,13 @@ def _report(written: list[str], orphans: list[str], *, dry_run: bool) -> None:
         print("\nNo longer installed for this role, left on disk for you to remove:")
         for rel in orphans:
             print(f"  {rel}")
+        if any("/commands/" in rel for rel in orphans):
+            print(
+                "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
+                "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
+                "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
+                + " ".join(rel for rel in orphans if "/commands/" in rel)
+            )
     if dry_run:
         print("\n(dry-run; no files written)")
         return

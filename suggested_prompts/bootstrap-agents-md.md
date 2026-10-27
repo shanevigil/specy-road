@@ -27,9 +27,9 @@ Framing matters: later phases merge into `CLAUDE.md` / `.cursor` for **this repo
 
 Inventory:
 
-- `.cursor/rules/**`, `.cursor/commands/**`
+- `.cursor/rules/**`, `.agents/skills/**` (shared skills; `.cursor/commands/**` only in repos initialised before 0.3.0)
 - `CLAUDE.md` at repo root (if any)
-- `.claude/commands/**` or other IDE agent command folders
+- `.claude/skills/**` (symlinks into `.agents/skills/`) or other IDE agent skill folders
 - Optional: GitHub Copilot or other `*instructions*` files
 - Existing `AGENTS.md` (if any)
 
@@ -121,7 +121,7 @@ specyrd init --here --ai claude-code
 
 These install **stub** markdown commands that delegate to **`specy-road`** CLI—they do not redefine validation logic. See **`docs/contributor-guide.md`** (IDE stubs section) or the project `README` for `specyrd` options (`--dry-run`, `--force`, `--role`, generic `--ai-commands-dir`).
 
-If stubs already exist under `.cursor/commands/` or `.claude/commands/`, do not duplicate; ensure they still point at the same CLI workflows.
+If skills already exist under `.agents/skills/` (or pre-0.3.0 stubs under `.cursor/commands/` or `.claude/commands/`), do not duplicate them; point at them and let `specy-road refresh-stubs` migrate old stubs to skills.
 
 ### Optional indexing (`.cursorignore`)
 

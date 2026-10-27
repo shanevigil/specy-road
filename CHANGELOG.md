@@ -147,6 +147,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   peer can see who holds it. `add-node` sets `sibling_order` after the parent's
   last sibling (`--sibling-order N` to place it); an unset value sorted as `0`
   and jumped the pickup queue (proposal §3.4, §5).
+- **`specyrd init` writes skills, one file per command, read by every harness.**
+  `.agents/skills/<name>/SKILL.md` is read natively by Cursor and Codex; the
+  `claude-code` pack adds a symlink per skill under `.claude/skills/` (a copy
+  where symlinks are unavailable). New `--ai codex`. `--ai generic` is
+  unchanged. **Existing adopters:** `specy-road refresh-stubs` writes the
+  skills, lists the old `.cursor/commands/` or `.claude/commands/` stubs, and
+  prints the `rm` to remove them so each `/specyrd-…` entry exists once.
 - `/specyrd-orchestrate`: the coordinator's loop — `orchestrate plan`, one
   pickup and one fresh executor prompt per leaf, `handoff status` polling,
   fresh reviewer sessions, the gate, finish — with the never-review-your-own-
