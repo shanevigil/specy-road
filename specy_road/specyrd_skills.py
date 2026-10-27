@@ -87,10 +87,13 @@ def is_link_path(rel: str) -> bool:
     return any(Path(rel).parent == d for d in LINK_DEST.values())
 
 
-def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False) -> str:
+def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False, repair: bool = True) -> str:
     """Create or repair the symlink for ``name``; copy the skill when symlinks fail.
 
-    Returns ``created`` / ``updated`` / ``unchanged`` / ``copied``.
+    Returns ``created`` / ``updated`` / ``unchanged`` / ``copied`` / ``skipped (not ours)``.
+    ``repair=False`` (a first install without ``--force``) leaves a foreign
+    symlink or file at the path alone: it is the user's until the manifest
+    says otherwise.
     """
     rel = link_rel(agent, name)
     assert rel is not None
@@ -109,6 +112,8 @@ def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False
         if (link / "SKILL.md").read_text(encoding="utf-8") == render_skill(name) and not _symlinks_work(link.parent):
             return UNCHANGED
     outcome = CREATED if not (link.exists() or link.is_symlink()) else UPDATED
+    if outcome == UPDATED and not repair and not link.is_dir():
+        return SKIPPED   # a user's own symlink or file at the managed name
     if dry_run:
         return outcome
     link.parent.mkdir(parents=True, exist_ok=True)
@@ -169,11 +174,21 @@ def install_stubs(
                 dest_file.write_text(content, encoding="utf-8")
             written.append(str(rel_file))
         if skills and link_rel(agent, name) is not None:
-            outcome = ensure_link(repo_root, agent, name, dry_run=dry_run)
+            outcome = ensure_link(repo_root, agent, name, dry_run=dry_run, repair=force)
             if outcome == SKIPPED:
                 skipped.append(f"{link_rel(agent, name)} ({outcome})")
             elif outcome != UNCHANGED:
                 written.append(f"{link_rel(agent, name)} ({outcome})")
+
+
+def owned_paths(managed: list[str], skipped: list[str], already_owned: set[str] | None = None) -> list[str]:
+    """``managed`` minus what this install skipped, unless another pack in the manifest already owns it.
+
+    A file the kit did not write is not its to rewrite later; a skill file
+    shared with a pack that did write it stays the kit's.
+    """
+    not_ours = {s.split(" (")[0] for s in skipped} - (already_owned or set())
+    return [p for p in managed if p not in not_ours]
 
 
 def managed_paths(rel_dest: Path, files_to_install: tuple[str, ...], *, agent: str) -> list[str]:

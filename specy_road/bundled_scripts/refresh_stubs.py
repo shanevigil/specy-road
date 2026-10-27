@@ -38,7 +38,7 @@ from specy_road.runtime_paths import (
     recorded_project_root,
 )
 from specy_road.managed_block import UNCHANGED
-from specy_road.specyrd_skills import ensure_link, is_link_path, render_skill
+from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
     COMMAND_FILES,
@@ -84,23 +84,36 @@ def _content_for(rel: str) -> str | None:
 
 
 def _write_if_changed(
-    repo_root: Path, rel: str, *, dry_run: bool, written: list[str], agent: str = "generic"
-) -> None:
+    repo_root: Path, rel: str, *, dry_run: bool, written: list[str], agent: str = "generic",
+    owned: bool = True,
+) -> bool:
+    """Rewrite one managed path. Returns whether the path is the pack's after this call.
+
+    A path the manifest never owned that already exists on disk is the
+    consumer's: it is left alone and reported, not adopted.
+    """
     if is_link_path(rel):
-        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run)
+        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned)
+        if outcome == SKIPPED:
+            written.append(f"{rel} ({outcome})")
+            return False
         if outcome != UNCHANGED:
             written.append(f"{rel} ({outcome})")
-        return
+        return True
     content = _content_for(rel)
     if content is None:
-        return
+        return True
     dest = repo_root / rel
+    if not owned and dest.exists():
+        written.append(f"{rel} (skipped (not ours))")
+        return False
     if dest.is_file() and dest.read_text(encoding="utf-8") == content:
-        return
+        return True
     if not dry_run:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content, encoding="utf-8")
     written.append(rel)
+    return True
 
 
 def _old_command_stub(rel: str) -> bool:
@@ -148,8 +161,10 @@ def refresh_stubs(
         if rel_dest is None:
             continue
         current = managed_paths(rel_dest, _stub_set(role), agent=agent)
-        for rel in current:
-            _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent)
+        ours = [rel for rel in current
+                if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent,
+                                     owned=rel in recorded or rel.startswith(".specyrd/"))]
+        current = ours
         orphans.extend(_orphans(recorded, current, repo_root))
         # Refresh the block in a CLAUDE.md the consumer has; never create the
         # file (`specyrd init` does that only with --write-claude-md).

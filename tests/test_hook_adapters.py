@@ -79,7 +79,7 @@ def test_deny_answers_the_way_the_harness_reads_it(tmp_path: Path, fmt: str) -> 
 def test_allow_exits_zero_and_speaks_only_when_the_harness_needs_it(tmp_path: Path, fmt: str) -> None:
     repo = make_review_repo(tmp_path)
     sp.start_session(repo, "alice", paths=["src"])
-    r = _run(repo, fmt, PAYLOADS[fmt]("git add src/a.py && git commit -m x"))
+    r = _run(repo, fmt, PAYLOADS[fmt]("git add src/a.py && git commit --only src/a.py -m x"))
     assert r.returncode == 0 and "session guard" not in r.stderr
     if fmt in EXPLICIT_ALLOW:
         assert json.loads(r.stdout) == {"permission": "allow"}

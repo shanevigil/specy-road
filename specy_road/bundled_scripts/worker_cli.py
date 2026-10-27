@@ -58,7 +58,9 @@ def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn):
     op = getattr(ns, "op_id", None)
     if op:
         target = getattr(ns, "worker_id", None) or getattr(ns, "node_id", None) or getattr(ns, "node", None)
-        old = begin_op(root, op, kind, target)
+        inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "file", "note", "session")
+                  if getattr(ns, k, None)}
+        old = begin_op(root, op, kind, target, inputs)
         if old is not None:
             print(json.dumps(old["result"], indent=2) if ns.json else f"op {op} already {old['state']}: "
                   + json.dumps(old["result"]))

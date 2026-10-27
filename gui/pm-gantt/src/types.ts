@@ -221,6 +221,12 @@ export type BrainstormSession = {
   topic: string;
   under: string | null;
   mode: "brainstorm" | "roadmap";
+  /** Session v2: which diverge round is current, the lens profile, shard count, the agreed frame and allocation grid. */
+  round: number;
+  profile: "product" | "technical";
+  panel: number;
+  frame: Record<string, string>;
+  allocation: string;
   ideas: BrainstormIdea[];
   pending_promotion: string[];
 };

@@ -53,6 +53,11 @@ def _payload(session: BrainstormSession) -> dict[str, Any]:
         "topic": session.topic,
         "under": session.under,
         "mode": session.mode,
+        "round": session.round,
+        "profile": session.profile,
+        "panel": session.panel,
+        "frame": dict(session.frame),
+        "allocation": session.allocation,
         "ideas": [i.to_dict() for i in session.ideas],
         "pending_promotion": [i.id for i in pending_ideas(session)],
     }
@@ -183,11 +188,18 @@ def _apply_triage(session: BrainstormSession, body: BrainstormTriageBody) -> Non
     A recommendation is the model's advice, so recording it must not consume
     the PM's accept/reject decision. Same rule as the CLI's ``revise``.
     """
+    reason = (body.reason or "").strip()
+    if body.status in ("rejected", "parked") and not reason:
+        raise BrainstormError(f"{body.status} needs a reason: the record of why is worth more than the verdict")
     if body.status is not None:
         set_status(session, body.idea_id, body.status)
     idea = session.by_id(body.idea_id)
     if body.status is not None and idea.decision and idea.decision.get("status") != body.status:
         idea.decision = None   # same rule as the CLI: a stale reject/park reason goes
+    if body.status is not None and reason:
+        from datetime import date
+
+        idea.decision = {"status": body.status, "reason": reason, "decided_at": date.today().isoformat()}
     content_changed = False
     for attr in ("title", "rationale", "kind", "effort"):
         value = getattr(body, attr, None)

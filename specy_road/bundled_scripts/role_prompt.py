@@ -36,7 +36,7 @@ from specy_road.orchestrate_plan import (
     node_eligibility,
     node_sensitivity,
 )
-from specy_road.worker_adapters import has_prompt_placeholder, substitute_prompt
+from specy_road.worker_adapters import placeholder_problem, substitute_prompt
 from specy_road.orchestration_config import effective_config, substitute_for
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
@@ -236,8 +236,9 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if not cli:
         print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
         return 1
-    if not has_prompt_placeholder(cli):
-        print(f"error: the profile's cli has no {{prompt}} or <prompt> placeholder: {cli}", file=sys.stderr)
+    why = placeholder_problem(cli)
+    if why:
+        print(f"error: the cli has {why}: {cli}", file=sys.stderr)
         return 1
     cmd = substitute_prompt(cli, prompt_path)
     print(f"running: {cmd}", file=sys.stderr)

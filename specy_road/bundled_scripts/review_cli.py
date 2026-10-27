@@ -29,7 +29,7 @@ from specy_road.review_files import (
     review_path,
 )
 from specy_road.review_gate import GateResult, evaluate_gate
-from specy_road.review_signing import SigningError, sign
+from specy_road.review_signing import SigningError, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
@@ -177,10 +177,17 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
         return _fail(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}")
     data = {**rec["data"], "commit": gate.commit}
     if ns.sign_key:
+        if not entry.get("public_key"):
+            return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
+                         "the gate could not verify the record")
         try:
             data["signature"] = sign(data, Path(ns.sign_key))
         except SigningError as e:
             return _fail(f"could not sign: {e}")
+        ok, why = verify(data, data["signature"], str(entry["public_key"]), ns.model)
+        if not ok:
+            return _fail(f"the signature does not verify against the roster public_key for {ns.model!r} "
+                         f"({why}); wrong key?")
     elif config["policy"].get("signed_reviews"):
         return _fail("policy.signed_reviews is on: pass --sign-key <your private key>; the roster entry "
                      f"for {ns.model!r} must carry the matching public_key")

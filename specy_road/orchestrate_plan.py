@@ -189,14 +189,17 @@ def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None)
     pool.sort(key=lambda c: -c.score("coordinator"))
     if pool:
         a.coordinator = pool[0].id
+    else:
+        a.problems.append(f"no eligible coordinator: needs a rostered coordinator with may_process "
+                          f"containing {a.sensitivity!r}")
 
 
 def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, Any],
                 today: date | None = None) -> Assignment:
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))
-    _pick_coordinator(cands, a, today)
     _pick_executor(cands, a, today)
     _pick_reviewers(cands, a, config, today)
+    _pick_coordinator(cands, a, today)
     return a
 
 

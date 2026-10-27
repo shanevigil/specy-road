@@ -15,7 +15,6 @@ a linked worktree under ``work/.worktrees/<codename>``.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import signal
 import subprocess
@@ -33,30 +32,26 @@ from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_runner import pid_alive, spawn
+from specy_road.worker_runner import pid_alive, pid_verified, spawn
 from specy_road.worker_state import (
-    FLAG_EXTERNAL,
+    TERMINAL_STATES,
     WorkerError,
     WorkerRecord,
     active_for_node,
-    add_flag,
     append_event,
     create_record,
     list_records,
     load_record,
     mutate,
-    record_intervention,
-    record_path,
     require_writer,
-    set_lease,
     set_state,
     take_checkpoint,
     workers_lock,
 )
 
-#: A worker in one of these is over for good; ``completed`` is not — a
-#: review ``block`` goes back to it as a ``message`` (docs/orchestration-workers.md).
-CLOSED_STATES = frozenset({"failed", "terminated"})
+#: ``completed`` is not closed: a review ``block`` goes back to it as a
+#: ``message``, and it owns its leaf until ``terminate`` (docs/orchestration-workers.md).
+CLOSED_STATES = TERMINAL_STATES
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
@@ -64,10 +59,6 @@ CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief 
 
 def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def interventions_path(repo_root: Path, worker_id: str) -> Path:
-    return record_path(repo_root, worker_id).with_suffix(".interventions.jsonl")
 
 
 def _target(repo_root: Path, node_id: str):
@@ -87,7 +78,13 @@ def _entry_and_harness(repo_root: Path, model: str, harness: str | None) -> tupl
     entry = roster_entry(config, model)
     if entry is None:
         raise WorkerError(f"{model!r} is not in the roster (roadmap/orchestration.yaml)")
-    return entry, str(harness or entry.get("harness") or "generic")
+    configured = entry.get("harness")
+    if harness and configured and harness != configured:
+        # The roster is where routing is decided; a flag must not move a
+        # model's prompt onto a harness the roster did not name for it.
+        raise WorkerError(f"{model!r} is rostered on harness {configured!r}; change roadmap/orchestration.yaml "
+                          f"rather than overriding with --harness {harness}")
+    return entry, str(harness or configured or "generic")
 
 
 def _check_eligible(entry: dict[str, Any], node: dict[str, Any], model: str) -> None:
@@ -103,18 +100,30 @@ def _check_eligible(entry: dict[str, Any], node: dict[str, Any], model: str) -> 
         raise WorkerError(f"{node['id']} needs executor class {need!r}; {model!r} is {entry.get('class') or 'unclassed'}")
 
 
+def _check_tree(wt: Path, branch: str) -> Path:
+    """``wt`` must be a git worktree rooted there with ``branch`` checked out: a stale directory is refused."""
+    wt = wt.resolve()
+    top = git_text(["rev-parse", "--show-toplevel"], wt) if wt.is_dir() else None
+    if not top or Path(top).resolve() != wt:
+        raise WorkerError(f"{wt} is not a git worktree; remove it or pass --worktree to a real one")
+    current = git_text(["branch", "--show-current"], wt)
+    if current != branch:
+        raise WorkerError(f"{wt} has {current or 'a detached HEAD'} checked out, not the claim's branch {branch}")
+    return wt
+
+
 def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | None) -> Path:
     if explicit:
-        return Path(explicit).resolve()
+        return _check_tree(Path(explicit), branch)
     if git_text(["branch", "--show-current"], repo_root) == branch:
         return repo_root.resolve()
     wt = reviews_root(repo_root).parent / ".worktrees" / codename
-    if not wt.is_dir():
+    if not wt.exists():
         wt.parent.mkdir(parents=True, exist_ok=True)
         r = run(["worktree", "add", str(wt), branch], repo_root)
         if not r.ok:
             raise WorkerError(f"cannot create a worktree for {branch}: {r.err.strip()}")
-    return wt.resolve()
+    return _check_tree(wt, branch)
 
 
 def _cli_for(repo_root: Path, entry: dict[str, Any]) -> tuple[str | None, str]:
@@ -161,7 +170,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
 def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str | None,
                      worktree: Path | None) -> tuple[WorkerRecord, bool]:
     existing = active_for_node(repo_root, node_id)
-    if existing:
+    if existing and not _wrapper_gone(repo_root, existing):
         return existing, False
     entry, harness = _entry_and_harness(repo_root, model, harness)
     config, _ = effective_config(repo_root)
@@ -187,8 +196,23 @@ def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str 
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
-    spawn(repo_root, rec, launch)
+    try:
+        spawn(repo_root, rec, launch)
+    except OSError as e:
+        append_event(repo_root, rec, "error", source="system", summary=f"cannot start the wrapper: {e}")
+        set_state(repo_root, rec, "failed", pid=None)
+        raise WorkerError(f"{rec.worker_id}: cannot start the wrapper: {e}") from None
     return rec, True
+
+
+def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
+    """A record that says ``running``/``starting`` with no live wrapper: close it so the leaf is free again."""
+    if rec.state not in ("running", "starting") or pid_alive(rec.pid, rec.worker_id):
+        return False
+    append_event(repo_root, rec, "error", source="system",
+                 summary=f"wrapper pid {rec.pid or '-'} is gone without recording an exit; marked failed")
+    set_state(repo_root, rec, "failed", pid=None)
+    return True
 
 
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRecord:
@@ -218,11 +242,13 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
 
 
 def message(repo_root: Path, worker_id: str, text: str) -> WorkerRecord:
-    return _send(repo_root, load_record(repo_root, worker_id), text, "message")
+    with workers_lock(repo_root):   # check, event and spawn as one transition
+        return _send(repo_root, load_record(repo_root, worker_id), text, "message")
 
 
 def resume(repo_root: Path, worker_id: str) -> WorkerRecord:
-    return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume")
+    with workers_lock(repo_root):
+        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume")
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:
@@ -233,12 +259,22 @@ def interrupt(repo_root: Path, worker_id: str) -> None:
 
 
 def terminate(repo_root: Path, worker_id: str) -> WorkerRecord:
-    rec = load_record(repo_root, worker_id)
+    with workers_lock(repo_root):
+        return _terminate_locked(repo_root, load_record(repo_root, worker_id))
+
+
+def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
     if rec.state == "terminated":
         return rec
     if rec.lease.get("holder") == "human":
         raise WorkerError(f"{rec.worker_id} is handed off to a human; `worker reclaim` first")
-    if pid_alive(rec.pid):
+    summary = "terminated by the coordinator"
+    if rec.lease.get("holder") == "native":
+        summary = "record closed; the adopted native session was not signalled (observe-only lease)"
+    elif pid_alive(rec.pid):
+        if not pid_verified(rec.pid, rec.worker_id):
+            raise WorkerError(f"pid {rec.pid} cannot be verified as {rec.worker_id}'s wrapper (ps unavailable or "
+                              "another command line); refusing to signal it")
         # The wrapper is a session leader (start_new_session), so its process
         # group holds the harness and everything the harness spawned.
         try:
@@ -246,86 +282,8 @@ def terminate(repo_root: Path, worker_id: str) -> WorkerRecord:
         except OSError as e:
             raise WorkerError(f"cannot signal pid {rec.pid}: {e}") from None
     set_state(repo_root, rec, "terminated", pid=None)
-    append_event(repo_root, rec, "terminated", source="orchestrator", authority="orchestrator",
-                 summary="terminated by the coordinator")
+    append_event(repo_root, rec, "terminated", source="orchestrator", authority="orchestrator", summary=summary)
     return rec
-
-
-def handoff(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, list[str]]:
-    """Lease the worker to a human; returns the native resume command."""
-    rec = load_record(repo_root, worker_id)
-    if rec.lease.get("holder") == "human":
-        return rec, adapter_for(rec.harness).human_resume(rec.provider_session_id or "", Path(rec.worktree))
-    require_writer(rec)
-    if rec.state in CLOSED_STATES:
-        raise WorkerError(f"{rec.worker_id} is {rec.state}; nothing to hand off")
-    if pid_alive(rec.pid):
-        raise WorkerError(f"{rec.worker_id} is running (pid {rec.pid}); wait for idle or terminate first")
-    adapter = adapter_for(rec.harness)
-    if not adapter.caps.handoff or not rec.provider_session_id:
-        raise Unsupported(f"unsupported by {rec.harness}: handoff (no native session to resume)")
-    cmd = adapter.human_resume(rec.provider_session_id, Path(rec.worktree))
-    take_checkpoint(repo_root, rec)
-    # Prompts recorded before this line are an earlier lease's, whatever
-    # their timestamp (the clock has one-second resolution).
-    seen = _hook_lines(repo_root, rec)
-    mutate(repo_root, rec, lambda r: r.checkpoint.__setitem__("interventions_seen", seen))
-    set_lease(repo_root, rec, "human")
-    set_state(repo_root, rec, "handed_off")
-    append_event(repo_root, rec, "handoff", source="orchestrator", authority="orchestrator",
-                 summary=f"handed off; resume with: {' '.join(cmd)} (in {rec.worktree})")
-    return rec, cmd
-
-
-def _hook_lines(repo_root: Path, rec: WorkerRecord) -> int:
-    path = interventions_path(repo_root, rec.worker_id)
-    return len(path.read_text(encoding="utf-8").splitlines()) if path.is_file() else 0
-
-
-def _hook_prompts(repo_root: Path, rec: WorkerRecord, skip: int) -> list[dict[str, Any]]:
-    """The hook-recorded prompts after the first ``skip`` lines (those predate the hand-off)."""
-    path = interventions_path(repo_root, rec.worker_id)
-    if not path.is_file():
-        return []
-    out = []
-    for line in path.read_text(encoding="utf-8").splitlines()[skip:]:
-        try:
-            d = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(d, dict):
-            out.append(d)
-    return out
-
-
-def _diff_stat(worktree: Path, since_sha: str | None) -> str:
-    """``git diff --stat`` since the checkpoint plus the untracked files, which a diff omits."""
-    stat = (git_text(["diff", "--stat", since_sha], worktree) or "") if since_sha else ""
-    new = git_text(["ls-files", "--others", "--exclude-standard"], worktree) or ""
-    return "\n".join(x for x in [stat, *(f" {p} | new" for p in new.splitlines() if p.strip())] if x)
-
-
-def reclaim(repo_root: Path, worker_id: str, note: str = "") -> tuple[WorkerRecord, dict[str, Any]]:
-    rec = load_record(repo_root, worker_id)
-    if rec.lease.get("holder") != "human":
-        raise WorkerError(f"{rec.worker_id} is not handed off (lease: {rec.lease.get('holder')})")
-    cp = rec.checkpoint or {}
-    prompts = _hook_prompts(repo_root, rec, int(cp.get("interventions_seen") or 0))
-    stat = _diff_stat(Path(rec.worktree), cp.get("git_head"))
-    heard = [str(p.get("prompt", ""))[:200] for p in prompts]
-    summary = (f"human direction ({len(heard)} prompt(s) recorded by hook): " + " | ".join(heard)
-               if heard else "human session returned without hook evidence")
-    if note:
-        summary += f" — note: {note}"
-    detail = {"prompts": heard, "diff_stat": stat, "checkpoint": cp}
-    record_intervention(repo_root, rec, summary, source="hook" if heard else "human", detail=detail)
-    if not heard:
-        add_flag(repo_root, rec, FLAG_EXTERNAL)
-    set_lease(repo_root, rec, "broker")
-    set_state(repo_root, rec, "idle")
-    append_event(repo_root, rec, "reclaim", source="orchestrator", authority="orchestrator",
-                 summary=f"lease back to broker; epoch {rec.instruction_epoch}")
-    return rec, detail
 
 
 def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
@@ -350,15 +308,7 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
     return rec
 
 
+from specy_road.worker_lease import handoff, interventions_path, reclaim, record_hook_prompt  # noqa: E402,F401 — re-exported
 from specy_road.worker_reconcile import reconcile, sync  # noqa: E402,F401 — re-exported; the CLI calls ops.reconcile/ops.sync
 
 
-def record_hook_prompt(repo_root: Path, session_id: str, prompt: str) -> WorkerRecord | None:
-    """Append a human prompt seen by a harness hook to the matching worker's file."""
-    rec = next((r for r in list_records(repo_root) if r.provider_session_id == session_id), None)
-    if rec is None or rec.lease.get("holder") != "human":
-        return None   # the broker's own prompts are not interventions
-    path = interventions_path(repo_root, rec.worker_id)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps({"at": _now(), "session_id": session_id, "prompt": prompt[:2000]}) + "\n")
-    return rec
