@@ -61,6 +61,7 @@ substitutions: []
 | `policy.reviewers_required` | Approving reviews needed at the commit under review. Minimum 1. |
 | `policy.reviewers_distinct_families` | Count approvals by distinct family, so two sessions of one family count once. |
 | `policy.reviewer_fresh_session` | Records must attest `fresh_session: true`. |
+| `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
 Roster entries also accept `profile`, `channels`, `may_process`,
@@ -157,8 +158,7 @@ A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
    flagged (roadmap bookkeeping is exempt);
 4. the diff;
 5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
-   each section states whether it was computed from git, asserted by the
-   executor, or run now, and the header names the policy source ref and SHA.
+   each section states if it was computed from git, executor-asserted, or run now.
 
 The packet reviews the tip of the node's registered branch **without checking
 it out**, so a coordinator in a checkout shared with executors never switches

@@ -29,7 +29,7 @@ from specy_road.review_files import (
     review_path,
     verify_problems,
 )
-from specy_road.review_gate import GateResult, evaluate_gate
+from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
 from specy_road.review_signing import SigningError, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -176,6 +176,9 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
                      "(roadmap/orchestration.yaml); a review from it would not count")
     if "reviewer" not in (entry.get("roles") or []) and not substitute_for(config, ns.node_id, ns.model):
         return _fail(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}")
+    why = rerun_problem(config["policy"], rec["data"])
+    if why:
+        return _fail(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun")
     data = {**rec["data"], "commit": gate.commit}
     if ns.sign_key:
         if not entry.get("public_key"):

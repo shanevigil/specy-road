@@ -191,6 +191,18 @@ def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -
     return None
 
 
+def rerun_problem(policy: dict[str, Any], data: dict[str, Any]) -> str | None:
+    """Why an approval without a re-run does not count under ``reviewer_reruns_required``.
+
+    The interactive human approval is exempt: it records no commands, and a
+    human-only roster must still be able to close the gate.
+    """
+    if (policy.get("reviewer_reruns_required") and data.get("verdict") == "approve"
+            and data.get("model") != HUMAN and not data.get("commands_rerun")):
+        return "approved without re-running a command (policy.reviewer_reruns_required)"
+    return None
+
+
 def _eligibility(
     config: dict[str, Any], node_id: str, review: ReviewFile, today: date | None
 ) -> tuple[CountedReview | None, str | None]:
@@ -205,7 +217,7 @@ def _eligibility(
             )
     if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
         return None, "policy requires a fresh reviewer session (fresh_session: true)"
-    why = _signature_problem(config, model, review)
+    why = rerun_problem(config["policy"], review.data) or _signature_problem(config, model, review)
     if why:
         return None, why
     family = family_of(config, model)

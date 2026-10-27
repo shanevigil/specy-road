@@ -168,6 +168,11 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   choosing models for coordinator, executor, and reviewer roles. It has one
   schema-2 profile per model, merged from a ChatGPT and a Claude research run;
   where the runs disagree, both values are listed as points to watch.
+- `policy.reviewer_reruns_required` in `roadmap/orchestration.yaml` (default
+  `false`): when on, an approving review whose `commands_rerun` is empty does
+  not count, and `review record` refuses to file it. A block is never
+  affected, and the interactive human approval is exempt. The schema ships in
+  the package, so no `refresh-schemas` is needed.
 - `grind-session --step pickup|finish` lets an IDE agent session (Claude Code,
   Cursor) drive the loop itself. Each step runs one phase and exits: pickup
   resumes this clone's open claim before claiming a new leaf, and finish runs

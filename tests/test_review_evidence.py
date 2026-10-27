@@ -12,11 +12,14 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.review_repo_helpers import git, make_review_repo, review_text
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
+from specy_road.orchestration_config import parse_orchestration_text
 from specy_road.review_files import reviews_dir
+from specy_road.review_gate import evaluate_gate
+from specy_road.review_target import resolve_target
 
 ONE_AI = """version: 1
 roster:
@@ -89,3 +92,64 @@ def test_passing_verifiers_add_no_problem(tmp_path: Path, capsys) -> None:
     assert not any(p.startswith("READY-") for p in _status(repo, capsys)["problems"])
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     assert "verifier failed" not in text and "No verifier evidence" not in text
+
+
+# --- S3: policy.reviewer_reruns_required -----------------------------------------
+
+RERUNS_ON = ONE_AI + "policy:\n  reviewer_reruns_required: true\n"
+NO_RERUN = "does not count — approved without re-running a command (policy.reviewer_reruns_required)"
+
+
+def _review(repo: Path, model: str = "opus", rerun: list[str] | None = None) -> str:
+    text = review_text(git(repo, "rev-parse", "HEAD"), model=model)
+    if rerun:
+        text = text.replace("commands_rerun: []", "commands_rerun: " + json.dumps(rerun))
+    return text
+
+
+def _gate(repo: Path, text: str, model: str = "opus"):
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"REVIEW-{model}.md").write_text(text)
+    t = resolve_target(repo, "M1.1")
+    return evaluate_gate(repo, t.node, t.commit)
+
+
+def test_reruns_required_rejects_an_approval_without_a_rerun(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=RERUNS_ON)
+    gate = _gate(repo, _review(repo))
+    assert not gate.passed and not gate.approvals
+    assert f"REVIEW-opus.md: {NO_RERUN}" in gate.problems()
+
+
+def test_reruns_required_counts_an_approval_with_a_rerun(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=RERUNS_ON)
+    assert _gate(repo, _review(repo, rerun=["pytest"])).passed
+
+
+def test_reruns_off_counts_as_before(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _gate(repo, _review(repo)).passed
+
+
+def test_reruns_required_exempts_the_interactive_human_approval(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=RERUNS_ON)
+    assert _gate(repo, _review(repo, model="human"), model="human").passed
+
+
+def test_review_record_refuses_an_approval_without_a_rerun(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=RERUNS_ON)
+    notes = repo.parent / "notes.md"
+    notes.write_text(_review(repo))
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(notes), "--repo-root", str(repo)) == 1
+    assert "approved without re-running a command" in capsys.readouterr().err
+    notes.write_text(_review(repo, rerun=["pytest"]))
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(notes), "--repo-root", str(repo)) == 0
+
+
+def test_validate_checks_the_reruns_key_type() -> None:
+    assert parse_orchestration_text(RERUNS_ON)[1] is None
+    _data, err = parse_orchestration_text(ONE_AI + "policy:\n  reviewer_reruns_required: 'yes'\n")
+    assert err and "reviewer_reruns_required" in err

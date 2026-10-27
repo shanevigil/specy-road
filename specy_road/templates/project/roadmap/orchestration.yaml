@@ -25,6 +25,9 @@ policy:
   # true: a review counts only when signed with the reviewer's key and the
   # roster entry has its public_key (ssh-keygen -Y; see docs/orchestration.md).
   signed_reviews: false
+  # true: an approval counts only when its commands_rerun lists a command the
+  # reviewer re-ran (the interactive human approval is exempt).
+  reviewer_reruns_required: false
   # Most workers `specy-road worker delegate` keeps running at once.
   max_workers: 2
 # Recorded decisions to let a named substitute review while the usual reviewer
