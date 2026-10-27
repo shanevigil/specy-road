@@ -24,6 +24,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.finish_implementation_check import zone_matches
+from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, head_sha
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_gate import policy_source
@@ -40,6 +41,9 @@ _BOOKKEEPING_PREFIXES = ("roadmap/", "planning/", "roadmap.md", "roadmap-context
 _POLICY_PATHS = ("roadmap/orchestration.yaml", "roadmap/git-workflow.yaml")
 # Who asserts each section, so a reviewer weighs a claim as a claim.
 ASSERTED = "_Asserted by the executor at the reviewed commit; a claim to check, not evidence._"
+ASSERTED_WORKING_TREE = ("_Asserted by the executor; read from the working tree, **not committed at the "
+                         "reviewed commit**. A claim to check, not evidence._")
+SUMMARY_MISSING = "_Not provided: no summary at the reviewed commit or in the working tree._"
 RENDERED = "_Rendered from the roadmap at the working tree._"
 
 
@@ -84,21 +88,21 @@ def _header(root: Path, t: ReviewTarget) -> list[str]:
 
 
 def _summary(root: Path, t: ReviewTarget) -> list[str]:
-    """The summary as committed at the reviewed commit, else the working tree's."""
+    """The summary as committed at the reviewed commit, else the working tree's; each labelled."""
     rel = f"work/implementation-summary-{t.node_id}.md"
-    out = ["## Implementation summary", "", ASSERTED, ""]
+    out = ["## Implementation summary", ""]
     text = git_stdout(["show", f"{t.commit}:{rel}"], root) if t.commit else None
-    if text is None and (root / rel).is_file():
-        text = (root / rel).read_text(encoding="utf-8")
-    out += [text.rstrip(), ""] if text is not None else [f"_(missing: `{rel}`)_", ""]
-    return out
+    if text is not None:
+        return out + [ASSERTED, "", text.rstrip(), ""]
+    if (root / rel).is_file():
+        return out + [ASSERTED_WORKING_TREE, "", (root / rel).read_text(encoding="utf-8").rstrip(), ""]
+    return out + [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""]
 
 
 def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
     if not t.base or not t.commit:
         return [], ["_(cannot compute: no merge base or no commit)_", ""]
-    out = git_stdout(["diff", "--name-only", f"{t.base}...{t.commit}"], root) or ""
-    paths = [p.strip() for p in out.splitlines() if p.strip()]
+    paths = diff_paths(root, f"{t.base}...{t.commit}") or []   # both sides of a rename or copy
     zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", "", _computed(t), ""]
     outside = []
@@ -133,9 +137,9 @@ def _diff(root: Path, t: ReviewTarget) -> list[str]:
 
 
 def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
-    ready = latest_ready(root, t.node_id)
+    ready = latest_ready(root, t.node_id, branch=(t.entry or {}).get("branch"))
     if ready is None:
-        return ["_(no valid READY hand-off file)_", ""]
+        return ["_(no valid READY hand-off file for this node and branch)_", ""]
     out = [ASSERTED, "", f"From `{ready.path.name}` (commit `{ready.data['commit']}`):", ""]
     if not same_commit(root, ready.data["commit"], t.commit):
         out += ["**Warning:** the READY commit is not the commit under review.", ""]

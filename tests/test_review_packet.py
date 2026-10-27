@@ -86,10 +86,11 @@ def test_each_section_states_its_provenance(tmp_path: Path) -> None:
     )
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=["echo hi"])
     assert text.count(rp.RENDERED) == 1
-    assert text.count(rp.ASSERTED) == 2           # summary and READY tails
+    assert text.count(rp.ASSERTED) == 1           # READY tails; the summary is not committed here
+    assert text.count(rp.ASSERTED_WORKING_TREE) == 1
     assert text.count("_Computed by review-packet from git (`") == 2   # changed paths and diff
     assert text.count(f"_Run now by review-packet at HEAD `{head}`._") == 1
-    assert f"## Implementation summary\n\n{rp.ASSERTED}\n\nDid it." in text
+    assert f"## Implementation summary\n\n{rp.ASSERTED_WORKING_TREE}\n\nDid it." in text
 
 
 def test_main_writes_packet_file(tmp_path: Path, capsys) -> None:

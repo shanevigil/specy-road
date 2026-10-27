@@ -46,7 +46,14 @@ from specy_road.orchestration_config import (
     roster_entry,
     substitute_for,
 )
-from specy_road.review_signing import SigningError, sign, verify  # noqa: F401 — SigningError re-exported
+from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
+    NOTES_KEY,
+    SigningError,
+    notes_digest,
+    notes_problem,
+    sign,
+    verify,
+)
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 
@@ -217,7 +224,8 @@ def _eligibility(
             )
     if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
         return None, "policy requires a fresh reviewer session (fresh_session: true)"
-    why = rerun_problem(config["policy"], review.data) or _signature_problem(config, model, review)
+    why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
+           or _signature_problem(config, model, review))
     if why:
         return None, why
     family = family_of(config, model)
@@ -301,7 +309,13 @@ def human_approval_completes(repo_root: Path, gate: GateResult, sign_key: Path |
 
 
 def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sign_key: Path | None = None) -> Path:
-    """File the interactive approval as ``REVIEW-human.md`` at ``commit``, signed when a key is given."""
+    """File the interactive approval as ``REVIEW-human.md`` at ``commit``, signed when a key is given.
+
+    A signature is verified against the roster's ``human`` ``public_key``
+    before anything is written: a wrong key raises :class:`SigningError` and
+    leaves no record behind, as ``review record --sign-key`` does.
+    """
+    body = "Approved interactively with `specy-road mark-implementation-reviewed`.\n"
     data = {
         "node_id": node["id"],
         "model": HUMAN,
@@ -317,12 +331,18 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sig
         "authored_fix": False,
         # Whoever runs mark-implementation-reviewed is coordinating; say so.
         "is_coordinator": True,
+        NOTES_KEY: notes_digest(body),
     }
     if sign_key is not None:
         data["signature"] = sign(data, sign_key)
+        config, _err = effective_config(repo_root, policy_source(repo_root)[0])
+        pub = (roster_entry(config, HUMAN) or {}).get("public_key")
+        ok, why = verify(data, data["signature"], str(pub or ""), HUMAN)
+        if not ok:
+            raise SigningError(f"the signature does not verify against the roster public_key for "
+                               f"{HUMAN!r} ({why}); wrong key?")
     path = review_path(repo_root, node["id"], HUMAN)
     path.parent.mkdir(parents=True, exist_ok=True)
-    body = "Approved interactively with `specy-road mark-implementation-reviewed`.\n"
     path.write_text(render_front_matter(data, body), encoding="utf-8")
     return path
 

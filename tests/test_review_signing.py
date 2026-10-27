@@ -41,6 +41,7 @@ def _record(repo: Path, model: str, **kw) -> dict:
     p = d / f"REVIEW-{model}.md"
     p.write_text(text)
     data = load_review(p).data
+    data["notes_sha256"] = rs.notes_digest("notes\n")   # as `review record` writes it; a signature must cover the notes
     data.update(kw)
     from specy_road.review_files import render_front_matter
     p.write_text(render_front_matter(data, "notes\n"))

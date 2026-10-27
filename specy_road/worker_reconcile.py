@@ -14,6 +14,7 @@ import yaml
 
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import zone_matches
+from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_state import (
@@ -42,9 +43,11 @@ def _target(repo_root: Path, node_id: str):
 def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     if not since_sha:
         return []
-    out = git_text(["diff", "--name-only", since_sha], worktree) or ""
+    # Both sides of a rename or copy: a `git mv` into the zone is also a
+    # deletion outside it.
+    changed = diff_paths(worktree, since_sha) or []
     untracked = git_text(["ls-files", "--others", "--exclude-standard"], worktree) or ""
-    return sorted({p for p in (out + "\n" + untracked).splitlines() if p.strip()})
+    return sorted(set(changed) | {p for p in untracked.splitlines() if p.strip()})
 
 
 def _bookkeeping(path: str) -> bool:

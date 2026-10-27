@@ -7,9 +7,9 @@
   "required": ["node_id", "agent", "branch", "commit", "base", "changed_paths"],
   "additionalProperties": false,
   "properties": {
-    "node_id": { "type": "string", "minLength": 1 },
+    "node_id": { "type": "string", "minLength": 1, "description": "Must be the node whose work/reviews/<NODE_ID>/ directory holds the file; a READY naming another node is invalid there." },
     "agent": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Executor model id (roster id when rostered)." },
-    "branch": { "type": "string", "minLength": 1 },
+    "branch": { "type": "string", "minLength": 1, "description": "The node's registered branch; a READY naming another branch is invalid for the node." },
     "commit": { "$ref": "#/$defs/sha", "description": "Implementation commit the executor stopped at." },
     "base": { "$ref": "#/$defs/sha", "description": "Commit the implementation branched from." },
     "changed_paths": {

@@ -40,7 +40,8 @@
     "authored_fix": { "type": "boolean", "description": "The reviewing session wrote any part of the change under review." },
     "is_coordinator": { "type": "boolean", "description": "The reviewing session is the coordinator's own session." },
     "independence": { "enum": ["distinct-family", "same-family"], "description": "Written by `specy-road review record` when policy requires distinct families." },
-    "signature": { "type": "string", "minLength": 1, "description": "Base64 of the reviewer's OpenSSH signature (`ssh-keygen -Y sign`, namespace specy-road-review) over the canonical front matter; written by `specy-road review record --sign-key`. Verified against the roster entry's public_key." }
+    "notes_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the Markdown notes below the front matter (line endings normalised, trailing whitespace dropped); written by `specy-road review record` and part of the signed bytes. The gate rejects a record whose body no longer matches, and a signed record without it." },
+    "signature": { "type": "string", "minLength": 1, "description": "Base64 of the reviewer's OpenSSH signature (`ssh-keygen -Y sign`, namespace specy-road-review) over the canonical front matter (which includes notes_sha256); written by `specy-road review record --sign-key`. Verified against the roster entry's public_key." }
   },
   "$defs": {
     "notes": { "type": "array", "items": { "type": "string", "minLength": 1 } }
