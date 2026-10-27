@@ -330,9 +330,12 @@ For an unattended loop to keep cycling:
   blocked.
 - **Implementation review gate.** If `roadmap/git-workflow.yaml` sets
   `require_implementation_review_before_finish: true`, `finish-this-task` requires
-  a recorded review. For a fully autonomous loop either set it to `false`, or have
-  your `--implement-cmd` write `work/implementation-summary-<NODE_ID>.md` and run
-  `specy-road mark-implementation-reviewed --yes` before the loop calls finish.
+  a recorded review, and `mark-implementation-reviewed --yes` no longer approves
+  on its own: it needs a review record from a reviewer other than the executor.
+  For a fully autonomous loop either set the flag to `false`, or have a
+  `--pre-finish-cmd` run an independent reviewer, file its verdict with
+  `specy-road review record`, then run `specy-road mark-implementation-reviewed
+  --yes` — see [orchestration.md](orchestration.md#unattended-loops).
 
 ### Examples
 

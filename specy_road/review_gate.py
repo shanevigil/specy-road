@@ -18,6 +18,7 @@ The gate passes when no counted record blocks and the counted approvals reach
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -207,3 +208,29 @@ def commit_trailers(gate: GateResult) -> list[str]:
         + (f" [substitute for {a.substitution['slot']}]" if a.substitution else "")
         for a in gate.approvals
     ]
+
+
+def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
+    """Refuse to finish when work landed after the approval (``finish-this-task``).
+
+    ``implementation_review: approved`` is written once; without this check a
+    commit made after approval would ship unreviewed. A fix restarts review.
+    """
+    from specy_road.review_target import resolve_target
+
+    gate = evaluate_gate(repo_root, node, resolve_target(repo_root, node["id"], "HEAD").commit)
+    if gate.passed:
+        return
+    print(
+        f"error: the review approval for {node['id']} no longer holds at this commit "
+        f"({gate.summary()}).",
+        file=sys.stderr,
+    )
+    for problem in gate.problems():
+        print(f"  - {problem}", file=sys.stderr)
+    print(
+        f"  Re-review, then run specy-road mark-implementation-reviewed again "
+        f"(specy-road handoff status {node['id']}).",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)

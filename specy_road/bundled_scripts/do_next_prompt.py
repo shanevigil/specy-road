@@ -215,13 +215,18 @@ def _finish_instruction_lines(
                 "**## Walkthrough** (numbered steps for the reviewer)."
             ),
             (
-                "5. Hand off for human review. The developer runs "
-                "`specy-road mark-implementation-reviewed` (reads the summary; "
-                "optional walkthrough menu), then `specy-road finish-this-task`."
+                "5. Hand off for review: write "
+                f"`work/reviews/{node_id}/READY-<your model id>.md` (branch, commit, "
+                "base, changed_paths, verify — see docs/orchestration.md). Reviewers read "
+                f"`specy-road review-packet {node_id}` and file verdicts with "
+                "`specy-road review record`; then the developer runs "
+                "`specy-road mark-implementation-reviewed` and "
+                "`specy-road finish-this-task`."
             ),
             (
-                "**Do not** run `finish-this-task` yourself until review is "
-                "recorded — the registry must show implementation review approved."
+                "**Do not** review or approve your own work, and do not run "
+                "`mark-implementation-reviewed` or `finish-this-task` yourself — "
+                "the review gate needs a recorded review of your final commit."
             ),
         ]
     return base + oc_lines + [

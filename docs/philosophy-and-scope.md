@@ -8,11 +8,12 @@ This document is for **humans and coding agents** adopting or working on specy-r
 - **Separation of concerns** — [`constitution/`](../specy_road/templates/project/constitution/purpose.md) holds purpose and principles (human judgment). [`constraints/`](../specy_road/templates/project/constraints/README.md) holds enforceable, checkable rules. Operational detail belongs in constraints and contracts, not in aspirational prose.
 - **Contracts over tribal knowledge** — [`shared/`](../specy_road/templates/project/shared/README.md) holds specs and policies that tasks **cite**; implementation work ties back to those files instead of duplicating intent in chat.
 - **Multi-agent safety** — [`roadmap/registry.yaml`](../specy_road/templates/project/roadmap/registry.yaml) plus touch zones and registration on the integration branch ([`git-workflow.md`](git-workflow.md)) make parallel work visible before conflicts.
+- **Separated roles and recorded review** — Whoever implements a leaf does not review or approve it. Reviews are files bound to the commit they read ([`orchestration.md`](orchestration.md)), and the review gate counts them against [`roadmap/orchestration.yaml`](../specy_road/templates/project/roadmap/orchestration.yaml) — a coordinator cannot approve its own work.
 - **Planning as narrative spine** — Nodes with **`planning_dir`** point at a **single** feature sheet [`planning/<id>_<slug>_<node_key>.md`](../specy_road/templates/project/planning/README.md) in the repo. Session scratch and generated briefs may still live under [`work/`](../specy_road/templates/project/work/README.md).
 
 ## What specy-road does not prescribe
 
-- **Which coding agent or IDE** you use (Cursor, Claude Code, Copilot, none, etc.).
+- **Which coding agent or IDE** you use (Cursor, Claude Code, Copilot, none, etc.), or which model fills the coordinator, executor, or reviewer role.
 - **How** an agent plans or implements inside a session (step lists, tool choice, prompts). That is between the user and their tools.
 - **Product-specific stacks** — The roadmap describes *what* and *which contract*; stack choices belong in your application’s ADRs and contracts under `shared/` (or your app repo), not in the kit’s core rules.
 

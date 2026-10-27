@@ -11,6 +11,57 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+Model-aware orchestration, slice 1: review and hand-off core. Design:
+[`docs/design-notes/v0-3-0-orchestration-slices.md`](docs/design-notes/v0-3-0-orchestration-slices.md);
+reference: [`docs/orchestration.md`](docs/orchestration.md).
+
+### Breaking
+
+- **`mark-implementation-reviewed` enforces a review gate.** With
+  `require_implementation_review_before_finish: true`, it now needs review
+  records under `work/reviews/<NODE_ID>/` that satisfy `roadmap/orchestration.yaml`
+  at the commit under review. Under the default policy (one reviewer, `human`
+  rostered) the interactive **approve** files the human review and closes the
+  gate in one step, as before. **`--yes` never creates a review**: without a
+  satisfying record it now exits 1. Unattended loops that called
+  `mark-implementation-reviewed --yes` from the implement hook must record an
+  independent review first (`specy-road review record`), or turn the gate off.
+- **`finish-this-task` re-checks the review gate at the current commit.** An
+  `approved` registry row no longer covers work committed after approval.
+  A row approved under 0.2.x with no review record needs a fresh
+  `mark-implementation-reviewed` before it can finish.
+
+### Added
+
+- `roadmap/orchestration.yaml`: roster (models and humans, with family and
+  roles), review policy (`reviewers_required`, `reviewers_distinct_families`,
+  `reviewer_fresh_session`), and recorded reviewer substitutions with optional
+  `expires`. Scaffolded by `init project`; a missing file means the default
+  policy. `validate` fails on a file that is present but invalid.
+- `specy-road review-packet <NODE_ID>` writes `work/reviews/<NODE_ID>/PACKET.md`:
+  brief, implementation summary, changed paths with touch-zone breaches
+  flagged, diff, and verifier output. It reads the registered branch without
+  checking it out.
+- `specy-road review record` validates a reviewer's notes (a result per
+  acceptance id, findings by category, fresh-session / not-the-author /
+  not-the-coordinator attestations), fills the family from the roster, labels
+  same-family reviews, and refuses a review of a stale commit.
+- `specy-road handoff status [<NODE_ID>] [--json]` reports READY hand-offs,
+  review records, and whether review policy is met.
+- `brief` renders the node's `goal` and its `acceptance` criteria numbered
+  `A1..An`.
+- The gate commit carries one `Reviewed-by: <model> (<family>) approve <commit>`
+  trailer per counted approval.
+- `specyrd` stubs: `/specyrd-review-packet`, `/specyrd-review-record`,
+  `/specyrd-handoff-status`.
+
+### Changed
+
+- New scaffolds gitignore `work/reviews/`. **Existing adopters:** add
+  `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
+- The pickup prompt tells the executor to write a READY hand-off and not to
+  review or approve its own work.
+
 ## [v0.2.3] - 2026-09-09
 
 Stable **v0.2.3** on **PyPI**. Promotes the work validated in `v0.2.3-rc1`,

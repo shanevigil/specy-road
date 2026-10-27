@@ -20,7 +20,7 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 specy-road do-next-available-task   # sync, brief, register leaf claim on base, push base, branch, prompt
 specy-road abort-task-pickup        # undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/
 
-specy-road mark-implementation-reviewed  # human gate: after work/implementation-summary-<NODE_ID>.md
+specy-road mark-implementation-reviewed  # review gate; reviews via review-packet / review record / handoff status (orchestration.md)
 specy-road finish-this-task         # complete, validate, export, digest, commit, PR hint (--push optional)
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
@@ -200,7 +200,7 @@ Run from the feature branch when implementation is complete.
 If **`roadmap/git-workflow.yaml`** sets **`require_implementation_review_before_finish: true`** (default in new `specy-road init project` scaffolds), use this order:
 
 1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**). Use `work/implementation-summary.template.md` as a starting point.
-2. **Review** — the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary, offers an interactive menu (walkthrough / approve / quit), commits **`implementation_review: approved`** in `roadmap/registry.yaml`, then you run **`specy-road finish-this-task`**. Non-interactive approval: `specy-road mark-implementation-reviewed --yes`. Emergency without a summary file: `--allow-missing-summary` (loud warning).
+2. **Review** — reviewers read **`specy-road review-packet <NODE_ID>`** and file verdicts with **`specy-road review record`** (see [orchestration.md](orchestration.md)). Then the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary and the review policy status, and commits **`implementation_review: approved`** in `roadmap/registry.yaml` once the recorded reviews satisfy `roadmap/orchestration.yaml` at the current commit. Under the default policy (one reviewer, `human` rostered) the interactive menu's **approve** files the human review and closes the gate in one step. **`--yes` never creates a review**: it only commits an approval the recorded reviews already earned. Emergency without a summary file: `--allow-missing-summary` (loud warning).
 3. **Close the task** — same as below.
 
 If that flag is **false** or omitted, skip step 2 and run `finish-this-task` when work is done (registry rows omit `implementation_review`).
@@ -209,7 +209,7 @@ If that flag is **false** or omitted, skip step 2 and run `finish-this-task` whe
 
 ```bash
 specy-road mark-implementation-reviewed
-# optional: specy-road mark-implementation-reviewed --yes
+# optional: specy-road mark-implementation-reviewed --yes   # only when reviews are already recorded
 #          specy-road mark-implementation-reviewed --allow-missing-summary   # emergency only
 
 specy-road finish-this-task

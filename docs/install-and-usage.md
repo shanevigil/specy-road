@@ -219,7 +219,10 @@ specy-road do-next-available-task
 # Implement the task on feature/rm-<codename>, then write the summary:
 $EDITOR work/implementation-summary-<NODE_ID>.md
 
-# Human review of the summary — gate before finish:
+# Review gate before finish: reviewers read the packet and record verdicts
+# (docs/orchestration.md); under the default policy one interactive human
+# approval here is enough.
+specy-road review-packet <NODE_ID>
 specy-road mark-implementation-reviewed
 
 # Land the work. on_complete=pr opens a PR; on_complete=merge merges
