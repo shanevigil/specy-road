@@ -47,14 +47,15 @@ from specy_road.worker_state import (
     events_since,
     list_records,
     load_record,
+    mutate,
     record_intervention,
     record_path,
     require_writer,
-    save_record,
     set_lease,
     set_state,
     take_checkpoint,
     workers_dir,
+    workers_lock,
 )
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
@@ -125,7 +126,17 @@ def _cli_for(repo_root: Path, entry: dict[str, Any]) -> tuple[str | None, str]:
 
 def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None = None,
              worktree: Path | None = None) -> tuple[WorkerRecord, bool]:
-    """``(record, created)``: an active worker on the leaf is returned, not duplicated."""
+    """``(record, created)``: an active worker on the leaf is returned, not duplicated.
+
+    The existing-worker check, the cap and the launch happen under the workers
+    lock, so two concurrent delegates on one leaf launch one harness.
+    """
+    with workers_lock(repo_root):
+        return _delegate_locked(repo_root, node_id, model, harness=harness, worktree=worktree)
+
+
+def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str | None,
+                     worktree: Path | None) -> tuple[WorkerRecord, bool]:
     existing = active_for_node(repo_root, node_id)
     if existing:
         return existing, False
@@ -168,6 +179,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     if not rec.provider_session_id:
         raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to resume")
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
+    _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     cli, api_id = _cli_for(repo_root, entry)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
@@ -198,9 +210,13 @@ def terminate(repo_root: Path, worker_id: str) -> WorkerRecord:
     rec = load_record(repo_root, worker_id)
     if rec.state == "terminated":
         return rec
+    if rec.lease.get("holder") == "human":
+        raise WorkerError(f"{rec.worker_id} is handed off to a human; `worker reclaim` first")
     if pid_alive(rec.pid):
+        # The wrapper is a session leader (start_new_session), so its process
+        # group holds the harness and everything the harness spawned.
         try:
-            os.kill(int(rec.pid), signal.SIGTERM)
+            os.killpg(os.getpgid(int(rec.pid)), signal.SIGTERM)
         except OSError as e:
             raise WorkerError(f"cannot signal pid {rec.pid}: {e}") from None
     set_state(repo_root, rec, "terminated", pid=None)
@@ -279,9 +295,11 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
     t = _target(repo_root, node_id)
     wt = _worktree_for(repo_root, str(t.entry["branch"]), str(t.node.get("codename") or node_id), worktree)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=str(t.entry["branch"]), lease="native")
-    rec.provider_session_id = session_id
-    rec.state = "idle"
-    save_record(repo_root, rec)
+
+    def fn(r: WorkerRecord) -> None:
+        r.provider_session_id = session_id
+        r.state = "idle"
+    mutate(repo_root, rec, fn)
     take_checkpoint(repo_root, rec)
     append_event(repo_root, rec, "adopted", source="orchestrator", authority="orchestrator",
                  summary=f"adopted native {harness} session {session_id}; observe only")

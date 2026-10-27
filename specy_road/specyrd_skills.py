@@ -33,6 +33,7 @@ SKILLS_REL = Path(".agents/skills")
 LINK_DEST: dict[str, Path] = {"claude-code": Path(".claude/skills")}
 SKILL_AGENTS = frozenset({"cursor", "claude-code", "codex"})
 COPIED = "copied"
+SKIPPED = "skipped (not ours)"
 
 
 def _package_templates_dir() -> Path:
@@ -95,8 +96,18 @@ def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False
     assert rel is not None
     link = repo_root / rel
     target = link_target(agent, name)
+    canonical = (repo_root / SKILLS_REL / stem(name)).resolve()
     if link.is_symlink() and os.readlink(link) == target:
         return UNCHANGED
+    if link.exists() and link.resolve() == canonical:
+        return UNCHANGED   # e.g. `.claude/skills` is itself a link to `.agents/skills`
+    if link.is_dir() and not link.is_symlink():
+        # Only a copy this tool made is ours to replace; anything else is the user's.
+        ours = {q.name for q in link.iterdir()} == {"SKILL.md"} and _is_our_skill(link / "SKILL.md", name)
+        if not ours:
+            return SKIPPED
+        if (link / "SKILL.md").read_text(encoding="utf-8") == render_skill(name) and not _symlinks_work(link.parent):
+            return UNCHANGED
     outcome = CREATED if not (link.exists() or link.is_symlink()) else UPDATED
     if dry_run:
         return outcome
@@ -104,7 +115,7 @@ def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False
     if link.is_symlink() or link.is_file():
         link.unlink()
     elif link.is_dir():
-        shutil.rmtree(link)  # an earlier copied fallback
+        shutil.rmtree(link)  # an earlier copied fallback, verified above
     try:
         os.symlink(target, link, target_is_directory=True)
     except OSError:
@@ -112,6 +123,25 @@ def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False
         (link / "SKILL.md").write_text(render_skill(name), encoding="utf-8")
         return COPIED
     return outcome
+
+
+def _is_our_skill(path: Path, name: str) -> bool:
+    """A SKILL.md this tool rendered: its ``name:`` line plus the stub marker every template carries."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return f"name: {stem(name)}" in text and ("Thin stub" in text or "specyrd" in text)
+
+
+def _symlinks_work(where: Path) -> bool:
+    probe = where / f".specyrd-symlink-probe-{os.getpid()}"
+    try:
+        os.symlink(".", probe, target_is_directory=True)
+    except OSError:
+        return False
+    probe.unlink(missing_ok=True)
+    return True
 
 
 def install_stubs(

@@ -32,12 +32,14 @@ describe("ideaCounts", () => {
       idea({ id: "B3", status: "accepted" }),
       idea({ id: "B4", status: "rejected" }),
       idea({ id: "B5", status: "revised" }),
+      idea({ id: "B6", status: "parked" }),
     ]);
 
     expect(counts.proposed).toBe(1);
     expect(counts.accepted).toBe(2);
     expect(counts.rejected).toBe(1);
     expect(counts.revised).toBe(1);
+    expect(counts.parked).toBe(1);
   });
 
   it("counts promoted ideas separately from their status", () => {

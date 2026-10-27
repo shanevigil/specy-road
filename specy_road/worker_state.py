@@ -20,9 +20,12 @@ coordinator is entitled to assume (design note
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
+import threading
+from collections.abc import Callable, Iterator
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from functools import cache
@@ -43,7 +46,6 @@ LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
 _ID = re.compile(r"^w-[0-9]{4,}$")
-_OP = re.compile(r"^[A-Za-z0-9._-]{1,80}$")
 
 
 class WorkerError(Exception):
@@ -114,6 +116,68 @@ def _write_atomic(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+_THREAD_LOCKS: dict[str, threading.RLock] = {}
+_LOCAL = threading.local()
+
+
+@contextlib.contextmanager
+def workers_lock(repo_root: Path) -> Iterator[None]:
+    """One exclusive lock for every load-modify-save under ``work/.workers/``.
+
+    The wrapper, the coordinator's commands and a hook all write records; a
+    read-modify-write without the lock loses the other writer's change
+    (``needs_reconcile`` set by ``reconcile`` while the wrapper streams, two
+    ``delegate`` calls on one leaf). Re-entrant within a thread, so a mutation
+    that appends an event takes it once; an ``RLock`` serialises threads of
+    one process and ``flock`` serialises processes. ``fcntl`` is POSIX; on
+    Windows only the thread lock applies, the state before this lock existed.
+    """
+    d = workers_dir(repo_root)
+    d.mkdir(parents=True, exist_ok=True)
+    key = str(d)
+    depth = getattr(_LOCAL, "depth", None) or {}
+    _LOCAL.depth = depth
+    if depth.get(key, 0) > 0:
+        depth[key] += 1
+        try:
+            yield
+        finally:
+            depth[key] -= 1
+        return
+    rlock = _THREAD_LOCKS.setdefault(key, threading.RLock())
+    try:
+        import fcntl
+    except ImportError:  # Windows
+        fcntl = None
+    with rlock, (d / ".lock").open("a+") as f:
+        if fcntl is not None:
+            fcntl.flock(f, fcntl.LOCK_EX)
+        depth[key] = 1
+        try:
+            yield
+        finally:
+            depth[key] = 0
+            if fcntl is not None:
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def _refresh(repo_root: Path, rec: WorkerRecord) -> None:
+    """Replace ``rec``'s fields with what is on disk, when a record exists there."""
+    path = record_path(repo_root, rec.worker_id)
+    if path.is_file():
+        fresh = load_record(repo_root, rec.worker_id)
+        rec.__dict__.update(fresh.__dict__)
+
+
+def mutate(repo_root: Path, rec: WorkerRecord, fn: Callable[[WorkerRecord], None]) -> WorkerRecord:
+    """Lock, reload from disk, apply ``fn``, save: the only safe way to change a record."""
+    with workers_lock(repo_root):
+        _refresh(repo_root, rec)
+        fn(rec)
+        save_record(repo_root, rec)
+    return rec
+
+
 @cache
 def _validator(name: str) -> Draft202012Validator:
     path = specy_road_package_dir() / "schemas" / name
@@ -142,10 +206,6 @@ def record_path(repo_root: Path, worker_id: str) -> Path:
 
 def events_path(repo_root: Path, worker_id: str) -> Path:
     return record_path(repo_root, worker_id).with_suffix(".events.jsonl")
-
-
-def ops_dir(repo_root: Path) -> Path:
-    return workers_dir(repo_root) / "ops"
 
 
 # --- records ---------------------------------------------------------------
@@ -210,34 +270,32 @@ def create_record(repo_root: Path, node_id: str, harness: str, model: str, workt
                   billing_route: str | None = None, lease: str = "broker") -> WorkerRecord:
     if harness not in HARNESSES:
         raise WorkerError(f"harness {harness!r}: expected one of {', '.join(HARNESSES)}")
-    attempts = [r.attempt for r in list_records(repo_root) if r.node_id == node_id]
-    now = _now()
-    rec = WorkerRecord(new_worker_id(repo_root), node_id, harness, model, str(Path(worktree).resolve()),
-                       "starting", {"holder": lease, "since": now}, 0, max(attempts, default=0) + 1, 0,
-                       now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route)
-    save_record(repo_root, rec)
-    append_event(repo_root, rec, "started", source="broker", summary=f"delegated {node_id} to {harness}/{model} (attempt {rec.attempt})")
+    with workers_lock(repo_root):
+        attempts = [r.attempt for r in list_records(repo_root) if r.node_id == node_id]
+        now = _now()
+        rec = WorkerRecord(new_worker_id(repo_root), node_id, harness, model, str(Path(worktree).resolve()),
+                           "starting", {"holder": lease, "since": now}, 0, max(attempts, default=0) + 1, 0,
+                           now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route)
+        save_record(repo_root, rec)
+        append_event(repo_root, rec, "started", source="broker",
+                     summary=f"delegated {node_id} to {harness}/{model} (attempt {rec.attempt})")
     return rec
 
 
 def set_state(repo_root: Path, rec: WorkerRecord, state: str, *, pid: int | None = ...) -> WorkerRecord:
-    rec.state = state
-    if pid is not ...:
-        rec.pid = pid
-    save_record(repo_root, rec)
-    return rec
+    def fn(r: WorkerRecord) -> None:
+        r.state = state
+        if pid is not ...:
+            r.pid = pid
+    return mutate(repo_root, rec, fn)
 
 
 def add_flag(repo_root: Path, rec: WorkerRecord, flag: str) -> None:
-    if flag not in rec.flags:
-        rec.flags.append(flag)
-        save_record(repo_root, rec)
+    mutate(repo_root, rec, lambda r: r.flags.append(flag) if flag not in r.flags else None)
 
 
 def clear_flag(repo_root: Path, rec: WorkerRecord, flag: str) -> None:
-    if flag in rec.flags:
-        rec.flags.remove(flag)
-        save_record(repo_root, rec)
+    mutate(repo_root, rec, lambda r: r.flags.remove(flag) if flag in r.flags else None)
 
 
 # --- events ----------------------------------------------------------------
@@ -245,19 +303,25 @@ def clear_flag(repo_root: Path, rec: WorkerRecord, flag: str) -> None:
 def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str, summary: str,
                  authority: str = "system", detail: dict[str, Any] | None = None,
                  op_id: str | None = None) -> WorkerEvent:
-    """Append one event and bump the record's ``last_event_seq`` in the same step."""
-    ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, _now(), type_, source, authority,
-                     summary[:500], rec.instruction_epoch, detail, op_id)
-    data = ev.to_dict()
-    errs = schema_errors(data, "worker-event.schema.json")
-    if errs:
-        raise WorkerError(f"{rec.worker_id} event: " + "; ".join(errs))
-    path = events_path(repo_root, rec.worker_id)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(data, sort_keys=True) + "\n")
-    rec.last_event_seq = ev.seq
-    save_record(repo_root, rec)
+    """Append one event and bump the record's ``last_event_seq`` in the same step.
+
+    Under the workers lock, against the record as it is on disk: the caller's
+    copy may be stale (the wrapper holds one for the whole run).
+    """
+    with workers_lock(repo_root):
+        _refresh(repo_root, rec)
+        ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, _now(), type_, source, authority,
+                         (summary or "(empty)")[:500], rec.instruction_epoch, detail, op_id)
+        data = ev.to_dict()
+        errs = schema_errors(data, "worker-event.schema.json")
+        if errs:
+            raise WorkerError(f"{rec.worker_id} event: " + "; ".join(errs))
+        path = events_path(repo_root, rec.worker_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(data, sort_keys=True) + "\n")
+        rec.last_event_seq = ev.seq
+        save_record(repo_root, rec)
     return ev
 
 
@@ -292,50 +356,26 @@ def require_writer(rec: WorkerRecord, holder: str = "broker") -> None:
 def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
     if holder not in LEASE_HOLDERS:
         raise WorkerError(f"lease holder {holder!r}: expected one of {', '.join(LEASE_HOLDERS)}")
-    rec.lease = {"holder": holder, "since": _now()}
-    save_record(repo_root, rec)
+    mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": _now()}))
 
 
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:
     """Remember where the worktree and session stood; a reclaim diffs from here."""
-    rec.checkpoint = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": _now()}
-    save_record(repo_root, rec)
-    return rec.checkpoint
+    cp = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": _now()}
+    mutate(repo_root, rec, lambda r: setattr(r, "checkpoint", cp))
+    return cp
 
 
 def record_intervention(repo_root: Path, rec: WorkerRecord, summary: str, *, source: str = "human",
                         detail: dict[str, Any] | None = None) -> WorkerEvent:
     """A human direction reached the worker: new epoch, one authoritative event."""
-    rec.instruction_epoch += 1
-    save_record(repo_root, rec)
-    return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative",
-                        summary=summary, detail=detail)
+    with workers_lock(repo_root):
+        mutate(repo_root, rec, lambda r: setattr(r, "instruction_epoch", r.instruction_epoch + 1))
+        return append_event(repo_root, rec, "intervention", source=source, authority="human_authoritative",
+                            summary=summary, detail=detail)
 
 
-# --- operations outbox -----------------------------------------------------
+# The operations outbox lives in worker_outbox; re-exported here for callers.
+from specy_road.worker_outbox import begin_op, complete_op  # noqa: E402
 
-def _op_path(repo_root: Path, op_id: str) -> Path:
-    if not _OP.match(op_id):
-        raise WorkerError(f"op id {op_id!r}: letters, digits, '.', '_' or '-' (max 80)")
-    return ops_dir(repo_root) / f"{op_id}.yaml"
-
-
-def begin_op(repo_root: Path, op_id: str, kind: str, worker_id: str | None = None) -> dict[str, Any] | None:
-    """Claim ``op_id``. Returns the earlier result when it already ran, else ``None`` (now pending)."""
-    path = _op_path(repo_root, op_id)
-    if path.is_file():
-        old = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        if old.get("state") == "pending":
-            raise WorkerError(f"op {op_id} is still pending (crashed?); pass a new --op-id or remove {path}")
-        return old
-    path.parent.mkdir(parents=True, exist_ok=True)
-    _write_atomic(path, yaml.safe_dump({"op_id": op_id, "kind": kind, "worker_id": worker_id, "state": "pending",
-                                        "at": _now()}, sort_keys=False))
-    return None
-
-
-def complete_op(repo_root: Path, op_id: str, result: dict[str, Any], *, ok: bool = True) -> None:
-    path = _op_path(repo_root, op_id)
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else {"op_id": op_id}
-    data.update({"state": "applied" if ok else "failed", "result": result, "at": _now()})
-    _write_atomic(path, yaml.safe_dump(data, sort_keys=False))
+__all__ = [n for n in dir() if not n.startswith("_")]

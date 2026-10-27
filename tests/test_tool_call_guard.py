@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,19 @@ from specy_road.bundled_scripts import session_cli
     ("cd x; git reset --hard", "discards other sessions"),
     ("git -C /tmp/repo checkout main", "switching branches"),
     ("GIT_DIR=.git git rebase main", "rewrites history"),
+    ("echo x\ngit stash", "stash stack is shared"),
+    ("git reset --hard  # don't", "discards other sessions"),
+    ('git commit -m "a; b" -a', "sweeps every session"),
+    ("sh -c 'git stash'", "stash stack is shared"),
+    ("bash -lc 'cd x && git rebase main'", "rewrites history"),
+    ("(git stash)", "stash stack is shared"),
+    ("make test & git stash", "stash stack is shared"),
+    ("/usr/bin/git stash", "stash stack is shared"),
+    ("command git stash", "stash stack is shared"),
+    ("env GIT_TRACE=1 git stash", "stash stack is shared"),
+    ("sudo -u bob git clean -f", "deletes untracked files"),
+    ("git -c alias.s=stash s", "stash stack is shared"),
+    ("git -c alias.rh='reset --hard' rh", "discards other sessions"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
@@ -74,8 +88,24 @@ def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command
 
 
-def test_unparseable_shell_is_not_a_verdict() -> None:
-    assert g.classify("git stash 'unterminated") is None
+def test_unparseable_shell_mentioning_git_is_refused_not_waved_through() -> None:
+    assert "could not parse" in (g.classify("git stash 'unterminated") or "")
+    assert g.classify("echo 'unterminated") is None
+
+
+def test_guard_sees_a_worker_running_in_this_checkout(tmp_path: Path) -> None:
+    from tests.review_repo_helpers import make_review_repo
+
+    from specy_road import worker_state as ws
+
+    repo = make_review_repo(tmp_path)
+    assert g.decide(repo, "git checkout dev", agent="me").allowed
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "running", pid=os.getpid())
+    v = g.decide(repo, "git checkout dev", agent="me")
+    assert not v.allowed and "worker w-0001" in v.reason
+    ws.set_state(repo, rec, "idle", pid=None)
+    assert g.decide(repo, "git checkout dev", agent="me").allowed
 
 
 def test_deny_only_with_another_live_session(tmp_path: Path) -> None:

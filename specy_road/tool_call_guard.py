@@ -34,8 +34,13 @@ from specy_road.session_presence import list_sessions
 ALLOW = "allow"
 DENY = "deny"
 
-_SEGMENT_SPLIT = re.compile(r"\s*(?:&&|\|\||;|\|)\s*")
+_SEPARATORS = ("&&", "||", ";", "|", "&", "\n")
+#: Wrapper flags that take an argument (``sudo -u bob``, ``env -u VAR``).
+_WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-S"}
 _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
+#: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
+_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs"}
+_SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 
 
 @dataclass
@@ -49,22 +54,93 @@ class Verdict:
         return self.decision == ALLOW
 
 
-def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
-    """``(subcommand, its args)`` for a ``git …`` token list, else ``(None, [])``."""
+def split_segments(command: str) -> list[str]:
+    """Split on ``&&``, ``||``, ``;``, ``|``, ``&`` and newlines — outside quotes."""
+    out, buf, quote, i = [], [], None, 0
+    while i < len(command):
+        ch = command[i]
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                quote = None
+            elif ch == "\\" and quote == '"' and i + 1 < len(command):
+                buf.append(command[i + 1])
+                i += 1
+            i += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        sep = next((x for x in _SEPARATORS if command.startswith(x, i)), None)
+        if sep:
+            out.append("".join(buf))
+            buf = []
+            i += len(sep)
+            continue
+        buf.append(ch)
+        i += 1
+    out.append("".join(buf))
+    return [x.strip() for x in out if x.strip()]
+
+
+def _unwrap(tokens: list[str]) -> list[str]:
+    """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, and subshell parens."""
     i = 0
-    while i < len(tokens) and "=" in tokens[i] and not tokens[i].startswith("-"):
-        i += 1  # leading VAR=value assignments
-    if i >= len(tokens) or tokens[i] != "git":
+    wrapped = False
+    while i < len(tokens):
+        t = tokens[i]
+        if t.startswith("(") and len(t) > 1:
+            tokens = [t[1:], *tokens[i + 1:]]
+            continue
+        if ("=" in t and not t.startswith("-")) or t == "(":
+            i += 1
+            continue
+        if t in _WRAPPERS:
+            wrapped = True
+            i += 1
+            continue
+        if wrapped and t.startswith("-"):
+            i += 2 if t in _WRAPPER_FLAG_ARG else 1  # a wrapper's flag, with its argument
+            continue
+        break
+    out = tokens[i:]
+    return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t != ")"]
+
+
+def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
+    """``(subcommand, its args)`` for a ``git …`` token list, else ``(None, [])``.
+
+    ``/usr/bin/git`` counts as ``git``; a ``-c alias.<name>=<cmd>`` whose
+    alias is the subcommand is expanded, so ``git -c alias.s=stash s`` is
+    ``git stash``.
+    """
+    tokens = _unwrap(tokens)
+    if not tokens or tokens[0].rsplit("/", 1)[-1] != "git":
         return None, []
-    i += 1
+    i = 1
+    aliases: dict[str, str] = {}
     while i < len(tokens) and tokens[i].startswith("-"):
         if tokens[i] in _GIT_GLOBAL_WITH_ARG:
+            if tokens[i] == "-c" and i + 1 < len(tokens) and tokens[i + 1].startswith("alias."):
+                name, _eq, value = tokens[i + 1][6:].partition("=")
+                aliases[name] = value
             i += 2
+        elif tokens[i].startswith("-c") and len(tokens[i]) > 2 and tokens[i][2:].startswith("alias."):
+            name, _eq, value = tokens[i][8:].partition("=")
+            aliases[name] = value
+            i += 1
         else:
             i += 1
     if i >= len(tokens):
         return None, []
-    return tokens[i], tokens[i + 1:]
+    sub, rest = tokens[i], tokens[i + 1:]
+    if sub in aliases:
+        expanded = shlex.split(aliases[sub]) if aliases[sub] else []
+        if expanded:
+            return expanded[0], [*expanded[1:], *rest]
+    return sub, rest
 
 
 def _short_flags(args: list[str]) -> str:
@@ -73,11 +149,23 @@ def _short_flags(args: list[str]) -> str:
 
 
 def classify_segment(segment: str) -> str | None:
-    """The reason a single command is destructive in a shared tree, else ``None``."""
+    """The reason a single command is destructive in a shared tree, else ``None``.
+
+    A segment that will not parse but mentions ``git`` is treated as
+    destructive: an unbalanced quote around a git command is exactly the
+    shape a guard must not wave through. ``sh -c '…'`` is classified by what
+    it runs.
+    """
     try:
-        tokens = shlex.split(segment)
+        tokens = shlex.split(segment, comments=True)
     except ValueError:
-        return None
+        return ("could not parse this shell command and it mentions git; rewrite it plainly"
+                if re.search(r"\bgit\b", segment) else None)
+    inner = _unwrap(tokens)
+    if inner and inner[0].rsplit("/", 1)[-1] in _SHELLS:
+        for j, t in enumerate(inner[1:], 1):
+            if t in ("-c", "-lc", "-ic", "-ec", "-xc") or (t.startswith("-") and "c" in t[1:] and len(t) <= 4):
+                return classify(inner[j + 1]) if j + 1 < len(inner) else None
     sub, args = _git_subcommand(tokens)
     if sub is None:
         return None
@@ -111,17 +199,25 @@ def classify_segment(segment: str) -> str | None:
 
 def classify(command: str) -> str | None:
     """The first destructive segment's reason, else ``None``."""
-    for seg in _SEGMENT_SPLIT.split(command.strip()):
-        if seg:
-            reason = classify_segment(seg)
-            if reason:
-                return reason
+    for seg in split_segments(command.strip()):
+        reason = classify_segment(seg)
+        if reason:
+            return reason
     return None
 
 
 def shared_with_others(repo_root: Path, agent: str | None) -> list[str]:
-    """Ids of other live sessions in this checkout."""
-    return [s.agent for s in list_sessions(repo_root) if s.agent != agent]
+    """Ids of other live sessions in this checkout, and of workers running in it."""
+    others = [s.agent for s in list_sessions(repo_root) if s.agent != agent]
+    try:
+        from specy_road.worker_state import list_records
+
+        here = Path(repo_root).resolve()
+        others += [f"worker {r.worker_id}" for r in list_records(repo_root, active_only=True)
+                   if r.pid and Path(r.worktree).resolve() == here]
+    except Exception:  # noqa: BLE001 — presence is advisory; a broken record must not break the guard
+        pass
+    return others
 
 
 def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = False) -> Verdict:

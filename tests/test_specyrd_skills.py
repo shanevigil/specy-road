@@ -116,3 +116,41 @@ def test_symlink_failure_falls_back_to_a_copy(tmp_path: Path, monkeypatch) -> No
     copy = tmp_path / LINK / "SKILL.md"
     assert copy.is_file() and not (tmp_path / LINK).is_symlink()
     assert copy.read_text(encoding="utf-8") == (tmp_path / SKILL).read_text(encoding="utf-8")
+
+
+def test_init_without_force_keeps_a_users_skill_directory(tmp_path: Path) -> None:
+    """A real directory at the link path that this tool did not write is the user's."""
+    mine = tmp_path / LINK
+    mine.mkdir(parents=True)
+    (mine / "SKILL.md").write_text("---\nname: specyrd-validate\n---\nmy own skill\n")
+    (mine / "notes.md").write_text("keep me\n")
+    _init(tmp_path, "claude-code")
+    assert (mine / "notes.md").read_text() == "keep me\n" and not mine.is_symlink()
+    assert "my own skill" in (mine / "SKILL.md").read_text()
+
+
+def test_claude_skills_dir_already_symlinked_to_agents_skills(tmp_path: Path) -> None:
+    """``.claude/skills -> ../.agents/skills`` is a common single-source setup; leave it be."""
+    (tmp_path / ".agents" / "skills").mkdir(parents=True)
+    (tmp_path / ".claude").mkdir()
+    os.symlink("../.agents/skills", tmp_path / ".claude" / "skills", target_is_directory=True)
+    _init(tmp_path, "claude-code")
+    skill = tmp_path / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
+    assert skill.is_file() and "specyrd-validate" in skill.read_text()
+    assert (tmp_path / LINK / "SKILL.md").read_text() == skill.read_text()
+    assert not (tmp_path / LINK).is_symlink()           # it is the same directory through the parent link
+
+
+def test_copy_fallback_is_idempotent(tmp_path: Path, monkeypatch) -> None:
+    from specy_road.specyrd_skills import ensure_link
+
+    def refuse(*_a, **_k):
+        raise OSError("no symlinks here")
+
+    monkeypatch.setattr("specy_road.specyrd_skills.os.symlink", refuse)
+    _init(tmp_path, "claude-code")
+    copy = tmp_path / LINK / "SKILL.md"
+    assert copy.is_file()
+    before = copy.stat().st_mtime_ns
+    assert ensure_link(tmp_path, "claude-code", "specyrd-validate.md") == "unchanged"
+    assert copy.stat().st_mtime_ns == before

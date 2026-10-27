@@ -264,9 +264,9 @@ policy:
 The reviewer files its record with `specy-road review record … --sign-key
 ~/.ssh/opus_review` (an OpenSSH private key). The front matter is signed with
 `ssh-keygen -Y sign` (namespace `specy-road-review`) and verified against the
-roster `public_key` with `ssh-keygen -Y verify`; OpenSSH 8.0+, no other
+roster `public_key` with `ssh-keygen -Y verify`; OpenSSH 8.1+, no other
 dependency. With `signed_reviews: true` an unsigned record does not count;
-with it off, a present signature is still verified, so a tampered record never
+with it off, a present signature is still verified, so a tampered front matter never
 counts. A human approving interactively passes `--sign-key` to
 `mark-implementation-reviewed`, with a `public_key` on the `human` entry.
 

@@ -10,7 +10,7 @@ signature verifies. The boundary becomes the key: the executor's process
 must not hold a reviewer's private key, which is a deployment line the team
 controls rather than a file permission it cannot.
 
-OpenSSH signatures (``ssh-keygen -Y sign`` / ``-Y verify``, OpenSSH 8.0+)
+OpenSSH signatures (``ssh-keygen -Y sign`` / ``-Y verify``, OpenSSH 8.1+)
 rather than GPG or a Python library: every reviewer identity already has,
 or can make, an SSH key, and the toolkit gains no dependency. The namespace
 ``specy-road-review`` keeps a signature made for anything else from being
@@ -48,7 +48,7 @@ def canonical_bytes(data: dict[str, Any]) -> bytes:
 def _keygen() -> str:
     path = shutil.which("ssh-keygen")
     if not path:
-        raise SigningError("ssh-keygen not found; signing review records needs OpenSSH 8.0 or newer")
+        raise SigningError("ssh-keygen not found; signing review records needs OpenSSH 8.1 or newer")
     return path
 
 
