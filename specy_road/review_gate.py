@@ -30,7 +30,7 @@ from specy_road.orchestration_config import (
     is_rostered_reviewer,
     substitute_for,
 )
-from specy_road.review_files import ReviewFile, list_reviews
+from specy_road.review_files import ReviewFile, list_reviews, render_front_matter, review_path
 from specy_road.review_target import same_commit
 
 
@@ -153,3 +153,57 @@ def evaluate_gate(
         else:
             result.approvals.append(counted)
     return result
+
+
+HUMAN = "human"
+
+
+def human_approval_completes(repo_root: Path, gate: GateResult) -> bool:
+    """Whether one interactive human approval would satisfy the policy.
+
+    True only when ``human`` is a rostered reviewer, nothing blocks, the
+    config loads, and the human's family is the one approval still missing.
+    """
+    if gate.config_error or gate.commit is None or gate.blocks:
+        return False
+    config, _ = effective_config(repo_root)
+    if not is_rostered_reviewer(config, HUMAN):
+        return False
+    others = [a for a in gate.approvals if a.model != HUMAN]
+    if gate.distinct_families:
+        family = family_of(config, HUMAN) or HUMAN
+        return len({a.family for a in others} | {family}) >= gate.required
+    return len(others) + 1 >= gate.required
+
+
+def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str) -> Path:
+    """File the interactive approval as ``REVIEW-human.md`` at ``commit``."""
+    data = {
+        "node_id": node["id"],
+        "model": HUMAN,
+        "family": HUMAN,
+        "date": date.today().isoformat(),
+        "verdict": "approve",
+        "commit": commit,
+        "acceptance": {aid: "pass" for aid in acceptance_ids(node)},
+        "findings": {"correctness": [], "regression": [], "boundary": [], "test_integrity": []},
+        "commands_rerun": [],
+        "required_changes": [],
+        "fresh_session": True,
+        "authored_fix": False,
+        "is_coordinator": False,
+    }
+    path = review_path(repo_root, node["id"], HUMAN)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = "Approved interactively with `specy-road mark-implementation-reviewed`.\n"
+    path.write_text(render_front_matter(data, body), encoding="utf-8")
+    return path
+
+
+def commit_trailers(gate: GateResult) -> list[str]:
+    """``Reviewed-by`` lines for the gate commit: the durable record of who approved."""
+    return [
+        f"Reviewed-by: {a.model} ({a.family}) approve {gate.commit}"
+        + (f" [substitute for {a.substitution['slot']}]" if a.substitution else "")
+        for a in gate.approvals
+    ]

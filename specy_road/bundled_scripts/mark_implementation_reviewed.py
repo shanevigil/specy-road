@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Mark implementation as human-reviewed (registry) after reading work/implementation-summary."""
+"""Close the implementation review gate for the current feature branch.
+
+The gate passes only on review records under ``work/reviews/<NODE_ID>/`` that
+satisfy ``roadmap/orchestration.yaml`` at the commit under review (see
+``review_gate``). Under the default policy — one reviewer, ``human`` rostered —
+an interactive approval files ``REVIEW-human.md`` and closes the gate in one
+step. ``--yes`` never creates a review: it only commits an approval the
+recorded reviews already earned, so an unattended coordinator cannot approve
+its own work. The approving reviews are written as ``Reviewed-by`` trailers on
+the registry commit.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +20,14 @@ import sys
 from pathlib import Path
 
 from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.review_gate import (
+    GateResult,
+    commit_trailers,
+    evaluate_gate,
+    human_approval_completes,
+    write_human_approval,
+)
+from specy_road.review_target import resolve_target
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -72,7 +90,7 @@ def _run_interactive_menu(
     print()
     print("-" * 60)
     print("[w] Show Walkthrough section only")
-    print("[a] Approve — write registry (implementation reviewed)")
+    print("[a] Approve as human — file REVIEW-human.md and close the gate")
     print("[q] Quit without approving")
     print("-" * 60)
     while True:
@@ -144,7 +162,7 @@ def _user_approves(
     raise SystemExit(1)
 
 
-def _commit_registry_approved(codename: str, reg: dict) -> None:
+def _commit_registry_approved(codename: str, reg: dict, trailers: list[str]) -> None:
     now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat()
     for e in reg.get("entries", []):
         if e.get("codename") == codename:
@@ -155,27 +173,77 @@ def _commit_registry_approved(codename: str, reg: dict) -> None:
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
     git_run(ROOT, "add", str(registry_path(ROOT).relative_to(ROOT)))
-    git_run(ROOT, 
-        "commit",
-        "-m",
-        f"chore(rm-{codename}): mark implementation reviewed",
-    )
+    message = f"chore(rm-{codename}): mark implementation reviewed"
+    if trailers:
+        message += "\n\n" + "\n".join(trailers)
+    git_run(ROOT, "commit", "-m", message)
     print("[ok] committed registry update")
     print()
     print("Next: specy-road finish-this-task")
 
 
+def _print_gate(gate: GateResult) -> None:
+    print(f"Review policy: {gate.summary()} (commit {gate.commit})")
+    for a in gate.approvals + gate.blocks:
+        print(f"  {a.review.path.name}: {a.verdict} by {a.model} ({a.family})")
+    for problem in gate.problems() if not gate.passed else []:
+        print(f"  - {problem}")
+    print()
+
+
+def _gate_or_human_approval(
+    args: argparse.Namespace,
+    node: dict,
+    *,
+    summary_text: str,
+    walkthrough: str | None,
+) -> GateResult:
+    """The passing gate, after an interactive human approval if one completes it.
+
+    Exits 0 when the human declines, and 1 when the recorded reviews fall short
+    and a human approval here could not (or may not) make up the difference.
+    """
+    gate = evaluate_gate(ROOT, node, resolve_target(ROOT, node["id"], "HEAD").commit)
+    _print_gate(gate)
+    if gate.passed:
+        return gate
+    interactive = sys.stdin.isatty() and not args.yes
+    if interactive and human_approval_completes(ROOT, gate):
+        if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough):
+            print("Aborted (registry unchanged).")
+            raise SystemExit(0)
+        print(f"[ok] wrote {write_human_approval(ROOT, node, gate.commit).relative_to(ROOT)}")
+        gate = evaluate_gate(ROOT, node, gate.commit)
+        if gate.passed:
+            return gate
+    print(
+        "error: the review gate is not met, so the implementation cannot be marked reviewed.\n"
+        f"  Inspect: specy-road handoff status {node['id']}\n"
+        f"  Reviewers read: specy-road review-packet {node['id']}\n"
+        f"  Record each review: specy-road review record {node['id']} --model <id> "
+        "--verdict approve|block --file <notes.md>",
+        file=sys.stderr,
+    )
+    if args.yes:
+        print("  --yes only commits an approval the recorded reviews already earned.", file=sys.stderr)
+    raise SystemExit(1)
+
+
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
-            "Record human implementation review in roadmap/registry.yaml "
-            "(after reading work/implementation-summary-<NODE_ID>.md)."
+            "Close the implementation review gate: require review records under "
+            "work/reviews/<NODE_ID>/ that satisfy roadmap/orchestration.yaml at the "
+            "commit under review, then record approval in roadmap/registry.yaml."
         ),
     )
     p.add_argument(
         "--yes",
         action="store_true",
-        help="Approve without interactive menu (non-TTY or automation).",
+        help=(
+            "Never prompt: commit the approval only when recorded reviews already "
+            "satisfy roadmap/orchestration.yaml. Does not create a review."
+        ),
     )
     p.add_argument(
         "--allow-missing-summary",
@@ -211,8 +279,9 @@ def main(argv: list[str] | None = None) -> None:
         )
         raise SystemExit(1)
 
-    codename, reg, entry, _nodes = resolve_feature_rm_registry_context(ROOT, branch)
+    codename, reg, entry, nodes = resolve_feature_rm_registry_context(ROOT, branch)
     node_id = entry["node_id"]
+    node = next(n for n in nodes if n["id"] == node_id)
 
     spath = _summary_path(node_id)
     summary_text = _load_summary_text(args, spath)
@@ -224,16 +293,7 @@ def main(argv: list[str] | None = None) -> None:
         print()
 
     walkthrough = _extract_walkthrough(summary_text) if summary_text else None
-
-    approve = _user_approves(
-        args,
-        summary_text=summary_text,
-        walkthrough=walkthrough,
-    )
-
-    if not approve:
-        print("Aborted (registry unchanged).")
-        raise SystemExit(0)
+    gate = _gate_or_human_approval(args, node, summary_text=summary_text, walkthrough=walkthrough)
 
     # F-011: stash any work/ changes so the registry commit is clean,
     # then restore on top of the feature branch (where they belong).
@@ -246,7 +306,7 @@ def main(argv: list[str] | None = None) -> None:
                 file=sys.stderr,
             )
             raise SystemExit(1)
-        _commit_registry_approved(codename, reg)
+        _commit_registry_approved(codename, reg, commit_trailers(gate))
     finally:
         _restore_work_dir_changes(stashed)
 
