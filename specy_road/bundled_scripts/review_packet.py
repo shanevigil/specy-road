@@ -119,8 +119,12 @@ def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
     out = [f"From `{ready.path.name}` (commit `{ready.data['commit']}`):", ""]
     if not same_commit(root, ready.data["commit"], t.commit):
         out += ["**Warning:** the READY commit is not the commit under review.", ""]
-    for v in ready.data.get("verify") or []:
-        out.append(f"### `{v['cmd']}` → exit {v['exit']}")
+    entries = ready.data.get("verify") or []
+    if not entries:
+        out += ["**No verifier evidence recorded.**", ""]
+    for v in entries:
+        mark = "  **← verifier failed**" if v["exit"] != 0 else ""
+        out.append(f"### `{v['cmd']}` → exit {v['exit']}{mark}")
         out += [""] + _fence(v.get("tail") or "(no output recorded)")
     return out
 

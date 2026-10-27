@@ -27,6 +27,7 @@ from specy_road.review_files import (
     node_ids_with_reviews,
     render_front_matter,
     review_path,
+    verify_problems,
 )
 from specy_road.review_gate import GateResult, evaluate_gate
 from specy_road.review_signing import SigningError, sign, verify
@@ -70,7 +71,7 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": gate.problems(),
+        "problems": gate.problems() + (verify_problems(ready) if ready else []),
     }
 
 

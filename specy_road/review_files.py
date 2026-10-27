@@ -221,6 +221,18 @@ def latest_ready(repo_root: Path, node_id: str) -> ReviewFile | None:
     return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))
 
 
+def verify_problems(ready: ReviewFile) -> list[str]:
+    """A READY's verifier evidence that a reviewer must weigh: failures, or none at all.
+
+    Reported, never gating: the exit codes are the executor's own claim.
+    """
+    name = ready.path.name
+    entries = ready.data.get("verify") or []
+    if not entries:
+        return [f"{name}: no verifier evidence recorded (verify is empty)"]
+    return [f"{name}: verifier `{v['cmd']}` exited {v['exit']}" for v in entries if v.get("exit") != 0]
+
+
 def node_ids_with_reviews(repo_root: Path) -> list[str]:
     root = reviews_root(repo_root)
     if not root.is_dir():

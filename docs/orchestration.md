@@ -144,6 +144,10 @@ Quote SHAs. `commit` and `base` are read exactly as written in the file, so
 YAML cannot turn `0123456` into an octal number, but quoting keeps other tools
 reading the file from doing so.
 
+A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
+`handoff status` and marked in the packet. It does not block the gate; a
+reviewer judges it.
+
 ### `PACKET.md` — what a reviewer reads
 
 `specy-road review-packet <NODE_ID>` assembles:
@@ -331,9 +335,6 @@ specy-road session touch            # renew; records expire after 4 hours by def
 specy-road session end
 specy-road session list [--all]
 specy-road session check            # exit 1 if staged paths overlap another live session
-```
-
-```bash
 specy-road session guard --command "git stash"   # exit 2 with the reason when another session is live
 specy-road session guard --format claude-code     # the same, reading a harness hook's stdin
 ```
@@ -392,9 +393,8 @@ records why:
   exits 1.**
 - `roadmap/orchestration.yaml` is optional; copy it from a fresh
   `specy-road init project` to change the policy.
-- Add `work/reviews/` to `.gitignore`, as new scaffolds do. A review binds to
-  the commit it read, so committing review files would move the branch past
-  it; the approving reviews are kept as `Reviewed-by` trailers instead.
-- No consumer schema changed. `orchestration.schema.json` is new and ships in
-  `schemas/` for new scaffolds; the hand-off and review schemas live in the
-  installed package.
+- Add `work/reviews/` to `.gitignore`, as new scaffolds do: a review binds to
+  the commit it read, so committing review files would move the branch past it
+  (approvals are kept as `Reviewed-by` trailers). No consumer schema changed:
+  `orchestration.schema.json` is new in `schemas/` for new scaffolds, and the
+  hand-off and review schemas live in the installed package.

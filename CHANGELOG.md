@@ -330,6 +330,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   refreshes `CLAUDE.md` only where it exists, and reports a user's own skill
   directory as skipped; `models show` prints `harness/model`; the Grok and
   Composer profiles carry a real `<prompt>` placeholder.
+- `handoff status` lists a READY whose verifier exited non-zero, or that
+  records no `verify` entry, as a problem under the node, and `review-packet`
+  marks both in its verifier section. The node's state does not change: the
+  exit codes are the executor's own claim, and a reviewer judges them.
 
 
 ## [v0.2.3] - 2026-09-09
