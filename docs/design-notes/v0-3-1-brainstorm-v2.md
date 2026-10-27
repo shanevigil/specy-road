@@ -3,8 +3,7 @@
 **Status:** design, 2026-10-27. Reconciles external research on IDE-agent
 ideation and roadmap planning against the current `specy-road brainstorm`,
 and scopes what ships on the `WIP/improvements-0-3-1` line. Decisions marked
-*open* wait on the maintainer. The ChatGPT run of the same brief is still
-expected and will be folded in here.
+*open* wait on the maintainer.
 
 ## Inputs
 
@@ -12,8 +11,9 @@ expected and will be folded in here.
   harness-native ideation, deep-research products, LLM ideation quality,
   PM tooling, human-in-the-loop design, multi-model panels, integration
   mechanics, evaluation.
-- The Claude research report (2026-10-27, 68 sources; temporary file in the
-  repo root, **not committed**). Nothing in it was executed.
+- The Claude research report (2026-10-27, 68 sources) and the ChatGPT
+  deep-research report (2026-10-27, 47 sources); temporary files in the repo
+  root, **not committed**. Neither executed anything.
 - The current feature: `docs/brainstorming.md`, `docs/pm-gui-brainstorm.md`,
   `specy_road/bundled_scripts/brainstorm_*.py`, the `specyrd-brainstorm` skill.
 
@@ -61,6 +61,50 @@ expected and will be folded in here.
 8. Deep-research products are reachable from an IDE agent only through its
    own search or a user-configured MCP; cost $0.4–7 per task; output needs the
    same verification gate. Nothing for the CLI to call.
+
+## Where the ChatGPT run agrees, and what it adds
+
+Same conclusions on 1–5, 7 and 8, with stronger sources for the shape itself:
+a CHI 2026 RCT (N=486, replicated N=640) found question-led, human-led
+interaction improved idea quality while preserving diversity and ownership,
+and model-led rewriting narrowed both. It adds:
+
+- **Cross-vendor pooling has direct evidence** (Terwiesch et al. 2026,
+  product ideas, human-rated): a balanced pool from four model families
+  reached set diversity 0.763 against humans' 0.773 and 0.679 for one model
+  zero-shot; random ordinary personas 0.757, random functional constraints
+  0.735. The Claude run found no such study. Resolution below (B1 item 10):
+  an optional, independent panel, not the default.
+- **Independence before merge.** Multi-agent ideation collapses diversity
+  when agents talk to each other (authority, dense communication, group size;
+  ACL 2026). Workers must not see each other until their outputs are frozen;
+  no debate during divergence; critics independent until summarised.
+- **Format collapses diversity** (EMNLP 2025): structured output shrinks the
+  idea space even at high temperature. Let the agent write concept cards in
+  prose first and only then normalise into `add-idea` calls.
+- **Ask, don't tell** (UK AISI): questions induce far less sycophancy than
+  equivalent assertions (~24-point gap). Neutralise the PM's assertions into
+  questions before generation.
+- **Context increases sycophancy** (CHI 2026, +16–45% with user context) and
+  **early suggestions anchor, late ones cause pivots** (IJCAI 2025, N=247):
+  the same staged-exposure recipe, with one pre-research branch.
+- Overlap should name the **relation**: same problem/same solution, same
+  problem/different solution, prerequisite, superseded, adjacent.
+- Evidence `verification` states `retrieved | blocked | not-found |
+  unverified` (never "fabricated" for a fetch failure); PM tools (JPD,
+  Productboard, Linear, ProdPad) make linked evidence first-class and keep
+  scoring inputs visible — adopt provenance, not scores.
+- Prompt wording for research: "use the strongest web-research capability
+  exposed in this session; record which tool; never claim a named research
+  product that is not exposed as a tool."
+- Blind independent stakeholder triage before disagreements are shown
+  (deferred with votes).
+
+Where the two differ: the ChatGPT run puts the evidence sweep (as
+observations, not ideas) *before* or alongside divergence; the Claude run
+puts it after the shortlist. B3 keeps it after the shortlist for
+verification and allows research from round 2 as an idea source: cheaper,
+and it avoids the anchoring the ChatGPT run itself warns about.
 
 ## Already built, and how it maps
 
@@ -114,12 +158,21 @@ value per line of code:
    and the default kinds.
 9. **Promote** carries verified evidence and the cluster's rejected siblings
    into the sheet's References / "Alternatives considered".
+10. **Diversity operators and an optional panel.** The allocation grid draws
+    from an operator catalog (ordinary personas, random functional
+    constraints, analogical transfer, low-typicality sampling, unoccupied
+    regions) with the six lenses kept for coverage. `start --panel N` writes
+    N independent shard prompts, each with a distinct operator/persona
+    subset and `--origin`, to be run as sub-agents or on other roster
+    harnesses *without seeing each other*; the session merges on `add-idea`
+    and converge clusters. No launcher of its own: the agent, or later
+    `worker delegate`, runs them. Prompts ask for concept cards in prose
+    before any `add-idea`, and neutralise the PM's assertions into questions.
 
-Deferred past 0.3.1: fan-out shards (`--fanout`; it maps onto the worker
-layer being built in slice 7, so it should ride on `worker delegate` rather
-than on a second launcher), per-role votes, deep-research MCP hooks, GUI
-programmatic regeneration, an evaluation harness beyond the metrics the CLI
-can print (counts per lens/cluster/origin, verified-evidence share).
+Deferred past 0.3.1: per-role votes and blind stakeholder triage,
+deep-research MCP hooks, GUI programmatic regeneration, an evaluation
+harness beyond the metrics the CLI can print (counts per lens, cluster,
+origin, verified-evidence share).
 
 **B2 (open) — may `verify` fetch URLs?** The standing rule is that the CLI
 calls no model and no search API. Fetching a known URL to check that a quote
@@ -140,9 +193,11 @@ import-from-outside value without anchoring the first round.
 **B4 — data model.** Session `version` 2, read-compatible with 1: a string
 in `evidence` becomes `{url}`. Idea gains `origin`, `cluster_id`,
 `evidence[]` objects (`url, quote, retrieved_at, tool, supports, stance,
-verified: true|false|unchecked`), `critic`, `hypothesis`, `decision`
-(`reason, decided_at, revisit_when`); status gains `parked`. Session gains
-`frame`, `allocation`, `round`, `profile`. Kinds gain `refactor`, `platform`.
+source_type, verification: retrieved|blocked|not-found|unverified`),
+`overlap[]` (`node_id, relation`), `critic`, `hypothesis`, `assumptions`,
+`decision` (`reason, decided_at, revisit_when`); status gains `parked`.
+Session gains `frame`, `allocation`, `round`, `profile`, `panel`. Kinds gain
+`refactor`, `platform`.
 
 **B5 — skill package.** The existing `specyrd-brainstorm` SKILL.md gets a
 narrow description ("roadmap brainstorm through specy-road; not a design
