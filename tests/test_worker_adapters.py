@@ -151,3 +151,12 @@ def test_spawn_returns_before_the_worker_ends_and_the_record_catches_up(tmp_path
         time.sleep(0.1)
     final = ws.load_record(repo, rec.worker_id)
     assert final.state == "idle" and final.provider_session_id == "c-1" and not wr.pid_alive(final.pid)
+
+
+def test_custom_cli_resume_needs_the_session_placeholder(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cc = wa.adapter_for("claude-code")
+    assert cc.resume("sid", p, tmp_path, "m", "wrapper {prompt}").argv[:2] == ["claude", "-p"]   # no {session}: default
+    r = cc.resume("sid", p, tmp_path, "m", "wrapper {prompt} --resume {session}")
+    assert r.argv[0] == "sh" and "--resume sid" in r.argv[2] and r.session_id == "sid"

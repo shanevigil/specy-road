@@ -237,6 +237,18 @@ best human-access target: resume command, worktree, log tail). All with
 rewritten around `worker delegate` and `worker sync` (call `sync` at the start
 of every turn); `handoff status` lists workers beside sessions.
 
+**7c as built (2026-10-27).** `delegate` runs *after pickup*: it requires a
+registry claim with a branch and refuses otherwise, because pickup switches
+branches and pushes the registry — not something a coordinator's checkout
+should do on a worker's behalf. The worktree is the coordinator's checkout
+when it has the claim's branch checked out, else a linked worktree under
+`work/.worktrees/<codename>`. `sync` keeps its acknowledgement marks in
+`work/.workers/sync.yaml`. A roster `channels.cli` may carry `{session}` so
+one custom command also serves `message`/`resume`; without it the default
+resume command is used. `interrupt` exits 2 for every CLI adapter.
+`reclaim` with no hook evidence writes the intervention from the diff stat
+alone and sets `possibly_modified_externally`.
+
 **7d — docs and hygiene.** `docs/orchestration.md` (already at the 400-line
 cap: workers get `docs/orchestration-workers.md`), `optional-ai-tooling-patterns.md`
 hook snippets, `suggested_prompts/`, CHANGELOG `[Unreleased]`, this note.

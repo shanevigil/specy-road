@@ -100,10 +100,20 @@ class Adapter:
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         raise Unsupported(f"{self.harness}: no native session to hand off")
 
-    def _custom(self, cli: str | None, prompt_path: Path) -> Launch | None:
-        if cli and "{prompt}" in cli:
-            return Launch(["sh", "-c", cli.replace("{prompt}", shlex.quote(str(prompt_path)))])
-        return None
+    def _custom(self, cli: str | None, prompt_path: Path, session_id: str | None = None) -> Launch | None:
+        """The roster's own command, when it has the placeholders this call needs.
+
+        ``{prompt}`` is the prompt file path; ``{session}`` (optional) is the
+        native session id, and a resume uses the custom command only when it
+        names it, since the default command is the only one that knows the
+        harness's resume flag.
+        """
+        if not cli or "{prompt}" not in cli:
+            return None
+        if session_id is not None and "{session}" not in cli:
+            return None
+        text = cli.replace("{prompt}", shlex.quote(str(prompt_path))).replace("{session}", shlex.quote(session_id or ""))
+        return Launch(["sh", "-c", text], session_id=session_id)
 
 
 class ClaudeCode(Adapter):
@@ -121,6 +131,9 @@ class ClaudeCode(Adapter):
                        "--model", model, "--permission-mode", "acceptEdits", _text(prompt_path)], session_id=sid)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+        custom = self._custom(cli, prompt_path, session_id)
+        if custom:
+            return custom
         return Launch(["claude", "-p", "--resume", session_id, "--output-format", "stream-json", "--verbose",
                        "--permission-mode", "acceptEdits", _text(prompt_path)], session_id=session_id)
 
@@ -162,6 +175,9 @@ class Codex(Adapter):
                        "--ask-for-approval", "never", "-C", str(worktree), "-"], stdin=_text(prompt_path))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+        custom = self._custom(cli, prompt_path, session_id)
+        if custom:
+            return custom
         return Launch(["codex", "exec", "resume", "--json", "-C", str(worktree), session_id, _text(prompt_path)],
                       session_id=session_id)
 
@@ -201,6 +217,9 @@ class Cursor(Adapter):
                        "--workspace", str(worktree), _text(prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+        custom = self._custom(cli, prompt_path, session_id)
+        if custom:
+            return custom
         return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force",
                        "--workspace", str(worktree), _text(prompt_path)], session_id=session_id)
 

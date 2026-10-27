@@ -111,9 +111,9 @@ in the review packet, and, like any commit that touches more than
 
 Model profiles, `specy-road models`, `specy-road prompt`, and
 `specy-road orchestrate plan` are documented in
-[orchestration-models.md](orchestration-models.md): which roster model should
-coordinate, execute, and review each leaf, and how a role prompt is built from
-a model's profile.
+[orchestration-models.md](orchestration-models.md). Launching a leaf on
+another harness and following it from this chat (`specy-road worker`) is in
+[orchestration-workers.md](orchestration-workers.md).
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 

@@ -162,6 +162,13 @@ Get each snippet with `specy-road session guard --format cursor --print-config`
 with its harness's documented payload (`tests/test_hook_adapters.py`), so an
 adapter that drifts from its contract fails in CI, not in someone's IDE.
 
+**Intervention witness.** When a human takes over a worker (`specy-road
+worker handoff`), the same three harnesses' prompt-submit hooks can record
+what the human said so `worker reclaim` reports it: `specy-road worker hook
+--format claude-code|codex|cursor --print-config` prints the snippet
+(`UserPromptSubmit` for Claude Code and Codex, `beforeSubmitPrompt` for
+Cursor). It never blocks a prompt. See `docs/orchestration-workers.md`.
+
 **Skills, one source for every harness.** Cursor and Codex both read
 `.agents/skills/<name>/SKILL.md` natively and follow symlinked skill folders;
 Claude Code reads `.claude/skills/<name>/SKILL.md` and loads a skill directory
