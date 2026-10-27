@@ -131,3 +131,22 @@ def test_render_front_matter_round_trips(tmp_path: Path) -> None:
     out = _put(tmp_path, "REVIEW-n.md", rf.render_front_matter(src.data, src.body))
     again = rf.load_review(out)
     assert again.ok and again.data == src.data
+
+
+@pytest.mark.parametrize("token, want", [
+    ("0123456", "0123456"),      # YAML 1.1 octal
+    ("0x1234567", "0x1234567"),  # hex: must not become a different valid SHA
+    ("'0123456'", "0123456"),
+    ('"abc1234"  # quoted, with comment', "abc1234"),
+])
+def test_sha_tokens_are_kept_as_written(tmp_path: Path, token: str, want: str) -> None:
+    r = rf.load_ready(_put(tmp_path, "READY-x.md", READY.replace("commit: abc1234", f"commit: {token}")))
+    assert r.data["commit"] == want
+    assert r.ok == (want != "0x1234567"), r.errors
+
+
+def test_only_human_may_attest_coordinator(tmp_path: Path) -> None:
+    text = REVIEW.replace("is_coordinator: false", "is_coordinator: true")
+    assert not rf.load_review(_put(tmp_path, "REVIEW-a.md", text), ["A1", "A2"]).ok
+    human = text.replace("model: claude-opus-5.5", "model: human")
+    assert rf.load_review(_put(tmp_path, "REVIEW-human.md", human), ["A1", "A2"]).ok

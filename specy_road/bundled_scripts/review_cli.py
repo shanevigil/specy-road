@@ -18,8 +18,9 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.orchestration_config import effective_config, family_of, substitute_for
+from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import (
+    HUMAN,
     latest_ready,
     list_ready,
     load_review,
@@ -28,11 +29,11 @@ from specy_road.review_files import (
     review_path,
 )
 from specy_road.review_gate import GateResult, evaluate_gate
-from specy_road.review_target import ReviewTarget, resolve_target, same_commit
+from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
-def _state(t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
+def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
     """Counted reviews outrank the READY file: they bind to the current commit."""
     if gate.blocks:
         return "blocked"
@@ -40,7 +41,7 @@ def _state(t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
         return "approved"
     if ready_commit is None:
         return "waiting"
-    if not same_commit(ready_commit, t.commit):
+    if not same_commit(root, ready_commit, t.commit):
         return "stale"
     return "in-review"
 
@@ -52,9 +53,9 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
     ready_commit = ready.data["commit"] if ready else None
     return {
         "node_id": node_id,
-        "state": _state(t, gate, ready_commit),
+        "state": _state(root, t, gate, ready_commit),
         "ref": t.ref,
-        "commit": t.commit,
+        "commit": gate.commit,
         "ready": [
             {"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors}
             for r in list_ready(root, node_id)
@@ -71,6 +72,8 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
 
 
 def _render(st: dict[str, Any]) -> list[str]:
+    if st["state"] in ("unclaimed", "error"):
+        return [f"{st['node_id']}: {st['state']} — {st['error']}"]
     lines = [f"{st['node_id']}: {st['state']} — {st['ref']} @ {(st['commit'] or '?')[:12]}"]
     for r in st["ready"]:
         mark = "ok" if not r["errors"] else "INVALID: " + "; ".join(r["errors"])
@@ -82,26 +85,30 @@ def _render(st: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _status_or_error(root: Path, nid: str) -> dict[str, Any]:
+    try:
+        return _node_status(root, nid)
+    except ReviewTargetError as e:
+        msg = str(e)
+        if msg.startswith("no registry claim"):
+            return {"node_id": nid, "state": "unclaimed",
+                    "error": f"no open claim; leftover hand-off files can be deleted ({msg})"}
+        return {"node_id": nid, "state": "error", "error": msg}
+
+
 def cmd_handoff_status(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     node_ids = [ns.node_id] if ns.node_id else node_ids_with_reviews(root)
-    out = []
-    for nid in node_ids:
-        try:
-            out.append(_node_status(root, nid))
-        except SystemExit:
-            out.append({"node_id": nid, "state": "unknown-node"})
+    out = [_status_or_error(root, nid) for nid in node_ids]
     if ns.json:
         print(json.dumps(out, indent=2))
-        return 0
-    if not out:
+    elif not out:
         print("No hand-offs under work/reviews/.")
-    for st in out:
-        if st["state"] == "unknown-node":
-            print(f"{st['node_id']}: not in the roadmap")
-            continue
-        print("\n".join(_render(st)))
-    return 0
+    else:
+        print("\n".join(line for st in out for line in _render(st)))
+    # Naming a node that cannot be resolved is a caller error; a stale directory
+    # in the sweep is only reported.
+    return 1 if ns.node_id and out[0]["state"] == "error" else 0
 
 
 def _fail(msg: str) -> int:
@@ -109,59 +116,64 @@ def _fail(msg: str) -> int:
     return 1
 
 
-def _family(config: dict[str, Any], ns: argparse.Namespace) -> str | None:
-    rostered = family_of(config, ns.model)
-    if rostered and ns.family and ns.family != rostered:
-        print(f"warning: --family {ns.family} ignored; roster says {rostered}", file=sys.stderr)
-    if rostered:
-        return rostered
-    if not substitute_for(config, ns.node_id, ns.model):
-        print(
-            f"warning: {ns.model!r} is not a rostered reviewer and no active substitution "
-            f"covers {ns.node_id}; this record will not count toward the gate. Add it to "
-            "roadmap/orchestration.yaml.",
-            file=sys.stderr,
-        )
-    return ns.family
+def _relabel_independence(root: Path, gate: GateResult) -> None:
+    """Rewrite every counted record's ``independence`` label from the current set."""
+    counted = gate.approvals + gate.blocks
+    for c in counted:
+        shared = any(o.family == c.family and o.model != c.model for o in counted)
+        label = "same-family" if shared else "distinct-family"
+        if c.review.data.get("independence") != label:
+            c.review.data["independence"] = label
+            c.review.path.write_text(render_front_matter(c.review.data, c.review.body), encoding="utf-8")
 
 
-def _independence(gate: GateResult, model: str, family: str) -> str:
-    others = {a.family for a in gate.approvals + gate.blocks if a.model != model}
-    return "same-family" if family in others else "distinct-family"
+def _check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:
+    if ns.model == HUMAN:
+        return None, ("a human review is filed only by the interactive approve in "
+                      "specy-road mark-implementation-reviewed, so an agent cannot file one")
+    rec = load_review(Path(ns.file), acceptance_ids(t.node))
+    if not rec.ok:
+        return None, f"{ns.file}: " + "; ".join(rec.errors)
+    for key, want in (("node_id", ns.node_id), ("model", ns.model), ("verdict", ns.verdict)):
+        if rec.data.get(key) != want:
+            return None, f"{ns.file}: {key} is {rec.data.get(key)!r}, the command says {want!r}"
+    if not same_commit(root, rec.data["commit"], t.commit):
+        return None, (f"the record reviews {rec.data['commit']}, but the commit under review is "
+                      f"{t.commit} ({t.ref}). Re-review the current commit.")
+    return {"data": rec.data, "body": rec.body}, None
 
 
 def cmd_review_record(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    t = resolve_target(root, ns.node_id, ns.ref)
-    rec = load_review(Path(ns.file), acceptance_ids(t.node))
-    if not rec.ok:
-        return _fail(f"{ns.file}: " + "; ".join(rec.errors))
-    data = rec.data
-    for key, want in (("node_id", ns.node_id), ("model", ns.model), ("verdict", ns.verdict)):
-        if data.get(key) != want:
-            return _fail(f"{ns.file}: {key} is {data.get(key)!r}, the command says {want!r}")
-    if not same_commit(data["commit"], t.commit):
-        return _fail(
-            f"the record reviews {data['commit']}, but the commit under review is "
-            f"{t.commit} ({t.ref}). Re-review the current commit."
-        )
-    config, err = effective_config(root)
+    try:
+        t = resolve_target(root, ns.node_id, ns.ref)
+    except ReviewTargetError as e:
+        return _fail(str(e))
+    rec, err = _check_record(ns, root, t)
     if err:
-        return _fail(f"orchestration config: {err}")
-    family = _family(config, ns)
-    if not family:
-        return _fail(f"{ns.model!r} is not in the roster; pass --family or add it to the roster")
-    data["family"] = family
-    if config["policy"]["reviewers_distinct_families"]:
-        data["independence"] = _independence(evaluate_gate(root, t.node, t.commit), ns.model, family)
+        return _fail(err)
+    gate = evaluate_gate(root, t.node, t.commit)
+    if gate.config_error:
+        return _fail(f"orchestration config: {gate.config_error}")
+    config = gate.config
+    entry = next((e for e in config["roster"] if e.get("id") == ns.model), None)
+    if entry is None:
+        return _fail(f"{ns.model!r} is not in the roster on the integration branch "
+                     "(roadmap/orchestration.yaml); a review from it would not count")
+    if "reviewer" not in (entry.get("roles") or []) and not substitute_for(config, ns.node_id, ns.model):
+        return _fail(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}")
+    data = {**rec["data"], "family": entry["family"], "commit": gate.commit}
     dest = review_path(root, ns.node_id, ns.model)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(render_front_matter(data, rec.body), encoding="utf-8")
+    dest.write_text(render_front_matter(data, rec["body"]), encoding="utf-8")
     print(f"Wrote {dest}")
-    if data.get("independence") == "same-family":
-        print(f"note: another counted review is also from family {family!r}; "
-              "it is less independent and counts once toward the distinct-family policy.")
-    print(f"policy: {evaluate_gate(root, t.node, t.commit).summary()}")
+    after = evaluate_gate(root, t.node, t.commit)
+    if after.distinct_families:
+        _relabel_independence(root, after)
+        if any(o.family == entry["family"] and o.model != ns.model for o in after.approvals + after.blocks):
+            print(f"note: another counted review is also from family {entry['family']!r}; "
+                  "it is less independent and counts once toward the distinct-family policy.")
+    print(f"policy: {after.summary()}")
     return 0
 
 
@@ -181,11 +193,10 @@ def build_parser() -> argparse.ArgumentParser:
     rsub = review.add_subparsers(dest="review_cmd", required=True)
     rec = rsub.add_parser("record", help="Validate a reviewer's notes and file them as a review record")
     rec.add_argument("node_id")
-    rec.add_argument("--model", required=True, help="Reviewer model id (roster id), or human")
+    rec.add_argument("--model", required=True, help="Reviewer model id from the roster (not human)")
     rec.add_argument("--verdict", required=True, choices=["approve", "block"])
     rec.add_argument("--file", required=True, help="Markdown with review-record front matter")
-    rec.add_argument("--family", help="Family for a model that is not in the roster")
-    rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch, else HEAD)")
+    rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
     return p

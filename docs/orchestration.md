@@ -62,7 +62,7 @@ substitutions: []
 | `policy.reviewers_required` | Approving reviews needed at the commit under review. Minimum 1. |
 | `policy.reviewers_distinct_families` | Count approvals by distinct family, so two sessions of one family count once. |
 | `policy.reviewer_fresh_session` | Records must attest `fresh_session: true`. |
-| `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use`, optional `scope` (node ids; omit for all), `decided`, `expires_when` (prose), optional `expires` (date after which it stops counting). |
+| `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
 Roster entries also accept `profile`, `channels`, `may_process`,
 `subagent_family_lock`, and `preflight`. They are validated now and used by later
@@ -81,16 +81,26 @@ policy:
   reviewers_distinct_families: true
 ```
 
-`specy-road validate` fails on a file that is present but invalid. Change it on
-the integration branch: a commit on a feature branch that touches anything but
-`roadmap/registry.yaml` is new work, and makes that branch's reviews stale.
+`specy-road validate` fails on a file that is present but invalid, including
+duplicate roster ids and a substitute that is not in the roster.
+
+**The gate reads this file from the integration branch** — its remote-tracking
+ref when there is one, else the local branch — not from the branch under
+review. The same goes for `require_implementation_review_before_finish`: the
+gate is on when either the integration branch or the working tree turns it on.
+A feature branch therefore cannot lower its own bar. Change policy on the
+integration branch; an edit on a feature branch is ignored by the gate, flagged
+in the review packet, and, like any commit that touches more than
+`roadmap/registry.yaml`, makes that branch's reviews stale.
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
 Plain files work across every harness, including IDE chats that cannot see each
 other. Each file is Markdown whose YAML front matter is the machine-readable
-part. When an executor works in a separate worktree, it writes the file by
-**absolute path** into the coordinator's checkout.
+part. The directory always resolves to the **main** worktree: an executor in a
+linked worktree writes its hand-off there by absolute path, and every command —
+including the gate run from that worktree — reads the same files. New scaffolds
+ship `work/handoff-ready.template.md` and `work/review-record.template.md`.
 
 ### `READY-<agent>.md` — the executor's hand-off
 
@@ -108,8 +118,9 @@ verify:
 Optional notes for the coordinator.
 ```
 
-Quote an all-digit SHA (`commit: "1234567"`) or YAML reads it as a number. The
-tools convert it back, but quoting is clearer.
+Quote SHAs. `commit` and `base` are read exactly as written in the file, so
+YAML cannot turn `0123456` into an octal number, but quoting keeps other tools
+reading the file from doing so.
 
 ### `PACKET.md` — what a reviewer reads
 
@@ -125,7 +136,12 @@ tools convert it back, but quoting is clearer.
 
 The packet reviews the tip of the node's registered branch **without checking
 it out**, so a coordinator in a checkout shared with executors never switches
-branches. `--ref` reviews a different branch or commit.
+branches. The branch is the local one, else `<remote>/<branch>` (run
+`git fetch` first when the executor worked in another clone); when neither
+exists, the command fails rather than review something else. The summary is read
+as committed at the reviewed commit. Changes to `roadmap/orchestration.yaml` or
+`roadmap/git-workflow.yaml` are flagged. `--ref` reviews a different branch or
+commit, and exits 1 when it does not resolve.
 
 ### `REVIEW-<model>.md` — one reviewer's verdict
 
@@ -163,23 +179,30 @@ specy-road review record M1.2 --model claude-opus-5.5 --verdict block --file not
 - approves with a failing acceptance item or with `required_changes`;
 - does not give a result for every acceptance id, or names one the brief lacks;
 - claims `authored_fix: true` or `is_coordinator: true`;
-- names a commit other than the one under review.
+- names a commit other than the one under review;
+- comes from a model that is not in the roster on the integration branch, or
+  that has neither the reviewer role nor an active substitution;
+- comes from `human` — a human approves only through the interactive menu of
+  `mark-implementation-reviewed`, so an agent cannot file one.
 
-It fills `family` from the roster. When policy requires distinct families, it
-labels the record `independence: same-family` if another counted review shares
-its family.
+It sets `family` from the roster; a `family` written in the file is ignored.
+When policy requires distinct families, it relabels every counted record
+`independence: same-family` or `distinct-family` as reviews arrive.
 
 ## The review gate
 
 `specy-road mark-implementation-reviewed`, run on the feature branch, counts a
 review record only when:
 
-- it validates;
-- its `commit` is the commit under review — any later commit makes it stale, so
-  a substantive fix restarts every review (commits that touch only
-  `roadmap/registry.yaml` are skipped, so claim bookkeeping does not);
+- it validates, and its `node_id` is this node;
+- its `commit` resolves, through git, to the commit under review — any later
+  commit makes it stale, so a substantive fix restarts every review. A merge
+  counts as new work (it is compared with its first parent); commits that touch
+  only `roadmap/registry.yaml` are skipped, so claim bookkeeping does not;
 - its model is a rostered reviewer, or the substitute in an active substitution
-  that covers this node;
+  that covers this node, and its family comes from the roster;
+- no other record from the same model already counts — one vote per model, and
+  a block from any of a model's records wins;
 - it attests a fresh session when policy requires one.
 
 The gate passes when no counted review blocks and the counted approvals reach
@@ -196,8 +219,17 @@ committed after approval cannot ship on the earlier reviews.
 only when it would complete the policy.
 
 **`--yes` never creates a review.** It commits an approval only when the
-recorded reviews already satisfy the policy. A coordinator that can satisfy the
-gate alone is no gate.
+recorded reviews already satisfy the policy. Without a TTY and without `--yes`
+the command refuses, as in 0.2.x. A coordinator that can satisfy the gate alone
+is no gate.
+
+**What the gate cannot verify.** A review record's `model`, `fresh_session`,
+`authored_fix`, and `is_coordinator` are self-attested: any agent that can write
+a file under `work/reviews/` can pose as a rostered reviewer, including
+`human`. The tool closes the easy paths — `review record` refuses `human`,
+`--yes` never files a review, policy comes from the integration branch — and
+records who approved in the commit history. Proving a reviewer's identity needs
+something outside the repo, such as forge PR approvals or signed commits.
 
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:
 
@@ -208,8 +240,10 @@ gate alone is no gate.
 | `blocked` | A counted review blocks. |
 | `approved` | The policy is met. Run `mark-implementation-reviewed`. |
 | `stale` | The branch moved past the READY commit. |
+| `unclaimed` | Leftover files for a node with no open claim (finished or aborted); safe to delete. |
 
-Below each node it lists every problem to fix.
+Below each node it lists every problem to fix. Naming a node that cannot be
+resolved exits 1.
 
 ## Unattended loops
 
@@ -221,8 +255,9 @@ pre-finish hook that runs a reviewer from another family headlessly:
 specy-road grind-session --on-complete merge --implement-mode hook \
   --implement-cmd 'executor-cli "$SPECY_ROAD_PROMPT"' \
   --pre-finish-cmd 'specy-road review-packet "$SPECY_ROAD_NODE_ID" &&
-    reviewer-cli work/reviews/"$SPECY_ROAD_NODE_ID"/PACKET.md > work/notes.md &&
-    specy-road review record "$SPECY_ROAD_NODE_ID" --model <reviewer-id> --verdict approve --file work/notes.md &&
+    reviewer-cli work/reviews/"$SPECY_ROAD_NODE_ID"/PACKET.md > work/reviews/"$SPECY_ROAD_NODE_ID"/notes.md &&
+    specy-road review record "$SPECY_ROAD_NODE_ID" --model <reviewer-id> --verdict approve \
+      --file work/reviews/"$SPECY_ROAD_NODE_ID"/notes.md &&
     specy-road mark-implementation-reviewed --yes'
 ```
 
@@ -249,7 +284,7 @@ When several agents share one working tree:
 ## Upgrading from 0.2.x
 
 - With the review gate on, `mark-implementation-reviewed` now needs a review
-  record. Interactive use works as before under the default policy, because
+  record, and `finish-this-task` re-checks it at the current commit. Interactive use works as before under the default policy, because
   **approve** files the human record. **`--yes` without a satisfying record now
   exits 1.**
 - `roadmap/orchestration.yaml` is optional; copy it from a fresh

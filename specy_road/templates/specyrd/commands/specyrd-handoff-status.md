@@ -12,7 +12,7 @@ specy-road handoff status <NODE_ID>  # one node
 specy-road handoff status --json     # for a coordinator that polls
 ```
 
-States: `waiting` (no valid READY file), `in-review`, `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit).
+States: `waiting` (no valid READY file), `in-review`, `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit), `unclaimed` (leftover files for a node with no open claim — safe to delete).
 
 Each line under a node names a problem to fix: an invalid file, a review of an older commit, a reviewer outside the roster, or the approvals still missing.
 

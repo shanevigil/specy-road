@@ -216,8 +216,9 @@ def _finish_instruction_lines(
             ),
             (
                 "5. Hand off for review: write "
-                f"`work/reviews/{node_id}/READY-<your model id>.md` (branch, commit, "
-                "base, changed_paths, verify — see docs/orchestration.md). Reviewers read "
+                f"`work/reviews/{node_id}/READY-<your model id>.md` from "
+                "`work/handoff-ready.template.md` (branch, commit, base, changed_paths, "
+                "verify), then stop. Reviewers read "
                 f"`specy-road review-packet {node_id}` and file verdicts with "
                 "`specy-road review record`; then the developer runs "
                 "`specy-road mark-implementation-reviewed` and "

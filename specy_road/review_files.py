@@ -18,6 +18,7 @@ coordinator polls the directory. Both schemas ship in the wheel, like
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import date
 from functools import cache
@@ -27,12 +28,16 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
+from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
 
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
 REVIEW_PREFIX = "REVIEW-"
 PACKET_NAME = "PACKET.md"
+#: The interactive approver. A solo maintainer both coordinates and reviews, so
+#: only this model may attest ``is_coordinator: true``.
+HUMAN = "human"
 
 
 @dataclass
@@ -47,8 +52,22 @@ class ReviewFile:
         return not self.errors
 
 
+def reviews_root(repo_root: Path) -> Path:
+    """``work/reviews`` in the **main** worktree, whichever worktree asks.
+
+    ``work/reviews/`` is gitignored, so each linked worktree would otherwise
+    have its own empty copy: an executor in a worktree hands off into the
+    coordinator's checkout, and the gate run from that worktree must read the
+    same directory.
+    """
+    common = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], repo_root)
+    if common and Path(common).name == ".git":
+        return Path(common).parent / REVIEWS_REL
+    return repo_root / REVIEWS_REL
+
+
 def reviews_dir(repo_root: Path, node_id: str) -> Path:
-    return repo_root / REVIEWS_REL / node_id
+    return reviews_root(repo_root) / node_id
 
 
 def ready_path(repo_root: Path, node_id: str, agent: str) -> Path:
@@ -73,17 +92,26 @@ def _schema_errors(data: dict[str, Any], schema_name: str) -> list[str]:
     return out
 
 
-def _scalars_to_str(data: dict[str, Any]) -> None:
+_SHA_KEYS = ("commit", "base")
+
+
+def _scalars_to_str(data: dict[str, Any], text: str) -> None:
     """Undo YAML's typing of values the schemas want as strings.
 
-    An unquoted ``2026-10-26`` loads as a date, and a short SHA that happens to
-    be all digits (``1234567``) loads as an int.
+    An unquoted ``2026-10-26`` loads as a date. A SHA is worse: YAML 1.1 reads
+    ``1234567`` as an int, ``0123456`` as octal and ``0x1234567`` as hex, so
+    converting the loaded value back would yield a different string — or a
+    different, valid-looking SHA. ``commit`` and ``base`` are therefore taken
+    from the front matter text exactly as written.
     """
     for key, value in list(data.items()):
         if isinstance(value, date):
             data[key] = value.isoformat()
-        elif key in ("commit", "base") and isinstance(value, int) and not isinstance(value, bool):
-            data[key] = str(value)
+    block = text.split("\n---", 1)[0]
+    for key in _SHA_KEYS:
+        m = re.search(rf"^{key}:[ \t]*([\"']?)([^\"'\s#]+)\1[ \t]*(?:#.*)?$", block, re.M)
+        if m and key in data:
+            data[key] = m.group(2)
 
 
 def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
@@ -94,7 +122,7 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     data, body = split_frontmatter(text)
     if not isinstance(data, dict) or not data:
         return {}, body, ["missing YAML front matter (--- … ---) at the top of the file"]
-    _scalars_to_str(data)
+    _scalars_to_str(data, text)
     return data, body, []
 
 
@@ -112,7 +140,7 @@ def review_semantic_errors(
     errs = []
     if data.get("authored_fix"):
         errs.append("authored_fix: a session that wrote the change cannot review it")
-    if data.get("is_coordinator"):
+    if data.get("is_coordinator") and data.get("model") != HUMAN:
         errs.append("is_coordinator: the coordinator's own session is never a reviewer")
     results = data.get("acceptance") or {}
     if data.get("verdict") == "approve":
@@ -166,7 +194,7 @@ def latest_ready(repo_root: Path, node_id: str) -> ReviewFile | None:
 
 
 def node_ids_with_reviews(repo_root: Path) -> list[str]:
-    root = repo_root / REVIEWS_REL
+    root = reviews_root(repo_root)
     if not root.is_dir():
         return []
     return sorted(p.name for p in root.iterdir() if p.is_dir())

@@ -19,6 +19,7 @@ specy-road mark-implementation-reviewed
 - The gate needs review records under `work/reviews/<NODE_ID>/` that satisfy `roadmap/orchestration.yaml` at the commit under review (`/specyrd-handoff-status` shows where you stand).
 - Default policy (one reviewer, `human` rostered): the interactive menu's **approve** files `REVIEW-human.md` and closes the gate.
 - `--yes` never creates a review; it only commits an approval the recorded reviews already earned. An agent must not approve its own work.
+- Policy and the gate switch are read from the integration branch, so editing them on this branch changes nothing.
 - Emergency without summary file: `--allow-missing-summary` (warning).
 
 Next: `specy-road finish-this-task`

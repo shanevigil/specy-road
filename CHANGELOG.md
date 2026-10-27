@@ -30,6 +30,15 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   `approved` registry row no longer covers work committed after approval.
   A row approved under 0.2.x with no review record needs a fresh
   `mark-implementation-reviewed` before it can finish.
+- **The review policy comes from the integration branch.** The gate reads
+  `roadmap/orchestration.yaml` — and treats the gate as on when
+  `require_implementation_review_before_finish` is on — from the integration
+  branch (remote-tracking ref first), so a feature branch cannot lower its own
+  bar. Change policy on the integration branch.
+- **`review record` is stricter.** It refuses `--model human` (a human approves
+  only through the interactive menu), refuses models that are not in the roster,
+  and no longer takes `--family`: a reviewer's family always comes from the
+  roster. A substitution's `use` must be a roster entry.
 
 ### Added
 
@@ -57,6 +66,26 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
 
 ### Changed
 
+- The gate counts one vote per model (a block from any of a model's records
+  wins), checks each record's `node_id`, compares commits through git rather
+  than by string prefix, and treats a merge commit as new work.
+- `work/reviews/` resolves to the main worktree, so executors and the gate in
+  linked worktrees share one hand-off directory.
+- `review-packet` and `handoff status` fall back to `<remote>/<branch>` when the
+  registered branch is not local, and fail instead of reviewing `HEAD` when it is
+  missing. `--ref` that does not resolve exits 1. The packet reads the
+  implementation summary at the reviewed commit, no longer flags tracked `work/`
+  files, and flags edits to `roadmap/orchestration.yaml` / `git-workflow.yaml`.
+- `handoff status` exits 1 for a named node it cannot resolve and reports
+  leftover directories as `unclaimed`.
+- `orchestration.yaml` validation rejects duplicate roster ids, an empty
+  substitution `scope`, and a substitution without `expires_when` or `expires`;
+  a substitution does not count before its `decided` date.
+- `commit` / `base` in hand-off files are read exactly as written, so YAML cannot
+  retype a SHA as an octal or hex number.
+- Without a TTY, `mark-implementation-reviewed` again requires `--yes`.
+- New scaffolds ship `work/handoff-ready.template.md` and
+  `work/review-record.template.md`; the pickup prompt points at them.
 - New scaffolds gitignore `work/reviews/`. **Existing adopters:** add
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to

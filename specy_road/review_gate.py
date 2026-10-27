@@ -7,9 +7,16 @@ reports. A review record counts only when all of these hold:
   including a result for every acceptance id in the brief);
 * its ``commit`` is the commit under review — any later commit makes it stale,
   which is how "a substantive fix restarts both reviews" needs no extra state;
+* it is for this node, and no other record from the same model already counts;
 * its model is rostered with the ``reviewer`` role, or is the substitute in an
-  active substitution covering this node;
+  active substitution covering this node — its family always comes from the
+  roster, never from the file;
 * it attests a fresh session when policy requires one.
+
+Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
+integration branch** (its remote-tracking ref when present), and the gate is on
+when either that branch or the working tree turns it on: a feature branch
+cannot lower its own bar.
 
 The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_required`` — counted by distinct family when
@@ -24,15 +31,42 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.finish_implementation_check import base_ref
+from specy_road.git_subprocess import git_stdout
+from specy_road.git_workflow_config import (
+    require_implementation_review_before_finish,
+    resolve_integration_defaults,
+)
 from specy_road.orchestration_config import (
     effective_config,
     family_of,
     is_rostered_reviewer,
     substitute_for,
 )
-from specy_road.review_files import ReviewFile, list_reviews, render_front_matter, review_path
-from specy_road.review_target import same_commit
+from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
+from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
+
+
+def policy_ref(repo_root: Path) -> str | None:
+    """The integration branch ref policy is read from, or ``None`` (working tree)."""
+    ib, remote, _ = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    return base_ref(repo_root, remote, ib)
+
+
+def review_required(repo_root: Path) -> bool:
+    """Whether the review gate is on — in the working tree **or** on the integration branch."""
+    if require_implementation_review_before_finish(repo_root):
+        return True
+    ref = policy_ref(repo_root)
+    text = git_stdout(["show", f"{ref}:roadmap/git-workflow.yaml"], repo_root) if ref else None
+    try:
+        data = yaml.safe_load(text) if text else None
+    except yaml.YAMLError:
+        return False
+    return isinstance(data, dict) and bool(data.get("require_implementation_review_before_finish"))
 
 
 @dataclass
@@ -62,6 +96,7 @@ class GateResult:
     invalid: list[ReviewFile] = field(default_factory=list)
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
     config_error: str | None = None
+    config: dict[str, Any] = field(default_factory=dict)
 
     @property
     def approval_count(self) -> int:
@@ -117,10 +152,24 @@ def _eligibility(
             )
     if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
         return None, "policy requires a fresh reviewer session (fresh_session: true)"
-    family = family_of(config, model) or review.data.get("family")
+    family = family_of(config, model)
     if not family:
         return None, f"no family for {model!r}: add it to the roster"
     return CountedReview(review, family, sub), None
+
+
+def _count(result: GateResult, counted: CountedReview) -> None:
+    """One vote per model: a block from any of its records wins, extras are listed."""
+    same = [c for c in result.approvals + result.blocks if c.model == counted.model]
+    if not same:
+        (result.blocks if counted.verdict == "block" else result.approvals).append(counted)
+        return
+    if counted.verdict == "block" and same[0].verdict != "block":
+        result.approvals.remove(same[0])
+        result.blocks.append(counted)
+        result.ineligible.append((same[0].review, f"{counted.model} also blocks in {counted.review.path.name}"))
+        return
+    result.ineligible.append((counted.review, f"{same[0].review.path.name} already counts for {counted.model}"))
 
 
 def evaluate_gate(
@@ -130,33 +179,31 @@ def evaluate_gate(
     *,
     today: date | None = None,
 ) -> GateResult:
-    config, err = effective_config(repo_root)
+    config, err = effective_config(repo_root, policy_ref(repo_root))
     policy = config["policy"]
     result = GateResult(
         node_id=node["id"],
-        commit=commit,
+        commit=full_sha(repo_root, commit),
         required=int(policy["reviewers_required"]),
         distinct_families=bool(policy["reviewers_distinct_families"]),
         config_error=err,
+        config=config,
     )
     for review in list_reviews(repo_root, node["id"], acceptance_ids(node)):
+        if review.ok and review.data.get("node_id") != node["id"]:
+            review.errors.append(f"node_id is {review.data.get('node_id')!r}, not {node['id']!r}")
         if not review.ok:
             result.invalid.append(review)
             continue
-        if not same_commit(review.data["commit"], commit):
+        if not same_commit(repo_root, review.data["commit"], result.commit):
             result.stale.append(review)
             continue
         counted, why = _eligibility(config, node["id"], review, today)
         if counted is None:
             result.ineligible.append((review, why or "not eligible"))
-        elif counted.verdict == "block":
-            result.blocks.append(counted)
         else:
-            result.approvals.append(counted)
+            _count(result, counted)
     return result
-
-
-HUMAN = "human"
 
 
 def human_approval_completes(repo_root: Path, gate: GateResult) -> bool:
@@ -167,7 +214,7 @@ def human_approval_completes(repo_root: Path, gate: GateResult) -> bool:
     """
     if gate.config_error or gate.commit is None or gate.blocks:
         return False
-    config, _ = effective_config(repo_root)
+    config = gate.config
     if not is_rostered_reviewer(config, HUMAN):
         return False
     others = [a for a in gate.approvals if a.model != HUMAN]
@@ -192,7 +239,8 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str) -> 
         "required_changes": [],
         "fresh_session": True,
         "authored_fix": False,
-        "is_coordinator": False,
+        # Whoever runs mark-implementation-reviewed is coordinating; say so.
+        "is_coordinator": True,
     }
     path = review_path(repo_root, node["id"], HUMAN)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -216,9 +264,7 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     ``implementation_review: approved`` is written once; without this check a
     commit made after approval would ship unreviewed. A fix restarts review.
     """
-    from specy_road.review_target import resolve_target
-
-    gate = evaluate_gate(repo_root, node, resolve_target(repo_root, node["id"], "HEAD").commit)
+    gate = evaluate_gate(repo_root, node, resolve_target_or_exit(repo_root, node["id"], "HEAD").commit)
     if gate.passed:
         return
     print(

@@ -25,12 +25,17 @@ from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_subprocess import git_stdout, head_sha
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
-from specy_road.review_target import ReviewTarget, resolve_target, same_commit
+from specy_road.review_target import ReviewTarget, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 TAIL_LINES = 60
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
-_BOOKKEEPING_PREFIXES = ("roadmap/", "planning/", "roadmap.md")
+# work/ holds the brief, implementation summary, and session files the scaffold
+# tracks on the feature branch on purpose.
+_BOOKKEEPING_PREFIXES = ("roadmap/", "planning/", "roadmap.md", "roadmap-context.md", "work/")
+# ...except the review policy itself. The gate reads it from the integration
+# branch, so a change here does not lower the bar, but a reviewer must see it.
+_POLICY_PATHS = ("roadmap/orchestration.yaml", "roadmap/git-workflow.yaml")
 
 
 def _tail(text: str, n: int = TAIL_LINES) -> str:
@@ -58,13 +63,14 @@ def _header(t: ReviewTarget) -> list[str]:
     ]
 
 
-def _summary(root: Path, node_id: str) -> list[str]:
-    path = root / "work" / f"implementation-summary-{node_id}.md"
+def _summary(root: Path, t: ReviewTarget) -> list[str]:
+    """The summary as committed at the reviewed commit, else the working tree's."""
+    rel = f"work/implementation-summary-{t.node_id}.md"
     out = ["## Implementation summary", ""]
-    if path.is_file():
-        out += [path.read_text(encoding="utf-8").rstrip(), ""]
-    else:
-        out += [f"_(missing: `{path.relative_to(root)}`)_", ""]
+    text = git_stdout(["show", f"{t.commit}:{rel}"], root) if t.commit else None
+    if text is None and (root / rel).is_file():
+        text = (root / rel).read_text(encoding="utf-8")
+    out += [text.rstrip(), ""] if text is not None else [f"_(missing: `{rel}`)_", ""]
     return out
 
 
@@ -76,12 +82,15 @@ def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
     zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", ""]
     outside = []
+    policy = [p for p in paths if p in _POLICY_PATHS]
     for p in paths:
         inside = not zones or any(zone_matches(z, p) for z in zones)
-        bookkeeping = p.startswith(_BOOKKEEPING_PREFIXES)
+        bookkeeping = p.startswith(_BOOKKEEPING_PREFIXES) and p not in _POLICY_PATHS
         if not inside and not bookkeeping:
             outside.append(p)
         mark = "" if inside or bookkeeping else "  **← outside touch zones**"
+        if p in policy:
+            mark = "  **← review policy changed on this branch**"
         lines.append(f"- `{p}`{mark}")
     if not paths:
         lines.append("- _none_")
@@ -89,6 +98,9 @@ def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
     if outside:
         lines += [f"**{len(outside)} path(s) outside the touch zones.** "
                   "An executor must stop for the coordinator rather than edit these.", ""]
+    if policy:
+        lines += ["**This branch edits review policy.** The gate ignores it (policy is read "
+                  "from the integration branch); block unless the leaf is about policy.", ""]
     return paths, lines
 
 
@@ -105,7 +117,7 @@ def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
     if ready is None:
         return ["_(no valid READY hand-off file)_", ""]
     out = [f"From `{ready.path.name}` (commit `{ready.data['commit']}`):", ""]
-    if not same_commit(ready.data["commit"], t.commit):
+    if not same_commit(root, ready.data["commit"], t.commit):
         out += ["**Warning:** the READY commit is not the commit under review.", ""]
     for v in ready.data.get("verify") or []:
         out.append(f"### `{v['cmd']}` → exit {v['exit']}")
@@ -116,7 +128,7 @@ def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
 def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
     out: list[str] = []
     here = head_sha(root)
-    if cmds and not same_commit(here, t.commit):
+    if cmds and not same_commit(root, here, t.commit):
         out += [f"**Warning:** commands ran at HEAD `{here}`, not the commit under review.", ""]
     for cmd in cmds:
         r = subprocess.run(cmd, shell=True, cwd=root, capture_output=True, text=True, check=False)
@@ -126,13 +138,13 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 
 
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str]) -> str:
-    t = resolve_target(root, node_id, ref)
+    t = resolve_target_or_exit(root, node_id, ref)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
     _paths, changed = _changed(root, t)
     parts = [
         _header(t),
         ["---", ""] + brief.rstrip().splitlines() + ["", "---", ""],
-        _summary(root, node_id),
+        _summary(root, t),
         changed,
         _diff(root, t),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
@@ -143,7 +155,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("node_id", help="Roadmap node id, e.g. M1.2")
-    p.add_argument("--ref", help="Branch or commit to review (default: the node's registered branch, else HEAD)")
+    p.add_argument("--ref", help="Branch or commit to review (default: the node's registered branch, local or remote-tracking)")
     p.add_argument("--verify-cmd", action="append", default=[], metavar="CMD",
                    help="Run CMD now and include its exit code and output tail (repeatable)")
     p.add_argument("-o", "--output", type=Path, help=f"Write here instead of work/reviews/<NODE_ID>/{PACKET_NAME}")

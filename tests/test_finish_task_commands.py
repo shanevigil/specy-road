@@ -142,7 +142,7 @@ def test_finish_blocks_when_implementation_review_pending(
         "load_roadmap",
         lambda _p: {"nodes": [{"id": "M1.1", "title": "Example"}]},
     )
-    monkeypatch.setattr(ft, "require_implementation_review_before_finish", lambda _r: True)
+    monkeypatch.setattr(ft, "review_required", lambda _r: True)
     monkeypatch.setattr(ft, "current_branch", lambda _root: "feature/rm-example")
     monkeypatch.setattr(ft, "_update_chunk_status", lambda _nid: [])
     monkeypatch.setattr(ft, "_validate_export_digest", lambda: None)

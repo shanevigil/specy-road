@@ -66,7 +66,7 @@ def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Pat
     )
     if orchestration is not None:
         (rm / "orchestration.yaml").write_text(orchestration, encoding="utf-8")
-    (root / ".gitignore").write_text("/work/\n", encoding="utf-8")
+    (root / ".gitignore").write_text("work/reviews/\n", encoding="utf-8")
     git(root, "add", "-A")
     git(root, "commit", "-qm", "graph")
     git(root, "checkout", "-q", "-b", "feature/rm-thing")
