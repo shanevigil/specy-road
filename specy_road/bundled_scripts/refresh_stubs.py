@@ -29,6 +29,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import apply_guide_and_report
+from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.agent_ignores import apply_and_report
 from specy_road.runtime_paths import (
     add_repo_root_arg,
@@ -138,6 +139,7 @@ def refresh_stubs(
             agents[agent] = current
 
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run)
 
     if not dry_run:
         manifest["agents"] = agents
