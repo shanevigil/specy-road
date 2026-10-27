@@ -8,10 +8,13 @@ The repo is left on the feature branch.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
 import yaml
+
+from tests.helpers import DOGFOOD
 
 NODE = {
     "id": "M1.1",
@@ -26,6 +29,7 @@ NODE = {
     "touch_zones": ["src"],
     "goal": "Do the thing.",
     "acceptance": ["a.py exists", "nothing else breaks"],
+    "planning_dir": "planning/M1.1_thing_11111111-1111-5111-8111-111111111111.md",
 }
 
 
@@ -49,11 +53,16 @@ def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Pat
     git(root, "init", "-q", "-b", "dev")
     git(root, "config", "user.email", "t@e.com")
     git(root, "config", "user.name", "T")
+    # validate (run by pickup and CRUD) reads the consumer's schemas/.
+    shutil.copytree(DOGFOOD / "schemas", root / "schemas")
     rm = root / "roadmap"
     (rm / "manifest.json").write_text(
         json.dumps({"version": 1, "includes": ["phases/M1.json"]}), encoding="utf-8"
     )
     (rm / "phases" / "M1.json").write_text(json.dumps({"nodes": [NODE]}), encoding="utf-8")
+    sheet = root / NODE["planning_dir"]
+    sheet.parent.mkdir(parents=True)
+    sheet.write_text("# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## References\n", encoding="utf-8")
     (rm / "git-workflow.yaml").write_text(
         "version: 1\nintegration_branch: dev\nremote: origin\n"
         "require_implementation_review_before_finish: true\n",

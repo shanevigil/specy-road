@@ -16,7 +16,7 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import (
 )
 from specy_road.bundled_scripts.planning_artifacts import normalize_planning_dir, resolve_planning_path
 from specy_road.bundled_scripts.planning_sheet_bootstrap import plan_planning_sheet_for_new_node
-from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation
+from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation, next_sibling_order
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, ID_PATTERN, apply_set
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 from specy_road.bundled_scripts.roadmap_layout import natural_id_sort_key
@@ -202,6 +202,8 @@ def cmd_add(args: object) -> None:
         "touch_zones": list(args.touch_zone or []),
         "dependencies": list(args.dependency or []),
         "parallel_tracks": args.parallel_tracks,
+        # Unset sorts as 0 and jumped the pickup queue; append instead.
+        "sibling_order": next_sibling_order(root, parent_val, getattr(args, "sibling_order", None)),
     }
     node = {k: v for k, v in node.items() if v is not None}
 

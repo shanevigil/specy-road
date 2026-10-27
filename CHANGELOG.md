@@ -118,6 +118,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
 - New scaffolds ship `work/handoff-ready.template.md` and
   `work/review-record.template.md`; the pickup prompt points at them.
 - New scaffolds gitignore `work/reviews/`.
+- `do-next-available-task --local` registers and branches without fetching,
+  merging, or pushing, for offline work or a private spike; the claim stays
+  invisible to peers until that checkout pushes the integration branch. Every
+  claim row now records `owner` (`--owner`, else `git config user.name`), so a
+  peer can see who holds it. `add-node` sets `sibling_order` after the parent's
+  last sibling (`--sibling-order N` to place it); an unset value sorted as `0`
+  and jumped the pickup queue (proposal §3.4, §5).
 - `specy-road session start|touch|end|list|check`: presence records under
   `work/.sessions/` for work that is not a registry claim. `handoff status`
   lists live sessions (its `--json` output is now `{sessions, nodes}`),
