@@ -17,11 +17,13 @@ from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
 from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.worker_baseline import read_baseline
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
     FLAG_RECONCILE,
     WorkerError,
     WorkerRecord,
+    _write_atomic,
     add_flag,
     append_event,
     clear_flag,
@@ -63,13 +65,16 @@ def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, 
 def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, dict[str, Any]]:
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
-    changed = _changed_since(Path(rec.worktree), since)
+    # Paths already dirty when `delegate` ran are the coordinator's, not the worker's.
+    pre_existing = set(read_baseline(repo_root, rec.worker_id))
+    changed = [p for p in _changed_since(Path(rec.worktree), since) if p not in pre_existing]
     zones = t.touch_zones
     # A breach is judged over the worker's whole lifetime, not only since the
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
-    on_branch = _changed_since(Path(rec.worktree), origin) if origin != since else changed
+    on_branch = ([p for p in _changed_since(Path(rec.worktree), origin) if p not in pre_existing]
+                 if origin != since else changed)
     # Toolkit bookkeeping is never a breach: briefs, prompts, hand-off and
     # brainstorm files under work/, and the registry row the claim lives in.
     substantive = [p for p in sorted(set(changed) | set(on_branch)) if not _bookkeeping(p)]
@@ -85,7 +90,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
         clear_flag(repo_root, rec, FLAG_RECONCILE)
     delta = {"since": since, "changed": changed, "outside_touch_zones": outside,
              "contract_changed": contract_changed, "branch_mismatch": off_branch, "epoch": rec.instruction_epoch,
-             "needs_reconcile": FLAG_RECONCILE in rec.flags}
+             "needs_reconcile": FLAG_RECONCILE in rec.flags, "pre_existing_dirty": sorted(pre_existing)}
     append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
                  summary=(f"{len(changed)} path(s) changed, {len(outside)} outside touch zones"
                           + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")),
@@ -100,24 +105,31 @@ def _sync_path(repo_root: Path) -> Path:
 
 
 def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
-    """Per worker, the events after the last acknowledged one; ``ack`` moves the mark."""
+    """Per worker, the events after the last acknowledged one; ``ack`` moves the mark.
+
+    Under the workers lock: dead wrappers are closed first so their ``error``
+    is in this delta, and an acknowledgement only ever moves a mark forward,
+    so two coordinators acking at once cannot push one back.
+    """
+    from specy_road.worker_ops import sweep_dead_wrappers   # noqa: PLC0415 — ops imports this module
+
     path = _sync_path(repo_root)
-    marks: dict[str, int] = {}
-    if path.is_file():
-        marks = {str(k): int(v) for k, v in (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).items()}
-    out = []
-    for rec in list_records(repo_root):
-        evs = events_since(repo_root, rec.worker_id, marks.get(rec.worker_id, 0))
-        if not evs:
-            continue
-        out.append({"worker_id": rec.worker_id, "node_id": rec.node_id, "state": rec.state,
-                    "lease": rec.lease.get("holder"), "flags": list(rec.flags), "epoch": rec.instruction_epoch,
-                    "events": [{"seq": e.seq, "type": e.type, "source": e.source, "summary": e.summary} for e in evs]})
-        if ack:
-            marks[rec.worker_id] = evs[-1].seq
-    if ack and out:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(yaml.safe_dump(marks, sort_keys=True), encoding="utf-8")
+    with workers_lock(repo_root):
+        sweep_dead_wrappers(repo_root)
+        marks: dict[str, int] = {}
+        if path.is_file():
+            marks = {str(k): int(v) for k, v in (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).items()}
+        out = []
+        for rec in list_records(repo_root):
+            evs = events_since(repo_root, rec.worker_id, marks.get(rec.worker_id, 0))
+            if not evs:
+                continue
+            out.append({"worker_id": rec.worker_id, "node_id": rec.node_id, "state": rec.state,
+                        "lease": rec.lease.get("holder"), "flags": list(rec.flags), "epoch": rec.instruction_epoch,
+                        "events": [{"seq": e.seq, "type": e.type, "source": e.source, "summary": e.summary} for e in evs]})
+            if ack:
+                marks[rec.worker_id] = max(marks.get(rec.worker_id, 0), evs[-1].seq)
+        if ack and out:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            _write_atomic(path, yaml.safe_dump(marks, sort_keys=True))
     return out
-
-

@@ -30,8 +30,10 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
+from specy_road.worker_baseline import write_baseline
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
 from specy_road.worker_runner import spawn
+from specy_road.worker_sessions import check_session_id
 from specy_road.worker_state import (
     TERMINAL_STATES,
     WorkerError,
@@ -146,9 +148,9 @@ def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
 
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
     """The executor's precondition wants ``work/brief-<id>.md`` in **its** tree, and ``work/`` is gitignored."""
-    if wt == repo_root.resolve():
-        return
     dest = wt / "work" / f"brief-{node_id}.md"
+    if dest.is_file():
+        return
     src = repo_root / "work" / f"brief-{node_id}.md"
     dest.parent.mkdir(parents=True, exist_ok=True)
     if src.is_file():
@@ -157,29 +159,40 @@ def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
         dest.write_text(render_brief(node_id, index(t.nodes), repo_root=repo_root, include_history=False), encoding="utf-8")
 
 
+def sweep_dead_wrappers(repo_root: Path) -> list[WorkerRecord]:
+    """Close every ``running``/``starting`` record whose wrapper is gone, on any leaf; returns those closed."""
+    return [r for r in list_records(repo_root, active_only=True) if _wrapper_gone(repo_root, r)]
+
+
+def _slot_or_existing(repo_root: Path, node_id: str, limit: int) -> WorkerRecord | None:
+    """Under the lock: the leaf's live worker, else ``None`` once a ``max_workers`` slot is confirmed free."""
+    sweep_dead_wrappers(repo_root)   # a dead wrapper on another leaf must not hold a slot
+    existing = active_for_node(repo_root, node_id)
+    if existing:
+        return existing
+    active = list_records(repo_root, active_only=True)
+    if len(active) >= limit:
+        raise WorkerError(f"{len(active)} workers active, policy max_workers is {limit}; "
+                          "wait for one to finish or raise the limit")
+    return None
+
+
 def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None = None,
              worktree: Path | None = None) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
     The existing-worker check, the cap and the launch happen under the workers
-    lock, so two concurrent delegates on one leaf launch one harness.
+    lock, so two concurrent delegates on one leaf launch one harness. The
+    roster's ``preflight`` and the prompt build run **between** two lock
+    sections, not under one: a hook witness must never queue behind them.
     """
-    with workers_lock(repo_root):
-        return _delegate_locked(repo_root, node_id, model, harness=harness, worktree=worktree)
-
-
-def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str | None,
-                     worktree: Path | None) -> tuple[WorkerRecord, bool]:
-    existing = active_for_node(repo_root, node_id)
-    if existing and not _wrapper_gone(repo_root, existing):
-        return existing, False
     entry, harness = _entry_and_harness(repo_root, model, harness)
     config, _ = pinned_config(repo_root)
     limit = int(config["policy"]["max_workers"])
-    active = list_records(repo_root, active_only=True)
-    if len(active) >= limit:
-        raise WorkerError(f"{len(active)} workers active, policy max_workers is {limit}; "
-                          "wait for one to finish or raise the limit")
+    with workers_lock(repo_root):
+        existing = _slot_or_existing(repo_root, node_id, limit)
+    if existing:
+        return existing, False
     t = _target(repo_root, node_id)
     _check_eligible(entry, t.node, model)
     _preflight(entry, repo_root)
@@ -189,6 +202,15 @@ def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str 
     prompt = repo_root / "work" / f"prompt-{node_id}-executor-{model}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)
     prompt.write_text(text, encoding="utf-8")
+    with workers_lock(repo_root):
+        existing = _slot_or_existing(repo_root, node_id, limit)   # re-checked: another delegate may have landed
+        if existing:
+            return existing, False
+        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, prompt, worktree), True
+
+
+def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
+                   text: str, prompt: Path, worktree: Path | None) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
     _brief_into(wt, repo_root, node_id, t)
@@ -197,13 +219,14 @@ def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str 
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
+    write_baseline(repo_root, rec.worker_id, wt)   # pre-delegation dirt is the coordinator's, not the worker's
     try:
         spawn(repo_root, rec, launch)
     except OSError as e:
         append_event(repo_root, rec, "error", source="system", summary=f"cannot start the wrapper: {e}")
         set_state(repo_root, rec, "failed", pid=None)
         raise WorkerError(f"{rec.worker_id}: cannot start the wrapper: {e}") from None
-    return rec, True
+    return rec
 
 
 def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
@@ -228,14 +251,16 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
         raise Unsupported(f"unsupported by {rec.harness}: resume")
     if not rec.provider_session_id:
         raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to resume")
+    sid = check_session_id(rec.harness, rec.provider_session_id)   # the harness's output chose it; never a shell word
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
     cli, api_id = _cli_for(repo_root, entry)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
+    prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
     prompt.write_text(text, encoding="utf-8")
-    launch = adapter.resume(rec.provider_session_id, prompt, Path(rec.worktree), api_id, cli)
+    launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli)
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)
@@ -284,6 +309,7 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
 
 def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
           worktree: Path | None = None, model: str = "unknown") -> WorkerRecord:
+    check_session_id(harness, session_id, vendor_syntax=True)   # typed in by the user: the vendor's own shape
     t = _target(repo_root, node_id)
     with workers_lock(repo_root):
         existing = active_for_node(repo_root, node_id)

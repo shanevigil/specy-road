@@ -84,9 +84,10 @@ def test_delegate_refusals(tmp_path: Path, capsys) -> None:
     assert "not in the roster" in capsys.readouterr().err
     assert _cli("worker", "delegate", "M9.9", "--model", "opus", "--repo-root", str(repo)) == 1
     assert "after pickup" in capsys.readouterr().err
-    # Fill the one slot with a record that never finishes, then try another leaf.
+    # Fill the one slot with an idle record (it owns its slot until `terminate`; a
+    # `running` one with no live wrapper would be swept as dead), then try another leaf.
     rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
-    ws.set_state(repo, rec, "running")
+    ws.set_state(repo, rec, "idle")
     import copy
     import json as _j
     nodes = _j.loads((repo / "roadmap" / "phases" / "M1.json").read_text())
@@ -232,13 +233,13 @@ def test_terminate_a_live_worker(tmp_path: Path) -> None:
 
 def test_adopt_open_list_status_and_handoff_status(tmp_path: Path, capsys) -> None:
     repo, _ = _repo(tmp_path)
-    assert _cli("worker", "adopt", "--node", "M1.1", "--harness", "codex", "--session", "thr-1", "--json", "--repo-root", str(repo)) == 0
+    assert _cli("worker", "adopt", "--node", "M1.1", "--harness", "codex", "--session", "11111111-2222-4333-8444-555555555555", "--json", "--repo-root", str(repo)) == 0
     d = json.loads(capsys.readouterr().out)
-    assert d["lease"]["holder"] == "native" and d["provider_session_id"] == "thr-1"
+    assert d["lease"]["holder"] == "native" and d["provider_session_id"] == "11111111-2222-4333-8444-555555555555"
     assert _cli("worker", "message", "w-0001", "--text", "x", "--repo-root", str(repo)) == 1
     assert "WORKER_NATIVE_OWNED" in capsys.readouterr().err
     assert _cli("worker", "open", "w-0001", "--repo-root", str(repo)) == 0
-    assert "codex resume thr-1" in capsys.readouterr().out
+    assert "codex resume 11111111-2222-4333-8444-555555555555" in capsys.readouterr().out
     assert _cli("worker", "list", "--repo-root", str(repo)) == 0
     assert "w-0001  M1.1" in capsys.readouterr().out
     assert _cli("worker", "status", "w-0001", "--json", "--repo-root", str(repo)) == 0

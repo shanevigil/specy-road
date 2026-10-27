@@ -36,6 +36,7 @@ from specy_road import tool_call_guard as tg
 from specy_road import worker_adapters as wa
 from specy_road import worker_lease as wl
 from specy_road import worker_ops as ops
+from specy_road import worker_process as wp
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import refresh_stubs as rs
@@ -83,7 +84,8 @@ def test_concurrent_messages_launch_one_turn(tmp_path: Path, monkeypatch) -> Non
         return os.getpid()
 
     monkeypatch.setattr(ops, "spawn", fake_spawn)
-    monkeypatch.setattr(ops, "pid_alive", lambda pid, wid=None: pid == os.getpid())
+    monkeypatch.setattr(ops, "process_alive", lambda r, repo_root=None: r.pid == os.getpid())
+    monkeypatch.setattr(ops, "wrapper_gone", lambda repo_root, r: False)   # the fake spawn has no token to verify
     errors: list[Exception] = []
 
     def go() -> None:
@@ -204,8 +206,9 @@ def test_a_foreign_skill_link_is_left_alone_on_first_install(tmp_path: Path) -> 
     res = run_init(target=tmp_path, agent="claude-code", dry_run=False, force=False, ai_commands_dir=None, role="dev")
     assert os.readlink(link) == "../../../mine"
     assert ".claude/skills/specyrd-brief (skipped (not ours))" in res.skipped
-    run_init(target=tmp_path, agent="claude-code", dry_run=False, force=True, ai_commands_dir=None, role="dev")
-    assert os.readlink(link) == "../../.agents/skills/specyrd-brief"
+    res = run_init(target=tmp_path, agent="claude-code", dry_run=False, force=True, ai_commands_dir=None, role="dev")
+    assert os.readlink(link) == "../../../mine"          # round 6 B18: no manifest record, so --force is refused too
+    assert ".claude/skills/specyrd-brief (skipped (not ours))" in res.skipped
 
 
 # --- B8 -----------------------------------------------------------------------
@@ -306,17 +309,17 @@ def test_terminate_refuses_a_pid_it_cannot_verify(tmp_path: Path, monkeypatch) -
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=os.getpid())
-    monkeypatch.setattr(wr, "_cmdline", lambda pid: None)              # ps unavailable: alive, unverified
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)              # ps unavailable: alive, unverified
     with pytest.raises(ws.WorkerError, match="cannot be verified"):
         ops.terminate(repo, rec.worker_id)
-    monkeypatch.setattr(wr, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
     out = ops.terminate(repo, rec.worker_id)        # another worker's wrapper: not ours to signal; the record closes
     assert out.state == "terminated"
 
 
 def test_terminate_closes_an_adopted_record_without_signalling(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    rec = ops.adopt(repo, "M1.1", "claude-code", "native-1")
+    rec = ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
     ws.set_state(repo, rec, "idle", pid=os.getpid())
     out = ops.terminate(repo, rec.worker_id)
     assert out.state == "terminated"

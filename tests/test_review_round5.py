@@ -265,7 +265,7 @@ def test_a_platform_without_a_file_lock_refuses_worker_mutations(tmp_path: Path,
 
 def test_adopt_is_one_transaction(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    rec = ops.adopt(repo, "M1.1", "claude-code", "native-1")
+    rec = ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
     assert types[-1] == "adopted" and ws.load_record(repo, rec.worker_id).checkpoint is not None
 

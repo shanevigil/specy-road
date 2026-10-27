@@ -180,9 +180,9 @@ def test_hook_prompts_are_attributed_by_line_and_only_under_a_human_lease(tmp_pa
 
 def test_adopt_refuses_a_second_worker_on_the_leaf(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    ops.adopt(repo, "M1.1", "claude-code", "native-1")
+    ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
     with pytest.raises(ws.WorkerError, match="already has an active worker"):
-        ops.adopt(repo, "M1.1", "claude-code", "native-2")
+        ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000002")
 
 
 def test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change(tmp_path: Path) -> None:
