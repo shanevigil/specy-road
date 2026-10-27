@@ -77,6 +77,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   the model profile's prompting rules and failure-mode guards applied
   mechanically, then the brief or the review packet. `--channel cli` runs the
   profile's `access.cli`. Stub: `/specyrd-prompt`.
+- Node fields `sensitivity` (default `public`) and `executor_eligibility`
+  (default `any`, else a roster `class` tag), settable with `add-node` and
+  `edit-node --set`. **Existing adopters:** run `specy-road refresh-schemas`
+  once, or `validate` rejects nodes that set them.
 - `specy-road orchestrate plan [PARENT]`: per ready leaf, which roster model
   should coordinate, execute, and review — from the leaf's sensitivity and
   executor eligibility, roster `may_process`, `class`, and `unavailable_until`,

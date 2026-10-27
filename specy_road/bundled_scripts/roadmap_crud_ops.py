@@ -202,6 +202,7 @@ def cmd_add(args: object) -> None:
         "touch_zones": list(args.touch_zone or []),
         "dependencies": list(args.dependency or []),
         "parallel_tracks": args.parallel_tracks,
+        "sensitivity": getattr(args, "sensitivity", None), "executor_eligibility": getattr(args, "executor_eligibility", None),
         # Unset sorts as 0 and jumped the pickup queue; append instead.
         "sibling_order": next_sibling_order(root, parent_val, getattr(args, "sibling_order", None)),
     }

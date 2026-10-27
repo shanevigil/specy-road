@@ -92,6 +92,8 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     )
     sp.add_argument("--touch-zone", action="append", default=[])
     sp.add_argument("--dependency", action="append", default=[])
+    sp.add_argument("--sensitivity", default=None, help="Data-sensitivity class (default public); see roadmap/orchestration.yaml may_process")
+    sp.add_argument("--executor-eligibility", dest="executor_eligibility", default=None, help="any (default) or a roster class tag such as senior")
     sp.add_argument(
         "--sibling-order",
         dest="sibling_order",

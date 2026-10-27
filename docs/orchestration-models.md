@@ -70,8 +70,7 @@ order:
   it may spawn.
 
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
-coordinator script stops before dispatching. The leaf fields `sensitivity`
-and `executor_eligibility` are read from the node; adding them to the
-consumer node schema is a pending 0.3.0 decision
-([design-notes/v0-3-0-orchestration-slices.md](design-notes/v0-3-0-orchestration-slices.md)),
-and until then every leaf is `public` and `any`.
+coordinator script stops before dispatching. Set a leaf's `sensitivity` and
+`executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
+or on `add-node`; both default to `public` and `any`. Repos scaffolded before
+0.3.0 run `specy-road refresh-schemas` once so `validate` accepts the fields.

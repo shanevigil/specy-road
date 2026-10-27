@@ -189,6 +189,8 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
 | `acceptance` | List of observable acceptance criteria. |
+| `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
+| `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
 | `risks` | List of known risks or blockers to surface during planning. |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
