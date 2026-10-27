@@ -200,6 +200,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   built-in review, cleanup and security skills; `suggested_prompts/README.md`
   now indexes the four kept adoption prompts and points generic passes at the
   harness and roadmap review at `docs/orchestration.md`.
+- Docs: the toolkit's own `constitution/purpose.md` and `principles.md` now
+  state what the 0.3 line is opinionated about — review contract and role
+  separation, no model or search calls from the CLI, harness-native adapters
+  (no daemon, no MCP server), the agent advises and the human decides, use
+  the harness's tools and augment them, docs win and smallest change — while
+  still leaving IDE, agent and model open. `docs/philosophy-and-scope.md`
+  gains the matching bullet.
 - The gate counts one vote per model (a block from any of a model's records
   wins), checks each record's `node_id`, compares commits through git rather
   than by string prefix, and treats every merge commit — `-s ours` included —
