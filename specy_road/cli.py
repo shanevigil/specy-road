@@ -32,6 +32,7 @@ _SCRIPTS = {
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "review-packet": "review_packet.py",
+    "prompt": "role_prompt.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",
     "start-milestone-session": "start_milestone_session.py",
@@ -56,6 +57,7 @@ _FORWARDED = {
     "why-blocked": "roadmap_query_cli.py",
     "list-gates": "roadmap_query_cli.py",
     "handoff": "review_cli.py",
+    "models": "models_cli.py",
     "review": "review_cli.py",
 }
 

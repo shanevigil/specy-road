@@ -55,7 +55,7 @@ override_limits:
     max_lines_per_file: 1100
   # Verbatim Claude run of the proposal's §7.2 model-research prompt, kept
   # byte-for-byte beside the ChatGPT run (proposal §7.4) as input for future
-  # merges. The merged, canonical profiles live in docs/model-profiles/.
+  # merges. The merged, canonical profiles live in specy_road/templates/project/model-profiles/.
   - name: model_research_claude_verbatim
     file_globs:
       - "docs/design-notes/model-research-*-claude.md"

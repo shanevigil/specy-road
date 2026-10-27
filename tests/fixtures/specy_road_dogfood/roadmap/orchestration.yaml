@@ -13,6 +13,10 @@ roster:
   - id: human
     family: human
     roles: [coordinator, reviewer]
+  - id: claude-opus-5-5
+    family: anthropic
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
+    roles: [executor, reviewer]
 policy:
   # Approving review records at the branch HEAD that mark-implementation-reviewed
   # needs. Raise to 2 and set reviewers_distinct_families: true for independent
