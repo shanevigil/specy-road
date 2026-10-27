@@ -1,7 +1,9 @@
 # Model profiles: choosing models for orchestration roles
 
 This page is the canonical guide to filling the roster in
-`roadmap/orchestration.yaml` ([orchestration.md](../orchestration.md)). It covers
+`roadmap/orchestration.yaml` (toolkit docs: `docs/orchestration.md` for the
+roles and review gate, `docs/orchestration-models.md` for `models`, `prompt`,
+and `orchestrate plan`). It covers
 which model to use as coordinator, executor, or reviewer, which pairs make
 independent reviewers, which models are cheap first passes, and where the
 research disagrees. Each model has a profile under this directory with its

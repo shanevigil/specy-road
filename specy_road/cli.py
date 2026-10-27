@@ -59,6 +59,7 @@ _FORWARDED = {
     "list-gates": "roadmap_query_cli.py",
     "handoff": "review_cli.py",
     "models": "models_cli.py",
+    "orchestrate": "orchestrate_cli.py",
     "session": "session_cli.py",
     "review": "review_cli.py",
 }

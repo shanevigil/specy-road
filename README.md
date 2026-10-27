@@ -88,6 +88,7 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/roadmap-history.md](docs/roadmap-history.md) | Per-node timelines derived from git (`history`) |
 | [docs/git-workflow.md](docs/git-workflow.md) | Consumer workflow contract (`git-workflow.yaml`), branches, registry, merge-back |
 | [docs/orchestration.md](docs/orchestration.md) | Coordinator / executor / reviewer roles, review hand-offs (`review-packet`, `review record`, `handoff status`), the review gate |
+| [docs/orchestration-models.md](docs/orchestration-models.md) | Choosing and prompting models: profiles, `models`, `prompt`, `orchestrate plan` |
 | [docs/grind-session.md](docs/grind-session.md) | Agent-driven loop + read-only planner (`grind-session`): waves, exit codes, JSON events |
 | [docs/toolkit-development.md](docs/toolkit-development.md) | Short maintainer notes (this repo vs consumer contract) |
 | [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP) for app repos |

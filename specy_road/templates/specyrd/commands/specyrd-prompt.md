@@ -18,4 +18,4 @@ specy-road prompt <NODE_ID> --model <roster id> --role coordinator
 - `--channel cli` also runs the profile's `access.cli` with `{prompt}` replaced by the file path; `paste` (default) and `subagent` only write the file.
 - A reviewer prompt needs the packet first: `/specyrd-review-packet`.
 
-Check who can take which role with `specy-road models list`; `specy-road models stale` says when a profile's research is too old to trust. See `docs/orchestration.md`.
+Check who can take which role with `specy-road models list`; `specy-road models stale` says when a profile's research is too old to trust. See `docs/orchestration-models.md`.

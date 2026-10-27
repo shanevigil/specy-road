@@ -13,7 +13,8 @@ body. Keep section bodies focused; link to PRs for detail.
 
 Model-aware orchestration, slice 1: review and hand-off core. Design:
 [`docs/design-notes/v0-3-0-orchestration-slices.md`](docs/design-notes/v0-3-0-orchestration-slices.md);
-reference: [`docs/orchestration.md`](docs/orchestration.md).
+reference: [`docs/orchestration.md`](docs/orchestration.md) and
+[`docs/orchestration-models.md`](docs/orchestration-models.md).
 
 ### Breaking
 
@@ -76,6 +77,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   the model profile's prompting rules and failure-mode guards applied
   mechanically, then the brief or the review packet. `--channel cli` runs the
   profile's `access.cli`. Stub: `/specyrd-prompt`.
+- `specy-road orchestrate plan [PARENT]`: per ready leaf, which roster model
+  should coordinate, execute, and review — from the leaf's sensitivity and
+  executor eligibility, roster `may_process`, `class`, and `unavailable_until`,
+  profile cost and role scores, and the review policy. Exit 1 when a leaf
+  cannot be staffed. `prompt` enforces the same routing: it refuses a model
+  that may not process the leaf or is unavailable, states a
+  `subagent_family_lock`, and runs the roster `preflight` before `--channel cli`.
 - `init project` scaffolds `model-profiles/` (16 profiles and the roster guide)
   into the adopter's repo; roster entries point at them with `profile:`.
   `specy-road refresh-profiles` adds missing ones to a repo scaffolded earlier
