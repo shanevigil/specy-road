@@ -42,6 +42,15 @@ what the toolkit decided to do with it.
 Out of scope for the whole line, as the proposal states (§6): vendor billing,
 automatic capacity detection, and live diff watching.
 
+Slice 2's input profiles exist: [`../model-profiles/`](../model-profiles/README.md)
+holds one schema-2 profile per model, merged from the ChatGPT run (proposal §7.4)
+and the Claude run ([`model-research-2026-10-26-claude.md`](model-research-2026-10-26-claude.md)).
+Their front matter is strict YAML (`yaml.safe_load` reads it). Only the raw
+Claude report keeps the research prompt's unquoted flow mappings. `docs/` is
+not shipped in the wheel, so slice 2 must either ship the profiles as package
+data or have `init project` scaffold them into the adopter's `model-profiles/`.
+A roster `profile` path is relative to the adopter's repo.
+
 ## Gaps found while scoping
 
 - `brief` did not render a node's `goal` or `acceptance`; the proposal assumes

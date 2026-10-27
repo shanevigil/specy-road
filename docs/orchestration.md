@@ -68,6 +68,15 @@ Roster entries also accept `profile`, `channels`, `may_process`,
 `subagent_family_lock`, and `preflight`. They are validated now and used by later
 slices (prompt generation, data-sensitivity routing).
 
+**Choosing models.** [`model-profiles/`](model-profiles/README.md) is the
+canonical guide to filling the roster. It ranks models by role, lists
+independent reviewer pairs and pairs that share blind spots, names cheap
+first-pass executors, gives the roster `family` value for each model, and
+lists the points where the research disagrees. It has one profile per model
+with limits, prices, headless CLI syntax, failure modes, and prompting rules.
+A roster `id` is your own label (`claude-opus-5.5` below); the vendor's API id
+(`claude-opus-5-5`) lives in the profile that `profile` points at.
+
 For independent review by two model families:
 
 ```yaml
