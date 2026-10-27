@@ -74,41 +74,68 @@ def _text(prompt_path: Path) -> str:
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
 
 
-#: A placeholder must be a whole shell word (optionally quoted as one): inside
-#: a larger word (``"prefix <prompt>"``, ``--prompt=<prompt>``) the quoting
-#: ``shlex.quote`` adds lands inside still-open quotes, where ``$(…)`` runs.
-_PLACEHOLDER = re.compile(r'(?<!\S)(["\']?)(<prompt>|\{prompt\}|\{session\})\1(?!\S)')
+#: A placeholder must be a whole shell word, bare or wrapped in exactly one
+#: pair of quotes, optionally behind a ``<`` redirection. Inside a larger
+#: word (``"prefix <prompt> suffix"``, ``--session-id={session}``) the quoting
+#: ``shlex.quote`` adds would land inside still-open quotes, where ``$(…)``
+#: runs; and an embedded ``{session}`` would never be substituted at all.
+#: Validation and substitution walk the same tokens, so they cannot disagree.
+PLACEHOLDERS = ("<prompt>", "{prompt}", "{session}")
+_WORD = re.compile(r'''(?:[^\s"']+|"[^"]*"|'[^']*')+''')   # a shell word: bare runs and whole quoted spans
 _ANY_PROMPT = re.compile(r"<prompt>|\{prompt\}")
+
+
+def _placeholder_of(token: str) -> tuple[str | None, str]:
+    """``(placeholder, prefix)``: the placeholder a token *is* (bare, ``"ph"`` or ``'ph'``, optionally
+    behind a ``<`` redirection that is the prefix), or ``(None, "")``."""
+    forms = {f: p for p in PLACEHOLDERS for f in (p, f'"{p}"', f"'{p}'")}
+    if token in forms:
+        return forms[token], ""
+    if token.startswith("<") and token[1:] in forms:
+        return forms[token[1:]], "<"
+    return None, ""
+
+
+def _tokens(cli: str) -> list[tuple[int, int, str | None, str]]:
+    """``(start, end, placeholder-or-None, prefix)`` per shell word; ``ValueError`` on an unbalanced quote."""
+    if _WORD.sub("", cli).strip():
+        raise ValueError("unbalanced quote")
+    return [(m.start(), m.end(), *_placeholder_of(m.group(0))) for m in _WORD.finditer(cli)]
 
 
 def substitute_prompt(cli: str, prompt_path: Path, session: str | None = None) -> str:
     """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text.
 
-    One pass over the template, whole words only: substituted text is never
-    rescanned, and a placeholder embedded in a larger word is refused by
+    Per token, whole words only: substituted text is never rescanned, and a
+    placeholder embedded in a larger word is refused by
     :func:`placeholder_problem` before this runs.
     """
-    def repl(m: re.Match[str]) -> str:
-        tok = m.group(2)
-        if tok == "{session}":
-            return shlex.quote(session or "")
-        if tok == "{prompt}":
-            return shlex.quote(str(prompt_path))
-        return shlex.quote(_text(prompt_path))
-    return _PLACEHOLDER.sub(repl, cli)
+    values = {"{session}": lambda: session or "", "{prompt}": lambda: str(prompt_path),
+              "<prompt>": lambda: _text(prompt_path)}
+    out, pos = [], 0
+    for start, end, ph, prefix in _tokens(cli):
+        if ph is None:
+            continue
+        out.append(cli[pos:start] + prefix + shlex.quote(values[ph]()))
+        pos = end
+    return "".join(out) + cli[pos:]
 
 
 def placeholder_problem(cli: str | None) -> str | None:
     """Why ``cli`` cannot be run: no prompt placeholder, or one that is not a whole word."""
     if not cli or not _ANY_PROMPT.search(cli):
         return "no {prompt} (the prompt file path) or <prompt> (the prompt text) placeholder"
-    found = {m.group(2) for m in _PLACEHOLDER.finditer(cli)}
-    if not found & {"<prompt>", "{prompt}"}:
-        return ('the prompt placeholder must be a whole argument ("<prompt>" or {prompt}), '
-                "not part of a larger word")
-    stray = [m.group(0) for m in _ANY_PROMPT.finditer(cli)] 
-    if len(stray) != sum(1 for m in _PLACEHOLDER.finditer(cli) if m.group(2) != "{session}"):
-        return "every prompt placeholder must be a whole argument, not part of a larger word"
+    try:
+        toks = _tokens(cli)
+    except ValueError as e:
+        return str(e)
+    for start, end, ph, _prefix in toks:
+        tok = cli[start:end]
+        if ph is None and any(p in tok for p in PLACEHOLDERS):
+            return (f"placeholder in {tok!r} must be a whole argument — bare or in one pair of quotes "
+                    '("<prompt>", {prompt}, "{session}"), not part of a larger word')
+    if not any(ph in ("<prompt>", "{prompt}") for _s, _e, ph, _p in toks):
+        return 'the prompt placeholder must be a whole argument ("<prompt>" or {prompt}), not part of a larger word'
     return None
 
 

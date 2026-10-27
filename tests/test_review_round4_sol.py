@@ -316,7 +316,7 @@ def test_terminate_refuses_a_pid_it_cannot_verify(tmp_path: Path, monkeypatch) -
 
 def test_terminate_closes_an_adopted_record_without_signalling(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    rec = ops.adopt(repo, "M1.1", "claude-code", "native-1")
+    rec = ops.adopt(repo, "M1.1", "claude-code", "aaaaaaaa-0000-4000-8000-000000000001")
     ws.set_state(repo, rec, "idle", pid=os.getpid())
     out = ops.terminate(repo, rec.worker_id)
     assert out.state == "terminated"

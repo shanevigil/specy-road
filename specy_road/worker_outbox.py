@@ -88,6 +88,24 @@ def begin_op(repo_root: Path, op_id: str, kind: str, target: str | None = None,
     return None
 
 
+def lookup_op(repo_root: Path, op_id: str, kind: str, target: str | None = None) -> dict[str, Any] | None:
+    """The finished op under ``op_id`` when it was this ``kind`` on ``target``; ``None`` when there is none.
+
+    For a retry whose inputs cannot be re-read (``message --file`` and the
+    file is gone): the first result still answers, since the op id bound it.
+    """
+    path = _op_path(repo_root, op_id)
+    if not path.is_file():
+        return None
+    old = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if old.get("state") == "pending":
+        raise _error(f"op {op_id} is still pending (crashed?); pass a new --op-id or remove {path}")
+    if old.get("kind") != kind or old.get("target") != target:
+        raise _error(f"op {op_id} was a {old.get('kind')} on {old.get('target') or '-'}, "
+                     f"not a {kind} on {target or '-'}; an op id names one operation")
+    return old
+
+
 def complete_op(repo_root: Path, op_id: str, result: dict[str, Any], *, ok: bool = True) -> None:
     path = _op_path(repo_root, op_id)
     data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else {"op_id": op_id}

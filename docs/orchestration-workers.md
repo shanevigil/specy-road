@@ -53,7 +53,7 @@ one. The review gate is the boundary: READY and `completed` approve nothing.
 |---|---|
 | `harness` / `model` | Which vendor CLI runs it, and which roster model it was asked for. Distinct on purpose: a Claude model under Cursor's agent is a `cursor` worker. |
 | `provider_session_id` | The harness's own session/thread/chat id, once seen; what `message`, `resume` and `handoff` use. |
-| `state` | `starting → running → idle` (exit 0, no READY file) or `completed` (READY present), `failed`, `handed_off`, `terminated`. A `completed` worker still owns its leaf and its `max_workers` slot until `terminate`; only `failed` and `terminated` are closed. A `running` record whose wrapper is gone is marked `failed` by the next `delegate`. |
+| `state` | `starting → running → idle` (exit 0, no READY file) or `completed` (READY present), `failed`, `handed_off`, `terminated`. A `completed` worker still owns its leaf and its `max_workers` slot until `terminate`; only `failed` and `terminated` are closed. A `running` record whose wrapper is gone is marked `failed` by the next `delegate` or `sync`, whichever leaf it was on. |
 | `lease.holder` | The single writer: `broker` (specy-road sends turns), `human` (handed off), `native` (adopted; observe only), `none`. |
 | `instruction_epoch` | +1 for every recorded human intervention. |
 | `checkpoint` | Git HEAD and time at the last handoff; `reclaim` and `reconcile` diff from here. |
@@ -81,7 +81,8 @@ roster:
     # {session} is the native session id and makes the same command serve
     # `message` / `resume`. Without it, the default command is used.
     # channels:
-    #   (a placeholder must be a whole argument; `< {prompt}` feeds the file on stdin)
+    #   (a placeholder must be a whole argument, bare or in one pair of quotes —
+    #   `--session-id={session}` and `"prefix <prompt>"` are refused; `< {prompt}` feeds the file on stdin)
     #   cli: "claude -p --output-format stream-json --verbose --dangerously-skip-permissions --session-id {session} < {prompt}"
 policy:
   max_workers: 2                    # each worker draws on a plan quota
@@ -106,7 +107,8 @@ hashes the prompt as the worker's `contract_hash`, launches the harness
 detached, and returns the worker id. Delegating the same leaf again returns
 the existing worker; more than `max_workers` active is refused; `--op-id`
 makes a retried call answer from its first result (an op id is bound to its
-kind and target: a replay naming another leaf or worker is refused). A roster
+kind, target and arguments — for `message --file`, the file's text — so a
+replay naming another leaf, worker or message is refused). A roster
 entry's `preflight` runs first, as `prompt --channel cli` runs it. Into a
 linked worktree the brief is copied too, since `work/` is gitignored and the
 executor's precondition looks for it there.
@@ -127,8 +129,8 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
 | `terminate W` | SIGTERM the wrapper's process group (harness and children); state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
-| `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker. |
-| `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
+| `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker, and for an id that is not the harness's own shape (a UUID for Claude Code and Codex; shell-safe characters for all). |
+| `reconcile W` | Paths changed since the checkpoint (paths already dirty when `delegate` ran are the coordinator's and are left out), and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human
@@ -146,7 +148,9 @@ specy-road worker handoff w-0003
 ```
 
 Every transition (`message`, `resume`, `handoff`, `reclaim`, `terminate`,
-`adopt`, the hook) runs under the workers lock as one transaction: two
+`adopt`, the hook) runs under the workers lock as one transaction (`delegate`
+runs the roster `preflight` and the prompt build between two lock sections, so
+nothing queues behind them): two
 coordinators sending at once launch one turn, and a second `reclaim` finds
 the lease already returned. `terminate` signals only a pid whose command line
 names this worker's wrapper; when `ps` cannot say, it refuses rather than
@@ -167,9 +171,11 @@ than run unserialised.
 harness's own resume command. While the lease is `human`, `message` and
 `resume` fail with `WORKER_LEASED_BY_HUMAN`; the coordinator sees the lease in
 `sync`. `reclaim` diffs the worktree from the checkpoint, reads any prompts
-the hook recorded, writes **one** `intervention` event
-(`authority: human_authoritative`, epoch +1) with the prompts and the diff
-stat, and returns the lease. Without hook evidence the worker is flagged
+the hook recorded, moves the record in one write (epoch +1, lease back,
+state `idle`), then writes **one** `intervention` event
+(`authority: human_authoritative`) with the prompts and the diff stat; a
+reclaim that crashed between the two is repaired by the next call, never
+counted twice. Without hook evidence the worker is flagged
 `possibly_modified_externally`: specy-road does not pretend to know what was
 said. Precedence when a human direction conflicts with the leaf's contract:
 hard constraints (touch zones, dependencies, the gate) → an explicit
@@ -181,9 +187,12 @@ coordinator checks; `needs_reconcile` is the state that waits for the human.
 
 The harness's project-level prompt-submit hook fires in the human's resumed
 session too. `specy-road worker hook` is its body: it reads the payload,
-matches the session id to a worker **whose lease is `human`** (the broker's
-own prompts are not interventions), appends the prompt to
-`<id>.interventions.jsonl`, and exits 0. It never blocks a prompt. `reclaim`
+matches the harness **and** session id to a worker **whose lease is
+`human`** (the broker's own prompts are not interventions; two harnesses
+handing out the same id is refused as ambiguous), appends the prompt to
+`<id>.interventions.jsonl`, and exits 0. It never blocks a prompt, and it
+never waits more than two seconds for the workers lock: a busy lock means no
+witness for that prompt, which `reclaim` then reports as missing evidence. `reclaim`
 reads the lines appended since the hand-off, not the timestamps.
 
 ```bash

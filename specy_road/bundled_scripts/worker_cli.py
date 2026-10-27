@@ -22,7 +22,9 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
+from specy_road.worker_outbox import lookup_op
 from specy_road.worker_runner import log_path, pid_alive
+from specy_road.worker_sessions import render_command
 from specy_road.worker_state import (
     HARNESSES,
     LeaseError,
@@ -53,18 +55,31 @@ def _line(rec) -> str:
             f"lease={rec.lease.get('holder')} epoch={rec.instruction_epoch}{flags}")
 
 
-def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn):
-    """Run ``fn()`` under ``--op-id``: a retried op answers from its first result."""
+def _target_of(ns: argparse.Namespace) -> str | None:
+    return getattr(ns, "worker_id", None) or getattr(ns, "node_id", None) or getattr(ns, "node", None)
+
+
+def _replay(ns: argparse.Namespace, op: str, old: dict[str, Any]) -> int:
+    print(json.dumps(old["result"], indent=2) if ns.json else f"op {op} already {old['state']}: "
+          + json.dumps(old["result"]))
+    return 0 if old["state"] == "applied" else 1
+
+
+def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn, inputs: dict[str, Any] | None = None):
+    """Run ``fn()`` under ``--op-id``: a retried op answers from its first result.
+
+    ``inputs`` are the behaviour-affecting arguments the op id is bound to;
+    by default the relevant flags, resolved (a ``--file`` is bound by its
+    text, not its path: the same path with new contents is a different op).
+    """
     op = getattr(ns, "op_id", None)
     if op:
-        target = getattr(ns, "worker_id", None) or getattr(ns, "node_id", None) or getattr(ns, "node", None)
-        inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "file", "note", "session")
-                  if getattr(ns, k, None)}
-        old = begin_op(root, op, kind, target, inputs)
+        if inputs is None:
+            inputs = {k: getattr(ns, k) for k in ("model", "harness", "worktree", "text", "note", "session")
+                      if getattr(ns, k, None)}
+        old = begin_op(root, op, kind, _target_of(ns), inputs)
         if old is not None:
-            print(json.dumps(old["result"], indent=2) if ns.json else f"op {op} already {old['state']}: "
-                  + json.dumps(old["result"]))
-            return 0 if old["state"] == "applied" else 1
+            return _replay(ns, op, old)
     try:
         result = fn()
     except Exception as e:
@@ -136,7 +151,7 @@ def cmd_sync(ns: argparse.Namespace) -> int:
     return _emit(ns, {"workers": delta, "acked": ns.ack}, lines)
 
 
-def _mutate(ns: argparse.Namespace, kind: str, fn, render) -> int:
+def _mutate(ns: argparse.Namespace, kind: str, fn, render, inputs: dict[str, Any] | None = None) -> int:
     root = resolve_repo_root(ns)
     out: dict[str, Any] = {}
 
@@ -144,14 +159,23 @@ def _mutate(ns: argparse.Namespace, kind: str, fn, render) -> int:
         out.update(fn(root))
         return dict(out)
 
-    rc = _with_op(ns, root, kind, go)
+    rc = _with_op(ns, root, kind, go, inputs)
     return rc if rc is not None else _emit(ns, out, render(out))
 
 
 def cmd_message(ns: argparse.Namespace) -> int:
-    text = Path(ns.file).read_text(encoding="utf-8") if ns.file else ns.text
+    root = resolve_repo_root(ns)
+    try:
+        text = Path(ns.file).read_text(encoding="utf-8") if ns.file else ns.text
+    except OSError as e:
+        # A retry whose file is gone: the outbox answers before anything else is touched.
+        old = lookup_op(root, ns.op_id, "message", ns.worker_id) if ns.op_id else None
+        if old is None:
+            raise WorkerError(f"cannot read --file {ns.file}: {e}") from None
+        return _replay(ns, ns.op_id, old)
     return _mutate(ns, "message", lambda root: _row(ops.message(root, ns.worker_id, text)),
-                   lambda o: [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"])
+                   lambda o: [f"{o['worker_id']}: message sent; resumed (pid {o['pid']})"],
+                   inputs={"text": text})
 
 
 def cmd_resume(ns: argparse.Namespace) -> int:
@@ -175,7 +199,7 @@ def cmd_handoff(ns: argparse.Namespace) -> int:
         return {**_row(rec), "resume_command": cmd}
     return _mutate(ns, "handoff", fn, lambda o: [
         f"{o['worker_id']}: leased to you (epoch {o['instruction_epoch']}). In {o['worktree']} run:",
-        "  " + " ".join(o["resume_command"]),
+        "  " + render_command(o["resume_command"]),
         "Then `specy-road worker reclaim " + o["worker_id"] + "` when you are done."])
 
 
@@ -221,7 +245,7 @@ def cmd_open(ns: argparse.Namespace) -> int:
     data = {"worker_id": rec.worker_id, "worktree": rec.worktree, "log": str(log_path(root, rec.worker_id)),
             "resume_command": cmd, "lease": rec.lease.get("holder")}
     return _emit(ns, data, [f"worktree: {rec.worktree}", f"log:      {data['log']}",
-                            "resume:   " + (" ".join(cmd) if cmd else "(no native session)")
+                            "resume:   " + (render_command(cmd) if cmd else "(no native session)")
                             + ("" if rec.lease.get("holder") == "human" else "  — run `worker handoff` first")])
 
 
@@ -234,7 +258,7 @@ def cmd_hook(ns: argparse.Namespace) -> int:
     try:
         sid, prompt = adapter.session_and_prompt(read_payload(sys.stdin.read()))
         if sid and prompt:
-            ops.record_hook_prompt(resolve_repo_root(ns), sid, prompt)
+            ops.record_hook_prompt(resolve_repo_root(ns), sid, prompt, harness=adapter.harness)
     except Exception as e:  # noqa: BLE001 — a witness must never block the prompt
         print(f"worker hook: ignored ({e})", file=sys.stderr)
     if adapter.allow_output:
