@@ -76,7 +76,7 @@ IDEA_INSTRUCTIONS = (
     "one block per idea, alongside whatever prose you want:\n\n"
     "IDEA: short title\n"
     "WHY: one or two sentences of rationale\n"
-    "KIND: one of feature, capability, risk, research, experiment\n"
+    "KIND: one of feature, capability, risk, research, experiment, refactor, platform\n"
     "EFFORT: one of S, M, L\n"
     "SOURCE: a URL you actually used (omit the line if none)\n\n"
     "Only WHY is optional to keep short; IDEA is required. The PM accepts or "

@@ -186,6 +186,8 @@ def _apply_triage(session: BrainstormSession, body: BrainstormTriageBody) -> Non
     if body.status is not None:
         set_status(session, body.idea_id, body.status)
     idea = session.by_id(body.idea_id)
+    if body.status is not None and idea.decision and idea.decision.get("status") != body.status:
+        idea.decision = None   # same rule as the CLI: a stale reject/park reason goes
     content_changed = False
     for attr in ("title", "rationale", "kind", "effort"):
         value = getattr(body, attr, None)

@@ -97,7 +97,8 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `handoff` / `reclaim` (lease the worker to a human, print the native resume
   command, record what they did as an `intervention` with a new
   `instruction_epoch`), `adopt` (observe a session the user started),
-  `reconcile` (changed paths vs touch zones, `needs_reconcile`),
+  `reconcile` (changed paths vs touch zones, `needs_reconcile`; an
+  unbuildable prompt counts as a contract change),
   `interrupt` (declared unsupported by the one-shot CLI adapters, exit 2,
   never emulated), `--op-id` idempotency on every mutation, and
   `worker hook --format claude-code|codex|cursor` as the prompt-submit hook
@@ -260,6 +261,30 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to
   review or approve its own work.
+- **Second independent review (Gemini):** `substitute_prompt` replaces its
+  placeholders in one pass (a prompt containing `<prompt>` could close the
+  shell quoting); the session id chosen up front survives `spawn`; `message`
+  / `resume` / `handoff` accept `completed` workers and refuse only `failed`
+  / `terminated`; a READY is judged against the current turn and its
+  `node_id`; `delegate` copies the brief into a linked worktree and runs the
+  roster `preflight`; `--op-id` is bound to its target; `handoff` refuses a
+  closed worker; `adopt` refuses a duplicate; the hook records prompts only
+  under a human lease and `reclaim` reads by line; `reviews_root` redirects
+  only linked worktrees and keeps a nested project's prefix; the guard scopes
+  tree-only commands to the caller's worktree, skips the calling worker and
+  dead pids, and catches `checkout -f`, `restore <path>`, `{ …; }`, `eval`,
+  `$(…)`; malformed hook stdin denies; `prompt` accepts a substitute
+  reviewer, honours `channels.cli`, and checks the coordinator's
+  `may_process` before pickup, as `orchestrate plan` now does; Codex
+  `resume` keeps the sandbox flags and stdin; `brainstorm add-evidence`
+  requires `--quote` and `verify` never marks a quote-less source
+  `retrieved`; `100.64/10` is off-host; accepting a rejected idea clears
+  the stale decision; `mark-implementation-reviewed --sign-key` reports a
+  signing failure; `refresh-stubs` lists dangling skill links as orphans,
+  refreshes `CLAUDE.md` only where it exists, and reports a user's own skill
+  directory as skipped; `models show` prints `harness/model`; the Grok and
+  Composer profiles carry a real `<prompt>` placeholder.
+
 
 ## [v0.2.3] - 2026-09-09
 

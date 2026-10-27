@@ -77,7 +77,11 @@ checked out, otherwise a linked worktree at `work/.worktrees/<codename>` —
 hashes the prompt as the worker's `contract_hash`, launches the harness
 detached, and returns the worker id. Delegating the same leaf again returns
 the existing worker; more than `max_workers` active is refused; `--op-id`
-makes a retried call answer from its first result.
+makes a retried call answer from its first result (an op id is bound to its
+kind and target: a replay naming another leaf or worker is refused). A roster
+entry's `preflight` runs first, as `prompt --channel cli` runs it. Into a
+linked worktree the brief is copied too, since `work/` is gitignored and the
+executor's precondition looks for it there.
 
 The worker's job is the executor's as before: implement, commit, write
 `work/implementation-summary-<ID>.md` and `work/reviews/<ID>/READY-*.md`,
@@ -91,12 +95,12 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. |
 | `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`); compact, with state, lease, epoch and flags. |
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
-| `resume W` | `message` with a "continue from where you stopped" prompt. |
+| `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
-| `terminate W` | SIGTERM the wrapper; state `terminated`. The turn is lost. |
+| `terminate W` | SIGTERM the wrapper's process group (harness and children); state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
-| `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. |
-| `reconcile W` | Paths changed since the checkpoint vs the leaf's touch zones, and whether the brief changed; sets or clears `needs_reconcile`. |
+| `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker. |
+| `reconcile W` | Paths changed since the checkpoint vs the leaf's touch zones, and whether the brief changed (a prompt that can no longer be built for this model counts as changed); sets or clears `needs_reconcile`. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human
@@ -132,8 +136,10 @@ coordinator checks; `needs_reconcile` is the state that waits for the human.
 
 The harness's project-level prompt-submit hook fires in the human's resumed
 session too. `specy-road worker hook` is its body: it reads the payload,
-matches the session id to a worker, appends the prompt to
-`<id>.interventions.jsonl`, and exits 0. It never blocks a prompt.
+matches the session id to a worker **whose lease is `human`** (the broker's
+own prompts are not interventions), appends the prompt to
+`<id>.interventions.jsonl`, and exits 0. It never blocks a prompt. `reclaim`
+reads the lines appended since the hand-off, not the timestamps.
 
 ```bash
 specy-road worker hook --format claude-code --print-config   # .claude/settings.json
@@ -153,7 +159,7 @@ session, which is the case the hook exists for.
 | Harness | Launch | Session id | Resume (`message`) | Interrupt / steer | Handoff command |
 |---|---|---|---|---|---|
 | `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit) | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
-| `codex` | `codex exec --json -m … --sandbox workspace-write --ask-for-approval never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json <id> "<prompt>"` | unsupported | `codex resume <id>` |
+| `codex` | `codex exec --json -m … --sandbox workspace-write --ask-for-approval never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json --sandbox workspace-write --ask-for-approval never -C <worktree> <id> -` (same flags, prompt on stdin) | unsupported | `codex resume <id>` |
 | `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so keep Cursor briefs under 128 KiB on Linux) | unsupported | `agent --resume <id>` |
 | `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it) | none | unsupported | unsupported | none |
 

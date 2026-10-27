@@ -179,7 +179,7 @@ wrapper, not a per-repo daemon.
 **D4 — harness is a first-class field.** Roster entries gain `harness` (enum
 `claude-code | codex | cursor | generic`; `generic` = run `access.cli`) and an
 optional `billing_route` label. `models show` and `worker list` print
-`harness/model`, never the model alone. Schema change → adopters run
+`harness/model` (`models show` for rostered ids), never the model alone. Schema change → adopters run
 `refresh-schemas`, the path decisions A/B already use.
 
 **D5 — writer lease, epoch, intervention events, `needs_reconcile`.** All in

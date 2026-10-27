@@ -57,7 +57,8 @@ def _with_op(ns: argparse.Namespace, root: Path, kind: str, fn):
     """Run ``fn()`` under ``--op-id``: a retried op answers from its first result."""
     op = getattr(ns, "op_id", None)
     if op:
-        old = begin_op(root, op, kind, getattr(ns, "worker_id", None))
+        target = getattr(ns, "worker_id", None) or getattr(ns, "node_id", None) or getattr(ns, "node", None)
+        old = begin_op(root, op, kind, target)
         if old is not None:
             print(json.dumps(old["result"], indent=2) if ns.json else f"op {op} already {old['state']}: "
                   + json.dumps(old["result"]))

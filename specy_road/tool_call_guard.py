@@ -23,6 +23,7 @@ harness expects. ``generic`` is the contract the others are built on.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 from dataclasses import dataclass
@@ -39,7 +40,10 @@ _SEPARATORS = ("&&", "||", ";", "|", "&", "\n")
 _WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-S"}
 _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 #: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
-_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs"}
+_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "eval"}
+#: Reasons about the working tree only; other worktrees' sessions are not at risk.
+_TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git commit -a", "git add", "git reset")
+_SUBSTITUTION = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 _SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 
 
@@ -94,7 +98,7 @@ def _unwrap(tokens: list[str]) -> list[str]:
         if t.startswith("(") and len(t) > 1:
             tokens = [t[1:], *tokens[i + 1:]]
             continue
-        if ("=" in t and not t.startswith("-")) or t == "(":
+        if ("=" in t and not t.startswith("-")) or t in ("(", "{"):
             i += 1
             continue
         if t in _WRAPPERS:
@@ -106,7 +110,7 @@ def _unwrap(tokens: list[str]) -> list[str]:
             continue
         break
     out = tokens[i:]
-    return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t != ")"]
+    return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
 
 
 def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
@@ -156,6 +160,10 @@ def classify_segment(segment: str) -> str | None:
     shape a guard must not wave through. ``sh -c '…'`` is classified by what
     it runs.
     """
+    for m in _SUBSTITUTION.finditer(segment):      # `$(git …)` and `\`git …\`` run too
+        inner = classify(m.group(1) or m.group(2) or "")
+        if inner:
+            return inner
     try:
         tokens = shlex.split(segment, comments=True)
     except ValueError:
@@ -177,10 +185,11 @@ def classify_segment(segment: str) -> str | None:
         return f"git reset {next(a for a in args if a.startswith('--'))}: discards other sessions' uncommitted work"
     if sub == "switch" or (sub == "checkout" and ("--" not in args) and (positional or "b" in flags or "B" in flags or "--orphan" in args)):
         return f"git {sub}: switching branches moves every other session's working tree too; use `git worktree add`"
-    if sub == "checkout" and "--" in args:
-        return "git checkout -- <paths>: discards working-tree changes that may be another session's"
-    if sub == "restore" and ("." in positional or ":/" in positional):
-        return "git restore .: discards every session's uncommitted changes"
+    if sub == "checkout" and ("--" in args or "f" in flags or "--force" in args):
+        return "git checkout -- <paths> / -f: discards working-tree changes that may be another session's"
+    staged_only = ("S" in flags or "--staged" in args) and "W" not in flags and "--worktree" not in args
+    if sub == "restore" and positional and (not staged_only or "." in positional or ":/" in positional):
+        return "git restore <paths>: discards other sessions' uncommitted changes to those files"
     if sub == "clean" and ("f" in flags or "--force" in args):
         return "git clean -f: deletes untracked files other sessions are still writing"
     if sub == "rebase":
@@ -206,15 +215,23 @@ def classify(command: str) -> str | None:
     return None
 
 
-def shared_with_others(repo_root: Path, agent: str | None) -> list[str]:
-    """Ids of other live sessions in this checkout, and of workers running in it."""
-    others = [s.agent for s in list_sessions(repo_root) if s.agent != agent]
+def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = False) -> list[str]:
+    """Ids of other live sessions, and of workers running here.
+
+    With ``tree_only`` only sessions in **this** working tree count: a session
+    in another linked worktree is not moved by a checkout here. Repo-wide
+    operations (stash, rebase, force-push) count every session.
+    """
+    here = Path(repo_root).resolve()
+    others = [s.agent for s in list_sessions(repo_root)
+              if s.agent != agent and not (tree_only and s.worktree and Path(s.worktree).resolve() != here)]
     try:
+        from specy_road.worker_runner import pid_alive
         from specy_road.worker_state import list_records
 
-        here = Path(repo_root).resolve()
+        me = os.environ.get("SPECY_ROAD_WORKER_ID")   # a worker's own hook must not count the worker
         others += [f"worker {r.worker_id}" for r in list_records(repo_root, active_only=True)
-                   if r.pid and Path(r.worktree).resolve() == here]
+                   if r.worker_id != me and pid_alive(r.pid) and Path(r.worktree).resolve() == here]
     except Exception:  # noqa: BLE001 — presence is advisory; a broken record must not break the guard
         pass
     return others
@@ -224,7 +241,7 @@ def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = F
     reason = classify(command)
     if not reason:
         return Verdict(ALLOW, "", command)
-    others = shared_with_others(repo_root, agent)
+    others = shared_with_others(repo_root, agent, tree_only=reason.startswith(_TREE_SCOPED))
     if not others and not always:
         return Verdict(ALLOW, f"(would deny with another live session: {reason})", command)
     who = f"live sessions: {', '.join(others)}" if others else "guard runs with --always"
@@ -358,8 +375,8 @@ ADAPTERS: dict[str, Adapter] = {
 
 
 def read_payload(text: str) -> dict[str, Any]:
-    try:
-        data = json.loads(text) if text.strip() else {}
-    except json.JSONDecodeError:
+    """The hook's stdin as a dict. Malformed JSON raises: the guard answers that with a deny, not an allow."""
+    if not text.strip():
         return {}
+    data = json.loads(text)
     return data if isinstance(data, dict) else {}

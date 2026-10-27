@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agent_guide_block import apply_guide_and_report
+from specy_road.agent_guide_block import AGENT_GUIDE, apply_guide_and_report
 from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.agent_ignores import apply_and_report
 from specy_road.runtime_paths import (
@@ -103,14 +103,24 @@ def _write_if_changed(
     written.append(rel)
 
 
+def _old_command_stub(rel: str) -> bool:
+    """A pre-0.3.0 harness command stub (not a `generic` pack's own commands dir)."""
+    return rel.startswith((".cursor/commands/", ".claude/commands/"))
+
+
 def _orphans(recorded: list[str], current: list[str], repo_root: Path) -> list[str]:
     """Stubs still on disk that this version no longer installs for the pack."""
     wanted = set(current)
     return sorted(
         rel
         for rel in recorded
-        if rel not in wanted and (repo_root / rel).is_file()
+        if rel not in wanted and _on_disk(repo_root / rel)
     )
+
+
+def _on_disk(path: Path) -> bool:
+    """A file, a directory, or a symlink — dangling included: a skill link whose target went is still an orphan."""
+    return path.is_file() or path.is_dir() or path.is_symlink()
 
 
 def refresh_stubs(
@@ -141,9 +151,12 @@ def refresh_stubs(
         for rel in current:
             _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent)
         orphans.extend(_orphans(recorded, current, repo_root))
-        apply_guide_and_report(
-            repo_root, prefix, written, agent=agent, dry_run=dry_run
-        )
+        # Refresh the block in a CLAUDE.md the consumer has; never create the
+        # file (`specyrd init` does that only with --write-claude-md).
+        if (repo_root / AGENT_GUIDE).is_file():
+            apply_guide_and_report(
+                repo_root, prefix, written, agent=agent, dry_run=dry_run
+            )
         if not dry_run:
             agents[agent] = current
 
@@ -204,12 +217,12 @@ def _report(written: list[str], orphans: list[str], *, dry_run: bool) -> None:
         print("\nNo longer installed for this role, left on disk for you to remove:")
         for rel in orphans:
             print(f"  {rel}")
-        if any("/commands/" in rel for rel in orphans):
+        if any(_old_command_stub(rel) for rel in orphans):
             print(
                 "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
                 "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
                 "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
-                + " ".join(rel for rel in orphans if "/commands/" in rel)
+                + " ".join(rel for rel in orphans if _old_command_stub(rel))
             )
     if dry_run:
         print("\n(dry-run; no files written)")

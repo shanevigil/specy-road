@@ -84,6 +84,8 @@ def cmd_evidence(ns: argparse.Namespace) -> int:
 def cmd_add_evidence(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
     idea = session.by_id(ns.idea_id)
+    if not (ns.quote or "").strip():
+        raise BrainstormError("--quote is required: a URL with no quote is not evidence (verify checks the quote)")
     if len(ns.quote or "") > 300:
         raise BrainstormError("--quote must be 300 characters or fewer: quote, do not paraphrase")
     rec = source_record(ns.url, quote=ns.quote, supports=ns.supports, stance=ns.stance, tool=ns.tool,

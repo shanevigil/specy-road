@@ -170,7 +170,9 @@ def install_stubs(
             written.append(str(rel_file))
         if skills and link_rel(agent, name) is not None:
             outcome = ensure_link(repo_root, agent, name, dry_run=dry_run)
-            if outcome != UNCHANGED:
+            if outcome == SKIPPED:
+                skipped.append(f"{link_rel(agent, name)} ({outcome})")
+            elif outcome != UNCHANGED:
                 written.append(f"{link_rel(agent, name)} ({outcome})")
 
 

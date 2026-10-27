@@ -24,7 +24,7 @@ from specy_road.model_profiles import (
     list_profiles,
     profile_for_entry,
 )
-from specy_road.orchestration_config import effective_config
+from specy_road.orchestration_config import effective_config, roster_entry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -94,6 +94,10 @@ def cmd_show(ns: argparse.Namespace) -> int:
                           "sections": prof.sections, "errors": prof.errors}, indent=2, default=str))
         return 0
     print(f"# {prof.data.get('model', prof.api_id)}  ({prof.path.relative_to(root)})")
+    entry = roster_entry(effective_config(root)[0] or {}, ns.model) or {}
+    if entry:
+        print(f"- harness/model: {entry.get('harness') or 'generic'}/{entry['id']}"
+              + (f"  (billing: {entry['billing_route']})" if entry.get("billing_route") else ""))
     if prof.errors:
         print("INVALID: " + "; ".join(prof.errors))
     for key in ("family", "track", "api_id", "version_rank", "researched", "researcher"):

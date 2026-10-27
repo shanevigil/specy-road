@@ -14,9 +14,10 @@ limits, prices, headless invocation, failure modes, and prompting rules.
 > the sources. Confirm a price, limit, or command with the vendor before you
 > depend on it.
 
-Nothing in specy-road reads these files yet. Slice 2
-([design note](../design-notes/v0-3-0-orchestration-slices.md)) will load them for
-`models list/show/stale` and for model-specific prompts.
+`specy-road models list|show|stale` read these files, `specy-road prompt` folds a
+profile's rules into a role prompt, and `prompt --channel cli` / `worker delegate`
+run its `access.cli` (`<prompt>` or `{prompt}` is the placeholder; a roster
+`channels.cli` overrides it).
 
 ## Where this comes from
 

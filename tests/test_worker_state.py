@@ -129,7 +129,9 @@ def test_op_outbox_answers_a_retry_from_the_first_result(tmp_path: Path) -> None
     assert old["state"] == "applied" and old["result"] == {"worker_id": "w-0001"}
     ws.begin_op(repo, "op-2", "message", "w-0001")
     ws.complete_op(repo, "op-2", {"error": "boom"}, ok=False)
-    assert ws.begin_op(repo, "op-2", "message")["state"] == "failed"
+    assert ws.begin_op(repo, "op-2", "message", "w-0001")["state"] == "failed"
+    with pytest.raises(ws.WorkerError, match="names one operation"):   # the target is part of the op's identity
+        ws.begin_op(repo, "op-2", "message")
     with pytest.raises(ws.WorkerError, match="op id"):
         ws.begin_op(repo, "bad/op", "x")
 

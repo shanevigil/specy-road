@@ -16,8 +16,8 @@ import json
 import os
 import subprocess
 import sys
+import time
 from dataclasses import asdict
-from datetime import datetime
 from pathlib import Path
 
 from specy_road.review_files import latest_ready
@@ -29,6 +29,7 @@ from specy_road.worker_state import (
     mutate,
     record_path,
     set_state,
+    workers_lock,
 )
 
 
@@ -62,8 +63,6 @@ def pid_alive(pid: int | None) -> bool:
 
 def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool = False) -> int:
     """Start the wrapper detached and return its pid; the record goes to ``running``."""
-    if launch.session_id and not rec.provider_session_id:
-        rec.provider_session_id = launch.session_id
     payload = json.dumps({"launch": asdict(launch), "resumed": resumed,
                           "harness_pythonpath": os.environ.get("PYTHONPATH")})
     env = {k: v for k, v in os.environ.items() if k != "SPECY_ROAD_AGENT_ID"}
@@ -73,12 +72,22 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     # from the payload), so the adopter's tests never see ours.
     pkg_parent = str(Path(__file__).resolve().parent.parent)
     env["PYTHONPATH"] = pkg_parent + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
-    p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
-        [sys.executable, "-m", "specy_road.worker_runner", str(repo_root), rec.worker_id, payload],
-        cwd=rec.worktree, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL, start_new_session=True,
-    )
-    set_state(repo_root, rec, "running", pid=p.pid)
+    env["SPECY_ROAD_WORKER_ID"] = rec.worker_id   # so the harness's own hooks do not count it as a stranger
+    # Under the lock, so the wrapper cannot write its own state before the
+    # session id chosen up front is on disk; the id goes in through mutate,
+    # which reloads first, so it survives (a bare attribute set did not).
+    with workers_lock(repo_root):
+        p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
+            [sys.executable, "-m", "specy_road.worker_runner", str(repo_root), rec.worker_id, payload],
+            cwd=rec.worktree, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, start_new_session=True,
+        )
+
+        def mark(r: WorkerRecord) -> None:
+            r.state, r.pid = "running", p.pid
+            if launch.session_id and not r.provider_session_id:
+                r.provider_session_id = launch.session_id
+        mutate(repo_root, rec, mark)
     return p.pid
 
 
@@ -88,6 +97,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
     rec = load_record(repo_root, worker_id)
     adapter = adapter_for(rec.harness)
     log = log_path(repo_root, worker_id)
+    started = time.time()
     set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
@@ -118,7 +128,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code)
+    return _finish(repo_root, rec, code, started)
 
 
 def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str) -> None:
@@ -131,23 +141,19 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str) -> None:
     append_event(repo_root, rec, parsed.type, source="worker", summary=parsed.summary, detail=parsed.detail)
 
 
-def _fresh_ready(repo_root: Path, rec: WorkerRecord) -> bool:
-    """A READY file written after this worker was created; an earlier attempt's does not count."""
+def _fresh_ready(repo_root: Path, rec: WorkerRecord, since: float) -> bool:
+    """A READY for this node written during this turn; an earlier turn's or attempt's does not count."""
     ready = latest_ready(repo_root, rec.node_id)
-    if ready is None:
+    if ready is None or str(ready.data.get("node_id")) != rec.node_id:
         return False
-    try:
-        created = datetime.fromisoformat(rec.created).timestamp()
-    except ValueError:
-        return True
-    return ready.path.stat().st_mtime >= created - 1
+    return ready.path.stat().st_mtime >= since - 1
 
 
-def _finish(repo_root: Path, rec: WorkerRecord, code: int) -> int:
+def _finish(repo_root: Path, rec: WorkerRecord, code: int, since: float) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
         return code
-    ready = _fresh_ready(repo_root, rec)
+    ready = _fresh_ready(repo_root, rec, since)
     if code == 0:
         append_event(repo_root, rec, "completion", source="worker",
                      summary=f"exit 0; READY file {'present' if ready else 'missing'}", detail={"exit": 0, "ready": ready})

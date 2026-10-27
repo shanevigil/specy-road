@@ -14,7 +14,7 @@ supersedes: unknown
 access:
   context_tokens: unknown
   output_tokens: unknown
-  cli: agent -p --force "Refactor this code to use modern ES6+ syntax"
+  cli: agent -p --force "<prompt>"
   cli_verified_from: S2
   subagents: unknown Cursor supports parallel agents in worktrees; model-specific data not found [S3]
   effort_controls: none documented; Standard and Fast variants
