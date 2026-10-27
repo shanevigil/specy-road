@@ -208,11 +208,12 @@ def render_recommend_prompt(root: Path, session: BrainstormSession) -> str:
         f"specy-road brainstorm revise B1 --slug {session.slug} \\",
         "  --cluster C2 --overlap M3.1:adjacent \\",
         '  --critic "feasibility: needs the billing migration first" \\',
-        '  --recommendation strong --rationale "Principle 3; source on B1 for"',
+        '  --recommendation strong --why "Principle 3; source on B1 for"',
         "```",
         "",
-        "Passing only `--recommendation` leaves the idea's triage status "
-        "alone, so the PM still owns accept and reject. Finish with a short "
+        "`--why` is the verdict's reasoning; `--rationale` would rewrite the "
+        "idea itself. Passing only `--recommendation` and `--why` leaves the "
+        "idea's triage status alone, so the PM still owns accept and reject. Finish with a short "
         "written summary: the strongest three, the clusters you merged, the "
         "sharpest dissent, and the gap you found.",
         "",

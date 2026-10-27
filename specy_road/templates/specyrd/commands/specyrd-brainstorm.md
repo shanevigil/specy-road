@@ -60,7 +60,7 @@ constitution clause, a source, or an overlap:
 
 ```bash
 specy-road brainstorm revise B1 --cluster C2 --overlap M3.1:adjacent \
-  --critic "feasibility: …" --recommendation strong --rationale "…"
+  --critic "feasibility: …" --recommendation strong --why "…"
 ```
 
 A recommendation is advice. Accepting and rejecting is the PM's decision.

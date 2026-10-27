@@ -146,6 +146,9 @@ def _add_triage(sub) -> None:
         help="The agent's verdict. Passing only this leaves the idea's "
         "triage status alone, so accept/reject stays the PM's call.",
     )
+    p.add_argument("--why", default=None, metavar="TEXT",
+                   help="The verdict's reasoning (cite a constitution clause, a source, or an overlap). "
+                        "Unlike --rationale it does not edit the idea or mark it revised.")
     p.add_argument("--cluster", default=None, metavar="CID", help="Cluster id from the converge pass.")
     p.add_argument("--overlap", action="append", default=None, metavar="NODE_ID:RELATION",
                    help="Existing node this overlaps and how (repeatable).")

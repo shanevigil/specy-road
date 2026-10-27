@@ -177,7 +177,7 @@ and record a verdict whose rationale cites a clause, a source, or an overlap:
 ```bash
 specy-road brainstorm revise B1 --cluster C2 --overlap M3.1:adjacent \
   --critic "feasibility: needs the billing migration first" \
-  --recommendation strong --rationale "Principle 3; source on B1"
+  --recommendation strong --why "Principle 3; source on B1"
 ```
 
 Verdicts are `strong`, `consider`, or `park`. Passing only `--recommendation`

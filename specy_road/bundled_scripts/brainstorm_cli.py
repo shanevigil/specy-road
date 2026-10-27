@@ -125,6 +125,8 @@ def _print_rows(ideas: list, *, verdicts: bool) -> None:
         mark = f" -> {i.promoted_node_key[:8]}" if i.promoted_node_key else ""
         src = f" [{len(i.sources)} src]" if i.sources else ""
         print(f"  {i.id:<5} {i.status:<9} {rec:<9} {i.kind:<11} {i.title}{src}{mark}")
+        if verdicts and i.verdict_why:
+            print(f"        why: {i.verdict_why}")
         if i.critic:
             for role, text in i.critic.items():
                 print(f"        {role}: {text}")
@@ -196,6 +198,8 @@ def cmd_revise(ns: argparse.Namespace) -> int:
             content_changed = True
     if ns.recommendation is not None:
         idea.recommendation = ns.recommendation
+    if ns.why is not None:
+        idea.verdict_why = ns.why.strip()
     if ns.cluster is not None:
         idea.cluster_id = ns.cluster.strip() or None
     for item in ns.overlap or []:
