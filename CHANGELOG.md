@@ -34,7 +34,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   `roadmap/orchestration.yaml` — and treats the gate as on when
   `require_implementation_review_before_finish` is on — from the integration
   branch (remote-tracking ref first), so a feature branch cannot lower its own
-  bar. Change policy on the integration branch.
+  bar. Change policy on the integration branch. The integration branch's name
+  is read from `git-workflow.yaml` as committed at `HEAD` (not the working tree
+  or `SPECY_ROAD_INTEGRATION_BRANCH`), and when that branch cannot be found the
+  gate fails closed — it counts as on, and nothing passes it.
 - **`review record` is stricter.** It refuses `--model human` (a human approves
   only through the interactive menu), refuses models that are not in the roster,
   and no longer takes `--family`: a reviewer's family always comes from the
@@ -68,7 +71,8 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
 
 - The gate counts one vote per model (a block from any of a model's records
   wins), checks each record's `node_id`, compares commits through git rather
-  than by string prefix, and treats a merge commit as new work.
+  than by string prefix, and treats every merge commit — `-s ours` included —
+  as new work.
 - `work/reviews/` resolves to the main worktree, so executors and the gate in
   linked worktrees share one hand-off directory.
 - `review-packet` and `handoff status` fall back to `<remote>/<branch>` when the

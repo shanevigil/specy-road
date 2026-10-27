@@ -106,9 +106,9 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
         print("No hand-offs under work/reviews/.")
     else:
         print("\n".join(line for st in out for line in _render(st)))
-    # Naming a node that cannot be resolved is a caller error; a stale directory
-    # in the sweep is only reported.
-    return 1 if ns.node_id and out[0]["state"] == "error" else 0
+    # Naming a node that cannot be resolved (unknown, or with no open claim) is a
+    # caller error; a stale directory in the sweep is only reported.
+    return 1 if ns.node_id and out[0]["state"] in ("error", "unclaimed") else 0
 
 
 def _fail(msg: str) -> int:

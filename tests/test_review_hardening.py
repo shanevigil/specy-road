@@ -186,3 +186,109 @@ def test_non_tty_without_yes_still_refuses_when_the_gate_passes(tmp_path: Path, 
     with pytest.raises(SystemExit) as e:
         mir.main(["--repo-root", str(repo)])
     assert e.value.code == 1
+
+
+# --- round 2 (verification review) -------------------------------------------
+
+def test_an_ours_merge_after_approval_is_new_work(tmp_path: Path) -> None:
+    """`-s ours` leaves the tree equal to its first parent but decides what lands."""
+    repo = make_review_repo(tmp_path)
+    _record(repo, "human")
+    git(repo, "checkout", "-q", "-b", "side", "dev")
+    commit_file(repo, "src/security.py", "fix\n", "upstream fix")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "-q", "-s", "ours", "--no-ff", "-m", "discard upstream", "side")
+    g = _gate(repo)
+    assert g.commit == _head(repo) and g.stale and not g.passed
+
+
+def test_policy_branch_cannot_be_redirected_from_the_working_tree(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
+    _record(repo, "opus")
+    git(repo, "branch", "-q", "relaxed", "dev")
+    gw = repo / "roadmap" / "git-workflow.yaml"
+    git(repo, "update-index", "--skip-worktree", "roadmap/git-workflow.yaml", "roadmap/orchestration.yaml")
+    gw.write_text(gw.read_text().replace("integration_branch: dev", "integration_branch: nonexistent")
+                  .replace("finish: true", "finish: false"))
+    (repo / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\nroster:\n  - {id: opus, family: anthropic, roles: [reviewer]}\n")
+    monkeypatch.setenv("SPECY_ROAD_INTEGRATION_BRANCH", "relaxed")
+    assert git(repo, "status", "--porcelain") == ""  # hidden from status
+    g = _gate(repo)
+    assert g.required == 2 and g.distinct_families and not g.passed
+    assert review_required(repo)
+
+
+def test_a_missing_integration_branch_fails_closed(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    _record(repo, "human")
+    gw = repo / "roadmap" / "git-workflow.yaml"
+    commit_file(repo, "roadmap/git-workflow.yaml",
+                gw.read_text().replace("integration_branch: dev", "integration_branch: nonexistent")
+                .replace("finish: true", "finish: false"), "redirect")
+    _record(repo, "human")
+    g = _gate(repo)
+    assert not g.passed and "neither" in (g.config_error or "")
+    assert review_required(repo)
+
+
+def test_interactive_human_approval_from_a_linked_worktree(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    (wt / "work").mkdir()
+    (wt / "work" / "implementation-summary-M1.1.md").write_text("## Summary\nx\n")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _p="": "a")
+    with pytest.raises(SystemExit) as e:
+        mir.main(["--repo-root", str(wt)])
+        raise SystemExit(0)
+    assert (e.value.code or 0) == 0
+    assert (reviews_dir(repo, "M1.1") / "REVIEW-human.md").is_file()
+    assert "Reviewed-by: human" in git(wt, "log", "-1", "--format=%B")
+
+
+def test_naming_an_unclaimed_node_exits_1(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+    assert _cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+
+
+def test_a_sha_lookalike_inside_a_multiline_string_is_not_the_sha(tmp_path: Path) -> None:
+    from specy_road.review_files import load_ready
+
+    text = (
+        "---\nnode_id: M1.1\nagent: x\nbranch: feature/rm-thing\nchanged_paths: [src/a.py]\n"
+        "verify:\n  - cmd: git log\n    exit: 0\n    tail: \"line1\ncommit: 0000000\nline3\"\n"
+        "commit: \"abc1234\"\nbase: \"def5678\"\n---\nbody\n"
+    )
+    p = tmp_path / "READY-x.md"
+    p.write_text(text)
+    r = load_ready(p)
+    assert r.ok, r.errors
+    assert r.data["commit"] == "abc1234" and r.data["base"] == "def5678"
+    # A column-0 `---` inside a quoted string is a YAML document separator:
+    # the file is rejected outright rather than read with a wrong SHA.
+    p.write_text(text.replace("commit: 0000000\n", "commit: 0000000\n--- a/file\n"))
+    bad = load_ready(p)
+    assert not bad.ok and "not valid YAML" in bad.errors[0]
+
+
+def test_scaffold_ships_hand_off_templates_and_the_prompt_names_them(tmp_path: Path) -> None:
+    from specy_road.bundled_scripts.do_next_prompt import _finish_instruction_lines
+    from specy_road.init_project import run_init_project
+    from specy_road.review_files import load_ready, load_review
+
+    run_init_project(tmp_path)
+    ready = tmp_path / "work" / "handoff-ready.template.md"
+    review = tmp_path / "work" / "review-record.template.md"
+    assert ready.is_file() and review.is_file()
+    # Only the placeholder SHAs fail validation.
+    assert all("commit" in e or "base" in e for e in load_ready(ready).errors)
+    assert all("commit" in e for e in load_review(review).errors)
+    (tmp_path / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\n"
+        "require_implementation_review_before_finish: true\n")
+    text = "\n".join(_finish_instruction_lines("M1.1", tmp_path, on_complete="merge"))
+    assert "work/handoff-ready.template.md" in text and "work/review-record.template.md" in text

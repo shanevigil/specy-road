@@ -75,6 +75,13 @@ counting, roster-only families, `review record --model human`, YAML-retyped
 SHAs, schema gaps); `tests/test_review_hardening.py` holds one regression test
 per finding.
 
+A verification pass (Gemini 4 Argon, from
+`work/review-prompt-orchestration-slice1-verify.md`) then showed that the fix
+for the second blocker still let the working tree choose *which* branch policy
+came from, and that a `-s ours` merge kept the first blocker open. Both are now
+fixed; the integration branch is named by the committed `git-workflow.yaml` and
+a missing one fails closed.
+
 Left as a stated limit: review records are self-attested files. Anything that
 can write under `work/reviews/` can pose as a rostered reviewer. Making review
 identity verifiable needs a trust anchor outside the working tree (forge PR
