@@ -59,13 +59,7 @@ policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
-**Permissions.** The default commands ask for the narrowest unattended mode
-each harness documents (`claude -p --permission-mode acceptEdits`,
-`codex exec --sandbox workspace-write --ask-for-approval never`,
-`agent -p --force`). A first worker on a new repo may therefore stop at a
-shell permission; `<id>.log` shows where. Widen it deliberately in
-`channels.cli` rather than by default — both research runs behind this
-design say not to turn on skip-all modes silently.
+**Permissions.** The Claude Code default asks for the narrowest unattended mode it documents (`--permission-mode acceptEdits`), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` applies no change without `--force`, and `--force` is Cursor's full auto-run (alias `--yolo`), so a `cursor` worker runs everything it decides to. Codex runs in `--sandbox workspace-write --ask-for-approval never`; that flag pair is in OpenAI's reference but was not run here.
 
 ## The loop
 
@@ -158,10 +152,10 @@ session, which is the case the hook exists for.
 
 | Harness | Launch | Session id | Resume (`message`) | Interrupt / steer | Handoff command |
 |---|---|---|---|---|---|
-| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits "<prompt>"` | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
+| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit) | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
 | `codex` | `codex exec --json -m … --sandbox workspace-write --ask-for-approval never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json <id> "<prompt>"` | unsupported | `codex resume <id>` |
-| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install) | unsupported | `agent --resume <id>` |
-| `generic` | `channels.cli` / profile `access.cli` with `{prompt}` | none | unsupported | unsupported | none |
+| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so keep Cursor briefs under 128 KiB on Linux) | unsupported | `agent --resume <id>` |
+| `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it) | none | unsupported | unsupported | none |
 
 Flags were verified against each vendor's documentation on 2026-10-27 and
 will drift; `tests/test_worker_adapters.py` pins the command shapes. The

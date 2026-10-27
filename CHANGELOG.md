@@ -81,9 +81,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   public key line); `review record --sign-key <private key>` signs the record
   with `ssh-keygen -Y sign` (namespace `specy-road-review`), and the gate
   verifies it. With `policy.signed_reviews: true` an unsigned record does not
-  count; a present signature is verified regardless, so a tampered record
+  count; a present signature is verified regardless, so a tampered front
+  matter (the Markdown body below it is not signed)
   never counts. `mark-implementation-reviewed --sign-key` signs the interactive
-  human approval. Needs OpenSSH 8.0+; no new Python dependency.
+  human approval. Needs OpenSSH 8.1+; no new Python dependency.
 - **Workers: `specy-road worker`** (slice 7, design:
   [`docs/design-notes/v0-3-1-worker-orchestration.md`](docs/design-notes/v0-3-1-worker-orchestration.md);
   reference: [`docs/orchestration-workers.md`](docs/orchestration-workers.md)).
@@ -109,6 +110,21 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `/specyrd-orchestrate` skill is rewritten around `delegate` and `sync`.
   **Existing adopters:** add `work/.workers/` and `work/.worktrees/` to
   `.gitignore`.
+- After an independent review of the worker layer: records are written
+  atomically under one lock (the wrapper no longer writes a stale copy back;
+  two `delegate`s on one leaf launch one harness); `terminate` signals the
+  wrapper's process group, so the harness and its children stop; a reused pid
+  is not mistaken for a live wrapper; an `--op-id` names one operation;
+  an earlier attempt's READY does not complete a new worker; the harness
+  gets the caller's `PYTHONPATH` back; the Claude prompt travels on stdin;
+  `channels.cli` with `{session}` gets a fresh id on launch; profiles'
+  `<prompt>` form works for `generic` and `prompt --channel cli`; `prompt
+  --role executor` honours `executor_eligibility`; the guard catches
+  multi-line, quoted, wrapped (`sh -c`, `command`, `env`, `sudo`), absolute
+  and aliased git commands, refuses unparseable ones that mention git, and
+  counts workers running in the checkout; `specyrd init` never deletes a
+  skill directory it did not write; `brainstorm verify` checks every
+  redirect hop; the GUI accepts `parked`, `refactor` and `platform`.
 - **Brainstorm v2** (design:
   [`docs/design-notes/v0-3-1-brainstorm-v2.md`](docs/design-notes/v0-3-1-brainstorm-v2.md);
   reference: [`docs/brainstorming.md`](docs/brainstorming.md)). Diverge runs

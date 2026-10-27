@@ -201,10 +201,10 @@ export type BrainstormIdea = {
   id: string;
   title: string;
   rationale: string;
-  kind: "feature" | "capability" | "risk" | "research" | "experiment";
+  kind: "feature" | "capability" | "risk" | "research" | "experiment" | "refactor" | "platform";
   effort: string;
   evidence: string[];
-  status: "proposed" | "accepted" | "rejected" | "revised";
+  status: "proposed" | "accepted" | "rejected" | "revised" | "parked";
   recommendation: "strong" | "consider" | "park" | null;
   /** Set once the idea has landed in the graph; it can no longer be triaged. */
   promoted_node_key: string | null;

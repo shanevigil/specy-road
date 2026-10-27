@@ -66,7 +66,7 @@ def test_sign_errors_are_clear(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(rs.shutil, "which", lambda _n: None)
     with pytest.raises(rs.SigningError, match="ssh-keygen not found"):
         rs.sign({"a": 1}, tmp_path / "missing")
-    assert rs.verify({"a": 1}, "YWJj", "ssh-ed25519 AAAA", "x") == (False, "ssh-keygen not found; signing review records needs OpenSSH 8.0 or newer")
+    assert rs.verify({"a": 1}, "YWJj", "ssh-ed25519 AAAA", "x") == (False, "ssh-keygen not found; signing review records needs OpenSSH 8.1 or newer")
 
 
 def test_gate_requires_a_verifying_signature_when_policy_says_so(tmp_path: Path) -> None:

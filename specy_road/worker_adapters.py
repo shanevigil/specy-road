@@ -13,10 +13,12 @@ are the later adapters that turn those flags on.
 
 A roster entry's ``channels.cli`` (``{prompt}`` = prompt file path) replaces
 the built command for any harness while its output is still parsed as that
-harness's; that is how an adopter widens permissions, pins flags, or points
-at a wrapper. The defaults ask for the narrowest unattended mode the harness
-documents, so the first run on a new repo may stop at a permission the
-adopter has to grant in ``channels.cli``.
+harness's; that is how an adopter widens or narrows permissions, pins flags,
+or points at a wrapper. Claude Code's default asks for the narrowest
+unattended mode it documents (``acceptEdits``), so a first run may stop at a
+shell permission; Cursor's ``agent -p`` applies no change without ``--force``,
+which is its full auto-run, so that default is the widest — read the table
+in ``docs/orchestration-workers.md`` before trusting either on a new repo.
 """
 
 from __future__ import annotations
@@ -65,6 +67,24 @@ def _text(prompt_path: Path) -> str:
     return prompt_path.read_text(encoding="utf-8")
 
 
+#: What a harness is told when the prompt itself travels on stdin: an argv
+#: string is capped at 128 KiB on Linux, and a brief can be longer.
+STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
+
+
+def substitute_prompt(cli: str, prompt_path: Path) -> str:
+    """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text."""
+    out = cli.replace("{prompt}", shlex.quote(str(prompt_path)))
+    if "<prompt>" in out:
+        quoted = shlex.quote(_text(prompt_path))
+        out = out.replace('"<prompt>"', quoted).replace("'<prompt>'", quoted).replace("<prompt>", quoted)
+    return out
+
+
+def has_prompt_placeholder(cli: str | None) -> bool:
+    return bool(cli) and ("{prompt}" in cli or "<prompt>" in cli)
+
+
 def _snip(s: str, n: int = 200) -> str:
     s = " ".join(str(s).split())
     return s if len(s) <= n else s[: n - 1] + "…"
@@ -87,9 +107,10 @@ class Adapter:
                         notes="runs the roster/profile cli; output lines become events, nothing else is known")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
-        if not cli or "{prompt}" not in cli:
-            raise Unsupported("generic harness needs a roster channels.cli or profile access.cli with {prompt}")
-        return Launch(["sh", "-c", cli.replace("{prompt}", shlex.quote(str(prompt_path)))])
+        if not has_prompt_placeholder(cli):
+            raise Unsupported("generic harness needs a roster channels.cli or profile access.cli with "
+                              "{prompt} (the prompt file path) or <prompt> (the prompt text)")
+        return Launch(["sh", "-c", substitute_prompt(cli, prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
         raise Unsupported(f"{self.harness}: resume is not supported")
@@ -108,12 +129,15 @@ class Adapter:
         names it, since the default command is the only one that knows the
         harness's resume flag.
         """
-        if not cli or "{prompt}" not in cli:
+        if not has_prompt_placeholder(cli):
             return None
         if session_id is not None and "{session}" not in cli:
             return None
-        text = cli.replace("{prompt}", shlex.quote(str(prompt_path))).replace("{session}", shlex.quote(session_id or ""))
-        return Launch(["sh", "-c", text], session_id=session_id)
+        # On launch a command that names {session} gets a fresh id, and the
+        # record keeps it, so the same command serves `message` / `resume`.
+        sid = session_id if session_id is not None else (str(uuid.uuid4()) if "{session}" in cli else None)
+        text = substitute_prompt(cli, prompt_path).replace("{session}", shlex.quote(sid or ""))
+        return Launch(["sh", "-c", text], session_id=sid)
 
 
 class ClaudeCode(Adapter):
@@ -126,16 +150,18 @@ class ClaudeCode(Adapter):
         sid = str(uuid.uuid4())
         custom = self._custom(cli, prompt_path)
         if custom:
-            return Launch(custom.argv, session_id=None)
+            return custom
         return Launch(["claude", "-p", "--output-format", "stream-json", "--verbose", "--session-id", sid,
-                       "--model", model, "--permission-mode", "acceptEdits", _text(prompt_path)], session_id=sid)
+                       "--model", model, "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                      stdin=_text(prompt_path), session_id=sid)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
         return Launch(["claude", "-p", "--resume", session_id, "--output-format", "stream-json", "--verbose",
-                       "--permission-mode", "acceptEdits", _text(prompt_path)], session_id=session_id)
+                       "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                      stdin=_text(prompt_path), session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
@@ -191,7 +217,7 @@ class Codex(Adapter):
         if t == "item.completed":
             item = d.get("item") or {}
             if item.get("type") == "agent_message":
-                return Parsed("output", _snip(item.get("text") or ""))
+                return Parsed("output", _snip(item.get("text") or "") or "(empty message)")
             return Parsed("output", f"{item.get('type', 'item')} done")
         if t == "turn.completed":
             return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")})
@@ -206,7 +232,8 @@ class Codex(Adapter):
 class Cursor(Adapter):
     harness = "cursor"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
-                        notes="agent -p stream-json; session id from the first event; resume = `agent -p --resume` "
+                        notes="agent -p --force stream-json (--force is Cursor's full auto-run; without it changes "
+                              "are only proposed); session id from the first event; resume = `agent -p --resume` "
                               "(print-mode resume with a new prompt is undocumented: verify on your install)")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:

@@ -38,9 +38,9 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     p.write_text("do the thing")
     c = wa.adapter_for("claude-code").launch(p, tmp_path, "claude-opus-5-5", None)
     assert c.argv[:2] == ["claude", "-p"] and "--session-id" in c.argv and c.session_id in c.argv
-    assert c.argv[-1] == "do the thing" and "stream-json" in c.argv
+    assert c.argv[-1] == wa.STDIN_INSTRUCTION and c.stdin == "do the thing" and "stream-json" in c.argv
     r = wa.adapter_for("claude-code").resume("sid", p, tmp_path, "m", None)
-    assert r.argv[2:4] == ["--resume", "sid"]
+    assert r.argv[2:4] == ["--resume", "sid"] and r.stdin == "do the thing"
     x = wa.adapter_for("codex").launch(p, tmp_path, "gpt-6.1-sol", None)
     assert x.argv[:3] == ["codex", "exec", "--json"] and x.argv[-1] == "-" and x.stdin == "do the thing"
     assert wa.adapter_for("codex").resume("t1", p, tmp_path, "m", None).argv[:4] == ["codex", "exec", "resume", "--json"]
@@ -60,6 +60,12 @@ def test_generic_needs_a_cli_and_custom_cli_overrides_any_harness(tmp_path: Path
     assert g.argv == ["sh", "-c", f"mytool --file {p}"]
     c = wa.adapter_for("claude-code").launch(p, tmp_path, "m", "wrapper {prompt}")
     assert c.argv[0] == "sh" and c.session_id is None
+    # A custom command naming {session} gets a fresh id on launch, and keeps it.
+    c = wa.adapter_for("claude-code").launch(p, tmp_path, "m", "wrapper --session-id {session} {prompt}")
+    assert c.session_id and f"--session-id {c.session_id} " in c.argv[2]
+    # The profiles' <prompt> form means the prompt text, quoted.
+    g = wa.adapter_for("generic").launch(p, tmp_path, "m", 'tool "<prompt>"')
+    assert g.argv[2] == "tool x"
     for h in ("generic",):
         with pytest.raises(wa.Unsupported):
             wa.adapter_for(h).resume("s", p, tmp_path, "m", None)
@@ -83,6 +89,7 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     cx = wa.adapter_for("codex")
     assert cx.parse('{"type":"thread.started","thread_id":"t1"}').session_id == "t1"
     assert cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":"done"}}').summary == "done"
+    assert cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":""}}').summary == "(empty message)"
     assert cx.parse('{"type":"item.completed","item":{"type":"command_execution"}}').summary == "command_execution done"
     assert cx.parse('{"type":"turn.completed","usage":{"input_tokens":1}}').type == "turn_completed"
     assert cx.parse('{"type":"turn.failed","error":{"message":"boom"}}').type == "error"

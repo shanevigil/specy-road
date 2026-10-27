@@ -22,14 +22,21 @@ from __future__ import annotations
 
 import argparse
 import re
-import shlex
 import subprocess
 import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.model_profiles import ROLES, Profile, profile_for_entry
-from specy_road.orchestrate_plan import entry_may_process, is_available, may_handle, node_sensitivity
+from specy_road.orchestrate_plan import (
+    ANY,
+    entry_may_process,
+    is_available,
+    may_handle,
+    node_eligibility,
+    node_sensitivity,
+)
+from specy_road.worker_adapters import has_prompt_placeholder, substitute_prompt
 from specy_road.orchestration_config import effective_config
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -175,6 +182,11 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
         if role != "coordinator":
             return "", None, str(e)
         t = None
+    if t and role == "executor":
+        need = node_eligibility(t.node)
+        if need != ANY and str(entry.get("class") or "") != need:
+            return "", None, (f"{node_id} needs executor class {need!r}; {model!r} is "
+                              f"{entry.get('class') or 'unclassed'} (`specy-road orchestrate plan`)")
     if t and not may_handle(entry, node_sensitivity(t.node)):
         return "", None, (f"{node_id} is {node_sensitivity(t.node)!r} and {model!r} may process only "
                           f"{entry_may_process(entry)}; route it to a model that may "
@@ -217,10 +229,10 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if not cli:
         print("error: --channel cli needs an `access.cli` in the model's profile", file=sys.stderr)
         return 1
-    if "{prompt}" not in cli:
-        print(f"error: the profile's cli has no {{prompt}} placeholder: {cli}", file=sys.stderr)
+    if not has_prompt_placeholder(cli):
+        print(f"error: the profile's cli has no {{prompt}} or <prompt> placeholder: {cli}", file=sys.stderr)
         return 1
-    cmd = cli.replace("{prompt}", shlex.quote(str(prompt_path)))
+    cmd = substitute_prompt(cli, prompt_path)
     print(f"running: {cmd}", file=sys.stderr)
     return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
 

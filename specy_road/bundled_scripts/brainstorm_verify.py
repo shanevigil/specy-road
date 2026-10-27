@@ -32,18 +32,36 @@ def _norm(text: str) -> str:
     return _WS.sub(" ", unescape(_TAGS.sub(" ", text))).strip().lower()
 
 
+MAX_REDIRECTS = 5
+
+
 def default_fetch(url: str) -> tuple[int, str]:
-    """``(status, text)``; raises on transport errors."""
+    """``(status, text)``; raises on transport errors.
+
+    Redirects are followed by hand so that every hop passes the same
+    public-https check as the first URL: a page the user approved must not
+    redirect the fetch onto a private host.
+    """
     import requests
 
-    r = requests.get(url, timeout=TIMEOUT_SECONDS, stream=True,
-                     headers={"User-Agent": "specy-road brainstorm verify"})
-    body = b""
-    for chunk in r.iter_content(65536):
-        body += chunk
-        if len(body) > MAX_BYTES:
-            break
-    return r.status_code, body.decode(r.encoding or "utf-8", errors="replace")
+    for _hop in range(MAX_REDIRECTS + 1):
+        if _allowed(url):
+            raise ValueError(f"refusing {url}: {_allowed(url)}")
+        r = requests.get(url, timeout=TIMEOUT_SECONDS, stream=True, allow_redirects=False,
+                         headers={"User-Agent": "specy-road brainstorm verify"})
+        if r.is_redirect or r.is_permanent_redirect or r.status_code in (301, 302, 303, 307, 308):
+            location = r.headers.get("Location")
+            if not location:
+                return r.status_code, ""
+            url = requests.compat.urljoin(url, location)
+            continue
+        body = b""
+        for chunk in r.iter_content(65536):
+            body += chunk
+            if len(body) > MAX_BYTES:
+                break
+        return r.status_code, body.decode(r.encoding or "utf-8", errors="replace")
+    raise ValueError("too many redirects")
 
 
 def _allowed(url: str) -> str | None:

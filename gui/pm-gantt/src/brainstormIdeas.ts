@@ -5,6 +5,7 @@ export type IdeaCounts = {
   accepted: number;
   rejected: number;
   revised: number;
+  parked: number;
   promoted: number;
 };
 
@@ -14,6 +15,7 @@ export function ideaCounts(ideas: BrainstormIdea[]): IdeaCounts {
     accepted: 0,
     rejected: 0,
     revised: 0,
+    parked: 0,
     promoted: 0,
   };
   for (const i of ideas) {

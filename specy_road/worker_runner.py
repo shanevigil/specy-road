@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 
 from specy_road.review_files import latest_ready
@@ -25,8 +26,8 @@ from specy_road.worker_state import (
     WorkerRecord,
     append_event,
     load_record,
+    mutate,
     record_path,
-    save_record,
     set_state,
 )
 
@@ -35,7 +36,18 @@ def log_path(repo_root: Path, worker_id: str) -> Path:
     return record_path(repo_root, worker_id).with_suffix(".log")
 
 
+def _cmdline(pid: int) -> str | None:
+    """The process's command line via ``ps``, or ``None`` when ``ps`` cannot say."""
+    try:
+        r = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True,
+                           check=False, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
 def pid_alive(pid: int | None) -> bool:
+    """Whether ``pid`` is a live **wrapper**: a reused pid must not pass for one."""
     if not pid:
         return False
     try:
@@ -44,17 +56,21 @@ def pid_alive(pid: int | None) -> bool:
         return False
     except PermissionError:
         return True
-    return True
+    cmd = _cmdline(pid)
+    return cmd is None or "worker_runner" in cmd
 
 
 def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool = False) -> int:
     """Start the wrapper detached and return its pid; the record goes to ``running``."""
     if launch.session_id and not rec.provider_session_id:
         rec.provider_session_id = launch.session_id
-    payload = json.dumps({"launch": asdict(launch), "resumed": resumed})
+    payload = json.dumps({"launch": asdict(launch), "resumed": resumed,
+                          "harness_pythonpath": os.environ.get("PYTHONPATH")})
     env = {k: v for k, v in os.environ.items() if k != "SPECY_ROAD_AGENT_ID"}
     # The wrapper must run this very package, not whichever specy_road the
     # interpreter would import from the worker's cwd or an editable install.
+    # The harness itself gets the caller's PYTHONPATH back (``run`` restores it
+    # from the payload), so the adopter's tests never see ours.
     pkg_parent = str(Path(__file__).resolve().parent.parent)
     env["PYTHONPATH"] = pkg_parent + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
@@ -66,19 +82,24 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     return p.pid
 
 
-def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = False) -> int:
+def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = False,
+        harness_pythonpath: str | None = None) -> int:
     """The wrapper body, in the foreground. Returns the harness's exit code."""
     rec = load_record(repo_root, worker_id)
     adapter = adapter_for(rec.harness)
     log = log_path(repo_root, worker_id)
-    if rec.state != "running":
-        set_state(repo_root, rec, "running", pid=os.getpid())
+    set_state(repo_root, rec, "running", pid=os.getpid())
     if resumed:
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
+    env = dict(os.environ)
+    env.pop("PYTHONPATH", None)
+    if harness_pythonpath:
+        env["PYTHONPATH"] = harness_pythonpath
     with log.open("a", encoding="utf-8") as raw:
         try:
             proc = subprocess.Popen(  # noqa: S603 — the adapter's documented command
-                launch.argv, cwd=rec.worktree, stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL,
+                launch.argv, cwd=rec.worktree, env=env,
+                stdin=subprocess.PIPE if launch.stdin is not None else subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
         except OSError as e:
@@ -92,7 +113,10 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         for line in proc.stdout:
             raw.write(line)
             raw.flush()
-            _consume(repo_root, rec, adapter, line)
+            try:
+                _consume(repo_root, rec, adapter, line)
+            except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
+                raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
     return _finish(repo_root, rec, code)
 
@@ -101,18 +125,29 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str) -> None:
     parsed = adapter.parse(line)
     if parsed is None:
         return
-    if parsed.session_id and rec.provider_session_id != parsed.session_id:
-        if rec.provider_session_id is None:
-            rec.provider_session_id = parsed.session_id
-            save_record(repo_root, rec)
+    if parsed.session_id:
+        # First seen wins; a later line (which the model controls) cannot move it.
+        mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
     append_event(repo_root, rec, parsed.type, source="worker", summary=parsed.summary, detail=parsed.detail)
+
+
+def _fresh_ready(repo_root: Path, rec: WorkerRecord) -> bool:
+    """A READY file written after this worker was created; an earlier attempt's does not count."""
+    ready = latest_ready(repo_root, rec.node_id)
+    if ready is None:
+        return False
+    try:
+        created = datetime.fromisoformat(rec.created).timestamp()
+    except ValueError:
+        return True
+    return ready.path.stat().st_mtime >= created - 1
 
 
 def _finish(repo_root: Path, rec: WorkerRecord, code: int) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
         return code
-    ready = latest_ready(repo_root, rec.node_id) is not None
+    ready = _fresh_ready(repo_root, rec)
     if code == 0:
         append_event(repo_root, rec, "completion", source="worker",
                      summary=f"exit 0; READY file {'present' if ready else 'missing'}", detail={"exit": 0, "ready": ready})
@@ -131,7 +166,8 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(2)
     payload = json.loads(argv[2])
     launch = Launch(**payload["launch"])
-    raise SystemExit(run(Path(argv[0]), argv[1], launch, resumed=bool(payload.get("resumed"))))
+    raise SystemExit(run(Path(argv[0]), argv[1], launch, resumed=bool(payload.get("resumed")),
+                         harness_pythonpath=payload.get("harness_pythonpath")))
 
 
 if __name__ == "__main__":
