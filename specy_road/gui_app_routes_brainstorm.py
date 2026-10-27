@@ -54,6 +54,7 @@ def _payload(session: BrainstormSession) -> dict[str, Any]:
         "under": session.under,
         "mode": session.mode,
         "round": session.round,
+        "rounds": session.rounds,
         "profile": session.profile,
         "panel": session.panel,
         "frame": dict(session.frame),

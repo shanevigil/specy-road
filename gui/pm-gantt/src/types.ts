@@ -223,6 +223,8 @@ export type BrainstormSession = {
   mode: "brainstorm" | "roadmap";
   /** Session v2: which diverge round is current, the lens profile, shard count, the agreed frame and allocation grid. */
   round: number;
+  /** Diverge rounds planned at `start --rounds`; `round` may exceed it once the PM goes past the plan. */
+  rounds: number;
   profile: "product" | "technical";
   panel: number;
   frame: Record<string, string>;

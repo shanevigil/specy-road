@@ -9,6 +9,7 @@
 - The panel needs a working LLM backend in Settings; use **Test LLM** first. Web search is optional and off by default.
 - Research settings are global, not per repository; a private or plain-`http` search endpoint is refused unless **Self-hosted endpoint** is on.
 - Ideas are captured only in Brainstorm mode; Roadmap mode judges and may not add ideas. The human accepts, rejects and promotes.
+- Roadmap mode is **advisory only**: its verdicts, clusters and overlaps stay in the chat and are not written to the session. Apply the ones you keep with the CLI's `specy-road brainstorm revise`.
 - Panel and CLI share `work/brainstorm-<slug>.yaml`; after promoting run `specy-road export && specy-road digest`.
 
 **Read further for:**
@@ -129,10 +130,21 @@ eight lines. **Enter** sends and **Shift+Enter** starts a new line.
 3. **Switch to Roadmap mode** when you have enough. The assistant is given the
    convergent prompt instead — clustering, overlap detection, and a `strong` /
    `consider` / `park` verdict per idea. It is told not to add new ideas.
-4. **Triage** in the Ideas list. Accept, Reject, and Undo per row. Ideas are
-   ordered by the model's verdict, strongest first; ideas already promoted sink
-   to the bottom and lose their buttons, because they are roadmap nodes now and
-   the node is what you edit.
+   **This pass is advisory only.** What it says stays in the chat: the panel
+   does not parse verdicts, clusters, overlaps or critics out of the reply,
+   and nothing is written to the session. To keep a verdict, apply it with
+   the CLI against the same session file:
+
+   ```bash
+   specy-road brainstorm revise B1 --cluster C1 --overlap M3.1:adjacent \
+     --critic "feasibility: …" --recommendation strong --why "…"
+   ```
+
+4. **Triage** in the Ideas list. Accept, Reject, and Undo per row. Ideas with
+   a recorded recommendation (from `revise`) sort first, strongest first;
+   the rest keep their capture order. Ideas already promoted sink to the
+   bottom and lose their buttons, because they are roadmap nodes now and the
+   node is what you edit.
 5. **Preview promotion**, then **Promote**. Preview shows the display ids that
    would be created and writes nothing.
 
@@ -150,8 +162,11 @@ The CLI's round model (`next-round`), shards, the evidence pass and `verify`
 are not panel buttons yet. The panel's Brainstorm mode runs the round-1
 prompt, so it plans and generates without the roadmap inventory; Roadmap mode
 runs the same converge prompt the CLI writes (clusters, overlap relations,
-critics). Use the CLI against the same session for the rest; the session
-file is shared.
+critics) but records none of its output — verdicts are advisory, and
+`specy-road brainstorm revise` is how they reach the session. The panel does
+show the round the session is in (`round N of M`, from `start --rounds`).
+Use the CLI against the same session for the rest; the session file is
+shared.
 
 ## Notes
 

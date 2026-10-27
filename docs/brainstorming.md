@@ -10,6 +10,7 @@
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
 - `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
 - The human decides: `accept`, `reject --reason`, `park --revisit-when` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
+- Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
 - The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it are gitignored.
 
 **Read further for:**
@@ -47,6 +48,18 @@ allocation across directions, personas and constraints, and concept cards in
 prose before any form. Named methods (SCAMPER, TRIZ) add little on their own,
 so the lenses stay as coverage scaffolding. Agent citations are right 40–80%
 of the time, so a URL is not evidence until a quote on the page backs it.
+
+### What the agent may write
+
+Until the PM runs `promote`, a brainstorm changes **only the session file**,
+and only through `brainstorm frame`, `add-idea`, `add-evidence` and
+`revise`. The agent must not edit code, tests or configuration (not even to
+try an idea), nor `planning/`, `roadmap/`, `roadmap/registry.yaml`,
+`shared/` or `constitution/`, nor anything else under `work/`. Proposals
+are not nodes, sheets or claims until promotion. Every diverge prompt
+carries this allow-list, and
+[`suggested_prompts/brainstorm-roadmap.md`](../suggested_prompts/brainstorm-roadmap.md)
+repeats it.
 
 ### CLI and PM GUI do the thinking differently
 
