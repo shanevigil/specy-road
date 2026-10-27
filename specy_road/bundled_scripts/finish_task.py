@@ -18,6 +18,7 @@ from specy_road.git_workflow_config import (
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_implementation_check import implementation_or_exit
+from specy_road.review_gate import gate_holds_at_head_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
@@ -185,11 +186,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def _impl_review_or_exit(entry: dict, node_id: str) -> None:
+def _impl_review_or_exit(entry: dict, node: dict) -> None:
+    node_id = node["id"]
     if not require_implementation_review_before_finish(ROOT):
         return
     if entry.get("implementation_review") == "approved":
-        return
+        return gate_holds_at_head_or_exit(ROOT, node)
     print(
         "error: implementation review is required before finish-this-task.",
         file=sys.stderr,
@@ -217,7 +219,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
     )
-    _impl_review_or_exit(entry, node_id)
+    _impl_review_or_exit(entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT, explicit_base=None, explicit_remote=None,
     )

@@ -26,6 +26,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   satisfying record it now exits 1. Unattended loops that called
   `mark-implementation-reviewed --yes` from the implement hook must record an
   independent review first (`specy-road review record`), or turn the gate off.
+- **`finish-this-task` re-checks the review gate at the current commit.** An
+  `approved` registry row no longer covers work committed after approval.
+  A row approved under 0.2.x with no review record needs a fresh
+  `mark-implementation-reviewed` before it can finish.
 
 ### Added
 

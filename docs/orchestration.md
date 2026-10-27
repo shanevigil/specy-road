@@ -81,7 +81,9 @@ policy:
   reviewers_distinct_families: true
 ```
 
-`specy-road validate` fails on a file that is present but invalid.
+`specy-road validate` fails on a file that is present but invalid. Change it on
+the integration branch: a commit on a feature branch that touches anything but
+`roadmap/registry.yaml` is new work, and makes that branch's reviews stale.
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
@@ -185,6 +187,9 @@ The gate passes when no counted review blocks and the counted approvals reach
 `implementation_review: approved` in the registry and adds one
 `Reviewed-by: <model> (<family>) approve <commit>` trailer per approval to that
 commit.
+
+`finish-this-task` checks the gate again at the current commit, so work
+committed after approval cannot ship on the earlier reviews.
 
 **Under the default policy** the interactive menu's **approve** files
 `REVIEW-human.md` and closes the gate in one step. A human approval is offered

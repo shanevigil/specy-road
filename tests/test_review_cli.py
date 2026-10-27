@@ -120,3 +120,13 @@ def test_record_unrostered_model_needs_family_and_warns(tmp_path: Path, capsys) 
     captured = capsys.readouterr()
     assert "will not count toward the gate" in captured.err
     assert "0/1 approvals" in captured.out
+
+
+def test_counted_reviews_outrank_a_stale_ready_file(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    _ready(repo)
+    commit_file(repo, "src/b.py", "x\n", "follow-up")
+    assert _status(repo, capsys)["state"] == "stale"
+    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
+                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    assert _status(repo, capsys)["state"] == "approved"

@@ -106,3 +106,22 @@ def test_human_completes_the_second_family(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", lambda _prompt="": "a")
     assert _run(repo) == 0
     assert _review_state(repo) == "approved"
+
+
+def test_finish_refuses_work_committed_after_approval(tmp_path: Path, monkeypatch, capsys) -> None:
+    """A fix restarts review: an approved registry row does not cover later commits."""
+    from specy_road.bundled_scripts import finish_task as ft
+    from tests.review_repo_helpers import NODE, commit_file
+
+    repo = _repo(tmp_path)
+    _record(repo, "human")
+    assert _run(repo, "--yes") == 0
+    monkeypatch.setattr(ft, "ROOT", repo)
+    entry = {"implementation_review": "approved"}
+    ft._impl_review_or_exit(entry, NODE)  # the gate commit alone does not count as new work
+
+    commit_file(repo, "src/late.py", "x\n", "late change")
+    with pytest.raises(SystemExit) as e:
+        ft._impl_review_or_exit(entry, NODE)
+    assert e.value.code == 1
+    assert "no longer holds at this commit" in capsys.readouterr().err

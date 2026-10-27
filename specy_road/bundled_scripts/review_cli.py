@@ -33,14 +33,15 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
 def _state(t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
-    if ready_commit is None:
-        return "waiting"
-    if not same_commit(ready_commit, t.commit):
-        return "stale"
+    """Counted reviews outrank the READY file: they bind to the current commit."""
     if gate.blocks:
         return "blocked"
     if gate.passed:
         return "approved"
+    if ready_commit is None:
+        return "waiting"
+    if not same_commit(ready_commit, t.commit):
+        return "stale"
     return "in-review"
 
 
