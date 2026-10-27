@@ -313,12 +313,12 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
     others = [s.agent for s in list_sessions(repo_root)
               if s.agent != agent and not (tree_only and s.worktree and Path(s.worktree).resolve() != here)]
     try:
-        from specy_road.worker_runner import pid_alive
+        from specy_road.worker_process import wrapper_alive
         from specy_road.worker_state import list_records
 
         me = os.environ.get("SPECY_ROAD_WORKER_ID")   # a worker's own hook must not count the worker
         others += [f"worker {r.worker_id}" for r in list_records(repo_root, active_only=True)
-                   if r.worker_id != me and pid_alive(r.pid, r.worker_id) and Path(r.worktree).resolve() == here]
+                   if r.worker_id != me and wrapper_alive(r, repo_root) and Path(r.worktree).resolve() == here]
     except Exception:  # noqa: BLE001 — presence is advisory; a broken record must not break the guard
         pass
     return others

@@ -16,6 +16,7 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_subprocess import git_text
 from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
     FLAG_RECONCILE,
     WorkerError,
@@ -74,16 +75,18 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # A prompt that can no longer be built (the model lost the leaf's
     # sensitivity or class) is a contract change too, not a pass.
     contract_changed = bool(rec.contract_hash and (err or hashlib.sha256(text.encode("utf-8")).hexdigest() != rec.contract_hash))
-    if outside or contract_changed:
+    off_branch = branch_mismatch(Path(rec.worktree), rec.branch)   # the tree moved off the worker's branch (B12)
+    if outside or contract_changed or off_branch:
         add_flag(repo_root, rec, FLAG_RECONCILE)
     else:
         clear_flag(repo_root, rec, FLAG_RECONCILE)
     delta = {"since": since, "changed": changed, "outside_touch_zones": outside,
-             "contract_changed": contract_changed, "epoch": rec.instruction_epoch,
+             "contract_changed": contract_changed, "branch_mismatch": off_branch, "epoch": rec.instruction_epoch,
              "needs_reconcile": FLAG_RECONCILE in rec.flags}
     append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
                  summary=(f"{len(changed)} path(s) changed, {len(outside)} outside touch zones"
-                          + ("; contract changed" if contract_changed else "")), detail=delta)
+                          + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")),
+                 detail=delta)
     return rec, delta
 
 

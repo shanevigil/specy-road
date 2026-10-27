@@ -10,6 +10,7 @@
 - One writer per worker (`lease.holder`): `specy-road worker handoff <W>` before a human opens the native session, `specy-road worker reclaim <W>` after. While leased to a human, `message` and `resume` fail with `WORKER_LEASED_BY_HUMAN`.
 - `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5.5` needs the leaf's registry claim and branch.
 - A `completion` event and a READY file approve nothing; the review path is unchanged. `interrupt` is unsupported on every adapter; `terminate` loses the turn.
+- A worker whose wrapper died but whose harness lives is flagged `wrapper_gone_harness_alive` and still owns its leaf: `terminate` it (kills the recorded process group) before delegating again.
 - Records live in `work/.workers/` (gitignored); the event log is authoritative, the transcript is evidence.
 
 **Read further for:**
@@ -53,16 +54,26 @@ one. The review gate is the boundary: READY and `completed` approve nothing.
 |---|---|
 | `harness` / `model` | Which vendor CLI runs it, and which roster model it was asked for. Distinct on purpose: a Claude model under Cursor's agent is a `cursor` worker. |
 | `provider_session_id` | The harness's own session/thread/chat id, once seen; what `message`, `resume` and `handoff` use. |
-| `state` | `starting → running → idle` (exit 0, no READY file) or `completed` (READY present), `failed`, `handed_off`, `terminated`. A `completed` worker still owns its leaf and its `max_workers` slot until `terminate`; only `failed` and `terminated` are closed. A `running` record whose wrapper is gone is marked `failed` by the next `delegate`. |
+| `state` | `starting → running → idle` (exit 0, no new READY) or `completed` (a READY that appeared or changed during the turn, for this node, on the worker's branch — the one actually checked out — at HEAD), `failed`, `handed_off`, `terminated`. A `completed` worker still owns its leaf and its `max_workers` slot until `terminate`; only `failed` and `terminated` are closed. A `running` record whose wrapper **and** process group are gone is marked `failed` by the next `delegate`, `message`, `resume` or `handoff`. |
+| `pid` / `wrapper_token` / `pgid` / `harness_pid` / `harness_start` | The wrapper, the random token in its argv, their process group (the wrapper's pid: it is a session leader), and the harness child with its start time. A pid is this worker's wrapper only when its command line carries the resolved repo root, the worker id and the token as whole arguments; a pid our user cannot signal is someone else's. The harness pid counts only with its recorded start time. All are cleared when the wrapper records the exit. |
 | `lease.holder` | The single writer: `broker` (specy-road sends turns), `human` (handed off), `native` (adopted; observe only), `none`. |
 | `instruction_epoch` | +1 for every recorded human intervention. |
 | `checkpoint` | Git HEAD and time at the last handoff; `reclaim` and `reconcile` diff from here. |
-| `flags` | `possibly_modified_externally` (a human session returned without hook evidence), `needs_reconcile` (changes outside the touch zones, or the brief changed). |
+| `flags` | `possibly_modified_externally` (a human session returned without hook evidence), `needs_reconcile` (changes outside the touch zones, the brief changed, or the worktree is off the worker's branch), `wrapper_gone_harness_alive` (the wrapper died; the harness or its group did not — the leaf stays owned until `terminate`). |
 
 Events (`seq`, `type`, `source`, `authority`, `summary`, `epoch`): `started`,
 `output`, `turn_completed`, `completion`, `error`, `message`, `resumed`,
 `intervention`, `handoff`, `reclaim`, `terminated`, `adopted`, `reconcile`.
 Summaries are at most 500 characters; a transcript never goes in the log.
+
+`authority` says who vouches for an event. `system` is a fact the toolkit
+itself observed: the launch, the exit code, whether a new READY exists, a
+wrapper found dead. `worker_suggestion` is anything parsed from the
+harness's stdout — its session id line, assistant text, tool summaries, its
+own `result` line — which the model controls. `orchestrator` is the
+coordinator's own commands; `human_authoritative` is a recorded
+intervention. A `turn_completed` is the harness's claim; the `completion`
+that follows is the wrapper's.
 
 ## Roster setup
 
@@ -125,7 +136,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
-| `terminate W` | SIGTERM the wrapper's process group (harness and children); state `terminated`. The turn is lost. |
+| `terminate W` | SIGTERM the recorded process group (wrapper, harness and children), SIGKILL after 5 s, and confirm the group is gone — also when the wrapper itself already died; state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker. |
 | `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
@@ -149,8 +160,11 @@ Every transition (`message`, `resume`, `handoff`, `reclaim`, `terminate`,
 `adopt`, the hook) runs under the workers lock as one transaction: two
 coordinators sending at once launch one turn, and a second `reclaim` finds
 the lease already returned. `terminate` signals only a pid whose command line
-names this worker's wrapper; when `ps` cannot say, it refuses rather than
-signal a stranger. On an adopted (`native`) record it closes the record and
+names this worker's wrapper (resolved repo root, worker id and the spawn's
+random token as whole arguments); when `ps` cannot say, it refuses rather than
+signal a stranger. When the wrapper is gone but the harness pid (with its
+recorded start time) or another member of the recorded process group is
+alive, `terminate` signals that group instead. On an adopted (`native`) record it closes the record and
 says the session was not signalled.
 
 `reclaim` always returns the worker to `idle`, even one that was
@@ -169,7 +183,10 @@ harness's own resume command. While the lease is `human`, `message` and
 `sync`. `reclaim` diffs the worktree from the checkpoint, reads any prompts
 the hook recorded, writes **one** `intervention` event
 (`authority: human_authoritative`, epoch +1) with the prompts and the diff
-stat, and returns the lease. Without hook evidence the worker is flagged
+stat, and returns the lease. `resume`, `message`, `reclaim` and the
+completion check all refuse (or ignore the READY, with an `error` event
+saying why) when the worktree no longer has the worker's branch checked
+out: check it out again, or `terminate`. Without hook evidence the worker is flagged
 `possibly_modified_externally`: specy-road does not pretend to know what was
 said. Precedence when a human direction conflicts with the leaf's contract:
 hard constraints (touch zones, dependencies, the gate) → an explicit
@@ -205,8 +222,13 @@ session, which is the case the hook exists for.
 |---|---|---|---|---|---|
 | `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit) | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
 | `codex` | `codex exec --json -m … --sandbox workspace-write --ask-for-approval never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json --sandbox workspace-write --ask-for-approval never -C <worktree> <id> -` (same flags, prompt on stdin) | unsupported | `codex resume <id>` |
-| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so keep Cursor briefs under 128 KiB on Linux) | unsupported | `agent --resume <id>` |
-| `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it) | none | unsupported | unsupported | none |
+| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
+| `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies) | none | unsupported | unsupported | none |
+
+Whatever the harness, the wrapper's own command line carries only the repo
+root, the worker id, a token and the path of a mode-0600 launch file under
+`work/.workers/` (argv and the stdin prompt), which the wrapper reads once
+and deletes; a brief of any size reaches a stdin-reading harness.
 
 Flags were verified against each vendor's documentation on 2026-10-27 and
 will drift; `tests/test_worker_adapters.py` pins the command shapes. The

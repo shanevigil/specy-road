@@ -22,7 +22,8 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
-from specy_road.worker_runner import log_path, pid_alive
+from specy_road.worker_process import wrapper_alive
+from specy_road.worker_runner import log_path
 from specy_road.worker_state import (
     HARNESSES,
     LeaseError,
@@ -42,13 +43,13 @@ def _emit(ns: argparse.Namespace, data: dict[str, Any], lines: list[str]) -> int
 
 def _row(rec) -> dict[str, Any]:
     d = rec.to_dict()
-    d["alive"] = pid_alive(rec.pid, rec.worker_id)
+    d["alive"] = wrapper_alive(rec)
     return d
 
 
 def _line(rec) -> str:
     flags = f" [{', '.join(rec.flags)}]" if rec.flags else ""
-    run = " (running)" if pid_alive(rec.pid, rec.worker_id) else ""
+    run = " (running)" if wrapper_alive(rec) else ""
     return (f"{rec.worker_id}  {rec.node_id:<10} {rec.harness}/{rec.model:<22} {rec.state}{run}  "
             f"lease={rec.lease.get('holder')} epoch={rec.instruction_epoch}{flags}")
 

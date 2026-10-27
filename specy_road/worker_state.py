@@ -46,6 +46,7 @@ TERMINAL_STATES = frozenset({"failed", "terminated"})
 LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
+FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
 _ID = re.compile(r"^w-[0-9]{4,}$")
 
 
@@ -75,6 +76,10 @@ class WorkerRecord:
     checkpoint: dict[str, Any] | None = None
     billing_route: str | None = None
     started_head: str | None = None   # the worktree's HEAD when the worker was created; reconcile judges from here
+    wrapper_token: str | None = None  # random token in the wrapper's argv: a reused pid does not verify
+    pgid: int | None = None           # the wrapper's process group (it is a session leader); terminate kills it
+    harness_pid: int | None = None    # the harness child, while it runs
+    harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
 
     @property
     def active(self) -> bool:

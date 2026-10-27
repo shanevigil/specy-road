@@ -18,10 +18,14 @@
     "worktree": { "type": "string", "minLength": 1 },
     "branch": { "type": ["string", "null"] },
     "pid": { "type": ["integer", "null"], "description": "The detached wrapper process, while it runs." },
+    "wrapper_token": { "type": ["string", "null"], "description": "Random token placed in the wrapper's argv at spawn; a pid is the wrapper only when its command line carries this token, the worker id and the repo root." },
+    "pgid": { "type": ["integer", "null"], "description": "The wrapper's process group (the wrapper is a session leader, so this is its pid). terminate signals the group and confirms it is gone; a record whose wrapper died but whose group lives is not freed." },
+    "harness_pid": { "type": ["integer", "null"], "description": "The harness child the wrapper started, while it runs." },
+    "harness_start": { "type": ["string", "null"], "description": "The harness's process start time (ps -o lstart=); with harness_pid, an identity a reused pid cannot share." },
     "state": { "enum": ["starting", "running", "idle", "needs_input", "interrupted", "failed", "completed", "handed_off", "terminated"] },
     "flags": {
       "type": "array", "uniqueItems": true,
-      "items": { "enum": ["possibly_modified_externally", "needs_reconcile"] }
+      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive"] }
     },
     "lease": {
       "type": "object", "required": ["holder", "since"], "additionalProperties": false,
