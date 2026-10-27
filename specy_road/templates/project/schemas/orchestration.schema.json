@@ -76,14 +76,16 @@
     "substitution": {
       "type": "object",
       "required": ["slot", "use", "decided"],
+      "anyOf": [{ "required": ["expires_when"] }, { "required": ["expires"] }],
       "additionalProperties": false,
       "properties": {
         "slot": { "type": "string", "minLength": 1, "description": "The reviewer slot being filled, e.g. reviewer-openai." },
-        "use": { "$ref": "#/$defs/id", "description": "Model id of the substitute." },
+        "use": { "$ref": "#/$defs/id", "description": "Model id of the substitute; must be a roster entry (its family comes from the roster)." },
         "scope": {
           "type": "array",
+          "minItems": 1,
           "items": { "type": "string", "minLength": 1 },
-          "description": "Node ids the substitution covers. Omit to cover every node."
+          "description": "Node ids the substitution covers. Omit to cover every node; an empty list is rejected."
         },
         "decided": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
         "expires_when": { "type": "string", "minLength": 1, "description": "Human-readable expiry condition, e.g. 'gpt-5.6-sol has capacity'." },

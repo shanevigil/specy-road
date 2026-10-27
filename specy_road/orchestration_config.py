@@ -17,6 +17,8 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from specy_road.git_subprocess import git_stdout
+
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _ORCHESTRATION_SCHEMA = _PACKAGE_DIR / "templates" / "project" / "schemas" / "orchestration.schema.json"
 ORCHESTRATION_REL = Path("roadmap") / "orchestration.yaml"
@@ -65,35 +67,62 @@ def _dates_to_iso(raw: dict[str, Any]) -> None:
                 sub[key] = sub[key].isoformat()
 
 
-def load_orchestration_config(repo_root: Path) -> tuple[dict[str, Any] | None, str | None]:
-    """Load YAML from ``roadmap/orchestration.yaml``. Returns (data, parse_or_schema_error).
+def _semantic_error(raw: dict[str, Any]) -> str | None:
+    """Rules the schema cannot express."""
+    ids = [e.get("id") for e in raw.get("roster") or []]
+    dupes = sorted({i for i in ids if ids.count(i) > 1})
+    if dupes:
+        return f"roster: duplicate id(s) {', '.join(dupes)}"
+    for i, sub in enumerate(raw.get("substitutions") or []):
+        if sub.get("use") not in ids:
+            return (
+                f"substitutions/{i}/use: {sub.get('use')!r} must be a roster entry, "
+                "so its family comes from the roster and not from the review file"
+            )
+    return None
 
-    ``(None, None)`` means the file is absent; callers that need settings use
-    :func:`effective_config` instead.
-    """
-    path = orchestration_yaml_path(repo_root)
-    if not path.is_file():
-        return None, None
+
+def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | None]:
+    """Parse and validate the file's text. Returns (data, parse_or_schema_error)."""
     try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        raw = yaml.safe_load(text)
     except yaml.YAMLError as e:
         return None, f"YAML error in {ORCHESTRATION_REL}: {e}"
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_REL}: must be a mapping"
     _dates_to_iso(raw)
-    err = validate_orchestration_dict(raw)
+    err = validate_orchestration_dict(raw) or _semantic_error(raw)
     if err:
         return None, f"{ORCHESTRATION_REL}: {err}"
     return raw, None
 
 
-def effective_config(repo_root: Path) -> tuple[dict[str, Any], str | None]:
+def load_orchestration_config(
+    repo_root: Path, ref: str | None = None
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Load ``roadmap/orchestration.yaml`` from the working tree, or from git ``ref``.
+
+    ``(None, None)`` means the file is absent; callers that need settings use
+    :func:`effective_config` instead.
+    """
+    if ref is not None:
+        text = git_stdout(["show", f"{ref}:{ORCHESTRATION_REL.as_posix()}"], repo_root)
+        return (None, None) if text is None else parse_orchestration_text(text)
+    path = orchestration_yaml_path(repo_root)
+    if not path.is_file():
+        return None, None
+    return parse_orchestration_text(path.read_text(encoding="utf-8"))
+
+
+def effective_config(repo_root: Path, ref: str | None = None) -> tuple[dict[str, Any], str | None]:
     """The file's settings with defaults filled in, or :data:`DEFAULT_CONFIG` when absent.
 
-    On a parse or schema error the error is returned with the defaults, so a
-    caller can refuse (the review gate does) instead of silently relaxing.
+    ``ref`` reads the file as committed there — the review gate passes the
+    integration branch, so a feature branch cannot lower its own bar. On a parse
+    or schema error the error is returned with the defaults, so a caller can
+    refuse (the review gate does) instead of silently relaxing.
     """
-    data, err = load_orchestration_config(repo_root)
+    data, err = load_orchestration_config(repo_root, ref)
     if err or data is None:
         return copy.deepcopy(DEFAULT_CONFIG), err
     out = copy.deepcopy(data)
@@ -123,12 +152,14 @@ def is_rostered_reviewer(config: dict[str, Any], model_id: str) -> bool:
 def active_substitutions(
     config: dict[str, Any], node_id: str, today: date | None = None
 ) -> list[dict[str, Any]]:
-    """Substitutions that cover ``node_id`` and have not passed their ``expires`` date."""
+    """Substitutions that cover ``node_id``, are already decided, and have not expired."""
     day = (today or date.today()).isoformat()
     out = []
     for sub in config.get("substitutions") or []:
         scope = sub.get("scope")
-        if scope and node_id not in scope:
+        if scope is not None and node_id not in scope:
+            continue
+        if str(sub.get("decided", "")) > day:
             continue
         expires = sub.get("expires")
         if expires and str(expires) < day:

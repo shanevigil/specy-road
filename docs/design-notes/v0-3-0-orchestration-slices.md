@@ -62,3 +62,22 @@ automatic capacity detection, and live diff watching.
   the recorded reviews already earned (decided with the maintainer).
 - Claims never write `owner`, and there is no local-only claim path; both are
   slice 4.
+
+## Cross-family review of slice 1
+
+Two independent reviews (Claude Opus 5.5 in a fresh session, and a model from
+another family run from `work/review-prompt-orchestration-slice1.md`) found the
+same blocker — a merge commit made after
+approval was skipped as bookkeeping, so its changes shipped unreviewed — and a
+second: the gate read policy from the branch under review. Both are fixed, with
+the rest of their findings (remote-only branches, linked worktrees, per-model
+counting, roster-only families, `review record --model human`, YAML-retyped
+SHAs, schema gaps); `tests/test_review_hardening.py` holds one regression test
+per finding.
+
+Left as a stated limit: review records are self-attested files. Anything that
+can write under `work/reviews/` can pose as a rostered reviewer. Making review
+identity verifiable needs a trust anchor outside the working tree (forge PR
+approvals, signed commits, or a reviewer-side signature) and is a design
+question for a later slice.
+

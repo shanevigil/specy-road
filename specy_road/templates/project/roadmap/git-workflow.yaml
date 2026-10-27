@@ -5,7 +5,8 @@
 version: 1
 integration_branch: main
 remote: origin
-# Human must review implementation (summary + optional walkthrough) before finish-this-task.
+# Implementation must pass the review gate (roadmap/orchestration.yaml) before
+# finish-this-task; by default one interactive human approval is enough.
 require_implementation_review_before_finish: true
 # Refuse to close a node whose branch changed no file under its touch_zones — a claim
 # is not an implementation. Skipped when a node declares no zones. Default true; set

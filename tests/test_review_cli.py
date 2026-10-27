@@ -10,6 +10,13 @@ import pytest
 from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
+# One AI reviewer beside the default human: `review record` refuses `human`.
+ONE_AI = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - {id: opus, family: anthropic, roles: [reviewer]}
+"""
+
 from specy_road.bundled_scripts import review_cli
 from specy_road.review_files import load_review, review_path, reviews_dir
 
@@ -30,7 +37,7 @@ def _ready(repo: Path, commit: str | None = None) -> None:
     )
 
 
-def _notes(repo: Path, model: str = "human", **kw) -> Path:
+def _notes(repo: Path, model: str = "opus", **kw) -> Path:
     p = repo.parent / f"notes-{model}.md"
     p.write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model, **kw))
     return p
@@ -43,12 +50,12 @@ def _status(repo: Path, capsys) -> dict:
 
 
 def test_status_walks_waiting_review_approved_stale(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _status(repo, capsys)["state"] == "waiting"
     _ready(repo)
     assert _status(repo, capsys)["state"] == "in-review"
     notes = _notes(repo)
-    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     st = _status(repo, capsys)
     assert st["state"] == "approved" and st["policy_met"]
@@ -58,20 +65,20 @@ def test_status_walks_waiting_review_approved_stale(tmp_path: Path, capsys) -> N
 
 
 def test_status_blocked_and_text_output(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo)
     notes = _notes(repo, verdict="block", a1="fail")
-    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "block",
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 0
     assert _status(repo, capsys)["state"] == "blocked"
     assert _run("handoff", "status", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "M1.1: blocked" in out
-    assert "REVIEW-human.md: block by human (human)" in out
+    assert "REVIEW-opus.md: block by opus (anthropic)" in out
 
 
 def test_status_with_no_handoffs(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     assert _run("handoff", "status", "--repo-root", str(repo)) == 0
     assert "No hand-offs" in capsys.readouterr().out
 
@@ -88,45 +95,43 @@ def test_record_fills_family_and_labels_independence(tmp_path: Path, capsys) -> 
 
 
 def test_record_refuses_a_stale_commit(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     notes = _notes(repo)
     commit_file(repo, "src/b.py", "x\n", "fix")
-    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(notes), "--repo-root", str(repo)) == 1
     assert "Re-review the current commit" in capsys.readouterr().err
-    assert not review_path(repo, "M1.1", "human").exists()
+    assert not review_path(repo, "M1.1", "opus").exists()
 
 
 def test_record_refuses_mismatched_flags_and_invalid_notes(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     notes = _notes(repo)
-    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "block",
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
                 "--file", str(notes), "--repo-root", str(repo)) == 1
     assert "verdict is 'approve'" in capsys.readouterr().err
     bad = _notes(repo, a1="fail")
-    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(bad), "--repo-root", str(repo)) == 1
     assert "failing acceptance A1" in capsys.readouterr().err
 
 
-def test_record_unrostered_model_needs_family_and_warns(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
-    notes = _notes(repo, "opus")
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
-                "--file", str(notes), "--repo-root", str(repo)) == 1
-    assert "pass --family" in capsys.readouterr().err
-    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
-                "--file", str(notes), "--family", "anthropic", "--repo-root", str(repo)) == 0
-    captured = capsys.readouterr()
-    assert "will not count toward the gate" in captured.err
-    assert "0/1 approvals" in captured.out
+def test_record_refuses_unrostered_models_and_human(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _run("review", "record", "M1.1", "--model", "sol", "--verdict", "approve",
+                "--file", str(_notes(repo, "sol")), "--repo-root", str(repo)) == 1
+    assert "not in the roster" in capsys.readouterr().err
+    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
+                "--file", str(_notes(repo, "human")), "--repo-root", str(repo)) == 1
+    assert "interactive approve" in capsys.readouterr().err
+    assert not reviews_dir(repo, "M1.1").exists()
 
 
 def test_counted_reviews_outrank_a_stale_ready_file(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo)
     commit_file(repo, "src/b.py", "x\n", "follow-up")
     assert _status(repo, capsys)["state"] == "stale"
-    assert _run("review", "record", "M1.1", "--model", "human", "--verdict", "approve",
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
     assert _status(repo, capsys)["state"] == "approved"

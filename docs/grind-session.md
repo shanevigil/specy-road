@@ -331,7 +331,9 @@ For an unattended loop to keep cycling:
 - **Implementation review gate.** If `roadmap/git-workflow.yaml` sets
   `require_implementation_review_before_finish: true`, `finish-this-task` requires
   a recorded review, and `mark-implementation-reviewed --yes` no longer approves
-  on its own: it needs a review record from a reviewer other than the executor.
+  on its own: it needs review records that satisfy `roadmap/orchestration.yaml`
+  (the gate trusts each record's self-attested `authored_fix` / `is_coordinator`
+  flags, so run the reviewer as a separate session).
   For a fully autonomous loop either set the flag to `false`, or have a
   `--pre-finish-cmd` run an independent reviewer, file its verdict with
   `specy-road review record`, then run `specy-road mark-implementation-reviewed

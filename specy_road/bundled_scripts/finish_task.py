@@ -12,13 +12,12 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
-    require_implementation_review_before_finish,
     resolve_integration_defaults,
     resolve_on_complete,
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_implementation_check import implementation_or_exit
-from specy_road.review_gate import gate_holds_at_head_or_exit
+from specy_road.review_gate import gate_holds_at_head_or_exit, review_required
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
@@ -188,7 +187,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
 def _impl_review_or_exit(entry: dict, node: dict) -> None:
     node_id = node["id"]
-    if not require_implementation_review_before_finish(ROOT):
+    if not review_required(ROOT):
         return
     if entry.get("implementation_review") == "approved":
         return gate_holds_at_head_or_exit(ROOT, node)

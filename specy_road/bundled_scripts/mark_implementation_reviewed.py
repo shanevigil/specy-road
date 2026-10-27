@@ -19,15 +19,15 @@ import re
 import sys
 from pathlib import Path
 
-from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.review_gate import (
     GateResult,
     commit_trailers,
     evaluate_gate,
     human_approval_completes,
+    review_required,
     write_human_approval,
 )
-from specy_road.review_target import resolve_target
+from specy_road.review_target import resolve_target_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -81,16 +81,21 @@ def _extract_walkthrough(text: str) -> str | None:
     return body or None
 
 
+_APPROVE_RECORDED = "[a] Approve — commit the approval the recorded reviews earned"
+_APPROVE_AS_HUMAN = "[a] Approve as human — file REVIEW-human.md and close the gate"
+
+
 def _run_interactive_menu(
     *,
     summary_text: str,
     walkthrough: str | None,
+    approve_label: str = _APPROVE_RECORDED,
 ) -> bool:
     """Return True if user approves."""
     print()
     print("-" * 60)
     print("[w] Show Walkthrough section only")
-    print("[a] Approve as human — file REVIEW-human.md and close the gate")
+    print(approve_label)
     print("[q] Quit without approving")
     print("-" * 60)
     while True:
@@ -147,11 +152,13 @@ def _user_approves(
     *,
     summary_text: str,
     walkthrough: str | None,
+    approve_label: str = _APPROVE_RECORDED,
 ) -> bool:
     if sys.stdin.isatty() and not args.yes:
         return _run_interactive_menu(
             summary_text=summary_text,
             walkthrough=walkthrough,
+            approve_label=approve_label,
         )
     if args.yes:
         return True
@@ -203,13 +210,17 @@ def _gate_or_human_approval(
     Exits 0 when the human declines, and 1 when the recorded reviews fall short
     and a human approval here could not (or may not) make up the difference.
     """
-    gate = evaluate_gate(ROOT, node, resolve_target(ROOT, node["id"], "HEAD").commit)
+    gate = evaluate_gate(ROOT, node, resolve_target_or_exit(ROOT, node["id"], "HEAD").commit)
     _print_gate(gate)
     if gate.passed:
+        if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough):
+            print("Aborted (registry unchanged).")
+            raise SystemExit(0)
         return gate
     interactive = sys.stdin.isatty() and not args.yes
     if interactive and human_approval_completes(ROOT, gate):
-        if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough):
+        if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough,
+                              approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
             raise SystemExit(0)
         print(f"[ok] wrote {write_human_approval(ROOT, node, gate.commit).relative_to(ROOT)}")
@@ -259,7 +270,7 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
 
-    if not require_implementation_review_before_finish(ROOT):
+    if not review_required(ROOT):
         print(
             "require_implementation_review_before_finish is not enabled in "
             "roadmap/git-workflow.yaml — nothing to do.",

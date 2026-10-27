@@ -17,6 +17,7 @@ roster:
   - {id: sonnet, family: anthropic, roles: [reviewer]}
   - {id: sol, family: openai, roles: [reviewer]}
   - {id: composer, family: cursor, roles: [executor]}
+  - {id: astra, family: openai, roles: [executor]}
 policy: {reviewers_required: 2, reviewers_distinct_families: true}
 substitutions:
   - {slot: reviewer-openai, use: astra, scope: [M1.1], decided: 2026-01-01, expires: 2026-12-31}
@@ -97,8 +98,7 @@ def test_substitute_counts_until_it_expires(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=TWO_FAMILIES)
     _review(repo, "opus")
     d = reviews_dir(repo, "M1.1")
-    text = review_text(git(repo, "rev-parse", "HEAD"), model="astra")
-    (d / "REVIEW-astra.md").write_text(text.replace("model: astra", "model: astra\nfamily: openai"))
+    (d / "REVIEW-astra.md").write_text(review_text(git(repo, "rev-parse", "HEAD"), model="astra"))
     assert _gate(repo, today=date(2026, 6, 1)).passed
     expired = _gate(repo, today=date(2027, 1, 1))
     assert not expired.passed
