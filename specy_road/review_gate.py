@@ -43,8 +43,10 @@ from specy_road.orchestration_config import (
     effective_config,
     family_of,
     is_rostered_reviewer,
+    roster_entry,
     substitute_for,
 )
+from specy_road.review_signing import SigningError, sign, verify
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 
@@ -170,6 +172,25 @@ class GateResult:
         return out
 
 
+def _signature_problem(config: dict[str, Any], model: str, review: ReviewFile) -> str | None:
+    """Why a record's signature keeps it from counting, else ``None``.
+
+    A present signature is always verified (tampering is caught even with the
+    policy off); a missing one matters only when ``signed_reviews`` is on.
+    """
+    sig = review.data.get("signature")
+    entry = roster_entry(config, model) or {}
+    pub = entry.get("public_key")
+    if sig:
+        if not pub:
+            return f"signed, but the roster entry for {model!r} has no public_key to verify against"
+        ok, reason = verify(review.data, sig, pub, model)
+        return None if ok else f"signature does not verify for {model!r}: {reason}"
+    if config["policy"].get("signed_reviews"):
+        return "policy requires signed reviews (signature missing); file it with `review record --sign-key`"
+    return None
+
+
 def _eligibility(
     config: dict[str, Any], node_id: str, review: ReviewFile, today: date | None
 ) -> tuple[CountedReview | None, str | None]:
@@ -184,6 +205,9 @@ def _eligibility(
             )
     if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
         return None, "policy requires a fresh reviewer session (fresh_session: true)"
+    why = _signature_problem(config, model, review)
+    if why:
+        return None, why
     family = family_of(config, model)
     if not family:
         return None, f"no family for {model!r}: add it to the roster"
@@ -240,16 +264,19 @@ def evaluate_gate(
     return result
 
 
-def human_approval_completes(repo_root: Path, gate: GateResult) -> bool:
+def human_approval_completes(repo_root: Path, gate: GateResult, sign_key: Path | None = None) -> bool:
     """Whether one interactive human approval would satisfy the policy.
 
     True only when ``human`` is a rostered reviewer, nothing blocks, the
-    config loads, and the human's family is the one approval still missing.
+    config loads, the human's family is the one approval still missing, and —
+    under ``signed_reviews`` — a key was given and the roster has its public key.
     """
     if gate.config_error or gate.commit is None or gate.blocks:
         return False
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN):
+        return False
+    if config["policy"].get("signed_reviews") and (sign_key is None or not (roster_entry(config, HUMAN) or {}).get("public_key")):
         return False
     others = [a for a in gate.approvals if a.model != HUMAN]
     if gate.distinct_families:
@@ -258,8 +285,8 @@ def human_approval_completes(repo_root: Path, gate: GateResult) -> bool:
     return len(others) + 1 >= gate.required
 
 
-def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str) -> Path:
-    """File the interactive approval as ``REVIEW-human.md`` at ``commit``."""
+def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str, sign_key: Path | None = None) -> Path:
+    """File the interactive approval as ``REVIEW-human.md`` at ``commit``, signed when a key is given."""
     data = {
         "node_id": node["id"],
         "model": HUMAN,
@@ -276,6 +303,8 @@ def write_human_approval(repo_root: Path, node: dict[str, Any], commit: str) -> 
         # Whoever runs mark-implementation-reviewed is coordinating; say so.
         "is_coordinator": True,
     }
+    if sign_key is not None:
+        data["signature"] = sign(data, sign_key)
     path = review_path(repo_root, node["id"], HUMAN)
     path.parent.mkdir(parents=True, exist_ok=True)
     body = "Approved interactively with `specy-road mark-implementation-reviewed`.\n"

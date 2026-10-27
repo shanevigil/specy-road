@@ -77,6 +77,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   the model profile's prompting rules and failure-mode guards applied
   mechanically, then the brief or the review packet. `--channel cli` runs the
   profile's `access.cli`. Stub: `/specyrd-prompt`.
+- **Signed review records.** A roster entry may carry `public_key` (an OpenSSH
+  public key line); `review record --sign-key <private key>` signs the record
+  with `ssh-keygen -Y sign` (namespace `specy-road-review`), and the gate
+  verifies it. With `policy.signed_reviews: true` an unsigned record does not
+  count; a present signature is verified regardless, so a tampered record
+  never counts. `mark-implementation-reviewed --sign-key` signs the interactive
+  human approval. Needs OpenSSH 8.0+; no new Python dependency.
 - Node fields `sensitivity` (default `public`) and `executor_eligibility`
   (default `any`, else a roster `class` tag), settable with `add-node` and
   `edit-node --set`. **Existing adopters:** run `specy-road refresh-schemas`

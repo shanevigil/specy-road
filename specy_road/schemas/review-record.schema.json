@@ -39,7 +39,8 @@
     "fresh_session": { "type": "boolean", "description": "The review ran in a session that saw only the review packet." },
     "authored_fix": { "type": "boolean", "description": "The reviewing session wrote any part of the change under review." },
     "is_coordinator": { "type": "boolean", "description": "The reviewing session is the coordinator's own session." },
-    "independence": { "enum": ["distinct-family", "same-family"], "description": "Written by `specy-road review record` when policy requires distinct families." }
+    "independence": { "enum": ["distinct-family", "same-family"], "description": "Written by `specy-road review record` when policy requires distinct families." },
+    "signature": { "type": "string", "minLength": 1, "description": "Base64 of the reviewer's OpenSSH signature (`ssh-keygen -Y sign`, namespace specy-road-review) over the canonical front matter; written by `specy-road review record --sign-key`. Verified against the roster entry's public_key." }
   },
   "$defs": {
     "notes": { "type": "array", "items": { "type": "string", "minLength": 1 } }

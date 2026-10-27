@@ -246,16 +246,34 @@ recorded reviews already satisfy the policy. Without a TTY and without `--yes`
 the command refuses, as in 0.2.x. A coordinator that can satisfy the gate alone
 is no gate.
 
-**What the gate cannot verify.** A review record's `model`, `fresh_session`,
-`authored_fix`, and `is_coordinator` are self-attested: any agent that can write
-a file under `work/reviews/` can pose as a rostered reviewer, including
-`human`. Likewise, an agent that creates a local branch, or a fake
-remote-tracking ref, and commits `integration_branch` pointing at it can choose
-the policy the gate reads. The tool closes the easy paths — `review record`
-refuses `human`, `--yes` never files a review, policy comes from the committed
-integration branch, a missing branch fails closed — and records who approved in
-the commit history. Proving a reviewer's identity needs
-something outside the repo, such as forge PR approvals or signed commits.
+### Signed reviews
+
+A review record is a file, so without more, any agent that can write under
+`work/reviews/` can pose as a rostered reviewer. Signing closes that:
+
+```yaml
+roster:
+  - id: opus
+    family: anthropic
+    roles: [reviewer]
+    public_key: ssh-ed25519 AAAAC3...   # the reviewer's OpenSSH public key
+policy:
+  signed_reviews: true
+```
+
+The reviewer files its record with `specy-road review record … --sign-key
+~/.ssh/opus_review` (an OpenSSH private key). The front matter is signed with
+`ssh-keygen -Y sign` (namespace `specy-road-review`) and verified against the
+roster `public_key` with `ssh-keygen -Y verify`; OpenSSH 8.0+, no other
+dependency. With `signed_reviews: true` an unsigned record does not count;
+with it off, a present signature is still verified, so a tampered record never
+counts. A human approving interactively passes `--sign-key` to
+`mark-implementation-reviewed`, with a `public_key` on the `human` entry.
+
+The boundary is the key: run each reviewer with a private key the executor's
+process does not hold. Still self-attested: the session flags inside a signed
+record (the key proves who signed, not how they worked) and presence files,
+which stay advisory.
 
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:
 

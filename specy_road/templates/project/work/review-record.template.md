@@ -4,6 +4,8 @@
 #   specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file <this file>
 # One `acceptance` entry per A# in the packet's brief. Approve may not list a
 # failing item or required_changes; use block. Quote SHAs.
+# With policy.signed_reviews, add --sign-key <path to your private key>; the
+# roster entry for your --model must carry the matching public_key.
 node_id: M1.1
 model: your-roster-id
 date: 2026-01-31
