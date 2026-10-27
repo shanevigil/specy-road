@@ -1,26 +1,36 @@
 # Release runbook (canonical)
 
+## Agent quickstart
+
+**Use this doc when:** the user asks to publish a specy-road RC or final release, or a release workflow failed and you need the recovery step.
+**Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-and-usage.md`](install-and-usage.md#install-a-release-candidate-testpypi)).
+
+**Must know without reading on:**
+- The user chooses the version (step 2.2); never bump, tag or name a release branch without the exact number in this conversation.
+- Two flows: RC `vX.Y.Z-rcN` → TestPyPI, final `vX.Y.Z` → PyPI; `pyproject.toml` must read `X.Y.ZrcN` / `X.Y.Z` (PEP 440, no dash) and match the tag — `python scripts/check_release_version.py vX.Y.Z[-rcN]` must print `ok:`.
+- Branch `chore/release-vX-Y-Z[-rcN]`, PR to `main` titled `release: vX.Y.Z[-rcN]` (leading `v` mandatory), CHANGELOG heading `## [vX.Y.Z[-rcN]] - YYYY-MM-DD`.
+- The user owns the tag re-push when `RELEASE_TAG_TOKEN` is unset (footgun ④), the `pypi` environment approval on finals (footgun ⑨), and the live-on-index confirmation; the agent prints the commands and waits.
+- Back-merge `main → dev` is mandatory for finals.
+
+**Read further for:**
+- RC or final, and the verbatim strings CI checks → "0. Decision tree (1 minute)", "1. Quick-reference command catalogue"
+- who does which step → "2. Agent vs human matrix"
+- the pre-release checks branch, harness review pass, three-app testing → "3. Mandatory pre-release checks branch (before `chore/release-*`)"
+- step by step → "A. RC release to TestPyPI", "B. Final release to PyPI"
+- a failed job, and the README cleanup after a final → "6. Recovery: \"If something goes wrong\"", "7. After the release: README cleanup (final only)"
+- the local gate commands and what else to keep in sync → "8. Pre-release verification gate (always run, locally and in CI)", "9. Where this runbook lives in the docs graph"
+
+**Related:** [`contributor-guide.md`](contributor-guide.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`install-and-usage.md`](install-and-usage.md), [`../AGENTS.md`](../AGENTS.md).
+
 > **Audience:** maintainers and the autonomous coding agent. This is the
 > single source of truth for cutting any `specy-road` release. The
 > [contributor guide](contributor-guide.md) defers here for release
 > mechanics; the AI rules under [`.cursor/rules/`](../.cursor/rules/)
 > cite this doc.
 
-This file describes the **two release flows** end-to-end:
-
-- **A. RC (release candidate) → TestPyPI.** Tag form `vX.Y.Z-rcN`,
-  routed by [`release-publish.yml`](../.github/workflows/release-publish.yml)
-  to **TestPyPI**.
-- **B. Final release → PyPI.** Tag form `vX.Y.Z` (no suffix), routed
-  to **PyPI**.
-
 Both flows share the same step shape; the differences are pulled out
-explicitly in each section.
-
-The "what blew up last time" footguns are baked in as inline
-**recovery callouts**, so the next operator does not re-discover them.
-
----
+explicitly in each section. The "what blew up last time" footguns are baked
+in as inline **recovery callouts**, so the next operator does not re-discover them.
 
 ## 0. Decision tree (1 minute)
 
@@ -39,8 +49,6 @@ TestPyPI vs PyPI from `vX.Y.Z-…` vs `vX.Y.Z`. **The version inside
 `pyproject.toml` MUST match the tag** (the `check_release_version.py`
 gate refuses the publish otherwise — this is a feature; do not
 weaken it).
-
----
 
 ## 1. Quick-reference command catalogue
 
@@ -69,8 +77,6 @@ The branch-name pattern `chore/...` is also load-bearing: it
 satisfies the **[issue-link exemption](../.github/workflows/pr-conventions.yml)**
 in `pr-conventions.yml`, so the release PR does not need a `Refs #N`
 line in the body.
-
----
 
 ## 2. Agent vs human matrix
 
@@ -118,8 +124,6 @@ not a mechanical gate.
 | 2.16 | Back-merge `main → dev` | agent | mirror of `7236352` from rc4. |
 | 2.17 | Cleanup: delete the `chore/release-...` branch + any `cursor/...` session aliases | agent | leave only `main`, `dev`, and active feature branches. |
 | 2.18 | **Confirm the release is live** (final: PyPI page; RC: TestPyPI page) | **user** | the agent reports the URLs and waits for the user's "looks good" before signing off. |
-
----
 
 ## 3. Mandatory pre-release checks branch (before `chore/release-*`)
 
@@ -297,8 +301,6 @@ selected node IDs, GUI screenshots or recordings when GUI behavior was
 changed, and the final pass/fail result for each app. Remove disposable
 apps after the release unless the user explicitly asks to keep them for
 inspection.
-
----
 
 ## A. RC release to TestPyPI
 
@@ -504,8 +506,6 @@ git merge --no-ff origin/main -m "chore: back-merge main (v0.2.0-rc1 release com
 git push origin dev
 ```
 
----
-
 ## B. Final release to PyPI
 
 Same shape as Section A. Differences:
@@ -604,8 +604,6 @@ git push origin dev
 Then delete the `chore/release-v0-2-0` branch and any `cursor/*`
 session aliases. The remote should be back to `main` + `dev` +
 active feature branches only.
-
----
 
 ## 6. Recovery: "If something goes wrong"
 
@@ -802,8 +800,6 @@ done
 The agent does this automatically at the end of every release per the
 matrix step 2.17.
 
----
-
 ## 7. After the release: README cleanup (final only)
 
 For a final release, `release-publish.yml`'s `followup-readme-cleanup`
@@ -826,8 +822,6 @@ opens it manually using the step-summary command.
 > branch-protection rule rejects direct pushes, and a dedicated
 > release-marker PR for a doc-only line is overkill — wait for the
 > next legitimate release to carry the change forward.
-
----
 
 ## 8. Pre-release verification gate (always run, locally and in CI)
 
@@ -855,8 +849,6 @@ All eight commands must exit 0. The PM Gantt build is reproducible
 byte-for-byte against `specy_road/pm_gantt_static/`; if `git status`
 shows changes after the build, **commit them** as part of the release
 PR (the bundle ships inside the wheel).
-
----
 
 ## 9. Where this runbook lives in the docs graph
 

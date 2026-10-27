@@ -1,9 +1,26 @@
 # specy-road contributor guide
 
-This guide is for **toolkit contributors** — people who hack on the
-`specy-road` source itself. End users (consumers of the toolkit in their
-own application repos) should read
-[install-and-usage.md](install-and-usage.md) instead.
+## Agent quickstart
+
+**Use this doc when:** you change the `specy-road` toolkit itself — package, tests, workflows or the PM Gantt SPA — and need the contribution rules and local gate commands.
+**Not for:** using specy-road in an application repo ([`install-and-usage.md`](install-and-usage.md)) or cutting a release ([`release-runbook.md`](release-runbook.md)).
+
+**Must know without reading on:**
+- Feature work targets `dev`; `main` takes release-marker PRs only. Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
+- Local CI parity before pushing: `pytest -q`, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`.
+- After React/TypeScript changes, from `gui/pm-gantt/`: `npm ci && npm run lint && npm test && npm run build`.
+- Never run `specy-road init project` with no path in this repo; scaffold into `/tmp/specy-consumer-sandbox` or `playground/`.
+- Malicious code (supply-chain tampering, exfiltration, weakening the gates) means closure, a ban and a report; the maintainer may close any PR.
+
+**Read further for:**
+- issue links, exemptions, the malicious-code policy → "Project stewardship"
+- branch names, release pointers, Trusted Publisher setup, review rounds → "Branching, tagging, and release process"
+- the exact gate commands → "Local CI parity"
+- building the SPA, updating a clone, hooks, IDE stubs → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "IDE command stubs (`specyrd`)"
+- pip and npm audits → "Supply-chain & dependency audits"
+- a safe scaffold target and further reading → "Trying `init project` safely", "Pointers to deeper docs"
+
+**Related:** [`release-runbook.md`](release-runbook.md), [`supply-chain-security.md`](supply-chain-security.md), [`architecture.md`](architecture.md), [`pm-gui.md`](pm-gui.md).
 
 > The link from README to this guide will only be added **post-release**
 > (per F-001 / F-002). Until then, open this file directly from the

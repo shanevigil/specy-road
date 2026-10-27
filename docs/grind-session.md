@@ -1,16 +1,31 @@
 # Agent-driven loop: `specy-road grind-session`
 
+## Agent quickstart
+
+**Use this doc when:** you run or supervise `specy-road grind-session` — planning waves for sub-agents, driving the loop from a terminal or an IDE chat, or reading its exit codes and events.
+**Not for:** the single-leaf primitives it shells out to ([`dev-workflow.md`](dev-workflow.md)) or the review gate itself ([`orchestration.md`](orchestration.md)).
+
+**Must know without reading on:**
+- It orchestrates approved commands only: it never implements code and never edits `roadmap/registry.yaml`; every cycle shells out to `specy-road do-next-available-task` and `specy-road finish-this-task`.
+- Run it with `--on-complete merge` (or `auto`); it exits 1 when the effective mode is `pr`. `--plan` is read-only and always allowed.
+- Plan first: `specy-road grind-session --plan --json`; dispatch `parallel_batches[0]` only, and never a node under `blocked` or `gated`.
+- From an IDE chat use step mode — `specy-road grind-session --step pickup --json --on-complete merge`, implement, `specy-road grind-session --step finish --json`; hook mode (`--implement-mode hook --implement-cmd '…'`) needs a real terminal.
+- Exit `3` is a dependency or gate block that needs a human; exit `6` means this worktree already holds a claim (`--resume-in-flight`).
+
+**Read further for:**
+- which mode fits your situation → "When to use it"
+- `ready`/`blocked`/`waves`, plan versus pickup, the JSON shape → "Planner first: `--plan`"
+- the cycle, in-flight claims, `why-blocked`, implement modes, step mode, Claude usage limits, the pre-finish hook, cleanup, hook-run requirements → "The loop"
+- flags, codes and JSONL events → "Stop conditions", "Exit codes", "JSON events (`--json`)"
+- yamllint and milestone rollup branches → "Registry / pre-commit (yamllint) compatibility", "Relationship to milestone sessions"
+
+**Related:** [`dev-workflow.md`](dev-workflow.md), [`orchestration.md`](orchestration.md), [`orchestration-workers.md`](orchestration-workers.md).
+
 `grind-session` orchestrates the **task loop** over many leaves so a human or a
 coding agent does not have to re-invoke pickup/finish by hand. It also exposes a
 **read-only planner** (`--plan`) that tells an orchestrator what is ready, what
 is blocked, and how work parallelizes — so sub-agent orchestration can dispatch
 independent work safely and skip waves whose dependencies are not met yet.
-
-> **It orchestrates approved commands — it does not implement code and never
-> edits `roadmap/registry.yaml` itself.** Every cycle shells out to
-> `specy-road do-next-available-task` and `specy-road finish-this-task`. Use the
-> approved commands; do not hand-edit the registry. See
-> [dev-workflow.md](dev-workflow.md) for the underlying primitives.
 
 ## When to use it
 
@@ -32,8 +47,6 @@ mode before the first pickup and exits 1 if it is `pr` — including the case
 where nothing declared a mode at all and `pr` came from the built-in default.
 Set it once in `roadmap/git-workflow.yaml` (`on_complete: merge`) or pass
 `--on-complete merge` per run. `--plan` is read-only and always allowed.
-
----
 
 ## Planner first: `--plan`
 
@@ -145,8 +158,6 @@ dispatched until `M10.5` completes.
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
-
----
 
 ## The loop
 
@@ -400,8 +411,6 @@ specy-road grind-session \
 specy-road grind-session --max-leaves 1 --on-complete merge
 ```
 
----
-
 ## Stop conditions
 
 | Flag | Stops when |
@@ -448,8 +457,6 @@ parseable as JSONL. Redirect stderr to a file if you want to keep it.
 {"event":"cleanup","ts":"2026-09-06T12:31:22Z","integration_branch":"dev","remote":"origin","checked_out":true,"deleted_local":["feature/rm-vault-mcp-secrets"],"deleted_remote":["feature/rm-vault-mcp-secrets"],"failed":[],"warnings":[],"hint":null}
 ```
 
----
-
 ## Registry / pre-commit (yamllint) compatibility
 
 Unattended pickup commits `roadmap/registry.yaml` on the integration branch.
@@ -466,8 +473,6 @@ rules:
 
 If you add other YAML to the same hook, keep `roadmap/registry.yaml` writes going
 through `specy-road` (do not hand-edit) so the indentation stays consistent.
-
----
 
 ## Relationship to milestone sessions
 
