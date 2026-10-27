@@ -161,8 +161,7 @@ A READY naming another node or branch is misfiled: listed as invalid, never read
 
 `specy-road review-packet <NODE_ID>` assembles:
 
-1. the brief, including the node's goal and its acceptance criteria numbered
-   `A1..An`;
+1. the brief, with the node's goal and acceptance criteria numbered `A1..An`;
 2. the implementation summary;
 3. every changed path since the merge base, both sides of a rename or copy,
    with paths outside the touch zones flagged (roadmap bookkeeping is exempt);
