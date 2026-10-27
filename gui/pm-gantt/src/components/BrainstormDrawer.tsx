@@ -228,6 +228,14 @@ export function BrainstormDrawer({
 
   const triage = async (ideaId: string, status: string) => {
     if (!session) return;
+    // A rejection without its reason is worth less than the rejection: the
+    // server refuses it, as the CLI's `reject --reason` does.
+    let reason: string | undefined;
+    if (status === "rejected" || status === "parked") {
+      const answer = window.prompt(`Why ${status === "rejected" ? "reject" : "park"} this idea?`);
+      if (answer === null || !answer.trim()) return;
+      reason = answer.trim();
+    }
     setBusy(true);
     try {
       setSession(
@@ -235,6 +243,7 @@ export function BrainstormDrawer({
           slug: session.slug,
           idea_id: ideaId,
           status,
+          reason,
         }),
       );
     } catch (e: unknown) {

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report
+from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
 from specy_road.agent_ignores import apply_and_report
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
@@ -18,6 +18,7 @@ from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refres
     _read_template,
     install_stubs as _append_command_stub_installs,
     managed_paths,
+    owned_paths,
 )
 from specy_road.runtime_paths import (
     discover_project_root,
@@ -317,7 +318,8 @@ def run_init(
             repo_root,
             manifest,
             agent=agent,
-            managed=managed_paths(rel_dest, files_to_install, agent=agent),
+            managed=owned_paths(managed_paths(rel_dest, files_to_install, agent=agent), skipped,
+                                {p for paths in (manifest.get("agents") or {}).values() for p in paths}),
             role=role,
             prefix=prefix,
         )

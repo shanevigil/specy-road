@@ -306,9 +306,8 @@ specy-road grind-session --on-complete merge --implement-mode hook \
 ```
 
 `review record` refuses notes whose verdict disagrees with `--verdict`, so a
-reviewer that blocks fails the hook and stops the loop (exit `4`). Alternatively, set
-`require_implementation_review_before_finish: false` for a loop that should not
-gate on review.
+reviewer that blocks fails the hook and stops the loop (exit `4`); or set
+`require_implementation_review_before_finish: false` for a loop that should not gate.
 
 From an IDE agent, use **step mode** instead
 ([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)).
@@ -342,23 +341,24 @@ specy-road session guard --format claude-code     # the same, reading a harness 
 
 `session guard` is the body of a harness hook: it denies a command that can
 move or discard another session's work — `stash`, `reset --hard`, branch
-switching, `checkout -- …`, `restore .`, `clean -f`, `rebase`,
-`commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a` — and only while
-another session is live (`--always` to deny regardless). Each `git` segment of
-a chained command is judged on its own. Set `SPECY_ROAD_AGENT_ID` in the agent's
-environment so the guard knows which record is the caller's; without it every
-live session counts as someone else. The adapters (`--format`) know each
-harness's stdin shape and exit codes; see `docs/optional-ai-tooling-patterns.md`
-for wiring them.
+switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rebase`,
+`commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`
+(`commit --only <paths>`) — only while another session is live (`--always`
+to deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`,
+`eval` and aliases too; a shell function, variable command name or
+interpreter one-liner that mentions git is refused, not waved through.
+Working-tree commands count only sessions in the caller's worktree (`git -C`,
+`stash`, `rebase`, force-push count every session). The adapters (`--format`)
+know each harness's stdin shape; `docs/optional-ai-tooling-patterns.md` wires them.
 
-Records are `work/.sessions/<agent-id>.yaml` (gitignored, always in the main
-worktree): branch, worktree, paths, and expiry. The id is
-`$SPECY_ROAD_AGENT_ID`, else `<user>-<pid>`; pass `--agent` to name it. A
-crashed session's record ages out; nothing is locked. `handoff status` lists
-live sessions first, and `do-next-available-task` warns when a live session's
-paths overlap the leaf's touch zones. `session check` is the pre-commit guard:
-wire it into your hook, and a commit that would land on another live
-session's paths is refused until you coordinate or the record expires.
+Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree):
+branch, worktree, paths, expiry. The id is `$SPECY_ROAD_AGENT_ID`, else
+`<user>-s<POSIX session id>`, shared by every command from one terminal or
+harness process, so `start`, `touch`, `end` and the hook name one record;
+`--agent` names it; `touch` keeps the paths. A crashed record ages out.
+`handoff status` lists live sessions first, `do-next-available-task` warns on
+touch-zone overlap, and `session check` refuses a commit on another live
+session's paths.
 
 ## Working in one shared checkout
 

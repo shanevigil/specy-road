@@ -153,6 +153,7 @@ class BrainstormTriageBody(BaseModel):
         default=None,
         pattern="^(strong|consider|park)$",
     )
+    reason: str | None = None   # required for rejected / parked, as the CLI requires --reason
 
 
 class BrainstormPromoteBody(BaseModel):

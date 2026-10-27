@@ -47,8 +47,12 @@ def _cmdline(pid: int) -> str | None:
     return r.stdout.strip() if r.returncode == 0 else None
 
 
-def pid_alive(pid: int | None) -> bool:
-    """Whether ``pid`` is a live **wrapper**: a reused pid must not pass for one."""
+def pid_alive(pid: int | None, worker_id: str | None = None) -> bool:
+    """Whether ``pid`` is a live **wrapper** (for ``worker_id`` when given): a reused pid must not pass for one.
+
+    When ``ps`` cannot say, liveness alone answers; :func:`pid_verified` is
+    the stricter form a destructive operation needs.
+    """
     if not pid:
         return False
     try:
@@ -58,7 +62,19 @@ def pid_alive(pid: int | None) -> bool:
     except PermissionError:
         return True
     cmd = _cmdline(pid)
-    return cmd is None or "worker_runner" in cmd
+    return cmd is None or _is_wrapper(cmd, worker_id)
+
+
+def _is_wrapper(cmd: str, worker_id: str | None) -> bool:
+    return "worker_runner" in cmd and (worker_id is None or f" {worker_id} " in f" {cmd} ")
+
+
+def pid_verified(pid: int | None, worker_id: str) -> bool:
+    """``pid`` is live **and** its command line names this worker's wrapper; unknown is ``False``."""
+    if not pid_alive(pid):
+        return False
+    cmd = _cmdline(pid)
+    return bool(cmd) and _is_wrapper(cmd, worker_id)
 
 
 def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool = False) -> int:
@@ -117,8 +133,11 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             set_state(repo_root, rec, "failed", pid=None)
             return 127
         if launch.stdin is not None and proc.stdin:
-            proc.stdin.write(launch.stdin)
-            proc.stdin.close()
+            try:
+                proc.stdin.write(launch.stdin)
+                proc.stdin.close()
+            except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
+                raw.write(f"[wrapper] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
         for line in proc.stdout:
             raw.write(line)
@@ -146,6 +165,8 @@ def _fresh_ready(repo_root: Path, rec: WorkerRecord, since: float) -> bool:
     ready = latest_ready(repo_root, rec.node_id)
     if ready is None or str(ready.data.get("node_id")) != rec.node_id:
         return False
+    if rec.branch and str(ready.data.get("branch")) != rec.branch:
+        return False   # another attempt's branch, not this worker's
     return ready.path.stat().st_mtime >= since - 1
 
 

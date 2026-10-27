@@ -41,7 +41,10 @@ from specy_road.runtime_paths import specy_road_package_dir
 
 WORKERS_DIRNAME = ".workers"
 HARNESSES = ("claude-code", "codex", "cursor", "generic")
-TERMINAL_STATES = frozenset({"completed", "failed", "terminated"})
+#: A worker in one of these is over for good. ``completed`` is not: it still
+#: owns its leaf and its slot (a review ``block`` goes back to it) until
+#: ``terminate`` closes it.
+TERMINAL_STATES = frozenset({"failed", "terminated"})
 LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
@@ -376,6 +379,6 @@ def record_intervention(repo_root: Path, rec: WorkerRecord, summary: str, *, sou
 
 
 # The operations outbox lives in worker_outbox; re-exported here for callers.
-from specy_road.worker_outbox import begin_op, complete_op  # noqa: E402
 
 __all__ = [n for n in dir() if not n.startswith("_")]
+from specy_road.worker_outbox import begin_op, complete_op  # noqa: E402,F401 — re-exported for callers

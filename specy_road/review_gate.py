@@ -46,7 +46,7 @@ from specy_road.orchestration_config import (
     roster_entry,
     substitute_for,
 )
-from specy_road.review_signing import SigningError, sign, verify
+from specy_road.review_signing import SigningError, sign, verify  # noqa: F401 — SigningError re-exported
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 
@@ -276,8 +276,11 @@ def human_approval_completes(repo_root: Path, gate: GateResult, sign_key: Path |
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN):
         return False
-    if config["policy"].get("signed_reviews") and (sign_key is None or not (roster_entry(config, HUMAN) or {}).get("public_key")):
+    has_key = bool((roster_entry(config, HUMAN) or {}).get("public_key"))
+    if config["policy"].get("signed_reviews") and (sign_key is None or not has_key):
         return False
+    if sign_key is not None and not has_key:
+        return False   # a signature the roster cannot verify would be rejected by the gate
     others = [a for a in gate.approvals if a.model != HUMAN]
     if gate.distinct_families:
         family = family_of(config, HUMAN) or HUMAN

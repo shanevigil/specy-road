@@ -141,7 +141,10 @@ def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
     """The roster entry's profile: its ``profile`` path, else a file named after its ``id``."""
     rel = entry.get("profile")
     if rel:
-        return load_profile(repo_root / str(rel))
+        path = (repo_root / str(rel)).resolve()
+        if not path.is_relative_to(Path(repo_root).resolve()):
+            return Profile(repo_root / str(rel), {}, errors=[f"profile path escapes the repository: {rel}"])
+        return load_profile(path)
     for p in list_profiles(repo_root):
         if p.api_id == entry.get("id") or p.path.stem == entry.get("id"):
             return p

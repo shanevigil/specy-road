@@ -60,6 +60,8 @@ from specy_road.bundled_scripts import session_cli
     ("git -c alias.s=stash s", "stash stack is shared"),
     ("git -c alias.rh='reset --hard' rh", "discards other sessions"),
     ("git -c alias.x='!git stash' x", "stash stack is shared"),
+    ("git commit -m 'x'", "commits whatever another session staged"),
+    ("git commit -m 'a; b' --no-verify", "commits whatever another session staged"),
     ("git -c alias.x='!cd /tmp && git reset --hard' x", "discards other sessions"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
@@ -69,7 +71,7 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
 
 @pytest.mark.parametrize("command", [
     "git add src/a.py docs/x.md",
-    "git commit -m 'x'",
+    "git commit -m 'x' src/a.py",
     "git commit --only src/a.py -m x",
     "git push origin feature/rm-thing",
     "git worktree add ../wt -b feature/x main",

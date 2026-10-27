@@ -20,7 +20,9 @@ vendor CLIs installed and signed in, and is **not** claimed by any test.
   Code ≥ 2.1.302), `codex` (≥ 0.164), `agent` (Cursor CLI, 2026.10+). Note
   the versions in the evidence file; the adapters were verified against the
   2026-10-27 docs and flags drift.
-- OpenSSH ≥ 8.0 (`ssh-keygen -Y`), `gh` if `on_complete: pr` is exercised.
+- OpenSSH ≥ 8.1 (`ssh-keygen -Y`; the docs state 8.1 as the floor, and the
+  signing tests have only run on 10.x, so run S6 on the oldest OpenSSH the
+  team uses), `gh` if `on_complete: pr` is exercised.
 - Three disposable consumer apps as in release-runbook §3.3 (ToDo,
   Calculator, Notes), each a git repo with a bare local remote; the Notes
   app carries the moderate roadmap (phases, gates, dependencies, planning

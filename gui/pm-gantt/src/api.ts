@@ -742,6 +742,8 @@ export async function postBrainstormTriage(payload: {
   title?: string;
   rationale?: string;
   recommendation?: string;
+  /** Required by the server for `rejected` and `parked`, as the CLI requires `--reason`. */
+  reason?: string;
 }): Promise<BrainstormSession> {
   const r = await fetch(`${API}/brainstorm/triage`, {
     method: "POST",

@@ -37,7 +37,9 @@ def _agent(ns: argparse.Namespace) -> str:
 def cmd_start(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     try:
-        s = start_session(root, _agent(ns), paths=ns.path, note=ns.note or "",
+        # `touch` without --path renews and keeps the paths; `start` without them records none.
+        paths = ns.path if (ns.path or ns.session_cmd != "touch") else None
+        s = start_session(root, _agent(ns), paths=paths, note=ns.note or "",
                           ttl_hours=ns.ttl_hours, worktree=Path.cwd())
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)

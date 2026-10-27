@@ -124,7 +124,7 @@ and it avoids the anchoring the ChatGPT run itself warns about.
 | Triage | accept/reject/revise, flat list | `list --by cluster`, `--reason` on reject, `revisit_when` on park |
 | Promote | node + sheet seeded from rationale/evidence | carry verified evidence and "alternatives considered" |
 | Skill | `specyrd-brainstorm` SKILL.md (shared `.agents/skills`, symlinked for Claude Code) | narrow description; `references/` files |
-| GUI | same prompt text, configured LLM + search provider | same data model; programmatic extras later |
+| GUI | same prompt text, configured LLM + search provider | same data model; the session payload carries the v2 session fields and a reject needs a reason, but the converge pass still captures nothing structured (clusters, overlap, critics, sources from the chat are not persisted) — a known gap, the CLI is the full path |
 
 ## Decisions
 

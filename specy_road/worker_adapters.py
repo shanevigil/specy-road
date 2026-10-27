@@ -73,18 +73,22 @@ def _text(prompt_path: Path) -> str:
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
 
 
-_PLACEHOLDER = re.compile(r'"<prompt>"|\'<prompt>\'|<prompt>|\{prompt\}|\{session\}')
+#: A placeholder must be a whole shell word (optionally quoted as one): inside
+#: a larger word (``"prefix <prompt>"``, ``--prompt=<prompt>``) the quoting
+#: ``shlex.quote`` adds lands inside still-open quotes, where ``$(…)`` runs.
+_PLACEHOLDER = re.compile(r'(?<!\S)(["\']?)(<prompt>|\{prompt\}|\{session\})\1(?!\S)')
+_ANY_PROMPT = re.compile(r"<prompt>|\{prompt\}")
 
 
 def substitute_prompt(cli: str, prompt_path: Path, session: str | None = None) -> str:
     """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text.
 
-    One pass over the template: substituted text is never rescanned, so a
-    prompt that itself contains ``<prompt>`` or ``{session}`` cannot close
-    the quoting and run as shell.
+    One pass over the template, whole words only: substituted text is never
+    rescanned, and a placeholder embedded in a larger word is refused by
+    :func:`placeholder_problem` before this runs.
     """
     def repl(m: re.Match[str]) -> str:
-        tok = m.group(0)
+        tok = m.group(2)
         if tok == "{session}":
             return shlex.quote(session or "")
         if tok == "{prompt}":
@@ -93,8 +97,22 @@ def substitute_prompt(cli: str, prompt_path: Path, session: str | None = None) -
     return _PLACEHOLDER.sub(repl, cli)
 
 
+def placeholder_problem(cli: str | None) -> str | None:
+    """Why ``cli`` cannot be run: no prompt placeholder, or one that is not a whole word."""
+    if not cli or not _ANY_PROMPT.search(cli):
+        return "no {prompt} (the prompt file path) or <prompt> (the prompt text) placeholder"
+    found = {m.group(2) for m in _PLACEHOLDER.finditer(cli)}
+    if not found & {"<prompt>", "{prompt}"}:
+        return ('the prompt placeholder must be a whole argument ("<prompt>" or {prompt}), '
+                "not part of a larger word")
+    stray = [m.group(0) for m in _ANY_PROMPT.finditer(cli)] 
+    if len(stray) != sum(1 for m in _PLACEHOLDER.finditer(cli) if m.group(2) != "{session}"):
+        return "every prompt placeholder must be a whole argument, not part of a larger word"
+    return None
+
+
 def has_prompt_placeholder(cli: str | None) -> bool:
-    return bool(cli) and ("{prompt}" in cli or "<prompt>" in cli)
+    return placeholder_problem(cli) is None
 
 
 def _snip(s: str, n: int = 200) -> str:
@@ -119,9 +137,9 @@ class Adapter:
                         notes="runs the roster/profile cli; output lines become events, nothing else is known")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
-        if not has_prompt_placeholder(cli):
-            raise Unsupported("generic harness needs a roster channels.cli or profile access.cli with "
-                              "{prompt} (the prompt file path) or <prompt> (the prompt text)")
+        why = placeholder_problem(cli)
+        if why:
+            raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
         return Launch(["sh", "-c", substitute_prompt(cli, prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:

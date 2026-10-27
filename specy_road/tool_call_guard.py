@@ -42,7 +42,15 @@ _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 #: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
 _WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "eval"}
 #: Reasons about the working tree only; other worktrees' sessions are not at risk.
-_TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git commit -a", "git add", "git reset")
+_TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git commit", "git add", "git reset")
+#: ``git -C <dir>`` / ``--work-tree`` act on another tree: never scope those to the caller's.
+_NAMES_A_TREE = re.compile(r"(^|\s)(-C|--work-tree)(=|\s)")
+_GIT_WORD = re.compile(r"\bgit\b")
+_FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
+_INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
+#: ``git commit`` flags that take a value, so the value is not mistaken for a pathspec.
+_COMMIT_VALUE_FLAGS = {"-m", "-F", "-C", "-c", "-t", "--message", "--file", "--author", "--date",
+                       "--reuse-message", "--reedit-message", "--template", "--trailer", "--fixup", "--squash"}
 _SUBSTITUTION = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
 _SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 
@@ -166,6 +174,9 @@ def classify_segment(segment: str) -> str | None:
         inner = classify(m.group(1) or m.group(2) or "")
         if inner:
             return inner
+    opaque = _opaque(segment)
+    if opaque:
+        return opaque
     try:
         tokens = shlex.split(segment, comments=True)
     except ValueError:
@@ -202,12 +213,51 @@ def classify_segment(segment: str) -> str | None:
         return "git commit --amend: rewrites a commit another session may already build on"
     if sub == "commit" and ("a" in flags or "--all" in args):
         return "git commit -a: sweeps every session's tracked changes into your commit; stage by explicit path"
+    if sub == "commit" and not _commit_pathspec(args) and "--only" not in args:
+        return "git commit without paths: commits whatever another session staged in the shared index; `git commit --only <paths>`"
     if sub == "add" and ("A" in flags or "u" in flags or "--all" in args or "--update" in args
                          or any(p in (".", ":/", "-A") for p in positional)):
         return "git add -A/-u/.: stages other sessions' files; `git add <paths>` only"
     if sub == "push" and ("f" in flags or any(a.startswith("--force") for a in args) or any(p.startswith("+") for p in positional)):
         return "git push --force: rewrites the remote branch other sessions pull from"
     return None
+
+
+def _opaque(segment: str) -> str | None:
+    """Shapes a token parser cannot follow: refused when they mention git, rather than waved through.
+
+    A shell function whose body mentions git, a command name that comes from
+    a variable, and an interpreter one-liner that mentions git all run git
+    where the guard cannot see the arguments.
+    """
+    if _FUNC_DEF.search(segment) and _GIT_WORD.search(segment):
+        return "defines a shell function and mentions git; the guard cannot follow it — run the git command plainly"
+    try:
+        head = _unwrap(shlex.split(segment, comments=True))
+    except ValueError:
+        return None
+    if head and head[0].startswith("$"):
+        return "the command name comes from a variable; the guard cannot see it — run the command plainly"
+    if head and head[0].rsplit("/", 1)[-1].rstrip("0123456789.") in _INTERPRETERS and _GIT_WORD.search(segment) \
+            and any(a in ("-c", "-e") for a in head[1:3]):
+        return f"{head[0]} one-liner mentions git; the guard cannot follow it — run the git command plainly"
+    return None
+
+
+def _commit_pathspec(args: list[str]) -> list[str]:
+    """The paths a ``git commit`` names, skipping the values of ``-m`` and friends."""
+    out, i = [], 0
+    while i < len(args):
+        a = args[i]
+        if a == "--":
+            return [*out, *args[i + 1:]]
+        if a in _COMMIT_VALUE_FLAGS:
+            i += 2
+            continue
+        if not a.startswith("-"):
+            out.append(a)
+        i += 1
+    return out
 
 
 def classify(command: str) -> str | None:
@@ -245,7 +295,8 @@ def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = F
     reason = classify(command)
     if not reason:
         return Verdict(ALLOW, "", command)
-    others = shared_with_others(repo_root, agent, tree_only=reason.startswith(_TREE_SCOPED))
+    tree_only = reason.startswith(_TREE_SCOPED) and not _NAMES_A_TREE.search(command)
+    others = shared_with_others(repo_root, agent, tree_only=tree_only)
     if not others and not always:
         return Verdict(ALLOW, f"(would deny with another live session: {reason})", command)
     who = f"live sessions: {', '.join(others)}" if others else "guard runs with --always"
@@ -253,129 +304,7 @@ def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = F
                          "See the shared-checkout rules in AGENTS.md; `specy-road session list` shows who is here.", command)
 
 
-# --- harness adapters ---------------------------------------------------------
-
-@dataclass(frozen=True)
-class Adapter:
-    """One harness's hook protocol, as three answers.
-
-    ``extract`` finds the command in the stdin payload (``None`` = nothing to
-    judge). ``on_allow(note)`` and ``on_deny(reason)`` give ``(stdout, stderr,
-    exit)`` the way that harness reads them; ``note`` is the allow-with-warning
-    text, or ``None`` for a plain allow. ``config`` is the project-level
-    snippet; ``notes`` the caveats. Every fact is cited inline, and an
-    adapter ships only for a verified contract. An internal error is answered
-    with ``on_deny``: the guard never fails open quietly.
-    """
-
-    name: str
-    extract: Any
-    on_allow: Any
-    on_deny: Any
-    config: str
-    notes: str
-
-
-def _bash_command(payload: dict[str, Any]) -> str | None:
-    """Claude Code and Codex ``PreToolUse``: ``tool_input.command`` of the Bash tool."""
-    if payload.get("tool_name") != "Bash":
-        return None
-    cmd = (payload.get("tool_input") or {}).get("command")
-    return str(cmd) if cmd else None
-
-
-def _pre_tool_use(decision: str, **fields: str) -> str:
-    return json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": decision, **fields}})
-
-
-# Verified against https://code.claude.com/docs/en/hooks (2026-10). Exit 2
-# blocks and feeds stderr to the model; exit 0 applies JSON on stdout, where
-# `additionalContext` reaches the model beside the tool result; any other
-# exit code lets the call proceed. Project hooks live in .claude/settings.json.
-_CLAUDE_CODE = Adapter(
-    "claude-code", _bash_command,
-    lambda note: (_pre_tool_use("allow", additionalContext=note) if note else None, None, 0),
-    lambda reason: (None, f"session guard: {reason}", 2),
-    """{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {"type": "command", "command": "specy-road session guard --format claude-code", "timeout": 30}
-        ]
-      }
-    ]
-  }
-}""",
-    "Put the snippet in .claude/settings.json (committed) or .claude/settings.local.json. Hooks run in "
-    "`claude -p`; `claude --bare` skips every hook; whether bypassPermissions runs PreToolUse hooks is "
-    "not stated in the docs. Exit codes other than 0 and 2 fail open, so an internal error exits 2.",
-)
-
-# Verified against https://learn.chatgpt.com/docs/hooks (2026-10): the same
-# stdin shape as Claude Code; exit 2 + stderr denies; exit 0 with no output is
-# the documented allow, and keys Codex does not support mark the hook failed,
-# so an allow stays silent. Hook definitions must be trusted (`/hooks`) or run
-# with --dangerously-bypass-hook-trust. Non-2 non-zero exits: unverified.
-_CODEX = Adapter(
-    "codex", _bash_command,
-    lambda note: (None, None, 0),
-    lambda reason: (None, f"session guard: {reason}", 2),
-    """{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {"type": "command", "command": "specy-road session guard --format codex", "timeout": 30,
-           "statusMessage": "specy-road shared-checkout guard"}
-        ]
-      }
-    ]
-  }
-}""",
-    "Put the snippet in .codex/hooks.json (or [hooks] in .codex/config.toml); project hooks load only "
-    "when the project's .codex/ layer is trusted, and each hook definition must be trusted in `/hooks` "
-    "or run with --dangerously-bypass-hook-trust. Hooks fire under `codex exec`; the IDE extension is "
-    "unverified. Allows are silent by design: Codex marks a hook failed on keys it does not support.",
-)
-
-# Verified against https://cursor.com/docs/hooks (2026-10): stdin carries the
-# command at top level; the answer is JSON on stdout with snake_case keys;
-# exit 2 also denies. Empty output on exit 0 counts as a hook failure, which
-# fails OPEN unless failClosed is set, so every answer is explicit and the
-# snippet sets failClosed: true. The command runs from the project root.
-_CURSOR = Adapter(
-    "cursor", lambda p: (str(p.get("command") or "") or None),
-    lambda note: (json.dumps({"permission": "allow", **({"agent_message": note} if note else {})}), None, 0),
-    lambda reason: (json.dumps({"permission": "deny", "agent_message": reason,
-                                "user_message": "specy-road: refused in a shared checkout"}), None, 0),
-    """{
-  "version": 1,
-  "hooks": {
-    "beforeShellExecution": [
-      {"command": "specy-road session guard --format cursor", "timeout": 30, "failClosed": true, "matcher": ""}
-    ]
-  }
-}""",
-    "Put the snippet in .cursor/hooks.json. failClosed: true makes a crash or timeout block instead of "
-    "fail open. Cursor's CLI (`agent`) runs beforeShellExecution; whether it fires in `agent -p` and "
-    "under auto-run is unverified (community reports say deny holds, ask is ignored).",
-)
-
-ADAPTERS: dict[str, Adapter] = {
-    "generic": Adapter(
-        "generic", lambda p: (str(p.get("command") or "") or None),
-        lambda note: (None, f"session guard: allow {note}" if note else None, 0),
-        lambda reason: (None, f"session guard: {reason}", 2),
-        '{"command": "<the shell command>"}   # on stdin; exit 2 denies with the reason on stderr',
-        "The contract the harness adapters are built on; wrap it for any harness not listed.",
-    ),
-    "claude-code": _CLAUDE_CODE,
-    "codex": _CODEX,
-    "cursor": _CURSOR,
-}
+from specy_road.tool_call_guard_adapters import ADAPTERS, Adapter  # noqa: E402,F401 — re-exported for session_cli
 
 
 def read_payload(text: str) -> dict[str, Any]:

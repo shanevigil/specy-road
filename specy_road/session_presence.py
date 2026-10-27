@@ -82,12 +82,24 @@ def session_path(repo_root: Path, agent: str) -> Path:
 
 
 def default_agent_id() -> str:
-    """``SPECY_ROAD_AGENT_ID``, else ``<user>-<pid>``: distinct per process, stable within it."""
+    """``SPECY_ROAD_AGENT_ID``, else ``<user>-s<session id>``.
+
+    The POSIX session id is shared by every command one terminal or one
+    harness process runs (each ``Bash`` call, each hook), and differs between
+    terminals and between harnesses, so ``start``, ``touch``, ``end`` and the
+    guard from one agent name the same record without any setup. Workers are
+    started in a new session and carry their own id. Set the variable when
+    two agents share one terminal session.
+    """
     env = os.environ.get("SPECY_ROAD_AGENT_ID", "").strip()
     if env and _ID.match(env):
         return env
     user = re.sub(r"[^A-Za-z0-9._-]", "-", os.environ.get("USER") or "agent")[:20]
-    return f"{user}-{os.getpid()}"
+    try:
+        sid = os.getsid(0)
+    except (AttributeError, OSError):   # Windows: no sessions; the process is the best there is
+        sid = os.getpid()
+    return f"{user}-s{sid}"
 
 
 def load_session(path: Path) -> Session | None:
@@ -111,10 +123,13 @@ def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | No
     return [s for s in out if s.is_live(now)] if live_only else out
 
 
-def start_session(repo_root: Path, agent: str, *, paths: list[str], note: str = "",
+def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note: str = "",
                   ttl_hours: float = DEFAULT_TTL_HOURS, worktree: Path | None = None) -> Session:
-    """Create or renew the record; ``paths`` replace the old set."""
+    """Create or renew the record; ``paths`` replace the old set, ``None`` keeps it (``touch``)."""
     path = session_path(repo_root, agent)
+    if paths is None:
+        old = load_session(path) if path.is_file() else None
+        paths = list(old.paths) if old else []
     now = _now()
     old = load_session(path) if path.is_file() else None
     wt = (worktree or repo_root).resolve()

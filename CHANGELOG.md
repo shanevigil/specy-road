@@ -262,6 +262,27 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to
   review or approve its own work.
+- **Third independent review (GPT Sol):** a `completed` worker still owns its
+  leaf and slot (`delegate` returns it; `terminate` frees it); every worker
+  transition is one locked transaction; the guard refuses shell functions,
+  variable command names and interpreter one-liners that mention git, counts
+  `git -C` / `--work-tree` against every session, and denies a bare `git
+  commit` (use `--only <paths>`); a prompt placeholder must be a whole
+  argument; the default session id is `<user>-s<session id>` and `touch`
+  keeps the paths; a skipped skill file or foreign link is never adopted into
+  the manifest or overwritten; a stale `work/.worktrees/<codename>` is
+  refused; the GUI payload carries the v2 session fields and a GUI reject or
+  park needs a reason; `--op-id` binds its arguments; `--sign-key` without a
+  roster `public_key`, or with the wrong key, is an error before anything is
+  written; a dead wrapper frees its leaf and a spawn failure marks the record
+  `failed`; `terminate` signals only a verified wrapper pid and closes an
+  adopted record without signalling; READY must be on the worker's branch;
+  a profile path cannot escape the repo; `--harness` cannot override the
+  roster; a plan with no eligible coordinator reports it; search results
+  reach the GUI model inside an untrusted-data delimiter; the verifier's byte
+  cap blocks instead of truncating; `reclaim` keeps hook prompts verbatim.
+  Documented limits: the event log is authoritative, not authenticated; the
+  verifier's host check is open to DNS rebinding (TLS narrows it).
 - **Second independent review (Gemini):** `substitute_prompt` replaces its
   placeholders in one pass (a prompt containing `<prompt>` could close the
   shell quoting); the session id chosen up front survives `spawn`; `message`

@@ -186,7 +186,7 @@ def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) 
     prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo hi"))
     assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 1
-    assert "no {prompt} or <prompt> placeholder" in capsys.readouterr().err
+    assert "no {prompt} (the prompt file path) or <prompt>" in capsys.readouterr().err
 
 
 def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, capsys, monkeypatch) -> None:

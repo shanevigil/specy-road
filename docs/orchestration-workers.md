@@ -21,12 +21,16 @@ A **worker** is one leaf, one session, one harness. Its record lives at
 the **main** worktree, like presence files and review records, and
 gitignored. The event log is authoritative for orchestration state: the
 harness's transcript is evidence, the log is what the coordinator may assume.
+Authoritative is not authenticated: the worker runs as the same OS user and
+can write `work/.workers/` itself, so `source` and `authority` labels are
+bookkeeping under a cooperative worker, not a boundary against a compromised
+one. The review gate is the boundary: READY and `completed` approve nothing.
 
 | Field | Meaning |
 |---|---|
 | `harness` / `model` | Which vendor CLI runs it, and which roster model it was asked for. Distinct on purpose: a Claude model under Cursor's agent is a `cursor` worker. |
 | `provider_session_id` | The harness's own session/thread/chat id, once seen; what `message`, `resume` and `handoff` use. |
-| `state` | `starting → running → idle` (exit 0, no READY file) or `completed` (READY present), `failed`, `handed_off`, `terminated`. |
+| `state` | `starting → running → idle` (exit 0, no READY file) or `completed` (READY present), `failed`, `handed_off`, `terminated`. A `completed` worker still owns its leaf and its `max_workers` slot until `terminate`; only `failed` and `terminated` are closed. A `running` record whose wrapper is gone is marked `failed` by the next `delegate`. |
 | `lease.holder` | The single writer: `broker` (specy-road sends turns), `human` (handed off), `native` (adopted; observe only), `none`. |
 | `instruction_epoch` | +1 for every recorded human intervention. |
 | `checkpoint` | Git HEAD and time at the last handoff; `reclaim` and `reconcile` diff from here. |
@@ -116,6 +120,14 @@ specy-road worker handoff w-0003
 #     claude --resume 7f1c…
 #   Then `specy-road worker reclaim w-0003` when you are done.
 ```
+
+Every transition (`message`, `resume`, `handoff`, `reclaim`, `terminate`,
+`adopt`, the hook) runs under the workers lock as one transaction: two
+coordinators sending at once launch one turn, and a second `reclaim` finds
+the lease already returned. `terminate` signals only a pid whose command line
+names this worker's wrapper; when `ps` cannot say, it refuses rather than
+signal a stranger. On an adopted (`native`) record it closes the record and
+says the session was not signalled.
 
 `handoff` refuses while the wrapper is running (wait for idle, or
 `terminate`), takes a checkpoint, sets the lease to `human`, and prints the

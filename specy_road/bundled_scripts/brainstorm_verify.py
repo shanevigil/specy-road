@@ -6,6 +6,12 @@ scripts; non-interactive without it fetches nothing). Fetching a known URL
 to check a quote is neither a model call nor a search; the guards are the
 GUI research module's — public hosts only, a timeout, a size cap. A fetch
 that fails records ``blocked``, never "fabricated": a paywall is not a lie.
+
+Known limit: the host check resolves the name once and ``requests`` resolves
+it again to connect, so a name that answers differently each time (DNS
+rebinding) can reach a private address on the second lookup. TLS
+certificate checking narrows what such a host can be; pinning the checked
+address into the connection would close it and is not done here.
 """
 
 from __future__ import annotations
@@ -57,9 +63,9 @@ def default_fetch(url: str) -> tuple[int, str]:
             continue
         body = b""
         for chunk in r.iter_content(65536):
+            if len(body) + len(chunk) > MAX_BYTES:
+                raise ValueError(f"page larger than {MAX_BYTES} bytes; not verified")   # → blocked
             body += chunk
-            if len(body) > MAX_BYTES:
-                break
         return r.status_code, body.decode(r.encoding or "utf-8", errors="replace")
     raise ValueError("too many redirects")
 
