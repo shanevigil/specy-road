@@ -1,5 +1,27 @@
 # Roadmap history
 
+## Agent quickstart
+
+**Use this doc when:** you need how a node or the roadmap reached its current state — past statuses, renumberings, dropped dependencies, archived work.
+**Not for:** searching the corpus for a topic — [`agent-search.md`](agent-search.md); where archived files live — [`archiving.md`](archiving.md).
+
+**Must know without reading on:**
+- Nothing is stored: history is derived from git; the only cache is `.specyrd/cache/roadmap-history.json` (gitignored, rebuilt when stale). Never add a history file to commit.
+- `specy-road history M1.2` is one node oldest-first; `specy-road history` is the feed newest-first; `--json` for tooling; `--archived` for work that left the graph.
+- Events are keyed by `node_key`, not `id`; an ambiguous id exits 2 and lists the candidates.
+- Briefs already carry `## 9. History`; do not re-derive it.
+
+**Read further for:**
+- the cache contract → "Derived, never stored"
+- renumbering and id ambiguity → "Events are keyed by `node_key`, not `id`"
+- event kinds → "What is recorded"
+- why one `git log --raw` walk → "Cost"
+- mainline vs `--no-merges` → "The walk follows `--first-parent`"
+- the event shape and `seq` ordering → "The JSON contract"
+- shallow clones and the commit bound → "Limits"
+
+**Related:** [`agent-search.md`](agent-search.md), [`archiving.md`](archiving.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`pm-workflow.md`](pm-workflow.md).
+
 A roadmap tells you where things stand. It does not tell you how they got there
 — which statuses a milestone passed through, which dependency someone added and
 later removed, that M1.2 used to be M1.4, or that half a phase was archived last

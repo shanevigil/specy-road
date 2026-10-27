@@ -7,6 +7,30 @@
 > three-app harness: it covers what the automated suite cannot — real
 > harness CLIs, real sessions, real pages.
 
+## Agent quickstart
+
+**Use this doc when:** playing out the real-harness scenarios that gate `0.3.1-rc1`, or recording their evidence.
+**Not for:** cutting the tag and publishing — [`release-runbook.md`](release-runbook.md) §A; the worker commands themselves — [`orchestration-workers.md`](orchestration-workers.md).
+
+**Must know without reading on:**
+- Nothing here is claimed by `pytest`; every scenario needs signed-in `claude`, `codex` and `agent` CLIs and three disposable consumer apps.
+- Record each scenario in `work/sandbox-runbook-<YYYY-MM-DD>.md` as PASS, PASS-WITH-NOTE, FAIL or SKIPPED, stating what was not observed; a blank is SKIPPED, never a pass.
+- A FAIL anywhere, or a SKIPPED on §5 or §6, blocks the rc.
+- The version is the maintainer's to state (`0.3.1-rc1`; this line never uses `.0`).
+
+**Read further for:**
+- CLIs, apps and the evidence file → "0. Prerequisites"
+- `specyrd init` skills on each harness → "1. Scaffold and skills (every harness)"
+- the gate, stale reviews and signed records → "2. Review gate and signed reviews"
+- `session guard` hooks → "3. Presence and the tool-call guard"
+- roster, prompts and sensitivity → "4. Models, prompts, plan"
+- delegate, handoff, hook and process-tree faults → "5. Workers (the 0.3.1 headline)"
+- rounds, panel, evidence, promote and the GUI → "6. Brainstorm v2"
+- hook-mode grind and the gate → "7. Grind and unattended loops"
+- what must be green before §A → "8. Close-out"
+
+**Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
+
 The suite (`pytest`, ~1,780 tests) proves the toolkit's logic with fake
 harnesses and stub fetchers. Everything below needs a machine with the
 vendor CLIs installed and signed in, and is **not** claimed by any test.

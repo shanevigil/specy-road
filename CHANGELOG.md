@@ -194,6 +194,18 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
 
 ### Changed
 
+- Docs: `pm-llm-review.md`, `pm-gui-brainstorm.md`, `supply-chain-security.md`,
+  `git-workflow.md`, `roadmap-history.md`, `agent-search.md`,
+  `orchestration-workers.md`, `agentic-sandbox-runbook.md`, `archiving.md` and
+  `brainstorming.md` open with an `## Agent quickstart` block (when to use the
+  doc, the invariants and commands to know without reading on, and which `##`
+  section answers what), since agents route from the top of a file and read a
+  window rather than the whole doc. `docs/design-notes/README.md` indexes every
+  design note as live design, historical triage or verbatim reference, so a
+  closed triage or an outside proposal is not read as a current instruction.
+  `suggested_prompts/bootstrap-agents-md.md` Phase 2 now lists
+  `roadmap-context.md` and `docs/supply-chain-security.md` in the load order,
+  matching the managed `AGENTS.md` block.
 - Removed the generic `suggested_prompts/cleanup_prompts.md`,
   `compliance_prompts.md` and `features_changes_debuging_prompts.md`, and
   `docs/optional-agent-review-prompts.md`, in favour of the coding harness's
