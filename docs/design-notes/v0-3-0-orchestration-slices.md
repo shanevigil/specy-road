@@ -1,7 +1,8 @@
 # Design: model-aware orchestration slices (`0.3.0` line)
 
-> **Status:** slice 1 in progress on `WIP/improvements-0-3-0`. Slices 2–5 are
-> scoped here only; each gets its own design pass before it is built.
+> **Status:** slices 1–6 and decisions A, B, D are built on
+> `WIP/improvements-0-3-1` (the line's first tag will be `0.3.1-rc1`). The
+> per-slice sections below record what each one decided.
 
 Source material: [`model-aware-orchestration-proposal.md`](model-aware-orchestration-proposal.md),
 a verbatim copy of an external proposal written 2026-10-19 after running a cheap
@@ -99,7 +100,20 @@ and `--ai codex` is a target. `refresh-stubs` migrates pre-0.3.0 command
 stubs by writing the skills and naming the old files to remove.
 `specy_road/specyrd_skills.py`.
 
-Still a stated limit: review records and presence files are self-attested.
+## Slice 6: signed review records (agreed and built 2026-10-26)
+
+The self-attestation limit, closed for review records. Mechanism: OpenSSH
+signatures (`ssh-keygen -Y sign` / `-Y verify`, namespace `specy-road-review`)
+over the canonical reviewer-authored front matter (every field except
+`signature` and the CLI-written `family` / `independence`; sorted-key JSON).
+Roster entries gain `public_key`; policy gains `signed_reviews`; `review
+record --sign-key` and `mark-implementation-reviewed --sign-key` sign. SSH
+over GPG or a Python library because every reviewer identity has or can make
+an SSH key and the toolkit gains no dependency. The boundary is the key: the
+executor's process must not hold a reviewer's private key.
+
+Still self-attested: the session flags inside a signed record (the key proves
+who signed, not how they worked) and presence files, which stay advisory.
 
 ## Gaps found while scoping
 

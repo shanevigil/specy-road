@@ -218,12 +218,13 @@ def _gate_or_human_approval(
             raise SystemExit(0)
         return gate
     interactive = sys.stdin.isatty() and not args.yes
-    if interactive and human_approval_completes(ROOT, gate):
+    sign_key = Path(args.sign_key) if args.sign_key else None
+    if interactive and human_approval_completes(ROOT, gate, sign_key):
         if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough,
                               approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
             raise SystemExit(0)
-        written = write_human_approval(ROOT, node, gate.commit)
+        written = write_human_approval(ROOT, node, gate.commit, sign_key)
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
         gate = evaluate_gate(ROOT, node, gate.commit)
@@ -239,6 +240,9 @@ def _gate_or_human_approval(
     )
     if args.yes:
         print("  --yes only commits an approval the recorded reviews already earned.", file=sys.stderr)
+    if gate.config.get("policy", {}).get("signed_reviews"):
+        print("  signed_reviews is on: a human approval needs --sign-key <your private key> and a "
+              "public_key on the roster's human entry.", file=sys.stderr)
     raise SystemExit(1)
 
 
@@ -257,6 +261,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
             "Never prompt: commit the approval only when recorded reviews already "
             "satisfy roadmap/orchestration.yaml. Does not create a review."
         ),
+    )
+    p.add_argument(
+        "--sign-key",
+        metavar="PATH",
+        help="Sign the interactive human approval with this OpenSSH private key (policy.signed_reviews).",
     )
     p.add_argument(
         "--allow-missing-summary",

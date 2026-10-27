@@ -29,6 +29,7 @@ from specy_road.review_files import (
     review_path,
 )
 from specy_road.review_gate import GateResult, evaluate_gate
+from specy_road.review_signing import SigningError, sign
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
@@ -63,7 +64,7 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
-             "verdict": c.verdict, "counted": True}
+             "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature"))}
             for c in gate.approvals + gate.blocks
         ],
         "policy": gate.summary(),
@@ -80,7 +81,7 @@ def _render(st: dict[str, Any]) -> list[str]:
         mark = "ok" if not r["errors"] else "INVALID: " + "; ".join(r["errors"])
         lines.append(f"  {r['file']} ({mark})")
     for r in st["reviews"]:
-        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})")
+        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){' [signed]' if r['signed'] else ''}")
     lines.append(f"  policy: {st['policy']}")
     lines += [f"  - {p}" for p in st["problems"]]
     return lines
@@ -168,7 +169,16 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
                      "(roadmap/orchestration.yaml); a review from it would not count")
     if "reviewer" not in (entry.get("roles") or []) and not substitute_for(config, ns.node_id, ns.model):
         return _fail(f"{ns.model!r} has no reviewer role and no active substitution covers {ns.node_id}")
-    data = {**rec["data"], "family": entry["family"], "commit": gate.commit}
+    data = {**rec["data"], "commit": gate.commit}
+    if ns.sign_key:
+        try:
+            data["signature"] = sign(data, Path(ns.sign_key))
+        except SigningError as e:
+            return _fail(f"could not sign: {e}")
+    elif config["policy"].get("signed_reviews"):
+        return _fail("policy.signed_reviews is on: pass --sign-key <your private key>; the roster entry "
+                     f"for {ns.model!r} must carry the matching public_key")
+    data["family"] = entry["family"]
     dest = review_path(root, ns.node_id, ns.model)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(render_front_matter(data, rec["body"]), encoding="utf-8")
@@ -203,6 +213,7 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--verdict", required=True, choices=["approve", "block"])
     rec.add_argument("--file", required=True, help="Markdown with review-record front matter")
     rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
     return p

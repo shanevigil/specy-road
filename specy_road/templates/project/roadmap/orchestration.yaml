@@ -9,6 +9,7 @@ version: 1
 #   - id: claude-opus-5.5
 #     family: anthropic
 #     roles: [reviewer, executor]
+#     public_key: ssh-ed25519 AAAA...   # for signed_reviews
 roster:
   - id: human
     family: human
@@ -20,6 +21,9 @@ policy:
   reviewers_required: 1
   reviewers_distinct_families: false
   reviewer_fresh_session: true
+  # true: a review counts only when signed with the reviewer's key and the
+  # roster entry has its public_key (ssh-keygen -Y; see docs/orchestration.md).
+  signed_reviews: false
 # Recorded decisions to let a named substitute review while the usual reviewer
 # is unavailable, e.g.:
 #   - slot: reviewer-openai

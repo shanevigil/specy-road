@@ -52,6 +52,7 @@
         },
         "subagent_family_lock": { "$ref": "#/$defs/id", "description": "When set, this model may spawn only sub-agents of this family." },
         "class": { "$ref": "#/$defs/id", "description": "Executor class tag a leaf's executor_eligibility can name (e.g. senior, cheap)." },
+        "public_key": { "type": "string", "minLength": 1, "pattern": "^(ssh-|ecdsa-|sk-)[^ ]+ [A-Za-z0-9+/=]+", "description": "OpenSSH public key line this reviewer signs records with; required for its reviews to count when policy.signed_reviews is true." },
         "unavailable_until": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Capacity outage: orchestrate plan and prompt skip this model through this date (inclusive)." },
         "preflight": { "type": "string", "minLength": 1, "description": "Command that must succeed before a prompt is sent to this model." }
       }
@@ -72,6 +73,10 @@
         "reviewer_fresh_session": {
           "type": "boolean",
           "description": "When true, a review record must attest it came from a fresh session. Default true."
+        },
+        "signed_reviews": {
+          "type": "boolean",
+          "description": "When true, a review record counts only if it carries a signature that verifies against its roster entry's public_key. Default false."
         }
       }
     },
