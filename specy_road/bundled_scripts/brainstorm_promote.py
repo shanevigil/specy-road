@@ -98,7 +98,8 @@ def _intent_body(idea: Idea) -> str:
     return "\n\n".join(parts)
 
 
-def seed_planning_sheet(root: Path, node: dict, idea: Idea) -> Path | None:
+def seed_planning_sheet(root: Path, node: dict, idea: Idea,
+                        siblings: list[Idea] | None = None) -> Path | None:
     """Write the idea's rationale into the scaffolded sheet's ``## Intent``."""
     pd = node.get("planning_dir")
     if not isinstance(pd, str) or not pd.strip():
@@ -112,13 +113,32 @@ def seed_planning_sheet(root: Path, node: dict, idea: Idea) -> Path | None:
         return None
     text = sheet.read_text(encoding="utf-8")
     text = _replace_section(text, "Intent", _intent_body(idea))
-    if idea.evidence:
-        sources = "\n".join(f"- Brainstorm source: {u}" for u in idea.evidence)
-        refs = text.split("## References", 1)
-        if len(refs) == 2:
-            text = f"{refs[0]}## References\n\n{sources}\n{refs[1].lstrip(chr(10))}"
+    refs = _reference_lines(idea, siblings or [])
+    if refs:
+        parts = text.split("## References", 1)
+        if len(parts) == 2:
+            text = f"{parts[0]}## References\n\n" + "\n".join(refs) + f"\n{parts[1].lstrip(chr(10))}"
     sheet.write_text(text, encoding="utf-8")
     return sheet
+
+
+def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
+    """Sources (structured ones with their quote and verification state) and the
+    cluster's rejected or parked siblings, so the sheet records what was not chosen."""
+    structured = {s.get("url") for s in idea.sources}
+    lines = [f"- Brainstorm source: {u}" for u in idea.evidence if u not in structured]
+    for s in idea.sources:
+        state = s.get("verification", "unverified")
+        quote = f' — "{s["quote"]}"' if s.get("quote") else ""
+        lines.append(f"- Brainstorm evidence ({s.get('stance', 'for')}, {state}): {s.get('url')}{quote}")
+    if idea.hypothesis:
+        lines.append(f"- Hypothesis: {idea.hypothesis}")
+    for a in idea.assumptions:
+        lines.append(f"- Assumption: {a}")
+    for sib in siblings:
+        why = (sib.decision or {}).get("reason", "")
+        lines.append(f"- Alternative considered: {sib.id} {sib.title} ({sib.status}" + (f": {why}" if why else "") + ")")
+    return lines
 
 
 def _build_node(
@@ -137,6 +157,14 @@ def _build_node(
         "status": "Not Started",
     }
     return {k: v for k, v in node.items() if v is not None}
+
+
+def _cluster_siblings(session: BrainstormSession, idea: Idea) -> list[Idea]:
+    """Rejected or parked ideas from the same converge cluster."""
+    if not idea.cluster_id:
+        return []
+    return [i for i in session.ideas
+            if i.cluster_id == idea.cluster_id and i.id != idea.id and i.status in ("rejected", "parked")]
 
 
 def pending_ideas(session: BrainstormSession) -> list[Idea]:
@@ -186,7 +214,7 @@ def promote_session(
             chunk = "(not written)"
         else:
             chunk_path = append_node_to_chunk(root, None, node)
-            seed_planning_sheet(root, node, idea)
+            seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
             idea.promoted_node_key = node["node_key"]
             write_session(root, session)
             chunk = str(chunk_path.relative_to(root))

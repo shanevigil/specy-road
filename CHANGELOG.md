@@ -84,6 +84,27 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   count; a present signature is verified regardless, so a tampered record
   never counts. `mark-implementation-reviewed --sign-key` signs the interactive
   human approval. Needs OpenSSH 8.0+; no new Python dependency.
+- **Brainstorm v2** (design:
+  [`docs/design-notes/v0-3-1-brainstorm-v2.md`](docs/design-notes/v0-3-1-brainstorm-v2.md);
+  reference: [`docs/brainstorming.md`](docs/brainstorming.md)). Diverge runs
+  in rounds: round 1 frames (two more Socratic questions, assertions
+  neutralised into questions, `brainstorm frame`), plans an allocation grid
+  of lenses × directions with a diversity operator per cell, and generates
+  as prose concept cards — without the roadmap inventory or research, both
+  of which anchor; `next-round` regenerates against the visible pool with
+  low-typicality and unoccupied-region cues and opens research.
+  `--profile technical` swaps the lens set for developer roadmaps; `--panel N`
+  writes independent shard prompts. New evidence pass: `evidence`,
+  `add-evidence` (verbatim quote, claim, stance, tool, date) and `verify`,
+  which lists URLs and asks before the CLI's only network call, recording
+  `retrieved | not-found | blocked`. Converge names overlap relations, plays
+  three independent critics, and requires cited verdicts (`revise --cluster
+  --overlap --critic`). Triage: `list --by cluster` (verdicts hidden unless
+  `--show-verdicts`), `reject --reason` required, `park --revisit-when`;
+  decisions recorded on the idea. `add-idea --origin --hypothesis
+  --assumption`; kinds `refactor`, `platform`. Promote carries sources with
+  their verification state, hypothesis, assumptions and the cluster's
+  rejected siblings into the sheet. Session file version 2 (v1 still reads).
 - Node fields `sensitivity` (default `public`) and `executor_eligibility`
   (default `any`, else a roster `class` tag), settable with `add-node` and
   `edit-node --set`. **Existing adopters:** run `specy-road refresh-schemas`

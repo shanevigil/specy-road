@@ -1,6 +1,9 @@
 # 0.3.1: brainstorm v2 (research reconciled)
 
-**Status:** design, 2026-10-27. Reconciles external research on IDE-agent
+**Status:** built 2026-10-27 on `feature/brainstorm-v2` (B1 items 1–10;
+`evidence` stays the URL list and structured records live in `sources[]`,
+so the GUI and promote paths kept their shape; the skill stub carries the
+method and no `references/` files were added). Reconciles external research on IDE-agent
 ideation and roadmap planning against the current `specy-road brainstorm`,
 and scopes what ships on the `WIP/improvements-0-3-1` line. Decisions marked
 *open* wait on the maintainer.

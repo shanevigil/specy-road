@@ -17,8 +17,9 @@ import argparse
 import json
 
 from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
+from specy_road.bundled_scripts.brainstorm_cli_v2 import HANDLERS_V2, write_round_prompts
+from specy_road.bundled_scripts.brainstorm_fields import parse_origin, parse_overlap
 from specy_road.bundled_scripts.brainstorm_prompt import (
-    render_brainstorm_prompt,
     render_recommend_prompt,
     write_prompt,
 )
@@ -71,12 +72,17 @@ def cmd_start(ns: argparse.Namespace) -> int:
             under=(ns.under or None),
             mode="brainstorm",
         )
+    if ns.profile:
+        session.profile = ns.profile
+    if ns.panel is not None:
+        session.panel = max(0, ns.panel)
     spath = write_session(root, session)
-    ppath = write_prompt(
-        root, session, render_brainstorm_prompt(root, session, count=ns.count)
-    )
-    print(f"session: {spath.relative_to(root)} ({len(session.ideas)} ideas)")
-    print(f"prompt:  {ppath.relative_to(root)}")
+    paths = write_round_prompts(root, session, count=ns.count)
+    print(f"session: {spath.relative_to(root)} ({len(session.ideas)} ideas, "
+          f"round {session.round} of {ns.rounds}, profile {session.profile})")
+    print(f"prompt:  {paths[0].relative_to(root)}")
+    for extra in paths[1:]:
+        print(f"shard:   {extra.relative_to(root)}")
     print("\nHand the prompt to your agent, then triage with:")
     print(f"  specy-road brainstorm list --slug {slug}")
     return 0
@@ -91,6 +97,9 @@ def cmd_add_idea(ns: argparse.Namespace) -> int:
         kind=ns.kind,
         effort=ns.effort or "",
         evidence=list(ns.evidence or []),
+        origin=parse_origin(ns.origin),
+        hypothesis=ns.hypothesis or "",
+        assumptions=list(ns.assumption or []),
     )
     write_session(root, session)
     print(f"[ok] {idea.id} {idea.title}")
@@ -103,8 +112,22 @@ def _idea_payload(session: BrainstormSession) -> dict:
         "topic": session.topic,
         "under": session.under,
         "mode": session.mode,
+        "round": session.round,
+        "profile": session.profile,
+        "frame": dict(session.frame),
         "ideas": [i.to_dict() for i in session.ideas],
     }
+
+
+def _print_rows(ideas: list, *, verdicts: bool) -> None:
+    for i in ideas:
+        rec = (i.recommendation or "-") if verdicts else ""
+        mark = f" -> {i.promoted_node_key[:8]}" if i.promoted_node_key else ""
+        src = f" [{len(i.sources)} src]" if i.sources else ""
+        print(f"  {i.id:<5} {i.status:<9} {rec:<9} {i.kind:<11} {i.title}{src}{mark}")
+        if i.critic:
+            for role, text in i.critic.items():
+                print(f"        {role}: {text}")
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
@@ -124,17 +147,29 @@ def cmd_list(ns: argparse.Namespace) -> int:
         print("\n(no ideas match)")
         return 0
     print("")
-    for i in ideas:
-        rec = i.recommendation or "-"
-        mark = f" -> {i.promoted_node_key[:8]}" if i.promoted_node_key else ""
-        print(f"  {i.id:<5} {i.status:<9} {rec:<9} {i.kind:<11} {i.title}{mark}")
+    if ns.by == "cluster":
+        clusters: dict[str, list] = {}
+        for i in ideas:
+            clusters.setdefault(i.cluster_id or "(unclustered)", []).append(i)
+        for cid, members in sorted(clusters.items(), key=lambda kv: (kv[0] == "(unclustered)", kv[0])):
+            print(f"{cid}  ({len(members)})")
+            _print_rows(members, verdicts=ns.show_verdicts)
+        return 0
+    _print_rows(ideas, verdicts=ns.show_verdicts)
     return 0
 
 
 def _triage(ns: argparse.Namespace, status: str) -> int:
     root, session = _load(ns)
+    reason = (ns.reason or "").strip()
+    if status == "rejected" and not reason:
+        raise BrainstormError("reject needs --reason: the record of why is worth more than the reject")
+    from datetime import date
+
     for ident in ns.idea_id:
         idea = set_status(session, ident, status)
+        if reason:
+            idea.decision = {"status": status, "reason": reason, "decided_at": date.today().isoformat()}
         print(f"[ok] {idea.id} {status}")
     write_session(root, session)
     return 0
@@ -161,6 +196,13 @@ def cmd_revise(ns: argparse.Namespace) -> int:
             content_changed = True
     if ns.recommendation is not None:
         idea.recommendation = ns.recommendation
+    if ns.cluster is not None:
+        idea.cluster_id = ns.cluster.strip() or None
+    for item in ns.overlap or []:
+        idea.overlap.append(parse_overlap(item))
+    for item in ns.critic or []:
+        role, _sep, text = item.partition(":")
+        idea.critic = {**(idea.critic or {}), role.strip() or "critic": text.strip()}
     if content_changed and idea.status == "proposed":
         idea.status = "revised"
     write_session(root, session)
@@ -228,6 +270,7 @@ HANDLERS = {
     "revise": cmd_revise,
     "recommend": cmd_recommend,
     "promote": cmd_promote,
+    **HANDLERS_V2,
 }
 
 

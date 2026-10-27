@@ -1,9 +1,12 @@
 """Agent-facing prompt markdown for ``specy-road brainstorm``.
 
-Two prompts, one per mode. The diverge prompt asks for volume and forbids
-evaluation; the converge prompt asks for judgement and forbids new ideas.
-Keeping them apart is the whole point — an LLM asked to generate and filter in
-one pass filters first, and returns five safe ideas instead of forty.
+Three prompts over one session. The diverge prompt asks for volume and
+forbids evaluation (round 1 plans and generates; later rounds regenerate
+against the visible pool — :mod:`brainstorm_prompt_diverge`); the evidence
+prompt asks for quote-anchored sources (:mod:`brainstorm_prompt_evidence`);
+the converge prompt asks for judgement and forbids new ideas. Keeping them
+apart is the whole point — an LLM asked to generate and filter in one pass
+filters first, and returns five safe ideas instead of forty.
 
 The CLI never calls a model. It assembles repo context and writes the prompt
 for whichever agent is already driving the IDE, which is also the agent that
@@ -15,10 +18,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.bundled_scripts.brainstorm_fields import OVERLAP_RELATIONS
+from specy_road.bundled_scripts.brainstorm_prompt_diverge import (
+    allocation_lines,
+    frame_lines,
+    header_lines,
+    quantity_lines,
+    recording_lines,
+    regeneration_lines,
+    shard_lines,
+)
+from specy_road.bundled_scripts.brainstorm_prompt_evidence import render_evidence_prompt
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     prompt_path,
 )
+
+__all__ = [
+    "render_brainstorm_prompt", "render_recommend_prompt", "render_evidence_prompt",
+    "render_shard_prompt", "write_prompt",
+]
 
 #: Cap on nodes listed as "what already exists". Past this the list stops
 #: being read and starts crowding out the instructions.
@@ -29,40 +48,6 @@ _GOVERNANCE_FILES: tuple[tuple[str, str], ...] = (
     ("constitution/purpose.md", "Purpose"),
     ("constitution/principles.md", "Principles"),
     ("roadmap-context.md", "Current roadmap state"),
-)
-
-_TECHNIQUES: tuple[tuple[str, str], ...] = (
-    (
-        "SCAMPER",
-        "Substitute, Combine, Adapt, Modify, Put to another use, Eliminate, "
-        "Reverse — run each verb against the product's existing surfaces.",
-    ),
-    (
-        "Analogous domains",
-        "How has a different industry solved the shape of this problem? "
-        "Logistics, games, banking, healthcare. Port the mechanism, not the "
-        "feature.",
-    ),
-    (
-        "Inversion",
-        "What would make this dramatically worse for the user? Invert each "
-        "answer into something to build.",
-    ),
-    (
-        "Pre-mortem",
-        "It is a year from now and this area failed. Write the causes, then "
-        "propose the work that would have prevented each one.",
-    ),
-    (
-        "Constraint removal",
-        "Drop the hardest current constraint (budget, latency, headcount, a "
-        "vendor) and say what becomes possible.",
-    ),
-    (
-        "10x / 0.1x",
-        "What would this look like with ten times the users, and what would "
-        "the smallest useful version be that ships in a week?",
-    ),
 )
 
 
@@ -113,153 +98,44 @@ def _existing_roadmap_lines(root: Path) -> list[str]:
     return lines
 
 
-def _socratic_lines(topic: str) -> list[str]:
-    subject = topic.strip() or "the topic the PM gives you"
-    return [
-        "## Step 1 — interrogate the question before answering it",
-        "",
-        f"The stated topic is: **{subject}**",
-        "",
-        "Ask the PM these before generating. Wait for answers; a brainstorm "
-        "aimed at the wrong question produces confident, useless volume.",
-        "",
-        "- What outcome would make this a success, stated without naming a feature?",
-        "- Who exactly is served, and who is deliberately not?",
-        "- What has to be true for this to matter at all? Which of those is "
-        "assumed rather than known?",
-        "- What has already been tried here, and why did it stop?",
-        "- What is being treated as fixed that is actually a choice?",
-        "- If we did nothing in this area for a year, what would break first?",
-        "",
-        "Summarise what you heard in two or three sentences and get agreement "
-        "before Step 2.",
-        "",
-    ]
-
-
-def _quantity_lines(count: int) -> list[str]:
-    return [
-        "## Step 2 — generate, do not evaluate",
-        "",
-        f"Produce **at least {count} distinct ideas**. Quantity is the "
-        "objective. Specifically:",
-        "",
-        "- Weak, obvious, and expensive ideas all belong in this pass. The PM "
-        "filters later, and a bad idea next to a good one is often what makes "
-        "the good one visible.",
-        "- Do not stop at the first coherent set. The last third of a list is "
-        "where the non-obvious ideas live, so push past the point where it "
-        "feels finished.",
-        "- Do not rank, cluster, sequence, or estimate. Do not write "
-        "\"this is the strongest option\". That is the next command's job.",
-        "- Do not merge two ideas because they are similar. Record both.",
-        "- Vary the altitude: some ideas should be a week of work, some a "
-        "quarter, some a change of direction.",
-        "",
-    ]
-
-
-def _technique_lines() -> list[str]:
-    lines = [
-        "Work through these lenses in order rather than free-associating. "
-        "Each one should yield several ideas; note which lens produced an "
-        "idea in its rationale when it is not obvious.",
-        "",
-    ]
-    for name, how in _TECHNIQUES:
-        lines.append(f"- **{name}** — {how}")
-    lines.append("")
-    return lines
-
-
-def _research_lines() -> list[str]:
-    return [
-        "## Step 3 — research, with your own tools",
-        "",
-        "Use your web search tool. Do not brainstorm only from what you "
-        "already know; the point of researching is to import ideas that are "
-        "not in the room.",
-        "",
-        "Use whatever your IDE gives you here: its brainstorming or ideation "
-        "slash commands and skills, if it has any, alongside your own search. "
-        "specy-road calls no model and no search API from the CLI — you are "
-        "the one doing this, and the tools you already have are the ones to "
-        "reach for.",
-        "",
-        "- What have comparable products shipped in this area recently?",
-        "- What are users complaining about, in public, for this class of "
-        "product?",
-        "- What has changed in the underlying technology that makes something "
-        "newly cheap or newly possible?",
-        "- What regulation, standard, or platform change is coming that "
-        "forces work regardless of preference?",
-        "",
-        "Record the URL you drew from in `--evidence` on the idea it "
-        "produced. An idea with a source survives triage; an unsourced claim "
-        "about a competitor does not.",
-        "",
-    ]
-
-
-def _recording_lines(slug: str) -> list[str]:
-    return [
-        "## Step 4 — record every idea",
-        "",
-        "One command per idea, from the repository root. Ids are allocated "
-        "for you and printed.",
-        "",
-        "```bash",
-        f"specy-road brainstorm add-idea --slug {slug} \\",
-        '  --title "Short imperative title" \\',
-        '  --rationale "Why this could matter, and which lens produced it" \\',
-        "  --kind feature \\",
-        "  --effort M \\",
-        '  --evidence "https://source-you-found"',
-        "```",
-        "",
-        "`--kind` is one of `feature`, `capability`, `risk`, `research`, "
-        "`experiment`. `--effort` is a free-form t-shirt size. `--evidence` "
-        "repeats for multiple sources. Only `--title` is required.",
-        "",
-        "When you are done, report the count and hand back to the PM:",
-        "",
-        "```bash",
-        f"specy-road brainstorm list --slug {slug}",
-        "```",
-        "",
-        "Then stop. Do not run `promote` — accepting ideas is the PM's "
-        "decision, not yours.",
-        "",
-    ]
-
-
 def render_brainstorm_prompt(
     root: Path,
     session: BrainstormSession,
     *,
     count: int,
 ) -> str:
-    """The diverge-mode prompt: Socratic opening, then volume."""
-    anchor = f"`{session.under}`" if session.under else "the roadmap root"
-    lines = [
-        f"# Brainstorm: {session.topic or session.slug}",
-        "",
-        "You are running a **divergent** brainstorming session with a product "
-        "manager. Your job in this session is to widen the option space, not "
-        "to narrow it.",
-        "",
-        f"- **Session:** `{session.slug}`",
-        f"- **Anchor:** {anchor} — where accepted ideas would land",
-        f"- **Target:** {count} ideas minimum",
-        "",
-    ]
+    """The diverge prompt for the session's current round.
+
+    Round 1: frame, allocation grid, volume — no roadmap inventory and no
+    research (both anchor). Round 2+: the pool so far and the regeneration
+    mechanics; research allowed.
+    """
+    if session.round <= 1:
+        lines = header_lines(session, count, title="Brainstorm")
+        lines += _governance_lines(root)
+        lines += frame_lines(session)
+        lines += allocation_lines(session, count)
+        lines += quantity_lines(count, first_round=True)
+    else:
+        lines = header_lines(session, count, title=f"Brainstorm, round {session.round}")
+        lines += _governance_lines(root)
+        lines += regeneration_lines(session, count)
+        lines += quantity_lines(count, first_round=False)
+    lines += recording_lines(session)
+    return "\n".join(lines) + "\n"
+
+
+def render_shard_prompt(root: Path, session: BrainstormSession, *, count: int,
+                        shard: int, total: int) -> str:
+    """One independent worker's share of round 1: its cell, nothing of the others."""
+    lines = header_lines(session, count, title=f"Brainstorm shard {shard}/{total}")
     lines += _governance_lines(root)
-    lines += _existing_roadmap_lines(root)
-    lines += _socratic_lines(session.topic)
-    lines += _quantity_lines(count)
-    lines += _technique_lines()
-    lines += _research_lines()
-    lines += _recording_lines(session.slug)
+    if session.frame:
+        lines += ["## The agreed frame", ""] + [f"- **{k}:** {v}" for k, v in session.frame.items()] + [""]
+    lines += allocation_lines(session, count)
+    lines += shard_lines(session, shard, total)
+    lines += quantity_lines(count, first_round=True)
+    lines += recording_lines(session, shard=f"s{shard}")
     return "\n".join(lines) + "\n"
 
 
@@ -273,11 +149,14 @@ def _idea_inventory_lines(session: BrainstormSession) -> list[str]:
         return lines
     for i in session.ideas:
         rec = f" — recommendation: {i.recommendation}" if i.recommendation else ""
-        lines.append(f"- **{i.id}** ({i.status}, {i.kind}){rec} — {i.title}")
+        origin = f" [{'/'.join(i.origin.values())}]" if i.origin else ""
+        lines.append(f"- **{i.id}** ({i.status}, {i.kind}){rec}{origin} — {i.title}")
         if i.rationale:
             lines.append(f"  - {i.rationale}")
         for src in i.evidence:
             lines.append(f"  - source: {src}")
+        for s in i.sources:
+            lines.append(f"  - evidence ({s.get('verification', 'unverified')}): {s.get('url')}")
     lines.append("")
     return lines
 
@@ -302,36 +181,50 @@ def render_recommend_prompt(root: Path, session: BrainstormSession) -> str:
         "## What to do",
         "",
         "1. **Cluster near-duplicates.** Name the ideas that are the same bet "
-        "in different words, and say which one states it best.",
-        "2. **Flag overlaps with the existing roadmap** by node id. An idea "
-        "that duplicates committed work should be parked with that reason.",
+        "in different words, say which one states it best, and give each "
+        "cluster an id (`C1`, `C2`, …). Singletons are clusters of one; never "
+        "hide an outlier inside a cluster it does not belong to.",
+        "2. **Flag overlaps with the existing roadmap** by node id, naming the "
+        f"relation: {', '.join(OVERLAP_RELATIONS)}. Same-problem-same-solution "
+        "duplicates committed work and should be parked with that reason.",
         "3. **Assess each idea against the constitution**, not against your "
         "own taste. An idea can be good and still be wrong for this product.",
-        "4. **Assign a recommendation** to every idea:",
+        "4. **Play three independent critics**, one pass each, without "
+        "reconciling them: *value* (who gains, how much), *feasibility* "
+        "(dependencies, cost, what we would stop doing), *evidence and "
+        "constitution* (what is asserted without support; which clause it "
+        "strains). Record the strongest objection per cluster; keep dissent.",
+        "5. **Assign a recommendation** to every idea:",
         "   - `strong` — do this; the case is clear and it fits the purpose",
         "   - `consider` — real, but needs a decision or more evidence first",
         "   - `park` — duplicate, off-purpose, or not worth the cost now",
-        "5. **Say what is missing.** Which part of the problem got no ideas?",
+        "   The rationale **must cite** a constitution clause, an evidence "
+        "record, or an overlap — not your taste.",
+        "6. **Say what is missing.** Which part of the problem got no ideas?",
         "",
         "Record each verdict, one command per idea:",
         "",
         "```bash",
         f"specy-road brainstorm revise B1 --slug {session.slug} \\",
-        '  --recommendation strong --rationale "One line on why"',
+        "  --cluster C2 --overlap M3.1:adjacent \\",
+        '  --critic "feasibility: needs the billing migration first" \\',
+        '  --recommendation strong --rationale "Principle 3; source on B1 for"',
         "```",
         "",
         "Passing only `--recommendation` leaves the idea's triage status "
         "alone, so the PM still owns accept and reject. Finish with a short "
-        "written summary: the strongest three, the clusters you merged, and "
-        "the gap you found.",
+        "written summary: the strongest three, the clusters you merged, the "
+        "sharpest dissent, and the gap you found.",
         "",
     ]
     return "\n".join(lines) + "\n"
 
 
-def write_prompt(root: Path, session: BrainstormSession, text: str) -> Path:
-    """Write ``work/brainstorm-<slug>-prompt.md`` and return its path."""
+def write_prompt(root: Path, session: BrainstormSession, text: str, *, suffix: str = "") -> Path:
+    """Write ``work/brainstorm-<slug>[suffix]-prompt.md`` and return its path."""
     path = prompt_path(root, session.slug)
+    if suffix:
+        path = path.with_name(path.name.replace("-prompt.md", f"{suffix}-prompt.md"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path

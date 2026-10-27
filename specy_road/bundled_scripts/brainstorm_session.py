@@ -19,16 +19,22 @@ from typing import Any
 
 import yaml
 
+from specy_road.bundled_scripts.brainstorm_fields import (
+    extra_to_dict,
+    parse_extra,
+)
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 
-SESSION_VERSION = 1
+SESSION_VERSION = 2
+#: v1 files (no rounds, URL-only evidence) read as-is and are written back as v2.
+READABLE_VERSIONS = (1, 2)
 SESSION_PREFIX = "brainstorm-"
 SESSION_SUFFIX = ".yaml"
 PROMPT_SUFFIX = "-prompt.md"
 
 #: What an idea is, for the recommend pass and for `promote`'s node type.
-IDEA_KINDS = ("feature", "capability", "risk", "research", "experiment")
-IDEA_STATUSES = ("proposed", "accepted", "rejected", "revised")
+IDEA_KINDS = ("feature", "capability", "risk", "research", "experiment", "refactor", "platform")
+IDEA_STATUSES = ("proposed", "accepted", "rejected", "revised", "parked")
 RECOMMENDATIONS = ("strong", "consider", "park")
 MODES = ("brainstorm", "roadmap")
 
@@ -142,6 +148,16 @@ class Idea:
     status: str = "proposed"
     recommendation: str | None = None
     promoted_node_key: str | None = None
+    # v2 (brainstorm_fields): provenance, structured evidence, clusters,
+    # critics, decision records. Omitted from the file when empty.
+    origin: dict[str, str] | None = None
+    cluster_id: str | None = None
+    sources: list[dict[str, Any]] = field(default_factory=list)
+    overlap: list[dict[str, str]] = field(default_factory=list)
+    critic: dict[str, str] | None = None
+    hypothesis: str = ""
+    assumptions: list[str] = field(default_factory=list)
+    decision: dict[str, str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -154,6 +170,7 @@ class Idea:
             "status": self.status,
             "recommendation": self.recommendation,
             "promoted_node_key": self.promoted_node_key,
+            **extra_to_dict(self),
         }
 
 
@@ -206,6 +223,7 @@ def idea_from_dict(raw: Any) -> Idea:
         status=status,
         recommendation=rec,
         promoted_node_key=_opt_str_field(raw, "promoted_node_key"),
+        **parse_extra(raw, ident),
     )
 
 
@@ -216,16 +234,32 @@ class BrainstormSession:
     under: str | None = None
     mode: str = "brainstorm"
     ideas: list[Idea] = field(default_factory=list)
+    # v2: the frame the PM agreed, the allocation grid, which diverge round
+    # is current, the lens profile, and how many independent shards.
+    frame: dict[str, str] = field(default_factory=dict)
+    allocation: str = ""
+    round: int = 1
+    profile: str = "product"
+    panel: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out = {
             "version": SESSION_VERSION,
             "slug": self.slug,
             "topic": self.topic,
             "under": self.under,
             "mode": self.mode,
-            "ideas": [i.to_dict() for i in self.ideas],
+            "round": self.round,
+            "profile": self.profile,
         }
+        if self.panel:
+            out["panel"] = self.panel
+        if self.frame:
+            out["frame"] = dict(self.frame)
+        if self.allocation:
+            out["allocation"] = self.allocation
+        out["ideas"] = [i.to_dict() for i in self.ideas]
+        return out
 
     def by_id(self, idea_id: str) -> Idea:
         want = idea_id.strip().upper()
@@ -259,7 +293,7 @@ def read_session(root: Path, slug: str) -> BrainstormSession:
         raise BrainstormError(f"cannot read {path.name}: {e}") from e
     if not isinstance(raw, dict):
         raise BrainstormError(f"{path.name} is not a YAML mapping")
-    if raw.get("version") != SESSION_VERSION:
+    if raw.get("version") not in READABLE_VERSIONS:
         raise BrainstormError(
             f"{path.name}: unsupported version {raw.get('version')!r} "
             f"(expected {SESSION_VERSION})"
@@ -276,12 +310,19 @@ def read_session(root: Path, slug: str) -> BrainstormSession:
         if i.id.upper() in seen:
             raise BrainstormError(f"{path.name}: duplicate idea id {i.id}")
         seen.add(i.id.upper())
+    frame = raw.get("frame") if isinstance(raw.get("frame"), dict) else {}
+    rnd = raw.get("round")
     return BrainstormSession(
         slug=_str_field(raw, "slug") or slug,
         topic=_str_field(raw, "topic"),
         under=_opt_str_field(raw, "under"),
         mode=mode,
         ideas=ideas,
+        frame={str(k): str(v) for k, v in frame.items()},
+        allocation=_str_field(raw, "allocation"),
+        round=rnd if isinstance(rnd, int) and rnd >= 1 else 1,
+        profile=_str_field(raw, "profile", "product") or "product",
+        panel=raw.get("panel") if isinstance(raw.get("panel"), int) else 0,
     )
 
 
