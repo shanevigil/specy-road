@@ -6,7 +6,7 @@ Session notes and generated briefs can live here. The roadmap graph and `shared/
 specy-road brief M1.1 -o work/brief-M1.1.md
 ```
 
-When `roadmap/git-workflow.yaml` sets `require_implementation_review_before_finish: true`, the implementer (or agent) writes **`work/implementation-summary-<NODE_ID>.md`** before human review. Copy `implementation-summary.template.md` as a starting point. The developer then runs `specy-road mark-implementation-reviewed`, then `specy-road finish-this-task`.
+When `roadmap/git-workflow.yaml` sets `require_implementation_review_before_finish: true`, the implementer (or agent) writes **`work/implementation-summary-<NODE_ID>.md`** before review. Copy `implementation-summary.template.md` as a starting point. Review hand-offs live under **`work/reviews/<NODE_ID>/`** (gitignored): the executor's `READY-<agent>.md`, the `PACKET.md` reviewers read (`specy-road review-packet`), and one `REVIEW-<model>.md` per reviewer (`specy-road review record`). The developer then runs `specy-road mark-implementation-reviewed`, then `specy-road finish-this-task`. See `docs/orchestration.md` in the specy-road repository.
 
 By default, **`finish-this-task`** removes **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** after validate/export/digest (staging deletion if those paths are tracked). Durable design stays in **`planning/`** and cited **`shared/`** contracts. Use **`--no-cleanup-work`** or **`cleanup_work_artifacts_on_finish: false`** in `roadmap/git-workflow.yaml` to keep those three.
 

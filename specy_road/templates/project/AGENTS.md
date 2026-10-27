@@ -51,6 +51,8 @@ Three selection rules that are easy to read backwards:
 
 After Blocked and MR-rejected, auto-pick follows **outline (tree) order**, not raw merged chunk order (`docs/roadmap-authoring.md`). That is delivery order, not the order you would choose to *design* in — if you want to cut a seam first, use `--interactive` to choose by number, or `--under <NODE_ID>` to scope to one subtree.
 
+**Review roles:** the session that implements a leaf (executor) never reviews or approves it, and the coordinator's own session is never a reviewer. An executor commits, writes `work/implementation-summary-<NODE_ID>.md` and `work/reviews/<NODE_ID>/READY-<agent>.md`, and stops. Reviewers read only `specy-road review-packet <NODE_ID>` output and file verdicts with `specy-road review record`. Do not run `mark-implementation-reviewed --yes` to approve your own work; it refuses without a recorded review. Policy: `roadmap/orchestration.yaml`.
+
 **Running many leaves:** do not hand-roll an orchestrator around `do-next-available-task`. **`specy-road grind-session`** already runs the loop — pickup → implement → optional pre-finish check → `finish-this-task` — with stable exit codes and `--json` events, and it never edits the registry itself.
 
 ```bash

@@ -47,7 +47,18 @@ automatic capacity detection, and live diff watching.
 - `brief` did not render a node's `goal` or `acceptance`; the proposal assumes
   it does. Slice 1 adds both, with stable `A1..An` ids that review records cite.
 - `mark-implementation-reviewed` recorded no reviewer, model, or commit. Slice 1
-  adds `implementation_reviews` to the registry entry on approval, which needs
-  `specy-road refresh-schemas` in existing adopter repos.
+  writes one `Reviewed-by: <model> (<family>) approve <commit>` trailer per
+  counted approval on the gate's registry commit. A registry field was the first
+  plan, but `registry.schema.json` is consumer-owned with
+  `additionalProperties: false` (the trap `archive_index.py` documents), and the
+  row is deleted at finish anyway; the commit history outlives both.
+- Review files bind to a commit, so they are gitignored (`work/reviews/`), and
+  the commit under review skips commits that touch only
+  `roadmap/registry.yaml`. Otherwise the gate's own commit would make every
+  review it just counted stale.
+- `mark-implementation-reviewed --yes` used to approve unconditionally, and
+  `docs/grind-session.md` told unattended loops to call it from the implement
+  hook — the coordinator approving its own work. It now only commits an approval
+  the recorded reviews already earned (decided with the maintainer).
 - Claims never write `owner`, and there is no local-only claim path; both are
   slice 4.

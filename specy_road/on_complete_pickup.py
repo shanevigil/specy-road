@@ -79,7 +79,8 @@ def print_pickup_footer(
     print(f"Open {prompt_path.relative_to(root)} in your agent to begin.")
     if impl_review_gate:
         print(
-            "When done: write work/implementation-summary-<NODE_ID>.md, then human runs "
+            "When done: write work/implementation-summary-<NODE_ID>.md; reviewers read "
+            "specy-road review-packet <NODE_ID> and file specy-road review record; then "
             "specy-road mark-implementation-reviewed, then specy-road finish-this-task",
         )
     else:
