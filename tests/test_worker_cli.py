@@ -194,10 +194,17 @@ def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
     capsys.readouterr()
     assert _cli("worker", "reconcile", "w-0001", "--json", "--repo-root", str(repo)) == 0
     assert json.loads(capsys.readouterr().out)["delta"]["needs_reconcile"] is False
+    # The toolkit's own files are never a breach.
+    (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "brief-M1.1.md").write_text("brief\n")
+    (repo / "roadmap" / "registry.yaml").write_text((repo / "roadmap" / "registry.yaml").read_text() + "# note\n")
+    assert _cli("worker", "reconcile", "w-0001", "--json", "--repo-root", str(repo)) == 0
+    assert json.loads(capsys.readouterr().out)["delta"]["needs_reconcile"] is False
     (repo / "README.md").write_text("outside\n")
     assert _cli("worker", "reconcile", "w-0001", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "OUTSIDE touch zones: README.md" in out and "needs_reconcile=True" in out
+    assert "brief-M1.1" not in out
     assert ws.FLAG_RECONCILE in ws.load_record(repo, "w-0001").flags
 
 
