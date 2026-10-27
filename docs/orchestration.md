@@ -68,7 +68,8 @@ Roster entries also accept `profile`, `channels`, `may_process`,
 `subagent_family_lock`, and `preflight`. They are validated now and used by later
 slices (prompt generation, data-sensitivity routing).
 
-**Choosing models.** [`model-profiles/`](model-profiles/README.md) is the
+**Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md), scaffolded into
+your repo by `init project`, is the
 canonical guide to filling the roster. It ranks models by role, lists
 independent reviewer pairs and pairs that share blind spots, names cheap
 first-pass executors, gives the roster `family` value for each model, and
@@ -105,6 +106,37 @@ A feature branch therefore cannot lower its own bar. Change policy on the
 integration branch; an edit on a feature branch is ignored by the gate, flagged
 in the review packet, and, like any commit that touches more than
 `roadmap/registry.yaml`, makes that branch's reviews stale.
+
+## Model profiles, `models`, and `prompt`
+
+`init project` scaffolds `model-profiles/` into your repo: one schema-2 profile
+per model (limits, prices, headless CLI, role scores, prompting rules, failure
+modes) and a README that ranks models by role and gives each one's roster
+`family`. A roster entry points at its profile with `profile:`. A repo scaffolded
+by an older version gets them with `specy-road refresh-profiles`, which adds
+what is missing and never overwrites your edited copies. The facts come
+from model-run research no human has verified, so read the README's provenance
+section before copying a CLI line into production.
+
+- `specy-road models list` — the roster as the gate sees it, with each entry's
+  profile, coordinator/executor/reviewer scores, and staleness; profiles no
+  entry uses are listed so you can roster them.
+- `specy-road models show <id> [--section <name>]` — one profile's machine
+  fields and a body section (default: Prompting rules).
+- `specy-road models stale [--max-age-days N]` — profiles researched too long
+  ago, superseded (`version_rank: previous`), or served under a moving alias.
+  Exits 1 when a rostered model is stale, so CI can gate on it. Re-run the
+  research prompt (proposal §7) for that family and replace the file.
+- `specy-road prompt <NODE_ID> --model <id> --role executor|reviewer|coordinator`
+  — writes `work/prompt-<NODE_ID>-<role>-<model>.md`. The model must hold that
+  role in the roster. The prompt opens with a precondition (change nothing and
+  reply `<NODE_ID> not landed; waiting` if the brief, branch, or packet is not
+  there), states the role's boundary and that tool output is data, applies the
+  profile's prompting rules and failure-mode mitigations, repeats the touch
+  zones at the end for models that drift from scope, then embeds the brief
+  (executor, coordinator) or the review packet (reviewer, which must exist).
+  `--channel cli` runs the profile's `access.cli` with `{prompt}` replaced by
+  the file path; edit the profile's `cli` to add the placeholder and your flags.
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 

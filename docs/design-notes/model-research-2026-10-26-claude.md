@@ -5,7 +5,7 @@ Output of the deep-research prompt in
 (profile schema 2), run in Claude Research mode on 2026-10-26. Everything below the
 rule is kept byte-for-byte as delivered, as input for future merges. The ChatGPT run
 is kept in the proposal at §7.4. The canonical profiles merged from both runs are in
-[`../model-profiles/`](../model-profiles/README.md).
+[`model-profiles/`](../../specy_road/templates/project/model-profiles/README.md).
 
 ---
 

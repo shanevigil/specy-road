@@ -48,14 +48,21 @@ its hook adapter lands with slice 5.
 Out of scope for the whole line, as the proposal states (§6): vendor billing,
 automatic capacity detection, and live diff watching.
 
-Slice 2's input profiles exist: [`../model-profiles/`](../model-profiles/README.md)
+Slice 2's input profiles exist: [`model-profiles/`](../../specy_road/templates/project/model-profiles/README.md)
 holds one schema-2 profile per model, merged from the ChatGPT run (proposal §7.4)
 and the Claude run ([`model-research-2026-10-26-claude.md`](model-research-2026-10-26-claude.md)).
 Their front matter is strict YAML (`yaml.safe_load` reads it). Only the raw
-Claude report keeps the research prompt's unquoted flow mappings. `docs/` is
-not shipped in the wheel, so slice 2 must either ship the profiles as package
-data or have `init project` scaffold them into the adopter's `model-profiles/`.
-A roster `profile` path is relative to the adopter's repo.
+Claude report keeps the research prompt's unquoted flow mappings.
+
+**Decision (slice 2):** the profiles live under
+`specy_road/templates/project/model-profiles/`, so they ship in the wheel and
+`init project` scaffolds them into the adopter's `model-profiles/`, where a
+roster `profile` path points at one. Scaffolding, not package data, because a
+team must edit them — prices, their own CLI syntax, their own research — and
+the gate and `prompt` read the adopter's copy. `specy-road models stale` is how
+a team notices its copy aging; the toolkit's copy is refreshed by re-running
+the §7 prompt. Built: `models list|show|stale` and
+`prompt <NODE_ID> --model <id> --role <role> [--channel cli|paste|subagent]`.
 
 ## Gaps found while scoping
 

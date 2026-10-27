@@ -36,6 +36,10 @@ REQUIRED_FILES = (
     # review record, and the mark-implementation-reviewed gate read these.
     "specy_road/schemas/handoff.schema.json",
     "specy_road/schemas/review-record.schema.json",
+    # Model profiles are scaffolded by `init project`; a wheel without them
+    # gives adopters an empty roster guide and no `prompt` model notes.
+    "specy_road/templates/project/model-profiles/README.md",
+    "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md",
 )
 REQUIRED_GLOBS = (
     "specy_road/pm_gantt_static/assets/index-",  # prefix match on at least one entry

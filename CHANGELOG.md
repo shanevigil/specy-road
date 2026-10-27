@@ -66,7 +66,22 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   trailer per counted approval.
 - `specyrd` stubs: `/specyrd-review-packet`, `/specyrd-review-record`,
   `/specyrd-handoff-status`.
-- [`docs/model-profiles/`](docs/model-profiles/README.md): a canonical guide to
+- `specy-road models list|show|stale`: the roster with each model's profile and
+  role scores; one profile's fields and a body section; profiles whose research
+  is older than 180 days, superseded, or served under a moving alias (exit 1
+  when a rostered one is).
+- `specy-road prompt <NODE_ID> --model <id> --role coordinator|executor|reviewer`
+  writes `work/prompt-<NODE_ID>-<role>-<model>.md`: a precondition check, the
+  role's preamble (executor boundary, packet-only review, coordinator rules),
+  the model profile's prompting rules and failure-mode guards applied
+  mechanically, then the brief or the review packet. `--channel cli` runs the
+  profile's `access.cli`. Stub: `/specyrd-prompt`.
+- `init project` scaffolds `model-profiles/` (16 profiles and the roster guide)
+  into the adopter's repo; roster entries point at them with `profile:`.
+  `specy-road refresh-profiles` adds missing ones to a repo scaffolded earlier
+  without overwriting edited copies (`--force <path>` for one).
+- [`model-profiles/`](specy_road/templates/project/model-profiles/README.md), scaffolded by
+  `init project` into the adopter's repo: a canonical guide to
   choosing models for coordinator, executor, and reviewer roles. It has one
   schema-2 profile per model, merged from a ChatGPT and a Claude research run;
   where the runs disagree, both values are listed as points to watch.
