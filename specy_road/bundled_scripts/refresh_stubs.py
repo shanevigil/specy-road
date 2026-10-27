@@ -38,7 +38,7 @@ from specy_road.runtime_paths import (
     recorded_project_root,
 )
 from specy_road.managed_block import UNCHANGED
-from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill
+from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill, skill_rel
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
     COMMAND_FILES,
@@ -93,7 +93,7 @@ def _write_if_changed(
     consumer's: it is left alone and reported, not adopted.
     """
     if is_link_path(rel):
-        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned)
+        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned, owned=owned)
         if outcome == SKIPPED:
             written.append(f"{rel} ({outcome})")
             return False
@@ -114,6 +114,29 @@ def _write_if_changed(
         dest.write_text(content, encoding="utf-8")
     written.append(rel)
     return True
+
+
+def _refresh_pack(
+    repo_root: Path, agent: str, current: list[str], all_recorded: set[str], *, dry_run: bool, written: list[str],
+) -> list[str]:
+    """Rewrite one pack's managed paths; return the ones that are the kit's afterwards.
+
+    A link is only ever made to a canonical skill the kit owns: when the
+    canonical ``SKILL.md`` is skipped as someone else's, its link is skipped
+    too, rather than exposing (and recording) content the kit declined to own.
+    """
+    ours: list[str] = []
+    declined: set[str] = set()
+    for rel in current:
+        if is_link_path(rel) and str(skill_rel(f"{Path(rel).name}.md")) in declined:
+            written.append(f"{rel} ({SKIPPED})")
+            continue
+        owned = rel in all_recorded or rel.startswith(".specyrd/")
+        if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent, owned=owned):
+            ours.append(rel)
+        else:
+            declined.add(rel)
+    return ours
 
 
 def _old_command_stub(rel: str) -> bool:
@@ -155,16 +178,17 @@ def refresh_stubs(
     orphans: list[str] = []
     role = manifest.get("role")
 
+    # Ownership is the kit's, not one pack's: a skill file another recorded
+    # pack wrote is ours to refresh and to link.
+    all_recorded = {p for paths in agents.values() for p in paths if isinstance(p, str)}
     for agent in sorted(agents):
         recorded = [p for p in agents[agent] if isinstance(p, str)]
         rel_dest = _dest_dir(agent, recorded)
         if rel_dest is None:
             continue
-        current = managed_paths(rel_dest, _stub_set(role), agent=agent)
-        ours = [rel for rel in current
-                if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent,
-                                     owned=rel in recorded or rel.startswith(".specyrd/"))]
-        current = ours
+        current = _refresh_pack(repo_root, agent, managed_paths(rel_dest, _stub_set(role), agent=agent),
+                                all_recorded, dry_run=dry_run, written=written)
+        all_recorded.update(current)   # what this pack just wrote is the kit's for the packs after it
         orphans.extend(_orphans(recorded, current, repo_root))
         # Refresh the block in a CLAUDE.md the consumer has; never create the
         # file (`specyrd init` does that only with --write-claude-md).
