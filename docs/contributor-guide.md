@@ -155,6 +155,36 @@ The release workflow accepts a `workflow_dispatch` trigger with
 does NOT publish or create a release. Useful when refactoring the
 workflow itself.
 
+### Independent review rounds
+
+Before a release line is promoted, it is reviewed by models from **other
+families** than the one that wrote it. A round is a **fresh session**, given
+a prompt (never this repo's chat history) that pins:
+
+- the SHA and range under review (`git fetch`, `git checkout <sha>`,
+  `git log --oneline <from>..<sha>`);
+- the read order: design notes, then reference docs, then `CHANGELOG.md`
+  `[Unreleased]`, then the code;
+- the earlier rounds' test files, so the reviewer checks each fix for
+  completeness instead of re-reporting it;
+- the standing constraints: no model or search API call from the CLI, no
+  MCP server, no daemon, version numbers human-owned, no redesign of a
+  taken decision (each design note lists its decisions).
+
+The reviewer commits nothing. It reports **blockers**, **findings**,
+**questions** and **verified** guarantees, each with file:line and a
+reproduction (a shell transcript or a pytest it ran).
+
+Findings land as one regression test per finding in
+`tests/test_review_round<N>_<family>.py` (`tests/test_worker_review_round<N>.py`
+for the worker layer; fixtures in `tests/review_repo_helpers.py`), one
+CHANGELOG `[Unreleased]` bullet "**<Nth> independent review (<model>):**"
+listing the fixes, an edit to the design note wherever a claim changed, and
+a stated limit in the reference doc wherever a finding is accepted rather
+than fixed. A fix restarts the round at the new SHA. The rounds' origin and
+the evidence discipline behind them:
+[design-notes/sre-for-ai-triage.md](design-notes/sre-for-ai-triage.md).
+
 ---
 
 ## Local CI parity
