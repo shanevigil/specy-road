@@ -78,4 +78,6 @@ specy-road grind-session --on-complete merge \
 
 **Hook mode** is how an agent CLI plugs in. Each cycle runs `--implement-cmd` once with `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`, `SPECY_ROAD_PROMPT` and `SPECY_ROAD_REPO_ROOT` in the environment; a non-zero exit stops the session rather than finishing a leaf that failed. Without it (`--implement-mode manual`, the default) the loop waits for a ready-signal file between cycles.
 
+**Workers on other harnesses:** a coordinator may hand a *claimed* leaf to a session on another harness with `specy-road worker delegate <NODE_ID> --model <roster id>`; it returns at once, and `specy-road worker sync` at the start of each turn is how you learn what happened. One writer per worker: `worker handoff` before a human opens its native session, `worker reclaim` after. See `docs/orchestration-workers.md`.
+
 **When nothing is pickable:** exit `3` is a real dependency or gate block and needs a human elsewhere. Exit `6` means this clone already holds a claim — finish it, `specy-road abort-task-pickup`, or re-run with `--resume-in-flight`. Ask about one node with **`specy-road why-blocked <NODE_ID>`**, or list what gates are holding work with **`specy-road list-gates`**. See `docs/grind-session.md`.

@@ -21,6 +21,7 @@ specy-road do-next-available-task   # sync, brief, register leaf claim on base, 
 specy-road abort-task-pickup        # undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/
 
 specy-road mark-implementation-reviewed  # review gate; reviews via review-packet / review record / handoff status (orchestration.md)
+specy-road worker delegate <NODE_ID> --model <roster id>   # after pickup: run the leaf on another harness; `worker sync` reads back (orchestration-workers.md)
 specy-road finish-this-task         # complete, validate, export, digest, commit, PR hint (--push optional)
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
@@ -42,7 +43,6 @@ specy-road open-milestone-pr         # print gh/glab one-liner (rollup head → 
 specy-road grind-session --plan --json        # read-only: ready/blocked/waves (plan sub-agents)
 specy-road grind-session --until M7.6 --on-complete merge --implement-mode hook --implement-cmd '…'
 ```
-
 
 ```text
 # IDE slash commands (after specyrd init --role dev)

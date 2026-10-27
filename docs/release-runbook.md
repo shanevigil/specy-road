@@ -127,6 +127,10 @@ Before cutting **any** RC or final release branch, prove the current
 candidate line is ready from a user's point of view. This is a
 release-readiness branch, not the release branch.
 
+**0.3 line:** also play out [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md)
+(workers, brainstorm v2, signed reviews, skills on real harnesses) and
+attach its evidence file before §3.1.
+
 ### 3.1 Branch order
 
 1. Sync the integration line:

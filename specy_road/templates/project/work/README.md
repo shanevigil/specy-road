@@ -12,4 +12,8 @@ By default, **`finish-this-task`** removes **`work/brief-<NODE_ID>.md`**, **`wor
 
 Two files do not follow that switch. **`work/.on-complete-<NODE_ID>.yaml`** is internal handoff state rather than a document, so it always goes. **`work/pr-body-<NODE_ID>.md`** always stays: it is the snapshot the printed `gh pr create --body-file` command reads, and nothing tells `finish-this-task` when the PR was opened. Both are gitignored by the scaffold, and `specy-road file-limits` skips every file in this list.
 
+**Brainstorm sessions** live here too: `work/brainstorm-<slug>.yaml` is tracked (ideas, frame, clusters, evidence, decisions); the prompts beside it (`…-prompt.md`, `…-sN-prompt.md`, `…-evidence-prompt.md`) are regenerated and gitignored.
+
+**Agent coordination state** (all gitignored, always in the main worktree): `work/.sessions/<agent>.yaml` presence records (`specy-road session`), `work/.workers/` worker records, event logs and the ops outbox (`specy-road worker`), and `work/.worktrees/` for leaves a worker runs in a linked worktree.
+
 Add a `.gitkeep` or tune `.gitignore` for what should stay local vs checked in.

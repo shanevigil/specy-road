@@ -109,6 +109,11 @@ Recommended orchestration prompt:
 > `Complete`. Re-run the planner after each wave to pick up the next batch.
 > Never start a node listed under `blocked`/`gated`; gates require a human.
 
+To run a leaf on a *different* harness than the one you are in (a Codex
+worker from a Cursor chat, say) and read its events back next turn, use
+`specy-road worker delegate` after pickup — see
+[orchestration-workers.md](orchestration-workers.md).
+
 This is the fix for the common failure where an orchestrator spawns a sub-agent
 for `M11.1` while `M10.5` is still in flight: the planner shows `M11.1` in a
 later wave and under `blocked` with `waiting_on: ["M10.5"]`, so it is not

@@ -1,10 +1,11 @@
 # 0.3.1: workers behind the coordinator (research reconciled)
 
-**Status:** design, 2026-10-27. Reconciles the external research on IDE-native,
-cross-harness orchestration against what slices 1–6 built, and scopes the last
-feature of the `WIP/improvements-0-3-1` line. Decisions marked *open* wait on
-the maintainer; the rest are recommendations recorded here so they are not
-re-derived.
+**Status:** built 2026-10-27 (7a–7d merged to `WIP/improvements-0-3-1`;
+reference `../orchestration-workers.md`; real-harness checks in
+`../agentic-sandbox-runbook.md` §5). Reconciles the external research on
+IDE-native, cross-harness orchestration against what slices 1–6 built. All
+decisions below are taken; "7c as built" records what changed in the
+building.
 
 ## Inputs
 

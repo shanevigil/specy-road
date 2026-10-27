@@ -215,6 +215,8 @@ Run all of these with `--repo-root /path/to/consumer/repo` if your shell is
 not already inside the consumer repo (for example when you're working in
 the toolkit clone and pointing at `playground/`).
 
+Shape the roadmap before authoring it: `specy-road brainstorm start --topic "…" --under <ID>`, hand the prompt to your agent, `next-round`, `recommend`, `evidence` + `verify`, then `accept` / `reject --reason` / `park` and `promote` ([brainstorming.md](brainstorming.md)).
+
 ---
 
 ## Everyday workflow (DEV / coding agent)
@@ -232,6 +234,11 @@ $EDITOR work/implementation-summary-<NODE_ID>.md
 # approval here is enough.
 specy-road review-packet <NODE_ID>
 specy-road mark-implementation-reviewed
+
+# Coordinating from a chat: hand a claimed leaf to a session on another
+# harness and read its events back next turn (docs/orchestration-workers.md).
+specy-road worker delegate <NODE_ID> --model <roster id>
+specy-road worker sync --ack
 
 # Land the work. on_complete=pr opens a PR; on_complete=merge merges
 # locally and pushes the integration branch (no PR needed).

@@ -1,7 +1,11 @@
 # Design: model-aware orchestration slices (`0.3.0` line)
 
-> **Status:** slices 1–6 and decisions A, B, D are built on
-> `WIP/improvements-0-3-1` (the line's first tag will be `0.3.1-rc1`). The
+> **Status:** slices 1–7 and decisions A, B, D are built on
+> `WIP/improvements-0-3-1` (the line's first tag will be `0.3.1-rc1`, after
+> [`../agentic-sandbox-runbook.md`](../agentic-sandbox-runbook.md) is played
+> out). Slice 7 (workers) has its own note,
+> [`v0-3-1-worker-orchestration.md`](v0-3-1-worker-orchestration.md), and
+> brainstorm v2 [`v0-3-1-brainstorm-v2.md`](v0-3-1-brainstorm-v2.md). The
 > per-slice sections below record what each one decided.
 
 Source material: [`model-aware-orchestration-proposal.md`](model-aware-orchestration-proposal.md),

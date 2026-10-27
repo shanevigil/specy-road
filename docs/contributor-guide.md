@@ -103,6 +103,10 @@ exempt. Roadmap-driven `feature/rm-<codename>` branches created by
 
 ### Releases — see the canonical runbook
 
+For the 0.3 line, the real-harness checks in
+**[`docs/agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md)** must
+pass before an rc is cut; the release runbook's §3.3 harness is its baseline.
+
 Cutting a release (RC or final) is documented end-to-end in
 **[`docs/release-runbook.md`](release-runbook.md)** — the canonical
 playbook for both humans and the autonomous coding agent. The runbook
