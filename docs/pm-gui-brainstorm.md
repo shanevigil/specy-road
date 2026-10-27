@@ -123,6 +123,15 @@ when it lands. Afterwards, regenerate the derived files:
 specy-road export && specy-road digest
 ```
 
+## What the panel does not do yet
+
+The CLI's round model (`next-round`), shards, the evidence pass and `verify`
+are not panel buttons yet. The panel's Brainstorm mode runs the round-1
+prompt, so it plans and generates without the roadmap inventory; Roadmap mode
+runs the same converge prompt the CLI writes (clusters, overlap relations,
+critics). Use the CLI against the same session for the rest; the session
+file is shared.
+
 ## Notes
 
 - Mutating calls carry `X-PM-Gui-Fingerprint`, like every other write in the

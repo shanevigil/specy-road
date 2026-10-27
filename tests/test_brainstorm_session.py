@@ -122,7 +122,7 @@ def test_an_idea_without_a_title_is_rejected() -> None:
 def test_a_future_version_is_refused_rather_than_guessed(tmp_path: Path) -> None:
     write_session(tmp_path, _session())
     path = session_path(tmp_path, "payments")
-    path.write_text(path.read_text(encoding="utf-8").replace("version: 1", "version: 2"))
+    path.write_text(path.read_text(encoding="utf-8").replace("version: 2", "version: 3"))
 
     with pytest.raises(BrainstormError, match="unsupported version"):
         read_session(tmp_path, "payments")
