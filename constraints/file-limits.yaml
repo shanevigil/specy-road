@@ -53,6 +53,13 @@ override_limits:
     file_globs:
       - "docs/design-notes/model-aware-orchestration-proposal.md"
     max_lines_per_file: 1100
+  # Verbatim Claude run of the proposal's §7.2 model-research prompt, kept
+  # byte-for-byte beside the ChatGPT run (proposal §7.4) as input for future
+  # merges. The merged, canonical profiles live in docs/model-profiles/.
+  - name: model_research_claude_verbatim
+    file_globs:
+      - "docs/design-notes/model-research-*-claude.md"
+    max_lines_per_file: 900
 
 roadmap_manifest_max_lines: 500
 roadmap_json_chunk_max_lines: 500

@@ -66,6 +66,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   trailer per counted approval.
 - `specyrd` stubs: `/specyrd-review-packet`, `/specyrd-review-record`,
   `/specyrd-handoff-status`.
+- [`docs/model-profiles/`](docs/model-profiles/README.md): a canonical guide to
+  choosing models for coordinator, executor, and reviewer roles. It has one
+  schema-2 profile per model, merged from a ChatGPT and a Claude research run;
+  where the runs disagree, both values are listed as points to watch.
 
 ### Changed
 
