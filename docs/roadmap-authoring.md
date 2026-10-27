@@ -1,5 +1,27 @@
 # Roadmap authoring: JSON manifest and chunk files
 
+## Agent quickstart
+
+**Use this doc when:** you add, edit, move or renumber roadmap nodes, or need the field rules for `roadmap/manifest.json` and its JSON chunks.
+**Not for:** the PM's day-to-day loop and dashboard ([`pm-workflow.md`](pm-workflow.md)) or claiming and finishing leaves ([`dev-workflow.md`](dev-workflow.md)).
+
+**Must know without reading on:**
+- Identity is `node_key` (UUID, immutable); `dependencies` list other nodes' `node_key` values, never display ids. Display `id` may be renumbered; never recycle a `node_key`.
+- `roadmap.md` is generated: edit chunks, then `specy-road export` (`--check` in CI); `specy-road validate` is the gate after every edit.
+- Prefer `specy-road add-node` / `edit-node` / `set-dependencies` to hand-editing chunks: routing picks the chunk, and `specy-road rebalance-chunks` fixes one over the 500-line cap.
+- Every `vision`, `phase`, `milestone`, `task` and `gate` node needs `planning_dir` → `planning/<id>_<slug>_<node_key>.md`; contracts are cited in that sheet's `## References`, not in the JSON.
+- A `type: gate` node is a leaf-only hold: never picked up, never in `roadmap/registry.yaml`, and it blocks its dependents until `Complete`.
+
+**Read further for:**
+- where the graph lives, what each `type` means, manifest, chunk shape, the line cap, routing → "Source of truth", "Roadmap layers", "JSON chunks (`.json`)"
+- `parent_id`, `sibling_order`, renumbering, planning-file renames → "Reordering and reparenting"
+- every field, gates, decision blocks → "Node fields reference"
+- `execution_milestone` and sub-task tagging → "Execution type tagging"
+- the five questions a sheet answers, `## References`, vendor-neutral wording, spec types → "Writing implementable `agentic` tasks", "Stack-agnostic task language", "Spec crosswalk"
+- registry etiquette, the PM edit steps, export, CRUD, brief → "Multi-agent coordination", "PM editing workflow", "Generated index (`roadmap.md`)", "Tooling", "Registry and brief"
+
+**Related:** [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`archiving.md`](archiving.md), [`git-workflow.md`](git-workflow.md).
+
 ## Source of truth
 
 **Canonical for a specy-road project:** the roadmap graph under that project's `roadmap/`. In this toolkit repository, the examples and links point at the dogfood **test fixture** under [`tests/fixtures/specy_road_dogfood/roadmap/`](../tests/fixtures/specy_road_dogfood/roadmap/); consumer projects keep the same structure at their own repo root. The entry file is **required**: [`roadmap/manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
@@ -18,8 +40,6 @@ The schema uses small enums; this is how they usually map to product thinking:
 | `vision` | Program-level narrative when you use that layer. |
 
 Dependencies and `parallel_tracks` express what can run in parallel vs what must wait — not the `includes` order alone.
-
----
 
 ## Roadmap layers
 
@@ -51,8 +71,6 @@ flowchart TB
 | **Parallel tracks / dependencies** | (node fields) | Concurrent vs. sequenced work — set `parallel_tracks` and `dependencies`. |
 | **Sub-tasks** | `task` (depth 3) | Checklist granularity. **Immutable** IDs. |
 | **Fourth-level** | `task` (depth 4) | Additive only; same immutability rules as sub-tasks. |
-
----
 
 ## JSON chunks (`.json`)
 
@@ -107,8 +125,6 @@ Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth p
 
 **Milestone-lock interaction.** Both `specy-road add-node` and `specy-road rebalance-chunks` honor the milestone subtree lock added in v0.1.0. Adding a child under a parent that lives inside an `active` or `pending_mr` milestone subtree is refused (it would be a silent scope expansion on a live rollout). `rebalance-chunks` refuses with exit 1 when ANY milestone is in-flight (the cross-chunk reorganization is functionally a mutation under any locked subtree, and would also confuse the PM Gantt's optimistic-concurrency fingerprint). Both errors point at `specy-road reconcile-milestone-status --apply`. Close the milestone after delivery, then retry.
 
----
-
 ## Reordering and reparenting
 
 ### Single source of truth: identity vs on-disk layout
@@ -143,8 +159,6 @@ Suppose milestone **A** has display id **`M4.1`**, stable **`node_key` K**, and 
 ### Refactor and Git ergonomics
 
 Prefer **one logical change per commit** (graph edit + `sync_planning_artifacts` + `registry.yaml` fixes if needed) so reviewers see intent. `specy-road validate` is the gate for orphan planning files and filename mismatches. Optional: CRUD and [`rename_planning_file_if_path_changed`](../specy_road/bundled_scripts/planning_rename.py) paths perform on-disk renames when updating nodes manually.
-
----
 
 ## Node fields reference
 
@@ -219,8 +233,6 @@ decision:
 
 Rendered in exported phase markdown as `> Decision pending` or `> Decided (date) — ref`.
 
----
-
 ## Execution type tagging
 
 > **Removed field.** `execution_subtask` is **not authorable**. It is listed in
@@ -250,8 +262,6 @@ Milestone-level (`execution_milestone`) reflects the dominant work type for the 
 **Before (mixed — do not do this):** One task that combines a design choice ("document semantics") with implementation — agents stall or guess on the undecided part.
 
 **After (separated — do this):** `human-gate` Decide overlap semantics and record decision → `agentic` Implement the rule per spec → `human` Acceptance review.
-
----
 
 ## Writing implementable `agentic` tasks
 
@@ -295,8 +305,6 @@ Worth adding when they apply: an observable **success signal**, and any
 }
 ```
 
----
-
 ## Stack-agnostic task language
 
 Tasks state **what** and **to what contract** — not which framework, cloud SDK, or library. Stack choices live in ADRs and specs; the roadmap must not become a second source of truth.
@@ -314,8 +322,6 @@ Tasks state **what** and **to what contract** — not which framework, cloud SDK
 
 **Architecture-phase exception:** Decision blocks *may* name concrete options (e.g. framework A vs B) — that is the decision venue. After a decision lands in an ADR, later milestone tasks use functional roles, not product names.
 
----
-
 ## Spec crosswalk
 
 Specs are produced before broad implementation and consumed in later milestones. Paths are typically under **`shared/`** or **`docs/`** in the repository.
@@ -330,8 +336,6 @@ Specs are produced before broad implementation and consumed in later milestones.
 | **RBAC matrix** | Roles × permissions × claims | Auth and access-control work |
 
 If an `agentic` task cannot cite at least one of these, the spec may be missing — write or reference it before the task is marked ready.
-
----
 
 ## Multi-agent coordination
 
@@ -351,8 +355,6 @@ Multiple developers and multiple agents per developer are assumed.
 - **Dependent** milestones (`dependencies` field) are not parallel without explicit sign-off.
 - Registry overlap warnings (`specy-road validate`) surface potential conflicts before file collisions occur.
 
----
-
 ## PM editing workflow
 
 1. Read your project's `vision.md` for invariants before editing.
@@ -362,29 +364,18 @@ Multiple developers and multiple agents per developer are assumed.
 5. Use `decision` blocks for architectural forks; link ADRs in `adr_ref` when they exist.
 6. Tag sub-tasks; split mixed types; align milestone `execution_milestone` with the dominant work type.
 
----
-
 ## Generated index (`roadmap.md`)
 
 - [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) — **generated** index table with **Gate** column. Do not edit by hand.
 
 Chunk files under [`roadmap/phases/`](../tests/fixtures/specy_road_dogfood/roadmap/phases/) are **source** (`.json` graph chunks).
 
-Regenerate the index after editing chunks:
+Regenerate the index after editing chunks, and check that the committed index matches the merged graph (e.g. in CI):
 
 ```bash
 specy-road export
-# or directly:
-specy-road export
-```
-
-Check that the committed index matches the merged graph (e.g. in CI):
-
-```bash
 specy-road export --check
 ```
-
----
 
 ## Tooling
 
