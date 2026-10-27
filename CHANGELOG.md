@@ -199,6 +199,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   instead of explanation, since every always-injected instruction file costs
   context on every turn (Codex truncates the `AGENTS.md` chain at 32 KiB).
   Adopters run `specy-road refresh-stubs`; `validate` warns until they do.
+- Every `specyrd-*` skill description now states what the command does and
+  when an agent should invoke it, since harnesses route on the description
+  alone; "when to use" text moved out of skill bodies, and each body opens
+  with the command.
 - The gate counts one vote per model (a block from any of a model's records
   wins), checks each record's `node_id`, compares commits through git rather
   than by string prefix, and treats every merge commit — `-s ours` included —
