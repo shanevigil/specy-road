@@ -125,7 +125,7 @@ and it avoids the anchoring the ChatGPT run itself warns about.
 
 ## Decisions
 
-**B1 (open) — what ships on 0.3.1.** Recommendation, in order of measured
+**B1 (decided 2026-10-27 as recommended) — what ships on 0.3.1.** Recommendation, in order of measured
 value per line of code:
 
 1. **Rounds with regeneration.** `brainstorm start --rounds R` (default 2).
@@ -174,14 +174,16 @@ deep-research MCP hooks, GUI programmatic regeneration, an evaluation
 harness beyond the metrics the CLI can print (counts per lens, cluster,
 origin, verified-evidence share).
 
-**B2 (open) — may `verify` fetch URLs?** The standing rule is that the CLI
+**B2 (decided 2026-10-27: fetch allowed, with the user's approval) — may `verify` fetch URLs?** The standing rule is that the CLI
 calls no model and no search API. Fetching a known URL to check that a quote
 appears on the page is neither, and the GUI already makes HTTP calls.
-Recommendation: `brainstorm verify --fetch` fetches (timeouts, size cap, no
-private addresses, same guards as the GUI research module); without
-`--fetch` it only checks shape and marks evidence `unchecked`. Default off.
+Decision: `brainstorm verify` lists the URLs it would fetch and asks for
+confirmation before the first network call (`--yes` answers it for scripts;
+non-interactive without `--yes` fetches nothing); fetching uses timeouts, a
+size cap and the GUI research module's private-address guard. Evidence not
+fetched stays `unverified`.
 
-**B3 (open) — research out of round 1.** The report moves web research out
+**B3 (decided 2026-10-27 as recommended) — research out of round 1.** The report moves web research out
 of divergence entirely (anchoring on first search results, token spend) and
 into the evidence pass; the current prompt tells the agent to research in
 order to "import ideas not in the room". Recommendation: round 1 generates
@@ -214,7 +216,7 @@ change, not in this one.
 - No fan-out of its own (reuse the worker layer), no votes, no deep-research
   integration: smallest change that captures the measured gains.
 - Research stays available from round 2 (B3) rather than evidence-pass only.
-- `verify` is opt-in fetch (B2) so the CLI's no-network default stays visible.
+- `verify` asks before fetching (B2) so the CLI's first network call is always a visible, approved one.
 
 ## Verification
 
