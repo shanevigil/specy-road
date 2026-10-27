@@ -188,10 +188,11 @@ optional `billing_route` label. `models show` and `worker list` print
 adapters cannot interrupt), checkpoints, sets the lease and prints the native
 resume command; `worker reclaim` diffs the worktree since the checkpoint,
 reads any hook-recorded prompts, emits one `intervention` event
-(`authority: human_authoritative`, epoch +1) and returns the lease. The Claude
-Code and Cursor prompt-submit hooks (`UserPromptSubmit`, `beforeSubmitPrompt`)
-record the prompt when the session id matches a worker; without hook evidence
-the worker is marked `possibly_modified_externally`. `worker reconcile`
+(`authority: human_authoritative`, epoch +1) and returns the lease. The
+prompt-submit hooks of all three harnesses (Claude Code and Codex
+`UserPromptSubmit`, Cursor `beforeSubmitPrompt`; verified against current
+docs 2026-10-27) record the prompt when the session id matches a worker;
+without hook evidence the worker is marked `possibly_modified_externally`. `worker reconcile`
 compares events since the last sync with the leaf's touch zones and
 dependencies and sets `needs_reconcile`; a conflicting human direction waits
 for the user to confirm it in the coordinator chat as a contract amendment.
