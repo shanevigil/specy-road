@@ -83,13 +83,12 @@ Roster entries also accept `profile`, `channels`, `may_process`,
 also takes `max_workers` (routing, prompts, and `worker delegate` use them).
 
 **Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md),
-scaffolded into your repo by `init project`, is the canonical guide to filling the
-roster: it ranks models by role, lists independent reviewer pairs and pairs that
-share blind spots, names cheap first-pass executors, gives the roster `family`
-value for each model, lists the points where the research disagrees, and has one
-profile per model (limits, prices, headless CLI syntax, failure modes, prompting
-rules). A roster `id` is your own label (`claude-opus-5.5` below); the vendor's
-API id (`claude-opus-5-5`) lives in the profile that `profile` points at.
+scaffolded into your repo by `init project`, is the canonical guide to filling the roster: it ranks
+models by role, lists independent reviewer pairs and pairs that share blind spots, names cheap
+first-pass executors, gives the roster `family` value for each model, lists the points where the
+research disagrees, and has one profile per model (limits, prices, headless CLI syntax, failure
+modes, prompting rules). A roster `id` is your own label (`claude-opus-5.5` below); the vendor's API
+id (`claude-opus-5-5`) lives in the profile that `profile` points at.
 
 For independent review by two model families:
 
@@ -107,21 +106,19 @@ policy:
 `specy-road validate` fails on a file that is present but invalid, including
 duplicate roster ids and a substitute that is not in the roster.
 
-**The gate reads this file from the integration branch** — its remote-tracking
-ref when there is one, else the local branch — not from the branch under review,
-so a feature branch cannot lower its own bar. The same goes for
-`require_implementation_review_before_finish`: the gate is on when either the
-integration branch or the working tree turns it on. Which branch is the
-integration branch comes from `roadmap/git-workflow.yaml` as committed at `HEAD`;
-the working tree and the `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE`
-variables are ignored here. That name is a trust anchor a feature commit can rewrite, so
-the branch it names must name itself in its own committed `git-workflow.yaml`, and with a
-remote configured only `refs/remotes/<remote>/<branch>` is read: redirecting policy needs
-push rights to a branch the remote must protect. If the branch is missing, the names disagree,
-or the remote branch is not fetched, the gate fails closed (on, and nothing passes it). Change policy on the integration
-branch; an edit on a feature branch is ignored by the gate, flagged in the review
-packet, and, like any commit that touches more than `roadmap/registry.yaml`,
-makes that branch's reviews stale.
+**The gate reads this file from the integration branch** — its remote-tracking ref when there is
+one, else the local branch — not from the branch under review, so a feature branch cannot lower its
+own bar. The same goes for `require_implementation_review_before_finish`: the gate is on when either
+the integration branch or the working tree turns it on. Which branch is the integration branch comes
+from `roadmap/git-workflow.yaml` as committed at `HEAD`; the working tree and the
+`SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` variables are ignored here. That name is a
+trust anchor a feature commit can rewrite, so the branch it names must name itself in its own
+committed `git-workflow.yaml`, and with a remote configured only `refs/remotes/<remote>/<branch>` is
+read: redirecting policy needs push rights to a branch the remote must protect. If the branch is
+missing, the names disagree, or the remote branch is not fetched, the gate fails closed (on, and
+nothing passes it). Change policy on the integration branch; an edit on a feature branch is ignored
+by the gate, flagged in the review packet, and, like any commit that touches more than
+`roadmap/registry.yaml`, makes that branch's reviews stale.
 
 ## Choosing and prompting models
 
