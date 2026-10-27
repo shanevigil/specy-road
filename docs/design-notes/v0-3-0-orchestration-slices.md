@@ -86,6 +86,27 @@ Deferred: partial delegation (sub-tasks inside a leaf with their own touch
 zones) changes the node model in ways the brief and gate do not understand.
 Per-touch-zone sensitivity likewise; node-level only for now.
 
+## Slice 5 status
+
+Built: `/specyrd-orchestrate` (the coordinator loop, §4.3) and the
+shared-checkout guard with hook adapters for Claude Code, Codex, and Cursor
+(§3.5), each verified against the harness's docs in 2026-10 and exercised as
+a subprocess with its documented payload in `tests/test_hook_adapters.py`.
+Facts that could not be verified are stated in each adapter's notes
+(`specy-road session guard --format <name> --print-config`): whether Claude
+Code's `bypassPermissions` and Cursor's `agent -p` / auto-run fire the hook,
+and Codex's handling of non-2 non-zero exits and the IDE extension.
+
+**Decision D, pending:** one skills directory for every harness. Cursor and
+Codex read `.agents/skills/<name>/SKILL.md` natively and follow symlinked
+skill folders; Claude Code reads `.claude/skills/<name>/SKILL.md`. Converting
+the `specyrd` command stubs to skills under `.agents/skills/` with symlinks
+into `.claude/skills/`, plus an `--ai codex` target (Codex reads `AGENTS.md`,
+now a managed block, and skills; it does not read `.cursor/`), reworks
+`specyrd init` and its manifest. Recommended for 0.3.x after this slice.
+
+Still a stated limit: review records and presence files are self-attested.
+
 ## Gaps found while scoping
 
 - `brief` did not render a node's `goal` or `acceptance`; the proposal assumes
