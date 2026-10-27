@@ -71,15 +71,9 @@ in `prompt` (sensitivity, availability, family lock, preflight), and the roster
 fields `class` and `unavailable_until`. The roster schema is read from the
 package, so these need no adopter action.
 
-Pending a maintainer decision: the node fields `sensitivity` and
-`executor_eligibility`. The planner and `prompt` read them through
-`node_sensitivity()` / `node_eligibility()` and default to `public` / `any`,
-but `roadmap.schema.json` is consumer-owned with `additionalProperties:
-false`, so setting them fails `validate` until the schema gains them and the
-adopter runs `refresh-schemas` (the path `type: gate` and
-`implementation_review` took). The alternative — keying them by node id in
-`orchestration.yaml` — avoids the schema step but puts the policy away from
-the work it describes. Eligibility values: `any`, or a roster `class` tag the
+Decided (A and B, 2026-10-26): `sensitivity` and `executor_eligibility` are
+node fields in the consumer schema; adopters run `refresh-schemas` once, as
+for `type: gate`. Eligibility values are `any` or a roster `class` tag the
 team names (`senior`, `cheap`); `senior` is a tag, not a score threshold.
 
 Deferred: partial delegation (sub-tasks inside a leaf with their own touch
