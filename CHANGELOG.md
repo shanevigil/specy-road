@@ -194,6 +194,12 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
 
 ### Changed
 
+- Removed the generic `suggested_prompts/cleanup_prompts.md`,
+  `compliance_prompts.md` and `features_changes_debuging_prompts.md`, and
+  `docs/optional-agent-review-prompts.md`, in favour of the coding harness's
+  built-in review, cleanup and security skills; `suggested_prompts/README.md`
+  now indexes the four kept adoption prompts and points generic passes at the
+  harness and roadmap review at `docs/orchestration.md`.
 - The gate counts one vote per model (a block from any of a model's records
   wins), checks each record's `node_id`, compares commits through git rather
   than by string prefix, and treats every merge commit — `-s ours` included —

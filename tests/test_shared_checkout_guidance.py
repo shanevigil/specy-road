@@ -37,6 +37,22 @@ def test_bootstrap_prompt_carries_the_same_rule() -> None:
     assert rule in PROMPT.read_text(encoding="utf-8")
 
 
+def test_suggested_prompts_index_lists_every_kept_prompt() -> None:
+    """suggested_prompts/README.md is the index; generic review prompts are gone."""
+    index = PROMPT.parent / "README.md"
+    text = index.read_text(encoding="utf-8")
+    kept = sorted(p.name for p in PROMPT.parent.glob("*.md") if p.name != "README.md")
+    assert kept == [
+        "bootstrap-agents-md.md",
+        "bootstrap-governance.md",
+        "bootstrap-roadmap.md",
+        "brainstorm-roadmap.md",
+    ]
+    for name in kept:
+        assert f"]({name})" in text, name
+    assert "docs/orchestration.md" in text
+
+
 def test_claude_md_block_points_at_it() -> None:
     text = "\n".join(render_guide_lines("sr/"))
     assert "Other agents share this checkout" in text

@@ -151,12 +151,11 @@ attach its evidence file before §3.1.
    git push -u origin WIP/pre-release-checks
    ```
 
-3. **Before creating any fix branches**, run the
-   [`suggested_prompts/`](../suggested_prompts/) cleanup and compliance
-   prompts against the delta from the previous release tag to this
-   candidate branch. The prompt pass is first because it marshals the
-   agent to review what changed since the last release against the
-   repository's documented standards.
+3. **Before creating any fix branches**, run the harness's built-in
+   review, cleanup and security skills (§3.2) against the delta from the
+   previous release tag to this candidate branch. The review pass is
+   first because it marshals the agent to review what changed since the
+   last release against the repository's documented standards.
 
 4. If the prompt pass finds issues, create short-lived branches from
    `WIP/pre-release-checks` (for example
@@ -181,12 +180,14 @@ evidence in the release notes/PR body and delete
 `WIP/pre-release-checks`. Do **not** cut the release branch until this
 branch is green or explicitly closed as no-op.
 
-### 3.2 Prompt-driven cleanup and compliance pass
+### 3.2 Harness-native cleanup and compliance pass
 
-Run the prompts docs-first exactly as instructed in:
-
-- [`suggested_prompts/compliance_prompts.md`](../suggested_prompts/compliance_prompts.md)
-- [`suggested_prompts/cleanup_prompts.md`](../suggested_prompts/cleanup_prompts.md)
+specy-road no longer ships generic review prompts. Use the coding harness's
+built-in review, simplification and security-review skills (see
+[`suggested_prompts/README.md`](../suggested_prompts/README.md)), pointed at
+the repository's documented standards (`constitution/`, `constraints/README.md`,
+`docs/supply-chain-security.md`) and at the delta below. The roadmap-specific
+review contract stays in [`orchestration.md`](orchestration.md).
 
 Use the previous release tag as the baseline:
 
@@ -209,23 +210,22 @@ Baseline rule:
   post-RC changes, then also skim the latest-final-to-HEAD summary so
   the final release notes still cover the whole train.
 
-At minimum, apply these prompt sections to the changed code/docs:
+At minimum, cover these checks on the changed code/docs:
 
-- **Architecture & Vision Compliance**
-- **Scoped Code Review** against the previous release tag
-- **Test Coverage Gap Audit**
-- **Dependency Audit** and **Security Audit** when dependencies,
-  packaging, subprocess behavior, path handling, GUI/API surfaces, or
-  release workflows changed
-- **Pre-Release Gate Check**
-- From cleanup prompts: **File & Function Size Enforcement**,
-  **Documentation Hygiene**, and **Dead Code Cleanup**
+- **Architecture and vision compliance** against `constitution/`
+- **Scoped code review** against the previous release tag
+- **Test coverage gaps**
+- **Dependency and security review** when dependencies, packaging,
+  subprocess behavior, path handling, GUI/API surfaces, or release
+  workflows changed
+- **Pre-release gate check** (the deterministic gates in §8)
+- **File and function size**, **documentation hygiene**, and **dead code**
 
 Every FAIL is a release blocker. A WARNING must either be fixed or
-explicitly accepted in the release notes/PR body with rationale. Use
-the command substitutions documented in the prompt files for this
-toolkit (roadmap validation/export/file-limits, `pytest`, PM Gantt
-lint/test/build when `gui/pm-gantt/` changed, and supply-chain audits).
+explicitly accepted in the release notes/PR body with rationale. The
+toolkit's deterministic gates are roadmap validation/export/file-limits,
+`pytest`, PM Gantt lint/test/build when `gui/pm-gantt/` changed, and the
+supply-chain audits.
 
 ### 3.3 Three-app user-testing harness
 
