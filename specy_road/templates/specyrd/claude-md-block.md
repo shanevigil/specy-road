@@ -51,6 +51,10 @@ specy-road brief <NODE_ID> -o {{PROJECT_PREFIX}}work/brief-<NODE_ID>.md
   archived work, ranked and deduplicated. Grepping `planning/` or `work/`
   directly returns the same passage many times, because briefs and PR bodies
   re-inline their sources.
+- **Other agents share this checkout.** Check `git status` and
+  `git worktree list` before any git write; commit by explicit path, never
+  `-A`/`-a`; no stash, reset, or branch switches here — use your own
+  worktree. Full rule in `{{PROJECT_PREFIX}}AGENTS.md`.
 - **Roadmap-linked implementation.** Register the claim on the integration
   branch, then work on `feature/rm-<codename>`. The branch name comes from the
   node's `codename`; don't rename a node's title mid-flight.
