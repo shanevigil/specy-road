@@ -31,32 +31,42 @@ class Adapter:
 
 
 def _bash_command(payload: dict[str, Any]) -> str | None:
-    """Claude Code and Codex ``PreToolUse``: ``tool_input.command`` of the Bash tool."""
+    """Claude Code and Codex ``PreToolUse``: ``tool_input.command`` of the Bash tool; other tools are not ours to judge."""
     if payload.get("tool_name") != "Bash":
         return None
-    return _string_command((payload.get("tool_input") or {}).get("command"))
+    return _string_command((payload.get("tool_input") or {}).get("command"), shell_event=True)
 
 
-def _string_command(cmd: Any) -> str | None:
-    """A command is a string or absent; any other shape is an error the guard answers with a deny."""
-    if cmd is None or cmd == "":
+def _cursor_command(payload: dict[str, Any]) -> str | None:
+    """Cursor ``beforeShellExecution``: ``command`` at top level."""
+    return _string_command(payload.get("command"), shell_event=payload.get("hook_event_name") == "beforeShellExecution")
+
+
+def _string_command(cmd: Any, *, shell_event: bool = False) -> str | None:
+    """A command is a string; on a matched shell event a missing or non-string one is an error, answered with a deny."""
+    if isinstance(cmd, str):
+        return cmd or None
+    if cmd is None and not shell_event:
         return None
-    if not isinstance(cmd, str):
-        raise ValueError(f"command is {type(cmd).__name__}, not a string; refusing to guess what runs")
-    return cmd
+    raise ValueError(f"command is {type(cmd).__name__}, not a string; refusing to guess what runs")
 
 
-def _pre_tool_use(decision: str, **fields: str) -> str:
-    return json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": decision, **fields}})
+def _context_only(note: str | None) -> str | None:
+    """Claude Code: a non-denial carries no ``permissionDecision``, so the harness's own permission policy still applies."""
+    if not note:
+        return None
+    return json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}})
 
 
 # Verified against https://code.claude.com/docs/en/hooks (2026-10). Exit 2
 # blocks and feeds stderr to the model; exit 0 applies JSON on stdout, where
 # `additionalContext` reaches the model beside the tool result; any other
-# exit code lets the call proceed. Project hooks live in .claude/settings.json.
+# exit code lets the call proceed. `permissionDecision: "allow"` skips the
+# permission prompt, so a non-denial never emits one (review round 6, B14).
+# Project hooks live in .claude/settings.json.
 _CLAUDE_CODE = Adapter(
     "claude-code", _bash_command,
-    lambda note: (_pre_tool_use("allow", additionalContext=note) if note else None, None, 0),
+    lambda note: (_context_only(note), None, 0),
     lambda reason: (None, f"session guard: {reason}", 2),
     """{
   "hooks": {
@@ -108,8 +118,10 @@ _CODEX = Adapter(
 # exit 2 also denies. Empty output on exit 0 counts as a hook failure, which
 # fails OPEN unless failClosed is set, so every answer is explicit and the
 # snippet sets failClosed: true. The command runs from the project root.
+# A non-denial answers `allow` (the schema is allow|deny|ask); whether that
+# bypasses Cursor's own prompt is unverified — runbook §3 checks it in a real IDE.
 _CURSOR = Adapter(
-    "cursor", lambda p: _string_command(p.get("command")),
+    "cursor", _cursor_command,
     lambda note: (json.dumps({"permission": "allow", **({"agent_message": note} if note else {})}), None, 0),
     lambda reason: (json.dumps({"permission": "deny", "agent_message": reason,
                                 "user_message": "specy-road: refused in a shared checkout"}), None, 0),

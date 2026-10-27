@@ -119,12 +119,15 @@ def test_config_snippets_are_valid_json_naming_the_guard(tmp_path: Path, fmt: st
 
 
 def test_claude_code_allow_with_warning_is_json_the_model_sees(tmp_path: Path) -> None:
-    """Alone in the tree the call proceeds, with the warning as additionalContext."""
+    """Alone in the tree the call proceeds, with the warning as additionalContext and no permissionDecision.
+
+    `permissionDecision: "allow"` would skip Claude Code's own permission prompt (review round 6, B14).
+    """
     repo = make_review_repo(tmp_path)
     r = _run(repo, "claude-code", PAYLOADS["claude-code"]("git stash"))
     assert r.returncode == 0
     out = json.loads(r.stdout)["hookSpecificOutput"]
-    assert out["hookEventName"] == "PreToolUse" and out["permissionDecision"] == "allow"
+    assert out["hookEventName"] == "PreToolUse" and "permissionDecision" not in out
     assert "would deny" in out["additionalContext"]
 
 
