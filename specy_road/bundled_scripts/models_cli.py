@@ -24,7 +24,8 @@ from specy_road.model_profiles import (
     list_profiles,
     profile_for_entry,
 )
-from specy_road.orchestration_config import effective_config, roster_entry
+from specy_road.orchestration_config import roster_entry
+from specy_road.orchestration_pinned import pinned_config
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -43,7 +44,7 @@ def _row(root: Path, entry: dict[str, Any], prof: Profile | None) -> dict[str, A
 
 
 def _roster_rows(root: Path) -> tuple[list[dict[str, Any]], list[Profile], str | None]:
-    config, err = effective_config(root)
+    config, err = pinned_config(root)
     rows = []
     used: set[Path] = set()
     for entry in config.get("roster") or []:
@@ -76,7 +77,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
 
 
 def _find(root: Path, model_id: str) -> Profile | None:
-    config, _ = effective_config(root)
+    config, _ = pinned_config(root)
     entry = next((e for e in config.get("roster") or [] if e.get("id") == model_id), None)
     if entry:
         return profile_for_entry(root, entry)
@@ -94,7 +95,7 @@ def cmd_show(ns: argparse.Namespace) -> int:
                           "sections": prof.sections, "errors": prof.errors}, indent=2, default=str))
         return 0
     print(f"# {prof.data.get('model', prof.api_id)}  ({prof.path.relative_to(root)})")
-    entry = roster_entry(effective_config(root)[0] or {}, ns.model) or {}
+    entry = roster_entry(pinned_config(root)[0] or {}, ns.model) or {}
     if entry:
         print(f"- harness/model: {entry.get('harness') or 'generic'}/{entry['id']}"
               + (f"  (billing: {entry['billing_route']})" if entry.get("billing_route") else ""))
@@ -120,7 +121,7 @@ def cmd_show(ns: argparse.Namespace) -> int:
 def cmd_stale(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     today = date.fromisoformat(ns.today) if ns.today else None
-    config, _ = effective_config(root)
+    config, _ = pinned_config(root)
     # Roster ids are labels (`opus`); the link to a profile is the entry's
     # `profile` path, or a file named after the id — the same lookup `list` does.
     rostered: set[Path] = set()

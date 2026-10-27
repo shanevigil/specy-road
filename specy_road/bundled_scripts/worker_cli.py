@@ -42,13 +42,13 @@ def _emit(ns: argparse.Namespace, data: dict[str, Any], lines: list[str]) -> int
 
 def _row(rec) -> dict[str, Any]:
     d = rec.to_dict()
-    d["alive"] = pid_alive(rec.pid)
+    d["alive"] = pid_alive(rec.pid, rec.worker_id)
     return d
 
 
 def _line(rec) -> str:
     flags = f" [{', '.join(rec.flags)}]" if rec.flags else ""
-    run = " (running)" if pid_alive(rec.pid) else ""
+    run = " (running)" if pid_alive(rec.pid, rec.worker_id) else ""
     return (f"{rec.worker_id}  {rec.node_id:<10} {rec.harness}/{rec.model:<22} {rec.state}{run}  "
             f"lease={rec.lease.get('holder')} epoch={rec.instruction_epoch}{flags}")
 

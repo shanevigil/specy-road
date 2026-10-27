@@ -100,7 +100,8 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `reconcile` (changed paths vs touch zones, `needs_reconcile`; an
   unbuildable prompt counts as a contract change),
   `interrupt` (declared unsupported by the one-shot CLI adapters, exit 2,
-  never emulated), `--op-id` idempotency on every mutation, and
+  never emulated), `--op-id` idempotency on the lifecycle commands (a
+  pending op is a crash marker to inspect, not an automatic retry), and
   `worker hook --format claude-code|codex|cursor` as the prompt-submit hook
   that witnesses a human's prompts to a worker session. State is files under
   `work/.workers/` (record, sequenced event log, ops outbox; package-owned
@@ -262,6 +263,29 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to
   review or approve its own work.
+- **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
+  judges touch zones over the worker's lifetime (`started_head`), not only
+  since the last checkpoint; a READY must be at the worktree's HEAD;
+  `prompt`, `orchestrate plan`, `models` and `worker` read the roster from
+  the integration branch like the gate (`orchestration_pinned`); the guard
+  follows `env -S`, nested `$(…)`, attached `-C<dir>`, `--git-dir`, long
+  wrapper options, `timeout`, `xargs` fed from stdin and the repo's configured
+  git aliases, and a non-string hook command is a deny; `message` / `handoff`
+  close a crashed wrapper first; a skipped skill gets no link and a foreign
+  skill directory is never removed without `--force`; a nested project's
+  `AGENTS.md` is reported with its prefix; `--rounds` is recorded and
+  `next-round` warns past it; a session file whose slug disagrees is refused;
+  a malformed `channels.cli` raises instead of falling back to the vendor
+  default; event sequences are repaired from the log after a crash;
+  Windows gets `msvcrt` locking and a platform with no lock refuses; `adopt`
+  is one transaction; hook prompts are stored whole; `brainstorm verify`
+  connects to the address it checked (SNI and certificate checking kept),
+  closing the DNS-rebinding gap; round one no longer points at the roadmap
+  digest; an invalid configured profile is a staffing error; the reclaim
+  diff names paths that were already dirty at hand-off; `terminate` on an
+  adopted record says the session was not signalled. Docs: evidence after
+  converge, Cursor print-mode permissions, "by default" syncs, reclaim
+  returns to `idle` on purpose.
 - **Third independent review (GPT Sol):** a `completed` worker still owns its
   leaf and slot (`delegate` returns it; `terminate` frees it); every worker
   transition is one locked transaction; the guard refuses shell functions,

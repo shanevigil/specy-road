@@ -176,7 +176,7 @@ def refresh_stubs(
             agents[agent] = current
 
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
-    apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run)
+    apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
 
     if not dry_run:
         manifest["agents"] = agents

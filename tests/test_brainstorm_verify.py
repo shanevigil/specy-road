@@ -11,7 +11,6 @@ relations, triage is the human's, verify asks before it fetches.
 from __future__ import annotations
 
 import io
-import json
 import shutil
 from pathlib import Path
 
@@ -21,16 +20,9 @@ from tests.helpers import DOGFOOD
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
-from specy_road.bundled_scripts.brainstorm_fields import parse_origin, parse_overlap, source_record
-from specy_road.bundled_scripts.brainstorm_prompt import render_shard_prompt
 from specy_road.bundled_scripts.brainstorm_session import (
-    BrainstormError,
     BrainstormSession,
-    add_idea,
-    idea_from_dict,
     read_session,
-    session_path,
-    write_session,
 )
 
 SLUG = "how-do-we-expand-payments"
@@ -166,33 +158,48 @@ def test_verify_interactive_answer(monkeypatch) -> None:
 
 def test_default_fetch_checks_every_redirect_hop(monkeypatch) -> None:
     """A public page must not redirect the fetch onto a private host or plain http."""
-    import types
-
-    class Resp:
-        def __init__(self, status, headers=None, body=b""):
-            self.status_code, self.headers, self._body = status, headers or {}, body
-            self.encoding = "utf-8"
-            self.is_redirect = status in (301, 302, 303, 307)
-            self.is_permanent_redirect = status in (301, 308)
-
-        def iter_content(self, _n):
-            yield self._body
-
     calls: list[str] = []
-    pages = {"https://example.com/a": Resp(302, {"Location": "http://127.0.0.1/secret"}),
-             "https://example.com/b": Resp(302, {"Location": "/c"}),
-             "https://example.com/c": Resp(200, body=b"<p>exact words</p>")}
+    pages = {"https://example.com/a": (302, "http://127.0.0.1/secret", b""),
+             "https://example.com/b": (302, "/c", b""),
+             "https://example.com/c": (200, None, b"<p>exact words</p>")}
 
-    def get(url, **kw):
-        assert kw.get("allow_redirects") is False
+    def fetch_once(url):
         calls.append(url)
         return pages[url]
 
-    fake = types.SimpleNamespace(get=get, compat=types.SimpleNamespace(urljoin=lambda b, l: l if l.startswith("http") else b.rsplit("/", 1)[0] + l))
-    monkeypatch.setitem(__import__("sys").modules, "requests", fake)
+    monkeypatch.setattr(bv, "_fetch_once", fetch_once)
     monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
     with pytest.raises(ValueError, match="refusing http://127.0.0.1/secret"):
         bv.default_fetch("https://example.com/a")
     assert calls == ["https://example.com/a"]
     assert bv.default_fetch("https://example.com/b") == (200, "<p>exact words</p>")
     assert bv.check_source({"url": "https://example.com/a", "quote": "secret"}, bv.default_fetch) == "blocked"
+
+
+def test_the_connection_is_pinned_to_the_checked_address(monkeypatch) -> None:
+    """The name is resolved once; the socket goes to that address with the hostname kept for TLS."""
+    monkeypatch.setattr(bv.socket, "getaddrinfo",
+                        lambda host, port, **kw: [(None, None, None, None, ("93.184.216.34", 443))])
+    assert bv._public_address("example.com") == "93.184.216.34"
+    monkeypatch.setattr(bv.socket, "getaddrinfo",
+                        lambda host, port, **kw: [(None, None, None, None, ("93.184.216.34", 443)),
+                                                  (None, None, None, None, ("127.0.0.1", 443))])
+    assert bv._public_address("rebinder.example") is None       # one private answer poisons the name
+    opened: list[tuple] = []
+
+    class Sock:
+        def close(self): pass
+
+    monkeypatch.setattr(bv.socket, "getaddrinfo",
+                        lambda host, port, **kw: [(None, None, None, None, ("93.184.216.34", 443))])
+    monkeypatch.setattr(bv.socket, "create_connection", lambda addr, timeout: opened.append(addr) or Sock())
+
+    class Ctx:
+        def wrap_socket(self, sock, server_hostname=None):
+            opened.append(("sni", server_hostname))
+            return sock
+
+    conn = bv._PinnedHTTPS("example.com", "93.184.216.34", 443)
+    conn._context = Ctx()
+    conn.connect()
+    assert opened == [("93.184.216.34", 443), ("sni", "example.com")]

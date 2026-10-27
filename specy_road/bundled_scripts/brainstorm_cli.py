@@ -76,10 +76,12 @@ def cmd_start(ns: argparse.Namespace) -> int:
         session.profile = ns.profile
     if ns.panel is not None:
         session.panel = max(0, ns.panel)
+    if ns.rounds:
+        session.rounds = max(1, ns.rounds)
     spath = write_session(root, session)
     paths = write_round_prompts(root, session, count=ns.count)
     print(f"session: {spath.relative_to(root)} ({len(session.ideas)} ideas, "
-          f"round {session.round} of {ns.rounds}, profile {session.profile})")
+          f"round {session.round} of {session.rounds}, profile {session.profile})")
     print(f"prompt:  {paths[0].relative_to(root)}")
     for extra in paths[1:]:
         print(f"shard:   {extra.relative_to(root)}")

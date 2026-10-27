@@ -58,12 +58,13 @@ roster:
     # {session} is the native session id and makes the same command serve
     # `message` / `resume`. Without it, the default command is used.
     # channels:
-    #   cli: "claude -p --output-format stream-json --verbose --dangerously-skip-permissions --session-id {session} \"$(cat {prompt})\""
+    #   (a placeholder must be a whole argument; `< {prompt}` feeds the file on stdin)
+    #   cli: "claude -p --output-format stream-json --verbose --dangerously-skip-permissions --session-id {session} < {prompt}"
 policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
-**Permissions.** The Claude Code default asks for the narrowest unattended mode it documents (`--permission-mode acceptEdits`), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` applies no change without `--force`, and `--force` is Cursor's full auto-run (alias `--yolo`), so a `cursor` worker runs everything it decides to. Codex runs in `--sandbox workspace-write --ask-for-approval never`; that flag pair is in OpenAI's reference but was not run here.
+**Permissions.** The Claude Code default asks for the narrowest unattended mode it documents (`--permission-mode acceptEdits`), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs in `--sandbox workspace-write --ask-for-approval never`; that flag pair is in OpenAI's reference but was not run here.
 
 ## The loop
 
@@ -104,7 +105,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `terminate W` | SIGTERM the wrapper's process group (harness and children); state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker. |
-| `reconcile W` | Paths changed since the checkpoint vs the leaf's touch zones, and whether the brief changed (a prompt that can no longer be built for this model counts as changed); sets or clears `needs_reconcile`. |
+| `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human
@@ -128,6 +129,15 @@ the lease already returned. `terminate` signals only a pid whose command line
 names this worker's wrapper; when `ps` cannot say, it refuses rather than
 signal a stranger. On an adopted (`native`) record it closes the record and
 says the session was not signalled.
+
+`reclaim` always returns the worker to `idle`, even one that was
+`completed`: the coordinator re-verifies READY against the branch after a
+human touched it rather than trusting the earlier completion.
+
+The record's `last_event_seq` is repaired from the log when they disagree
+(a crash between the append and the save), so sequences never repeat. On a
+platform with neither `fcntl` nor `msvcrt`, worker mutations refuse rather
+than run unserialised.
 
 `handoff` refuses while the wrapper is running (wait for idle, or
 `terminate`), takes a checkpoint, sets the lease to `human`, and prints the

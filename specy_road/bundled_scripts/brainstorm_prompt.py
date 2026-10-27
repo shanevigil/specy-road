@@ -51,7 +51,8 @@ _GOVERNANCE_FILES: tuple[tuple[str, str], ...] = (
 )
 
 
-def _governance_lines(root: Path) -> list[str]:
+def _governance_lines(root: Path, *, roadmap: bool = True) -> list[str]:
+    """Vision, purpose, principles — and the roadmap digest only when the round may read it."""
     lines = [
         "## Ground yourself first",
         "",
@@ -60,6 +61,8 @@ def _governance_lines(root: Path) -> list[str]:
         "",
     ]
     for rel, label in _GOVERNANCE_FILES:
+        if not roadmap and rel == "roadmap-context.md":
+            continue
         state = "" if (root / rel).is_file() else " _(missing)_"
         lines.append(f"- **{label}:** `{rel}`{state}")
     lines.append("")
@@ -112,7 +115,7 @@ def render_brainstorm_prompt(
     """
     if session.round <= 1:
         lines = header_lines(session, count, title="Brainstorm")
-        lines += _governance_lines(root)
+        lines += _governance_lines(root, roadmap=False)
         lines += frame_lines(session)
         lines += allocation_lines(session, count)
         lines += quantity_lines(count, first_round=True)
@@ -129,7 +132,7 @@ def render_shard_prompt(root: Path, session: BrainstormSession, *, count: int,
                         shard: int, total: int) -> str:
     """One independent worker's share of round 1: its cell, nothing of the others."""
     lines = header_lines(session, count, title=f"Brainstorm shard {shard}/{total}")
-    lines += _governance_lines(root)
+    lines += _governance_lines(root, roadmap=False)
     if session.frame:
         lines += ["## The agreed frame", ""] + [f"- **{k}:** {v}" for k, v in session.frame.items()] + [""]
     lines += allocation_lines(session, count)

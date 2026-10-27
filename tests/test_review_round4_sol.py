@@ -310,8 +310,8 @@ def test_terminate_refuses_a_pid_it_cannot_verify(tmp_path: Path, monkeypatch) -
     with pytest.raises(ws.WorkerError, match="cannot be verified"):
         ops.terminate(repo, rec.worker_id)
     monkeypatch.setattr(wr, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0002 {}")
-    with pytest.raises(ws.WorkerError, match="cannot be verified"):      # another worker's wrapper
-        ops.terminate(repo, rec.worker_id)
+    out = ops.terminate(repo, rec.worker_id)        # another worker's wrapper: not ours to signal; the record closes
+    assert out.state == "terminated"
 
 
 def test_terminate_closes_an_adopted_record_without_signalling(tmp_path: Path) -> None:

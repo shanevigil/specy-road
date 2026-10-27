@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from specy_road.git_subprocess import git_text
 from specy_road.session_presence import list_sessions
 
 ALLOW = "allow"
@@ -37,14 +38,20 @@ DENY = "deny"
 
 _SEPARATORS = ("&&", "||", ";", "|", "&", "\n")
 #: Wrapper flags that take an argument (``sudo -u bob``, ``env -u VAR``).
-_WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-S"}
+_WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-n", "--user", "--group", "--unset",
+                     "--chdir", "--adjustment", "--host", "--prompt", "--role", "--type", "--other-user", "--max-args",
+                     "--max-procs", "--delimiter", "--arg-file", "--replace", "--signal", "--kill-after"}
 _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 #: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
-_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "eval"}
+_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "eval", "timeout", "doas", "ionice"}
+#: Wrappers whose first positional is not the command (``timeout 10 git …``).
+_WRAPPER_LEADING_ARG = {"timeout"}
+#: ``env -S "git stash"`` splits its argument into a command: opaque to a token parser.
+_ENV_SPLIT = {"-S", "--split-string"}
 #: Reasons about the working tree only; other worktrees' sessions are not at risk.
 _TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git commit", "git add", "git reset")
 #: ``git -C <dir>`` / ``--work-tree`` act on another tree: never scope those to the caller's.
-_NAMES_A_TREE = re.compile(r"(^|\s)(-C|--work-tree)(=|\s)")
+_NAMES_A_TREE = re.compile(r"(^|\s)(-C\S*|--work-tree(=|\s)|--git-dir(=|\s))")
 _GIT_WORD = re.compile(r"\bgit\b")
 _FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
 _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
@@ -52,6 +59,11 @@ _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
 _COMMIT_VALUE_FLAGS = {"-m", "-F", "-C", "-c", "-t", "--message", "--file", "--author", "--date",
                        "--reuse-message", "--reedit-message", "--template", "--trailer", "--fixup", "--squash"}
 _SUBSTITUTION = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+_KNOWN_GIT = {"add", "am", "apply", "archive", "bisect", "blame", "branch", "bundle", "cat-file", "checkout",
+              "cherry-pick", "clean", "clone", "commit", "config", "describe", "diff", "fetch", "format-patch",
+              "gc", "grep", "init", "log", "ls-files", "ls-remote", "merge", "merge-base", "mv", "notes", "pull",
+              "push", "rebase", "reflog", "remote", "reset", "restore", "rev-list", "rev-parse", "revert", "rm",
+              "shortlog", "show", "stash", "status", "submodule", "switch", "tag", "worktree"}
 _SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 
 
@@ -111,10 +123,10 @@ def _unwrap(tokens: list[str]) -> list[str]:
             continue
         if t in _WRAPPERS:
             wrapped = True
-            i += 1
+            i += 2 if t in _WRAPPER_LEADING_ARG else 1
             continue
         if wrapped and t.startswith("-"):
-            i += 2 if t in _WRAPPER_FLAG_ARG else 1  # a wrapper's flag, with its argument
+            i += 2 if t in _WRAPPER_FLAG_ARG and "=" not in t else 1  # a wrapper's flag, with its argument
             continue
         break
     out = tokens[i:]
@@ -134,6 +146,9 @@ def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
     i = 1
     aliases: dict[str, str] = {}
     while i < len(tokens) and tokens[i].startswith("-"):
+        if tokens[i].startswith("-C") and len(tokens[i]) > 2:   # attached: git -C/other/tree
+            i += 1
+            continue
         if tokens[i] in _GIT_GLOBAL_WITH_ARG:
             if tokens[i] == "-c" and i + 1 < len(tokens) and tokens[i + 1].startswith("alias."):
                 name, _eq, value = tokens[i + 1][6:].partition("=")
@@ -170,10 +185,19 @@ def classify_segment(segment: str) -> str | None:
     shape a guard must not wave through. ``sh -c '…'`` is classified by what
     it runs.
     """
-    for m in _SUBSTITUTION.finditer(segment):      # `$(git …)` and `\`git …\`` run too
-        inner = classify(m.group(1) or m.group(2) or "")
-        if inner:
-            return inner
+    rest = segment
+    for _ in range(8):                               # `$(git …)` and `\`git …\`` run too, nested as well
+        hit = False
+        for m in _SUBSTITUTION.finditer(rest):
+            hit = True
+            inner = classify(m.group(1) or m.group(2) or "")
+            if inner:
+                return inner
+        if not hit:
+            break
+        rest = _SUBSTITUTION.sub(" x ", rest)
+    if "$(" in rest and _GIT_WORD.search(segment):
+        return "unbalanced command substitution mentioning git; rewrite it plainly"
     opaque = _opaque(segment)
     if opaque:
         return opaque
@@ -238,6 +262,15 @@ def _opaque(segment: str) -> str | None:
         return None
     if head and head[0].startswith("$"):
         return "the command name comes from a variable; the guard cannot see it — run the command plainly"
+    try:
+        raw = shlex.split(segment, comments=True)
+    except ValueError:
+        raw = []
+    if raw and raw[0] == "env" and any(a in _ENV_SPLIT or a.startswith("--split-string=") for a in raw[1:]) \
+            and _GIT_WORD.search(segment):
+        return "env -S splits its argument into a command the guard cannot see; run the git command plainly"
+    if raw and "xargs" in raw[:4] and head and head[0].rsplit("/", 1)[-1] == "git" and len(head) == 1:
+        return "xargs feeds git its subcommand from stdin; the guard cannot see it — run the git command plainly"
     if head and head[0].rsplit("/", 1)[-1].rstrip("0123456789.") in _INTERPRETERS and _GIT_WORD.search(segment) \
             and any(a in ("-c", "-e") for a in head[1:3]):
         return f"{head[0]} one-liner mentions git; the guard cannot follow it — run the git command plainly"
@@ -285,14 +318,34 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
 
         me = os.environ.get("SPECY_ROAD_WORKER_ID")   # a worker's own hook must not count the worker
         others += [f"worker {r.worker_id}" for r in list_records(repo_root, active_only=True)
-                   if r.worker_id != me and pid_alive(r.pid) and Path(r.worktree).resolve() == here]
+                   if r.worker_id != me and pid_alive(r.pid, r.worker_id) and Path(r.worktree).resolve() == here]
     except Exception:  # noqa: BLE001 — presence is advisory; a broken record must not break the guard
         pass
     return others
 
 
+def _expand_config_aliases(repo_root: Path, command: str) -> str:
+    """``git s`` with ``alias.s = stash`` in the repo's git config is ``git stash`` to the guard."""
+    out = []
+    for seg in split_segments(command.strip()):
+        try:
+            sub, rest = _git_subcommand(shlex.split(seg, comments=True))
+        except ValueError:
+            out.append(seg)
+            continue
+        if sub and sub not in _KNOWN_GIT and sub != "!" and re.match(r"^[A-Za-z0-9_-]+$", sub):
+            value = git_text(["config", "--get", f"alias.{sub}"], repo_root)
+            if value:
+                if value.startswith("!"):
+                    seg = value[1:] + " " + " ".join(shlex.quote(a) for a in rest)
+                else:
+                    seg = "git " + value + " " + " ".join(shlex.quote(a) for a in rest)
+        out.append(seg)
+    return "; ".join(out)
+
+
 def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = False) -> Verdict:
-    reason = classify(command)
+    reason = classify(_expand_config_aliases(repo_root, command))
     if not reason:
         return Verdict(ALLOW, "", command)
     tree_only = reason.startswith(_TREE_SCOPED) and not _NAMES_A_TREE.search(command)

@@ -28,7 +28,8 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
 from specy_road.model_profiles import profile_for_entry
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
-from specy_road.orchestration_config import effective_config, roster_entry
+from specy_road.orchestration_config import roster_entry
+from specy_road.orchestration_pinned import pinned_config
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
@@ -72,7 +73,7 @@ def _target(repo_root: Path, node_id: str):
 
 
 def _entry_and_harness(repo_root: Path, model: str, harness: str | None) -> tuple[dict[str, Any], str]:
-    config, err = effective_config(repo_root)
+    config, err = pinned_config(repo_root)
     if err:
         raise WorkerError(f"orchestration config: {err}")
     entry = roster_entry(config, model)
@@ -173,7 +174,7 @@ def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str 
     if existing and not _wrapper_gone(repo_root, existing):
         return existing, False
     entry, harness = _entry_and_harness(repo_root, model, harness)
-    config, _ = effective_config(repo_root)
+    config, _ = pinned_config(repo_root)
     limit = int(config["policy"]["max_workers"])
     active = list_records(repo_root, active_only=True)
     if len(active) >= limit:
@@ -217,9 +218,10 @@ def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
 
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRecord:
     require_writer(rec)
+    _wrapper_gone(repo_root, rec)   # a crashed turn is a failure to record, not a worker to resume
     if rec.state in CLOSED_STATES:
         raise WorkerError(f"{rec.worker_id} is {rec.state}; delegate again instead")
-    if pid_alive(rec.pid):
+    if pid_alive(rec.pid, rec.worker_id):
         raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a "
                           "live turn — wait for it to end, or terminate it")
     adapter = adapter_for(rec.harness)
@@ -271,7 +273,7 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
     summary = "terminated by the coordinator"
     if rec.lease.get("holder") == "native":
         summary = "record closed; the adopted native session was not signalled (observe-only lease)"
-    elif pid_alive(rec.pid):
+    elif pid_alive(rec.pid, rec.worker_id):
         if not pid_verified(rec.pid, rec.worker_id):
             raise WorkerError(f"pid {rec.pid} cannot be verified as {rec.worker_id}'s wrapper (ps unavailable or "
                               "another command line); refusing to signal it")
@@ -302,9 +304,9 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
             r.provider_session_id = session_id
             r.state = "idle"
         mutate(repo_root, rec, fn)
-    take_checkpoint(repo_root, rec)
-    append_event(repo_root, rec, "adopted", source="orchestrator", authority="orchestrator",
-                 summary=f"adopted native {harness} session {session_id}; observe only")
+        take_checkpoint(repo_root, rec)
+        append_event(repo_root, rec, "adopted", source="orchestrator", authority="orchestrator",
+                     summary=f"adopted native {harness} session {session_id}; observe only")
     return rec
 
 

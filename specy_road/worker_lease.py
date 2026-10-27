@@ -56,9 +56,13 @@ def _handoff_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, l
     if rec.lease.get("holder") == "human":
         return rec, adapter_for(rec.harness).human_resume(rec.provider_session_id or "", Path(rec.worktree))
     require_writer(rec)
+    if rec.state in ("running", "starting") and not pid_alive(rec.pid, rec.worker_id):
+        append_event(repo_root, rec, "error", source="system",
+                     summary=f"wrapper pid {rec.pid or '-'} is gone without recording an exit; marked failed")
+        set_state(repo_root, rec, "failed", pid=None)
     if rec.state in CLOSED_STATES:
         raise WorkerError(f"{rec.worker_id} is {rec.state}; nothing to hand off")
-    if pid_alive(rec.pid):
+    if pid_alive(rec.pid, rec.worker_id):
         raise WorkerError(f"{rec.worker_id} is running (pid {rec.pid}); wait for idle or terminate first")
     adapter = adapter_for(rec.harness)
     if not adapter.caps.handoff or not rec.provider_session_id:
@@ -115,13 +119,16 @@ def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[Work
     cp = rec.checkpoint or {}
     prompts = _hook_prompts(repo_root, rec, int(cp.get("interventions_seen") or 0))
     stat = _diff_stat(Path(rec.worktree), cp.get("git_head"))
-    heard = [str(p.get("prompt", "")) for p in prompts]          # verbatim (the hook keeps 2000 chars)
+    pre_existing = sorted(set(cp.get("dirty_paths") or []))
+    if pre_existing:
+        stat += "\n(already dirty at hand-off, not the human's: " + ", ".join(pre_existing) + ")"
+    heard = [str(p.get("prompt", "")) for p in prompts]          # verbatim: the hook stores the whole prompt
     shown = [h[:200] for h in heard]
     summary = (f"human direction ({len(heard)} prompt(s) recorded by hook): " + " | ".join(shown)
                if heard else "human session returned without hook evidence")
     if note:
         summary += f" — note: {note}"
-    detail = {"prompts": heard, "diff_stat": stat, "checkpoint": cp}
+    detail = {"prompts": heard, "diff_stat": stat, "checkpoint": cp, "pre_existing_dirty": pre_existing}
     record_intervention(repo_root, rec, summary, source="hook" if heard else "human", detail=detail)
     if not heard:
         add_flag(repo_root, rec, FLAG_EXTERNAL)
@@ -141,5 +148,5 @@ def record_hook_prompt(repo_root: Path, session_id: str, prompt: str) -> WorkerR
             return None   # the broker's own prompts, and closed records, are not interventions
         path = interventions_path(repo_root, rec.worker_id)
         with path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"at": _now(), "session_id": session_id, "prompt": prompt[:2000]}) + "\n")
+            f.write(json.dumps({"at": _now(), "session_id": session_id, "prompt": prompt}) + "\n")   # verbatim
     return rec

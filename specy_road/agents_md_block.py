@@ -84,7 +84,9 @@ def warn_if_agents_md_block_stale(project_root: Path) -> None:
     )
 
 
-def apply_agents_and_report(project_root: Path, written: list[str], *, dry_run: bool = False) -> None:
+def apply_agents_and_report(project_root: Path, written: list[str], *, dry_run: bool = False,
+                            prefix: str = "") -> None:
+    """``prefix`` is the project's path under the git root, so a nested layout reports ``sr/AGENTS.md``."""
     outcome = apply_agents_md_block(project_root, dry_run=dry_run)
     if outcome != UNCHANGED:
-        written.append(f"{AGENTS_MD} ({outcome})")
+        written.append(f"{prefix}{AGENTS_MD} ({outcome})")

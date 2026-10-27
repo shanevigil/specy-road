@@ -21,6 +21,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from specy_road.review_files import latest_ready
+from specy_road.review_target import same_commit
 from specy_road.worker_adapters import Launch, adapter_for
 from specy_road.worker_state import (
     WorkerRecord,
@@ -167,6 +168,8 @@ def _fresh_ready(repo_root: Path, rec: WorkerRecord, since: float) -> bool:
         return False
     if rec.branch and str(ready.data.get("branch")) != rec.branch:
         return False   # another attempt's branch, not this worker's
+    if not same_commit(Path(rec.worktree), str(ready.data.get("commit") or ""), "HEAD"):
+        return False   # a READY for an older commit on this branch: the turn moved past it
     return ready.path.stat().st_mtime >= since - 1
 
 

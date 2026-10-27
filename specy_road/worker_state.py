@@ -20,12 +20,10 @@ coordinator is entitled to assume (design note
 
 from __future__ import annotations
 
-import contextlib
 import json
 import os
 import re
-import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from functools import cache
@@ -35,11 +33,11 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.git_subprocess import head_sha
-from specy_road.review_files import reviews_root
+from specy_road.git_subprocess import git_text, head_sha
+from specy_road.review_files import reviews_root  # noqa: F401 — re-exported for callers
 from specy_road.runtime_paths import specy_road_package_dir
+from specy_road.worker_lock import WORKERS_DIRNAME, WorkerError, workers_dir, workers_lock  # noqa: F401 — re-exported
 
-WORKERS_DIRNAME = ".workers"
 HARNESSES = ("claude-code", "codex", "cursor", "generic")
 #: A worker in one of these is over for good. ``completed`` is not: it still
 #: owns its leaf and its slot (a review ``block`` goes back to it) until
@@ -49,10 +47,6 @@ LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
 _ID = re.compile(r"^w-[0-9]{4,}$")
-
-
-class WorkerError(Exception):
-    """A record is missing, invalid, or the operation is not allowed in its state."""
 
 
 class LeaseError(WorkerError):
@@ -80,6 +74,7 @@ class WorkerRecord:
     contract_hash: str | None = None
     checkpoint: dict[str, Any] | None = None
     billing_route: str | None = None
+    started_head: str | None = None   # the worktree's HEAD when the worker was created; reconcile judges from here
 
     @property
     def active(self) -> bool:
@@ -119,51 +114,6 @@ def _write_atomic(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
-_THREAD_LOCKS: dict[str, threading.RLock] = {}
-_LOCAL = threading.local()
-
-
-@contextlib.contextmanager
-def workers_lock(repo_root: Path) -> Iterator[None]:
-    """One exclusive lock for every load-modify-save under ``work/.workers/``.
-
-    The wrapper, the coordinator's commands and a hook all write records; a
-    read-modify-write without the lock loses the other writer's change
-    (``needs_reconcile`` set by ``reconcile`` while the wrapper streams, two
-    ``delegate`` calls on one leaf). Re-entrant within a thread, so a mutation
-    that appends an event takes it once; an ``RLock`` serialises threads of
-    one process and ``flock`` serialises processes. ``fcntl`` is POSIX; on
-    Windows only the thread lock applies, the state before this lock existed.
-    """
-    d = workers_dir(repo_root)
-    d.mkdir(parents=True, exist_ok=True)
-    key = str(d)
-    depth = getattr(_LOCAL, "depth", None) or {}
-    _LOCAL.depth = depth
-    if depth.get(key, 0) > 0:
-        depth[key] += 1
-        try:
-            yield
-        finally:
-            depth[key] -= 1
-        return
-    rlock = _THREAD_LOCKS.setdefault(key, threading.RLock())
-    try:
-        import fcntl
-    except ImportError:  # Windows
-        fcntl = None
-    with rlock, (d / ".lock").open("a+") as f:
-        if fcntl is not None:
-            fcntl.flock(f, fcntl.LOCK_EX)
-        depth[key] = 1
-        try:
-            yield
-        finally:
-            depth[key] = 0
-            if fcntl is not None:
-                fcntl.flock(f, fcntl.LOCK_UN)
-
-
 def _refresh(repo_root: Path, rec: WorkerRecord) -> None:
     """Replace ``rec``'s fields with what is on disk, when a record exists there."""
     path = record_path(repo_root, rec.worker_id)
@@ -196,10 +146,6 @@ def schema_errors(data: dict[str, Any], schema_name: str) -> list[str]:
 
 
 # --- paths -----------------------------------------------------------------
-
-def workers_dir(repo_root: Path) -> Path:
-    return reviews_root(repo_root).parent / WORKERS_DIRNAME
-
 
 def record_path(repo_root: Path, worker_id: str) -> Path:
     if not _ID.match(worker_id):
@@ -278,7 +224,8 @@ def create_record(repo_root: Path, node_id: str, harness: str, model: str, workt
         now = _now()
         rec = WorkerRecord(new_worker_id(repo_root), node_id, harness, model, str(Path(worktree).resolve()),
                            "starting", {"holder": lease, "since": now}, 0, max(attempts, default=0) + 1, 0,
-                           now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route)
+                           now, now, branch=branch, contract_hash=contract_hash, billing_route=billing_route,
+                           started_head=head_sha(Path(worktree)))
         save_record(repo_root, rec)
         append_event(repo_root, rec, "started", source="broker",
                      summary=f"delegated {node_id} to {harness}/{model} (attempt {rec.attempt})")
@@ -313,6 +260,9 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
     """
     with workers_lock(repo_root):
         _refresh(repo_root, rec)
+        # A crash between the append and the record save leaves the record a
+        # step behind the log; the log is the truth for the next sequence.
+        rec.last_event_seq = max(rec.last_event_seq, _last_logged_seq(repo_root, rec.worker_id))
         ev = WorkerEvent(rec.last_event_seq + 1, rec.worker_id, _now(), type_, source, authority,
                          (summary or "(empty)")[:500], rec.instruction_epoch, detail, op_id)
         data = ev.to_dict()
@@ -326,6 +276,19 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
         rec.last_event_seq = ev.seq
         save_record(repo_root, rec)
     return ev
+
+
+def _last_logged_seq(repo_root: Path, worker_id: str) -> int:
+    path = events_path(repo_root, worker_id)
+    if not path.is_file():
+        return 0
+    last = 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            last = max(last, int(json.loads(line).get("seq", 0)))
+        except (ValueError, AttributeError):
+            continue
+    return last
 
 
 def events_since(repo_root: Path, worker_id: str, seq: int = 0) -> list[WorkerEvent]:
@@ -362,9 +325,16 @@ def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
     mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": _now()}))
 
 
+def dirty_paths(worktree: Path) -> list[str]:
+    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human."""
+    out = git_text(["status", "--porcelain", "--untracked-files=all"], worktree) or ""
+    return sorted({ln[3:].strip() for ln in out.splitlines() if len(ln) > 3})
+
+
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:
     """Remember where the worktree and session stood; a reclaim diffs from here."""
-    cp = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": _now()}
+    cp = {"git_head": head_sha(Path(rec.worktree)), "native_turn": native_turn, "at": _now(),
+          "dirty_paths": dirty_paths(Path(rec.worktree))}
     mutate(repo_root, rec, lambda r: setattr(r, "checkpoint", cp))
     return cp
 

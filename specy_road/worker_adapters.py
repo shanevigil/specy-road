@@ -16,8 +16,9 @@ the built command for any harness while its output is still parsed as that
 harness's; that is how an adopter widens or narrows permissions, pins flags,
 or points at a wrapper. Claude Code's default asks for the narrowest
 unattended mode it documents (``acceptEdits``), so a first run may stop at a
-shell permission; Cursor's ``agent -p`` applies no change without ``--force``,
-which is its full auto-run, so that default is the widest — read the table
+shell permission; Cursor's ``agent -p`` has write and shell tools already and
+``--force`` force-allows every command not explicitly denied, so that default
+is the widest — read the table
 in ``docs/orchestration-workers.md`` before trusting either on a new repo.
 """
 
@@ -159,8 +160,13 @@ class Adapter:
         names it, since the default command is the only one that knows the
         harness's resume flag.
         """
-        if not has_prompt_placeholder(cli):
+        if not cli:
             return None
+        why = placeholder_problem(cli)
+        if why:
+            # Never fall back to the vendor default: that would silently
+            # widen (or change) the permissions the adopter wrote down.
+            raise Unsupported(f"channels.cli / access.cli: {why}: {cli}")
         if session_id is not None and "{session}" not in cli:
             return None
         # On launch a command that names {session} gets a fresh id, and the
@@ -265,8 +271,8 @@ class Codex(Adapter):
 class Cursor(Adapter):
     harness = "cursor"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
-                        notes="agent -p --force stream-json (--force is Cursor's full auto-run; without it changes "
-                              "are only proposed); session id from the first event; resume = `agent -p --resume` "
+                        notes="agent -p --force stream-json (--force force-allows every command not denied; print mode "
+                              "has write and shell tools regardless); session id from the first event; resume = `agent -p --resume` "
                               "(print-mode resume with a new prompt is undocumented: verify on your install)")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:

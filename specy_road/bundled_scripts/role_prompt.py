@@ -37,7 +37,8 @@ from specy_road.orchestrate_plan import (
     node_sensitivity,
 )
 from specy_road.worker_adapters import placeholder_problem, substitute_prompt
-from specy_road.orchestration_config import effective_config, substitute_for
+from specy_road.orchestration_config import substitute_for
+from specy_road.orchestration_pinned import pinned_config
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -141,7 +142,8 @@ def _profile_lines(prof: Profile | None, role: str, zones: list[str]) -> list[st
     out = [f"## Model notes ({prof.data.get('model', prof.api_id)}, researched {prof.data.get('researched')})", ""]
     rules = prof.bullets("Prompting rules")
     if rules:
-        out += ["Follow these; they come from the vendor's guidance for this model:", ""]
+        out += ["Follow these. They were researched by a model from the vendor's published guidance and "
+                "have not been human-verified (model-profiles/README.md):", ""]
         out += [f"- {_CITE.sub('', r)}" for r in rules]
         out.append("")
     guards = []
@@ -169,7 +171,7 @@ def _profile_lines(prof: Profile | None, role: str, zones: list[str]) -> list[st
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[str, Profile | None, str | None]:
     """``(text, profile, error)``."""
-    config, err = effective_config(root)
+    config, err = pinned_config(root)
     if err:
         return "", None, f"orchestration config: {err}"
     entry = next((e for e in config.get("roster") or [] if e.get("id") == model), None)
@@ -261,7 +263,7 @@ def main(argv: list[str] | None = None) -> None:
     if err:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)
-    config, _ = effective_config(root)
+    config, _ = pinned_config(root)
     entry = next((e for e in config.get("roster") or [] if e.get("id") == ns.model), {})
     out = ns.output or root / "work" / f"prompt-{ns.node_id}-{ns.role}-{ns.model}.md"
     out.parent.mkdir(parents=True, exist_ok=True)
