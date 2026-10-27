@@ -118,7 +118,7 @@ def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
 
     ``/usr/bin/git`` counts as ``git``; a ``-c alias.<name>=<cmd>`` whose
     alias is the subcommand is expanded, so ``git -c alias.s=stash s`` is
-    ``git stash``.
+    ``git stash``; a ``!`` alias comes back as ``("!", [shell command])``.
     """
     tokens = _unwrap(tokens)
     if not tokens or tokens[0].rsplit("/", 1)[-1] != "git":
@@ -141,6 +141,8 @@ def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
         return None, []
     sub, rest = tokens[i], tokens[i + 1:]
     if sub in aliases:
+        if aliases[sub].startswith("!"):
+            return "!", [aliases[sub][1:], *rest]   # a bang alias is a shell command; classified as one
         expanded = shlex.split(aliases[sub]) if aliases[sub] else []
         if expanded:
             return expanded[0], [*expanded[1:], *rest]
@@ -177,6 +179,8 @@ def classify_segment(segment: str) -> str | None:
     sub, args = _git_subcommand(tokens)
     if sub is None:
         return None
+    if sub == "!":
+        return classify(" ".join(args))
     flags = _short_flags(args)
     positional = [a for a in args if not a.startswith("-")]
     if sub == "stash":

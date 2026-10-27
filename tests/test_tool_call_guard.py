@@ -59,6 +59,8 @@ from specy_road.bundled_scripts import session_cli
     ("sudo -u bob git clean -f", "deletes untracked files"),
     ("git -c alias.s=stash s", "stash stack is shared"),
     ("git -c alias.rh='reset --hard' rh", "discards other sessions"),
+    ("git -c alias.x='!git stash' x", "stash stack is shared"),
+    ("git -c alias.x='!cd /tmp && git reset --hard' x", "discards other sessions"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
