@@ -84,6 +84,31 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   count; a present signature is verified regardless, so a tampered record
   never counts. `mark-implementation-reviewed --sign-key` signs the interactive
   human approval. Needs OpenSSH 8.0+; no new Python dependency.
+- **Workers: `specy-road worker`** (slice 7, design:
+  [`docs/design-notes/v0-3-1-worker-orchestration.md`](docs/design-notes/v0-3-1-worker-orchestration.md);
+  reference: [`docs/orchestration-workers.md`](docs/orchestration-workers.md)).
+  `worker delegate <ID> --model <roster id>` launches a claimed leaf's
+  executor on the model's roster `harness` (`claude-code`, `codex`, `cursor`,
+  or `generic` = the profile's `access.cli`) as a detached process and
+  returns a worker id at once; `worker sync [--ack]` is what a coordinator
+  calls at the start of every turn; `list|status|events|open`, `message`
+  (resumes the native session with a follow-up), `resume`, `terminate`,
+  `handoff` / `reclaim` (lease the worker to a human, print the native resume
+  command, record what they did as an `intervention` with a new
+  `instruction_epoch`), `adopt` (observe a session the user started),
+  `reconcile` (changed paths vs touch zones, `needs_reconcile`),
+  `interrupt` (declared unsupported by the one-shot CLI adapters, exit 2,
+  never emulated), `--op-id` idempotency on every mutation, and
+  `worker hook --format claude-code|codex|cursor` as the prompt-submit hook
+  that witnesses a human's prompts to a worker session. State is files under
+  `work/.workers/` (record, sequenced event log, ops outbox; package-owned
+  `worker-record` / `worker-event` schemas), always in the main worktree;
+  linked worktrees go under `work/.worktrees/`. Roster entries gain `harness`,
+  `billing_route` and a `{session}` placeholder for `channels.cli`; policy
+  gains `max_workers` (default 2). `handoff status` lists active workers; the
+  `/specyrd-orchestrate` skill is rewritten around `delegate` and `sync`.
+  **Existing adopters:** add `work/.workers/` and `work/.worktrees/` to
+  `.gitignore`.
 - Node fields `sensitivity` (default `public`) and `executor_eligibility`
   (default `any`, else a roster `class` tag), settable with `add-node` and
   `edit-node --set`. **Existing adopters:** run `specy-road refresh-schemas`

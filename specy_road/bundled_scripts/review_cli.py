@@ -33,6 +33,7 @@ from specy_road.review_signing import SigningError, sign
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
+from specy_road.worker_state import list_records
 
 
 def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
@@ -103,12 +104,17 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
     node_ids = [ns.node_id] if ns.node_id else node_ids_with_reviews(root)
     out = [_status_or_error(root, nid) for nid in node_ids]
     sessions = list_sessions(root)
+    workers = list_records(root, active_only=True)
     if ns.json:
-        print(json.dumps({"sessions": [s.to_dict() for s in sessions], "nodes": out}, indent=2))
+        print(json.dumps({"sessions": [s.to_dict() for s in sessions],
+                          "workers": [w.to_dict() for w in workers], "nodes": out}, indent=2))
     else:
         if sessions:
             print("Live sessions: " + ", ".join(
                 f"{s.agent} ({s.branch or '-'}: {', '.join(s.paths) or 'no paths'})" for s in sessions))
+        if workers:
+            print("Workers: " + ", ".join(
+                f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease {w.lease.get('holder')})" for w in workers))
         if not out:
             print("No hand-offs under work/reviews/.")
         else:

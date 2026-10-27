@@ -30,6 +30,8 @@
         "id": { "$ref": "#/$defs/id", "description": "Model id as used in review records (e.g. claude-opus-5.5, human)." },
         "family": { "$ref": "#/$defs/id", "description": "Vendor family; reviewer independence is judged by family (e.g. anthropic, openai, human)." },
         "profile": { "type": "string", "minLength": 1, "description": "Repo-relative path to this model's profile (model-profiles/<family>/<api_id>.md)." },
+        "harness": { "enum": ["claude-code", "codex", "cursor", "generic"], "description": "Which vendor harness `specy-road worker delegate` runs this model on (generic runs the profile's access.cli). Distinct from the model: a Claude model under Cursor's agent is a cursor worker." },
+        "billing_route": { "type": "string", "minLength": 1, "description": "Label for whose quota a worker on this entry draws (e.g. claude_subscription, chatgpt_oauth, api_key). Recorded on the worker; never used to authenticate." },
         "roles": {
           "type": "array",
           "uniqueItems": true,
@@ -77,6 +79,11 @@
         "signed_reviews": {
           "type": "boolean",
           "description": "When true, a review record counts only if it carries a signature that verifies against its roster entry's public_key. Default false."
+        },
+        "max_workers": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Most workers `specy-road worker delegate` keeps active at once; each draws on a plan quota. Default 2."
         }
       }
     },

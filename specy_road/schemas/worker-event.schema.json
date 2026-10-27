@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/worker-event.schema.json",
+  "title": "specy-road worker event",
+  "description": "One line of work/.workers/<worker-id>.events.jsonl: the append-only, sequence-numbered log the coordinator syncs from. Summaries are short; a detail object may carry more, never a transcript.",
+  "type": "object",
+  "required": ["seq", "worker_id", "at", "type", "source", "authority", "summary", "epoch"],
+  "additionalProperties": false,
+  "properties": {
+    "seq": { "type": "integer", "minimum": 1 },
+    "worker_id": { "type": "string", "pattern": "^w-[0-9]{4,}$" },
+    "at": { "type": "string", "minLength": 1 },
+    "type": { "enum": ["started", "output", "turn_completed", "needs_input", "completion", "error", "message", "intervention", "handoff", "reclaim", "resumed", "interrupted", "terminated", "adopted", "reconcile"] },
+    "source": { "enum": ["broker", "worker", "human", "orchestrator", "hook", "system"] },
+    "authority": { "enum": ["human_authoritative", "orchestrator", "worker_suggestion", "system"] },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "epoch": { "type": "integer", "minimum": 0, "description": "instruction_epoch of the worker when the event was written." },
+    "detail": { "type": "object" },
+    "op_id": { "type": "string", "minLength": 1 }
+  }
+}
