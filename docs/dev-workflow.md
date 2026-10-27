@@ -355,12 +355,11 @@ flowchart LR
 
 ---
 
-## Optional: quality and compliance prompts
+## Optional: quality and compliance passes
 
-For **copy-paste prompts** (architecture compliance, scoped code review, test coverage audit,
-dependency audit, security audit, pre-release checklist) that stay project-agnostic — with
-placeholders for your lint/test/scan commands — see
-[optional-agent-review-prompts.md](optional-agent-review-prompts.md), which are optional.
+For generic review, cleanup, security and audit passes use your coding harness's built-in
+skills; specy-road's roadmap-specific review contract (`review-packet`, `review record`, the
+review gate) is documented in [orchestration.md](orchestration.md).
 
 ---
 
