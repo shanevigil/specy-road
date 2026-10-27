@@ -23,6 +23,8 @@ work/brainstorm-*-prompt.md
 # branch past that commit. The approving reviews are recorded as Reviewed-by
 # trailers on the mark-implementation-reviewed commit instead.
 work/reviews/
+# Agent presence records (specy-road session); per checkout, never shared via git.
+work/.sessions/
 
 # Derived indexes for `specy-road history` and `specy-road search`. Rebuilt
 # from git and the working tree on demand, so they are never committed;

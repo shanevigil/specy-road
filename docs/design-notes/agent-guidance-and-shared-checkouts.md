@@ -1,8 +1,9 @@
 # Design: guiding agents outside a roadmap claim
 
-> **Status:** on the `0.3.x` line. Items 1–4 are built (3 and 4 as the
-> `AGENTS.md` managed block, `specy_road/agents_md_block.py`); 5 and 6 are
-> scoped here and built later. Companion to
+> **Status:** on the `0.3.x` line. All six items are built: 3 and 4 as the
+> `AGENTS.md` managed block (`specy_road/agents_md_block.py`), 5 and 6 as
+> `specy-road session` (`specy_road/session_presence.py`). The hook adapter
+> that runs `session check` on commit in each harness is slice 5. Companion to
 > [`v0-3-0-orchestration-slices.md`](v0-3-0-orchestration-slices.md).
 
 ## What happened

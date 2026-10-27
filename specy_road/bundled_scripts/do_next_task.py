@@ -272,7 +272,7 @@ def _finalize_pickup(
 ) -> None:
     node_id = node["id"]
     codename = node["codename"]
-    print_pickup_header(node, branch)
+    print_pickup_header(node, branch, ROOT)
 
     brief_path = _write_brief(node, nodes)
     reg = read_registry(registry_path(ROOT))

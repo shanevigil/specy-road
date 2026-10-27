@@ -31,6 +31,7 @@ from specy_road.review_files import (
 from specy_road.review_gate import GateResult, evaluate_gate
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.session_presence import list_sessions
 
 
 def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
@@ -100,12 +101,17 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     node_ids = [ns.node_id] if ns.node_id else node_ids_with_reviews(root)
     out = [_status_or_error(root, nid) for nid in node_ids]
+    sessions = list_sessions(root)
     if ns.json:
-        print(json.dumps(out, indent=2))
-    elif not out:
-        print("No hand-offs under work/reviews/.")
+        print(json.dumps({"sessions": [s.to_dict() for s in sessions], "nodes": out}, indent=2))
     else:
-        print("\n".join(line for st in out for line in _render(st)))
+        if sessions:
+            print("Live sessions: " + ", ".join(
+                f"{s.agent} ({s.branch or '-'}: {', '.join(s.paths) or 'no paths'})" for s in sessions))
+        if not out:
+            print("No hand-offs under work/reviews/.")
+        else:
+            print("\n".join(line for st in out for line in _render(st)))
     # Naming a node that cannot be resolved (unknown, or with no open claim) is a
     # caller error; a stale directory in the sweep is only reported.
     return 1 if ns.node_id and out[0]["state"] in ("error", "unclaimed") else 0

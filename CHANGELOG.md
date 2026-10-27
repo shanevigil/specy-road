@@ -118,6 +118,12 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
 - New scaffolds ship `work/handoff-ready.template.md` and
   `work/review-record.template.md`; the pickup prompt points at them.
 - New scaffolds gitignore `work/reviews/`.
+- `specy-road session start|touch|end|list|check`: presence records under
+  `work/.sessions/` for work that is not a registry claim. `handoff status`
+  lists live sessions (its `--json` output is now `{sessions, nodes}`),
+  pickup warns when a live session's paths overlap the leaf's touch zones, and
+  `session check` exits 1 when staged paths overlap another live session's —
+  a pre-commit guard. New scaffolds gitignore `work/.sessions/`.
 - **`AGENTS.md` is now a managed block, not a scaffold file.** `init project`
   writes the specy-road rules inside `<!-- >>> specy-road managed block <<< -->`
   markers: a fresh repo gets a file with the block, and a repo with its own

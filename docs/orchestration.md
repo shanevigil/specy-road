@@ -326,6 +326,29 @@ before the review, since a later commit makes it stale. Under the default
 human-only roster the agent cannot close the gate; it stops and asks the human
 to approve in a terminal.
 
+## Presence: `specy-road session`
+
+The registry shows claimed leaves. Work that is not a claim — a design note, a
+merge, a review, a verifier's experiments — was invisible to every other agent
+in the checkout. A session announces itself instead:
+
+```bash
+specy-road session start --path src/api --path docs/api.md --note "rate limits"
+specy-road session touch            # renew; records expire after 4 hours by default
+specy-road session end
+specy-road session list [--all]
+specy-road session check            # exit 1 if staged paths overlap another live session
+```
+
+Records are `work/.sessions/<agent-id>.yaml` (gitignored, always in the main
+worktree): branch, worktree, paths, and expiry. The id is
+`$SPECY_ROAD_AGENT_ID`, else `<user>-<pid>`; pass `--agent` to name it. A
+crashed session's record ages out; nothing is locked. `handoff status` lists
+live sessions first, and `do-next-available-task` warns when a live session's
+paths overlap the leaf's touch zones. `session check` is the pre-commit guard:
+wire it into your hook, and a commit that would land on another live
+session's paths is refused until you coordinate or the record expires.
+
 ## Working in one shared checkout
 
 When several agents share one working tree — with or without a roadmap
@@ -343,8 +366,9 @@ records why:
   clone or worktree: `git worktree add ../<repo>-<leaf>-<agent> -b <branch> <base>`.
 - Run one fresh session per leaf. Context carried over from a previous leaf
   causes scope bleed.
-- Before any git write, `git status` and `git worktree list`: files you did
-  not create belong to another session. Edit only your own section of a file
+- Announce yourself with `specy-road session start --path …` before the first
+  edit, and check `specy-road session list`. Before any git write, `git status`
+  and `git worktree list`: files you did not create belong to another session. Edit only your own section of a file
   others are editing.
 - A prompt or plan you hand an agent names the commit it was written against
   (`base: <sha>`); the agent diffs from there before starting.
