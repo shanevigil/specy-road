@@ -118,6 +118,16 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
 - New scaffolds ship `work/handoff-ready.template.md` and
   `work/review-record.template.md`; the pickup prompt points at them.
 - New scaffolds gitignore `work/reviews/`.
+- **`AGENTS.md` is now a managed block, not a scaffold file.** `init project`
+  writes the specy-road rules inside `<!-- >>> specy-road managed block <<< -->`
+  markers: a fresh repo gets a file with the block, and a repo with its own
+  `AGENTS.md` gets the block appended with nothing else touched (before, that
+  repo got no specy-road guidance at all). `--force` and `refresh-stubs`
+  rewrite only the block; `validate` warns when it is missing or from another
+  version. The block opens with a precedence rule: toolkit rules on the
+  registry, branches, review, and a shared tree are a floor that project
+  rules may add to but not relax; on conflict an agent stops and asks.
+  **Existing adopters:** run `specy-road refresh-stubs` to get the section.
 - The scaffold `AGENTS.md`, the `CLAUDE.md` managed block, and
   `suggested_prompts/bootstrap-agents-md.md` carry the shared-checkout rules
   (explicit-path commits, no branch switches or stashes in a shared tree,

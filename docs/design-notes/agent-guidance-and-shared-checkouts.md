@@ -1,7 +1,8 @@
 # Design: guiding agents outside a roadmap claim
 
-> **Status:** proposed for the `0.3.x` line. Items 1 and 2 ship with this note;
-> 3–6 are scoped here and built later. Companion to
+> **Status:** on the `0.3.x` line. Items 1–4 are built (3 and 4 as the
+> `AGENTS.md` managed block, `specy_road/agents_md_block.py`); 5 and 6 are
+> scoped here and built later. Companion to
 > [`v0-3-0-orchestration-slices.md`](v0-3-0-orchestration-slices.md).
 
 ## What happened

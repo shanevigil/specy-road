@@ -6,6 +6,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from specy_road.agents_md_block import apply_agents_md_block
+from specy_road.managed_block import UNCHANGED
 from specy_road.runtime_paths import (
     git_root,
     prefix_within,
@@ -87,11 +89,19 @@ def run_init_project(
         written.append(str(rel))
 
     if dry_run:
+        outcome = apply_agents_md_block(dst, dry_run=True)
+        if outcome != UNCHANGED:
+            print(f"would write AGENTS.md ({outcome})")
         print(f"dry-run: {len(written)} file(s) would be written under {dst}")
         if skipped:
             print(f"dry-run: would skip {len(skipped)} existing (no --force)")
         return 0
 
+    # AGENTS.md is a managed block, not a template file: an existing file gets
+    # the section inserted, and --force rewrites only the section.
+    outcome = apply_agents_md_block(dst)
+    if outcome != UNCHANGED:
+        written.append(f"AGENTS.md ({outcome})")
     for rel in written:
         print(f"wrote {rel}")
     for rel in skipped:

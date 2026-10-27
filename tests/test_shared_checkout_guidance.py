@@ -13,7 +13,7 @@ from pathlib import Path
 from specy_road.agent_guide_block import render_guide_lines
 
 REPO = Path(__file__).resolve().parent.parent
-AGENTS = REPO / "specy_road" / "templates" / "project" / "AGENTS.md"
+AGENTS = REPO / "specy_road" / "templates" / "specyrd" / "agents-md-block.md"
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 
 _SENTENCES = (

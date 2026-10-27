@@ -127,7 +127,9 @@ specy-road export
 ```
 
 `init project` writes `.gitignore`, `roadmap/`, `planning/`, `constitution/`,
-`constraints/`, `shared/`, `schemas/`, `work/`, `vision.md`, and `AGENTS.md`.
+`constraints/`, `shared/`, `schemas/`, `work/`, `model-profiles/`, `vision.md`, and a
+specy-road section in `AGENTS.md` (a managed block: an `AGENTS.md` you already
+have keeps everything outside the markers).
 It refuses to overwrite an existing scaffold unless you pass `--force`.
 Preview without writing: `--dry-run`.
 

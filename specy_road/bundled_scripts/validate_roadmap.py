@@ -14,6 +14,7 @@ from specy_road.bundled_scripts.refresh_stubs import warn_if_stubs_stale
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
+from specy_road.agents_md_block import warn_if_agents_md_block_stale
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.orchestration_config import load_orchestration_config
@@ -106,6 +107,7 @@ def validate_at(
     validate_orchestration_contract(root)
     warn_if_schemas_stale(root)
     warn_if_stubs_stale(root)
+    warn_if_agents_md_block_stale(root)
     warn_if_generated_files_ignored(root)
 
     if auto_heal:

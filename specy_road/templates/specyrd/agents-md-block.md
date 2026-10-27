@@ -1,4 +1,15 @@
-# Agents — load order
+## specy-road (coordination rules for every agent)
+
+Written by specy-road {{SPECYRD_VERSION}}; `specy-road refresh-stubs` rewrites
+this section and touches nothing outside its markers. Everything else in this
+file is the project's own.
+
+**Precedence.** The rules in this section on the registry, branches, review,
+and a shared working tree are a floor. A project's own rules in this file may
+add to them, never relax them. If a project rule conflicts with one here, stop
+and ask a human which applies; do not pick one.
+
+### Load order
 
 0. `roadmap-context.md` — the current state of the roadmap in one file: what is
    done, what was decided, which gates are open, which dependencies were dropped,
