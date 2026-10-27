@@ -27,8 +27,9 @@ from specy_road.runtime_paths import add_repo_root_arg
 
 _DESCRIPTION = (
     "Brainstorm roadmap ideas with an agent, then promote the ones you keep. "
-    "Two modes: `start` diverges (quantity, Socratic questioning, research) "
-    "and `recommend` converges (clustering and ranking). Both write a prompt "
+    "Two modes: `start` diverges (Socratic questioning, then quantity; no "
+    "research in round 1, `next-round` opens it) and `recommend` converges "
+    "(clustering and ranking). Both write a prompt "
     "under work/ for your agent to run; ideas land in "
     "work/brainstorm-<slug>.yaml, which is tracked."
 )

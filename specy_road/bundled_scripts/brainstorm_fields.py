@@ -9,7 +9,10 @@ GUI and promote already use; the structured records live in ``sources``.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # the real import would be circular; raised lazily below
+    from specy_road.bundled_scripts.brainstorm_session import BrainstormError
 
 VERIFICATIONS = ("unverified", "retrieved", "not-found", "blocked")
 STANCES = ("for", "against")
@@ -24,9 +27,7 @@ EXTRA_DEFAULTS: dict[str, Any] = {
 
 
 def _bad(ident: str, msg: str) -> "BrainstormError":
-    from specy_road.bundled_scripts.brainstorm_session import BrainstormError
-
-    return BrainstormError(f"idea {ident}: {msg}")
+    return _error(f"idea {ident}: {msg}")
 
 
 def parse_origin(text: str | None) -> dict[str, str] | None:
@@ -37,24 +38,35 @@ def parse_origin(text: str | None) -> dict[str, str] | None:
     return {k: v for k, v in zip(ORIGIN_KEYS, parts) if v}
 
 
-def parse_overlap(text: str) -> dict[str, str]:
-    """``NODE_ID:relation`` → mapping, relation validated."""
-    node, _, rel = text.partition(":")
-    rel = rel.strip() or "adjacent"
-    if rel not in OVERLAP_RELATIONS:
-        from specy_road.bundled_scripts.brainstorm_session import BrainstormError
+def _error(msg: str) -> "BrainstormError":
+    from specy_road.bundled_scripts.brainstorm_session import BrainstormError
 
-        raise BrainstormError(f"overlap relation {rel!r} not one of {', '.join(OVERLAP_RELATIONS)}")
-    return {"node_id": node.strip(), "relation": rel}
+    return BrainstormError(msg)
+
+
+def parse_overlap(text: str) -> dict[str, str]:
+    """``NODE_ID:relation`` → mapping, both parts validated.
+
+    Checked here, at the CLI boundary: an empty node id written to the file
+    would only surface on the next read, which rejects the whole session.
+    """
+    node, _, rel = text.partition(":")
+    node = node.strip()
+    rel = rel.strip() or "adjacent"
+    if not node:
+        raise _error(f"--overlap {text!r}: expected NODE_ID:RELATION with a node id")
+    if rel not in OVERLAP_RELATIONS:
+        raise _error(f"overlap relation {rel!r} not one of {', '.join(OVERLAP_RELATIONS)}")
+    return {"node_id": node, "relation": rel}
 
 
 def source_record(url: str, *, quote: str = "", supports: str = "", stance: str = "for",
                   tool: str = "", source_type: str = "", retrieved_at: str = "",
                   verification: str = "unverified") -> dict[str, Any]:
+    if not (url or "").strip():
+        raise _error("--url is required: a source without a URL cannot be verified")
     if stance not in STANCES:
-        from specy_road.bundled_scripts.brainstorm_session import BrainstormError
-
-        raise BrainstormError(f"stance {stance!r} not one of {', '.join(STANCES)}")
+        raise _error(f"stance {stance!r} not one of {', '.join(STANCES)}")
     rec = {"url": url.strip(), "quote": quote.strip(), "supports": supports.strip(), "stance": stance,
            "tool": tool.strip(), "source_type": source_type.strip(), "retrieved_at": retrieved_at.strip(),
            "verification": verification}
@@ -80,6 +92,9 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:
             v = s.get("verification", "unverified")
             if v not in VERIFICATIONS:
                 raise _bad(ident, f"verification {v!r} not one of {', '.join(VERIFICATIONS)}")
+            stance = s.get("stance", "for")
+            if stance not in STANCES:
+                raise _bad(ident, f"stance {stance!r} not one of {', '.join(STANCES)}")
             out["sources"].append({k: v for k, v in s.items() if v not in ("", None)})
     overlap = raw.get("overlap")
     if isinstance(overlap, list):

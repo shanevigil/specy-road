@@ -27,6 +27,26 @@ NO_API_NOTE = (
     "this, and the tools you already have are the ones to reach for."
 )
 
+#: What a diverge agent may write. The ban on ranking keeps the pass honest;
+#: this keeps it from building what it just proposed. Mirrored in
+#: ``suggested_prompts/brainstorm-roadmap.md`` and ``docs/brainstorming.md``.
+WRITE_ALLOW_LINES = [
+    "## What you may write",
+    "",
+    "Until the PM runs `promote`, the session file is the only thing a "
+    "brainstorm changes, and only through these commands: `specy-road "
+    "brainstorm frame`, `add-idea`, `add-evidence`, and `revise`.",
+    "",
+    "- **Do not edit code**, tests, or configuration — not even to try an idea.",
+    "- **Do not edit `planning/`, `roadmap/`, `roadmap/registry.yaml`, "
+    "`shared/`, or `constitution/`.** Proposals are not nodes, sheets, or "
+    "claims until the PM promotes them.",
+    "- **Do not write under `work/`** except through the commands above; "
+    "do not hand-edit `work/brainstorm-*.yaml`.",
+    "- `accept`, `reject`, `park`, and `promote` are the PM's commands.",
+    "",
+]
+
 
 def frame_lines(session: BrainstormSession) -> list[str]:
     subject = session.topic.strip() or "the topic the PM gives you"
@@ -188,6 +208,7 @@ def recording_lines(session: BrainstormSession, *, shard: str | None = None) -> 
         "Then stop. Do not run `promote` — accepting ideas is the PM's "
         "decision, not yours.",
         "",
+        *WRITE_ALLOW_LINES,
     ]
 
 
