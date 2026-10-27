@@ -46,7 +46,7 @@ def _notes(repo: Path, model: str = "opus", **kw) -> Path:
 def _status(repo: Path, capsys) -> dict:
     capsys.readouterr()
     assert _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
-    return json.loads(capsys.readouterr().out)[0]
+    return json.loads(capsys.readouterr().out)["nodes"][0]
 
 
 def test_status_walks_waiting_review_approved_stale(tmp_path: Path, capsys) -> None:

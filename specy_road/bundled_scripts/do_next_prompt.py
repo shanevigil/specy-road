@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_available import blocked_pick_notice
@@ -19,13 +20,24 @@ from specy_road.bundled_scripts.planning_artifacts import (
 _LEAF_EXCERPT_MAX_LINES = 80
 
 
-def print_pickup_header(node: dict, branch: str) -> None:
-    """Announce the claimed leaf, naming its status when it is Blocked."""
+def print_pickup_header(node: dict, branch: str, repo_root: Path | None = None) -> None:
+    """Announce the claimed leaf, naming its status when it is Blocked.
+
+    Also warns when another live agent session (``work/.sessions/``) has
+    recorded paths inside this leaf's touch zones — unclaimed work the registry
+    cannot see.
+    """
     print(f"\n[{node['id']}] {node.get('title', '')}")
     notice = blocked_pick_notice(node)
     if notice:
         print(notice)
     print(f"implementation branch: {branch}\n")
+    zones = [z for z in (node.get("touch_zones") or []) if isinstance(z, str)]
+    if repo_root is not None and zones:
+        from specy_road.session_presence import conflicts, warn_lines
+
+        for line in warn_lines(conflicts(repo_root, zones), what=f"{node['id']}'s touch zones"):
+            print(line, file=sys.stderr)
 
 _GOVERNANCE_FILES: tuple[tuple[str, str], ...] = (
     ("constitution/purpose.md", "Purpose"),

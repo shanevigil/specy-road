@@ -39,6 +39,7 @@ SESSION_ARTIFACT_GLOBS = (
     "work/.milestone-session.yaml",
     # Review hand-offs; PACKET.md inlines the brief and the whole diff.
     "work/reviews/**/*.md",
+    "work/.sessions/*.yaml",
     # Archived roadmap material. Getting finished work to stop counting against
     # line limits is a large part of why archiving exists — a scaffold's
     # `**/*.md` glob would otherwise keep flagging planning sheets for
