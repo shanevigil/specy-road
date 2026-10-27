@@ -82,3 +82,17 @@ def ensure_codename_for_new_node(root: Path, node: dict) -> None:
         f"{derived!r} from title (see validate for collision rules)",
         file=sys.stderr,
     )
+
+
+def next_sibling_order(root: Path, parent_id: object, explicit: int | None) -> int:
+    """``explicit`` when given, else one past the parent's highest ``sibling_order``.
+
+    An unset value sorts as ``0`` (``roadmap_layout.sibling_sort_key``), so a
+    node added without one jumped ahead of every ordered sibling — straight to
+    the front of the pickup queue. Appending is the behaviour a PM expects.
+    """
+    if explicit is not None:
+        return int(explicit)
+    siblings = [n for n in load_roadmap(root)["nodes"] if n.get("parent_id") == parent_id]
+    orders = [n["sibling_order"] for n in siblings if isinstance(n.get("sibling_order"), int)]
+    return (max(orders) + 1) if orders else (len(siblings) + 1 if siblings else 1)

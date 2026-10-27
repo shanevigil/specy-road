@@ -70,11 +70,14 @@ def register_and_commit(
     reg: dict,
     commit_message: str,
     impl_review_gate: bool,
+    owner: str | None = None,
 ) -> None:
     """Append a registry entry and commit the registry file.
 
     F-009: touch_zones are optional; the brief / agent prompt instructs the
-    coding agent to discover them via codebase scan when missing.
+    coding agent to discover them via codebase scan when missing. ``owner``
+    is who holds the claim (proposal §3.4: every claim names its owner so a
+    peer can see where work is happening); omitted only when unknown.
     """
     assert_not_already_claimed(reg, node)
     codename = node["codename"]
@@ -85,6 +88,8 @@ def register_and_commit(
         "touch_zones": list(node.get("touch_zones") or []),
         "started": datetime.date.today().isoformat(),
     }
+    if owner:
+        entry["owner"] = owner
     if impl_review_gate:
         entry["implementation_review"] = "pending"
     reg.setdefault("entries", []).append(entry)

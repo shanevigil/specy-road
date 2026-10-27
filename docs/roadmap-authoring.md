@@ -119,6 +119,7 @@ Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth p
 | What must `dependencies` reference? | Other nodes’ **`node_key`** values (not display `id`). |
 | What do humans and the CLI type for `brief`, registry, branch context? | Display **`id`** (`M…`) and [`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) `node_id` — must match the node’s current **`id`**. |
 | Where does “tree order” for siblings live? | **`parent_id`** + **`sibling_order`** (outline tools and renumbering use these; siblings sort by `(sibling_order, id)`). Prefer **unique consecutive `sibling_order`** per parent so tie-breaks do not depend on display `id` strings. |
+| What `sibling_order` does a new node get? | **`add-node`** appends it after the parent's current last sibling (an unset value sorts as `0`, which used to jump the queue); `--sibling-order N` places it explicitly. |
 | What encodes the planning file path? | **`planning_dir`** → `planning/<id>_<slug>_<node_key>.md` — the **display `id`** appears in the filename; when `id` changes, update `planning_dir` and rename the file (see below). |
 
 **Disk layout:** Chunk file placement and `manifest.json` **`includes`** order only affect how the merged **`nodes` array** is built. They do **not** change `node_key` or dependency edges by themselves.

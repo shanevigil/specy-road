@@ -92,6 +92,13 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     )
     sp.add_argument("--touch-zone", action="append", default=[])
     sp.add_argument("--dependency", action="append", default=[])
+    sp.add_argument(
+        "--sibling-order",
+        dest="sibling_order",
+        type=int,
+        default=None,
+        help="Position among siblings (default: after the current last sibling).",
+    )
     sp.set_defaults(func=cmd_add)
 
 
