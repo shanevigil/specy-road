@@ -1,5 +1,5 @@
 ---
-description: "Use before implementing or planning a roadmap node: writes work/brief-<NODE_ID>.md with the node, its ancestors, dependency intent and the contracts it cites, so the agent reads one file instead of crawling."
+description: "Use to read one node in context before planning or implementing it: writes work/brief-<NODE_ID>.md with the node, its ancestors, dependency intent and the contracts it cites. Read-only: it claims nothing and touches no branch or registry row."
 ---
 
 ```bash

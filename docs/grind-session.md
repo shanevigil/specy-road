@@ -68,8 +68,10 @@ classification plus a dependency **wave** layout. No git, no pickup.
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
-- **`waves`** — all schedulable leaves layered by dependency depth. Wave `k`
-  unlocks only when **every** leaf in waves `< k` is `Complete`.
+- **`waves`** — all schedulable leaves layered by dependency depth: a leaf sits
+  in wave `k` when its own unmet dependencies all sit in waves `< k`. The wave
+  number is a reading aid, not a barrier — a leaf becomes pickable when **its
+  own** dependencies are `Complete`, whatever else its wave's predecessors hold.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
   **in parallel right now**, in the order pickup will claim them (the same order
   as `ready`). `waves` stay sorted by id, because they are the dependency
@@ -118,8 +120,9 @@ Recommended orchestration prompt:
 
 > Run `specy-road grind-session --plan --json`. Spawn one sub-agent per node in
 > `parallel_batches[0]` (they are independent — run them concurrently). Do **not**
-> start any node in a later wave until every node in the previous wave is
-> `Complete`. Re-run the planner after each wave to pick up the next batch.
+> start a node until every id in its `waiting_on` is `Complete`; nodes in later
+> waves become ready one by one as their own dependencies finish. Re-run the
+> planner after each completion to pick up the next batch.
 > Never start a node listed under `blocked`/`gated`; gates require a human.
 
 To run a leaf on a *different* harness than the one you are in (a Codex

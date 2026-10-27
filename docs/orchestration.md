@@ -6,7 +6,7 @@
 **Not for:** choosing models or launching a leaf on another harness — [`orchestration-models.md`](orchestration-models.md) and [`orchestration-workers.md`](orchestration-workers.md).
 
 **Must know without reading on:**
-- The executor never reviews its own leaf, and the coordinator's own session is never a reviewer; every review record attests this and the gate checks it.
+- The executor never reviews its own leaf, and the coordinator's own session is never a reviewer; every review record attests this and the gate checks it. The one exception is the default interactive human approval in `mark-implementation-reviewed`, which writes `REVIEW-human.md` with `is_coordinator: true` by design.
 - A review is a file under `work/reviews/<NODE_ID>/` bound to one commit; any later commit (other than one touching only `roadmap/registry.yaml`) makes it stale.
 - Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review).
 - The policy is `roadmap/orchestration.yaml` as read from the integration branch; a feature branch cannot lower its own bar.
@@ -19,7 +19,7 @@
 - grind-session hooks and step mode → "Unattended loops"
 - `session start|guard`, the harness hook adapters, several agents in one tree, migrating → "Presence: `specy-road session`", "Working in one shared checkout", "Upgrading from 0.2.x"
 
-**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background and the slices still to come).
+**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
 
 specy-road separates three roles around a roadmap leaf and prescribes how work
 passes between them — not **which** agent, IDE, or vendor fills a role: a

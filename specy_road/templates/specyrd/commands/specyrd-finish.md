@@ -1,5 +1,5 @@
 ---
-description: "Use when a claimed roadmap leaf is implemented and reviewed, from its feature/rm-* branch: marks the node Complete, drops the registry row, validates, exports, digests, commits and lands the work per on_complete."
+description: "Use when a claimed roadmap leaf is implemented, from its feature/rm-* branch, and reviewed only when require_implementation_review_before_finish is on: marks the node Complete, drops the registry row, validates, exports, digests, commits and lands the work per on_complete."
 ---
 
 ```bash

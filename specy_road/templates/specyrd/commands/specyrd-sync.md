@@ -1,5 +1,5 @@
 ---
-description: "Use at the start of a session or after a merge lands: fast-forwards the integration branch, then runs validate, export and digest without committing anything."
+description: "Use at the start of a session or after a merge lands, from a clean tree you are not sharing: checks out the integration branch and fast-forwards it (so it switches branches), then runs validate, export and digest without committing anything."
 ---
 
 ```bash

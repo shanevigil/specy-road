@@ -1,5 +1,5 @@
 ---
-description: "Use when a repo lacks constitution/purpose.md or constitution/principles.md, or they need refreshing: scaffolds the starter files with specy-road scaffold-constitution, then they are edited by hand."
+description: "Use when a repo lacks constitution/purpose.md or constitution/principles.md: scaffolds the starter files with specy-road scaffold-constitution, then they are edited by hand. It skips files that exist; --force overwrites those human-authored files, so never pass it without the human asking."
 ---
 
 ```bash

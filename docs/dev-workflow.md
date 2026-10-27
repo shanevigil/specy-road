@@ -9,7 +9,7 @@
 - Run every command from the repo root on a clean tree. `specy-road do-next-available-task` syncs the integration branch, commits and pushes `roadmap/registry.yaml` there, then creates `feature/rm-<codename>` (`--interactive` to pick by number, `--under <NODE_ID>` to scope); undo with `specy-road abort-task-pickup`.
 - Finish in this order: write `work/implementation-summary-<NODE_ID>.md`; reviewers use `specy-road review-packet <NODE_ID>` and `specy-road review record`; then `specy-road mark-implementation-reviewed` (`--yes` never creates a review); then `specy-road finish-this-task` (`--push` optional; `--on-complete pr|merge|auto`).
 - Pickup is leaf-only, in outline order after `status: Blocked` and MR-rejected; `execution_milestone` is advisory and only a `type: gate` dependency holds work back.
-- Never hand-edit `roadmap/registry.yaml`, and never fill a missing `shared/` contract yourself: that is a planning gap — stop and flag it to the PM.
+- Never hand-edit `roadmap/registry.yaml` — the one exception is the documented manual claim path below (`/specyrd-claim`: add your own row on the integration branch, validate, commit, push) — and never fill a missing `shared/` contract yourself: that is a planning gap — stop and flag it to the PM.
 
 **Read further for:**
 - every terminal and slash command, and what pickup commits, pushes and refuses → "Quick reference", "Agents and registration", "Your role in the system"
