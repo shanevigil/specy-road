@@ -19,12 +19,16 @@ replayed here.
 What is signed is the canonical form of the reviewer-authored front matter:
 every field except ``signature`` itself and the two ``review record`` writes
 afterwards (``family``, ``independence``). Canonical means JSON with sorted
-keys and no whitespace, so the same record always signs the same bytes.
+keys and no whitespace, so the same record always signs the same bytes. The
+Markdown notes below the front matter are covered through ``notes_sha256``:
+``review record`` writes the body's hash into the front matter before signing,
+so a signature over the front matter also binds the notes a reader sees.
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import shutil
 import subprocess
@@ -34,6 +38,7 @@ from typing import Any
 
 NAMESPACE = "specy-road-review"
 UNSIGNED_KEYS = frozenset({"signature", "family", "independence"})
+NOTES_KEY = "notes_sha256"
 
 
 class SigningError(Exception):
@@ -43,6 +48,32 @@ class SigningError(Exception):
 def canonical_bytes(data: dict[str, Any]) -> bytes:
     body = {k: v for k, v in data.items() if k not in UNSIGNED_KEYS}
     return json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+
+
+def notes_digest(body: str) -> str:
+    """SHA-256 of the Markdown body with line endings normalised and trailing whitespace dropped.
+
+    The front-matter splitter joins lines with ``\\n`` and loses the final
+    newline, so the hash is over that normal form: the same notes hash the
+    same whether read from the reviewer's file or the record on disk.
+    """
+    return hashlib.sha256("\n".join(body.splitlines()).rstrip().encode("utf-8")).hexdigest()
+
+
+def notes_problem(data: dict[str, Any], body: str) -> str | None:
+    """Why the notes do not match the record's attestation, else ``None``.
+
+    A present ``notes_sha256`` must match the body under any policy; a signed
+    record must carry one, or its signature attests nothing about the notes.
+    """
+    want = data.get(NOTES_KEY)
+    if want is None:
+        if data.get("signature"):
+            return f"signed without {NOTES_KEY}, so the signature does not cover the notes; re-file it"
+        return None
+    if want != notes_digest(body):
+        return f"notes body does not match {NOTES_KEY} (the notes changed after the record was filed)"
+    return None
 
 
 def _keygen() -> str:
@@ -71,7 +102,12 @@ def sign(data: dict[str, Any], key_path: Path) -> str:
 
 
 def verify(data: dict[str, Any], signature: str, public_key: str, identity: str) -> tuple[bool, str]:
-    """``(ok, reason)``: whether ``signature`` is ``identity``'s signature over ``data``."""
+    """``(ok, reason)``: whether ``signature`` is ``identity``'s signature over ``data``.
+
+    ``identity`` must be the record's own ``model``: the allowed-signers file
+    below is built from the caller's ``identity``, so without this check a
+    caller naming the wrong identity would still see the key verify.
+    """
     try:
         sig_text = base64.b64decode(signature, validate=True).decode("utf-8")
     except (ValueError, UnicodeDecodeError):
@@ -83,6 +119,8 @@ def verify(data: dict[str, Any], signature: str, public_key: str, identity: str)
         keygen = _keygen()
     except SigningError as e:
         return False, str(e)
+    if data.get("model") != identity:
+        return False, f"record model {data.get('model')!r} is not the signer identity {identity!r}"
     with tempfile.TemporaryDirectory() as d:
         sig = Path(d) / "record.sig"
         sig.write_text(sig_text, encoding="utf-8")

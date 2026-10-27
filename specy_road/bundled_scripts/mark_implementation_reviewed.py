@@ -235,6 +235,8 @@ def _gate_or_human_approval(
         gate = evaluate_gate(ROOT, node, gate.commit)
         if gate.passed:
             return gate
+        for problem in gate.problems():   # say why the record just written does not count
+            print(f"  - {problem}", file=sys.stderr)
     print(
         "error: the review gate is not met, so the implementation cannot be marked reviewed.\n"
         f"  Inspect: specy-road handoff status {node['id']}\n"
