@@ -102,7 +102,12 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
 - Without a TTY, `mark-implementation-reviewed` again requires `--yes`.
 - New scaffolds ship `work/handoff-ready.template.md` and
   `work/review-record.template.md`; the pickup prompt points at them.
-- New scaffolds gitignore `work/reviews/`. **Existing adopters:** add
+- New scaffolds gitignore `work/reviews/`.
+- The scaffold `AGENTS.md`, the `CLAUDE.md` managed block, and
+  `suggested_prompts/bootstrap-agents-md.md` carry the shared-checkout rules
+  (explicit-path commits, no branch switches or stashes in a shared tree,
+  `base: <sha>` on prompts, toolkit rules as the floor). Design:
+  `docs/design-notes/agent-guidance-and-shared-checkouts.md`. **Existing adopters:** add
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to
   review or approve its own work.

@@ -39,6 +39,12 @@ what the toolkit decided to do with it.
 | 4 | 3.4, 5 (`sibling_order`, Blocked-first) | `--local` claim mode; `owner` and `touch_zones` on every claim; `add-node` sets `sibling_order` |
 | 5 | 3.5 hooks / single source, 4.3 | `orchestrate` skill; Codex target and single-source `SKILL.md`; hook adapter plus a test that runs each hook as its harness will |
 
+Guidance for agents working **outside** a roadmap claim — shared-checkout
+rules, `base: <sha>` in prompts, a managed `AGENTS.md` block with stated
+precedence, presence files — is designed separately in
+[`agent-guidance-and-shared-checkouts.md`](agent-guidance-and-shared-checkouts.md);
+its hook adapter lands with slice 5.
+
 Out of scope for the whole line, as the proposal states (§6): vendor billing,
 automatic capacity detection, and live diff watching.
 

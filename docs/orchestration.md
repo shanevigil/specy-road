@@ -296,7 +296,10 @@ to approve in a terminal.
 
 ## Working in one shared checkout
 
-When several agents share one working tree:
+When several agents share one working tree — with or without a roadmap
+claim; the scaffold `AGENTS.md` repeats these rules, and
+[design-notes/agent-guidance-and-shared-checkouts.md](design-notes/agent-guidance-and-shared-checkouts.md)
+records why:
 
 - Commit by explicit path (`git commit --only <paths>`); never `git add -A`,
   `git commit -a`, or a bare commit.
@@ -308,6 +311,11 @@ When several agents share one working tree:
   clone or worktree: `git worktree add ../<repo>-<leaf>-<agent> -b <branch> <base>`.
 - Run one fresh session per leaf. Context carried over from a previous leaf
   causes scope bleed.
+- Before any git write, `git status` and `git worktree list`: files you did
+  not create belong to another session. Edit only your own section of a file
+  others are editing.
+- A prompt or plan you hand an agent names the commit it was written against
+  (`base: <sha>`); the agent diffs from there before starting.
 
 ## Upgrading from 0.2.x
 
