@@ -1,5 +1,25 @@
 # Optional AI tooling patterns
 
+## Agent quickstart
+
+**Use this doc when:** you are deciding how to layer a coding harness (Claude Code, Cursor, Codex) on a specy-road project — entry files, rules, hooks, worktrees — beyond what the CLI installs.
+**Not for:** the review contract and shared-checkout rules themselves ([`orchestration.md`](orchestration.md)) or the branch and registry contract ([`git-workflow.md`](git-workflow.md)).
+
+**Must know without reading on:**
+- Nothing here is part of the specy-road contract; the canonical invocations are `specy-road validate|brief|export|file-limits`, and tracked docs win over any harness memory or rule.
+- `specyrd init [PATH] --ai cursor|claude-code|codex|generic` installs one skill per command under `.agents/skills/<name>/SKILL.md` plus managed blocks in `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`; `specy-road init project` keeps the specy-road section of `AGENTS.md`. Upgrade with `specy-road refresh-stubs`, not `init --force`.
+- Hooks are not installed for you: `specy-road session guard --format claude-code|codex|cursor --print-config` prints the shared-checkout guard snippet, `specy-road worker hook --format … --print-config` the intervention witness.
+- specy-road ships no MCP server; agents reach it through the skills and the CLI.
+
+**Read further for:**
+- what the CLI writes and what `--force` may touch → "Optional: `specyrd init` (install-time IDE commands)"
+- the principles behind docs-as-source-of-truth and the five layers → "Core idea: documentation as source of truth", "Optional “five layers” (product repos)"
+- entry files, rule files, app-repo docs, gates, MCP → "Optional: `CLAUDE.md` or equivalent entry file", "Optional: Cursor (or IDE) rules", "Optional: `docs/` in an application repository", "Optional: verification gates", "Optional: MCP servers"
+- the per-harness hook snippets and their verified caveats → "Optional: a shared-checkout guard hook"
+- worktrees, prompt habits, checklists → "Optional: git worktrees for parallel agents", "Optional: prompt habits", "Checklists (adapt to your repo)"
+
+**Related:** [`orchestration.md`](orchestration.md), [`git-workflow.md`](git-workflow.md), [`install-and-usage.md`](install-and-usage.md), [`philosophy-and-scope.md`](philosophy-and-scope.md).
+
 **This document is not part of specy-road’s core contract.** It collects patterns some teams use when layering **coding agents** (Claude Code, Cursor, Copilot, etc.) on top of a product repository. You may adopt none, some, or all of them.
 
 Consumer projects coordinate through their own [`roadmap/registry.yaml`](git-workflow.md) after `specy-road init project`. In this toolkit repository, [`tests/fixtures/specy_road_dogfood/roadmap/registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) belongs to the dogfood test fixture only; it is not the canonical toolkit product roadmap. Some application repos use a markdown table such as `docs/roadmap-status.md` instead—that is a **team convention**, not what specy-road requires by default.
@@ -26,9 +46,9 @@ Three files belong to **you**, and `specyrd init` only maintains one delimited b
 | --- | --- |
 | `.gitignore` | `.specyrd/cache/` (derived, disposable indexes) |
 | `.cursorindexingignore` | archived and duplicated material, excluded from the IDE index but still readable |
-| `CLAUDE.md` | the specy-road load order, roadmap model, and non-negotiables |
+| `CLAUDE.md` | the specy-road load order, roadmap model, and non-negotiables (`--ai claude-code`) |
 
-Everything outside those markers is never read and never rewritten, with or without `--force`. Re-running is a no-op when the block is already current, and `--dry-run` reports what each block would do.
+`specy-road init project` keeps the specy-road section of `AGENTS.md` the same way (load order, task loop, review roles, shared-checkout rules). Everything outside those markers is never read and never rewritten, with or without `--force`. Re-running is a no-op when the block is already current, and `--dry-run` reports what each block would do.
 
 See `.specyrd/README.md` after init for a short pointer (and `manifest.json` for which packs were applied).
 
@@ -66,7 +86,7 @@ When layers conflict, **tracked docs in the repo** should win.
 
 ## Optional: `CLAUDE.md` or equivalent entry file
 
-If your tool reads a root entry file, keep it **short** and link out to `docs/`. Useful sections: project identity, tech stack with versions, directory map, workflow pointers, and a table of canonical docs.
+`specy-road init project` writes the specy-road section of `AGENTS.md`, and `specyrd init --ai claude-code` the one in `CLAUDE.md`, as managed blocks; the rest of each file is yours. If your tool reads a root entry file, keep that part **short** and link out to `docs/`. Useful sections: project identity, tech stack with versions, directory map, workflow pointers, and a table of canonical docs.
 
 For **roadmap-driven branches** and registration, point to your git workflow doc. In **this** repository that is [`git-workflow.md`](git-workflow.md) and **`roadmap/registry.yaml`** — not a free-form status file unless your team chose one.
 
@@ -74,7 +94,7 @@ For **roadmap-driven branches** and registration, point to your git workflow doc
 
 ## Optional: Cursor (or IDE) rules
 
-Rule files can scope instructions by glob (e.g. backend vs frontend). Prefer **pointers** to canonical docs over pasting large policies in every rule. Keep “do not refactor unrelated code”-style scope rules if your team needs them.
+The `/specyrd-…` skills under `.agents/skills/` come from `specyrd init`; rule files are yours to add. Rule files can scope instructions by glob (e.g. backend vs frontend). Prefer **pointers** to canonical docs over pasting large policies in every rule. Keep “do not refactor unrelated code”-style scope rules if your team needs them.
 
 ---
 
@@ -99,7 +119,7 @@ Many teams define a small set of **mandatory** checks before merge (e.g. typeche
 
 ## Optional: MCP servers
 
-[Model Context Protocol](https://modelcontextprotocol.io/) servers expose structured tools (git, Docker, issue trackers) instead of ad hoc shell. Useful when your workflow benefits from scoped, typed actions—not required for specy-road.
+[Model Context Protocol](https://modelcontextprotocol.io/) servers expose structured tools (git, Docker, issue trackers) instead of ad hoc shell. Useful when your workflow benefits from scoped, typed actions—not required for specy-road, which ships no MCP server: agents reach it through the installed skills and the CLI.
 
 ---
 

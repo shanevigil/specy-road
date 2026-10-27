@@ -1,8 +1,25 @@
 # Install and use specy-road
 
-This is the **end-user** install and everyday usage guide. For toolkit-
-contributor topics (branching, tagging, PR workflow, release gating, npm
-build, supply-chain audits) see [contributor-guide.md](contributor-guide.md).
+## Agent quickstart
+
+**Use this doc when:** you install specy-road, scaffold or upgrade a consumer project, or need the everyday PM, developer and GUI command sequences.
+**Not for:** toolkit-contributor topics — branching, PR workflow, npm build, audits ([`contributor-guide.md`](contributor-guide.md)) — or the detail behind each workflow ([`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md)).
+
+**Must know without reading on:**
+- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); an RC pins an exact version from TestPyPI with `--extra-index-url https://pypi.org/simple/`.
+- New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
+- After `pip install -U specy-road`: `specy-road refresh-schemas`, `refresh-profiles`, `refresh-stubs` (each takes `--dry-run`); never `init project --force` for that.
+- Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
+- Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
+
+**Read further for:**
+- prerequisites, PyPI, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install from source (toolkit contributors)"
+- what `init project` writes and the upgrade commands → "Initialize a new consumer project"
+- command sequences → "Everyday workflow (PM)", "Everyday workflow (DEV / coding agent)", "Everyday workflow (GUI)"
+- what a brief contains → "Brief generation"
+- audits and the release pointers → "Optional dependency audit (consumer projects)", "Contributing & release process"
+
+**Related:** [`contributor-guide.md`](contributor-guide.md), [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`supply-chain-security.md`](supply-chain-security.md).
 
 ---
 

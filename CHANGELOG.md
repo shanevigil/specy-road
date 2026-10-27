@@ -375,6 +375,17 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   shape, where findings land); the agentic sandbox runbook adds fault
   injection on the worker process tree and requires negative evidence.
   Triage: `docs/design-notes/sre-for-ai-triage.md`.
+- Docs: `contributor-guide`, `install-and-usage`, `dev-workflow`,
+  `pm-workflow`, `roadmap-authoring`, `orchestration`, `grind-session`,
+  `release-runbook` and `optional-ai-tooling-patterns` open with an
+  **Agent quickstart** block (when to use the doc, what to know without
+  reading on, which `##` section answers what) so an agent previewing the
+  top of a file can route from it; room was made by dropping horizontal
+  rules, navigation lines the block now carries and a duplicated `export`
+  block, with no rule or command removed. `optional-ai-tooling-patterns`
+  now says what the CLI installs itself (skills, the `CLAUDE.md` and
+  `AGENTS.md` managed blocks), that hook snippets come from
+  `--print-config`, and that no MCP server ships.
 
 
 ## [v0.2.3] - 2026-09-09
