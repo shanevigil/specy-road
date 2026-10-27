@@ -75,7 +75,7 @@ substitutions: []
 | `policy.reviewers_required` | Approving reviews needed at the commit under review. Minimum 1. |
 | `policy.reviewers_distinct_families` | Count approvals by distinct family, so two sessions of one family count once. |
 | `policy.reviewer_fresh_session` | Records must attest `fresh_session: true`. |
-| `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. |
+| `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. A `model: human` record is trusted as written unless `signed_reviews` is on, so under unsigned policy this switch is cooperative attestation, not enforcement. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
 Roster entries also accept `profile`, `channels`, `may_process`,
@@ -155,6 +155,7 @@ Quote SHAs: `commit` and `base` are read exactly as written, so YAML cannot turn
 
 A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
 `handoff status` and marked in the packet; a reviewer, not the gate, judges it.
+A READY naming another node or branch is misfiled: listed as invalid, never read by the packet or a worker.
 
 ### `PACKET.md` — what a reviewer reads
 
@@ -163,8 +164,8 @@ A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
 1. the brief, including the node's goal and its acceptance criteria numbered
    `A1..An`;
 2. the implementation summary;
-3. every changed path since the merge base, with paths outside the touch zones
-   flagged (roadmap bookkeeping is exempt);
+3. every changed path since the merge base, both sides of a rename or copy,
+   with paths outside the touch zones flagged (roadmap bookkeeping is exempt);
 4. the diff;
 5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
    each section states if it was computed from git, executor-asserted, or run now.
@@ -174,7 +175,7 @@ it out**, so a coordinator in a checkout shared with executors never switches
 branches. The branch is the local one, else `<remote>/<branch>` (run
 `git fetch` first when the executor worked in another clone); when neither
 exists, the command fails rather than review something else. The summary is read
-as committed at the reviewed commit. Changes to `roadmap/orchestration.yaml` or
+as committed at the reviewed commit; a working-tree or missing one is labelled so. Changes to `roadmap/orchestration.yaml` or
 `roadmap/git-workflow.yaml` are flagged. `--ref` reviews a different branch or
 commit, and exits 1 when it does not resolve.
 
@@ -277,8 +278,9 @@ The reviewer files its record with `specy-road review record … --sign-key
 roster `public_key` with `ssh-keygen -Y verify`; OpenSSH 8.1+, no other
 dependency. With `signed_reviews: true` an unsigned record does not count;
 with it off, a present signature is still verified, so a tampered front matter never
-counts. A human approving interactively passes `--sign-key` to
-`mark-implementation-reviewed`, with a `public_key` on the `human` entry.
+counts. `review record` also signs `notes_sha256`, the notes' hash, so a record whose
+notes changed, or a signed one without it, never counts. A human approving interactively passes `--sign-key` to
+`mark-implementation-reviewed`, with a `public_key` on the `human` entry; a wrong key is refused before any record is written.
 
 The boundary is the key: run each reviewer with a private key the executor's
 process does not hold. Still self-attested: the session flags inside a signed record

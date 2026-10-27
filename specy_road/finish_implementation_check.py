@@ -31,7 +31,8 @@ import fnmatch
 import sys
 from pathlib import Path
 
-from specy_road.git_subprocess import git_stdout, git_text
+from specy_road.git_changed_paths import diff_paths
+from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import require_implementation_before_finish
 
 _GLOB_CHARS = "*?["
@@ -79,12 +80,9 @@ def changed_paths(repo_root: Path, ref: str) -> list[str] | None:
 
     ``...`` rather than ``..`` so the comparison is against the merge base:
     commits that landed on the integration branch after this one branched are
-    not this branch's work.
+    not this branch's work. A rename or copy counts on both sides.
     """
-    out = git_stdout(["diff", "--name-only", f"{ref}...HEAD"], repo_root)
-    if out is None:
-        return None
-    return [line.strip() for line in out.splitlines() if line.strip()]
+    return diff_paths(repo_root, f"{ref}...HEAD")
 
 
 def implementation_paths(

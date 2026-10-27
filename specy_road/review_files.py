@@ -154,10 +154,20 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     return data, body, []
 
 
-def load_ready(path: Path) -> ReviewFile:
+def load_ready(path: Path, node_id: str | None = None, branch: str | None = None) -> ReviewFile:
+    """Parse one READY file; with ``node_id`` / ``branch``, bind it to that provenance.
+
+    A file under ``work/reviews/M1.1/`` whose front matter names another node
+    or branch is a misfiled hand-off, not this node's: it is invalid here, so
+    it never feeds the packet, ``handoff status`` or a worker's completion.
+    """
     data, body, errs = _read(path)
     if not errs:
         errs = _schema_errors(data, "handoff.schema.json")
+    if not errs and node_id is not None and data.get("node_id") != node_id:
+        errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r} (misfiled hand-off)")
+    if not errs and branch is not None and data.get("branch") != branch:
+        errs.append(f"branch is {data.get('branch')!r}, not the registered {branch!r}")
     return ReviewFile(path, data, body, errs)
 
 
@@ -203,8 +213,9 @@ def _files(repo_root: Path, node_id: str, prefix: str) -> list[Path]:
     return sorted(p for p in d.glob(f"{prefix}*.md") if p.is_file())
 
 
-def list_ready(repo_root: Path, node_id: str) -> list[ReviewFile]:
-    return [load_ready(p) for p in _files(repo_root, node_id, READY_PREFIX)]
+def list_ready(repo_root: Path, node_id: str, branch: str | None = None) -> list[ReviewFile]:
+    """Every READY under the node's directory, bound to that node (and ``branch`` when known)."""
+    return [load_ready(p, node_id, branch) for p in _files(repo_root, node_id, READY_PREFIX)]
 
 
 def list_reviews(
@@ -213,9 +224,9 @@ def list_reviews(
     return [load_review(p, acceptance_ids) for p in _files(repo_root, node_id, REVIEW_PREFIX)]
 
 
-def latest_ready(repo_root: Path, node_id: str) -> ReviewFile | None:
-    """The most recently modified valid READY file, if any."""
-    valid = [r for r in list_ready(repo_root, node_id) if r.ok]
+def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> ReviewFile | None:
+    """The most recently modified valid READY file for this node (and ``branch``), if any."""
+    valid = [r for r in list_ready(repo_root, node_id, branch) if r.ok]
     if not valid:
         return None
     return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))

@@ -30,7 +30,7 @@ from specy_road.review_files import (
     verify_problems,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
-from specy_road.review_signing import SigningError, sign, verify
+from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
@@ -53,7 +53,8 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
 def _node_status(root: Path, node_id: str) -> dict[str, Any]:
     t = resolve_target(root, node_id)
     gate = evaluate_gate(root, t.node, t.commit)
-    ready = latest_ready(root, node_id)
+    branch = (t.entry or {}).get("branch")
+    ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
     return {
         "node_id": node_id,
@@ -62,7 +63,7 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
         "commit": gate.commit,
         "ready": [
             {"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors}
-            for r in list_ready(root, node_id)
+            for r in list_ready(root, node_id, branch)
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
@@ -179,7 +180,8 @@ def cmd_review_record(ns: argparse.Namespace) -> int:
     why = rerun_problem(config["policy"], rec["data"])
     if why:
         return _fail(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun")
-    data = {**rec["data"], "commit": gate.commit}
+    # The body's hash rides in the front matter, so a signature covers the notes too.
+    data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
     if ns.sign_key:
         if not entry.get("public_key"):
             return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
