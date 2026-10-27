@@ -29,7 +29,9 @@ vendor CLIs installed and signed in, and is **not** claimed by any test.
   sheets, shared contracts, ≥ 8 leaves with `acceptance` and `touch_zones`).
 - Evidence file: `work/sandbox-runbook-<YYYY-MM-DD>.md` in the toolkit
   checkout (gitignored), one section per scenario: commands, paths, node
-  ids, pass/fail, and the exact text of any refusal or warning.
+  ids, pass/fail, and the exact text of any refusal or warning. For every
+  scenario, state what was **not** observed as well as what was; a blank is
+  a SKIPPED, never an implied pass.
 
 Rating for each scenario: **PASS** (criteria met), **PASS-WITH-NOTE**
 (met, with a documented caveat), **FAIL** (blocks the rc), **SKIPPED**
@@ -151,10 +153,35 @@ executor role, `max_workers: 2`. Claim two leaves. From the coordinator chat
 9. **Terminate / recovery.** `worker terminate` on a running worker: state
    `terminated`, pid gone. Kill the coordinator's terminal mid-run: the
    worker finishes anyway; a new terminal's `worker sync` shows its events.
+   **9b. Fault in the process tree.** What the code does (`worker_runner.py`,
+   `worker_ops.py` at the candidate commit): the wrapper is a session leader
+   and the harness is its child in the same process group, writing stdout to
+   the wrapper's pipe and stderr straight to `<id>.log`. Find both with
+   `ps -o pid,ppid,pgid,command -g <pgid>`.
+   (i) `kill -9 <wrapper pid>` mid-turn. Nothing is recorded at that moment.
+   Before any other `worker` command, watch for 60 s: is the harness pid still
+   alive, does `<id>.log` grow, does `git status` in the worktree change?
+   Then `kill -- -<pgid>` any survivor, and run `worker delegate <ID>`
+   again: `_wrapper_gone` appends an `error` event (source `system`, "wrapper
+   pid <pid> is gone without recording an exit; marked failed"), the old
+   record is `failed`, and a new worker id is launched. Pass: those events
+   and states. An orphaned harness that kept running or writing is
+   PASS-WITH-NOTE; copy the note into
+   [orchestration-workers.md](orchestration-workers.md) "Checks that need a
+   real installation" (`worker terminate` cannot reach it: the record's pid
+   is cleared).
+   (ii) `kill -9 <harness pid>` while the wrapper lives. `proc.wait()`
+   returns `-9` and `_finish` appends an `error` event (source `worker`,
+   "exit -9; see <id>.log", `detail: {exit: -9, ready: …}`) and sets the
+   worker `failed`, not `idle` — even if a READY was written. `worker
+   resume <W>` is then refused ("is failed; delegate again instead"), and
+   `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
+   and `worker status <W>` show exactly that.
 10. **Finish.** Review and `finish-this-task` the leaf as in §2; `worker
     terminate` the idle worker; `handoff status` no longer lists it.
 
-Pass: 1, 3, 5, 7, 8, 9, 10 exactly; 2, 4, 6 with their notes recorded.
+Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their
+notes recorded.
 
 ## 6. Brainstorm v2
 

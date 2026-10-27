@@ -349,6 +349,10 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   review of it records no per-criterion result, so it attests nothing
   criterion by criterion. The exit code is unchanged; with the gate off it
   stays silent.
+- The contributor guide documents independent review rounds (prompt, report
+  shape, where findings land); the agentic sandbox runbook adds fault
+  injection on the worker process tree and requires negative evidence.
+  Triage: `docs/design-notes/sre-for-ai-triage.md`.
 
 
 ## [v0.2.3] - 2026-09-09
