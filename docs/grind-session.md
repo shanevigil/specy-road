@@ -18,6 +18,7 @@ independent work safely and skip waves whose dependencies are not met yet.
 | --- | --- |
 | Plan sub-agent batches / see what is ready vs blocked | `grind-session --plan [--json]` |
 | One agent grinds many leaves autonomously | `grind-session --implement-mode hook --implement-cmd …` |
+| An IDE agent session (Claude Code, Cursor) drives the loop itself | `grind-session --step pickup`, implement, `grind-session --step finish` |
 | A human drives the loop, implementing between cycles | `grind-session` (manual mode, default) |
 | One integration PR for a whole milestone subtree | `start-milestone-session` + `--milestone-subtree` (see dev-workflow.md) |
 
@@ -231,6 +232,46 @@ gate is defined, because a phase is routinely held by a gate defined elsewhere.
   env vars: `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`,
   `SPECY_ROAD_PROMPT`, `SPECY_ROAD_REPO_ROOT`. A non-zero exit stops the session.
 
+### Driving the loop from an IDE agent (step mode)
+
+Hook mode needs a process that runs the whole session, which an IDE chat pane
+is not. `--step` turns the loop inside out: the agent session is the
+coordinator, and each call runs one phase and exits.
+
+```bash
+specy-road grind-session --step pickup --json --on-complete merge   # -> picked | resumed
+# implement work/prompt-<ID>.md (a fresh sub-agent per leaf), verify, review
+specy-road grind-session --step finish --json --until M7.6         # -> finished [+ stopped]
+```
+
+| Step | Does | Exit |
+| --- | --- | --- |
+| `pickup` | resumes this clone's open claim (`resumed`), else claims the next ready leaf (`picked`); never implements | `0`; `1` resume failed; `5` pickup failed; `3` / `2` nothing pickable |
+| `finish` | `--pre-finish-cmd` then `finish-this-task` on the checked-out `feature/rm-*` claim; `stopped until_reached` when it was `--until` | `0`; `4` pre-finish failed; `1` finish failed, or HEAD is not a claim (`hook_failed phase=locate_claim`) |
+
+Pickup checks for an open claim **before** a ready leaf, the reverse of the
+loop, so re-running it after an interruption lands on the same leaf instead of
+stacking a second claim. Ownership still needs a registry row and a local
+branch. Finish decides the claim by the current branch alone, so several open
+claims are never ambiguous.
+
+Step mode rejects `--implement-mode hook`, `--implement-cmd`, `--plan` and
+`--delete-merged-branches`. `--max-leaves` and `--max-cycles` do not apply:
+the agent decides when to stop. With the review gate on, the agent files an
+independent review and runs `mark-implementation-reviewed --yes` between
+implement and finish; see [orchestration.md](orchestration.md#unattended-loops).
+Any step that modifies files runs **before** review, because a later commit
+makes the reviews stale, so `--pre-finish-cmd` here should only check.
+
+**Usage limits** are the agent harness's to handle. Claude Code 2.1.234+ waits
+out a limit in an interactive session and carries on when *Continue
+automatically at usage limit* is on. Sub-agents in flight are lost, so re-run
+`--step pickup` (it reports `resumed`) and start a fresh executor. Cursor and
+Codex have no auto-continue; re-run pickup when the chat resumes. In-session
+schedulers such as `/loop` stop with the session and are blocked by the same
+limit, so they can poll but cannot restart one. The installed
+`specyrd-grind-session` command carries the full protocol for the agent.
+
 ### Pre-finish hook
 
 `--pre-finish-cmd "make test && specy-road validate"` runs after implementation,
@@ -291,9 +332,10 @@ If your plan's limit resets on an **8-hour** cadence, the 6h default ceiling
 stops the run rather than waiting the extra two hours. Pass
 `--max-limit-wait-hours 9`.
 
-**Run it in a terminal, not in an IDE agent pane.** An unattended grind needs a
-process that can be waited on and resumed; a chat panel cannot be. The machine
-also has to stay awake for the wait — use `caffeinate`, and `tmux` if you detach.
+**Run hook mode in a terminal, not in an IDE agent pane.** It needs a process
+that can be waited on and resumed; a chat panel cannot be. The machine also has
+to stay awake for the wait — use `caffeinate`, and `tmux` if you detach. From
+an IDE agent, use [step mode](#driving-the-loop-from-an-ide-agent-step-mode).
 
 If you are on Claude Code 2.1.234 or later with *"Continue automatically at usage
 limit"* enabled, Claude may ride out the limit itself and exit 0. That is fine:
@@ -370,7 +412,7 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | Code | Meaning |
 | --- | --- |
 | `0` | Ended normally (bound reached, or no actionable work left) |
-| `1` | Generic failure — implement hook or `finish-this-task` failed, or the resolved `on_complete` was `pr` and the loop refused to start |
+| `1` | Generic failure — implement hook or `finish-this-task` failed, the resolved `on_complete` was `pr` and the loop refused to start, or `--step finish` found no claim on the current branch |
 | `2` | No actionable leaves at start |
 | `3` | Blocked on a dependency or gate — human action required |
 | `4` | `--pre-finish-cmd` failed |
@@ -382,7 +424,9 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 One JSON object per line. `event` is one of: `plan`, `picked`, `resumed`,
 `implementing`, `pre_finish`, `finished`, `blocked`, `in_flight`, `hook_failed`,
 `stopped`, `cleanup`, `usage_limited`, `implementer_vanished`. Every event carries
-`ts`, UTC to the second, right after `event`.
+`ts`, UTC to the second, right after `event`. `hook_failed` names a `phase`:
+`pickup`, `resume`, `implement`, `pre_finish`, `finish`, or `locate_claim`
+(`--step finish` off a claim branch).
 
 **stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
 banner, the finish log, git — is redirected to **stderr**, so the stream stays

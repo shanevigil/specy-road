@@ -274,6 +274,17 @@ reviewer that blocks fails the hook and stops the loop (exit `4`). Alternatively
 `require_implementation_review_before_finish: false` for a loop that should not
 gate on review.
 
+From an IDE agent, use **step mode** instead
+([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)).
+The agent session is the coordinator: it runs `grind-session --step pickup`,
+hands the prompt to a fresh executor sub-agent, has a **different** fresh
+sub-agent of a rostered reviewer model read `PACKET.md` and file
+`review record`, runs `mark-implementation-reviewed --yes` (its shell is not a
+TTY), then runs `grind-session --step finish`. Anything that modifies files runs
+before the review, since a later commit makes it stale. Under the default
+human-only roster the agent cannot close the gate; it stops and asks the human
+to approve in a terminal.
+
 ## Working in one shared checkout
 
 When several agents share one working tree:

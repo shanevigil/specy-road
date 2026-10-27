@@ -66,6 +66,14 @@ reference: [`docs/orchestration.md`](docs/orchestration.md).
   trailer per counted approval.
 - `specyrd` stubs: `/specyrd-review-packet`, `/specyrd-review-record`,
   `/specyrd-handoff-status`.
+- `grind-session --step pickup|finish` lets an IDE agent session (Claude Code,
+  Cursor) drive the loop itself. Each step runs one phase and exits: pickup
+  resumes this clone's open claim before claiming a new leaf, and finish runs
+  `--pre-finish-cmd` and `finish-this-task` on the checked-out claim. Usage
+  limits are left to the agent harness (Claude Code's *Continue automatically
+  at usage limit*). The `specyrd-grind-session` command now carries the
+  step-mode protocol, including the review gate; hook mode stays the terminal
+  path.
 
 ### Changed
 

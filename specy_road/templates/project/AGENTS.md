@@ -61,6 +61,8 @@ specy-road grind-session --on-complete merge \
     --implement-mode hook --implement-cmd '<your agent command>'
 ```
 
-**Hook mode** is how an agent plugs in. Each cycle runs `--implement-cmd` once with `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`, `SPECY_ROAD_PROMPT` and `SPECY_ROAD_REPO_ROOT` in the environment; a non-zero exit stops the session rather than finishing a leaf that failed. Without it (`--implement-mode manual`, the default) the loop waits for a ready-signal file between cycles.
+**From an IDE agent session** (Claude Code, Cursor), drive the loop yourself with **`specy-road grind-session --step pickup`**, implement the prompt it names, then **`--step finish`**. Each step runs one phase and exits, and pickup resumes your open claim first; see the installed `specyrd-grind-session` command. Hook mode below runs in a terminal.
+
+**Hook mode** is how an agent CLI plugs in. Each cycle runs `--implement-cmd` once with `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`, `SPECY_ROAD_PROMPT` and `SPECY_ROAD_REPO_ROOT` in the environment; a non-zero exit stops the session rather than finishing a leaf that failed. Without it (`--implement-mode manual`, the default) the loop waits for a ready-signal file between cycles.
 
 **When nothing is pickable:** exit `3` is a real dependency or gate block and needs a human elsewhere. Exit `6` means this clone already holds a claim — finish it, `specy-road abort-task-pickup`, or re-run with `--resume-in-flight`. Ask about one node with **`specy-road why-blocked <NODE_ID>`**, or list what gates are holding work with **`specy-road list-gates`**. See `docs/grind-session.md`.
