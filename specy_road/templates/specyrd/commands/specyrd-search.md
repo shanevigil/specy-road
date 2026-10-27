@@ -1,5 +1,5 @@
 ---
-description: "Use instead of grepping planning/ or work/ whenever looking for prior decisions, contracts or related work: ranked, deduplicated search over planning sheets, shared contracts, roadmap nodes, summaries and archived work."
+description: "Use instead of grepping planning/ or work/ whenever looking for prior decisions, contracts or related work: ranked, deduplicated search over planning sheets, shared contracts, roadmap nodes, implementation summaries and archived work. Briefs and pr-bodies under work/ are deliberately not indexed; open those by path."
 ---
 
 ```bash

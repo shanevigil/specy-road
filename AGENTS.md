@@ -28,7 +28,7 @@ The dogfood tree is a **test-fixture roadmap**, not the canonical product roadma
 
 For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/git-workflow.md). A first-class roadmap for the toolkit itself is intentionally not defined here yet.
 
-If this repository ran **`specyrd init`**, you may have slash-command stubs under `.cursor/commands/`, `.claude/commands/`, or a custom directory — they delegate to `specy-road` / bundled scripts.
+If this repository ran **`specyrd init`**, you may have skills under `.agents/skills/<name>/SKILL.md` (with `.claude/skills/` symlinks for Claude Code, or a flat stub directory for `--ai generic`; `.cursor/commands/` and `.claude/commands/` only in repos initialised before 0.3.0) — they delegate to `specy-road` / bundled scripts.
 
 ## Version numbers (human-owned)
 

@@ -17,7 +17,7 @@
 - who does which step → "2. Agent vs human matrix"
 - the pre-release checks branch, harness review pass, three-app testing → "3. Mandatory pre-release checks branch (before `chore/release-*`)"
 - step by step → "A. RC release to TestPyPI", "B. Final release to PyPI"
-- a failed job, and the README cleanup after a final → "6. Recovery: \"If something goes wrong\"", "7. After the release: README cleanup (final only)"
+- a failed job, and the README cleanup after a final → "6. Recovery" (If something goes wrong), "7. After the release: README cleanup (final only)"
 - the local gate commands and what else to keep in sync → "8. Pre-release verification gate (always run, locally and in CI)", "9. Where this runbook lives in the docs graph"
 
 **Related:** [`contributor-guide.md`](contributor-guide.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`install-and-usage.md`](install-and-usage.md), [`../AGENTS.md`](../AGENTS.md).

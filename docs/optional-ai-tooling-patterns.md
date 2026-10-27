@@ -150,9 +150,10 @@ matched to `Bash` in `.claude/settings.json`:
 ```
 
 The hook reads `tool_input.command` from stdin; exit 2 blocks the call and the
-reason on stderr reaches the model; exit 0 with JSON on stdout can allow with
-an `additionalContext` note, which is how the guard warns when a command
-would be refused if another session were live. Any other exit code lets the
+reason on stderr reaches the model; on a non-denial the guard emits context
+only (an `additionalContext` note, which is how it warns when a command
+would be refused if another session were live) and never an `allow`, so
+Claude's own permission policy still applies to the call. Any other exit code lets the
 call proceed, so the guard exits 2 on an internal error rather than fail
 open. Hooks run in `claude -p`; `claude --bare` skips every hook; whether
 `bypassPermissions` runs `PreToolUse` hooks is not stated. Export
