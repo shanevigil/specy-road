@@ -27,6 +27,7 @@ from specy_road.session_presence import (
     warn_lines,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.tool_call_guard import ADAPTERS, decide, read_payload
 
 
 def _agent(ns: argparse.Namespace) -> str:
@@ -92,6 +93,42 @@ def cmd_check(ns: argparse.Namespace) -> int:
     return 1
 
 
+def _answer(answer: tuple) -> int:
+    out, err, code = answer
+    if out:
+        print(out)
+    if err:
+        print(err, file=sys.stderr)
+    return code
+
+
+def cmd_guard(ns: argparse.Namespace) -> int:
+    """Allow or deny one shell command; the body of every harness hook adapter.
+
+    With ``--command`` the verdict is printed for a human. With ``--format``
+    the command is read from the harness's stdin payload and the answer goes
+    out the way that harness reads it; a payload with nothing to judge is a
+    plain allow. An internal error is answered as a deny: a guard must not
+    fail open quietly.
+    """
+    adapter = ADAPTERS[ns.format]
+    if ns.print_config:
+        print(adapter.config)
+        print(f"\n# {adapter.notes}")
+        return 0
+    try:
+        root = resolve_repo_root(ns)
+        command = ns.command or adapter.extract(read_payload(sys.stdin.read()))
+        if not command:
+            return _answer(adapter.on_allow(None))
+        v = decide(root, command, agent=_agent(ns), always=ns.always)
+    except Exception as e:  # noqa: BLE001 — fail closed, loudly
+        return _answer(adapter.on_deny(f"internal error ({e}); refusing rather than failing open"))
+    if v.allowed:
+        return _answer(adapter.on_allow(v.reason or None))
+    return _answer(adapter.on_deny(v.reason))
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -125,6 +162,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--path", action="append", default=[], metavar="PATH")
     common(sp)
     sp.set_defaults(func=cmd_check)
+
+    sp = ssub.add_parser("guard", help="Deny a shell command that is destructive in a shared checkout; the harness hook body")
+    sp.add_argument("--command", metavar="CMD", help="Judge this command (default: read the harness payload from stdin)")
+    sp.add_argument("--format", choices=sorted(ADAPTERS), default="generic",
+                    help="Which harness's stdin payload and exit codes to use (default: generic)")
+    sp.add_argument("--always", action="store_true", help="Deny even when no other session is live")
+    sp.add_argument("--print-config", action="store_true", help="Print the snippet that wires this guard into --format's harness")
+    common(sp)
+    sp.set_defaults(func=cmd_guard)
     return p
 
 

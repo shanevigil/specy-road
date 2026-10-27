@@ -36,6 +36,10 @@ section before copying a CLI line into production.
   (executor, coordinator) or the review packet (reviewer, which must exist).
   `--channel cli` runs the profile's `access.cli` with `{prompt}` replaced by
   the file path; edit the profile's `cli` to add the placeholder and your flags.
+  Verified headless forms (2026-10): `claude -p "$(cat {prompt})" --model <id>`,
+  `codex exec -m <id> - < {prompt}` (`-` reads the prompt from stdin), and
+  `agent -p "$(cat {prompt})" --model <id>` for Cursor's CLI (`cursor-agent`
+  remains an alias; piping a prompt file to it is undocumented).
 
 ## Planning assignments: `orchestrate plan`
 

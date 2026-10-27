@@ -317,6 +317,22 @@ specy-road session list [--all]
 specy-road session check            # exit 1 if staged paths overlap another live session
 ```
 
+```bash
+specy-road session guard --command "git stash"   # exit 2 with the reason when another session is live
+specy-road session guard --format claude-code     # the same, reading a harness hook's stdin
+```
+
+`session guard` is the body of a harness hook: it denies a command that can
+move or discard another session's work — `stash`, `reset --hard`, branch
+switching, `checkout -- …`, `restore .`, `clean -f`, `rebase`,
+`commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a` — and only while
+another session is live (`--always` to deny regardless). Each `git` segment of
+a chained command is judged on its own. Set `SPECY_ROAD_AGENT_ID` in the agent's
+environment so the guard knows which record is the caller's; without it every
+live session counts as someone else. The adapters (`--format`) know each
+harness's stdin shape and exit codes; see `docs/optional-ai-tooling-patterns.md`
+for wiring them.
+
 Records are `work/.sessions/<agent-id>.yaml` (gitignored, always in the main
 worktree): branch, worktree, paths, and expiry. The id is
 `$SPECY_ROAD_AGENT_ID`, else `<user>-<pid>`; pass `--agent` to name it. A

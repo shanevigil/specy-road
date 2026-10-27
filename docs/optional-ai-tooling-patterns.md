@@ -103,6 +103,72 @@ Many teams define a small set of **mandatory** checks before merge (e.g. typeche
 
 ---
 
+## Optional: a shared-checkout guard hook
+
+When more than one agent session works in one checkout, `specy-road session
+guard` denies the git commands that move or discard another session's work
+(see `docs/orchestration.md`, Presence). Wire it into the harness's
+"before a shell command runs" hook. `specy-road session guard --format <harness>
+--print-config` prints the snippet and the harness's caveats.
+
+**Claude Code** (verified against the hooks docs, 2026-10): a `PreToolUse` hook
+matched to `Bash` in `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {"type": "command", "command": "specy-road session guard --format claude-code", "timeout": 30}
+        ]
+      }
+    ]
+  }
+}
+```
+
+The hook reads `tool_input.command` from stdin; exit 2 blocks the call and the
+reason on stderr reaches the model; exit 0 with JSON on stdout can allow with
+an `additionalContext` note, which is how the guard warns when a command
+would be refused if another session were live. Any other exit code lets the
+call proceed, so the guard exits 2 on an internal error rather than fail
+open. Hooks run in `claude -p`; `claude --bare` skips every hook; whether
+`bypassPermissions` runs `PreToolUse` hooks is not stated. Export
+`SPECY_ROAD_AGENT_ID` in the session so the guard knows which presence record
+is its own.
+
+**Codex** (verified against the hooks docs, 2026-10): the same stdin shape,
+as a `PreToolUse` hook on `Bash` in `.codex/hooks.json` (or `[hooks]` in
+`.codex/config.toml`). Exit 2 with stderr denies; exit 0 with no output is
+the documented allow, and Codex marks a hook failed on keys it does not
+support, so the guard's allows are silent there. Project hooks load only
+when the project's `.codex/` layer is trusted, and each hook definition
+must be trusted in `/hooks` (or run with `--dangerously-bypass-hook-trust`).
+Hooks fire under `codex exec`; the IDE extension is unverified.
+
+**Cursor** (verified against the hooks docs, 2026-10): a
+`beforeShellExecution` hook in `.cursor/hooks.json`. The command arrives as
+top-level `command` on stdin; the answer is JSON on stdout,
+`{"permission": "allow" | "deny", "agent_message": "…"}`. Empty output on exit
+0 counts as a hook *failure*, which fails open unless `failClosed: true`, so
+the guard answers every event explicitly and the printed snippet sets
+`failClosed: true`. Whether the hook fires in `agent -p` and under auto-run is
+unverified; community reports say `deny` holds there.
+
+Get each snippet with `specy-road session guard --format cursor --print-config`
+(or `codex`). The repo's own test suite runs every adapter as a subprocess
+with its harness's documented payload (`tests/test_hook_adapters.py`), so an
+adapter that drifts from its contract fails in CI, not in someone's IDE.
+
+**Skills, one source for every harness.** Cursor and Codex both read
+`.agents/skills/<name>/SKILL.md` natively and follow symlinked skill folders;
+Claude Code reads `.claude/skills/<name>/SKILL.md`. Shipping specy-road's
+commands as skills under `.agents/skills/` with symlinks into
+`.claude/skills/` is the pending 0.3.x decision recorded in
+`docs/design-notes/v0-3-0-orchestration-slices.md`.
+
 ## Optional: git worktrees for parallel agents
 
 Separate worktrees give isolated working trees while sharing history. Pair with **non-overlapping touch zones** and registration so two agents do not edit the same paths blindly. See [`git-workflow.md`](git-workflow.md) for this repo’s protocol.

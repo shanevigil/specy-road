@@ -143,6 +143,19 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   peer can see who holds it. `add-node` sets `sibling_order` after the parent's
   last sibling (`--sibling-order N` to place it); an unset value sorted as `0`
   and jumped the pickup queue (proposal §3.4, §5).
+- `/specyrd-orchestrate`: the coordinator's loop — `orchestrate plan`, one
+  pickup and one fresh executor prompt per leaf, `handoff status` polling,
+  fresh reviewer sessions, the gate, finish — with the never-review-your-own-
+  fix and stop-on-breach rules (proposal §4.3). Installed for the pm and dev
+  roles.
+- `specy-road session guard`: denies a shell command that is destructive in a
+  shared checkout (stash, hard reset, branch switch, `checkout -- …`,
+  `restore .`, `clean -f`, rebase, amend, force push, `add -A`, `commit -a`)
+  while another session is live. `--format` selects a harness's hook
+  protocol — `claude-code`, `codex`, `cursor`, each verified against its docs
+  and run as a subprocess in the test suite — and `--print-config` prints the
+  project-level snippet. An internal error answers as a deny: the guard never
+  fails open quietly.
 - `specy-road session start|touch|end|list|check`: presence records under
   `work/.sessions/` for work that is not a registry claim. `handoff status`
   lists live sessions (its `--json` output is now `{sessions, nodes}`),
