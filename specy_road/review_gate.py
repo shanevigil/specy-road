@@ -16,7 +16,9 @@ reports. A review record counts only when all of these hold:
 Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
 integration branch** (its remote-tracking ref when present), and the gate is on
 when either that branch or the working tree turns it on: a feature branch
-cannot lower its own bar.
+cannot lower its own bar. Which branch that is comes from the committed
+``git-workflow.yaml``, and a branch that cannot be found fails closed
+(:func:`policy_source`).
 
 The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_required`` — counted by distinct family when
@@ -36,10 +38,7 @@ import yaml
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_stdout
-from specy_road.git_workflow_config import (
-    require_implementation_review_before_finish,
-    resolve_integration_defaults,
-)
+from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.orchestration_config import (
     effective_config,
     family_of,
@@ -50,23 +49,56 @@ from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_fron
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 
 
-def policy_ref(repo_root: Path) -> str | None:
-    """The integration branch ref policy is read from, or ``None`` (working tree)."""
-    ib, remote, _ = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
-    return base_ref(repo_root, remote, ib)
-
-
-def review_required(repo_root: Path) -> bool:
-    """Whether the review gate is on — in the working tree **or** on the integration branch."""
-    if require_implementation_review_before_finish(repo_root):
-        return True
-    ref = policy_ref(repo_root)
-    text = git_stdout(["show", f"{ref}:roadmap/git-workflow.yaml"], repo_root) if ref else None
+def _committed_yaml(repo_root: Path, rev: str, rel: str) -> dict[str, Any]:
+    text = git_stdout(["show", f"{rev}:{rel}"], repo_root)
     try:
         data = yaml.safe_load(text) if text else None
     except yaml.YAMLError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
+    """``(ref, error)``: the integration branch ref that review policy is read from.
+
+    The branch name and remote come from ``roadmap/git-workflow.yaml`` **as
+    committed at HEAD** — never from the working tree or the
+    ``SPECY_ROAD_INTEGRATION_BRANCH`` / ``SPECY_ROAD_REMOTE`` variables, which an
+    agent can change without a trace. When that branch cannot be found the
+    result is an error, not a fall back to the working tree: the gate fails
+    closed. ``(None, None)`` only outside git, where the working tree is all
+    there is.
+    """
+    if not full_sha(repo_root, "HEAD"):
+        return None, None
+    gw = _committed_yaml(repo_root, "HEAD", "roadmap/git-workflow.yaml")
+    ib = str(gw.get("integration_branch") or "main")
+    remote = str(gw.get("remote") or "origin")
+    ref = base_ref(repo_root, remote, ib)
+    if ref is None:
+        return None, (
+            f"integration branch {ib!r} (roadmap/git-workflow.yaml at HEAD) has neither "
+            f"{remote}/{ib} nor a local branch, so review policy cannot be read from it; "
+            "fetch it, or fix integration_branch on the integration branch"
+        )
+    return ref, None
+
+
+def review_required(repo_root: Path) -> bool:
+    """Whether the review gate is on — in the working tree **or** on the integration branch.
+
+    Fails closed: when the integration branch cannot be found, its switch
+    cannot be read, so the gate counts as on.
+    """
+    if require_implementation_review_before_finish(repo_root):
+        return True
+    ref, err = policy_source(repo_root)
+    if err:
+        return True
+    if ref is None:
         return False
-    return isinstance(data, dict) and bool(data.get("require_implementation_review_before_finish"))
+    flag = _committed_yaml(repo_root, ref, "roadmap/git-workflow.yaml")
+    return bool(flag.get("require_implementation_review_before_finish"))
 
 
 @dataclass
@@ -179,7 +211,9 @@ def evaluate_gate(
     *,
     today: date | None = None,
 ) -> GateResult:
-    config, err = effective_config(repo_root, policy_ref(repo_root))
+    ref, ref_err = policy_source(repo_root)
+    config, err = effective_config(repo_root, ref)
+    err = ref_err or err
     policy = config["policy"]
     result = GateResult(
         node_id=node["id"],

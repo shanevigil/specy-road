@@ -220,7 +220,8 @@ def _finish_instruction_lines(
                 "`work/handoff-ready.template.md` (branch, commit, base, changed_paths, "
                 "verify), then stop. Reviewers read "
                 f"`specy-road review-packet {node_id}` and file verdicts with "
-                "`specy-road review record`; then the developer runs "
+                "`specy-road review record` (from `work/review-record.template.md`); "
+                "then the developer runs "
                 "`specy-road mark-implementation-reviewed` and "
                 "`specy-road finish-this-task`."
             ),

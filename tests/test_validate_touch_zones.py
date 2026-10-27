@@ -124,11 +124,18 @@ def test_an_empty_zone_is_not_this_check_s_problem(tmp_path: Path, capsys) -> No
     assert _warn([_node(touch_zones=["   ", ""])], tmp_path, capsys) == ""
 
 
-def test_a_filesystem_error_never_becomes_a_traceback(tmp_path: Path, capsys) -> None:
-    """validate runs inside every pickup and node edit; advisory must stay advisory."""
-    too_long = "x" * 300
+def test_a_filesystem_error_never_becomes_a_traceback(tmp_path: Path, capsys, monkeypatch) -> None:
+    """validate runs inside every pickup and node edit; advisory must stay advisory.
 
-    assert _warn([_node(touch_zones=[too_long])], tmp_path, capsys) == ""
+    The error is simulated: an over-long name used to raise ``ENAMETOOLONG``,
+    but Python 3.15's ``Path.glob`` swallows it and simply matches nothing.
+    """
+    def _boom(self, *_a, **_k):
+        raise OSError("simulated filesystem error")
+
+    monkeypatch.setattr(Path, "glob", _boom)
+    monkeypatch.setattr(Path, "exists", _boom)
+    assert _warn([_node(touch_zones=["src/*.py", "docs"])], tmp_path, capsys) == ""
 
 
 @pytest.mark.parametrize(

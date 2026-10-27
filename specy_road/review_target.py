@@ -116,7 +116,9 @@ def reviewed_commit(repo_root: Path, ref: str, base: str | None) -> str | None:
     span = [f"{base}..{tip}"] if base else ["-n", "20", tip]
     shas = (git_text(["log", "--first-parent", "--format=%H", *span], repo_root) or "").split()
     for sha in shas:
-        if _changed_by(repo_root, sha) not in ([], [REGISTRY_REL]):
+        # Any merge is new work, even one whose tree equals its first parent:
+        # `git merge -s ours` changes nothing here yet decides what lands.
+        if full_sha(repo_root, f"{sha}^2") or _changed_by(repo_root, sha) not in ([], [REGISTRY_REL]):
             return sha
     return tip
 

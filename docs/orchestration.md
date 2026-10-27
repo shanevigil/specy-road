@@ -88,6 +88,10 @@ duplicate roster ids and a substitute that is not in the roster.
 ref when there is one, else the local branch — not from the branch under
 review. The same goes for `require_implementation_review_before_finish`: the
 gate is on when either the integration branch or the working tree turns it on.
+Which branch is the integration branch comes from `roadmap/git-workflow.yaml`
+as committed at `HEAD`; the working tree and the `SPECY_ROAD_INTEGRATION_BRANCH`
+/ `SPECY_ROAD_REMOTE` variables are ignored here. If that branch cannot be
+found, the gate fails closed: it counts as on, and nothing passes it.
 A feature branch therefore cannot lower its own bar. Change policy on the
 integration branch; an edit on a feature branch is ignored by the gate, flagged
 in the review packet, and, like any commit that touches more than
@@ -196,9 +200,10 @@ review record only when:
 
 - it validates, and its `node_id` is this node;
 - its `commit` resolves, through git, to the commit under review — any later
-  commit makes it stale, so a substantive fix restarts every review. A merge
-  counts as new work (it is compared with its first parent); commits that touch
-  only `roadmap/registry.yaml` are skipped, so claim bookkeeping does not;
+  commit makes it stale, so a substantive fix restarts every review. Every
+  merge counts as new work, including `git merge -s ours`, whose tree equals
+  its first parent's; commits that touch only `roadmap/registry.yaml` are
+  skipped, so claim bookkeeping does not;
 - its model is a rostered reviewer, or the substitute in an active substitution
   that covers this node, and its family comes from the roster;
 - no other record from the same model already counts — one vote per model, and
@@ -226,9 +231,12 @@ is no gate.
 **What the gate cannot verify.** A review record's `model`, `fresh_session`,
 `authored_fix`, and `is_coordinator` are self-attested: any agent that can write
 a file under `work/reviews/` can pose as a rostered reviewer, including
-`human`. The tool closes the easy paths — `review record` refuses `human`,
-`--yes` never files a review, policy comes from the integration branch — and
-records who approved in the commit history. Proving a reviewer's identity needs
+`human`. Likewise, an agent that creates a local branch, or a fake
+remote-tracking ref, and commits `integration_branch` pointing at it can choose
+the policy the gate reads. The tool closes the easy paths — `review record`
+refuses `human`, `--yes` never files a review, policy comes from the committed
+integration branch, a missing branch fails closed — and records who approved in
+the commit history. Proving a reviewer's identity needs
 something outside the repo, such as forge PR approvals or signed commits.
 
 `specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:

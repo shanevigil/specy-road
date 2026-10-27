@@ -18,16 +18,15 @@ coordinator polls the directory. Both schemas ship in the wheel, like
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass, field
 from datetime import date
 from functools import cache
 from pathlib import Path
 from typing import Any
 
+import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.git_subprocess import git_text
 from specy_road.runtime_paths import specy_road_package_dir
 
@@ -95,23 +94,35 @@ def _schema_errors(data: dict[str, Any], schema_name: str) -> list[str]:
 _SHA_KEYS = ("commit", "base")
 
 
-def _scalars_to_str(data: dict[str, Any], text: str) -> None:
+def _split_front_matter(text: str) -> tuple[str | None, str]:
+    """``(yaml_block, body)``; the block ends at the first unindented ``---`` line."""
+    lines = text.splitlines()
+    if not lines or lines[0].rstrip() != "---":
+        return None, text
+    for i in range(1, len(lines)):
+        if lines[i].rstrip() == "---":
+            return "\n".join(lines[1:i]), "\n".join(lines[i + 1:])
+    return None, text
+
+
+def _scalars_to_str(data: dict[str, Any], root: Any) -> None:
     """Undo YAML's typing of values the schemas want as strings.
 
     An unquoted ``2026-10-26`` loads as a date. A SHA is worse: YAML 1.1 reads
     ``1234567`` as an int, ``0123456`` as octal and ``0x1234567`` as hex, so
     converting the loaded value back would yield a different string — or a
     different, valid-looking SHA. ``commit`` and ``base`` are therefore taken
-    from the front matter text exactly as written.
+    from the parsed node's raw scalar text (``root`` is ``yaml.compose``'s
+    result), which no other line of the file can impersonate.
     """
     for key, value in list(data.items()):
         if isinstance(value, date):
             data[key] = value.isoformat()
-    block = text.split("\n---", 1)[0]
-    for key in _SHA_KEYS:
-        m = re.search(rf"^{key}:[ \t]*([\"']?)([^\"'\s#]+)\1[ \t]*(?:#.*)?$", block, re.M)
-        if m and key in data:
-            data[key] = m.group(2)
+    if not isinstance(root, yaml.MappingNode):
+        return
+    for k, v in root.value:
+        if isinstance(k, yaml.ScalarNode) and k.value in _SHA_KEYS and isinstance(v, yaml.ScalarNode):
+            data[k.value] = v.value
 
 
 def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
@@ -119,10 +130,18 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
         text = path.read_text(encoding="utf-8")
     except OSError as e:
         return {}, "", [f"cannot read: {e}"]
-    data, body = split_frontmatter(text)
+    block, body = _split_front_matter(text)
+    missing = ["missing YAML front matter (--- … ---) at the top of the file"]
+    if block is None:
+        return {}, body, missing
+    try:
+        data = yaml.safe_load(block)
+        root = yaml.compose(block, Loader=yaml.SafeLoader)
+    except yaml.YAMLError as e:
+        return {}, body, [f"front matter is not valid YAML: {e}"]
     if not isinstance(data, dict) or not data:
-        return {}, body, ["missing YAML front matter (--- … ---) at the top of the file"]
-    _scalars_to_str(data, text)
+        return {}, body, missing
+    _scalars_to_str(data, root)
     return data, body, []
 
 
