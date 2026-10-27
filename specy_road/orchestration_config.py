@@ -28,6 +28,7 @@ DEFAULT_POLICY: dict[str, Any] = {
     "reviewers_distinct_families": False,
     "reviewer_fresh_session": True,
     "signed_reviews": False,
+    "reviewer_reruns_required": False,
     "max_workers": 2,
 }
 DEFAULT_CONFIG: dict[str, Any] = {

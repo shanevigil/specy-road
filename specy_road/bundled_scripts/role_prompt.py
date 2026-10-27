@@ -106,7 +106,9 @@ def _reviewer_preamble(node_id: str, model: str) -> list[str]:
         "",
         "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. Record findings under "
         "correctness, regression, boundary (paths outside the touch zones), and test integrity "
-        "(weakened or deleted tests). Re-run at least one verify command yourself and list it.",
+        "(weakened or deleted tests). Re-run at least one verify command yourself and list it. "
+        "Sections the packet marks as executor-asserted are claims; weigh them against the diff and "
+        "your own re-run, not on their own.",
         "",
         "Write your verdict with the front matter in `work/review-record.template.md`, set `commit` to the "
         "packet's **Commit under review**, and file it:",

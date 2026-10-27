@@ -16,8 +16,7 @@ A session that wrote a change never reviews it, and the coordinator's own
 session is never a reviewer. These rules are recorded in every review record
 and checked by the gate.
 
-Background and the slices still to come:
-[design-notes/v0-3-0-orchestration-slices.md](design-notes/v0-3-0-orchestration-slices.md).
+Background and the slices still to come: [design-notes/v0-3-0-orchestration-slices.md](design-notes/v0-3-0-orchestration-slices.md).
 
 ## The flow
 
@@ -62,6 +61,7 @@ substitutions: []
 | `policy.reviewers_required` | Approving reviews needed at the commit under review. Minimum 1. |
 | `policy.reviewers_distinct_families` | Count approvals by distinct family, so two sessions of one family count once. |
 | `policy.reviewer_fresh_session` | Records must attest `fresh_session: true`. |
+| `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
 Roster entries also accept `profile`, `channels`, `may_process`,
@@ -144,6 +144,9 @@ Quote SHAs. `commit` and `base` are read exactly as written in the file, so
 YAML cannot turn `0123456` into an octal number, but quoting keeps other tools
 reading the file from doing so.
 
+A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
+`handoff status` and marked in the packet; a reviewer, not the gate, judges it.
+
 ### `PACKET.md` — what a reviewer reads
 
 `specy-road review-packet <NODE_ID>` assembles:
@@ -154,7 +157,8 @@ reading the file from doing so.
 3. every changed path since the merge base, with paths outside the touch zones
    flagged (roadmap bookkeeping is exempt);
 4. the diff;
-5. verifier output from the newest READY file, plus any `--verify-cmd` run now.
+5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
+   each section states if it was computed from git, executor-asserted, or run now.
 
 The packet reviews the tip of the node's registered branch **without checking
 it out**, so a coordinator in a checkout shared with executors never switches
@@ -331,9 +335,6 @@ specy-road session touch            # renew; records expire after 4 hours by def
 specy-road session end
 specy-road session list [--all]
 specy-road session check            # exit 1 if staged paths overlap another live session
-```
-
-```bash
 specy-road session guard --command "git stash"   # exit 2 with the reason when another session is live
 specy-road session guard --format claude-code     # the same, reading a harness hook's stdin
 ```
@@ -392,9 +393,8 @@ records why:
   exits 1.**
 - `roadmap/orchestration.yaml` is optional; copy it from a fresh
   `specy-road init project` to change the policy.
-- Add `work/reviews/` to `.gitignore`, as new scaffolds do. A review binds to
-  the commit it read, so committing review files would move the branch past
-  it; the approving reviews are kept as `Reviewed-by` trailers instead.
-- No consumer schema changed. `orchestration.schema.json` is new and ships in
-  `schemas/` for new scaffolds; the hand-off and review schemas live in the
-  installed package.
+- Add `work/reviews/` to `.gitignore`, as new scaffolds do: a review binds to
+  the commit it read, so committing review files would move the branch past it
+  (approvals are kept as `Reviewed-by` trailers). No consumer schema changed:
+  `orchestration.schema.json` is new in `schemas/` for new scaffolds, and the
+  hand-off and review schemas live in the installed package.

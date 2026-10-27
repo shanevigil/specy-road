@@ -80,6 +80,10 @@
           "type": "boolean",
           "description": "When true, a review record counts only if it carries a signature that verifies against its roster entry's public_key. Default false."
         },
+        "reviewer_reruns_required": {
+          "type": "boolean",
+          "description": "When true, an approving review record counts only if its commands_rerun lists at least one command the reviewer re-ran. A human's interactive approval is exempt; a block is never affected. Default false."
+        },
         "max_workers": {
           "type": "integer",
           "minimum": 1,

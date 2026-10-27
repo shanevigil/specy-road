@@ -149,6 +149,7 @@ def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
     assert err is None
     assert "## Your role: reviewer" in text and "--model opus --verdict approve|block" in text
     assert "Effort for review: `high`" in text
+    assert "Sections the packet marks as executor-asserted are claims" in text
     assert "- **Commit under review:** `abc`" in text
     assert "# Work-packet brief" not in text
 
