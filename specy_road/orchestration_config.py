@@ -85,6 +85,23 @@ def _semantic_error(raw: dict[str, Any]) -> str | None:
                 f"substitutions/{i}/use: {sub.get('use')!r} must be a roster entry, "
                 "so its family comes from the roster and not from the review file"
             )
+    return _date_error(raw)
+
+
+def _date_error(raw: dict[str, Any]) -> str | None:
+    """The schema's ``\\d{4}-\\d{2}-\\d{2}`` admits ``2026-00-00``; these fields are compared as dates."""
+    fields = [(f"roster/{i}/unavailable_until", e.get("unavailable_until"))
+              for i, e in enumerate(raw.get("roster") or []) if isinstance(e, dict)]
+    fields += [(f"substitutions/{i}/{k}", s.get(k))
+               for i, s in enumerate(raw.get("substitutions") or []) if isinstance(s, dict)
+               for k in ("decided", "expires")]
+    for loc, val in fields:
+        if val is None:
+            continue
+        try:
+            date.fromisoformat(str(val))
+        except ValueError:
+            return f"{loc}: {val!r} is not a calendar date (YYYY-MM-DD)"
     return None
 
 
@@ -92,7 +109,7 @@ def parse_orchestration_text(text: str) -> tuple[dict[str, Any] | None, str | No
     """Parse and validate the file's text. Returns (data, parse_or_schema_error)."""
     try:
         raw = yaml.safe_load(text)
-    except yaml.YAMLError as e:
+    except (yaml.YAMLError, ValueError) as e:   # ValueError: an impossible date such as 2026-00-00
         return None, f"YAML error in {ORCHESTRATION_REL}: {e}"
     if not isinstance(raw, dict):
         return None, f"{ORCHESTRATION_REL}: must be a mapping"

@@ -15,7 +15,8 @@
 4. the brief (executor, coordinator) or the review packet (reviewer).
 
 ``--channel cli`` also runs the profile's ``access.cli`` with ``{prompt}``
-replaced by the file path. ``paste`` and ``subagent`` only write the file.
+replaced by the file path. The profile is read from the integration branch,
+like the roster; a working-tree copy that differs is refused. ``paste`` and ``subagent`` only write the file.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
-from specy_road.model_profiles import ROLES, Profile, profile_for_entry
+from specy_road.model_profiles import ROLES, Profile
 from specy_road.orchestrate_plan import (
     ANY,
     entry_may_process,
@@ -38,7 +39,7 @@ from specy_road.orchestrate_plan import (
 )
 from specy_road.worker_adapters import placeholder_problem, substitute_prompt
 from specy_road.orchestration_config import substitute_for
-from specy_road.orchestration_pinned import pinned_config
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -203,7 +204,9 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
         return "", None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                           f"{entry_may_process(entry)}; route it to a model that may "
                           "(`specy-road orchestrate plan`)")
-    prof = profile_for_entry(root, entry)
+    prof = pinned_profile_for_entry(root, entry)
+    if prof is not None and not prof.ok:
+        return "", prof, f"profile for {model!r}: " + "; ".join(prof.errors)
     zones = list(t.touch_zones) if t else []
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
     if t:

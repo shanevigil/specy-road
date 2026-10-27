@@ -114,8 +114,11 @@ so a feature branch cannot lower its own bar. The same goes for
 integration branch or the working tree turns it on. Which branch is the
 integration branch comes from `roadmap/git-workflow.yaml` as committed at `HEAD`;
 the working tree and the `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE`
-variables are ignored here. If that branch cannot be found, the gate fails
-closed: it counts as on, and nothing passes it. Change policy on the integration
+variables are ignored here. That name is a trust anchor a feature commit can rewrite, so
+the branch it names must name itself in its own committed `git-workflow.yaml`, and with a
+remote configured only `refs/remotes/<remote>/<branch>` is read: redirecting policy needs
+push rights to a branch the remote must protect. If the branch is missing, the names disagree,
+or the remote branch is not fetched, the gate fails closed (on, and nothing passes it). Change policy on the integration
 branch; an edit on a feature branch is ignored by the gate, flagged in the review
 packet, and, like any commit that touches more than `roadmap/registry.yaml`,
 makes that branch's reviews stale.

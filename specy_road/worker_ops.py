@@ -24,10 +24,9 @@ from typing import Any
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
-from specy_road.model_profiles import profile_for_entry
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
 from specy_road.orchestration_config import roster_entry
-from specy_road.orchestration_pinned import pinned_config
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
@@ -128,7 +127,9 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
 
 def _cli_for(repo_root: Path, entry: dict[str, Any]) -> tuple[str | None, str]:
     """``(custom cli, model id the harness is told)``."""
-    prof = profile_for_entry(repo_root, entry)
+    prof = pinned_profile_for_entry(repo_root, entry)   # the committed profile, as the roster is
+    if prof is not None and not prof.ok:
+        raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
     cli = (entry.get("channels") or {}).get("cli") or (prof.cli() if prof and prof.ok else None)
     return cli, (prof.api_id if prof and prof.ok else str(entry["id"]))
 

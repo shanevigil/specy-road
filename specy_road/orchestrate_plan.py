@@ -37,8 +37,8 @@ from typing import Any
 
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import compute_session_plan
-from specy_road.model_profiles import Profile, profile_for_entry
-from specy_road.orchestration_pinned import pinned_config
+from specy_road.model_profiles import Profile
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.orchestration_config import active_substitutions
 from specy_road.registry_yaml import read_registry, registry_path
 
@@ -56,8 +56,9 @@ def node_eligibility(node: dict[str, Any]) -> str:
 
 
 def entry_may_process(entry: dict[str, Any]) -> list[str]:
+    """``may_process`` as written; ``[public]`` only when the key is absent — an explicit ``[]`` denies all."""
     raw = entry.get("may_process")
-    return [str(x) for x in raw] if raw else [DEFAULT_SENSITIVITY]
+    return [DEFAULT_SENSITIVITY] if raw is None else [str(x) for x in raw]
 
 
 def may_handle(entry: dict[str, Any], sensitivity: str) -> bool:
@@ -217,7 +218,7 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
     if under and under not in by_id:
         return None, f"unknown node id: {under}"
     sp = compute_session_plan(nodes, read_registry(registry_path(root)), under=under)
-    cands = [Candidate(e, profile_for_entry(root, e)) for e in config.get("roster") or []]
+    cands = [Candidate(e, pinned_profile_for_entry(root, e)) for e in config.get("roster") or []]
     batches = [[assign_leaf(by_id[nid], cands, config, today) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     return OrchestrationPlan(under, dict(config["policy"]), batches,

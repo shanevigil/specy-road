@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
-from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.review_gate import review_required
 from specy_road.runtime_paths import default_user_repo_root
 
 from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_missing
@@ -334,7 +334,9 @@ def run_validation(
 
     id_set = set(ids)
     id_to_type = {n["id"]: n.get("type") for n in nodes}
-    gate = require_implementation_review_before_finish(r)
+    # The gate's own resolution (integration branch OR working tree, fail closed),
+    # so a feature-tree edit cannot silence this check or the acceptance warning.
+    gate = review_required(r)
     allowed_review = frozenset({"pending", "approved"})
     for e in registry.get("entries") or []:
         nid = e.get("node_id")

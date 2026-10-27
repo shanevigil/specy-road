@@ -47,22 +47,18 @@ class Profile:
 
     @property
     def researched(self) -> date | None:
-        raw = self.data.get("researched")
-        if isinstance(raw, date):
-            return raw
-        try:
-            return date.fromisoformat(str(raw))
-        except ValueError:
-            return None
+        return _as_date(self.data.get("researched"))
 
     def role_score(self, role: str) -> int | None:
-        fit = (self.data.get("role_fit") or {}).get(role) or {}
+        fits = self.data.get("role_fit")
+        fit = fits.get(role) if isinstance(fits, dict) else None
         score = fit.get("score") if isinstance(fit, dict) else None
         return int(score) if isinstance(score, int) else None
 
     def cli(self) -> str | None:
-        cli = (self.data.get("access") or {}).get("cli")
-        return None if not cli or str(cli).strip().lower() == "none" else str(cli)
+        access = self.data.get("access")
+        cli = access.get("cli") if isinstance(access, dict) else None
+        return None if not isinstance(cli, str) or cli.strip().lower() == "none" else cli
 
     def bullets(self, section: str) -> list[str]:
         """The ``- `` items under ``## <section>``, without the dash."""
@@ -105,24 +101,64 @@ def _sections(body: str) -> dict[str, list[str]]:
     return out
 
 
-def load_profile(path: Path) -> Profile:
+def _as_date(raw: Any) -> date | None:
+    """A real calendar date from a YAML date or an ISO string, else ``None``."""
+    if isinstance(raw, date):
+        return raw
     try:
-        text = path.read_text(encoding="utf-8")
-    except OSError as e:
-        return Profile(path, {}, errors=[f"cannot read: {e}"])
+        return date.fromisoformat(str(raw))
+    except ValueError:
+        return None
+
+
+def _structure_errors(data: dict[str, Any]) -> list[str]:
+    """Shapes the readers assume: wrong ones made ``profile_ok`` true and then raised."""
+    out = []
+    access = data.get("access")
+    if "access" in data and not isinstance(access, dict):
+        out.append("`access` must be a mapping")
+    elif isinstance(access, dict):
+        if access.get("cli") is not None and not isinstance(access["cli"], str):
+            out.append("`access.cli` must be a string")
+        if "effort_map" in access and not isinstance(access["effort_map"], dict):
+            out.append("`access.effort_map` must be a mapping")
+    fit = data.get("role_fit")
+    if "role_fit" in data and not isinstance(fit, dict):
+        out.append("`role_fit` must be a mapping of role → {score, reason}")
+    elif isinstance(fit, dict):
+        for role, v in fit.items():
+            if not isinstance(v, dict) or not isinstance(v.get("score"), int) or isinstance(v.get("score"), bool):
+                out.append(f"`role_fit.{role}` must be a mapping with an integer `score`")
+    if "cost_usd_per_mtok" in data and not isinstance(data["cost_usd_per_mtok"], dict):
+        out.append("`cost_usd_per_mtok` must be a mapping")
+    if "researched" in data and _as_date(data["researched"]) is None:
+        out.append(f"`researched` is not a calendar date (YYYY-MM-DD): {data['researched']!r}")
+    return out
+
+
+def parse_profile(path: Path, text: str) -> Profile:
+    """A profile from its text; ``path`` is where it came from (a file or a git blob)."""
     block, body = _split(text)
     if block is None:
         return Profile(path, {}, errors=["missing YAML front matter (--- … ---)"])
     try:
         data = yaml.safe_load(block)
-    except yaml.YAMLError as e:
+    except (yaml.YAMLError, ValueError) as e:   # ValueError: an impossible date like 2026-00-00
         return Profile(path, {}, errors=[f"front matter is not valid YAML: {e}"])
     if not isinstance(data, dict):
         return Profile(path, {}, errors=["front matter must be a mapping"])
     errors = [f"missing `{k}`" for k in _REQUIRED if k not in data]
     if data.get("profile_schema") != PROFILE_SCHEMA:
         errors.append(f"profile_schema is {data.get('profile_schema')!r}, expected {PROFILE_SCHEMA}")
-    return Profile(path, data, _sections(body), errors)
+    return Profile(path, data, _sections(body), errors + _structure_errors(data))
+
+
+def load_profile(path: Path) -> Profile:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as e:
+        return Profile(path, {}, errors=[f"cannot read: {e}"])
+    return parse_profile(path, text)
 
 
 def profiles_dir(repo_root: Path) -> Path:
@@ -137,14 +173,36 @@ def list_profiles(repo_root: Path) -> list[Profile]:
     return [load_profile(p) for p in paths]
 
 
+def profile_rel_problem(repo_root: Path, rel: str) -> str | None:
+    """Why a roster ``profile:`` path is not a plain path inside the repository."""
+    parts = Path(rel).parts
+    if Path(rel).is_absolute() or ".." in parts or not parts:
+        return f"profile path escapes the repository: {rel}"
+    if not (repo_root / rel).resolve().is_relative_to(Path(repo_root).resolve()):
+        return f"profile path escapes the repository: {rel}"
+    return None
+
+
+def display_rel(repo_root: Path, path: Path) -> str:
+    """``path`` relative to the repo when it is inside it, else as given — never a crash."""
+    try:
+        return str(path.relative_to(repo_root))
+    except ValueError:
+        return str(path)
+
+
 def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
-    """The roster entry's profile: its ``profile`` path, else a file named after its ``id``."""
+    """The roster entry's profile **from the working tree**: its ``profile`` path, else a file named after its ``id``.
+
+    Routing and dispatch use :func:`orchestration_pinned.pinned_profile_for_entry`,
+    which reads the same path from the integration branch.
+    """
     rel = entry.get("profile")
     if rel:
-        path = (repo_root / str(rel)).resolve()
-        if not path.is_relative_to(Path(repo_root).resolve()):
-            return Profile(repo_root / str(rel), {}, errors=[f"profile path escapes the repository: {rel}"])
-        return load_profile(path)
+        why = profile_rel_problem(repo_root, str(rel))
+        if why:
+            return Profile(repo_root / str(rel), {}, errors=[why])
+        return load_profile((repo_root / str(rel)).resolve())
     for p in list_profiles(repo_root):
         if p.api_id == entry.get("id") or p.path.stem == entry.get("id"):
             return p

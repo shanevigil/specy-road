@@ -21,11 +21,11 @@ from specy_road.model_profiles import (
     DEFAULT_MAX_AGE_DAYS,
     ROLES,
     Profile,
+    display_rel,
     list_profiles,
-    profile_for_entry,
 )
 from specy_road.orchestration_config import roster_entry
-from specy_road.orchestration_pinned import pinned_config
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
 
@@ -34,7 +34,7 @@ def _row(root: Path, entry: dict[str, Any], prof: Profile | None) -> dict[str, A
         "id": entry.get("id"),
         "family": entry.get("family"),
         "roles": list(entry.get("roles") or []),
-        "profile": str(prof.path.relative_to(root)) if prof else None,
+        "profile": display_rel(root, prof.path) if prof else None,
         "profile_ok": bool(prof and prof.ok),
         "errors": list(prof.errors) if prof else [],
         "scores": {r: prof.role_score(r) for r in ROLES} if prof and prof.ok else {},
@@ -48,7 +48,7 @@ def _roster_rows(root: Path) -> tuple[list[dict[str, Any]], list[Profile], str |
     rows = []
     used: set[Path] = set()
     for entry in config.get("roster") or []:
-        prof = profile_for_entry(root, entry)
+        prof = pinned_profile_for_entry(root, entry)
         if prof:
             used.add(prof.path)
         rows.append(_row(root, entry, prof))
@@ -60,7 +60,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     rows, unrostered, err = _roster_rows(root)
     if ns.json:
-        print(json.dumps({"roster": rows, "unrostered_profiles": [str(p.path.relative_to(root)) for p in unrostered]}, indent=2))
+        print(json.dumps({"roster": rows, "unrostered_profiles": [display_rel(root, p.path) for p in unrostered]}, indent=2))
         return 0
     if err:
         print(f"warning: {err}; showing the default roster", file=sys.stderr)
@@ -72,7 +72,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
     if unrostered:
         print(f"\n{len(unrostered)} profile(s) not in the roster (add an entry with `profile:` to use one):")
         for p in unrostered:
-            print(f"  {p.path.relative_to(root)}")
+            print(f"  {display_rel(root, p.path)}")
     return 0
 
 
@@ -80,7 +80,7 @@ def _find(root: Path, model_id: str) -> Profile | None:
     config, _ = pinned_config(root)
     entry = next((e for e in config.get("roster") or [] if e.get("id") == model_id), None)
     if entry:
-        return profile_for_entry(root, entry)
+        return pinned_profile_for_entry(root, entry)
     return next((p for p in list_profiles(root) if p.api_id == model_id or p.path.stem == model_id), None)
 
 
@@ -91,10 +91,10 @@ def cmd_show(ns: argparse.Namespace) -> int:
         print(f"error: no roster entry or profile for {ns.model!r} (see `specy-road models list`)", file=sys.stderr)
         return 1
     if ns.json:
-        print(json.dumps({"path": str(prof.path.relative_to(root)), "front_matter": prof.data,
+        print(json.dumps({"path": display_rel(root, prof.path), "front_matter": prof.data,
                           "sections": prof.sections, "errors": prof.errors}, indent=2, default=str))
         return 0
-    print(f"# {prof.data.get('model', prof.api_id)}  ({prof.path.relative_to(root)})")
+    print(f"# {prof.data.get('model', prof.api_id)}  ({display_rel(root, prof.path)})")
     entry = roster_entry(pinned_config(root)[0] or {}, ns.model) or {}
     if entry:
         print(f"- harness/model: {entry.get('harness') or 'generic'}/{entry['id']}"
@@ -126,7 +126,7 @@ def cmd_stale(ns: argparse.Namespace) -> int:
     # `profile` path, or a file named after the id — the same lookup `list` does.
     rostered: set[Path] = set()
     for entry in config.get("roster") or []:
-        prof = profile_for_entry(root, entry)
+        prof = pinned_profile_for_entry(root, entry)
         if prof:
             rostered.add(prof.path)
     stale: list[tuple[Profile, list[str]]] = []
@@ -138,13 +138,13 @@ def cmd_stale(ns: argparse.Namespace) -> int:
         if reasons:
             stale.append((p, reasons))
     if ns.json:
-        print(json.dumps([{"path": str(p.path.relative_to(root)), "api_id": p.api_id, "rostered": p.path in rostered,
+        print(json.dumps([{"path": display_rel(root, p.path), "api_id": p.api_id, "rostered": p.path in rostered,
                            "reasons": r} for p, r in stale], indent=2))
     elif not stale:
         print("No stale profiles.")
     for p, reasons in stale if not ns.json else []:
         mark = " (rostered)" if p.path in rostered else ""
-        print(f"{p.path.relative_to(root)}{mark}")
+        print(f"{display_rel(root, p.path)}{mark}")
         for r in reasons:
             print(f"  - {r}")
     if stale and not ns.json:

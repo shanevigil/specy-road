@@ -26,6 +26,15 @@ def bundled_profiles_dir() -> Path:
     return project_template_root() / PROFILES_REL
 
 
+def _contained(repo_root: Path, path: Path) -> None:
+    """Refuse a destination that is, or sits under, a symlink: every write must land inside the repo as spelled."""
+    if path.is_symlink() or path.resolve() != path:
+        raise ValueError(
+            f"{path.relative_to(repo_root)} is or lies under a symlink; refresh-profiles writes only "
+            "to real paths inside the repository (replace the link with a directory or file)"
+        )
+
+
 def refresh_profiles(
     repo_root: Path, *, dry_run: bool = False, force: list[str] | None = None
 ) -> tuple[list[str], list[str]]:
@@ -33,7 +42,9 @@ def refresh_profiles(
     src_dir = bundled_profiles_dir()
     if not src_dir.is_dir():
         raise ValueError(f"missing bundled model profiles at {src_dir}")
+    repo_root = repo_root.resolve()
     dst_dir = repo_root / PROFILES_REL
+    _contained(repo_root, dst_dir)
     forced = {Path(f).as_posix() for f in force or []}
     written: list[str] = []
     kept: list[str] = []
@@ -41,6 +52,7 @@ def refresh_profiles(
         rel_in = src.relative_to(src_dir).as_posix()
         rel = f"{PROFILES_REL.as_posix()}/{rel_in}"
         dst = dst_dir / rel_in
+        _contained(repo_root, dst)
         if dst.is_file() and rel not in forced and rel_in not in forced:
             kept.append(rel)
             continue
