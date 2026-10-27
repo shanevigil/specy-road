@@ -19,7 +19,7 @@ ORIGIN_KEYS = ("harness", "model", "lens", "round", "shard")
 
 EXTRA_DEFAULTS: dict[str, Any] = {
     "origin": None, "cluster_id": None, "sources": [], "overlap": [], "critic": None,
-    "hypothesis": "", "assumptions": [], "decision": None,
+    "hypothesis": "", "assumptions": [], "decision": None, "verdict_why": "",
 }
 
 
@@ -93,6 +93,8 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:
         out["critic"] = {str(k): str(v) for k, v in raw["critic"].items()}
     if isinstance(raw.get("hypothesis"), str):
         out["hypothesis"] = raw["hypothesis"].strip()
+    if isinstance(raw.get("verdict_why"), str):
+        out["verdict_why"] = raw["verdict_why"].strip()
     if isinstance(raw.get("assumptions"), list):
         out["assumptions"] = [str(a).strip() for a in raw["assumptions"] if str(a).strip()]
     if isinstance(raw.get("decision"), dict):

@@ -231,7 +231,7 @@ def test_converge_prompt_plays_critics_and_names_overlap_relations(repo: Path) -
     assert "must cite" in text
     assert "[cursor/composer/SCAMPER/1]" in text
     assert "evidence (unverified): https://example.com/a" in text
-    assert "--cluster C2 --overlap M3.1:adjacent" in text
+    assert "--cluster C2 --overlap M3.1:adjacent" in text and "--why" in text
 
 
 def test_revise_records_cluster_overlap_and_critics_without_triaging(repo: Path) -> None:
@@ -239,10 +239,11 @@ def test_revise_records_cluster_overlap_and_critics_without_triaging(repo: Path)
     _cli(repo, "add-idea", "--title", "One")
     code, _, _ = _cli(repo, "revise", "B1", "--cluster", "C1", "--overlap", "M1.1:prerequisite",
                       "--overlap", "M2", "--critic", "feasibility: billing first",
-                      "--critic", "value: small segment", "--recommendation", "consider")
+                      "--critic", "value: small segment", "--recommendation", "consider", "--why", "Principle 2")
     assert code == 0
     idea = _session(repo).by_id("B1")
     assert idea.cluster_id == "C1" and idea.status == "proposed" and idea.recommendation == "consider"
+    assert idea.verdict_why == "Principle 2" and idea.rationale == ""
     assert idea.overlap == [{"node_id": "M1.1", "relation": "prerequisite"}, {"node_id": "M2", "relation": "adjacent"}]
     assert idea.critic == {"feasibility": "billing first", "value": "small segment"}
     code, _, err = _cli(repo, "revise", "B1", "--overlap", "M2:near")

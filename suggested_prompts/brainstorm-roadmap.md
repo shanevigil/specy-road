@@ -86,7 +86,7 @@ verdict per idea whose rationale cites a clause, a source, or an overlap:
 
 ```bash
 specy-road brainstorm revise B1 --cluster C1 --overlap M3.1:adjacent \
-  --critic "feasibility: …" --recommendation strong --rationale "…"
+  --critic "feasibility: …" --recommendation strong --why "…"
 ```
 
 Verdicts are `strong`, `consider`, `park`. Passing only `--recommendation`

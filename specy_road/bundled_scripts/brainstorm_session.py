@@ -158,6 +158,7 @@ class Idea:
     hypothesis: str = ""
     assumptions: list[str] = field(default_factory=list)
     decision: dict[str, str] | None = None
+    verdict_why: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
