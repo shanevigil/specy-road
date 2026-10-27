@@ -23,6 +23,8 @@ from specy_road.git_subprocess import git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path
 
+REGISTRY_REL = "roadmap/registry.yaml"
+
 
 @dataclass
 class ReviewTarget:
@@ -56,6 +58,27 @@ def default_ref(repo_root: Path, entry: dict[str, Any] | None) -> str:
     return "HEAD"
 
 
+def reviewed_commit(repo_root: Path, ref: str, base: str | None) -> str | None:
+    """The newest commit on ``ref`` that changed more than ``roadmap/registry.yaml``.
+
+    Claim bookkeeping — the registration commit, and the commit
+    ``mark-implementation-reviewed`` itself writes — touches only the registry.
+    Skipping those keeps a review bound to the implementation it read, so the
+    gate's own commit does not turn every review stale. Falls back to the tip
+    when nothing past ``base`` changed real files.
+    """
+    tip = git_text(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], repo_root)
+    if not tip:
+        return None
+    span = [f"{base}..{tip}"] if base else ["-n", "20", tip]
+    shas = (git_text(["log", "--first-parent", "--format=%H", *span], repo_root) or "").split()
+    for sha in shas:
+        paths = git_text(["diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha], repo_root)
+        if (paths or "").split() not in ([], [REGISTRY_REL]):
+            return sha
+    return tip
+
+
 def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:
     """Build the target for ``node_id``, or exit 1 when the node is unknown."""
     nodes = load_roadmap(repo_root)["nodes"]
@@ -65,12 +88,13 @@ def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> Rev
         raise SystemExit(1)
     entry = _registry_entry(repo_root, node_id)
     use_ref = ref or default_ref(repo_root, entry)
-    commit = git_text(["rev-parse", "--verify", "--quiet", f"{use_ref}^{{commit}}"], repo_root)
     ib, remote, _warn = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )
     bref = base_ref(repo_root, remote, ib)
-    base = git_text(["merge-base", bref, use_ref], repo_root) if bref and commit else None
+    has_ref = git_text(["rev-parse", "--verify", "--quiet", f"{use_ref}^{{commit}}"], repo_root)
+    base = git_text(["merge-base", bref, use_ref], repo_root) if bref and has_ref else None
+    commit = reviewed_commit(repo_root, use_ref, base)
     return ReviewTarget(node, nodes, entry, use_ref, commit, bref, base)
 
 

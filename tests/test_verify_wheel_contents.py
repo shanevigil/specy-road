@@ -18,6 +18,8 @@ COMPLETE_WHEEL = {
     "specy_road/templates/project/.gitignore": "work/prompt-*.md\n",
     "specy_road/templates/project/work/.gitkeep": "",
     "specy_road/schemas/archive.schema.json": "{}",
+    "specy_road/schemas/handoff.schema.json": "{}",
+    "specy_road/schemas/review-record.schema.json": "{}",
 }
 
 

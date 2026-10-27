@@ -55,6 +55,8 @@ _FORWARDED = {
     "brainstorm": "brainstorm_cli.py",
     "why-blocked": "roadmap_query_cli.py",
     "list-gates": "roadmap_query_cli.py",
+    "handoff": "review_cli.py",
+    "review": "review_cli.py",
 }
 
 _CRUD_COMMANDS = (
