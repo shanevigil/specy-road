@@ -1,10 +1,25 @@
 # Dev workflow: executing roadmap items
 
-This document is for the developer (or coding agent) who picks up `Agentic-led` work,
-implements it against contracts, and merges back.
+## Agent quickstart
 
-For end-user install + everyday usage see [install-and-usage.md](install-and-usage.md). For toolkit-contributor topics (pre-commit hook, IDE stubs, branching/tagging/release) see [contributor-guide.md](contributor-guide.md).
-For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
+**Use this doc when:** you are the developer or coding agent picking up, implementing, reviewing or finishing one roadmap leaf.
+**Not for:** authoring the roadmap ([`pm-workflow.md`](pm-workflow.md)), the registry and branch contract itself ([`git-workflow.md`](git-workflow.md)), or install and toolkit-contributor topics ([`install-and-usage.md`](install-and-usage.md), [`contributor-guide.md`](contributor-guide.md)).
+
+**Must know without reading on:**
+- Run every command from the repo root on a clean tree. `specy-road do-next-available-task` syncs the integration branch, commits and pushes `roadmap/registry.yaml` there, then creates `feature/rm-<codename>` (`--interactive` to pick by number, `--under <NODE_ID>` to scope); undo with `specy-road abort-task-pickup`.
+- Finish in this order: write `work/implementation-summary-<NODE_ID>.md`; reviewers use `specy-road review-packet <NODE_ID>` and `specy-road review record`; then `specy-road mark-implementation-reviewed` (`--yes` never creates a review); then `specy-road finish-this-task` (`--push` optional; `--on-complete pr|merge|auto`).
+- Pickup is leaf-only, in outline order after `status: Blocked` and MR-rejected; `execution_milestone` is advisory and only a `type: gate` dependency holds work back.
+- Never hand-edit `roadmap/registry.yaml`, and never fill a missing `shared/` contract yourself: that is a planning gap — stop and flag it to the PM.
+
+**Read further for:**
+- every terminal and slash command, and what pickup commits, pushes and refuses → "Quick reference", "Agents and registration", "Your role in the system"
+- automated and manual start, rollup branches, `grind-session`, abort, finish steps → "The task loop"
+- `feature/rm-<codename>` naming, fixes after merge, reopening a node → "Branch model", "After merge: fix, refactor, or hardening", "Re-doing or re-opening a roadmap item"
+- what CI gates versus what a review session does → "Senior or maintainer review", "CI gates vs optional session review", "Optional: quality and compliance passes"
+- how to read the brief and prompt → "Reading the task's planning sheet"
+- parallel agents, worktrees, hard dependencies → "Multi-agent coordination"
+
+**Related:** [`git-workflow.md`](git-workflow.md), [`orchestration.md`](orchestration.md), [`grind-session.md`](grind-session.md), [`roadmap-authoring.md`](roadmap-authoring.md).
 
 Canonical model: **execute leaves, contextualize with ancestors, roll up progress upward**.
 
@@ -61,8 +76,6 @@ specy-road grind-session --until M7.6 --on-complete merge --implement-mode hook 
 
 See **`specy-road do-next-available-task --help`** and the IDE stub from **`specyrd init`** (e.g. **`/specyrd-do-next-task`**).
 
----
-
 ## Your role in the system
 
 | You own | You do not touch |
@@ -75,8 +88,6 @@ If you reach an `agentic` task whose planning sheet leaves what to build open, o
 whose `## References` cite a contract that does not resolve to a real file —
 **stop**. Flag it to the PM. A missing contract is a planning gap, not something
 to fill during implementation.
-
----
 
 ## The task loop
 
@@ -94,17 +105,10 @@ Your working tree must be **clean**. The tool runs `git fetch`, checks out the i
 
 Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_approval`** reminds the CLI that MRs need human approval; align with your team’s process before merging.
 
-**Terminal:**
-
 ```bash
 specy-road do-next-available-task
 # optional: specy-road do-next-available-task --base dev --remote origin --interactive
-```
-
-**IDE slash command** (after `specyrd init --ai <ide> --role dev`):
-
-```text
-/specyrd-do-next-task
+# IDE slash command (after `specyrd init --ai <ide> --role dev`): /specyrd-do-next-task
 ```
 
 Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
@@ -149,17 +153,10 @@ The command **`git fetch`**es, verifies your branch matches **`roadmap/registry.
 
 If the registry row is already gone after syncing (someone else cleaned up), the command exits with an error; remove the local branch and work files manually. For the opposite case — a row whose **`feature/rm-*`** branch no longer exists anywhere, so `abort-task-pickup` cannot run at all — use **`specy-road registry-prune`** to list such rows and **`--remove <CODENAME>`** to drop one (it commits on the integration branch and pushes). See [git-workflow.md](git-workflow.md).
 
-**Terminal:**
-
 ```bash
 specy-road abort-task-pickup
 # optional: specy-road abort-task-pickup --base dev --remote origin --force
-```
-
-**IDE slash command** (after `specyrd init --ai <ide> --role dev`):
-
-```text
-/specyrd-abort-task-pickup
+# IDE slash command (after `specyrd init --ai <ide> --role dev`): /specyrd-abort-task-pickup
 ```
 
 ### Start: manual path
@@ -242,8 +239,6 @@ specy-road finish-this-task
 
 Merge when CI is green and your team’s MR policy is satisfied (or after a successful local integration merge when your workflow uses **`merge`** / **`auto`**).
 
----
-
 ## Branch model
 
 One branch per roadmap **leaf execution target**. Feature branches are created **after** registering on the integration branch; they merge back through a PR/MR to that same integration branch.
@@ -265,8 +260,6 @@ branches from ad-hoc `fix/<slug>` or `feature/<slug>` branches.
 Non-roadmap work (hotfixes, tooling) uses `fix/<slug>` without the `rm-` prefix and
 does not touch `registry.yaml`.
 
----
-
 ## After merge: fix, refactor, or hardening
 
 Merged work can still need correction (bugs), standards cleanup, or a maintainer-led
@@ -285,8 +278,6 @@ registration on the integration branch per [git-workflow.md](git-workflow.md).
 Git mechanics for “undoing” a merge on a shared branch are covered in
 [git-workflow.md](git-workflow.md#correcting-merged-work-revert-vs-follow-up) (revert PR
 vs follow-up branch — avoid `git reset --force` on shared history).
-
----
 
 ## Re-doing or re-opening a roadmap item
 
@@ -312,8 +303,6 @@ rollup branch is proven merged (`specy-road reconcile-milestone-status`). If a s
 `edit-node` command; it never fails, because the rollup is what every reader *and*
 dependency satisfaction use. `--no-phase-status-warn` is deprecated and ignored.
 
----
-
 ## Senior or maintainer review
 
 Code review, refactors, and hardening PRs are a normal **human** layer on top of
@@ -321,8 +310,6 @@ contracts and CI. They are **not** a substitute for green CI or a second “PM s
 gate — see [pm-workflow.md](pm-workflow.md). A maintainer may open a `fix/` branch after
 merge to bring code up to standards without a new roadmap node; that stays lightweight
 and out of `registry.yaml` unless the PM tracks it.
-
----
 
 ## CI gates vs optional session review
 
@@ -353,15 +340,11 @@ flowchart LR
   session --> followup[Optional_follow_up_PRs]
 ```
 
----
-
 ## Optional: quality and compliance passes
 
 For generic review, cleanup, security and audit passes use your coding harness's built-in
 skills; specy-road's roadmap-specific review contract (`review-packet`, `review record`, the
 review gate) is documented in [orchestration.md](orchestration.md).
-
----
 
 ## Reading the task's planning sheet
 
@@ -381,8 +364,6 @@ explicit **prohibitions**; if yours does not, the task is still implementable,
 but say so when you finish.
 
 **Upstream context comes pre-inlined.** Read `## 6. Dependency context (intent of upstream work)` in the brief for each effective dependency's `## Intent` block (or `## Why this gate exists` for upstream gates). You should rarely need to open a dependency's planning sheet directly — the brief already carries what the PM declared as that dep's intent.
-
----
 
 ## Multi-agent coordination
 
