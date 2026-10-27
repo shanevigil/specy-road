@@ -84,6 +84,17 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   count; a present signature is verified regardless, so a tampered record
   never counts. `mark-implementation-reviewed --sign-key` signs the interactive
   human approval. Needs OpenSSH 8.0+; no new Python dependency.
+- **Worker records** (slice 7a, design:
+  [`docs/design-notes/v0-3-1-worker-orchestration.md`](docs/design-notes/v0-3-1-worker-orchestration.md)):
+  `work/.workers/<id>.yaml` + `<id>.events.jsonl` + `ops/` — one record per
+  launched worker (harness, model, worktree, native session id, state,
+  single-writer lease, instruction epoch, checkpoint), an append-only
+  sequenced event log, and an idempotency outbox, validated against
+  package-owned `worker-record` / `worker-event` schemas
+  (`specy_road/worker_state.py`). Roster entries gain `harness`
+  (`claude-code|codex|cursor|generic`) and `billing_route`; policy gains
+  `max_workers` (default 2). The `specy-road worker` commands that use them
+  follow.
 - Node fields `sensitivity` (default `public`) and `executor_eligibility`
   (default `any`, else a roster `class` tag), settable with `add-node` and
   `edit-node --set`. **Existing adopters:** run `specy-road refresh-schemas`

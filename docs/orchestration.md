@@ -65,8 +65,8 @@ substitutions: []
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
 Roster entries also accept `profile`, `channels`, `may_process`,
-`subagent_family_lock`, and `preflight`. They are validated now and used by later
-slices (prompt generation, data-sensitivity routing).
+`subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy
+also takes `max_workers` (routing, prompts, and `worker delegate` use them).
 
 **Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md), scaffolded into
 your repo by `init project`, is the

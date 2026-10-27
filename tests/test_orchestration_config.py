@@ -155,3 +155,16 @@ def test_effective_config_reads_a_git_ref(tmp_path: Path) -> None:
     git("rm", "-qf", "roadmap/orchestration.yaml")
     git("commit", "-qm", "drop")
     assert oc.effective_config(tmp_path, "dev")[0]["policy"] == oc.DEFAULT_POLICY
+
+
+def test_roster_harness_and_policy_max_workers(tmp_path: Path) -> None:
+    _write(tmp_path, "version: 1\nroster:\n  - {id: opus, family: anthropic, harness: claude-code, billing_route: claude_subscription}\n"
+                     "policy: {max_workers: 3}\n")
+    cfg, err = oc.effective_config(tmp_path)
+    assert err is None and cfg["policy"]["max_workers"] == 3
+    assert oc.roster_entry(cfg, "opus")["harness"] == "claude-code"
+    assert oc.effective_config(tmp_path / "none")[0]["policy"]["max_workers"] == 2
+    _write(tmp_path, "version: 1\nroster:\n  - {id: opus, family: anthropic, harness: copilot}\n")
+    assert "harness" in (oc.load_orchestration_config(tmp_path)[1] or "")
+    _write(tmp_path, "version: 1\npolicy: {max_workers: 0}\n")
+    assert "max_workers" in (oc.load_orchestration_config(tmp_path)[1] or "")

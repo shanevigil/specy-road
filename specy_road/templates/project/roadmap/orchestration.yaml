@@ -9,6 +9,7 @@ version: 1
 #   - id: claude-opus-5.5
 #     family: anthropic
 #     roles: [reviewer, executor]
+#     harness: claude-code               # what `worker delegate` launches it on
 #     public_key: ssh-ed25519 AAAA...   # for signed_reviews
 roster:
   - id: human
@@ -24,6 +25,8 @@ policy:
   # true: a review counts only when signed with the reviewer's key and the
   # roster entry has its public_key (ssh-keygen -Y; see docs/orchestration.md).
   signed_reviews: false
+  # Most workers `specy-road worker delegate` keeps running at once.
+  max_workers: 2
 # Recorded decisions to let a named substitute review while the usual reviewer
 # is unavailable, e.g.:
 #   - slot: reviewer-openai

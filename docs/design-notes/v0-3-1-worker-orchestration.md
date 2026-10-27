@@ -137,8 +137,8 @@ review gate stays the only completion authority.
 
 ## Decisions
 
-**D1 (open) — control surface: CLI first, MCP later.** The report leads with an
-MCP server. Every harness in scope (Claude Code, Codex, Cursor, VS Code chats)
+**D1 (decided 2026-10-27: CLI only; no MCP server for now) — control
+surface.** The report leads with an MCP server. Every harness in scope (Claude Code, Codex, Cursor, VS Code chats)
 already runs shell commands, which is how the whole toolkit is driven today,
 and the maintainer's standing rule is that the CLI never talks to a model API
 itself. Recommendation: ship the orchestrator-facing surface as
@@ -148,7 +148,7 @@ optional extra (`pip install specy-road[mcp]`), useful mainly for hosts that
 cannot run a shell. The report's own first experiment (prove the tool call is
 visible) holds for either surface.
 
-**D2 (open) — adapter order and depth.** The report puts Codex app-server
+**D2 (decided 2026-10-27 as recommended) — adapter order and depth.** The report puts Codex app-server
 first because it is the richest protocol. For 0.3.1 the recommendation is the
 **documented one-shot CLIs with resume**, one adapter per harness, in this
 order: `claude-code` (`claude -p`, JSON output, `--resume`), `codex`
@@ -160,7 +160,7 @@ behind the same protocol, and are what unlock interrupt/steer. The exact flags
 are being verified against current docs before any adapter is written; a
 profile's `access.cli` string stays the fallback for an unknown harness.
 
-**D3 — no daemon.** Both reports want a resident broker because an MCP
+**D3 (decided 2026-10-27 as recommended) — no daemon.** Both reports want a resident broker because an MCP
 stdio server dies with its host chat. With a CLI surface (D1) nothing has to
 outlive the call except the worker itself, so the "supervisor" is the CLI
 plus one **detached wrapper process per worker** (`start_new_session`, no
