@@ -194,15 +194,18 @@ executor role, `max_workers: 2`. Claim two leaves. From the coordinator chat
    (i) `kill -9 <wrapper pid>` mid-turn. Nothing is recorded at that moment.
    Before any other `worker` command, watch for 60 s: is the harness pid still
    alive, does `<id>.log` grow, does `git status` in the worktree change?
-   Then `kill -- -<pgid>` any survivor, and run `worker delegate <ID>`
-   again: `_wrapper_gone` appends an `error` event (source `system`, "wrapper
-   pid <pid> is gone without recording an exit; marked failed"), the old
-   record is `failed`, and a new worker id is launched. Pass: those events
-   and states. An orphaned harness that kept running or writing is
-   PASS-WITH-NOTE; copy the note into
-   [orchestration-workers.md](orchestration-workers.md) "Checks that need a
-   real installation" (`worker terminate` cannot reach it: the record's pid
-   is cleared).
+   While the harness survives, `worker delegate <ID>` must **not** launch a
+   second worker: `_wrapper_gone` appends one `error` event (source `system`,
+   "wrapper pid <pid> is gone but harness pid <hpid> (group <pgid>) is still
+   alive; the leaf stays owned"), flags the record
+   `wrapper_gone_harness_alive`, and `delegate` returns the same worker id;
+   `worker terminate <W>` then signals the recorded group and confirms it is
+   gone (state `terminated`, `ps -g <pgid>` empty). Pass: that event, the
+   flag, no second launch, and the group gone after `terminate`. Alternative
+   path: `kill -- -<pgid>` by hand, then `worker delegate <ID>`:
+   `_wrapper_gone` appends "wrapper pid <pid> is gone without recording an
+   exit; marked failed", the old record is `failed`, and a new worker id is
+   launched.
    (ii) `kill -9 <harness pid>` while the wrapper lives. `proc.wait()`
    returns `-9` and `_finish` appends an `error` event (source `worker`,
    "exit -9; see <id>.log", `detail: {exit: -9, ready: …}`) and sets the

@@ -15,7 +15,7 @@ from typing import Any
 
 from specy_road.git_subprocess import git_text
 from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_runner import pid_alive
+from specy_road.worker_process import process_alive, require_branch, wrapper_gone
 from specy_road.worker_state import (
     FLAG_EXTERNAL,
     TERMINAL_STATES,
@@ -56,13 +56,10 @@ def _handoff_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, l
     if rec.lease.get("holder") == "human":
         return rec, adapter_for(rec.harness).human_resume(rec.provider_session_id or "", Path(rec.worktree))
     require_writer(rec)
-    if rec.state in ("running", "starting") and not pid_alive(rec.pid, rec.worker_id):
-        append_event(repo_root, rec, "error", source="system",
-                     summary=f"wrapper pid {rec.pid or '-'} is gone without recording an exit; marked failed")
-        set_state(repo_root, rec, "failed", pid=None)
+    wrapper_gone(repo_root, rec)   # a crashed turn is closed here; a surviving harness keeps it running
     if rec.state in CLOSED_STATES:
         raise WorkerError(f"{rec.worker_id} is {rec.state}; nothing to hand off")
-    if pid_alive(rec.pid, rec.worker_id):
+    if process_alive(rec, repo_root):
         raise WorkerError(f"{rec.worker_id} is running (pid {rec.pid}); wait for idle or terminate first")
     adapter = adapter_for(rec.harness)
     if not adapter.caps.handoff or not rec.provider_session_id:
@@ -116,6 +113,7 @@ def reclaim(repo_root: Path, worker_id: str, note: str = "") -> tuple[WorkerReco
 def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[WorkerRecord, dict[str, Any]]:
     if rec.lease.get("holder") != "human":
         raise WorkerError(f"{rec.worker_id} is not handed off (lease: {rec.lease.get('holder')})")
+    require_branch(rec)   # the human may have switched branches; reclaim on the wrong one is refused (B12)
     cp = rec.checkpoint or {}
     prompts = _hook_prompts(repo_root, rec, int(cp.get("interventions_seen") or 0))
     stat = _diff_stat(Path(rec.worktree), cp.get("git_head"))

@@ -17,19 +17,21 @@ from specy_road import worker_state as ws
 
 FAKE = '''
 import json, sys
-lines = json.loads(open(sys.argv[1]).read())["lines"]
-for d in lines:
+spec = json.loads(open(sys.argv[1]).read())
+if spec.get("write"):
+    open(spec["write"]["path"], "w").write(spec["write"]["text"])
+for d in spec["lines"]:
     print(json.dumps(d), flush=True)
 sys.exit(int(open(sys.argv[1]).read().count("FAIL") > 0))
 '''
 
 
-def _fake(tmp_path: Path, lines: list[dict], *, fail: bool = False) -> tuple[Path, str]:
-    """A harness stand-in: prints the given JSON lines; the prompt file carries them."""
+def _fake(tmp_path: Path, lines: list[dict], *, fail: bool = False, write: dict | None = None) -> tuple[Path, str]:
+    """A harness stand-in: prints the given JSON lines; the prompt file carries them (and a file to write)."""
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
     prompt = tmp_path / "prompt.json"
-    prompt.write_text(json.dumps({"lines": lines, "note": "FAIL" if fail else ""}))
+    prompt.write_text(json.dumps({"lines": lines, "note": "FAIL" if fail else "", "write": write}))
     return prompt, f"{sys.executable} {script} {{prompt}}"
 
 
@@ -119,13 +121,14 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
 
 def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
-    prompt, cli = _fake(tmp_path, [{"type": "thread.started", "thread_id": "t-9"}, {"type": "turn.completed"}])
-    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    from tests.review_repo_helpers import git
     d = ws.reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
-    from tests.review_repo_helpers import git
-    (d / "READY-sol.md").write_text(f"---\nnode_id: M1.1\nagent: sol\nbranch: feature/rm-thing\ncommit: {git(repo, 'rev-parse', 'HEAD')}\n"
-                                    f"base: {git(repo, 'rev-parse', 'HEAD')}\nchanged_paths: []\nverify: []\n---\n")
+    ready = {"path": str(d / "READY-sol.md"),      # written by the harness during the turn (review round 6, B3)
+             "text": f"---\nnode_id: M1.1\nagent: sol\nbranch: feature/rm-thing\ncommit: {git(repo, 'rev-parse', 'HEAD')}\n"
+                     f"base: {git(repo, 'rev-parse', 'HEAD')}\nchanged_paths: []\nverify: []\n---\n"}
+    prompt, cli = _fake(tmp_path, [{"type": "thread.started", "thread_id": "t-9"}, {"type": "turn.completed"}], write=ready)
+    rec = ws.create_record(repo, "M1.1", "codex", "sol", repo)
     wr.run(repo, rec.worker_id, wa.adapter_for("codex").launch(prompt, repo, "sol", cli))
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.state == "completed" and rec.provider_session_id == "t-9"

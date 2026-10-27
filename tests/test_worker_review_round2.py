@@ -18,7 +18,6 @@ import ipaddress
 import json
 import os
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -30,6 +29,7 @@ from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
+from specy_road import worker_process as wp
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import brainstorm_research as br
@@ -74,16 +74,19 @@ def test_a_ready_from_the_previous_turn_does_not_complete_the_next(tmp_path: Pat
     d = reviews_root(repo) / "M1.1"
     d.mkdir(parents=True)
     head = git(repo, "rev-parse", "HEAD")
-    (d / "READY-old.md").write_text(f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\n"
-                                    f"base: {head}\nchanged_paths: []\nverify: []\n---\n")
+    text = (f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\n"
+            f"base: {head}\nchanged_paths: []\nverify: []\n---\n")
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    spec = tmp_path / "ok.json"
-    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
-    launch = wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")
-    assert wr.run(repo, rec.worker_id, launch) == 0
+    lines = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+    writes = tmp_path / "writes.json"       # this turn's harness writes the READY
+    writes.write_text(json.dumps({"lines": lines, "write": {"path": str(d / "READY-old.md"), "text": text}}))
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(
+        writes, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
     assert ws.load_record(repo, rec.worker_id).state == "completed"
-    time.sleep(1.1)
-    wr.run(repo, rec.worker_id, launch, resumed=True)      # same READY, older than this turn
+    quiet = tmp_path / "quiet.json"         # the next turn writes nothing: the READY is the checkpoint's
+    quiet.write_text(json.dumps({"lines": lines}))
+    wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(
+        quiet, repo, "opus", f"{sys.executable} {script} {{prompt}}"), resumed=True)
     assert ws.load_record(repo, rec.worker_id).state == "idle"
 
 
@@ -113,7 +116,8 @@ def test_tree_only_commands_ignore_sessions_in_other_worktrees(tmp_path: Path) -
 
 def test_a_worker_does_not_count_itself(tmp_path: Path, monkeypatch) -> None:
     repo = make_review_repo(tmp_path)
-    monkeypatch.setattr(wr, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001")
+    # The guard matches the wrapper's resolved repo root as a whole argument (review round 6, B11).
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: f"python -m specy_road.worker_runner {repo.resolve()} w-0001")
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     ws.set_state(repo, rec, "running", pid=os.getpid())
     assert not tg.decide(repo, "git checkout dev", agent="me").allowed

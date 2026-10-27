@@ -20,6 +20,8 @@ import json, sys, time
 spec = json.loads(open(sys.argv[1]).read()) if sys.argv[1].endswith(".json") else {"lines": [
     {"type": "system", "subtype": "init", "session_id": "s-" + str(len(sys.argv)), "model": "fake"},
     {"type": "result", "subtype": "success", "result": "done", "session_id": "s-" + str(len(sys.argv))}]}
+if spec.get("write"):                       # a READY written during the turn, as a real harness would
+    open(spec["write"]["path"], "w").write(spec["write"]["text"])
 for d in spec["lines"]:
     print(json.dumps(d), flush=True)
 time.sleep(spec.get("sleep", 0))

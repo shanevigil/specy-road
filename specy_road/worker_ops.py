@@ -15,8 +15,6 @@ a linked worktree under ``work/.worktrees/<codename>``.
 from __future__ import annotations
 
 import hashlib
-import os
-import signal
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,7 +31,8 @@ from specy_road.orchestration_pinned import pinned_config
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_runner import pid_alive, pid_verified, spawn
+from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
+from specy_road.worker_runner import spawn
 from specy_road.worker_state import (
     TERMINAL_STATES,
     WorkerError,
@@ -207,13 +206,11 @@ def _delegate_locked(repo_root: Path, node_id: str, model: str, *, harness: str 
 
 
 def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
-    """A record that says ``running``/``starting`` with no live wrapper: close it so the leaf is free again."""
-    if rec.state not in ("running", "starting") or pid_alive(rec.pid, rec.worker_id):
-        return False
-    append_event(repo_root, rec, "error", source="system",
-                 summary=f"wrapper pid {rec.pid or '-'} is gone without recording an exit; marked failed")
-    set_state(repo_root, rec, "failed", pid=None)
-    return True
+    """A record that says ``running``/``starting`` with no live wrapper: closed so the leaf is free again.
+
+    Not while the harness or its process group survives (worker_process.wrapper_gone).
+    """
+    return wrapper_gone(repo_root, rec)
 
 
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRecord:
@@ -221,9 +218,10 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     _wrapper_gone(repo_root, rec)   # a crashed turn is a failure to record, not a worker to resume
     if rec.state in CLOSED_STATES:
         raise WorkerError(f"{rec.worker_id} is {rec.state}; delegate again instead")
-    if pid_alive(rec.pid, rec.worker_id):
+    if process_alive(rec, repo_root):
         raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a "
                           "live turn — wait for it to end, or terminate it")
+    require_branch(rec)   # the worktree must still be on the worker's branch (review round 6, B12)
     adapter = adapter_for(rec.harness)
     if not adapter.caps.resume:
         raise Unsupported(f"unsupported by {rec.harness}: resume")
@@ -273,16 +271,11 @@ def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:
     summary = "terminated by the coordinator"
     if rec.lease.get("holder") == "native":
         summary = "record closed; the adopted native session was not signalled (observe-only lease)"
-    elif pid_alive(rec.pid, rec.worker_id):
-        if not pid_verified(rec.pid, rec.worker_id):
-            raise WorkerError(f"pid {rec.pid} cannot be verified as {rec.worker_id}'s wrapper (ps unavailable or "
-                              "another command line); refusing to signal it")
+    elif process_alive(rec, repo_root):
         # The wrapper is a session leader (start_new_session), so its process
-        # group holds the harness and everything the harness spawned.
-        try:
-            os.killpg(os.getpgid(int(rec.pid)), signal.SIGTERM)
-        except OSError as e:
-            raise WorkerError(f"cannot signal pid {rec.pid}: {e}") from None
+        # group holds the harness and everything the harness spawned; the
+        # group is signalled and confirmed gone even when the wrapper itself died.
+        kill_group(rec, repo_root)
     set_state(repo_root, rec, "terminated", pid=None)
     append_event(repo_root, rec, "terminated", source="orchestrator", authority="orchestrator", summary=summary)
     return rec

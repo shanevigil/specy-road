@@ -86,8 +86,10 @@ def test_a_ready_for_an_older_commit_does_not_complete(tmp_path: Path) -> None:
     os.utime(ready, None)
     assert wr.run(repo, rec.worker_id, launch) == 0
     assert ws.load_record(repo, rec.worker_id).state == "idle"
-    _ready(repo, git(repo, "rev-parse", "HEAD"))
-    wr.run(repo, rec.worker_id, launch, resumed=True)
+    head = git(repo, "rev-parse", "HEAD")
+    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}],
+                                "write": {"path": str(ready), "text": ready.read_text().replace(old, head)}}))
+    wr.run(repo, rec.worker_id, launch, resumed=True)      # the turn rewrites the READY at HEAD
     assert ws.load_record(repo, rec.worker_id).state == "completed"
 
 

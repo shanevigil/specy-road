@@ -23,6 +23,7 @@ from tests.test_worker_cli import _cli, _repo, _wait
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
+from specy_road import worker_process as wp
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.review_files import reviews_root
@@ -122,18 +123,20 @@ def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) 
     ready = d / "READY-old.md"
     ready.write_text(f"---\nnode_id: M1.1\nagent: old\nbranch: feature/rm-thing\ncommit: {head}\nbase: {head}\n"
                      "changed_paths: []\nverify: []\n---\n")
-    old = time.time() - 600
-    os.utime(ready, (old, old))
-    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    spec = tmp_path / "ok.json"
-    spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
-    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
-    assert ws.load_record(repo, rec.worker_id).state == "idle"      # not completed on a stale READY
-    now = time.time() + 60   # ahead of the turn start under any load: freshness, not a race with the clock
+    now = time.time() + 60   # even a future mtime is not freshness: the checkpoint is by content, not clock
     os.utime(ready, (now, now))
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    lines = [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]
+    spec = tmp_path / "ok.json"
+    spec.write_text(json.dumps({"lines": lines}))
+    assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
+    assert ws.load_record(repo, rec.worker_id).state == "idle"      # not completed on an older attempt's READY
     rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
     rec2 = ws.mutate(repo, rec2, lambda r: setattr(r, "node_id", "M1.1"))
-    wr.run(repo, rec2.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}"))
+    spec2 = tmp_path / "writes.json"       # this worker's harness writes its own READY during the turn
+    spec2.write_text(json.dumps({"lines": lines, "write": {"path": str(d / "READY-new.md"),
+                                                           "text": ready.read_text().replace("agent: old", "agent: new")}}))
+    wr.run(repo, rec2.worker_id, wa.adapter_for("claude-code").launch(spec2, repo, "opus", f"{sys.executable} {script} {{prompt}}"))
     assert ws.load_record(repo, rec2.worker_id).state == "completed"
 
 
@@ -170,7 +173,7 @@ def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
 def test_pid_alive_ignores_a_reused_pid(monkeypatch) -> None:
     me = os.getpid()                       # alive, but not a wrapper
     assert not wr.pid_alive(me)
-    monkeypatch.setattr(wr, "_cmdline", lambda pid: f"python -m specy_road.worker_runner /r w-0001")
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001")
     assert wr.pid_alive(me)
-    monkeypatch.setattr(wr, "_cmdline", lambda pid: None)   # ps unavailable: fall back to liveness
+    monkeypatch.setattr(wp, "_cmdline", lambda pid: None)   # ps unavailable: fall back to liveness
     assert wr.pid_alive(me)
