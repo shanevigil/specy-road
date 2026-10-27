@@ -345,21 +345,24 @@ roster from the integration branch, as the gate does): it denies a command that 
 move or discard another session's work — `stash`, `reset --hard`, branch
 switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rebase`,
 `commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`
-(`commit --only <paths>`) — only while another session is live (`--always`
-to deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`,
-`eval` and aliases too; a shell function, variable command name or
-interpreter one-liner that mentions git is refused, not waved through.
+(`commit --only <paths>`), a commit/add pathspec that is a tree root, `..`,
+glob, `:` magic, absolute path or `--pathspec-from-file` (a plain directory
+such as `src/` passes) — only while another session is live (`--always` to
+deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`,
+`eval` and aliases too; what the guard cannot see is refused, not waved
+through: a shell function, variable command name or git verb, `GIT_CONFIG*`
+in the environment, `--config-env=alias.*`, an interpreter one-liner.
 Working-tree commands count only sessions in the caller's worktree (`git -C`,
 `stash`, `rebase`, force-push count every session). The adapters (`--format`)
-know each harness's stdin shape; `docs/optional-ai-tooling-patterns.md` wires them.
+know each harness's stdin shape; `docs/optional-ai-tooling-patterns.md` wires
+them. A non-denial never sets a harness permission decision (Claude Code gets
+context only; Codex nothing), so the harness's own prompt policy still applies.
 
-Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree):
-branch, worktree, paths, expiry. The id is `$SPECY_ROAD_AGENT_ID`, else
-`<user>-s<POSIX session id>`, shared by every command from one terminal or
-harness process, so `start`, `touch`, `end` and the hook name one record;
-`--agent` names it; `touch` keeps the paths. A crashed record ages out.
-`handoff status` lists live sessions first, `do-next-available-task` warns on
-touch-zone overlap, and `session check` refuses a commit on another live session's paths.
+Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry.
+The id is `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one
+terminal or harness process, so `start`, `touch`, `end` and the hook name one record; `--agent` names it;
+`touch` keeps the paths. A crashed record ages out. `handoff status` lists live sessions first,
+`do-next-available-task` warns on touch-zone overlap, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout
 
@@ -374,8 +377,7 @@ scaffold `AGENTS.md` repeats these rules; [design-notes/agent-guidance-and-share
   push.
 - Anything that checks out branches (pickup, finish, grind) runs in its own
   clone or worktree: `git worktree add ../<repo>-<leaf>-<agent> -b <branch> <base>`.
-- Run one fresh session per leaf. Context carried over from a previous leaf
-  causes scope bleed.
+- Run one fresh session per leaf. Context carried over from a previous leaf causes scope bleed.
 - Announce yourself with `specy-road session start --path …` before the first
   edit, and check `specy-road session list`. Before any git write, `git status`
   and `git worktree list`: files you did not create belong to another session. Edit only your own section of a file

@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from specy_road import tool_call_guard_shapes as shapes
 from specy_road.git_subprocess import git_text
 from specy_road.session_presence import list_sessions
 
@@ -43,7 +44,7 @@ _WRAPPER_FLAG_ARG = {"-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-n",
                      "--max-procs", "--delimiter", "--arg-file", "--replace", "--signal", "--kill-after"}
 _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 #: Words that merely wrap the real command: ``command git …``, ``env X=1 git …``.
-_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "eval", "timeout", "doas", "ionice"}
+_WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "timeout", "doas", "ionice"}
 #: Wrappers whose first positional is not the command (``timeout 10 git …``).
 _WRAPPER_LEADING_ARG = {"timeout"}
 #: ``env -S "git stash"`` splits its argument into a command: opaque to a token parser.
@@ -55,10 +56,9 @@ _NAMES_A_TREE = re.compile(r"(^|\s)(-C\S*|--work-tree(=|\s)|--git-dir(=|\s))")
 _GIT_WORD = re.compile(r"\bgit\b")
 _FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
 _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
-#: ``git commit`` flags that take a value, so the value is not mistaken for a pathspec.
-_COMMIT_VALUE_FLAGS = {"-m", "-F", "-C", "-c", "-t", "--message", "--file", "--author", "--date",
-                       "--reuse-message", "--reedit-message", "--template", "--trailer", "--fixup", "--squash"}
-_SUBSTITUTION = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+#: ``$(…)``, ``<(…)``, ``>(…)`` and backticks all run their body as a command.
+_SUBSTITUTION = re.compile(r"[$<>]\(([^()]*)\)|`([^`]*)`")
+_UNBALANCED = re.compile(r"[$<>]\(")
 _KNOWN_GIT = {"add", "am", "apply", "archive", "bisect", "blame", "branch", "bundle", "cat-file", "checkout",
               "cherry-pick", "clean", "clone", "commit", "config", "describe", "diff", "fetch", "format-patch",
               "gc", "grep", "init", "log", "ls-files", "ls-remote", "merge", "merge-base", "mv", "notes", "pull",
@@ -196,7 +196,7 @@ def classify_segment(segment: str) -> str | None:
         if not hit:
             break
         rest = _SUBSTITUTION.sub(" x ", rest)
-    if "$(" in rest and _GIT_WORD.search(segment):
+    if _UNBALANCED.search(rest) and _GIT_WORD.search(segment):
         return "unbalanced command substitution mentioning git; rewrite it plainly"
     opaque = _opaque(segment)
     if opaque:
@@ -207,6 +207,8 @@ def classify_segment(segment: str) -> str | None:
         return ("could not parse this shell command and it mentions git; rewrite it plainly"
                 if re.search(r"\bgit\b", segment) else None)
     inner = _unwrap(tokens)
+    if inner and inner[0] == "eval":                 # eval joins its arguments and re-parses: `eval "git stash"`
+        return shapes.eval_opaque(inner[1:], segment) or classify(" ".join(inner[1:]))
     if inner and inner[0].rsplit("/", 1)[-1] in _SHELLS:
         for j, t in enumerate(inner[1:], 1):
             if t in ("-c", "-lc", "-ic", "-ec", "-xc") or (t.startswith("-") and "c" in t[1:] and len(t) <= 4):
@@ -216,6 +218,8 @@ def classify_segment(segment: str) -> str | None:
         return None
     if sub == "!":
         return classify(" ".join(args))
+    if shapes.dynamic_verb(sub):
+        return shapes.dynamic_verb(sub)
     flags = _short_flags(args)
     positional = [a for a in args if not a.startswith("-")]
     if sub == "stash":
@@ -237,11 +241,13 @@ def classify_segment(segment: str) -> str | None:
         return "git commit --amend: rewrites a commit another session may already build on"
     if sub == "commit" and ("a" in flags or "--all" in args):
         return "git commit -a: sweeps every session's tracked changes into your commit; stage by explicit path"
-    if sub == "commit" and not _commit_pathspec(args) and "--only" not in args:
+    if sub == "commit" and not shapes.pathspec(args) and "--only" not in args:
         return "git commit without paths: commits whatever another session staged in the shared index; `git commit --only <paths>`"
     if sub == "add" and ("A" in flags or "u" in flags or "--all" in args or "--update" in args
                          or any(p in (".", ":/", "-A") for p in positional)):
         return "git add -A/-u/.: stages other sessions' files; `git add <paths>` only"
+    if sub in ("commit", "add") and shapes.broad_pathspec(sub, args):
+        return shapes.broad_pathspec(sub, args)
     if sub == "push" and ("f" in flags or any(a.startswith("--force") for a in args) or any(p.startswith("+") for p in positional)):
         return "git push --force: rewrites the remote branch other sessions pull from"
     return None
@@ -266,6 +272,8 @@ def _opaque(segment: str) -> str | None:
         raw = shlex.split(segment, comments=True)
     except ValueError:
         raw = []
+    if shapes.env_config(raw):
+        return shapes.env_config(raw)
     if raw and raw[0] == "env" and any(a in _ENV_SPLIT or a.startswith("--split-string=") for a in raw[1:]) \
             and _GIT_WORD.search(segment):
         return "env -S splits its argument into a command the guard cannot see; run the git command plainly"
@@ -275,22 +283,6 @@ def _opaque(segment: str) -> str | None:
             and any(a in ("-c", "-e") for a in head[1:3]):
         return f"{head[0]} one-liner mentions git; the guard cannot follow it — run the git command plainly"
     return None
-
-
-def _commit_pathspec(args: list[str]) -> list[str]:
-    """The paths a ``git commit`` names, skipping the values of ``-m`` and friends."""
-    out, i = [], 0
-    while i < len(args):
-        a = args[i]
-        if a == "--":
-            return [*out, *args[i + 1:]]
-        if a in _COMMIT_VALUE_FLAGS:
-            i += 2
-            continue
-        if not a.startswith("-"):
-            out.append(a)
-        i += 1
-    return out
 
 
 def classify(command: str) -> str | None:
@@ -345,10 +337,11 @@ def _expand_config_aliases(repo_root: Path, command: str) -> str:
 
 
 def decide(repo_root: Path, command: str, *, agent: str | None, always: bool = False) -> Verdict:
-    reason = classify(_expand_config_aliases(repo_root, command))
+    expanded = _expand_config_aliases(repo_root, command)
+    reason = classify(expanded)
     if not reason:
         return Verdict(ALLOW, "", command)
-    tree_only = reason.startswith(_TREE_SCOPED) and not _NAMES_A_TREE.search(command)
+    tree_only = reason.startswith(_TREE_SCOPED) and not _NAMES_A_TREE.search(expanded)
     others = shared_with_others(repo_root, agent, tree_only=tree_only)
     if not others and not always:
         return Verdict(ALLOW, f"(would deny with another live session: {reason})", command)
@@ -361,8 +354,10 @@ from specy_road.tool_call_guard_adapters import ADAPTERS, Adapter  # noqa: E402,
 
 
 def read_payload(text: str) -> dict[str, Any]:
-    """The hook's stdin as a dict. Malformed JSON raises: the guard answers that with a deny, not an allow."""
+    """The hook's stdin as a dict. Malformed or non-object JSON raises: the guard answers that with a deny, not an allow."""
     if not text.strip():
         return {}
     data = json.loads(text)
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        raise ValueError(f"hook payload is JSON {type(data).__name__}, not an object; refusing to guess what runs")
+    return data

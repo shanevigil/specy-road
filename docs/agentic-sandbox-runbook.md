@@ -117,6 +117,15 @@ registry row removed.
    (exit 2) and shows the reason; Cursor shows the deny with the reason;
    Codex denies. `git status` is allowed. End the other session: the same
    command is allowed (no `--always`).
+3. Non-denials must not widen the harness's own permissions. Alone in the
+   tree, ask Claude Code to run `git reset --hard` with the hook installed:
+   the hook prints `additionalContext` only (no `permissionDecision`), and
+   Claude Code still asks as it would without the hook. Same in Cursor: the
+   hook answers `permission: allow` (its schema is allow|deny|ask, and empty
+   output fails open); confirm in a real IDE that this does **not** skip
+   Cursor's normal approval prompt for a command it would otherwise ask
+   about. If it does, the Cursor adapter must answer `ask` instead — record
+   the result here before release (review round 6, B14 and question 4).
 
 ## 4. Models, prompts, plan
 
