@@ -334,6 +334,11 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   records no `verify` entry, as a problem under the node, and `review-packet`
   marks both in its verifier section. The node's state does not change: the
   exit codes are the executor's own claim, and a reviewer judges them.
+- `review-packet` labels each section's provenance — computed from git,
+  asserted by the executor, or run now — and its header names the policy
+  source (integration-branch ref and SHA, or the error that makes the gate
+  fail closed) and the generation date and `HEAD`. The reviewer prompt says
+  executor-asserted sections are claims to weigh against the diff.
 
 
 ## [v0.2.3] - 2026-09-09

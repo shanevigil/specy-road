@@ -19,13 +19,15 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+from datetime import date
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_subprocess import git_stdout, head_sha
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
-from specy_road.review_target import ReviewTarget, resolve_target_or_exit, same_commit
+from specy_road.review_gate import policy_source
+from specy_road.review_target import ReviewTarget, full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 TAIL_LINES = 60
@@ -36,6 +38,13 @@ _BOOKKEEPING_PREFIXES = ("roadmap/", "planning/", "roadmap.md", "roadmap-context
 # ...except the review policy itself. The gate reads it from the integration
 # branch, so a change here does not lower the bar, but a reviewer must see it.
 _POLICY_PATHS = ("roadmap/orchestration.yaml", "roadmap/git-workflow.yaml")
+# Who asserts each section, so a reviewer weighs a claim as a claim.
+ASSERTED = "_Asserted by the executor at the reviewed commit; a claim to check, not evidence._"
+RENDERED = "_Rendered from the roadmap at the working tree._"
+
+
+def _computed(t: ReviewTarget) -> str:
+    return f"_Computed by review-packet from git (`{t.base}...{t.commit}`)._"
 
 
 def _tail(text: str, n: int = TAIL_LINES) -> str:
@@ -48,13 +57,24 @@ def _fence(text: str, lang: str = "") -> list[str]:
     return [f"{ticks}{lang}", text.rstrip(), ticks, ""]
 
 
-def _header(t: ReviewTarget) -> list[str]:
+def _policy_line(root: Path) -> str:
+    ref, err = policy_source(root)
+    if err:
+        return f"- **Policy source:** _{err}_ (the gate fails closed)"
+    if ref is None:
+        return "- **Policy source:** _the working tree (not a git checkout)_"
+    return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
+
+
+def _header(root: Path, t: ReviewTarget) -> list[str]:
     return [
         f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}",
         "",
         f"- **Commit under review:** `{t.commit or 'unknown'}` (`{t.ref}`)",
         f"- **Base:** `{t.base or 'unknown'}` (merge base with `{t.base_ref or '?'}`)",
         f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
+        _policy_line(root),
+        f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
         "",
         "Record your verdict with `specy-road review record "
         f"{t.node_id} --model <id> --verdict approve|block --file <notes.md>`. "
@@ -66,7 +86,7 @@ def _header(t: ReviewTarget) -> list[str]:
 def _summary(root: Path, t: ReviewTarget) -> list[str]:
     """The summary as committed at the reviewed commit, else the working tree's."""
     rel = f"work/implementation-summary-{t.node_id}.md"
-    out = ["## Implementation summary", ""]
+    out = ["## Implementation summary", "", ASSERTED, ""]
     text = git_stdout(["show", f"{t.commit}:{rel}"], root) if t.commit else None
     if text is None and (root / rel).is_file():
         text = (root / rel).read_text(encoding="utf-8")
@@ -80,7 +100,7 @@ def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
     out = git_stdout(["diff", "--name-only", f"{t.base}...{t.commit}"], root) or ""
     paths = [p.strip() for p in out.splitlines() if p.strip()]
     zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
-    lines = ["## Changed paths", ""]
+    lines = ["## Changed paths", "", _computed(t), ""]
     outside = []
     policy = [p for p in paths if p in _POLICY_PATHS]
     for p in paths:
@@ -109,14 +129,14 @@ def _diff(root: Path, t: ReviewTarget) -> list[str]:
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
     diff = git_stdout(["diff", f"{t.base}...{t.commit}"], root) or ""
-    return out + (_fence(diff, "diff") if diff.strip() else ["_(empty)_", ""])
+    return out + [_computed(t), ""] + (_fence(diff, "diff") if diff.strip() else ["_(empty)_", ""])
 
 
 def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
     ready = latest_ready(root, t.node_id)
     if ready is None:
         return ["_(no valid READY hand-off file)_", ""]
-    out = [f"From `{ready.path.name}` (commit `{ready.data['commit']}`):", ""]
+    out = [ASSERTED, "", f"From `{ready.path.name}` (commit `{ready.data['commit']}`):", ""]
     if not same_commit(root, ready.data["commit"], t.commit):
         out += ["**Warning:** the READY commit is not the commit under review.", ""]
     entries = ready.data.get("verify") or []
@@ -132,8 +152,10 @@ def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
 def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
     out: list[str] = []
     here = head_sha(root)
+    if cmds:
+        out += [f"_Run now by review-packet at HEAD `{here}`._", ""]
     if cmds and not same_commit(root, here, t.commit):
-        out += [f"**Warning:** commands ran at HEAD `{here}`, not the commit under review.", ""]
+        out += ["**Warning:** that HEAD is not the commit under review.", ""]
     for cmd in cmds:
         r = subprocess.run(cmd, shell=True, cwd=root, capture_output=True, text=True, check=False)
         out.append(f"### `{cmd}` → exit {r.returncode} (run by review-packet)")
@@ -145,9 +167,10 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     t = resolve_target_or_exit(root, node_id, ref)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
     _paths, changed = _changed(root, t)
+    brief_lines = brief.rstrip().splitlines()
     parts = [
-        _header(t),
-        ["---", ""] + brief.rstrip().splitlines() + ["", "---", ""],
+        _header(root, t),
+        ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         changed,
         _diff(root, t),

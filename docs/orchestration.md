@@ -16,8 +16,7 @@ A session that wrote a change never reviews it, and the coordinator's own
 session is never a reviewer. These rules are recorded in every review record
 and checked by the gate.
 
-Background and the slices still to come:
-[design-notes/v0-3-0-orchestration-slices.md](design-notes/v0-3-0-orchestration-slices.md).
+Background and the slices still to come: [design-notes/v0-3-0-orchestration-slices.md](design-notes/v0-3-0-orchestration-slices.md).
 
 ## The flow
 
@@ -145,8 +144,7 @@ YAML cannot turn `0123456` into an octal number, but quoting keeps other tools
 reading the file from doing so.
 
 A non-zero `exit`, or no `verify` entry at all, is listed as a problem by
-`handoff status` and marked in the packet. It does not block the gate; a
-reviewer judges it.
+`handoff status` and marked in the packet; a reviewer, not the gate, judges it.
 
 ### `PACKET.md` — what a reviewer reads
 
@@ -158,7 +156,9 @@ reviewer judges it.
 3. every changed path since the merge base, with paths outside the touch zones
    flagged (roadmap bookkeeping is exempt);
 4. the diff;
-5. verifier output from the newest READY file, plus any `--verify-cmd` run now.
+5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
+   each section states whether it was computed from git, asserted by the
+   executor, or run now, and the header names the policy source ref and SHA.
 
 The packet reviews the tip of the node's registered branch **without checking
 it out**, so a coordinator in a checkout shared with executors never switches

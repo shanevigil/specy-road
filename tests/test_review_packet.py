@@ -58,6 +58,40 @@ def test_packet_includes_summary_ready_verify_and_run_commands(tmp_path: Path) -
     assert "not the commit under review" not in text
 
 
+def test_packet_header_names_policy_source_and_generation(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    head = git(repo, "rev-parse", "HEAD")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert f"- **Policy source:** `refs/heads/dev` @ `{git(repo, 'rev-parse', 'dev')}`" in text
+    assert f"by review-packet at HEAD `{head}`" in text and "- **Generated:** " in text
+
+
+def test_packet_policy_source_error_is_printed(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "branch", "-m", "dev", "gone")
+    text = rp.build_packet(repo, "M1.1", ref="feature/rm-thing", verify_cmds=[])
+    assert "- **Policy source:** _integration branch 'dev'" in text and "fails closed" in text
+
+
+def test_each_section_states_its_provenance(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    head = git(repo, "rev-parse", "HEAD")
+    (repo / "work").mkdir()
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("Did it.\n")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / "READY-exec.md").write_text(
+        f"---\nnode_id: M1.1\nagent: exec\nbranch: feature/rm-thing\ncommit: {head}\n"
+        f"base: {git(repo, 'rev-parse', 'dev')}\nchanged_paths: [src/a.py]\nverify: [{{cmd: pytest, exit: 0}}]\n---\n"
+    )
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=["echo hi"])
+    assert text.count(rp.RENDERED) == 1
+    assert text.count(rp.ASSERTED) == 2           # summary and READY tails
+    assert text.count("_Computed by review-packet from git (`") == 2   # changed paths and diff
+    assert text.count(f"_Run now by review-packet at HEAD `{head}`._") == 1
+    assert f"## Implementation summary\n\n{rp.ASSERTED}\n\nDid it." in text
+
+
 def test_main_writes_packet_file(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     rp.main(["M1.1", "--repo-root", str(repo)])
