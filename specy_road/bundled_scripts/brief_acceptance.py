@@ -10,9 +10,18 @@ Public surface:
 
 * :func:`acceptance_ids` — ``["A1", ...]`` for one node.
 * :func:`render_goal_and_acceptance` — markdown lines ready to drop into the brief.
+* :func:`warn_acceptance_missing` — ``validate``'s warning for leaves a review
+  cannot attest per criterion.
 """
 
 from __future__ import annotations
+
+import sys
+
+from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.node_kinds import is_pickable
+
+_WARN_CAP = 10
 
 
 def _acceptance(node: dict) -> list[str]:
@@ -39,3 +48,23 @@ def render_goal_and_acceptance(node: dict) -> list[str]:
         out.append(f"- **{aid}:** {text.strip()}")
     out.append("")
     return out
+
+
+def warn_acceptance_missing(nodes: list[dict], gate_on: bool) -> None:
+    """Warn (stderr only) on open actionable leaves without ``acceptance`` while the gate is on.
+
+    Their review records need no per-criterion result, so a review attests
+    nothing criterion by criterion. Without the gate the field is optional.
+    """
+    if not gate_on:
+        return
+    leaves = structural_leaf_ids(nodes)
+    bare = [n["id"] for n in nodes
+            if n.get("id") in leaves and is_pickable(n)
+            and n.get("status") != "Complete" and not _acceptance(n)]
+    for nid in bare[:_WARN_CAP]:
+        print(f"warning: {nid} has no acceptance criteria; with require_implementation_review_before_finish "
+              "on, a review of it cannot attest per-criterion results "
+              f"(set acceptance with: specy-road edit-node {nid} --set acceptance=...)", file=sys.stderr)
+    if len(bare) > _WARN_CAP:
+        print(f"warning: … and {len(bare) - _WARN_CAP} more leaves without acceptance criteria", file=sys.stderr)

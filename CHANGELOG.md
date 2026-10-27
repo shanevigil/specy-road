@@ -344,6 +344,11 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   source (integration-branch ref and SHA, or the error that makes the gate
   fail closed) and the generation date and `HEAD`. The reviewer prompt says
   executor-asserted sections are claims to weigh against the diff.
+- With `require_implementation_review_before_finish` on, `validate` warns on
+  each open actionable leaf that has no `acceptance` (at most ten lines): a
+  review of it records no per-criterion result, so it attests nothing
+  criterion by criterion. The exit code is unchanged; with the gate off it
+  stays silent.
 
 
 ## [v0.2.3] - 2026-09-09
