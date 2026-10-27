@@ -37,7 +37,8 @@ from specy_road.orchestrate_plan import (
     node_sensitivity,
 )
 from specy_road.worker_adapters import has_prompt_placeholder, substitute_prompt
-from specy_road.orchestration_config import effective_config
+from specy_road.orchestration_config import effective_config, substitute_for
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -68,7 +69,8 @@ def _precondition(role: str, node_id: str, t) -> list[str]:
     ]
 
 
-def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None = None) -> list[str]:
+def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None = None,
+                       reviews: Path | None = None) -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
              "defeats the reason you were chosen.", ""] if family_lock else [])
@@ -80,8 +82,9 @@ def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None =
         "1. Read the brief and every file it names before editing.",
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
         "3. Run the verifier and tests the brief names. Commit by explicit path (`git add <paths>`), never `-A` or `-a`.",
-        f"4. Write `work/implementation-summary-{node_id}.md`, then `work/reviews/{node_id}/READY-<your model id>.md` "
-        "from `work/handoff-ready.template.md` (write it into the main checkout by absolute path if you are in a worktree).",
+        f"4. Write `work/implementation-summary-{node_id}.md`, then `READY-<your model id>.md` from "
+        f"`work/handoff-ready.template.md` into `{reviews or f'work/reviews/{node_id}'}` "
+        "(that is the main checkout's directory: use it as written even if you are in a worktree).",
         "5. Stop.",
         "",
         "You may not: update roadmap status, mark review done, merge, push, start another leaf, weaken a verifier, "
@@ -104,7 +107,7 @@ def _reviewer_preamble(node_id: str, model: str) -> list[str]:
         "correctness, regression, boundary (paths outside the touch zones), and test integrity "
         "(weakened or deleted tests). Re-run at least one verify command yourself and list it.",
         "",
-        f"Write your verdict with the front matter in `work/review-record.template.md`, set `commit` to the "
+        "Write your verdict with the front matter in `work/review-record.template.md`, set `commit` to the "
         "packet's **Commit under review**, and file it:",
         f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>`.",
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
@@ -172,7 +175,8 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     entry = next((e for e in config.get("roster") or [] if e.get("id") == model), None)
     if entry is None:
         return "", None, f"{model!r} is not in the roster (roadmap/orchestration.yaml)"
-    if role not in (entry.get("roles") or []):
+    substitute = role == "reviewer" and substitute_for(config, node_id, model) is not None
+    if role not in (entry.get("roles") or []) and not substitute:
         return "", None, f"{model!r} does not have the {role} role in the roster"
     if not is_available(entry):
         return "", None, f"{model!r} is marked unavailable until {entry.get('unavailable_until')} in the roster"
@@ -181,14 +185,18 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     except ReviewTargetError as e:
         if role != "coordinator":
             return "", None, str(e)
-        t = None
+        t = None   # the coordinator's prompt is what picks the leaf up
+    nodes = t.nodes if t else load_roadmap(root)["nodes"]
+    node = t.node if t else next((n for n in nodes if n.get("id") == node_id), None)
+    if node is None:
+        return "", None, f"unknown node id: {node_id}"
     if t and role == "executor":
         need = node_eligibility(t.node)
         if need != ANY and str(entry.get("class") or "") != need:
             return "", None, (f"{node_id} needs executor class {need!r}; {model!r} is "
                               f"{entry.get('class') or 'unclassed'} (`specy-road orchestrate plan`)")
-    if t and not may_handle(entry, node_sensitivity(t.node)):
-        return "", None, (f"{node_id} is {node_sensitivity(t.node)!r} and {model!r} may process only "
+    if not may_handle(entry, node_sensitivity(node)):
+        return "", None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
                           f"{entry_may_process(entry)}; route it to a model that may "
                           "(`specy-road orchestrate plan`)")
     prof = profile_for_entry(root, entry)
@@ -197,7 +205,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     if t:
         lines += _precondition(role, node_id, t)
     if role == "executor":
-        lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"))
+        lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
     elif role == "reviewer":
         lines += _reviewer_preamble(node_id, model)
     else:
@@ -209,13 +217,12 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
             return "", prof, f"no review packet at {packet}; run `specy-road review-packet {node_id}` first"
         lines += ["---", "", packet.read_text(encoding="utf-8").rstrip(), ""]
     else:
-        nodes = t.nodes if t else []
-        if nodes:
-            lines += ["---", "", render_brief(node_id, index(nodes), repo_root=root, include_history=False).rstrip(), ""]
+        lines += ["---", "", render_brief(node_id, index(nodes), repo_root=root, include_history=False).rstrip(), ""]
     return "\n".join(lines) + "\n", prof, None
 
 
-def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None) -> int:
+def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
+                    entry_cli: str | None = None) -> int:
     if preflight:
         # Proposal §3.6: e.g. confirm which process owns a local model's port.
         # It runs before anything else is even inspected: a failed check stops
@@ -225,9 +232,9 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
         if rc != 0:
             print(f"error: preflight failed (exit {rc}); nothing was sent", file=sys.stderr)
             return rc
-    cli = prof.cli() if prof else None
+    cli = entry_cli or (prof.cli() if prof else None)   # the roster's channels.cli wins, as `worker delegate` has it
     if not cli:
-        print("error: --channel cli needs an `access.cli` in the model's profile", file=sys.stderr)
+        print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
         return 1
     if not has_prompt_placeholder(cli):
         print(f"error: the profile's cli has no {{prompt}} or <prompt> placeholder: {cli}", file=sys.stderr)
@@ -261,7 +268,8 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Wrote {out}")
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
-    raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight")) if ns.channel == "cli" else 0)
+    raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"))
+                     if ns.channel == "cli" else 0)
 
 
 if __name__ == "__main__":

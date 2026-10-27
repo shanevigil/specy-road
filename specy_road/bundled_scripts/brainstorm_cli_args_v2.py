@@ -38,7 +38,7 @@ def add_start_v2_options(p: argparse.ArgumentParser) -> None:
 def add_v2_subcommands(sub) -> None:
     p = sub.add_parser("next-round", help="open the next diverge round: regenerate against the pool")
     p.add_argument("--count", type=int, default=None, metavar="N",
-                   help="Minimum new ideas to ask for (default: the session's count).")
+                   help="Minimum new ideas to ask for (default: 20).")
     _slug(p)
 
     p = sub.add_parser("frame", help="record the agreed frame or the allocation grid")
@@ -55,7 +55,7 @@ def add_v2_subcommands(sub) -> None:
     p = sub.add_parser("add-evidence", help="record one source on an idea (the agent calls this)")
     p.add_argument("idea_id", metavar="IDEA_ID")
     p.add_argument("--url", required=True)
-    p.add_argument("--quote", default="", metavar="TEXT", help="Verbatim text from the page (≤300 chars).")
+    p.add_argument("--quote", default="", metavar="TEXT", help="Verbatim text from the page (≤300 chars); required — a URL alone is not evidence.")
     p.add_argument("--supports", default="", metavar="TEXT", help="The claim this source bears on.")
     p.add_argument("--stance", default="for", choices=STANCES)
     p.add_argument("--tool", default="", metavar="TEXT", help="How it was retrieved, e.g. 'claude WebFetch'.")

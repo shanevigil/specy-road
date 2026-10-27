@@ -211,7 +211,8 @@ specy-road brainstorm verify
 `verify` lists the URLs and **asks before fetching** (`--yes` for scripts;
 without a terminal and without `--yes` it fetches nothing). It fetches
 public `https` pages only, with a timeout and a size cap, and records
-`retrieved` (quote found), `not-found` (page read, quote absent), or
+`retrieved` (quote found), `not-found` (page read, quote absent — or no
+quote was given; `add-evidence` requires one), or
 `blocked` (paywall, robots, transport error — never "fabricated"). Sources
 it did not fetch stay `unverified`. This is the only network call the CLI
 makes.

@@ -57,12 +57,21 @@ def reviews_root(repo_root: Path) -> Path:
     ``work/reviews/`` is gitignored, so each linked worktree would otherwise
     have its own empty copy: an executor in a worktree hands off into the
     coordinator's checkout, and the gate run from that worktree must read the
-    same directory.
+    same directory. Only a *linked* worktree is redirected (its git dir is not
+    the common one); a project nested below the git root (``sr/``) or a
+    fixture inside another checkout keeps its own ``work/``, at the same
+    place relative to the main worktree.
     """
     common = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], repo_root)
-    if common and Path(common).name == ".git":
-        return Path(common).parent / REVIEWS_REL
-    return repo_root / REVIEWS_REL
+    gitdir = git_text(["rev-parse", "--path-format=absolute", "--git-dir"], repo_root)
+    top = git_text(["rev-parse", "--show-toplevel"], repo_root)
+    if not common or not gitdir or not top or Path(common).name != ".git" or Path(gitdir) == Path(common):
+        return repo_root / REVIEWS_REL
+    try:
+        prefix = Path(repo_root).resolve().relative_to(Path(top).resolve())
+    except ValueError:
+        return repo_root / REVIEWS_REL
+    return Path(common).parent / prefix / REVIEWS_REL
 
 
 def reviews_dir(repo_root: Path, node_id: str) -> Path:

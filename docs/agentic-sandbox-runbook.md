@@ -126,7 +126,11 @@ executor role, `max_workers: 2`. Claim two leaves. From the coordinator chat
    --text "also update the README"` resumes the same session id (check
    `<id>.log`); on `cursor`, confirm whether the resumed run keeps the
    `session_id` — if not, record PASS-WITH-NOTE and set `channels.cli` with
-   `{session}`.
+   `{session}`. On `codex`, the resume passes the prompt on stdin (`-`) with
+   the same sandbox flags as the launch: confirm `codex exec resume` accepts
+   that form on the installed version, else record it and pin `channels.cli`.
+   Also message a `completed` worker (after its READY): it must resume, and
+   a READY left from the earlier turn must not complete the new one.
 5. **Interrupt is honest.** `worker interrupt <W>` exits 2 with
    `unsupported by <harness>` on every adapter; nothing is killed.
 6. **Double-open (expected failure).** With a Claude worker `idle`, run

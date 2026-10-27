@@ -95,11 +95,13 @@ def test_add_evidence_builds_a_source_record_and_mirrors_the_url(repo: Path) -> 
                         "--supports", "SMBs want links", "--stance", "for", "--tool", "claude WebFetch",
                         "--source-type", "official-doc", "--retrieved-at", "2026-10-27")
     assert code == 0 and "source 1" in out
-    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--stance", "against")
+    code, _, err = _cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--stance", "against")
+    assert code != 0 and "--quote is required" in err
+    _cli(repo, "add-evidence", "B1", "--url", "https://example.com/b", "--quote", "b words", "--stance", "against")
     idea = _session(repo).by_id("B1")
     assert idea.evidence == ["https://example.com/a", "https://example.com/b"]
     assert idea.sources[0]["tool"] == "claude WebFetch" and idea.sources[0]["retrieved_at"] == "2026-10-27"
-    assert idea.sources[1]["stance"] == "against" and "quote" not in idea.sources[1]
+    assert idea.sources[1]["stance"] == "against" and idea.sources[1]["quote"] == "b words"
     code, _, err = _cli(repo, "add-evidence", "B1", "--url", "https://x", "--quote", "x" * 301)
     assert code == 1 and "300" in err
 
@@ -116,7 +118,7 @@ def test_check_source_states(monkeypatch) -> None:
         return pages[url]
 
     assert bv.check_source({"url": "https://example.com/ok", "quote": "exact words"}, fetch) == "retrieved"
-    assert bv.check_source({"url": "https://example.com/ok"}, fetch) == "retrieved"
+    assert bv.check_source({"url": "https://example.com/ok"}, fetch) == "not-found"   # no quote, nothing verified
     assert bv.check_source({"url": "https://example.com/miss", "quote": "exact words"}, fetch) == "not-found"
     assert bv.check_source({"url": "https://example.com/paywall", "quote": "x"}, fetch) == "blocked"
     assert bv.check_source({"url": "https://example.com/gone", "quote": "x"}, fetch) == "not-found"

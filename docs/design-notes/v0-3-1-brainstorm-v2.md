@@ -195,10 +195,11 @@ again ("what have comparable products shipped"), still recording URLs; the
 quote-anchored evidence pass remains where verification happens. Keeps the
 import-from-outside value without anchoring the first round.
 
-**B4 — data model.** Session `version` 2, read-compatible with 1: a string
-in `evidence` becomes `{url}`. Idea gains `origin`, `cluster_id`,
-`evidence[]` objects (`url, quote, retrieved_at, tool, supports, stance,
-source_type, verification: retrieved|blocked|not-found|unverified`),
+**B4 — data model** (as built: `evidence` stays a URL list and the
+structured records live in a new `sources[]`, so v1 files and the GUI keep
+their shape). Session `version` 2, read-compatible with 1. Idea gains
+`origin`, `cluster_id`, `sources[]` objects (`url, quote, retrieved_at, tool,
+supports, stance, source_type, verification: retrieved|blocked|not-found|unverified`),
 `overlap[]` (`node_id, relation`), `critic`, `hypothesis`, `assumptions`,
 `decision` (`reason, decided_at, revisit_when`); status gains `parked`.
 Session gains `frame`, `allocation`, `round`, `profile`, `panel`. Kinds gain
@@ -206,8 +207,9 @@ Session gains `frame`, `allocation`, `round`, `profile`, `panel`. Kinds gain
 
 **B5 — skill package.** The existing `specyrd-brainstorm` SKILL.md gets a
 narrow description ("roadmap brainstorm through specy-road; not a design
-elicitation skill"), the pass sequence, the rules, and `references/lenses.md`
-and `references/evidence-format.md` rendered by the same stub mechanism.
+elicitation skill"), the pass sequence and the rules. As built, the lenses
+and the evidence format live in the generated prompts (`brainstorm start`,
+`evidence`) rather than in `references/` files, so the skill stays one file.
 No per-harness wrappers.
 
 **B6 — GUI parity.** The GUI consumes the same prompt renderers and session

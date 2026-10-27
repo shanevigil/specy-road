@@ -46,20 +46,28 @@ def _op_path(repo_root: Path, op_id: str) -> Path:
     return ops_dir(repo_root) / f"{op_id}.yaml"
 
 
-def begin_op(repo_root: Path, op_id: str, kind: str, worker_id: str | None = None) -> dict[str, Any] | None:
-    """Claim ``op_id``. Returns the earlier result when it already ran, else ``None`` (now pending)."""
+def begin_op(repo_root: Path, op_id: str, kind: str, target: str | None = None) -> dict[str, Any] | None:
+    """Claim ``op_id``. Returns the earlier result when it already ran, else ``None`` (now pending).
+
+    ``target`` is the worker id, or the node id for ``delegate``/``adopt``:
+    a replay must name the same one, so one op id cannot answer a delegate
+    on a different leaf with another leaf's worker.
+    """
+    from specy_road.worker_state import workers_lock
+
     path = _op_path(repo_root, op_id)
-    if path.is_file():
-        old = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        if old.get("state") == "pending":
-            raise _error(f"op {op_id} is still pending (crashed?); pass a new --op-id or remove {path}")
-        if old.get("kind") != kind or (worker_id and old.get("worker_id") not in (None, worker_id)):
-            raise _error(f"op {op_id} was a {old.get('kind')} on {old.get('worker_id') or '-'}, "
-                              f"not a {kind} on {worker_id or '-'}; an op id names one operation")
-        return old
-    path.parent.mkdir(parents=True, exist_ok=True)
-    _write_atomic(path, yaml.safe_dump({"op_id": op_id, "kind": kind, "worker_id": worker_id, "state": "pending",
-                                        "at": _now()}, sort_keys=False))
+    with workers_lock(repo_root):
+        if path.is_file():
+            old = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            if old.get("state") == "pending":
+                raise _error(f"op {op_id} is still pending (crashed?); pass a new --op-id or remove {path}")
+            if old.get("kind") != kind or old.get("target") != target:
+                raise _error(f"op {op_id} was a {old.get('kind')} on {old.get('target') or '-'}, "
+                             f"not a {kind} on {target or '-'}; an op id names one operation")
+            return old
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _write_atomic(path, yaml.safe_dump({"op_id": op_id, "kind": kind, "target": target, "state": "pending",
+                                            "at": _now()}, sort_keys=False))
     return None
 
 

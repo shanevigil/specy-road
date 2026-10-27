@@ -172,6 +172,8 @@ def _triage(ns: argparse.Namespace, status: str) -> int:
         idea = set_status(session, ident, status)
         if reason:
             idea.decision = {"status": status, "reason": reason, "decided_at": date.today().isoformat()}
+        elif idea.decision and idea.decision.get("status") != status:
+            idea.decision = None   # an earlier reject/park reason does not describe this decision
         print(f"[ok] {idea.id} {status}")
     write_session(root, session)
     return 0

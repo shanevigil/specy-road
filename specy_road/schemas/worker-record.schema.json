@@ -37,7 +37,8 @@
       "properties": {
         "git_head": { "type": ["string", "null"] },
         "native_turn": { "type": ["string", "null"] },
-        "at": { "type": "string", "minLength": 1 }
+        "at": { "type": "string", "minLength": 1 },
+        "interventions_seen": { "type": "integer", "minimum": 0, "description": "Hook-recorded prompt lines that predate this hand-off." }
       }
     },
     "attempt": { "type": "integer", "minimum": 1, "description": "Nth worker delegated for this leaf; <node_id>:<attempt> is the idempotency key." },

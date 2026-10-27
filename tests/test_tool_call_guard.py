@@ -25,8 +25,8 @@ from specy_road.bundled_scripts import session_cli
     ("git switch dev", "switching branches"),
     ("git checkout -- .", "discards working-tree changes"),
     ("git checkout -- src/a.py", "discards working-tree changes"),
-    ("git restore .", "discards every session"),
-    ("git restore --staged .", "discards every session"),
+    ("git restore .", "discards other sessions"),
+    ("git restore --staged .", "discards other sessions"),
     ("git clean -fd", "deletes untracked files"),
     ("git clean --force", "deletes untracked files"),
     ("git rebase -i HEAD~3", "rewrites history"),
@@ -93,11 +93,13 @@ def test_unparseable_shell_mentioning_git_is_refused_not_waved_through() -> None
     assert g.classify("echo 'unterminated") is None
 
 
-def test_guard_sees_a_worker_running_in_this_checkout(tmp_path: Path) -> None:
+def test_guard_sees_a_worker_running_in_this_checkout(tmp_path: Path, monkeypatch) -> None:
     from tests.review_repo_helpers import make_review_repo
 
+    from specy_road import worker_runner as wr
     from specy_road import worker_state as ws
 
+    monkeypatch.setattr(wr, "_cmdline", lambda pid: "python -m specy_road.worker_runner /r w-0001")
     repo = make_review_repo(tmp_path)
     assert g.decide(repo, "git checkout dev", agent="me").allowed
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
@@ -155,7 +157,9 @@ def test_cli_claude_code_payload(tmp_path: Path, capsys) -> None:
     assert "discards other sessions" in capsys.readouterr().err
     other = json.dumps({"tool_name": "Read", "tool_input": {"file_path": "x"}})
     assert _cli("session", "guard", "--format", "claude-code", "--agent", "me", "--repo-root", str(repo), stdin=other) == 0
-    assert _cli("session", "guard", "--format", "claude-code", "--repo-root", str(repo), stdin="not json") == 0
+    # Malformed stdin is an internal error, and an internal error denies.
+    assert _cli("session", "guard", "--format", "claude-code", "--repo-root", str(repo), stdin="not json") == 2
+    assert "internal error" in capsys.readouterr().err
 
 
 def test_cli_generic_payload(tmp_path: Path) -> None:

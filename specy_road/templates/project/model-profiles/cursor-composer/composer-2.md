@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: unknown
   output_tokens: unknown
-  cli: agent -p --force "Refactor this code to use modern ES6+ syntax"
+  cli: agent -p --force "<prompt>"
   cli_verified_from: S2
   subagents: unknown No data found
   effort_controls: none documented; Fast is the default variant

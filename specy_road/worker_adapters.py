@@ -24,6 +24,7 @@ in ``docs/orchestration-workers.md`` before trusting either on a new repo.
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import uuid
 from dataclasses import dataclass
@@ -72,13 +73,24 @@ def _text(prompt_path: Path) -> str:
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
 
 
-def substitute_prompt(cli: str, prompt_path: Path) -> str:
-    """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text."""
-    out = cli.replace("{prompt}", shlex.quote(str(prompt_path)))
-    if "<prompt>" in out:
-        quoted = shlex.quote(_text(prompt_path))
-        out = out.replace('"<prompt>"', quoted).replace("'<prompt>'", quoted).replace("<prompt>", quoted)
-    return out
+_PLACEHOLDER = re.compile(r'"<prompt>"|\'<prompt>\'|<prompt>|\{prompt\}|\{session\}')
+
+
+def substitute_prompt(cli: str, prompt_path: Path, session: str | None = None) -> str:
+    """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text.
+
+    One pass over the template: substituted text is never rescanned, so a
+    prompt that itself contains ``<prompt>`` or ``{session}`` cannot close
+    the quoting and run as shell.
+    """
+    def repl(m: re.Match[str]) -> str:
+        tok = m.group(0)
+        if tok == "{session}":
+            return shlex.quote(session or "")
+        if tok == "{prompt}":
+            return shlex.quote(str(prompt_path))
+        return shlex.quote(_text(prompt_path))
+    return _PLACEHOLDER.sub(repl, cli)
 
 
 def has_prompt_placeholder(cli: str | None) -> bool:
@@ -136,7 +148,7 @@ class Adapter:
         # On launch a command that names {session} gets a fresh id, and the
         # record keeps it, so the same command serves `message` / `resume`.
         sid = session_id if session_id is not None else (str(uuid.uuid4()) if "{session}" in cli else None)
-        text = substitute_prompt(cli, prompt_path).replace("{session}", shlex.quote(sid or ""))
+        text = substitute_prompt(cli, prompt_path, sid)
         return Launch(["sh", "-c", text], session_id=sid)
 
 
@@ -191,7 +203,7 @@ class Codex(Adapter):
     harness = "codex"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
                         notes="codex exec --json (prompt on stdin); thread id from thread.started; "
-                              "resume = `codex exec resume <id> <prompt>`; hand off with `codex resume`")
+                              "resume = `codex exec resume <id> -` (prompt on stdin); hand off with `codex resume`")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
         custom = self._custom(cli, prompt_path)
@@ -204,8 +216,11 @@ class Codex(Adapter):
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
-        return Launch(["codex", "exec", "resume", "--json", "-C", str(worktree), session_id, _text(prompt_path)],
-                      session_id=session_id)
+        # Same sandbox and approval flags as the launch, and the prompt on
+        # stdin again: an argv string is capped at 128 KiB on Linux.
+        return Launch(["codex", "exec", "resume", "--json", "--sandbox", "workspace-write",
+                       "--ask-for-approval", "never", "-C", str(worktree), session_id, "-"],
+                      stdin=_text(prompt_path), session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)

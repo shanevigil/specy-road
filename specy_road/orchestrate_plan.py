@@ -185,7 +185,7 @@ def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any
 
 
 def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None) -> None:
-    pool = [c for c in cands if "coordinator" in (c.entry.get("roles") or []) and is_available(c.entry, today)]
+    pool = [c for c in cands if "coordinator" in (c.entry.get("roles") or []) and _usable(c, a.sensitivity, today)]
     pool.sort(key=lambda c: -c.score("coordinator"))
     if pool:
         a.coordinator = pool[0].id

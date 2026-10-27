@@ -14,7 +14,7 @@ supersedes: grok-4.6
 access:
   context_tokens: 500000
   output_tokens: unknown
-  cli: grok -p "Your prompt here"
+  cli: grok -p "<prompt>"
   cli_verified_from: S3
   subagents: 'yes Through Grok Build workflows; the grok-4.7 API itself has no documented native multi-agent endpoint; headless sessions support --worktree [S2, S3]'
   effort_controls: 'low, medium, high (default), xhigh; reasoning cannot be disabled'

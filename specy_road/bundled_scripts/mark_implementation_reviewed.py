@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from specy_road.review_gate import (
+    SigningError,
     GateResult,
     commit_trailers,
     evaluate_gate,
@@ -224,7 +225,11 @@ def _gate_or_human_approval(
                               approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
             raise SystemExit(0)
-        written = write_human_approval(ROOT, node, gate.commit, sign_key)
+        try:
+            written = write_human_approval(ROOT, node, gate.commit, sign_key)
+        except SigningError as e:
+            print(f"error: could not sign: {e}", file=sys.stderr)
+            raise SystemExit(1) from None
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
         gate = evaluate_gate(ROOT, node, gate.commit)

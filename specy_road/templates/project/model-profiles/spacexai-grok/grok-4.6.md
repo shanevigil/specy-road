@@ -14,7 +14,7 @@ supersedes: none
 access:
   context_tokens: 500000
   output_tokens: unknown
-  cli: grok -p "Your prompt here"
+  cli: grok -p "<prompt>"
   cli_verified_from: S3
   subagents: 'yes Through Grok Build workflow orchestration (ChatGPT run, no source given); native model-level API fan-out unknown'
   effort_controls: 'low, medium, high (default), xhigh; reasoning cannot be disabled'
