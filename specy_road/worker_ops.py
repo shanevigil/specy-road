@@ -296,13 +296,20 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     return sorted({p for p in (out + "\n" + untracked).splitlines() if p.strip()})
 
 
+def _bookkeeping(path: str) -> bool:
+    return path.startswith("work/") or path == "roadmap/registry.yaml"
+
+
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:
     rec = load_record(repo_root, worker_id)
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
     changed = _changed_since(Path(rec.worktree), since)
     zones = t.touch_zones
-    outside = [p for p in changed if zones and not any(zone_matches(z, p) for z in zones)]
+    # Toolkit bookkeeping is never a breach: briefs, prompts, hand-off and
+    # brainstorm files under work/, and the registry row the claim lives in.
+    substantive = [p for p in changed if not _bookkeeping(p)]
+    outside = [p for p in substantive if zones and not any(zone_matches(z, p) for z in zones)]
     text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
     contract_changed = bool(rec.contract_hash and not err
                             and hashlib.sha256(text.encode("utf-8")).hexdigest() != rec.contract_hash)

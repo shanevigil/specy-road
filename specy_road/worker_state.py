@@ -21,6 +21,7 @@ coordinator is entitled to assume (design note
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -105,6 +106,14 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def _write_atomic(path: Path, text: str) -> None:
+    """Replace ``path`` in one step: the wrapper and the CLI both write records,
+    and a reader must never see a half-written file."""
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 @cache
 def _validator(name: str) -> Draft202012Validator:
     path = specy_road_package_dir() / "schemas" / name
@@ -155,7 +164,7 @@ def save_record(repo_root: Path, rec: WorkerRecord) -> Path:
         raise WorkerError(f"{rec.worker_id}: " + "; ".join(errs))
     path = record_path(repo_root, rec.worker_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    _write_atomic(path, yaml.safe_dump(data, sort_keys=False))
     return path
 
 
@@ -320,8 +329,8 @@ def begin_op(repo_root: Path, op_id: str, kind: str, worker_id: str | None = Non
             raise WorkerError(f"op {op_id} is still pending (crashed?); pass a new --op-id or remove {path}")
         return old
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump({"op_id": op_id, "kind": kind, "worker_id": worker_id, "state": "pending",
-                                    "at": _now()}, sort_keys=False), encoding="utf-8")
+    _write_atomic(path, yaml.safe_dump({"op_id": op_id, "kind": kind, "worker_id": worker_id, "state": "pending",
+                                        "at": _now()}, sort_keys=False))
     return None
 
 
@@ -329,4 +338,4 @@ def complete_op(repo_root: Path, op_id: str, result: dict[str, Any], *, ok: bool
     path = _op_path(repo_root, op_id)
     data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.is_file() else {"op_id": op_id}
     data.update({"state": "applied" if ok else "failed", "result": result, "at": _now()})
-    path.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    _write_atomic(path, yaml.safe_dump(data, sort_keys=False))
