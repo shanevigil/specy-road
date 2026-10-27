@@ -32,11 +32,11 @@ def test_specyrd_init_dry_run_cursor(tmp_path: Path) -> None:
         ai_commands_dir=None,
     )
     assert r.dry_run
-    assert ".cursor/commands/specyrd-validate.md" in r.written
-    assert ".cursor/commands/specyrd-constitution.md" in r.written
-    assert ".cursor/commands/specyrd-sync.md" in r.written
+    assert ".agents/skills/specyrd-validate/SKILL.md" in r.written
+    assert ".agents/skills/specyrd-constitution/SKILL.md" in r.written
+    assert ".agents/skills/specyrd-sync/SKILL.md" in r.written
     assert ".specyrd/README.md" in r.written
-    assert not (tmp_path / ".cursor").exists()
+    assert not (tmp_path / ".agents").exists()
 
 
 def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
@@ -47,7 +47,7 @@ def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
         force=False,
         ai_commands_dir=None,
     )
-    v = tmp_path / ".cursor" / "commands" / "specyrd-validate.md"
+    v = tmp_path / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
     assert v.is_file()
     text = v.read_text(encoding="utf-8")
     assert "specy-road validate" in text
@@ -104,7 +104,7 @@ def test_specyrd_init_rejects_parent_escape(tmp_path: Path) -> None:
 
 
 def test_specyrd_init_skips_without_force(tmp_path: Path) -> None:
-    cmd = tmp_path / ".cursor" / "commands" / "specyrd-validate.md"
+    cmd = tmp_path / ".agents" / "skills" / "specyrd-validate" / "SKILL.md"
     cmd.parent.mkdir(parents=True, exist_ok=True)
     cmd.write_text("keep", encoding="utf-8")
     r = run_init(
@@ -144,8 +144,8 @@ def test_specyrd_init_dev_role_includes_grind_session(tmp_path: Path) -> None:
         ai_commands_dir=None,
         role="dev",
     )
-    assert ".cursor/commands/specyrd-grind-session.md" in r.written
-    stub = tmp_path / ".cursor" / "commands" / "specyrd-grind-session.md"
+    assert ".agents/skills/specyrd-grind-session/SKILL.md" in r.written
+    stub = tmp_path / ".agents" / "skills" / "specyrd-grind-session" / "SKILL.md"
     text = stub.read_text(encoding="utf-8")
     assert "grind-session" in text
     assert "--step pickup" in text and "--step finish" in text

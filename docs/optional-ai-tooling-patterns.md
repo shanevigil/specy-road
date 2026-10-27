@@ -8,13 +8,13 @@ Consumer projects coordinate through their own [`roadmap/registry.yaml`](git-wor
 
 ## Optional: `specyrd init` (install-time IDE commands)
 
-The **`specyrd`** CLI (installed with this package) can lay down **thin** markdown command files for Cursor (`.cursor/commands/`), Claude Code (`.claude/commands/`), or a **generic** directory you choose. Those files tell the agent to run **`specy-road`** from the repo root — they are not a second source of truth.
+The **`specyrd`** CLI (installed with this package) lays down **thin** markdown skills that tell the agent to run **`specy-road`** from the repo root — they are not a second source of truth. Each command is **one file**, `.agents/skills/<name>/SKILL.md`: Cursor and Codex read that directory natively, and the `claude-code` pack adds a symlink per skill under `.claude/skills/` so Claude Code reads the same file. `--ai generic` writes flat `.md` files into a directory you choose.
 
 - **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
 - **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value.
 - **After upgrading specy-road:** Run **`specy-road refresh-stubs`**, not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade).
-- **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root.
+- **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|codex|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root. Running it again for a second harness adds only that harness's links; the skill files are shared.
 
 ### What `--force` may touch
 
@@ -164,10 +164,10 @@ adapter that drifts from its contract fails in CI, not in someone's IDE.
 
 **Skills, one source for every harness.** Cursor and Codex both read
 `.agents/skills/<name>/SKILL.md` natively and follow symlinked skill folders;
-Claude Code reads `.claude/skills/<name>/SKILL.md`. Shipping specy-road's
-commands as skills under `.agents/skills/` with symlinks into
-`.claude/skills/` is the pending 0.3.x decision recorded in
-`docs/design-notes/v0-3-0-orchestration-slices.md`.
+Claude Code reads `.claude/skills/<name>/SKILL.md` and loads a skill directory
+that is a symlink. That is the layout `specyrd init` writes (verified against
+each harness's docs, 2026-10). Where a symlink cannot be created, the skill is
+copied into place and the manifest records the copy.
 
 ## Optional: git worktrees for parallel agents
 

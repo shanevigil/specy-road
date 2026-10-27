@@ -91,13 +91,13 @@ Facts that could not be verified are stated in each adapter's notes
 Code's `bypassPermissions` and Cursor's `agent -p` / auto-run fire the hook,
 and Codex's handling of non-2 non-zero exits and the IDE extension.
 
-**Decision D, pending:** one skills directory for every harness. Cursor and
-Codex read `.agents/skills/<name>/SKILL.md` natively and follow symlinked
-skill folders; Claude Code reads `.claude/skills/<name>/SKILL.md`. Converting
-the `specyrd` command stubs to skills under `.agents/skills/` with symlinks
-into `.claude/skills/`, plus an `--ai codex` target (Codex reads `AGENTS.md`,
-now a managed block, and skills; it does not read `.cursor/`), reworks
-`specyrd init` and its manifest. Recommended for 0.3.x after this slice.
+**Decision D (2026-10-26, built):** one skills directory for every harness.
+`specyrd init` writes `.agents/skills/<name>/SKILL.md` (Cursor and Codex read
+it natively), the `claude-code` pack symlinks `.claude/skills/<name>` to it
+(Claude Code loads a symlinked skill directory; a copy where symlinks fail),
+and `--ai codex` is a target. `refresh-stubs` migrates pre-0.3.0 command
+stubs by writing the skills and naming the old files to remove.
+`specy_road/specyrd_skills.py`.
 
 Still a stated limit: review records and presence files are self-attested.
 
