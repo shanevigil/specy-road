@@ -129,7 +129,7 @@ def test_an_older_attempts_ready_does_not_complete_a_new_worker(tmp_path: Path) 
     spec.write_text(json.dumps({"lines": [{"type": "result", "subtype": "success", "result": "ok", "session_id": "n"}]}))
     assert wr.run(repo, rec.worker_id, wa.adapter_for("claude-code").launch(spec, repo, "opus", f"{sys.executable} {script} {{prompt}}")) == 0
     assert ws.load_record(repo, rec.worker_id).state == "idle"      # not completed on a stale READY
-    now = time.time()
+    now = time.time() + 60   # ahead of the turn start under any load: freshness, not a race with the clock
     os.utime(ready, (now, now))
     rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
     rec2 = ws.mutate(repo, rec2, lambda r: setattr(r, "node_id", "M1.1"))
