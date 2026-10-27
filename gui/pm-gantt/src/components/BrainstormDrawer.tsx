@@ -60,8 +60,21 @@ const MODE_HELP: Record<string, string> = {
     "topic first, then generate without ranking.",
   roadmap:
     "Converge: the assistant clusters, flags overlaps with existing nodes, " +
-    "and recommends. Accepting is still your call.",
+    "and recommends. Advisory only — nothing it says is written to the " +
+    "session; apply verdicts with `specy-road brainstorm revise`. " +
+    "Accepting is still your call.",
 };
+
+/**
+ * "round 1 of 2" while diverging; converge is not a round, so it is only
+ * named by its mode. Past the plan (`next-round` beyond `start --rounds`)
+ * the label says so rather than showing "3 of 2".
+ */
+function roundLabel(s: Pick<BrainstormSession, "mode" | "round" | "rounds">): string {
+  if (s.mode !== "brainstorm") return "converge";
+  if (s.round > s.rounds) return `round ${String(s.round)} (past the ${String(s.rounds)} planned)`;
+  return `round ${String(s.round)} of ${String(s.rounds)}`;
+}
 
 export function BrainstormDrawer({
   open,
@@ -419,7 +432,9 @@ export function BrainstormDrawer({
                 {m === "brainstorm" ? "Brainstorm" : "Roadmap"}
               </button>
             ))}
-            <span className="outline-meta">{MODE_HELP[session.mode]}</span>
+            <span className="outline-meta">
+              {roundLabel(session)} · {MODE_HELP[session.mode]}
+            </span>
           </div>
 
           <div className="brainstorm-transcript" ref={transcriptRef}>
