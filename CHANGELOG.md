@@ -194,6 +194,11 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
 
 ### Changed
 
+- The managed specy-road section in a consumer's `AGENTS.md` shrank from 83
+  lines / 9.2 KB to 39 lines / 6.0 KB with no rule dropped: imperative bullets
+  instead of explanation, since every always-injected instruction file costs
+  context on every turn (Codex truncates the `AGENTS.md` chain at 32 KiB).
+  Adopters run `specy-road refresh-stubs`; `validate` warns until they do.
 - The gate counts one vote per model (a block from any of a model's records
   wins), checks each record's `node_id`, compares commits through git rather
   than by string prefix, and treats every merge commit — `-s ours` included —
