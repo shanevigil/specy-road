@@ -9,6 +9,7 @@ Each cycle reuses the existing primitives (never edits the registry directly):
 
 Repeats until a stop condition (--until / --under / --max-leaves / no actionable
 work). ``--plan`` prints a read-only dependency/wave report instead of running.
+``--step pickup|finish`` runs one phase and exits (``grind_session_step``).
 
 See exit-code and event contract in ``grind_session_events`` and the guide in
 ``docs/grind-session.md``.
@@ -263,18 +264,27 @@ def _implement_and_finish(args, repo_root: Path, emitter: EventEmitter, node_id:
     if rc != 0:
         emitter.emit("hook_failed", phase="implement", node_id=node_id, rc=rc)
         return None, None, EXIT_GENERIC
+    terminal = _finish_phase(args, repo_root, emitter, ctx)
+    if terminal is not None:
+        return None, None, terminal
+    return node_id, branch, None
+
+
+def _finish_phase(args, repo_root: Path, emitter: EventEmitter, ctx: dict) -> int | None:
+    """Optional pre-finish hook, then ``finish-this-task``. Exit code, or None."""
+    node_id = ctx["node_id"]
     if args.pre_finish_cmd:
         emitter.emit("pre_finish", node_id=node_id)
         rc = _run_shell(args.pre_finish_cmd, _hook_env(repo_root, **ctx), repo_root)
         if rc != 0:
             emitter.emit("hook_failed", phase="pre_finish", node_id=node_id, rc=rc)
-            return None, None, EXIT_PRE_FINISH_FAILED
+            return EXIT_PRE_FINISH_FAILED
     rc = _run_cli(repo_root, _finish_args(args, repo_root))
     if rc != 0:
         emitter.emit("hook_failed", phase="finish", node_id=node_id, rc=rc)
-        return None, None, EXIT_GENERIC
+        return EXIT_GENERIC
     emitter.emit("finished", node_id=node_id)
-    return node_id, branch, None
+    return None
 
 
 def _pin_loop_mode(repo_root: Path, args) -> str | None:
@@ -366,6 +376,11 @@ def run_session(args) -> int:
     # Inherited by every child. Pickup's footer advertises this loop, which is
     # noise once you are already inside it.
     os.environ["SPECY_ROAD_GRIND_SESSION"] = "1"
+    if args.step:
+        # Lazy: grind_session_step imports this module (avoids a cycle).
+        from specy_road.bundled_scripts.grind_session_step import run_step
+
+        return run_step(args, repo_root, emitter)
     finished_branches: list[str] = []
     code, failed = _run_loop(args, repo_root, emitter, finished_branches)
     # Only when the loop got somewhere and stopped on its own terms. After a
