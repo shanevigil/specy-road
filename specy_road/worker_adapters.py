@@ -14,9 +14,10 @@ are the later adapters that turn those flags on.
 A roster entry's ``channels.cli`` (``{prompt}`` = prompt file path) replaces
 the built command for any harness while its output is still parsed as that
 harness's; that is how an adopter widens or narrows permissions, pins flags,
-or points at a wrapper. Claude Code's default asks for the narrowest
-unattended mode it documents (``acceptEdits``), so a first run may stop at a
-shell permission; Cursor's ``agent -p`` has write and shell tools already and
+or points at a wrapper. Claude Code's default asks for the narrowest mode
+that lets it edit unattended (``acceptEdits``; ``dontAsk`` is stricter but
+denies every tool not allow-listed), so a first run may stop at a shell
+permission; Cursor's ``agent -p`` has write and shell tools already and
 ``--force`` force-allows every command not explicitly denied, so that default
 is the widest — read the table
 in ``docs/orchestration-workers.md`` before trusting either on a new repo.

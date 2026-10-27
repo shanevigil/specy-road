@@ -111,7 +111,7 @@ error. A worked example — `M10.3, M10.4` are ready, `M10.5` depends on both, a
 
 **Dispatch now (parallel, in pickup order):** M10.3, M10.4  — 2 independent leaf/leaves, all dependencies satisfied, listed in the order the loop will claim them.
 
-**Later waves (do NOT start until every leaf in the prior wave is Complete):**
+**Later waves (a leaf starts once its own dependencies are Complete; wave = dependency depth):**
 - wave 1: M10.5
 - wave 2: M11.1
 ```

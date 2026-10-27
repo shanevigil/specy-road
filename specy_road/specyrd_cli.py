@@ -240,7 +240,7 @@ def main(argv: list[str] | None = None) -> None:
         for w in result.written:
             print(f"Wrote {w}")
     for s in result.skipped:
-        print(f"Skipped (exists, use --force to overwrite): {s}")
+        print(f"Skipped: {s}" if "(" in s else f"Skipped (exists, use --force to overwrite): {s}")
 
 
 if __name__ == "__main__":

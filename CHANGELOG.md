@@ -302,6 +302,42 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to
   review or approve its own work.
+- **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
+  reproduced before the fix. Guard: env-supplied git config
+  (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and
+  dynamic git verbs fail closed; non-object hook payloads and shell events
+  without a command deny; broad commit/add pathspecs (`.`, `:/`, globs) are
+  refused; the Claude hook no longer emits `permissionDecision: allow` (the
+  harness's own policy applies). Workers: READY completion is a content
+  checkpoint, not an mtime; the record keeps the harness pid, process group
+  and a start token, a dead wrapper with a live harness keeps its leaf and
+  `terminate` kills the group; launch payloads travel in a 0600 file (no
+  `ARG_MAX`); pid verification needs the repo root and token as whole
+  arguments; resume, reclaim, reconcile and completion check the branch
+  actually checked out; parsed output is `worker_suggestion`, not `system`;
+  session ids are shell-quoted and vendor-shaped; placeholders must be whole
+  tokens (no `$(…)` from prompt text); `message --op-id` binds the text;
+  the hook matches harness and id without waiting on a busy lock; dead
+  wrappers are reaped on any leaf by `sync` and `delegate`; pre-delegation
+  dirt is the coordinator's; reclaim moves the record in one write.
+  Policy: the integration branch must name itself and is read from the
+  remote-tracking ref when a remote exists; profiles load from that same
+  pinned ref; `may_process: []` denies everything; `refresh-profiles`
+  refuses symlinked destinations; `validate` uses the gate's own policy
+  source; malformed profiles and dates are errors, not crashes. Review
+  evidence: renames and copies count on both sides; a READY naming another
+  node or branch is misfiled; signed records bind `notes_sha256`; a
+  mismatched signer identity is rejected; a wrong human `--sign-key` writes
+  nothing; packet summaries say committed, working-tree or missing.
+  Brainstorm: diverge prompts carry a write allow-list; the GUI payload
+  carries `rounds`; GUI convergence is documented as advisory; malformed
+  overlap, URL and stance fail at the boundary. Skills: `--force` replaces
+  only manifest-owned or verbatim stubs, a declined skill gets no link,
+  multi-pack manifests keep shared skills. Docs: the human-approval
+  exception stated in the quickstart and constitution, `review-node` named
+  as the model-calling exception, `acceptEdits` wording, grind waves are
+  per-leaf, the AGENTS block says pickup and finish change the registry,
+  the bootstrap prompt merges the block verbatim.
 - **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
   judges touch zones over the worker's lifetime (`started_head`), not only
   since the last checkpoint; a READY must be at the worktree's HEAD;

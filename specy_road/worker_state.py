@@ -33,7 +33,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-from specy_road.git_subprocess import git_text, head_sha
+from specy_road.git_subprocess import head_sha, run
 from specy_road.review_files import reviews_root  # noqa: F401 — re-exported for callers
 from specy_road.runtime_paths import specy_road_package_dir
 from specy_road.worker_lock import WORKERS_DIRNAME, WorkerError, workers_dir, workers_lock  # noqa: F401 — re-exported
@@ -332,8 +332,11 @@ def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
 
 def dirty_paths(worktree: Path) -> list[str]:
     """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human."""
-    out = git_text(["status", "--porcelain", "--untracked-files=all"], worktree) or ""
-    return sorted({ln[3:].strip() for ln in out.splitlines() if len(ln) > 3})
+    # ``-z`` on the raw output: ``git_text`` strips the leading space of a `` M path`` line.
+    r = run(["status", "--porcelain", "--untracked-files=all", "-z"], worktree)
+    if not r.ok:
+        return []
+    return sorted({e[3:] for e in r.out.split("\0") if len(e) > 3})
 
 
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:

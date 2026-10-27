@@ -99,7 +99,7 @@ policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
-**Permissions.** The Claude Code default asks for the narrowest unattended mode it documents (`--permission-mode acceptEdits`), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs in `--sandbox workspace-write --ask-for-approval never`; that flag pair is in OpenAI's reference but was not run here.
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs in `--sandbox workspace-write --ask-for-approval never`; that flag pair is in OpenAI's reference but was not run here.
 
 ## The loop
 

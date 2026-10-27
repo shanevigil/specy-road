@@ -11,8 +11,9 @@ sub-agent work without trial-and-error pickup:
 * ``blocked``  — unmet effective dependencies; each carries ``waiting_on``
   (display ids) and a ``reason`` (``dependency`` or ``gate``).
 * ``active``   — already claimed (registry) or status *In Progress* (in flight).
-* ``waves``    — leaves layered by dependency depth; wave *k* unlocks only once
-  every leaf in waves ``< k`` is Complete. This is what lets an orchestrator
+* ``waves``    — leaves layered by dependency depth; a leaf in wave *k* is
+  ready once its own dependencies are Complete (they all sit in waves ``< k``;
+  the rest of those waves need not be). This is what lets an orchestrator
   avoid spawning a sub-agent for a not-yet-ready wave (e.g. ``M11.1`` while
   ``M10.5`` is still in flight).
 * ``parallel_batches`` — per wave, the subset that is *ready and unclaimed*,
