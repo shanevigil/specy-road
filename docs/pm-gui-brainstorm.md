@@ -1,5 +1,26 @@
 # Brainstorm panel (PM GUI)
 
+## Agent quickstart
+
+**Use this doc when:** setting up or explaining the **Brainstorm** panel in `specy-road gui`, including its web-search providers.
+**Not for:** the CLI passes, the session format and promotion — [`brainstorming.md`](brainstorming.md).
+
+**Must know without reading on:**
+- The panel needs a working LLM backend in Settings; use **Test LLM** first. Web search is optional and off by default.
+- Research settings are global, not per repository; a private or plain-`http` search endpoint is refused unless **Self-hosted endpoint** is on.
+- Ideas are captured only in Brainstorm mode; Roadmap mode judges and may not add ideas. The human accepts, rejects and promotes.
+- Panel and CLI share `work/brainstorm-<slug>.yaml`; after promoting run `specy-road export && specy-road digest`.
+
+**Read further for:**
+- what must be configured first → "Before you start"
+- providers, endpoints, self-hosting and the `SEARCH:` loop → "Turning on web search"
+- tiling, minimising and the composer → "The window"
+- start, generate, converge, triage, promote → "Using the panel"
+- rounds, shards, evidence and `verify` (CLI only) → "What the panel does not do yet"
+- fingerprints and what is durable → "Notes"
+
+**Related:** [`brainstorming.md`](brainstorming.md), [`pm-gui.md`](pm-gui.md), [`pm-llm-review.md`](pm-llm-review.md).
+
 The browser version of [`specy-road brainstorm`](brainstorming.md). Same two
 modes, same session file, same promotion path — the difference is that the
 model runs against the backend configured in **Settings** instead of the agent

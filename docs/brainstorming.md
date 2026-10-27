@@ -1,5 +1,28 @@
 # Roadmap brainstorming
 
+## Agent quickstart
+
+**Use this doc when:** running `specy-road brainstorm` as the agent, or deciding which pass a session is in.
+**Not for:** the browser panel and its search providers — [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md).
+
+**Must know without reading on:**
+- Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
+- Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
+- `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
+- The human decides: `accept`, `reject --reason`, `park --revisit-when` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
+- The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it are gitignored.
+
+**Read further for:**
+- the session file and the flow diagram → "Where the work lives"
+- frame questions, allocation, rounds and panel shards → "1. Diverge"
+- clusters, overlaps, critics and verdicts → "2. Converge"
+- sources, quotes and `verify` states → "3. Evidence"
+- list, accept, reject, park → "4. Triage"
+- what promotion writes → "5. Promote"
+- `--slug` with several sessions → "Several sessions at once"
+
+**Related:** [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`orchestration.md`](orchestration.md).
+
 For **product managers** and **developers** who want to widen the option
 space before committing to a roadmap, with an agent doing the generating and
 the research.

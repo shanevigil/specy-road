@@ -1,5 +1,25 @@
 # Agent context: digest and search
 
+## Agent quickstart
+
+**Use this doc when:** finding prior decisions or archived work in a specy-road repo, or deciding what an IDE should index.
+**Not for:** a node's timeline — [`roadmap-history.md`](roadmap-history.md); archive mechanics — [`archiving.md`](archiving.md).
+
+**Must know without reading on:**
+- Prefer `specy-road search "<query>"` over grepping `planning/` or `work/`: briefs and pr-bodies re-inline their sources. `--scope archived` for completed work, a `<NODE_ID>` for one node.
+- Read `roadmap-context.md` first; `specy-road digest` regenerates it and `specy-road digest --check` is the CI drift gate. It is tracked — commit it.
+- Search returns pointers and snippets, never file contents; open the path it gives you.
+- The index at `.specyrd/cache/search-index.sqlite3` is disposable; never write a migration for it.
+
+**Read further for:**
+- what the digest holds and when it regenerates → "`specy-road digest`"
+- query forms and what is indexed → "`specy-road search`"
+- no embeddings, derived context, ranking → "How it works, and why it is built this way"
+- `.cursorindexingignore` vs `.cursorignore`, and Claude Code → "Keeping it out of the IDE index"
+- the `specyrd-*` stubs → "Command stubs"
+
+**Related:** [`roadmap-history.md`](roadmap-history.md), [`archiving.md`](archiving.md), [`pm-workflow.md`](pm-workflow.md).
+
 A specy-road project generates far more documentation than the roadmap it
 describes, and most of the volume is duplicated. On a real 48-node repo:
 

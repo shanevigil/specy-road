@@ -1,5 +1,28 @@
 # Workers: leaves implemented on other harnesses
 
+## Agent quickstart
+
+**Use this doc when:** delegating a claimed leaf to a session on another harness (`specy-road worker …`), or taking one over by hand.
+**Not for:** the review gate, roster roles and hand-off files — [`orchestration.md`](orchestration.md).
+
+**Must know without reading on:**
+- Run `specy-road worker sync` at the start of every turn; `specy-road worker sync --ack` once you have acted on the events.
+- One writer per worker (`lease.holder`): `specy-road worker handoff <W>` before a human opens the native session, `specy-road worker reclaim <W>` after. While leased to a human, `message` and `resume` fail with `WORKER_LEASED_BY_HUMAN`.
+- `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5.5` needs the leaf's registry claim and branch.
+- A `completion` event and a READY file approve nothing; the review path is unchanged. `interrupt` is unsupported on every adapter; `terminate` loses the turn.
+- Records live in `work/.workers/` (gitignored); the event log is authoritative, the transcript is evidence.
+
+**Read further for:**
+- record fields, states and events → "The model"
+- `harness`, `channels.cli` and permissions per vendor → "Roster setup"
+- what `delegate` does and the command table → "The loop"
+- handoff, reclaim and the intervention hook → "Handing a worker to a human"
+- launch, resume and handoff commands per harness → "What each adapter supports"
+- manual checks before relying on it → "Checks that need a real installation"
+- the presence guard and finishing the leaf → "Working alongside sessions and the gate"
+
+**Related:** [`orchestration.md`](orchestration.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-1-worker-orchestration.md`](design-notes/v0-3-1-worker-orchestration.md).
+
 `specy-road worker` lets the coordinator — the model in whatever IDE chat you
 are already in — hand a roadmap leaf to a session on another harness, keep
 talking to you while it runs, and find out what happened at the start of its

@@ -1,5 +1,27 @@
 # Git workflow and multi-agent coordination
 
+## Agent quickstart
+
+**Use this doc when:** claiming, branching, finishing or cleaning up roadmap work in a consumer repo, or reading a `roadmap/git-workflow.yaml` field.
+**Not for:** the toolkit repo's own branch policy — [`../CLAUDE.md`](../CLAUDE.md) (Repository git workflow policy); the command-by-command dev loop — [`dev-workflow.md`](dev-workflow.md).
+
+**Must know without reading on:**
+- Register on the integration branch first (a registration-only commit), then `git checkout -b feature/rm-<codename>`; `specy-road do-next-available-task` does both and pushes.
+- Never two active registry rows with overlapping touch zones; stay inside yours.
+- Under `on_complete: pr`, after `finish-this-task` the integration branch still shows the row and the old status until the PR merges: leave the row alone and never run `abort-task-pickup` to tidy it.
+- Precedence: CLI flags → env → `roadmap/git-workflow.yaml` → defaults (`main` / `origin`).
+- Remove your registry row before merge; `specy-road registry-prune --remove <CODENAME>` is only for a claim whose branch is gone.
+
+**Read further for:**
+- every `git-workflow.yaml` field, the `on_complete` modes and finish precedence → "Machine-readable contract (`roadmap/git-workflow.yaml`)"
+- `feature/rm-*` patterns and milestone rollups → "Branch naming"
+- the pre-claim checklist → "Before implementation"
+- the registration commit and `registry-prune` → "Registration commit (mandatory)"
+- touch zones and worktrees while implementing → "While working"
+- landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
+
+**Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
+
 This document is product-agnostic. Adapt branch names (`main` / `dev`) to your org; the **invariants** are registration, touch zones, and non-overlapping active claims.
 
 ## Scope and distinction

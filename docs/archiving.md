@@ -1,5 +1,28 @@
 # Archiving completed work
 
+## Agent quickstart
+
+**Use this doc when:** moving a Complete subtree out of the live roadmap, restoring one, or explaining why a dependency on archived work still validates.
+**Not for:** the PM GUI **Hide Complete** button (a view filter; no files move); a node's timeline — [`roadmap-history.md`](roadmap-history.md).
+
+**Must know without reading on:**
+- `specy-road archive M0.2` (also `--dry-run`, `--auto`, `--deep`); `specy-road restore-archive <ARCHIVE_ID>` puts it back with no diff. Nothing commits; publish like any roadmap edit.
+- `roadmap/archive/index.json` is the ledger that keeps live dependencies on archived nodes valid: commit it, never delete it.
+- Only a subtree whose rollup status is `Complete` is eligible; `--force` overrides that but never an active `milestone_execution`.
+- Archived planning sheets go under `roadmap/archive/planning/`, never `planning/archive/` (validate rejects nested `planning/`).
+
+**Read further for:**
+- the command list → "Quick reference"
+- the file layout → "What moves"
+- shallow vs deep capsules, and why not compressed → "Two tiers"
+- the refusals → "Eligibility"
+- the `index.json` contract → "Dependencies keep working"
+- `--auto` and the age threshold → "Auto-archive"
+- the **Last worked** column → "Last-worked-on"
+- the Archive drawer and preferences → "In the PM GUI"
+
+**Related:** [`roadmap-history.md`](roadmap-history.md), [`agent-search.md`](agent-search.md), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md).
+
 Roadmaps only grow. Every finished milestone keeps sitting in
 `roadmap/phases/*.json`, its planning sheet keeps sitting in `planning/`, and
 both keep loading, validating, exporting and rendering forever. On a

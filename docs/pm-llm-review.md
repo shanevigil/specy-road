@@ -1,5 +1,26 @@
 # PM Gantt: LLM Review (plain-English guide)
 
+## Agent quickstart
+
+**Use this doc when:** a PM asks what the PM Gantt **LLM Review** button sends, where it sends it, or how to merge the proposal it returns.
+**Not for:** where LLM credentials and environment variables are stored — [`pm-workflow.md`](pm-workflow.md) (Settings, **LLM** tab).
+
+**Must know without reading on:**
+- LLM Review is advisory: nothing on disk changes until the user accepts edits and saves; still run `specy-road validate` afterwards.
+- The brief, the cited `shared/` contracts, `constraints/README.md`, the `shared/` index and the current sheet text all leave the machine for the configured provider.
+- Anthropic requires `SPECY_ROAD_ANTHROPIC_MAX_TOKENS` (or Settings **Max output tokens**); there is no hidden default.
+- Terminal equivalent: `specy-road review-node <NODE_ID> -o work/review-<NODE_ID>.md`.
+
+**Read further for:**
+- what the feature does and does not do → "What LLM Review is (and is not)"
+- why the button is disabled → "Before you can use it"
+- the request sequence → "What happens when you press **LLM Review**"
+- the system message and the user-message sections → "What the model actually sees (high level)"
+- diff, preview and the merge buttons → "After the model responds: diff, preview, and actions"
+- data-leaving-the-laptop concerns → "Privacy and “what leaves my laptop”"
+
+**Related:** [`pm-workflow.md`](pm-workflow.md), [`pm-gui.md`](pm-gui.md), [`supply-chain-security.md`](supply-chain-security.md), [`optional-ai-tooling-patterns.md`](optional-ai-tooling-patterns.md).
+
 This guide is for **product managers and delivery leads** using the **PM Gantt** dashboard (`specy-road gui`). It explains what **LLM Review** does when your team has configured an external model, what information is sent to that model, and how to use the **diff**, **preview**, and **merge** controls afterward.
 
 It is **not** a legal or security sign-off: your organization’s policies on AI vendors, data residency, and customer content still apply. See [supply-chain-security.md](supply-chain-security.md) for how this repository treats dependencies and verification.
