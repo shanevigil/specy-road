@@ -50,7 +50,7 @@
           "type": "array",
           "uniqueItems": true,
           "items": { "type": "string", "minLength": 1 },
-          "description": "Data sensitivity levels this model may receive (e.g. public, internal, restricted)."
+          "description": "Data sensitivity levels this model may receive (e.g. public, internal, restricted). Absent means [public]; an explicit [] lets it process nothing."
         },
         "subagent_family_lock": { "$ref": "#/$defs/id", "description": "When set, this model may spawn only sub-agents of this family." },
         "class": { "$ref": "#/$defs/id", "description": "Executor class tag a leaf's executor_eligibility can name (e.g. senior, cheap)." },

@@ -33,11 +33,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.finish_implementation_check import base_ref
-from specy_road.git_subprocess import git_stdout
 from specy_road.git_workflow_config import require_implementation_review_before_finish
 from specy_road.orchestration_config import (
     effective_config,
@@ -48,16 +44,8 @@ from specy_road.orchestration_config import (
 )
 from specy_road.review_signing import SigningError, sign, verify  # noqa: F401 — SigningError re-exported
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
+from specy_road.review_policy_ref import committed_yaml as _committed_yaml, trusted_integration_ref
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
-
-
-def _committed_yaml(repo_root: Path, rev: str, rel: str) -> dict[str, Any]:
-    text = git_stdout(["show", f"{rev}:{rel}"], repo_root)
-    try:
-        data = yaml.safe_load(text) if text else None
-    except yaml.YAMLError:
-        return {}
-    return data if isinstance(data, dict) else {}
 
 
 def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
@@ -70,20 +58,17 @@ def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
     result is an error, not a fall back to the working tree: the gate fails
     closed. ``(None, None)`` only outside git, where the working tree is all
     there is.
+
+    The name is a trust anchor a feature commit can rewrite, so the branch it
+    names must name itself too, and with a remote configured only the
+    remote-tracking ref is read (:mod:`review_policy_ref`).
     """
     if not full_sha(repo_root, "HEAD"):
         return None, None
     gw = _committed_yaml(repo_root, "HEAD", "roadmap/git-workflow.yaml")
     ib = str(gw.get("integration_branch") or "main")
     remote = str(gw.get("remote") or "origin")
-    ref = base_ref(repo_root, remote, ib)
-    if ref is None:
-        return None, (
-            f"integration branch {ib!r} (roadmap/git-workflow.yaml at HEAD) has neither "
-            f"{remote}/{ib} nor a local branch, so review policy cannot be read from it; "
-            "fetch it, or fix integration_branch on the integration branch"
-        )
-    return ref, None
+    return trusted_integration_ref(repo_root, remote, ib)
 
 
 def review_required(repo_root: Path) -> bool:

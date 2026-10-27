@@ -37,12 +37,21 @@ section before copying a CLI line into production.
   profile's prompting rules and failure-mode mitigations, repeats the touch
   zones at the end for models that drift from scope, then embeds the brief
   (executor, coordinator) or the review packet (reviewer, which must exist).
-  `--channel cli` runs the profile's `access.cli` with `{prompt}` replaced by
-  the file path; edit the profile's `cli` to add the placeholder and your flags.
-  Verified headless forms (2026-10): `claude -p "$(cat {prompt})" --model <id>`,
-  `codex exec -m <id> - < {prompt}` (`-` reads the prompt from stdin), and
-  `agent -p "$(cat {prompt})" --model <id>` for Cursor's CLI (`cursor-agent`
-  remains an alias; piping a prompt file to it is undocumented).
+  `--channel cli` runs the profile's `access.cli` (or the roster entry's
+  `channels.cli`) after substituting one placeholder: `{prompt}` becomes the
+  quoted **path** of the prompt file, `<prompt>` (the shipped profiles' form)
+  becomes the quoted prompt **text**. Either must be a whole shell argument on
+  its own, optionally quoted as one (`"<prompt>"`). A placeholder inside a
+  larger word is refused on purpose — `claude -p "$(cat {prompt})"` and
+  `--prompt={prompt}` are rejected before anything runs, because the quoting
+  the substitution adds would land inside still-open quotes where `$(…)`
+  executes. Accepted headless forms (2026-10): `claude -p --model <id> < {prompt}`
+  or `claude -p "<prompt>" --model <id>`, `codex exec -m <id> - < {prompt}`
+  (`-` reads the prompt from stdin), and `agent -p --model <id> < {prompt}` or
+  `agent -p "<prompt>" --model <id>` for Cursor's CLI (`cursor-agent` remains
+  an alias; piping a prompt file to it is undocumented). The profile itself is
+  read from the integration branch, like the roster: a working-tree copy that
+  differs from the committed one is refused until it is committed there.
 
 ## Planning assignments: `orchestrate plan`
 
@@ -56,8 +65,8 @@ and why. It assigns only; dispatch is `specy-road prompt`. The rules, in
 order:
 
 - **Sensitivity.** A leaf's `sensitivity` (default `public`) must appear in a
-  model's roster `may_process` (default `[public]`), for executors and
-  reviewers alike. `prompt` refuses to write a prompt that breaks this, and
+  model's roster `may_process` (`[public]` when the key is absent; an explicit
+  `[]` lets the model process nothing), for executors and reviewers alike. `prompt` refuses to write a prompt that breaks this, and
   runs the model's roster `preflight` command before `--channel cli` sends
   anything, so a local model's port can be checked first.
 - **Eligibility.** A leaf's `executor_eligibility` (default `any`) names a

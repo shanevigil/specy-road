@@ -43,6 +43,12 @@ def _repo(tmp_path: Path) -> Path:
     return repo
 
 
+def _commit_profile(repo: Path) -> None:
+    """Profiles are read from the integration branch (round 6, B5): land the edit on ``dev``."""
+    git(repo, "commit", "-qam", "profile edit")
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+
+
 def _run(mod, *args: str) -> int:
     with pytest.raises(SystemExit) as e:
         mod.main(list(args))
@@ -175,6 +181,7 @@ def test_prompt_cli_channel_runs_profile_cli(tmp_path: Path, capsys, monkeypatch
     text = prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: cat {prompt} | head -1")
     assert text != prof_path.read_text()
     prof_path.write_text(text)
+    _commit_profile(repo)
     assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
     captured = capsys.readouterr()
@@ -185,6 +192,7 @@ def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) 
     repo = _repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo hi"))
+    _commit_profile(repo)
     assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 1
     assert "no {prompt} (the prompt file path) or <prompt>" in capsys.readouterr().err
@@ -195,6 +203,7 @@ def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, cap
     repo = _repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', '  cli: printf %s "<prompt>" | wc -c'))
+    _commit_profile(repo)
     assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
     err = capsys.readouterr().err
