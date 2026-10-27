@@ -32,13 +32,15 @@
     },
     "instruction_epoch": { "type": "integer", "minimum": 0, "description": "Incremented by every recorded human intervention." },
     "contract_hash": { "type": ["string", "null"], "description": "Hash of the leaf's brief when the worker was delegated; a reconcile compares against the current one." },
+    "started_head": { "type": ["string", "null"], "description": "The worktree's HEAD when the worker was created; a reconcile judges touch-zone breaches from here, whatever later checkpoints say." },
     "checkpoint": {
       "type": ["object", "null"], "required": ["git_head", "at"], "additionalProperties": false,
       "properties": {
         "git_head": { "type": ["string", "null"] },
         "native_turn": { "type": ["string", "null"] },
         "at": { "type": "string", "minLength": 1 },
-        "interventions_seen": { "type": "integer", "minimum": 0, "description": "Hook-recorded prompt lines that predate this hand-off." }
+        "interventions_seen": { "type": "integer", "minimum": 0, "description": "Hook-recorded prompt lines that predate this hand-off." },
+        "dirty_paths": { "type": "array", "items": { "type": "string" }, "description": "Paths already modified or untracked at the checkpoint; not the human's doing." }
       }
     },
     "attempt": { "type": "integer", "minimum": 1, "description": "Nth worker delegated for this leaf; <node_id>:<attempt> is the idempotency key." },

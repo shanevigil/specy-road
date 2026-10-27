@@ -240,6 +240,7 @@ class BrainstormSession:
     frame: dict[str, str] = field(default_factory=dict)
     allocation: str = ""
     round: int = 1
+    rounds: int = 2       # planned diverge rounds (`start --rounds`); next-round warns past it
     profile: str = "product"
     panel: int = 0
 
@@ -251,6 +252,7 @@ class BrainstormSession:
             "under": self.under,
             "mode": self.mode,
             "round": self.round,
+            "rounds": self.rounds,
             "profile": self.profile,
         }
         if self.panel:
@@ -313,6 +315,10 @@ def read_session(root: Path, slug: str) -> BrainstormSession:
         seen.add(i.id.upper())
     frame = raw.get("frame") if isinstance(raw.get("frame"), dict) else {}
     rnd = raw.get("round")
+    planned = raw.get("rounds")
+    file_slug = _str_field(raw, "slug")
+    if file_slug and file_slug != slug:
+        raise BrainstormError(f"{path.name} says slug {file_slug!r}; a session file is named after its slug")
     return BrainstormSession(
         slug=_str_field(raw, "slug") or slug,
         topic=_str_field(raw, "topic"),
@@ -322,6 +328,7 @@ def read_session(root: Path, slug: str) -> BrainstormSession:
         frame={str(k): str(v) for k, v in frame.items()},
         allocation=_str_field(raw, "allocation"),
         round=rnd if isinstance(rnd, int) and rnd >= 1 else 1,
+        rounds=planned if isinstance(planned, int) and planned >= 1 else 2,
         profile=_str_field(raw, "profile", "product") or "product",
         panel=raw.get("panel") if isinstance(raw.get("panel"), int) else 0,
     )

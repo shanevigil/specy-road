@@ -122,7 +122,7 @@ and it avoids the anchoring the ChatGPT run itself warns about.
 | `add-idea` fields | title, rationale, kind, effort, evidence[str] | origin, cluster, evidence objects, decision record, hypothesis |
 | Converge | cluster, overlap by id, constitution check, verdict | critic section; verdicts must cite a clause or evidence id |
 | Triage | accept/reject/revise, flat list | `list --by cluster`, `--reason` on reject, `revisit_when` on park |
-| Promote | node + sheet seeded from rationale/evidence | carry verified evidence and "alternatives considered" |
+| Promote | node + sheet seeded from rationale/evidence | carry every source with its verification state, and "alternatives considered" |
 | Skill | `specyrd-brainstorm` SKILL.md (shared `.agents/skills`, symlinked for Claude Code) | narrow description; `references/` files |
 | GUI | same prompt text, configured LLM + search provider | same data model; the session payload carries the v2 session fields and a reject needs a reason, but the converge pass still captures nothing structured (clusters, overlap, critics, sources from the chat are not persisted) — a known gap, the CLI is the full path |
 
@@ -159,7 +159,7 @@ value per line of code:
 8. **Technical profile.** `--profile technical` swaps the lens set (failure
    modes, operability, migration, debt, dependency risk, platform leverage)
    and the default kinds.
-9. **Promote** carries verified evidence and the cluster's rejected siblings
+9. **Promote** carries each source with its verification state (never an unverified quote as verified) and the cluster's rejected siblings
    into the sheet's References / "Alternatives considered".
 10. **Diversity operators and an optional panel.** The allocation grid draws
     from an operator catalog (ordinary personas, random functional

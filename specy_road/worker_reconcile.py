@@ -27,6 +27,7 @@ from specy_road.worker_state import (
     list_records,
     load_record,
     workers_dir,
+    workers_lock,
 )
 
 
@@ -51,14 +52,23 @@ def _bookkeeping(path: str) -> bool:
 
 
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:
-    rec = load_record(repo_root, worker_id)
+    with workers_lock(repo_root):   # one reading of checkpoint, lease and flags
+        return _reconcile_locked(repo_root, load_record(repo_root, worker_id))
+
+
+def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, dict[str, Any]]:
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
     changed = _changed_since(Path(rec.worktree), since)
     zones = t.touch_zones
+    # A breach is judged over the worker's whole lifetime, not only since the
+    # last checkpoint: a hand-off moves the checkpoint past earlier commits,
+    # and what they touched is still on the branch.
+    origin = rec.started_head or since
+    on_branch = _changed_since(Path(rec.worktree), origin) if origin != since else changed
     # Toolkit bookkeeping is never a breach: briefs, prompts, hand-off and
     # brainstorm files under work/, and the registry row the claim lives in.
-    substantive = [p for p in changed if not _bookkeeping(p)]
+    substantive = [p for p in sorted(set(changed) | set(on_branch)) if not _bookkeeping(p)]
     outside = [p for p in substantive if zones and not any(zone_matches(z, p) for z in zones)]
     text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
     # A prompt that can no longer be built (the model lost the leaf's

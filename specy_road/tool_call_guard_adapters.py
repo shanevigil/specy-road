@@ -34,8 +34,16 @@ def _bash_command(payload: dict[str, Any]) -> str | None:
     """Claude Code and Codex ``PreToolUse``: ``tool_input.command`` of the Bash tool."""
     if payload.get("tool_name") != "Bash":
         return None
-    cmd = (payload.get("tool_input") or {}).get("command")
-    return str(cmd) if cmd else None
+    return _string_command((payload.get("tool_input") or {}).get("command"))
+
+
+def _string_command(cmd: Any) -> str | None:
+    """A command is a string or absent; any other shape is an error the guard answers with a deny."""
+    if cmd is None or cmd == "":
+        return None
+    if not isinstance(cmd, str):
+        raise ValueError(f"command is {type(cmd).__name__}, not a string; refusing to guess what runs")
+    return cmd
 
 
 def _pre_tool_use(decision: str, **fields: str) -> str:
@@ -101,7 +109,7 @@ _CODEX = Adapter(
 # fails OPEN unless failClosed is set, so every answer is explicit and the
 # snippet sets failClosed: true. The command runs from the project root.
 _CURSOR = Adapter(
-    "cursor", lambda p: (str(p.get("command") or "") or None),
+    "cursor", lambda p: _string_command(p.get("command")),
     lambda note: (json.dumps({"permission": "allow", **({"agent_message": note} if note else {})}), None, 0),
     lambda reason: (json.dumps({"permission": "deny", "agent_message": reason,
                                 "user_message": "specy-road: refused in a shared checkout"}), None, 0),
@@ -120,7 +128,7 @@ _CURSOR = Adapter(
 
 ADAPTERS: dict[str, Adapter] = {
     "generic": Adapter(
-        "generic", lambda p: (str(p.get("command") or "") or None),
+        "generic", lambda p: _string_command(p.get("command")),
         lambda note: (None, f"session guard: allow {note}" if note else None, 0),
         lambda reason: (None, f"session guard: {reason}", 2),
         '{"command": "<the shell command>"}   # on stdin; exit 2 denies with the reason on stderr',

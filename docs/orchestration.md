@@ -306,8 +306,7 @@ specy-road grind-session --on-complete merge --implement-mode hook \
 ```
 
 `review record` refuses notes whose verdict disagrees with `--verdict`, so a
-reviewer that blocks fails the hook and stops the loop (exit `4`); or set
-`require_implementation_review_before_finish: false` for a loop that should not gate.
+blocking reviewer fails the hook and stops the loop (exit `4`).
 
 From an IDE agent, use **step mode** instead
 ([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)).
@@ -339,7 +338,8 @@ specy-road session guard --command "git stash"   # exit 2 with the reason when a
 specy-road session guard --format claude-code     # the same, reading a harness hook's stdin
 ```
 
-`session guard` is the body of a harness hook: it denies a command that can
+`session guard` is the body of a harness hook (routing commands read the
+roster from the integration branch, as the gate does): it denies a command that can
 move or discard another session's work — `stash`, `reset --hard`, branch
 switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rebase`,
 `commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`

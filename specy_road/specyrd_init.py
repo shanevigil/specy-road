@@ -286,8 +286,10 @@ def run_init(
         files_to_install = ROLE_COMMAND_FILES[role]
     else:
         files_to_install = COMMAND_FILES
+    already_owned = {p for paths in (manifest.get("agents") or {}).values() for p in paths}
     _append_command_stub_installs(
-        repo_root, rel_dest, files_to_install, force, dry_run, written, skipped, agent=agent
+        repo_root, rel_dest, files_to_install, force, dry_run, written, skipped, agent=agent,
+        owned=already_owned,
     )
     _write_readme_and_gui_stub(
         repo_root,
@@ -318,8 +320,7 @@ def run_init(
             repo_root,
             manifest,
             agent=agent,
-            managed=owned_paths(managed_paths(rel_dest, files_to_install, agent=agent), skipped,
-                                {p for paths in (manifest.get("agents") or {}).values() for p in paths}),
+            managed=owned_paths(managed_paths(rel_dest, files_to_install, agent=agent), skipped, already_owned),
             role=role,
             prefix=prefix,
         )

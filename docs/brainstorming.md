@@ -11,8 +11,8 @@ one pass filters first, and hands back five safe ideas instead of forty.
 | Pass | Command | What the agent is asked for |
 |------|---------|------------------------------|
 | Diverge | `brainstorm start`, `brainstorm next-round` | Volume. A frame, an allocation grid, then rounds that add only what lies outside the pool so far. Ranking is forbidden. |
-| Evidence | `brainstorm evidence` | Sources for the shortlist: a verbatim quote, URL, date and tool per claim, with at least one disconfirming search. |
 | Converge | `brainstorm recommend` | Judgement. Clustering, overlap with existing nodes, three independent critics, a verdict per idea that cites something. New ideas are forbidden. |
+| Evidence | `brainstorm evidence` | Sources for the shortlist `recommend` produced: a verbatim quote, URL, date and tool per claim, with at least one disconfirming search. |
 | Triage, promote | `accept` / `reject` / `park`, `promote` | Nothing. These are the human's. |
 
 The design rests on what the research found about today's models (design
@@ -79,7 +79,8 @@ specy-road brainstorm start --topic "How do we expand payments?" --under M3 --co
 
 `--under` is the node accepted ideas will hang off; omit it to land at the
 roadmap root. `--count` is the floor per round. `--rounds` (default 2) is
-how many diverge rounds you plan; `--profile technical` swaps the lens set
+how many diverge rounds you plan — recorded on the session, and `next-round`
+says when you pass it; `--profile technical` swaps the lens set
 for developer roadmaps (failure modes, operability, migration paths, debt,
 dependency risk, platform leverage, security); `--panel N` also writes N
 independent shard prompts (below).

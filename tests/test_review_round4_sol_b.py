@@ -86,17 +86,25 @@ def test_search_results_are_delimited_as_untrusted() -> None:
 
 def test_the_byte_cap_blocks_rather_than_truncates(monkeypatch) -> None:
     class R:
-        status_code = 200
-        is_redirect = is_permanent_redirect = False
-        headers: dict = {}
-        encoding = "utf-8"
+        status = 200
+        _left = bv.MAX_BYTES + 1
 
-        def iter_content(self, _n):
-            yield b"x" * (bv.MAX_BYTES + 1)
+        def read(self, n):
+            take = min(n, self._left)
+            self._left -= take
+            return b"x" * take
 
-    import types
-    fake = types.SimpleNamespace(get=lambda *a, **k: R(), compat=types.SimpleNamespace(urljoin=lambda a, b: b))
-    monkeypatch.setitem(sys.modules, "requests", fake)
+        def getheader(self, _name):
+            return None
+
+    class Conn:
+        def __init__(self, host, address, port): pass
+        def request(self, *a, **k): pass
+        def getresponse(self): return R()
+        def close(self): pass
+
+    monkeypatch.setattr(bv, "_PinnedHTTPS", Conn)
+    monkeypatch.setattr(bv, "_public_address", lambda host: "93.184.216.34")
     monkeypatch.setattr(bv, "_is_off_host", lambda host: False)
     with pytest.raises(ValueError, match="larger than"):
         bv.default_fetch("https://example.com/big")

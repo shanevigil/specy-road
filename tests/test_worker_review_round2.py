@@ -187,6 +187,8 @@ def test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change(tmp_path: P
     _wait(repo, rec.worker_id)
     orch = repo / "roadmap" / "orchestration.yaml"
     orch.write_text(orch.read_text().replace("roles: [executor, reviewer], harness", "roles: [reviewer], harness"))
+    git(repo, "commit", "-qm", "roster change", "--", "roadmap/orchestration.yaml")
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")     # routing reads the roster from the integration branch
     _rec, delta = ops.reconcile(repo, rec.worker_id)
     assert delta["contract_changed"] and delta["needs_reconcile"]
 

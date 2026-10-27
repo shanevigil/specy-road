@@ -6,12 +6,9 @@ scripts; non-interactive without it fetches nothing). Fetching a known URL
 to check a quote is neither a model call nor a search; the guards are the
 GUI research module's — public hosts only, a timeout, a size cap. A fetch
 that fails records ``blocked``, never "fabricated": a paywall is not a lie.
-
-Known limit: the host check resolves the name once and ``requests`` resolves
-it again to connect, so a name that answers differently each time (DNS
-rebinding) can reach a private address on the second lookup. TLS
-certificate checking narrows what such a host can be; pinning the checked
-address into the connection would close it and is not done here.
+The connection is made to the address the host was checked at, with the
+hostname kept for SNI and certificate checking, so a rebinding name cannot
+move a hop onto a private address after the check.
 """
 
 from __future__ import annotations
@@ -22,7 +19,11 @@ from collections.abc import Callable
 from html import unescape
 from typing import Any
 
-from urllib.parse import urlsplit
+import http.client
+import ipaddress
+import socket
+import ssl
+from urllib.parse import urljoin, urlsplit
 
 from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
 from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, Idea
@@ -41,32 +42,84 @@ def _norm(text: str) -> str:
 MAX_REDIRECTS = 5
 
 
+def _public_address(host: str) -> str | None:
+    """One public address ``host`` resolves to, or ``None`` when any answer is off-host.
+
+    The address returned is the one the connection is made to: the name is
+    not resolved a second time, so a name that answers differently on the
+    next lookup (DNS rebinding) cannot move the fetch onto a private host.
+    """
+    try:
+        infos = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except OSError:
+        return None
+    addrs = []
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return None
+        if not addr.is_global:
+            return None
+        addrs.append(str(addr))
+    return addrs[0] if addrs else None
+
+
+class _PinnedHTTPS(http.client.HTTPSConnection):
+    """TLS to a chosen address, with the hostname kept for SNI and certificate checking."""
+
+    def __init__(self, host: str, address: str, port: int) -> None:
+        super().__init__(host, port, timeout=TIMEOUT_SECONDS, context=ssl.create_default_context())
+        self._pinned = address
+
+    def connect(self) -> None:
+        sock = socket.create_connection((self._pinned, self.port), self.timeout)
+        self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
+
+
+def _fetch_once(url: str) -> tuple[int, str | None, bytes]:
+    """``(status, redirect location, body)`` for one request to the address the host was checked at."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    address = _public_address(host)
+    if address is None:
+        raise ValueError(f"refusing {url}: not a public host")
+    conn = _PinnedHTTPS(host, address, parts.port or 443)
+    try:
+        path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+        conn.request("GET", path, headers={"User-Agent": "specy-road brainstorm verify", "Host": host})
+        r = conn.getresponse()
+        body = b""
+        while True:
+            chunk = r.read(65536)
+            if not chunk:
+                break
+            if len(body) + len(chunk) > MAX_BYTES:
+                raise ValueError(f"page larger than {MAX_BYTES} bytes; not verified")   # → blocked
+            body += chunk
+        return r.status, r.getheader("Location"), body
+    finally:
+        conn.close()
+
+
 def default_fetch(url: str) -> tuple[int, str]:
     """``(status, text)``; raises on transport errors.
 
     Redirects are followed by hand so that every hop passes the same
-    public-https check as the first URL: a page the user approved must not
-    redirect the fetch onto a private host.
+    public-https check as the first URL, and each hop connects to the
+    address it was checked at: a page the user approved must not redirect
+    or re-resolve the fetch onto a private host.
     """
-    import requests
-
     for _hop in range(MAX_REDIRECTS + 1):
         if _allowed(url):
             raise ValueError(f"refusing {url}: {_allowed(url)}")
-        r = requests.get(url, timeout=TIMEOUT_SECONDS, stream=True, allow_redirects=False,
-                         headers={"User-Agent": "specy-road brainstorm verify"})
-        if r.is_redirect or r.is_permanent_redirect or r.status_code in (301, 302, 303, 307, 308):
-            location = r.headers.get("Location")
+        status, location, body = _fetch_once(url)
+        if status in (301, 302, 303, 307, 308):
             if not location:
-                return r.status_code, ""
-            url = requests.compat.urljoin(url, location)
+                return status, ""
+            url = urljoin(url, location)
             continue
-        body = b""
-        for chunk in r.iter_content(65536):
-            if len(body) + len(chunk) > MAX_BYTES:
-                raise ValueError(f"page larger than {MAX_BYTES} bytes; not verified")   # → blocked
-            body += chunk
-        return r.status_code, body.decode(r.encoding or "utf-8", errors="replace")
+        return status, body.decode("utf-8", errors="replace")
     raise ValueError("too many redirects")
 
 

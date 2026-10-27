@@ -53,7 +53,10 @@ def cmd_next_round(ns: argparse.Namespace) -> int:
     write_session(root, session)
     count = ns.count or DEFAULT_COUNT
     ppath = write_round_prompts(root, session, count=count)[0]
-    print(f"round {session.round}: {ppath.relative_to(root)} ({len(session.ideas)} ideas in the pool)")
+    print(f"round {session.round} of {session.rounds}: {ppath.relative_to(root)} ({len(session.ideas)} ideas in the pool)")
+    if session.round > session.rounds:
+        print(f"note: past the {session.rounds} round(s) planned at `start --rounds`; converge is usually next",
+              file=sys.stderr)
     return 0
 
 

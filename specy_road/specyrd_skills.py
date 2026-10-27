@@ -105,8 +105,10 @@ def ensure_link(repo_root: Path, agent: str, name: str, *, dry_run: bool = False
     if link.exists() and link.resolve() == canonical:
         return UNCHANGED   # e.g. `.claude/skills` is itself a link to `.agents/skills`
     if link.is_dir() and not link.is_symlink():
-        # Only a copy this tool made is ours to replace; anything else is the user's.
-        ours = {q.name for q in link.iterdir()} == {"SKILL.md"} and _is_our_skill(link / "SKILL.md", name)
+        # Only a copy this tool made is ours to replace; anything else is the
+        # user's — and on a first install (no manifest ownership) a real
+        # directory is never ours, whatever its text looks like.
+        ours = repair and {q.name for q in link.iterdir()} == {"SKILL.md"} and _is_our_skill(link / "SKILL.md", name)
         if not ours:
             return SKIPPED
         if (link / "SKILL.md").read_text(encoding="utf-8") == render_skill(name) and not _symlinks_work(link.parent):
@@ -159,14 +161,22 @@ def install_stubs(
     skipped: list[str],
     *,
     agent: str = "generic",
+    owned: set[str] | None = None,
 ) -> None:
-    """Write each command as a skill (or a flat file for ``generic``), plus links."""
+    """Write each command as a skill (or a flat file for ``generic``), plus links.
+
+    ``owned`` is what the manifest already records as the kit's: a canonical
+    skill file that exists but is nobody's is skipped, and no link is made to
+    it — the installer must not expose content it declined to own.
+    """
     skills = agent in SKILL_AGENTS
     for name in files_to_install:
         rel_file = skill_rel(name) if skills else rel_dest / name
         dest_file = repo_root / rel_file
         if dest_file.is_file() and not force:
             skipped.append(str(rel_file))
+            if skills and str(rel_file) not in (owned or set()):
+                continue   # not ours: no link to it either
         else:
             content = render_skill(name) if skills else _read_template(name)
             if not dry_run:

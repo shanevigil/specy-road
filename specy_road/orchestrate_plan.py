@@ -38,7 +38,8 @@ from typing import Any
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import compute_session_plan
 from specy_road.model_profiles import Profile, profile_for_entry
-from specy_road.orchestration_config import active_substitutions, effective_config
+from specy_road.orchestration_pinned import pinned_config
+from specy_road.orchestration_config import active_substitutions
 from specy_road.registry_yaml import read_registry, registry_path
 
 DEFAULT_SENSITIVITY = "public"
@@ -148,7 +149,10 @@ def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None) ->
     pool = [c for c in cands if "executor" in (c.entry.get("roles") or []) and _usable(c, a.sensitivity, today)]
     if a.eligibility != ANY:
         pool = [c for c in pool if str(c.entry.get("class") or "") == a.eligibility]
-    capable = [c for c in pool if c.profile is None or not c.profile.ok or c.score("executor") >= MIN_EXECUTOR_SCORE]
+    for c in pool:
+        if c.profile is not None and not c.profile.ok:
+            a.problems.append(f"{c.id}: its profile is invalid ({'; '.join(c.profile.errors)}); fix it or drop the entry")
+    capable = [c for c in pool if c.profile is None or (c.profile.ok and c.score("executor") >= MIN_EXECUTOR_SCORE)]
     capable.sort(key=lambda c: (c.cost if c.cost is not None else float("inf"), -c.score("executor")))
     if not capable:
         need = f"may_process containing {a.sensitivity!r}"
@@ -205,7 +209,7 @@ def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, 
 
 def build_orchestration_plan(root: Path, *, under: str | None = None,
                              today: date | None = None) -> tuple[OrchestrationPlan | None, str | None]:
-    config, err = effective_config(root)
+    config, err = pinned_config(root)
     if err:
         return None, f"orchestration config: {err}"
     nodes = load_roadmap(root)["nodes"]
