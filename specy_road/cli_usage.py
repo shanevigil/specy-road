@@ -131,7 +131,7 @@ USAGE_TEXT = (
     "    (--plan for read-only ready/blocked/waves; --until NODE | --under PARENT | "
     "--max-leaves N | --implement-mode {manual,hook} --implement-cmd CMD | "
     "--pre-finish-cmd CMD | --on-complete {pr,merge,auto} | --json | "
-    "--resume-in-flight | --delete-merged-branches)\n"
+    "--resume-in-flight | --delete-merged-branches | --step {pickup,finish})\n"
     "    Stopping with exit 6 means this worktree already holds a claim: finish it,\n"
     "    abort-task-pickup, or re-run with --resume-in-flight. Exit 3 is a real\n"
     "    dependency/gate block needing human action elsewhere.\n"
