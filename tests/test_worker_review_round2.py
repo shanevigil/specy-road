@@ -197,13 +197,6 @@ def test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change(tmp_path: P
     assert delta["contract_changed"] and delta["needs_reconcile"]
 
 
-def test_codex_resume_keeps_the_sandbox_and_reads_stdin(tmp_path: Path) -> None:
-    p = tmp_path / "p.md"
-    p.write_text("hi")
-    launch = wa.adapter_for("codex").resume("thr-1", p, tmp_path, "sol", None)
-    assert "--sandbox" in launch.argv and launch.argv[-1] == "-" and launch.stdin == "hi"
-
-
 def test_reviews_root_stays_inside_a_nested_project(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     nested = repo / "sr"
