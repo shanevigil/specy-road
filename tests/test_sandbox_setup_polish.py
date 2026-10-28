@@ -39,3 +39,7 @@ def test_new_phase_chunks_append_to_includes_in_creation_order(two_new_phases: P
     manifest = json.loads((two_new_phases / "roadmap" / "manifest.json").read_text())
     assert manifest["includes"] == ["phases/M1.json", "phases/M2.json", "phases/M3.json"]
 
+
+def test_new_phase_planning_sheet_is_named_from_its_title(two_new_phases: Path) -> None:
+    names = sorted(p.name for p in (two_new_phases / "planning").glob("M[23]_*.md"))
+    assert [n.split("_")[:2] for n in names] == [["M2", "alpha-phase"], ["M3", "beta-phase"]]

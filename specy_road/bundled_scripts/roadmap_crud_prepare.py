@@ -61,12 +61,14 @@ def derive_codename_with_collision_suffix(
 
 
 def ensure_codename_for_new_node(root: Path, node: dict) -> None:
-    """F-006: give a new task a codename from its title, before it is written.
+    """F-006: give a new node a codename from its title, before it is written.
 
-    Downstream pickup and registry logic need one. Deriving it here keeps every
-    add path (CLI and PM GUI) producing complete nodes.
+    Downstream pickup and registry logic need one, and the planning sheet's
+    slug comes from it — the same derivation ``edit-node --set title=…`` runs.
+    Deriving it here keeps every add path (CLI and PM GUI) producing complete
+    nodes instead of ``<id>_unnamed_…`` sheets.
     """
-    if node.get("type") != "task" or node.get("codename"):
+    if node.get("codename"):
         return
     existing = {
         n.get("codename") for n in load_roadmap(root)["nodes"] if n.get("codename")
