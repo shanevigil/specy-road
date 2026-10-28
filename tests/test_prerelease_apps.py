@@ -43,3 +43,13 @@ def test_move_node_keeps_the_scaffold_m1_numbering(tmp_path: Path) -> None:
     assert "[ok] moved M1.1 under M1" in r.stdout
     sheets = sorted(p.name.split("_")[0] for p in (tmp_path / "planning").glob("M*.md"))
     assert sheets == ["M1", "M1.1", "M1.2"]
+
+
+def test_refresh_stubs_without_a_stub_pack_is_a_clean_no_op(tmp_path: Path) -> None:
+    """The documented upgrade runs refresh-stubs; the stub pack is optional."""
+    _scaffold(tmp_path)
+
+    r = _cli(tmp_path, "refresh-stubs")
+
+    assert r.returncode == 0, r.stderr
+    assert "nothing to refresh" in r.stdout
