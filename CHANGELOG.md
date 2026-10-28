@@ -334,6 +334,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   **Existing adopters:** run `specy-road refresh-stubs` (the managed block
   grew from 39 to 50 lines); `refresh-profiles --force <path>` replaces an
   unedited profile to get its new section.
+- **Seventh review round (at 7cc4fd8):** a Cursor worker on a profile whose
+  `api_id` is `unknown` (the shipped Composer profiles) launched with
+  `--model unknown`; the harness's default model is used instead, on every
+  adapter. A nested phase added with `add-node` keeps its place after its
+  parent's chunk (only a top-level phase is appended). `add-node --help`
+  says every new node's codename comes from `--title`. Every published
+  version gets its own What's new section in the release runbook.
 - **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
   reproduced before the fix. Guard: env-supplied git config
   (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and
@@ -384,6 +391,14 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `message`, `resume` and `handoff` could not work. The profile's command
   now stands in only for `generic`; `channels.cli` still overrides any
   harness.
+- **Sandbox runbook on real harnesses (local, 2026-10-28):** codex-cli
+  0.165 rejects `--ask-for-approval` on `codex exec`, and `exec resume`
+  also rejects `--sandbox` and `-C`, so every `codex` worker failed at
+  launch. Launch and resume now set `-c sandbox_mode=workspace-write -c
+  approval_policy=never`, and the GPT Sol profiles' `access.cli` does the
+  same. **Existing adopters:** `refresh-profiles --force
+  model-profiles/openai-gpt/<id>.md` for each GPT profile you have not
+  edited.
 - **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
   judges touch zones over the worker's lifetime (`started_head`), not only
   since the last checkpoint; a READY must be at the worktree's HEAD;
