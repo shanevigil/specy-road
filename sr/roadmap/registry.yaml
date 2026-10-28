@@ -38,6 +38,9 @@ entries:
       - specy_road/templates/specyrd/agents-md-block.md
       - docs/brainstorming.md
       - tests/
+      - specy_road/bundled_scripts/brainstorm_close.py
+      - specy_road/templates/project/work/README.md
+      - suggested_prompts/brainstorm-roadmap.md
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
