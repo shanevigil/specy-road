@@ -181,8 +181,11 @@ top-level `command` on stdin; the answer is JSON on stdout,
 `{"permission": "allow" | "deny", "agent_message": "…"}`. Empty output on exit
 0 counts as a hook *failure*, which fails open unless `failClosed: true`, so
 the guard answers every event explicitly and the printed snippet sets
-`failClosed: true`. Whether the hook fires in `agent -p` and under auto-run is
-unverified; community reports say `deny` holds there.
+`failClosed: true`. Observed on Cursor CLI 2026.10.22 (sandbox run,
+2026-10-28): the hook fires under `agent -p`, with and without `--force`, and
+`deny` holds; the model saw the short `user_message`, not `agent_message`.
+Cursor also runs `.claude/settings.json` hooks, naming its shell tool `Shell`;
+the `claude-code` format judges those too, so either snippet guards Cursor.
 
 Get each snippet with `specy-road session guard --format cursor --print-config`
 (or `codex`). The repo's own test suite runs every adapter as a subprocess

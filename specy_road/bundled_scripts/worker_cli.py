@@ -253,8 +253,8 @@ def cmd_open(ns: argparse.Namespace) -> int:
 def cmd_hook(ns: argparse.Namespace) -> int:
     adapter = HOOKS[ns.format]
     if ns.print_config:
-        print(adapter.config)
-        print(f"\n# {adapter.notes}")
+        print(adapter.config)   # stdout stays pure JSON, safe to paste whole
+        print(f"# {adapter.notes}", file=sys.stderr)
         return 0
     try:
         sid, prompt = adapter.session_and_prompt(read_payload(sys.stdin.read()))
