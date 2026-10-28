@@ -68,7 +68,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.2_handoff-local-records_b06d628f-8f02-49c0-9366-7f9beee7ce20.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "handoff status reports review records without a claim",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
