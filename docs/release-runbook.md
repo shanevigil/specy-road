@@ -391,9 +391,9 @@ release-publish.yml. Smoke install:
 
 `docs/whats-new.md` is the curated page for adopters deciding whether to
 upgrade; `CHANGELOG.md` stays the exhaustive record (create the file on
-first use with a header saying so). Newest first, one section per release
-line: the first RC writes it, later RCs and the final update it, and a
-patch adds a `### Fixes in X.Y.Z` line. Write what users can now do, not
+first use with a header saying so). Newest first, one section per
+published version `X.Y.Z`, patches included: its first RC writes it, and
+later RCs and the final update that same section. Write what users can now do, not
 which module changed; leave refactors, test counts and review rounds to
 the CHANGELOG. Each section, in order:
 
