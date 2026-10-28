@@ -1,5 +1,17 @@
-# Active roadmap claims (codename, branch, touch zones). Empty when nothing is in progress.
-# See docs/git-workflow.md: register on the integration branch, then feature/rm-<codename>.
-
 version: 1
-entries: []
+entries:
+  - codename: unauthored-leaf-guard
+    node_id: M3.1
+    branch: feature/rm-unauthored-leaf-guard
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
+      - specy_road/bundled_scripts/do_next_available.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/brief_acceptance.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
