@@ -17,8 +17,8 @@ Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
 integration branch** (its remote-tracking ref when present), and the gate is on
 when either that branch or the working tree turns it on: a feature branch
 cannot lower its own bar. Which branch that is comes from the committed
-``git-workflow.yaml``, and a branch that cannot be found fails closed
-(:func:`policy_source`).
+``git-workflow.yaml`` on the remote's default branch, else at HEAD, and a
+branch that cannot be found fails closed (:func:`policy_source`).
 
 The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_required`` — counted by distinct family when
@@ -51,31 +51,29 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
     verify,
 )
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
-from specy_road.review_policy_ref import committed_yaml as _committed_yaml, trusted_integration_ref
+from specy_road.review_policy_ref import committed_yaml as _committed_yaml, integration_name, trusted_integration_ref
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 
 
 def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
     """``(ref, error)``: the integration branch ref that review policy is read from.
 
-    The branch name and remote come from ``roadmap/git-workflow.yaml`` **as
-    committed at HEAD** — never from the working tree or the
-    ``SPECY_ROAD_INTEGRATION_BRANCH`` / ``SPECY_ROAD_REMOTE`` variables, which an
-    agent can change without a trace. When that branch cannot be found the
-    result is an error, not a fall back to the working tree: the gate fails
-    closed. ``(None, None)`` only outside git, where the working tree is all
-    there is.
+    The remote comes from ``roadmap/git-workflow.yaml`` **as committed at
+    HEAD**, and the branch name from the copy committed on the remote's default
+    branch (``refs/remotes/<remote>/HEAD``) when there is one, else from HEAD's —
+    never from the working tree or the ``SPECY_ROAD_INTEGRATION_BRANCH`` /
+    ``SPECY_ROAD_REMOTE`` variables, which an agent can change without a trace.
+    When that branch cannot be found the result is an error, not a fall back to
+    the working tree: the gate fails closed. ``(None, None)`` only outside git,
+    where the working tree is all there is.
 
-    The name is a trust anchor a feature commit can rewrite, so the branch it
-    names must name itself too, and with a remote configured only the
+    HEAD's copy is a trust anchor a feature commit can rewrite, so the branch
+    named must name itself too, and with a remote configured only the
     remote-tracking ref is read (:mod:`review_policy_ref`).
     """
     if not full_sha(repo_root, "HEAD"):
         return None, None
-    gw = _committed_yaml(repo_root, "HEAD", "roadmap/git-workflow.yaml")
-    ib = str(gw.get("integration_branch") or "main")
-    remote = str(gw.get("remote") or "origin")
-    return trusted_integration_ref(repo_root, remote, ib)
+    return trusted_integration_ref(repo_root, *integration_name(repo_root))
 
 
 def review_required(repo_root: Path) -> bool:
