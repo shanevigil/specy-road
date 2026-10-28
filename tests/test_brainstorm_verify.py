@@ -101,7 +101,9 @@ def test_add_evidence_builds_a_source_record_and_mirrors_the_url(repo: Path) -> 
 def test_check_source_states(monkeypatch) -> None:
     pages = {"https://example.com/ok": (200, "<p>Some  exact\nwords here</p>"),
              "https://example.com/miss": (200, "<p>other</p>"),
-             "https://example.com/paywall": (403, ""), "https://example.com/gone": (404, "")}
+             "https://example.com/paywall": (403, ""), "https://example.com/gone": (404, ""),
+             "https://example.com/inline": (200, "<p>defined in <code>.git/config</code>.</p>"
+                                                 "<p><b>Ex</b>port <em>files </em>, then</p><td>end</td>")}
     monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
 
     def fetch(url):
@@ -112,6 +114,10 @@ def test_check_source_states(monkeypatch) -> None:
     assert bv.check_source({"url": "https://example.com/ok", "quote": "exact words"}, fetch) == "retrieved"
     assert bv.check_source({"url": "https://example.com/ok"}, fetch) == "not-found"   # no quote, nothing verified
     assert bv.check_source({"url": "https://example.com/miss", "quote": "exact words"}, fetch) == "not-found"
+    # Inline tags are not word breaks; a space before punctuation is dropped on both sides.
+    for quote in ("defined in .git/config.", "Export files, then", "files , then"):
+        assert bv.check_source({"url": "https://example.com/inline", "quote": quote}, fetch) == "retrieved"
+    assert bv.check_source({"url": "https://example.com/inline", "quote": "thenend"}, fetch) == "not-found"
     assert bv.check_source({"url": "https://example.com/paywall", "quote": "x"}, fetch) == "blocked"
     assert bv.check_source({"url": "https://example.com/gone", "quote": "x"}, fetch) == "not-found"
     assert bv.check_source({"url": "https://example.com/boom", "quote": "x"}, fetch) == "blocked"
