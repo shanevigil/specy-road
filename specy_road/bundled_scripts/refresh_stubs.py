@@ -205,7 +205,8 @@ def refresh_stubs(
     if not dry_run:
         manifest["agents"] = agents
         _save_manifest(repo_root, manifest)
-    return written, sorted(set(orphans))
+    # A dry run writes nothing, so every pack sharing a skill reports it again.
+    return list(dict.fromkeys(written)), sorted(set(orphans))
 
 
 def stubs_are_stale(start: Path) -> str | None:
