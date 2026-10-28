@@ -162,7 +162,8 @@ A READY naming another node or branch is misfiled: listed as invalid, never read
 2. the implementation summary;
 3. every changed path since the merge base, both sides of a rename or copy,
    with paths outside the touch zones flagged (roadmap bookkeeping is exempt);
-4. the diff;
+   `roadmap/registry.yaml` is labelled toolkit bookkeeping, not under review;
+4. the diff, minus `roadmap/registry.yaml` (claim and approval rows), with a one-line note when it changed;
 5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
    each section states if it was computed from git, executor-asserted, or run now.
 
