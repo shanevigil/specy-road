@@ -231,7 +231,9 @@
         "The AGENTS.md section warning says the section differs from what this version writes, not 'from another version'",
         "`upgrade` copies shipped docs the load order names (docs/supply-chain-security.md) when missing, and validate warns on a load-order path that does not exist",
         "`refresh-stubs --dry-run` prints a one-line migration summary (N command stubs become skills)",
-        "edit-node warns when a list field receives a value that looks like a JSON list"
+        "edit-node warns when a list field receives a value that looks like a JSON list",
+        "The parent-status warning fires only when a stored Complete disagrees with a non-Complete rollup or vice versa; an In Progress parent with a Not Started rollup is not told to downgrade",
+        "`specy-road version` is an alias of `--version`, and an unknown command exits non-zero"
       ],
       "codename": "upgrade-and-validate-checks",
       "dependencies": [],

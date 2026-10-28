@@ -53,6 +53,8 @@ and data are deliberately not recorded here.
 | `orchestrate plan` reports "needs a rostered executor with may_process…" when the roster is not on the integration branch yet | Misleading message | Name the ref the roster was read from, and say when the local file is absent there or differs; `validate` warns the same |
 | `worker sync` does not flag a gap in event sequence numbers | Gap | Report gaps |
 | `session start --path a b` fails; `--path` must be repeated | Wording | Accept several values or say to repeat the flag |
+| `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
+| `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |
 
 ## Feature batch
 
@@ -64,6 +66,8 @@ and data are deliberately not recorded here.
 | `specy-road apply changes.yaml --dry-run` for graph edits, printing the resulting waves |
 | `add-node --acceptance`; display ids accepted for dependencies |
 | `brainstorm merge <ID> --into <IDs>` with a `merged` status |
+| `brainstorm cluster <CID> --name/--best/--critic`: clusters as objects |
+| `finish-this-task --delete-branch` (merge mode) and a `branches prune` command for merged feature branches |
 | `add-idea --from-gap` for ideas raised in the converge pass |
 | `list-nodes --json` without title truncation; `refresh-stubs --diff` |
 | `move-node` rewrites touch-zone path segments equal to an old display id |

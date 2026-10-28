@@ -76,7 +76,8 @@
         "`add-idea --from-file ideas.yaml` (or JSONL on stdin) records all ideas or none, with the existing flag names as keys",
         "`revise --from-file verdicts.yaml` applies all verdicts or none",
         "`brainstorm merge <ID> --into <IDs>` sets status merged with reverse links; promote skips merged ideas",
-        "`add-idea --from-gap` marks an idea as raised in the converge pass and recommend lists it for a verdict"
+        "`add-idea --from-gap` marks an idea as raised in the converge pass and recommend lists it for a verdict",
+        "`brainstorm cluster <CID> --name ... --best <ID> --critic ...` records the cluster as an object shown by `list --by cluster`"
       ],
       "codename": "brainstorm-batch-io",
       "dependencies": [
@@ -228,7 +229,8 @@
       "acceptance": [
         "`list-nodes --json` emits the full node list without title truncation",
         "`refresh-stubs --diff` shows the managed-block and skill changes before writing",
-        "move-node rewrites touch-zone path segments that equal the old display id"
+        "move-node rewrites touch-zone path segments that equal the old display id",
+        "`finish-this-task` in merge mode can delete the merged feature branch locally and on the remote (`--delete-branch`), and `specy-road branches prune` lists or deletes merged feature/rm-* branches"
       ],
       "codename": "graph-listing-and-moves",
       "dependencies": [],
