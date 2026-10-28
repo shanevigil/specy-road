@@ -347,6 +347,31 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   parent's chunk (only a top-level phase is appended). `add-node --help`
   says every new node's codename comes from `--title`. Every published
   version gets its own What's new section in the release runbook.
+- **Pre-release review (GPT Sol through Cursor, at eaa8b74) and three-app
+  test:** every finding reproduced before the fix. The review policy's
+  integration branch is named by the remote's default branch, and an
+  unconfigured remote fails closed (see Breaking); the gate counts a reviewer
+  — the human included — only on nodes its `may_process` covers, and the
+  approval is not offered otherwise. `worker delegate` refuses a worktree
+  with uncommitted changes outside `work/` (they could be overwritten and were
+  hidden from `reconcile`); `terminate` signals a process group only when the
+  wrapper or harness is verified, never a reused one. Session records are
+  written atomically and an unreadable one counts as a live peer; the guard
+  sees commands behind `if`/`then`/`while`/`do`/`!`/`case` and `-exec`, and
+  refuses `git rm -f` and tree-wide `git rm`. Brainstorm commands and the GUI
+  routes share one session lock (parallel panel shards no longer drop ideas;
+  a GUI chat turn reloads before saving). `init project`, `refresh-stubs` and
+  `specyrd init` refuse to write through a symlink that leads outside the
+  repository. `orchestrate plan` skips invalid profiles for every role, and
+  `prompt --channel cli` neither echoes the prompt nor crashes on one too
+  large for argv. Three-app test: renumbering keeps an M1-based project
+  M1-based (the first move used to shift every id to M0 and rename every
+  sheet); GUI Publish includes `roadmap-context.md`; a gate never locks in the
+  GUI; `archive`/`restore-archive` regenerate both generated files;
+  `refresh-stubs` with no stub pack is a no-op; aborting a `--local` pickup
+  drops the claim without pushing. Maintainer gates: C901 baseline is
+  per function, the private-import gate resolves module aliases, CI tools are
+  exact-pinned with read-only tokens.
 - **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
   reproduced before the fix. Guard: env-supplied git config
   (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and
