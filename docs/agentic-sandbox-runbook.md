@@ -195,8 +195,10 @@ executor role, `max_workers: 2`. Claim two leaves. From the coordinator chat
    real installation" (`worker terminate` cannot reach it: the record's pid
    is cleared).
    (ii) `kill -9 <harness pid>` while the wrapper lives. `proc.wait()`
-   returns `-9` and `_finish` appends an `error` event (source `worker`,
-   "exit -9; see <id>.log", `detail: {exit: -9, ready: …}`) and sets the
+   returns `-9` (or `137` where `/bin/sh` is dash, which forks the harness
+   under `sh -c` instead of exec-ing it) and `_finish` appends an `error`
+   event (source `worker`, "exit -9; see <id>.log", `detail: {exit: -9,
+   ready: …}`, with `137` in place of `-9` under dash) and sets the
    worker `failed`, not `idle` — even if a READY was written. `worker
    resume <W>` is then refused ("is failed; delegate again instead"), and
    `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
