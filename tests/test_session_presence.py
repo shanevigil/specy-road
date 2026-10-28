@@ -74,7 +74,7 @@ def test_cli_check_is_a_commit_guard(tmp_path: Path, capsys, monkeypatch) -> Non
     git(repo, "add", "src/b.py")
     assert _cli("session", "check", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
-    assert "overlaps live session 'alice'" in err and "refuse" in err
+    assert "overlap live session 'alice'" in err and "refuse" in err
     assert _cli("session", "check", "--path", "docs/x.md", "--repo-root", str(repo)) == 0
     # Alice herself is clear.
     assert _cli("session", "check", "--agent", "alice", "--repo-root", str(repo)) == 0
@@ -87,7 +87,7 @@ def test_cli_start_warns_on_overlap_and_list_shows_sessions(tmp_path: Path, caps
     assert _cli("session", "start", "--agent", "alice", "--path", "src", "--repo-root", str(repo)) == 0
     capsys.readouterr()
     assert _cli("session", "start", "--agent", "bob", "--path", "src/a.py", "--note", "fix", "--repo-root", str(repo)) == 0
-    assert "overlaps live session 'alice'" in capsys.readouterr().err
+    assert "overlap live session 'alice'" in capsys.readouterr().err
     assert _cli("session", "list", "--json", "--repo-root", str(repo)) == 0
     rows = json.loads(capsys.readouterr().out)
     assert [r["agent"] for r in rows] == ["alice", "bob"] and rows[1]["note"] == "fix"
@@ -97,7 +97,7 @@ def test_pickup_header_warns_on_session_overlap(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     sp.start_session(repo, "alice", paths=["src/thing"])
     print_pickup_header(NODE, "feature/rm-thing", repo)
-    assert "M1.1's touch zones overlaps live session 'alice'" in capsys.readouterr().err
+    assert "M1.1's touch zones overlap live session 'alice'" in capsys.readouterr().err
     print_pickup_header(NODE, "feature/rm-thing")  # no root: no lookup, no crash
     assert "sessions:" not in capsys.readouterr().err
 

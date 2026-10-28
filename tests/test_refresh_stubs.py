@@ -133,12 +133,15 @@ def test_orphaned_stubs_are_reported_not_deleted(tmp_path: Path) -> None:
     assert orphan_rel not in _manifest(root)["agents"]["claude-code"]
 
 
-def test_a_dry_run_reports_everything_and_writes_nothing(tmp_path: Path) -> None:
+def test_a_dry_run_reports_everything_once_and_writes_nothing(tmp_path: Path) -> None:
     root = _old_repo(tmp_path)
+    manifest = _manifest(root)
+    manifest["agents"]["codex"] = [".specyrd/README.md"]   # a second pack sharing the skills
+    (root / ".specyrd" / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
     written, _ = refresh_stubs(root, dry_run=True)
 
-    assert ".agents/skills/specyrd-search/SKILL.md" in written
+    assert written.count(".agents/skills/specyrd-search/SKILL.md") == 1
     assert any(w.startswith("CLAUDE.md (") for w in written)
     assert not (root / ".agents").exists()
     assert not (root / ".claude" / "skills").exists()

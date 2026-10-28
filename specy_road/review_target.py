@@ -75,7 +75,10 @@ def default_ref(repo_root: Path, entry: dict[str, Any] | None, remote: str) -> s
     branch = (entry or {}).get("branch")
     if not branch:
         node = (entry or {}).get("node_id", "this node")
-        raise ReviewTargetError(f"no registry claim for {node}; pass --ref <branch or commit>")
+        raise ReviewTargetError(
+            f"no registry claim for {node}; pick it up first (`specy-road do-next-available-task --under {node}`)"
+            " — review-packet and review record also take --ref <branch or commit>"
+        )
     if local_branch_exists(repo_root, branch):
         return branch
     tracking = f"refs/remotes/{remote}/{branch}"

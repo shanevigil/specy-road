@@ -92,9 +92,10 @@ shared-checkout guard with hook adapters for Claude Code, Codex, and Cursor
 (§3.5), each verified against the harness's docs in 2026-10 and exercised as
 a subprocess with its documented payload in `tests/test_hook_adapters.py`.
 Facts that could not be verified are stated in each adapter's notes
-(`specy-road session guard --format <name> --print-config`): whether Claude
-Code's `bypassPermissions` and Cursor's `agent -p` / auto-run fire the hook,
-and Codex's handling of non-2 non-zero exits and the IDE extension.
+(`specy-road session guard --format <name> --print-config`): whether Cursor's
+`agent -p` / auto-run fire the hook, and Codex's handling of non-2 non-zero
+exits and the IDE extension. (Claude Code's `bypassPermissions` was open here
+too; a sandbox run on 2026-10-28 saw the hook fire and block under it.)
 
 **Decision D (2026-10-26, built):** one skills directory for every harness.
 `specyrd init` writes `.agents/skills/<name>/SKILL.md` (Cursor and Codex read

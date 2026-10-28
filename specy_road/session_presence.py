@@ -178,6 +178,6 @@ def warn_lines(found: list[tuple[Session, list[tuple[str, str]]]], *, what: str)
     lines = []
     for s, hits in found:
         where = f" on {s.branch}" if s.branch else ""
-        lines.append(f"sessions: warning — {what} overlaps live session {s.agent!r}{where} "
+        lines.append(f"sessions: warning — {what} overlap live session {s.agent!r}{where} "
                      f"(until {s.expires}): " + ", ".join(f"'{a}' vs '{b}'" for a, b in hits[:4]))
     return lines

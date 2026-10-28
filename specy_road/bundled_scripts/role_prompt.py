@@ -14,8 +14,10 @@
    touch zones repeated at the end when the profile says the model drifts;
 4. the brief (executor, coordinator) or the review packet (reviewer).
 
-``--channel cli`` also runs the profile's ``access.cli`` with ``{prompt}``
-replaced by the file path. The profile is read from the integration branch,
+``--channel cli`` also runs the roster entry's ``channels.cli``, else the
+profile's ``access.cli``, with its placeholder replaced: ``"<prompt>"`` (the
+shipped profiles' form) by the prompt text as one argument, ``{prompt}`` by the
+prompt file's path. The profile is read from the integration branch,
 like the roster; a working-tree copy that differs is refused. ``paste`` and ``subagent`` only write the file.
 """
 
@@ -287,7 +289,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", required=True, help="Roster id")
     p.add_argument("--role", required=True, choices=ROLES)
     p.add_argument("--channel", choices=CHANNELS, default="paste",
-                   help="cli runs the profile's access.cli with {prompt}; paste/subagent only write the file")
+                   help="cli runs the profile's access.cli (<prompt> = the prompt text, {prompt} = its file path); "
+                        "paste/subagent only write the file")
     p.add_argument("-o", "--output", type=Path)
     add_repo_root_arg(p)
     ns = p.parse_args(argv)

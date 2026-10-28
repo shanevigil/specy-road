@@ -81,8 +81,9 @@ _CLAUDE_CODE = Adapter(
   }
 }""",
     "Put the snippet in .claude/settings.json (committed) or .claude/settings.local.json. Hooks run in "
-    "`claude -p`; `claude --bare` skips every hook; whether bypassPermissions runs PreToolUse hooks is "
-    "not stated in the docs. Exit codes other than 0 and 2 fail open, so an internal error exits 2.",
+    "`claude -p`; `claude --bare` skips every hook; a sandbox run (2026-10-28) saw the hook fire and block "
+    "under --dangerously-skip-permissions (bypassPermissions). Exit codes other than 0 and 2 fail open, so "
+    "an internal error exits 2.",
 )
 
 # Verified against https://learn.chatgpt.com/docs/hooks (2026-10): the same
@@ -109,8 +110,10 @@ _CODEX = Adapter(
 }""",
     "Put the snippet in .codex/hooks.json (or [hooks] in .codex/config.toml); project hooks load only "
     "when the project's .codex/ layer is trusted, and each hook definition must be trusted in `/hooks` "
-    "or run with --dangerously-bypass-hook-trust. Hooks fire under `codex exec`; the IDE extension is "
-    "unverified. Allows are silent by design: Codex marks a hook failed on keys it does not support.",
+    "or run with --dangerously-bypass-hook-trust. Codex skips an untrusted hook silently, so a headless run "
+    "looks guarded when it is not. Hooks fire under `codex exec`, and a sandbox run (2026-10-28) saw this one "
+    "block under --dangerously-bypass-approvals-and-sandbox; the IDE extension is unverified. Allows are "
+    "silent by design: Codex marks a hook failed on keys it does not support.",
 )
 
 # Verified against https://cursor.com/docs/hooks (2026-10): stdin carries the

@@ -115,7 +115,8 @@ def test_codex_allow_with_warning_stays_silent(tmp_path: Path) -> None:
 def test_config_snippets_are_valid_json_naming_the_guard(tmp_path: Path, fmt: str) -> None:
     r = _run(tmp_path, fmt, {}, "--print-config")
     assert r.returncode == 0
-    assert f"session guard --format {fmt}" in json.dumps(json.loads(r.stdout.split("\n# ", 1)[0]))
+    assert f"session guard --format {fmt}" in json.dumps(json.loads(r.stdout))
+    assert r.stderr.startswith("# Put the snippet in ")
 
 
 def test_claude_code_allow_with_warning_is_json_the_model_sees(tmp_path: Path) -> None:

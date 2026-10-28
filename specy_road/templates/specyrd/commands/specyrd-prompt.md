@@ -12,7 +12,7 @@ specy-road prompt <NODE_ID> --model <roster id> --role coordinator
 The model must be a roster `id` in `roadmap/orchestration.yaml` with that role; its profile (the entry's `profile`, under `model-profiles/`) supplies the model's prompting rules and failure-mode guards.
 
 - The prompt opens with a precondition: if the brief, branch, or packet is not there, the agent changes nothing, replies `<NODE_ID> not landed; waiting`, and stops. You can queue prompts for dependent leaves before they land.
-- `--channel cli` also runs the profile's `access.cli` with `{prompt}` replaced by the file path; `paste` (default) and `subagent` only write the file.
+- `--channel cli` also runs the profile's `access.cli` (or the roster entry's `channels.cli`), replacing `"<prompt>"` (the shipped profiles' form) with the prompt text as one argument and `{prompt}` with the prompt file's path; `paste` (default) and `subagent` only write the file.
 - A reviewer prompt needs the packet first: `/specyrd-review-packet`.
 
 Check who can take which role with `specy-road models list`; `specy-road models stale` says when a profile's research is too old to trust. See `docs/orchestration-models.md`.
