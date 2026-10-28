@@ -1,20 +1,21 @@
 """Which git ref the review policy and roster are read from (:func:`policy_source`).
 
-The integration branch *name* comes from ``roadmap/git-workflow.yaml`` as
-committed on the remote's default branch (``refs/remotes/<remote>/HEAD``) when
-that ref exists and carries the file — a ref no feature commit moves. Otherwise
-it comes from the copy committed at HEAD, which a feature commit controls.
-Three checks keep that from redirecting policy at a branch the feature author
-made:
+In a repo with remotes, the integration branch *name* comes from
+``roadmap/git-workflow.yaml`` as committed on the remote's default branch
+(``refs/remotes/<remote>/HEAD``) — a ref no feature commit moves. That ref must
+exist (``git clone`` sets it; ``git remote set-head <remote> --auto`` restores
+it), and its copy must name the same remote as HEAD's copy, so a feature commit
+cannot switch to a secondary remote. Out of scope: a remote whose default
+branch the feature author can push to. Without a remote (a local-only repo)
+HEAD's copy names the branch. Then:
 
-* **default-branch anchor** — the name above, when the anchor exists;
 * **self-consistency** — the branch the name points at must itself name that
   branch as the integration branch in its own committed ``git-workflow.yaml``;
-* **remote preference** — when the configured remote exists, policy is read
-  from ``refs/remotes/<remote>/<name>`` and nothing else, so retargeting needs
-  push rights to a branch the remote protects. Without a remote (a local-only
-  repo, no remote at all) the local branch is all there is; a remote name that
-  is not configured in a repo that has remotes is an error, not a local repo.
+* **remote preference** — with remotes, policy is read from
+  ``refs/remotes/<remote>/<name>`` and nothing else, so retargeting needs push
+  rights to a branch the remote protects; without, the local branch is all
+  there is. A remote name that is not configured in a repo that has remotes is
+  an error, not a local repo.
 
 Any failure is an error the caller fails closed on, never a fall back.
 """
@@ -42,28 +43,42 @@ def committed_yaml(repo_root: Path, rev: str, rel: str) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def integration_name(repo_root: Path) -> tuple[str, str, str]:
-    """``(remote, branch, where)``: the integration branch to read policy from, and whose config named it.
+def integration_name(repo_root: Path, remotes: list[str]) -> tuple[tuple[str, str, str] | None, str | None]:
+    """``((remote, branch, where), error)``: the integration branch to read policy from, and whose config named it.
 
-    The remote's default branch wins over HEAD, so a feature branch cannot nominate itself.
+    With remotes, the remote's default branch names it, so a feature branch cannot nominate itself.
     """
     head = committed_yaml(repo_root, "HEAD", WORKFLOW_REL)
     remote = str(head.get("remote") or "origin")
-    anchor = f"refs/remotes/{remote}/HEAD"
-    pinned = committed_yaml(repo_root, anchor, WORKFLOW_REL)
-    ib = str((pinned or head).get("integration_branch") or "main")
-    return remote, ib, f"(roadmap/git-workflow.yaml at {anchor if pinned else 'HEAD'})"
-
-
-def trusted_integration_ref(repo_root: Path, remote: str, ib: str, where: str) -> tuple[str | None, str | None]:
-    """``(ref, error)`` for integration branch ``ib`` named by the workflow config ``where``."""
-    remotes = (git_text(["remote"], repo_root) or "").split()
-    if remotes and remote not in remotes:
+    if not remotes:
+        return (remote, str(head.get("integration_branch") or "main"), "(roadmap/git-workflow.yaml at HEAD)"), None
+    if remote not in remotes:
         return None, (
-            f"remote {remote!r} {where} is not configured, but this repo has remote(s) "
-            f"{', '.join(remotes)}; review policy is read only from a configured remote's tracking ref, "
-            "so fix remote on the integration branch"
+            f"remote {remote!r} (roadmap/git-workflow.yaml at HEAD) is not configured, but this repo has "
+            f"remote(s) {', '.join(remotes)}; review policy is read only from a configured remote's "
+            "tracking ref, so fix remote on the integration branch"
         )
+    anchor = f"refs/remotes/{remote}/HEAD"
+    if not git_text(["rev-parse", "--verify", "--quiet", f"{anchor}^{{commit}}"], repo_root):
+        return None, (
+            f"{anchor} (the remote's default branch) is missing, and with a remote configured the "
+            f"integration branch is named only there; run `git remote set-head {remote} --auto`"
+        )
+    pinned = committed_yaml(repo_root, anchor, WORKFLOW_REL)
+    named = str(pinned.get("remote") or "origin")
+    if named != remote:
+        return None, (
+            f"roadmap/git-workflow.yaml at HEAD names remote {remote!r}, but at {anchor} it names "
+            f"{named!r}; review policy is read only through the remote the default branch names, "
+            "so fix remote on this branch"
+        )
+    return (remote, str(pinned.get("integration_branch") or "main"), f"(roadmap/git-workflow.yaml at {anchor})"), None
+
+
+def trusted_integration_ref(
+    repo_root: Path, remotes: list[str], remote: str, ib: str, where: str
+) -> tuple[str | None, str | None]:
+    """``(ref, error)`` for integration branch ``ib`` named by the workflow config ``where``."""
     if remotes:
         ref = f"refs/remotes/{remote}/{ib}"
         if not git_text(["rev-parse", "--verify", "--quiet", ref], repo_root):
@@ -94,19 +109,21 @@ def trusted_integration_ref(repo_root: Path, remote: str, ib: str, where: str) -
 def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
     """``(ref, error)``: the integration branch ref that review policy is read from.
 
-    The remote comes from ``roadmap/git-workflow.yaml`` **as committed at
-    HEAD**, and the branch name from the copy committed on the remote's default
-    branch (``refs/remotes/<remote>/HEAD``) when there is one, else from HEAD's —
-    never from the working tree or the ``SPECY_ROAD_INTEGRATION_BRANCH`` /
-    ``SPECY_ROAD_REMOTE`` variables, which an agent can change without a trace.
-    When that branch cannot be found the result is an error, not a fall back to
-    the working tree: the gate fails closed. ``(None, None)`` only outside git,
-    where the working tree is all there is.
+    The remote and branch come from ``roadmap/git-workflow.yaml`` as committed
+    on the remote's default branch, or at HEAD in a repo without remotes
+    (:func:`integration_name`) — never from the working tree or the
+    ``SPECY_ROAD_INTEGRATION_BRANCH`` / ``SPECY_ROAD_REMOTE`` variables, which an
+    agent can change without a trace. When that branch cannot be found the
+    result is an error, not a fall back: the gate fails closed. ``(None, None)``
+    only outside git, where the working tree is all there is.
 
-    HEAD's copy is a trust anchor a feature commit can rewrite, so the branch
-    named must name itself too, and with a remote configured only the
-    remote-tracking ref is read (:func:`trusted_integration_ref`).
+    The branch named must name itself too, and with a remote configured only
+    the remote-tracking ref is read (:func:`trusted_integration_ref`).
     """
     if not full_sha(repo_root, "HEAD"):
         return None, None
-    return trusted_integration_ref(repo_root, *integration_name(repo_root))
+    remotes = (git_text(["remote"], repo_root) or "").split()
+    named, err = integration_name(repo_root, remotes)
+    if named is None:
+        return None, err
+    return trusted_integration_ref(repo_root, remotes, *named)
