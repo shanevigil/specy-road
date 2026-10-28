@@ -25,6 +25,7 @@ and data are deliberately not recorded here.
 | Bootstrap prompt asked for a second load order beside the managed block | Prompt corrected |
 | CI wanted a strict mode | `validate --strict` |
 | Scaffold M1.1 had no acceptance, so a fresh project warned (and failed `--strict`) | Sample is now the project's setup task with five criteria |
+| Pickup and `mark-implementation-reviewed` stashed `work/` (untracked included) around the registry commit; files other sessions wrote during the window were stranded in the shared stash, and a failed restore only warned | Defect. No stash: clean-tree checks ignore `work/`, and registry commits name the registry alone |
 | Touch zones on Not Started nodes reported as "match nothing"; agents followed the "fix" hint and replaced such zones with planning-sheet paths. A WIP hint recommended the same | Defect, and a WIP regression. Not Started nodes are not checked; the hint says to correct only typos or moved paths |
 
 ## Pre-final (to do before `0.3.1`)
@@ -47,6 +48,10 @@ and data are deliberately not recorded here.
 | `accept A B …` prints `[ok]` per id, then saves nothing if a later id is bad | Defect | Check every id before applying or printing |
 | "AGENTS.md has a section from another version" when only the content differs | Wording | Say the section differs from what this version writes |
 | `promote` re-runs validation per node (warnings repeated) and derives sentence-length codenames | Defect | Validate once; cap derived codenames |
+| A custom `channels.cli` without `{session}` makes `resume` and `message` fall back to the vendor default, changing permissions mid-leaf; Claude's `--session-id` cannot serve resume | Defect | A placeholder that expands to the launch or resume flag, or a separate `cli_resume`; document the harness settings-file route |
+| `orchestrate plan` reports "needs a rostered executor with may_process…" when the roster is not on the integration branch yet | Misleading message | Name the ref the roster was read from, and say when the local file is absent there or differs; `validate` warns the same |
+| `worker sync` does not flag a gap in event sequence numbers | Gap | Report gaps |
+| `session start --path a b` fails; `--path` must be repeated | Wording | Accept several values or say to repeat the flag |
 
 ## Feature batch
 
@@ -61,6 +66,7 @@ and data are deliberately not recorded here.
 | `add-idea --from-gap` for ideas raised in the converge pass |
 | `list-nodes --json` without title truncation; `refresh-stubs --diff` |
 | `move-node` rewrites touch-zone path segments equal to an old display id |
+| Opt-in auto-pick ordering by `execution_milestone` (Agentic-led first); show the milestone beside the next auto-pick in `--plan` |
 
 ## Not acted on
 
@@ -69,3 +75,4 @@ and data are deliberately not recorded here.
 | New phases routed into the first phase's chunk | Not reproduced on the rc1 tag or the WIP (consecutive `add-node --chunk phases/Mn.json` each created its own file) |
 | Uncommitted chunk edits after an upgrade | An agent following the touch-zone hint (fixed above), not a command. Attribution of uncommitted edits needs agents to run `session start` |
 | `validate` accepts a Complete leaf with open dependencies | Recorded as expected; no change requested |
+| `worker delegate` worktrees cannot include separately versioned nested repositories | Out of scope for now: specy-road assumes one git repository per project; supporting nested repositories touches pickup, delegate, reconcile and finish |

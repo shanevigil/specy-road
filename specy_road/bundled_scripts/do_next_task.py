@@ -32,10 +32,6 @@ from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
-from specy_road.bundled_scripts.work_dir_stash import (
-    restore_work_dir_changes as _restore_work,
-    stash_work_dir_changes as _stash_work,
-)
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
@@ -122,11 +118,15 @@ def _resync_and_select(
             remote,
             retry_hint="retry do-next-available-task",
             clean_tree_detail=(
-                "Integration-branch sync and creating a new feature branch need a clean tree."
+                "Integration-branch sync and creating a new feature branch need a clean tree "
+                "outside work/."
             ),
+            except_work=True,
         )
     else:
-        assert_working_tree_clean(ROOT, "A local pickup still commits the claim on the integration branch.")
+        assert_working_tree_clean(
+            ROOT, "A local pickup still commits the claim on the integration branch.", except_work=True
+        )
     reg = read_registry(registry_path(ROOT))
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
@@ -189,14 +189,6 @@ def _assert_current_branch_equals(base: str) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-
-
-def _stash_work_dir_changes() -> bool:
-    return _stash_work(ROOT, "registry commit")
-
-
-def _restore_work_dir_changes(stashed: bool) -> None:
-    _restore_work(ROOT, stashed)
 
 
 def _checkout_new_branch(branch: str) -> None:
@@ -372,25 +364,23 @@ def main(argv: list[str] | None = None) -> None:
         print("local pickup: no fetch, no push (see the footer)", file=sys.stderr)
     else:
         _check_pre_sync_availability(base, remote, parent_filter)
-    # F-011: stash any in-progress work/ changes so the integration-branch
-    # registry commit is clean; restore onto the new feature branch.
-    stashed = _stash_work_dir_changes()
-    try:
-        nodes, reg, available, integration_statuses = _resync_and_select(
-            base, remote, parent_filter, sync=not args.local
-        )
-        _assert_current_branch_equals(base)
-        node = _pick_node(args, nodes, reg, available, integration_statuses)
-        branch = f"feature/rm-{node['codename']}"
-        on_complete = prompt_on_complete(ROOT, args.on_complete)
-        _finalize_pickup(
-            node, nodes, branch,
-            base=base, remote=remote, push_registry=not args.local,
-            include_ci_skip=include_ci_skip, on_complete=on_complete,
-            owner=args.owner or git_config_user_name(ROOT),
-        )
-    finally:
-        _restore_work_dir_changes(stashed)
+    # work/ is never stashed: the stash stack is shared by every session in the
+    # checkout, and files another session wrote mid-pickup were stranded in it.
+    # Untracked work/ files ride the branch switches; the registry commit names
+    # its one path, so nothing else in the index goes with it.
+    nodes, reg, available, integration_statuses = _resync_and_select(
+        base, remote, parent_filter, sync=not args.local
+    )
+    _assert_current_branch_equals(base)
+    node = _pick_node(args, nodes, reg, available, integration_statuses)
+    branch = f"feature/rm-{node['codename']}"
+    on_complete = prompt_on_complete(ROOT, args.on_complete)
+    _finalize_pickup(
+        node, nodes, branch,
+        base=base, remote=remote, push_registry=not args.local,
+        include_ci_skip=include_ci_skip, on_complete=on_complete,
+        owner=args.owner or git_config_user_name(ROOT),
+    )
 
 
 if __name__ == "__main__":

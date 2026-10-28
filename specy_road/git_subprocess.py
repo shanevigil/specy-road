@@ -10,9 +10,8 @@ request forever against an unresponsive remote.
 A few callers still spawn git themselves, deliberately, because they need
 something this signature does not offer: ``file_limits_engine`` pipes a NUL
 -separated path list into ``check-ignore --stdin``; ``repo_ops.git_run`` wants
-``check_call``'s raise-on-failure for scripted sequences; ``work_dir_stash``
-drives a stash push/pop pair. Those are the exceptions, and they are the only
-ones.
+``check_call``'s raise-on-failure for scripted sequences. Those are the
+exceptions, and they are the only ones.
 
 The shapes callers actually need are all views on one result, so :class:`GitResult`
 carries the raw fields and names each view:
