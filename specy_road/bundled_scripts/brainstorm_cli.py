@@ -18,7 +18,12 @@ import json
 import sys
 
 from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
-from specy_road.bundled_scripts.brainstorm_cli_v2 import HANDLERS_V2, write_round_prompts
+from specy_road.bundled_scripts.brainstorm_cli_v2 import (
+    HANDLERS_V2,
+    integration_branch_warning,
+    next_step,
+    write_round_prompts,
+)
 from specy_road.bundled_scripts.brainstorm_close import close_session
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin, parse_overlap
 from specy_road.bundled_scripts.brainstorm_prompt import (
@@ -61,6 +66,9 @@ def cmd_start(ns: argparse.Namespace) -> int:
         raise BrainstormError(
             "cannot derive a session name — pass --topic '<question>' or --slug SLUG"
         )
+    warning = integration_branch_warning(root, slug)
+    if warning:
+        print(warning, file=sys.stderr)
     if session_path(root, slug).is_file():
         session = read_session(root, slug)
         if topic:
@@ -81,6 +89,7 @@ def cmd_start(ns: argparse.Namespace) -> int:
         session.panel = max(0, ns.panel)
     if ns.rounds:
         session.rounds = max(1, ns.rounds)
+    session.count = max(1, ns.count)
     spath = write_session(root, session)
     paths = write_round_prompts(root, session, count=ns.count)
     print(f"session: {spath.relative_to(root)} ({len(session.ideas)} ideas, "
@@ -88,8 +97,8 @@ def cmd_start(ns: argparse.Namespace) -> int:
     print(f"prompt:  {paths[0].relative_to(root)}")
     for extra in paths[1:]:
         print(f"shard:   {extra.relative_to(root)}")
-    print("\nHand the prompt to your agent, then triage with:")
-    print(f"  specy-road brainstorm list --slug {slug}")
+    print("\nHand the prompt to your agent.")
+    print(next_step(session, "round"))
     return 0
 
 
@@ -181,6 +190,7 @@ def _triage(ns: argparse.Namespace, status: str) -> int:
             idea.decision = None   # an earlier reject/park reason does not describe this decision
         print(f"[ok] {idea.id} {status}")
     write_session(root, session)
+    print(next_step(session, "triage"))
     return 0
 
 
@@ -225,8 +235,9 @@ def cmd_recommend(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
     session.mode = "roadmap"
     write_session(root, session)
-    ppath = write_prompt(root, session, render_recommend_prompt(root, session))
+    ppath = write_prompt(root, session, render_recommend_prompt(root, session), pass_name="recommend")
     print(f"prompt: {ppath.relative_to(root)} ({len(session.ideas)} ideas to assess)")
+    print(next_step(session, "recommend"))
     return 0
 
 
@@ -254,8 +265,8 @@ def cmd_promote(ns: argparse.Namespace) -> int:
     if ns.dry_run:
         print("\nDry run — nothing written. Re-run without --dry-run to apply.")
     else:
-        print(f"\nPromoted {len(results)} idea(s). Refresh generated files:")
-        print("  specy-road export && specy-road digest")
+        print(f"\nPromoted {len(results)} idea(s).")
+        print(next_step(session, "promote"))
     return 0
 
 

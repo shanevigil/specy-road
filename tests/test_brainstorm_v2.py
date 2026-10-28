@@ -60,8 +60,8 @@ def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
     return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
-def _prompt(repo: Path, suffix: str = "") -> str:
-    return (repo / "work" / f"brainstorm-{SLUG}{suffix}-prompt.md").read_text(encoding="utf-8")
+def _prompt(repo: Path, pass_name: str = "r1") -> str:
+    return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
 def _session(repo: Path) -> BrainstormSession:
@@ -178,14 +178,14 @@ def test_next_round_needs_ideas_and_then_regenerates(repo: Path) -> None:
     _cli(repo, "frame", "--answer", "outcome=fewer failed payments")
     code, out, _ = _cli(repo, "next-round", "--count", "15")
     assert code == 0 and "round 2" in out and "2 ideas in the pool" in out
-    text = _prompt(repo)
+    text = _prompt(repo, "r2")
     assert "## The agreed frame" in text and "**outcome:** fewer failed payments" in text
     assert "- B1 Stored vault" in text and "- B2 Pay by link" in text
     assert "at least 15 more" in text and "Unoccupied regions" in text
     assert "Do not research yet" not in text
     assert _session(repo).round == 2
     _cli(repo, "next-round")
-    assert "Round 3" in _prompt(repo) and _session(repo).round == 3
+    assert "Round 3" in _prompt(repo, "r3") and _session(repo).round == 3
 
 
 def test_technical_profile_swaps_the_lenses_and_default_kind(repo: Path) -> None:
@@ -200,7 +200,7 @@ def test_technical_profile_swaps_the_lenses_and_default_kind(repo: Path) -> None
 def test_panel_writes_independent_shards(repo: Path) -> None:
     code, out, _ = _start(repo, "--panel", "3", "--count", "30")
     assert code == 0 and out.count("shard:") == 3
-    s1, s3 = _prompt(repo, "-s1"), _prompt(repo, "-s3")
+    s1, s3 = _prompt(repo, "r1-s1"), _prompt(repo, "r1-s3")
     assert "Shard 1 of 3" in s1 and "Shard 3 of 3" in s3
     assert "Do not read the other shards" in s1
     assert "at least 10 distinct ideas" in s1
@@ -214,7 +214,8 @@ def test_panel_writes_independent_shards(repo: Path) -> None:
     # Round 2 writes no shards: regeneration needs the whole pool.
     _cli(repo, "add-idea", "--title", "x")
     _cli(repo, "next-round")
-    assert "Round 2" in _prompt(repo)
+    assert "Round 2" in _prompt(repo, "r2")
+    assert not (repo / "work" / f"brainstorm-{SLUG}-r2-s1-prompt.md").exists()
     assert render_shard_prompt(repo, _session(repo), count=5, shard=1, total=1).startswith("# Brainstorm shard 1/1")
 
 
@@ -238,7 +239,7 @@ def test_converge_prompt_plays_critics_and_names_overlap_relations(repo: Path) -
     _cli(repo, "add-idea", "--title", "One", "--origin", "cursor/composer/SCAMPER/1")
     _cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "q")
     _cli(repo, "recommend")
-    text = _prompt(repo)
+    text = _prompt(repo, "recommend")
     assert "three independent critics" in text and "keep dissent" in text
     assert "same-problem-same-solution" in text and "superseded" in text
     assert "must cite" in text

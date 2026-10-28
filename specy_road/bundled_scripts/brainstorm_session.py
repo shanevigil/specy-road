@@ -98,10 +98,11 @@ def session_path(root: Path, slug: str) -> Path:
     return work_dir(root) / f"{SESSION_PREFIX}{safe}{SESSION_SUFFIX}"
 
 
-def prompt_path(root: Path, slug: str) -> Path:
-    """Path to ``work/brainstorm-<slug>-prompt.md`` (regenerated, gitignored)."""
+def prompt_path(root: Path, slug: str, pass_name: str = "") -> Path:
+    """``work/brainstorm-<slug>-<pass>-prompt.md``, one per pass (regenerated, gitignored)."""
     safe = validate_slug(slug)
-    return work_dir(root) / f"{SESSION_PREFIX}{safe}{PROMPT_SUFFIX}"
+    tag = f"-{pass_name}" if pass_name else ""
+    return work_dir(root) / f"{SESSION_PREFIX}{safe}{tag}{PROMPT_SUFFIX}"
 
 
 def list_slugs(root: Path) -> list[str]:
@@ -240,6 +241,7 @@ class BrainstormSession:
     rounds: int = 2       # planned diverge rounds (`start --rounds`); next-round warns past it
     profile: str = "product"
     panel: int = 0
+    count: int = 0        # `start --count`, so `frame` can rewrite panel shards at the same size
 
     def to_dict(self) -> dict[str, Any]:
         out = {
@@ -252,8 +254,7 @@ class BrainstormSession:
             "rounds": self.rounds,
             "profile": self.profile,
         }
-        if self.panel:
-            out["panel"] = self.panel
+        out.update({k: v for k, v in (("panel", self.panel), ("count", self.count)) if v})
         if self.frame:
             out["frame"] = dict(self.frame)
         if self.allocation:
@@ -338,6 +339,7 @@ def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
         rounds=planned if isinstance(planned, int) and planned >= 1 else 2,
         profile=_str_field(raw, "profile", "product") or "product",
         panel=raw.get("panel") if isinstance(raw.get("panel"), int) else 0,
+        count=raw.get("count") if isinstance(raw.get("count"), int) and raw["count"] >= 1 else 0,
     )
 
 

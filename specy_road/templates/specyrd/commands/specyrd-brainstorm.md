@@ -2,6 +2,10 @@
 description: "Use when a PM asks to brainstorm or expand roadmap ideas under a node: diverge in rounds, converge, source evidence, then the human triages and promotes. Not a design-elicitation or requirements skill."
 ---
 
+Run `start` **before reading anything else**: not `roadmap-context.md`, not the
+roadmap, not `planning/`, even where AGENTS.md says to read the digest first.
+What you read before round 1 anchors every idea in it.
+
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 specy-road brainstorm start --topic "How do we expand payments?" --under M3 --count 30
@@ -9,25 +13,29 @@ specy-road brainstorm start --topic "How do we expand payments?" --under M3 --co
 
 Four passes over one session file, in this order. Diverge first, converge
 later; doing both at once returns five safe ideas instead of forty. Triage is
-never yours.
+never yours. Every command prints the next step; `start` warns on the
+integration branch and suggests `chore/brainstorm-<slug>`.
 
 ## 1. Diverge — round 1
 
-`start` writes `work/brainstorm-<slug>-prompt.md`. **Read that file and follow
-it.** It asks you to interrogate the question with the PM and neutralise their
-assertions into questions, record the agreed frame (`brainstorm frame`), plan an
-allocation grid of lenses × directions with a diversity operator per cell, and
-then generate volume as prose concept cards before recording anything. Do not
-research and do not read the roadmap in this round — both anchor you. Record
-every idea with its origin:
+`start` writes `work/brainstorm-<slug>-r1-prompt.md`; each pass keeps its own
+prompt file (`-r2-`, `-recommend-`, `-evidence-`). **Read that file and follow
+it.** It asks you to propose an answer to each frame key from what the PM
+already said (marking those `assumed`) rather than question them cold,
+neutralise their assertions into questions, record the frame (`brainstorm
+frame`), plan an allocation grid of lenses × directions with a diversity
+operator per cell, and then generate volume as prose concept cards before
+recording anything. Do not research and do not read the roadmap in this round
+— both anchor you. Record every idea with its origin:
 
 ```bash
 specy-road brainstorm add-idea --title "…" --rationale "…" --origin <harness>/<model>/<lens>/1
 ```
 
-`--panel N` on `start` also writes `work/brainstorm-<slug>-sN-prompt.md` shard
+`--panel N` on `start` also writes `work/brainstorm-<slug>-r1-sN-prompt.md` shard
 prompts for independent sub-agents or other harnesses; a shard must not read
-the others' output before it finishes.
+the others' output before it finishes. Label one allocation cell per shard
+(`s1: …`); `frame` then rewrites each shard prompt with its cell and the frame.
 
 ## 2. Diverge — later rounds
 

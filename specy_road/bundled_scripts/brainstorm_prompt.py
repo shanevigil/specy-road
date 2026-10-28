@@ -62,9 +62,11 @@ def _governance_lines(root: Path, *, roadmap: bool = True) -> list[str]:
         "",
     ]
     for rel, label in _GOVERNANCE_FILES:
-        if not roadmap and rel == "roadmap-context.md":
+        present = (root / rel).is_file()
+        # No digest yet is normal (`specy-road digest` writes it); listing it as missing only distracts.
+        if rel == "roadmap-context.md" and not (roadmap and present):
             continue
-        state = "" if (root / rel).is_file() else " _(missing)_"
+        state = "" if present else " _(missing)_"
         lines.append(f"- **{label}:** `{rel}`{state}")
     lines.append("")
     if not roadmap:
@@ -236,11 +238,9 @@ def render_recommend_prompt(root: Path, session: BrainstormSession) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_prompt(root: Path, session: BrainstormSession, text: str, *, suffix: str = "") -> Path:
-    """Write ``work/brainstorm-<slug>[suffix]-prompt.md`` and return its path."""
-    path = prompt_path(root, session.slug)
-    if suffix:
-        path = path.with_name(path.name.replace("-prompt.md", f"{suffix}-prompt.md"))
+def write_prompt(root: Path, session: BrainstormSession, text: str, *, pass_name: str) -> Path:
+    """Write ``work/brainstorm-<slug>-<pass>-prompt.md`` (one file per pass) and return its path."""
+    path = prompt_path(root, session.slug, pass_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
