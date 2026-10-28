@@ -84,7 +84,8 @@ order:
   it may spawn.
 
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
-coordinator script stops before dispatching. Set a leaf's `sensitivity` and
-`executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
+coordinator script stops before dispatching. A roster entry whose profile is
+invalid is reported and assigned no role, since `prompt` would refuse it. Set a
+leaf's `sensitivity` and `executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
 or on `add-node`; both default to `public` and `any`. Repos scaffolded before
 0.3.0 run `specy-road refresh-schemas` once so `validate` accepts the fields.
