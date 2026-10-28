@@ -388,7 +388,9 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   shard prompts say not to open the roadmap even where AGENTS.md says read it
   first; later rounds restate the agreed frame; the GUI hides verdicts until
   asked, as the CLI does; the PM GUI never sends saved secrets (LLM key,
-  Git token, research key) back to the page. Maintainer gates: C901 baseline
+  Git token, research key) back to the page. Sandbox §7: `grind-session
+  --plan` waves include leaves that depend on a milestone; the pickup prompt
+  asks for the `## Added` inventory and explicit-path commits. Maintainer gates: C901 baseline
   is per function, the private-import gate resolves module aliases, CI tools
   are exact-pinned with read-only tokens.
 - **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
