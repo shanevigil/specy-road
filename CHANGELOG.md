@@ -328,6 +328,9 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   complexity 10, new pylint clone pairs, test imports of private names);
   `.github/workflows/mutation.yml` runs mutmut weekly and reports per-module
   scores, failing only once `constraints/mutation-baseline.json` exists.
+  [`docs/design-notes/lean-code-census.md`](docs/design-notes/lean-code-census.md)
+  measures the suite against these rules: overlap and coupling are real but
+  modest, and the gap is untested boundary validation, not dead guards.
   **Existing adopters:** run `specy-road refresh-stubs` (the managed block
   grew from 39 to 50 lines); `refresh-profiles --force <path>` replaces an
   unedited profile to get its new section.
