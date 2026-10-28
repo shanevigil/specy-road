@@ -43,9 +43,18 @@ body. Keep section bodies focused; link to PRs for detail.
   `risks`, `touch_zones`, `dependencies`) now appends one item each; a
   repeated scalar key is an error; `--set` has help text; `validate` warns
   on an open node whose criterion contains `|`.
-- The touch-zone warning says what to do for work not started yet (list the
-  paths that exist today, widen as the work lands); `roadmap-authoring.md`
-  documents both list syntaxes.
+- `do-next-available-task` and `mark-implementation-reviewed` no longer stash
+  `work/` around the registry commit. The stash stack is shared by every
+  session in a checkout: files another session wrote under `work/` during a
+  pickup were stranded in the stash, and a failed restore only warned. The
+  clean-tree checks now ignore `work/`, and every registry commit names
+  `roadmap/registry.yaml` alone, so nothing else staged goes with it.
+- `validate` no longer reports touch zones that "match nothing" on Not
+  Started nodes: their zones name files the work will create, and agents
+  following the "fix" hint replaced such zones with planning-sheet paths.
+  In Progress and Blocked nodes are still checked, and the hint now says to
+  correct only a typo or a moved path, never to remove zones to silence it.
+  `roadmap-authoring.md` documents both list syntaxes.
 - Skills and the `AGENTS.md` block cited `docs/*.md` files that exist only in
   the toolkit (e.g. `docs/brainstorming.md`). They now render as links to the
   toolkit's GitHub docs at the installed version's tag (`main` for dev

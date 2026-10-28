@@ -7,8 +7,9 @@ fast-forward, reading a module-global ``ROOT``. The copies had drifted where it
 shows: three spellings of the same fast-forward failure, one of which dropped
 the "how do I fix this" line entirely.
 
-These take ``repo_root`` explicitly, following ``work_dir_stash`` -- the helper
-that was already factored out of two of these scripts for the same reason.
+These take ``repo_root`` explicitly. None of them stashes: the stash stack is
+shared by every session in the checkout, so registry commits name their one
+path and the clean-tree checks can ignore ``work/`` instead.
 
 Unlike :mod:`specy_road.git_subprocess`, :func:`git_run` does **not** capture
 output: ``git fetch`` and ``git push`` write progress to the terminal, and these
@@ -45,14 +46,20 @@ def current_branch(repo_root: Path) -> str:
     return git_checked(["rev-parse", "--abbrev-ref", "HEAD"], repo_root)
 
 
-def working_tree_clean(repo_root: Path) -> bool:
-    """Whether ``git status --porcelain`` is empty."""
-    return not git_checked(["status", "--porcelain"], repo_root)
+#: ``work/`` holds briefs, summaries and session files that belong to whoever is
+#: working; a registry commit must neither need it clean nor carry it.
+_OUTSIDE_WORK = ("--", ":/", ":(exclude)work")
 
 
-def assert_working_tree_clean(repo_root: Path, detail: str = "") -> None:
+def working_tree_clean(repo_root: Path, *, except_work: bool = False) -> bool:
+    """Whether ``git status --porcelain`` is empty (ignoring ``work/`` when asked)."""
+    args = ["status", "--porcelain", *(_OUTSIDE_WORK if except_work else ())]
+    return not git_checked(args, repo_root)
+
+
+def assert_working_tree_clean(repo_root: Path, detail: str = "", *, except_work: bool = False) -> None:
     """Exit 1 unless the working tree is clean."""
-    if working_tree_clean(repo_root):
+    if working_tree_clean(repo_root, except_work=except_work):
         return
     print(UNCLEAN_TREE_MESSAGE, file=sys.stderr)
     if detail:
@@ -67,6 +74,7 @@ def sync_integration_branch(
     *,
     retry_hint: str,
     clean_tree_detail: str = "",
+    except_work: bool = False,
 ) -> None:
     """Fetch, check out ``base``, and fast-forward it to ``remote/base``.
 
@@ -74,7 +82,7 @@ def sync_integration_branch(
     specific to the command they ran without each command re-deriving the rest
     of the message.
     """
-    assert_working_tree_clean(repo_root, clean_tree_detail)
+    assert_working_tree_clean(repo_root, clean_tree_detail, except_work=except_work)
     git_run(repo_root, "fetch", remote)
     git_run(repo_root, "checkout", base)
     try:

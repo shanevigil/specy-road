@@ -40,6 +40,8 @@ def attempt_self_cleanup(
             "commit",
             "-m",
             f"chore(rm-{codename}): self-heal stale claim for {node_id} (F-014)",
+            "--",
+            str(registry_path),
         )
         try:
             git_runner("push", remote, base)
