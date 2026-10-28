@@ -78,3 +78,39 @@ specy_road = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+# Lean-code gate (docs/contributor-guide.md, "Lean-code gates"). Only the
+# complexity rule is selected on purpose: the ruff default set is not clean on
+# this tree and is out of scope for this gate.
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["C901"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# C901 baseline 2026-10-28; remove entries as functions are simplified.
+"specy_road/bundled_scripts/brainstorm_fields.py" = ["C901"]
+"specy_road/bundled_scripts/do_next_available.py" = ["C901"]
+"specy_road/bundled_scripts/do_next_finished_unmerged.py" = ["C901"]
+"specy_road/bundled_scripts/grind_session_events.py" = ["C901"]
+"specy_road/bundled_scripts/llm_throughput.py" = ["C901"]
+"specy_road/bundled_scripts/migrate_stable_node_keys.py" = ["C901"]
+"specy_road/bundled_scripts/models_cli.py" = ["C901"]
+"specy_road/bundled_scripts/review_cli.py" = ["C901"]
+"specy_road/bundled_scripts/roadmap_edit_fields.py" = ["C901"]
+"specy_road/bundled_scripts/roadmap_gui_lib.py" = ["C901"]
+"specy_road/bundled_scripts/roadmap_rebalance.py" = ["C901"]
+"specy_road/bundled_scripts/role_prompt.py" = ["C901"]
+"specy_road/bundled_scripts/validate_self_heal.py" = ["C901"]
+"specy_road/file_limits_engine.py" = ["C901"]
+"specy_road/gui_app_routes_nodes.py" = ["C901"]
+"specy_road/init_project.py" = ["C901"]
+"specy_road/model_profiles.py" = ["C901"]
+"specy_road/search_fallback.py" = ["C901"]
+"specy_road/specyrd_cli.py" = ["C901"]
+"specy_road/specyrd_skills.py" = ["C901"]
+"specy_road/tool_call_guard.py" = ["C901"]
