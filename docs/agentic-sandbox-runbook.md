@@ -105,7 +105,7 @@ and leaves the leaf open on the integration branch, and a bare local remote
 has no host to open that PR on.
 
 1. `do-next-available-task` claims a leaf; commit a change inside its touch
-   zones; write `work/implementation-summary-<ID>.md` and
+   zones; write and commit `work/implementation-summary-<ID>.md`; write
    `work/reviews/<ID>/READY-<agent>.md`.
 2. `review-packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
    diff, and the verify tails.

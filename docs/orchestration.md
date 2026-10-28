@@ -34,7 +34,7 @@ between them — not **which** agent, IDE or vendor fills a role; a human, Claud
 
 ```text
 coordinator  do-next-available-task            → work/brief-<ID>.md, feature/rm-<codename>
-executor     implement, commit, write summary  → work/implementation-summary-<ID>.md
+executor     implement, commit, commit summary → work/implementation-summary-<ID>.md
 executor     write READY-<agent>.md            → work/reviews/<ID>/READY-<agent>.md
 coordinator  specy-road review-packet <ID>     → work/reviews/<ID>/PACKET.md
 reviewer(s)  read PACKET.md, write notes       → specy-road review record <ID> …

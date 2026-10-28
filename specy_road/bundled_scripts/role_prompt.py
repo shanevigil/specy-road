@@ -124,7 +124,8 @@ def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None =
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
         "3. Run the verifier and tests the brief names. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
         f"4. Write `work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
-        "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine). "
+        "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
+        "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
         f"Then `READY-<your model id>.md` from `work/handoff-ready.template.md` into "
         f"`{reviews or f'work/reviews/{node_id}'}` "
         "(that is the main checkout's directory: use it as written even if you are in a worktree).",

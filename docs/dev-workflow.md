@@ -198,7 +198,7 @@ Run from the feature branch when implementation is complete.
 
 If **`roadmap/git-workflow.yaml`** sets **`require_implementation_review_before_finish: true`** (default in new `specy-road init project` scaffolds), use this order:
 
-1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**). Use `work/implementation-summary.template.md` as a starting point.
+1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**) and commit it on the feature branch: it is what reviewers judge, and finish removes it from `work/`. Use `work/implementation-summary.template.md` as a starting point.
 2. **Review** — reviewers read **`specy-road review-packet <NODE_ID>`** and file verdicts with **`specy-road review record`** (see [orchestration.md](orchestration.md)). Then the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary and the review policy status, and commits **`implementation_review: approved`** in `roadmap/registry.yaml` once the recorded reviews satisfy `roadmap/orchestration.yaml` at the current commit. Under the default policy (one reviewer, `human` rostered) the interactive menu's **approve** files the human review and closes the gate in one step. **`--yes` never creates a review**: it only commits an approval the recorded reviews already earned. Emergency without a summary file: `--allow-missing-summary` (loud warning).
 3. **Close the task** — same as below.
 
@@ -234,7 +234,7 @@ specy-road finish-this-task
 3. Update the node `status` to `Complete` in the roadmap chunk file.
 4. Remove the registry entry.
 5. Run `specy-road validate`, `specy-road export` and `specy-road digest`.
-6. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked).
+6. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked). A summary that was never committed is copied to `work/reviews/<NODE_ID>/` first, beside the reviews that read it; commit it on the feature branch to keep it in history.
 7. Commit the bookkeeping changes on the feature branch.
 8. If **`--push`** was passed, push the feature branch.
 9. If **`on_complete`** is **`pr`**, print `git push` (if needed) and **`gh pr create`**-style guidance for a **PR/MR** to the integration branch. If **`merge`** or **`auto`**, merge the feature branch into the integration branch locally and push the integration branch, or exit with **merge pending** and PR/MR hints on failure (**`auto`** falls back to those hints). A failed **`merge`** landing exits 1 with the bookkeeping already committed: fix the cause, then run **`finish-this-task --on-complete merge`** again on the feature branch, which retries only the landing.
