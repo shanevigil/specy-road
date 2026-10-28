@@ -37,7 +37,7 @@ from specy_road.runtime_paths import (
     prefix_within,
     recorded_project_root,
 )
-from specy_road.managed_block import UNCHANGED
+from specy_road.managed_block import REFUSED, UNCHANGED, resolves_outside
 from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill, skill_rel
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
@@ -104,6 +104,9 @@ def _write_if_changed(
     if content is None:
         return True
     dest = repo_root / rel
+    if resolves_outside(repo_root, dest):
+        written.append(f"{rel} ({REFUSED})")
+        return False
     if not owned and dest.exists():
         written.append(f"{rel} (skipped (not ours))")
         return False
