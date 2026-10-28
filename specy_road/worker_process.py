@@ -165,6 +165,12 @@ def harness_alive(rec: WorkerRecord) -> bool:
     return any(p != rec.pid for p in _group_members(rec.pgid))
 
 
+def _harness_verified(rec: WorkerRecord) -> bool:
+    """The recorded harness pid is alive with its recorded start time: unknown is ``False``."""
+    return bool(rec.harness_pid and rec.harness_start and _exists(rec.harness_pid) is True
+                and start_token(rec.harness_pid) == rec.harness_start)
+
+
 def wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
     """A ``running``/``starting`` record with no live wrapper: closed (``failed``) so the leaf is free again.
 
@@ -197,11 +203,17 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
 
     Signals only a group whose identity is confirmed: a live wrapper must
     verify by command line and token, otherwise the harness pid must match
-    its recorded start time or the group must still hold members.
+    its recorded start time. Membership alone is not identity: once the
+    group is gone its id can be a new session leader's (pre-release review).
     """
     if wrapper_alive(rec, repo_root) and not wrapper_verified(rec, repo_root):
         raise WorkerError(f"pid {rec.pid} cannot be verified as {rec.worker_id}'s wrapper (ps unavailable or "
                           "another command line); refusing to signal it")
+    if not (wrapper_verified(rec, repo_root) or _harness_verified(rec)):
+        raise WorkerError(f"{rec.worker_id}: neither its wrapper (by token) nor its harness pid {rec.harness_pid or '-'} "
+                          f"(by start time) is alive, so process group {rec.pgid} may be another program's now; "
+                          f"refusing to signal it. Check `ps -A -o pid,pgid,lstart,command`, kill what in group "
+                          f"{rec.pgid} is this worker's by hand, then run `worker terminate {rec.worker_id}` again")
     pgid = rec.pgid or (os.getpgid(int(rec.pid)) if rec.pid and _exists(rec.pid) else None)
     if not pgid:
         return

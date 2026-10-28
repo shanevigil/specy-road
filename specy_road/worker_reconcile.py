@@ -17,7 +17,6 @@ from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
 from specy_road.review_target import ReviewTargetError, resolve_target
-from specy_road.worker_baseline import read_baseline
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
     FLAG_RECONCILE,
@@ -65,16 +64,13 @@ def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, 
 def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, dict[str, Any]]:
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
-    # Paths already dirty when `delegate` ran are the coordinator's, not the worker's.
-    pre_existing = set(read_baseline(repo_root, rec.worker_id))
-    changed = [p for p in _changed_since(Path(rec.worktree), since) if p not in pre_existing]
+    changed = _changed_since(Path(rec.worktree), since)
     zones = t.touch_zones
     # A breach is judged over the worker's whole lifetime, not only since the
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
-    on_branch = ([p for p in _changed_since(Path(rec.worktree), origin) if p not in pre_existing]
-                 if origin != since else changed)
+    on_branch = _changed_since(Path(rec.worktree), origin) if origin != since else changed
     # Toolkit bookkeeping is never a breach: briefs, prompts, hand-off and
     # brainstorm files under work/, and the registry row the claim lives in.
     substantive = [p for p in sorted(set(changed) | set(on_branch)) if not _bookkeeping(p)]
@@ -90,7 +86,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
         clear_flag(repo_root, rec, FLAG_RECONCILE)
     delta = {"since": since, "changed": changed, "outside_touch_zones": outside,
              "contract_changed": contract_changed, "branch_mismatch": off_branch, "epoch": rec.instruction_epoch,
-             "needs_reconcile": FLAG_RECONCILE in rec.flags, "pre_existing_dirty": sorted(pre_existing)}
+             "needs_reconcile": FLAG_RECONCILE in rec.flags}
     append_event(repo_root, rec, "reconcile", source="orchestrator", authority="orchestrator",
                  summary=(f"{len(changed)} path(s) changed, {len(outside)} outside touch zones"
                           + ("; contract changed" if contract_changed else "") + (f"; {off_branch}" if off_branch else "")),

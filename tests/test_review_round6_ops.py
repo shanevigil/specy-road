@@ -7,8 +7,8 @@ F2: ``message --op-id`` binds the message text, and a retry whose file is
 gone answers from the outbox. F10: the hook matches by harness and id, refuses
 ambiguity, and never waits long for the workers lock; ``delegate`` keeps its
 preflight outside the lock. F11/G2: dead wrappers on any leaf are reaped by
-``sync`` and before the ``max_workers`` count; pre-delegation dirt is not the
-worker's; a crashed reclaim is repaired, not repeated; ``sync --ack`` is
+``sync`` and before the ``max_workers`` count; (pre-release review) ``delegate``
+refuses a dirty checkout; a crashed reclaim is repaired, not repeated; ``sync --ack`` is
 serialised. G3: ``message`` from a linked worktree, and the brief in the same
 checkout.
 """
@@ -236,17 +236,24 @@ def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> Non
 
 # --- F11 (b) ---------------------------------------------------------------------
 
-def test_reconcile_leaves_pre_delegation_dirt_to_the_coordinator(tmp_path: Path) -> None:
+def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, capsys) -> None:
+    # Pre-release review: the worker would edit the same tree, overwriting this
+    # work, and `reconcile` could not tell its edits from it. work/ is bookkeeping.
     repo, _ = _repo(tmp_path)
+    (repo / ".gitignore").write_text("work/.workers/\nwork/prompt-*.md\n")   # as the project template: briefs tracked
+    git(repo, "commit", "-qam", "template ignores")
+    (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "brief-M1.1.md").write_text("pickup's brief, untracked\n")
     (repo / "pre.txt").write_text("dirt before delegate\n")
     (repo / "src" / "a.py").write_text("edited before delegate\n")
-    _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "uncommitted changes" in err and "pre.txt, src/a.py;" in err and "commit or stash" in err
+    assert (repo / "src" / "a.py").read_text() == "edited before delegate\n" and not ws.list_records(repo)
+    (repo / "pre.txt").unlink()
+    git(repo, "checkout", "--", "src/a.py")
+    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only work/ left
     _wait(repo, "w-0001")
-    (repo / "after.txt").write_text("the worker's\n")
-    _r, d = ops.reconcile(repo, "w-0001")
-    assert "pre.txt" not in d["changed"] and "src/a.py" not in d["changed"]
-    assert "pre.txt" not in d["outside_touch_zones"] and "after.txt" in d["outside_touch_zones"]
-    assert d["pre_existing_dirty"] == ["pre.txt", "src/a.py"]
 
 
 # --- F11 (c) ---------------------------------------------------------------------
