@@ -73,6 +73,8 @@ def test_with_a_remote_only_the_remote_tracking_integration_ref_is_read(tmp_path
     bare = tmp_path / "remote.git"
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
     git(repo, "remote", "add", "origin", str(bare))
+    git(repo, "push", "-q", "origin", "dev:main")
+    git(repo, "remote", "set-head", "origin", "main")   # as `git clone` records the default branch
     ref, err = policy_source(repo)
     assert ref is None and "not fetched as origin/dev" in err   # local dev alone no longer counts
     git(repo, "push", "-q", "origin", "dev")

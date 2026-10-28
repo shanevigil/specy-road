@@ -107,14 +107,14 @@ duplicate roster ids and a substitute that is not in the roster.
 **The gate reads this file from the integration branch** — its remote-tracking ref when there is
 one, else the local branch — not from the branch under review, so a feature branch cannot lower its
 own bar; the gate is also on when either that branch or the working tree sets
-`require_implementation_review_before_finish`. The branch's name comes from `roadmap/git-workflow.yaml`
-as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`, which `git clone` sets and
-`git remote set-head <remote> --auto` restores) when that carries the file, else at `HEAD`, whose copy
-also names the remote; the working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are
-ignored. A feature commit can rewrite `HEAD`'s copy, so the named branch must name itself in its own
-committed copy, and in a repo with remotes only `refs/remotes/<remote>/<branch>` of a configured remote
-is read. If the branch is missing or unfetched, the names disagree, or the remote is not configured,
-the gate fails closed (on, and nothing passes it). Change policy on the integration branch; an edit on
+`require_implementation_review_before_finish`. In a repo with remotes, the branch's name comes from
+`roadmap/git-workflow.yaml` as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`,
+which `git clone` sets and `git remote set-head <remote> --auto` restores; it must exist), whose copy
+must also name the same remote as `HEAD`'s; in a repo with no remote, from the copy at `HEAD`. The
+working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are ignored. The named branch
+must name itself in its own committed copy, and with remotes only `refs/remotes/<remote>/<branch>` is
+read. If any of this is missing, unfetched or disagrees, the gate fails closed (on, and nothing passes
+it). A remote whose default branch the feature author can push to is outside this protection. Change policy on the integration branch; an edit on
 a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that
 touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
 

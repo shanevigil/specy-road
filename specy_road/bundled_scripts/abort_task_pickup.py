@@ -235,14 +235,20 @@ def _exit_if_unpushed_commits_without_force(
 
 
 def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str) -> bool:
-    """True when every commit on ``ref`` missing from ``remote/base`` is this claim's registration.
+    """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's registration.
 
     That is a ``--local`` pickup: the claim never reached the remote, so there is
-    nothing to deregister there.
+    nothing to deregister there. The commit must carry the registration subject
+    *and* change only the registry, as pickup's commit does, so abort never
+    resets away a commit amended to carry other work.
     """
-    subjects = git_capture(ROOT, "log", "--format=%s", f"{remote}/{base}..{ref}").splitlines()
+    ahead = git_capture(ROOT, "rev-list", f"{remote}/{base}..{ref}").split()
+    if len(ahead) != 1:
+        return False
+    subject = git_capture(ROOT, "log", "-1", "--format=%s", ahead[0])
+    paths = git_capture(ROOT, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]).splitlines()
     own = registration_commit_message(codename, include_ci_skip=False)
-    return bool(subjects) and all(s.startswith(own) for s in subjects)
+    return subject.startswith(own) and paths == [registry_path(ROOT).relative_to(ROOT).as_posix()]
 
 
 def _drop_local_registration(remote: str, base: str) -> None:

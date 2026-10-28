@@ -75,6 +75,17 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     _git(app, "push", "-q", "-u", "origin", "main")
     pushed = _git(app, "rev-parse", "main")
     assert _cli(app, "do-next-available-task", "--local").returncode == 0
+    registration = _git(app, "rev-parse", "HEAD")
+    # the registration commit amended to carry source work, subject kept: refused, work kept
+    (app / "src").mkdir()
+    (app / "src" / "work.py").write_text("x = 1\n")
+    _git(app, "add", "src/work.py")
+    _git(app, "commit", "-q", "--amend", "--no-edit")
+    amended = _git(app, "rev-parse", "HEAD")
+    refused = _cli(app, "abort-task-pickup")
+    assert refused.returncode == 1 and "commits that are not on origin/main" in refused.stderr
+    assert _git(app, "rev-parse", "HEAD") == amended and (app / "src" / "work.py").is_file()
+    _git(app, "reset", "-q", "--hard", registration)
 
     r = _cli(app, "abort-task-pickup")
 

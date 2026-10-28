@@ -37,6 +37,22 @@ def test_a_feature_branch_cannot_nominate_itself_as_the_integration_branch(tmp_p
     ref, err = policy_source(repo)
     assert ref is None and "'nosuch'" in err and "not configured" in err
     assert review_required(repo)
+    # without the remote's default-branch ref there is nothing a feature commit cannot move: fail closed
+    commit_file(repo, "roadmap/git-workflow.yaml", SELF_NOMINATED.format(remote="origin"), "self again")
+    git(repo, "push", "-q", "origin", "feature/rm-thing")
+    git(repo, "remote", "set-head", "origin", "-d")
+    ref, err = policy_source(repo)
+    assert ref is None and "`git remote set-head origin --auto`" in err
+    assert review_required(repo)
+    # a secondary remote mirroring origin: its default branch still names origin
+    git(repo, "remote", "set-head", "origin", "--auto")
+    git(repo, "remote", "add", "upstream", str(bare))
+    git(repo, "fetch", "-q", "upstream")
+    git(repo, "remote", "set-head", "upstream", "--auto")
+    commit_file(repo, "roadmap/git-workflow.yaml", SELF_NOMINATED.format(remote="upstream"), "secondary")
+    ref, err = policy_source(repo)
+    assert ref is None and "names remote 'upstream'" in err and "names 'origin'" in err
+    assert review_required(repo)
 
 
 SENSITIVE = """version: 1
