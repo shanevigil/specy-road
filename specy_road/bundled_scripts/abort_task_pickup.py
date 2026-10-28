@@ -16,6 +16,7 @@ from specy_road.on_complete_session import (
     remove_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
@@ -233,6 +234,26 @@ def _exit_if_unpushed_commits_without_force(
     raise SystemExit(1)
 
 
+def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str) -> bool:
+    """True when every commit on ``ref`` missing from ``remote/base`` is this claim's registration.
+
+    That is a ``--local`` pickup: the claim never reached the remote, so there is
+    nothing to deregister there.
+    """
+    subjects = git_capture(ROOT, "log", "--format=%s", f"{remote}/{base}..{ref}").splitlines()
+    own = registration_commit_message(codename, include_ci_skip=False)
+    return bool(subjects) and all(s.startswith(own) for s in subjects)
+
+
+def _drop_local_registration(remote: str, base: str) -> None:
+    git_run(ROOT, "checkout", base)
+    git_run(ROOT, "reset", "--hard", f"{remote}/{base}")
+    print(
+        f"[ok] the claim was never pushed (--local pickup): dropped its registration "
+        f"commit from local {base}; nothing pushed"
+    )
+
+
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
     reg = read_registry(registry_path(ROOT))
     entries = reg.get("entries") or []
@@ -282,13 +303,18 @@ def main(argv: list[str] | None = None) -> None:
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
 
     git_run(ROOT, "fetch", remote)
-    ahead = _count_commits_ahead_of_remote_base(remote, base)
-    _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
+    local_claim = all(
+        _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)
+    )
+    if local_claim:
+        _drop_local_registration(remote, base)
+    else:
+        ahead = _count_commits_ahead_of_remote_base(remote, base)
+        _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
+        _sync_integration_branch_ff(remote, base)
+        _remove_registry_row_and_push(remote, base, codename)
 
-    _sync_integration_branch_ff(remote, base)
-    _remove_registry_row_and_push(remote, base, codename)
-
-    _delete_feature_branch(branch, force=args.force)
+    _delete_feature_branch(branch, force=args.force or local_claim)
     _remove_pickup_work_files(node_id, force=args.force)
 
     print(f"\n[ok] pickup aborted; on branch {current_branch(ROOT)}")

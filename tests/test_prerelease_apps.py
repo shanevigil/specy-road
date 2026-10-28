@@ -53,3 +53,32 @@ def test_refresh_stubs_without_a_stub_pack_is_a_clean_no_op(tmp_path: Path) -> N
 
     assert r.returncode == 0, r.stderr
     assert "nothing to refresh" in r.stdout
+
+
+def _git(root: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=root, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+
+def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path) -> None:
+    """--local registers only in this checkout; abort used to refuse or push it."""
+    remote, app = tmp_path / "remote.git", tmp_path / "app"
+    _git(tmp_path, "init", "-q", "--bare", str(remote))
+    _scaffold(app)
+    _git(app, "config", "user.email", "t@example.com")
+    _git(app, "config", "user.name", "T")
+    _git(app, "checkout", "-q", "-b", "main")
+    _git(app, "add", "-A")
+    _git(app, "commit", "-q", "-m", "init")
+    _git(app, "remote", "add", "origin", str(remote))
+    _git(app, "push", "-q", "-u", "origin", "main")
+    pushed = _git(app, "rev-parse", "main")
+    assert _cli(app, "do-next-available-task", "--local").returncode == 0
+
+    r = _cli(app, "abort-task-pickup")
+
+    assert r.returncode == 0, r.stderr
+    assert _git(remote, "rev-parse", "main") == pushed
+    assert _git(app, "rev-parse", "HEAD") == pushed
+    assert _git(app, "branch", "--list", "feature/rm-*") == ""
