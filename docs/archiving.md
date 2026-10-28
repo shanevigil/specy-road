@@ -6,7 +6,7 @@
 **Not for:** the PM GUI **Hide Complete** button (a view filter; no files move); a node's timeline — [`roadmap-history.md`](roadmap-history.md).
 
 **Must know without reading on:**
-- `specy-road archive M0.2` (also `--dry-run`, `--auto`, `--deep`); `specy-road restore-archive <ARCHIVE_ID>` puts it back with no diff. Nothing commits; publish like any roadmap edit.
+- `specy-road archive M0.2` (also `--dry-run`, `--auto`, `--deep`); `specy-road restore-archive <ARCHIVE_ID>` puts it back with no diff. Both regenerate `roadmap.md` and `roadmap-context.md`, so `export --check` and `digest --check` pass. Nothing commits; publish like any roadmap edit.
 - `roadmap/archive/index.json` is the ledger that keeps live dependencies on archived nodes valid: commit it, never delete it.
 - Only a subtree whose rollup status is `Complete` is eligible; `--force` overrides that but never an active `milestone_execution`.
 - Archived planning sheets go under `roadmap/archive/planning/`, never `planning/archive/` (validate rejects nested `planning/`).
