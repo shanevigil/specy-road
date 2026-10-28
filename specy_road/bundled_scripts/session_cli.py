@@ -138,7 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
     ssub = sess.add_subparsers(dest="session_cmd", required=True)
 
     def common(sp: argparse.ArgumentParser) -> None:
-        sp.add_argument("--agent", help="Session id (default: $SPECY_ROAD_AGENT_ID, else <user>-<pid>)")
+        sp.add_argument("--agent", help="Session id (default: $SPECY_ROAD_AGENT_ID, else <user>-s<POSIX session id>)")
         add_repo_root_arg(sp)
 
     for name, help_ in (("start", "Announce this session and the paths it will edit (renews an existing record)"),
