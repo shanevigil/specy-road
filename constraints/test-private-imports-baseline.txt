@@ -1,0 +1,12 @@
+# Private specy_road names referenced from tests (file: dotted name).
+# Gate: scripts/check_test_private_imports.py; shrink as tests go public.
+tests/test_dependency_rollup_satisfaction.py: specy_road.bundled_scripts.do_next_available._available
+tests/test_dependency_rollup_satisfaction.py: specy_road.bundled_scripts.do_next_available._statuses_by_node_key
+tests/test_finish_merge_mode.py: specy_road.finish_land_integration._integration_branch_present
+tests/test_gui_archive_routes.py: specy_road.gui_app_routes_archive._auto_settings
+tests/test_gui_archive_routes.py: specy_road.gui_app_routes_archive._eligible
+tests/test_review_hardening.py: specy_road.bundled_scripts.do_next_prompt._finish_instruction_lines
+tests/test_review_round4_sol.py: specy_road.gui_app_routes_brainstorm._apply_triage
+tests/test_review_round4_sol.py: specy_road.gui_app_routes_brainstorm._payload
+tests/test_review_round6_brainstorm.py: specy_road.gui_app_routes_brainstorm._payload
+tests/test_specyrd_skills.py: specy_road.bundled_scripts.refresh_stubs._report
