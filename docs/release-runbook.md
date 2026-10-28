@@ -9,6 +9,7 @@
 - The user chooses the version (step 2.2); never bump, tag or name a release branch without the exact number in this conversation.
 - Two flows: RC `vX.Y.Z-rcN` → TestPyPI, final `vX.Y.Z` → PyPI; `pyproject.toml` must read `X.Y.ZrcN` / `X.Y.Z` (PEP 440, no dash) and match the tag — `python scripts/check_release_version.py vX.Y.Z[-rcN]` must print `ok:`.
 - Branch `chore/release-vX-Y-Z[-rcN]`, PR to `main` titled `release: vX.Y.Z[-rcN]` (leading `v` mandatory), CHANGELOG heading `## [vX.Y.Z[-rcN]] - YYYY-MM-DD`.
+- Every release also writes or updates the `## specy-road X.Y.Z` section of `docs/whats-new.md` and points the README's **What's new** line at it (step 2.5a, "A.2 Author the release commit").
 - The user owns the tag re-push when `RELEASE_TAG_TOKEN` is unset (footgun ④), the `pypi` environment approval on finals (footgun ⑨), and the live-on-index confirmation; the agent prints the commands and waits.
 - Back-merge `main → dev` is mandatory for finals.
 
@@ -110,6 +111,7 @@ not a mechanical gate.
 | 2.3 | Cut `chore/release-vX-Y-Z[-rcN]` branch | agent | naming is load-bearing. |
 | 2.4 | Bump `pyproject.toml` `project.version` to PEP 440 form | agent | exact format matters. |
 | 2.5 | Add `## [vX.Y.Z[-rcN]] - YYYY-MM-DD` to `CHANGELOG.md` | agent | uses today's UTC date. |
+| 2.5a | Write or update `## specy-road X.Y.Z` in `docs/whats-new.md`; point the README's **What's new** line at it | agent drafts, **user** approves the wording | the curated, user-facing page; the CHANGELOG stays the full record. See "What's new" in A.2. |
 | 2.6 | Run `python scripts/check_release_version.py vX.Y.Z[-rcN]` locally | agent | must print `ok:`. |
 | 2.7 | Run gate suite (validate, export --check, file-limits, pytest, gui-pm-gantt build, pip-audit, npm audit) | agent | identical to CI. |
 | 2.8 | Commit, push branch, open PR to `main` titled `release: vX.Y.Z[-rcN]` | agent | uses `ManagePullRequest` or `gh`. |
@@ -385,6 +387,32 @@ release-publish.yml. Smoke install:
 - ...
 ```
 
+#### What's new
+
+`docs/whats-new.md` is the curated page for adopters deciding whether to
+upgrade; `CHANGELOG.md` stays the exhaustive record (create the file on
+first use with a header saying so). Newest first, one section per release
+line: the first RC writes it, later RCs and the final update it, and a
+patch adds a `### Fixes in X.Y.Z` line. Write what users can now do, not
+which module changed; leave refactors, test counts and review rounds to
+the CHANGELOG. Each section, in order:
+
+- `## specy-road 0.2.0`: version only, so the anchor `#specy-road-020`
+  holds from first RC to final.
+- A status line: `*Release candidate v0.2.0-rc1, YYYY-MM-DD (TestPyPI).*`,
+  at the final `*Released YYYY-MM-DD.*`; then one paragraph on what the
+  release is about and who should upgrade.
+- `### Highlights`: 3–7 bullets, each a bold phrase, what users can now
+  do, and a link to its doc.
+- One `###` per feature area: why it matters and one command that runs.
+- `### Upgrading from 0.1.x`: breaking changes and removals first, each
+  with its fix, then adopter commands (`refresh-stubs`, …).
+- A closing link to the release's CHANGELOG heading. About 150 lines in all.
+
+The README carries one line under its tagline (add it if missing,
+repoint it each release):
+`**What's new:** [specy-road 0.2.0](docs/whats-new.md#specy-road-020) — <summary>.`
+
 Local pre-flight (mirrors what CI will run):
 
 ```bash
@@ -550,6 +578,9 @@ last RC and this final.
 
 - ...
 ```
+
+What's new (A.2): set the status line to `*Released YYYY-MM-DD.*`, fold
+in post-RC changes, and point the CHANGELOG link at the final's heading.
 
 Branch + PR:
 
@@ -862,6 +893,7 @@ PR (the bundle ships inside the wheel).
 | [`.github/workflows/release-publish.yml`](../.github/workflows/release-publish.yml) | does the actual publish; this runbook documents its inputs |
 | [`scripts/check_release_version.py`](../scripts/check_release_version.py) | the version-vs-tag gate; this runbook documents what it checks |
 | [`scripts/post_release_readme_cleanup.py`](../scripts/post_release_readme_cleanup.py) | does the README cleanup; this runbook documents §7 |
+| `docs/whats-new.md` | curated per-release highlights and upgrade steps, linked from the README; written at step 2.5a |
 
 If you change any of these files, audit this runbook for staleness
 in the same PR.
