@@ -9,7 +9,7 @@ the markers around this section is yours.
 
 1. `{{PROJECT_PREFIX}}roadmap-context.md` — the generated current-state summary
    (`specy-road digest`). Far smaller than the corpus it stands in for, and
-   always current. Read it before anything else.
+   always current. Read it before anything else — except a `work/brainstorm-*` prompt: open that first.
 2. `{{PROJECT_PREFIX}}AGENTS.md` — load order and coordination rules.
 
 Then, for a roadmap-linked task, keep context small:
