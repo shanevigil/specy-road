@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from typing import Any
@@ -101,6 +102,13 @@ def merge_set_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
         else:
             raise ValueError(f"--set {key}= given twice; only {', '.join(LIST_KEYS)} take one --set per item")
     return list(merged.items())
+
+
+def _looks_like_json_list(raw: str) -> bool:
+    try:
+        return isinstance(json.loads(raw), list)
+    except ValueError:
+        return False
 
 
 def _set_type(node: dict, raw_val: str) -> None:
@@ -340,6 +348,11 @@ def apply_set(
     if dotted_key not in EDIT_WHITELIST:
         raise ValueError(f"key not allowed for --set: {dotted_key!r}")
     parts = dotted_key.split(".")
+    if dotted_key in LIST_KEYS and notify is not None and _looks_like_json_list(raw_val):
+        notify(
+            f"{dotted_key} value looks like a JSON list; it is read as text, one item per line, "
+            f"not parsed. Give one --set {dotted_key}=… per item."
+        )
     if len(parts) == 1:
         key = parts[0]
         old_title = str(node.get("title") or "")

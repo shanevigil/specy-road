@@ -14,10 +14,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from specy_road.bundled_scripts.upgrade import run_upgrade
+from specy_road.bundled_scripts.upgrade import copy_missing_docs, run_upgrade
 from specy_road.init_project import run_init_project
 
 OLD_STUB = ".cursor/commands/specyrd-validate.md"
+SHIPPED_DOC = "docs/supply-chain-security.md"
 
 
 def _old_repo(root: Path) -> Path:
@@ -26,6 +27,7 @@ def _old_repo(root: Path) -> Path:
     assert run_init_project(root) == 0
     (root / "AGENTS.md").write_text("# Agents\n\nOur own rules.\n", encoding="utf-8")
     shutil.rmtree(root / "model-profiles")
+    (root / SHIPPED_DOC).unlink()
     (root / "schemas" / "orchestration.schema.json").unlink()
     roadmap_schema = root / "schemas" / "roadmap.schema.json"
     schema = json.loads(roadmap_schema.read_text(encoding="utf-8"))
@@ -49,6 +51,8 @@ def test_one_run_clears_every_upgrade_warning(tmp_path: Path, capsys) -> None:
     out, err = capsys.readouterr()
     assert "wrote schemas/orchestration.schema.json (new in this version)" in out
     assert "removed .cursor/commands/specyrd-validate.md" in out
+    assert f"wrote {SHIPPED_DOC} (named in the AGENTS.md load order)" in out
+    assert (root / SHIPPED_DOC).is_file()
     assert "OK: roadmap and registry validate." in out
     for warning in ("agents: warning", "schemas: warning", "specyrd: warning"):
         assert warning not in err
@@ -75,6 +79,30 @@ def test_dry_run_writes_nothing_and_skips_validate(tmp_path: Path, capsys) -> No
 
     out = capsys.readouterr().out
     assert "would remove .cursor/commands/specyrd-validate.md" in out
+    assert "migration: 1 command stubs (*/commands/) become 1 skills under .agents/skills/" in out
+    assert f"would write {SHIPPED_DOC}" in out
     assert "== validate" not in out
     assert (root / OLD_STUB).is_file()
+    assert not (root / SHIPPED_DOC).exists()
     assert not (root / "schemas" / "orchestration.schema.json").exists()
+
+
+def test_a_doc_the_project_has_is_kept(tmp_path: Path) -> None:
+    run_init_project(tmp_path)
+    (tmp_path / SHIPPED_DOC).write_text("our policy\n", encoding="utf-8")
+
+    assert copy_missing_docs(tmp_path) == []
+    assert (tmp_path / SHIPPED_DOC).read_text(encoding="utf-8") == "our policy\n"
+
+
+def test_a_docs_link_out_of_the_repo_is_not_followed(tmp_path: Path, capsys) -> None:
+    root, outside = tmp_path / "repo", tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    run_init_project(root)
+    shutil.rmtree(root / "docs")
+    (root / "docs").symlink_to(outside, target_is_directory=True)
+
+    assert copy_missing_docs(root) == []
+    assert f"skipped {SHIPPED_DOC}" in capsys.readouterr().out
+    assert not any(outside.iterdir())

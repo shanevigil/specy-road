@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set, title_to_codename
 
@@ -103,3 +105,19 @@ def test_edit_title_renames_planning_file_on_disk(tmp_path: Path) -> None:
     new = tmp_path / "planning" / f"M99_{slug}_{_NK}.md"
     assert new.is_file()
     assert not old.exists()
+
+
+@pytest.mark.parametrize(
+    ("value", "noted"),
+    [('["Returns 404", "Logs the miss"]', True), ("Returns 404 for an unknown id", False)],
+)
+def test_a_json_looking_list_value_is_noted_and_stored_as_text(value: str, noted: bool) -> None:
+    """rc1: `--set acceptance='["a","b"]'` stored one criterion with the brackets in it, silently."""
+    node = _hand_picked_node()
+    notes: list[str] = []
+    apply_set(node, "acceptance", value, all_ids={"M0.1"}, all_node_keys={_NK2}, self_id="M0.1",
+              notify=notes.append)
+    assert node["acceptance"] == [value]
+    assert bool(notes) is noted
+    if noted:
+        assert "--set acceptance=" in notes[0]

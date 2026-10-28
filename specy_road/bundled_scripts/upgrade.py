@@ -10,29 +10,35 @@ order, and nothing else:
 
 1. ``refresh-schemas``  — ``schemas/``
 2. ``refresh-profiles`` — missing ``model-profiles/`` files, never overwriting
-3. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
+3. shipped docs         — the ``docs/`` files the ``AGENTS.md`` load order names,
+   when missing (never overwriting)
+4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
    the stubs this version no longer installs)
-4. ``validate``, then ``digest --check``
+5. ``validate``, then ``digest --check``
 
 Each step keeps its own narrow contract; the roadmap, planning sheets and
 anything outside a managed block are never touched. ``--dry-run`` stops after
-the three refreshes. The exit code is ``validate``'s: a missing or drifted
+the refreshes. The exit code is ``validate``'s: a missing or drifted
 digest is reported, not failed, because a new version's digest often differs.
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.agents_md_block import load_order_paths, render_agents_lines
 from specy_road.bundled_scripts.digest_cli import cmd_digest
 from specy_road.bundled_scripts.refresh_profiles import refresh_profiles
 from specy_road.bundled_scripts.refresh_schemas import SCHEMAS_DIRNAME, missing_schema_names, refresh_schemas
 from specy_road.bundled_scripts.refresh_stubs import _report, _resolve_root, refresh_stubs
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.digest import DEFAULT_OUTPUT
+from specy_road.init_project import project_template_root
+from specy_road.managed_block import resolves_outside
 from specy_road.runtime_paths import add_repo_root_arg, project_root
 
 CHECKLIST = (
@@ -44,6 +50,29 @@ CHECKLIST = (
 
 def _section(title: str) -> None:
     print(f"\n== {title}", flush=True)   # the steps warn on stderr; keep a piped log in order
+
+
+def copy_missing_docs(project: Path, *, dry_run: bool = False) -> list[str]:
+    """Copy the ``docs/`` files this version's load order names and the project lacks.
+
+    The load order sends every agent to them, and only ``init project`` copied
+    them, so a repo scaffolded before a doc shipped has a load order pointing at
+    nothing. An existing file (or link) is the project's and stays as it is.
+    """
+    src_root = project_template_root()
+    copied: list[str] = []
+    for rel in load_order_paths(render_agents_lines()):
+        src, dst = src_root / rel, project / rel
+        if not rel.startswith("docs/") or not src.is_file() or dst.exists() or dst.is_symlink():
+            continue
+        if resolves_outside(project, dst):
+            print(f"skipped {rel} (a symlink leads outside the repository)")
+            continue
+        if not dry_run:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+        copied.append(rel)
+    return copied
 
 
 def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> None:
@@ -62,6 +91,13 @@ def _refresh(project: Path, checkout: Path, *, dry_run: bool, prune: bool) -> No
         print(f"{verb} {rel}")
     if not profiles:
         print("model-profiles/ already has every profile this version ships")
+
+    _section("shipped docs")
+    docs = copy_missing_docs(project, dry_run=dry_run)
+    for rel in docs:
+        print(f"{verb} {rel} (named in the AGENTS.md load order)")
+    if not docs:
+        print("every shipped doc the load order names is present")
 
     _section("refresh-stubs")
     written, orphans = refresh_stubs(checkout, dry_run=dry_run, project=project, prune=prune)

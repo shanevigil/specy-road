@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -11,6 +12,7 @@ import pytest
 
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
+from specy_road import __version__
 from specy_road.bundled_scripts import validate_roadmap as vr
 from specy_road.bundled_scripts.roadmap_load import annotate_rollup_status, load_roadmap
 from specy_road.bundled_scripts.validate_roadmap_checks import (
@@ -75,7 +77,20 @@ def test_warn_stale_parent_status_reports_drift_without_failing(capsys) -> None:
     assert "specy-road edit-node M1 --set status=Complete" in err
 
 
-def test_warn_stale_parent_status_quiet_when_aligned(capsys) -> None:
+@pytest.mark.parametrize(
+    ("parent", "leaf", "warned"),
+    [
+        ("Complete", "Complete", False),
+        # rc1: an honest In Progress parent was told to go back to Not Started.
+        ("In Progress", "Not Started", False),
+        ("Not Started", "In Progress", False),
+        ("Complete", "In Progress", True),
+        ("In Progress", "Complete", True),
+    ],
+)
+def test_warn_stale_parent_status_only_on_a_complete_disagreement(
+    capsys, parent: str, leaf: str, warned: bool
+) -> None:
     nodes = annotate_rollup_status(
         [
             {
@@ -84,7 +99,7 @@ def test_warn_stale_parent_status_quiet_when_aligned(capsys) -> None:
                 "parent_id": None,
                 "type": "phase",
                 "title": "P",
-                "status": "Complete",
+                "status": parent,
             },
             {
                 "id": "M1.1",
@@ -92,12 +107,14 @@ def test_warn_stale_parent_status_quiet_when_aligned(capsys) -> None:
                 "parent_id": "M1",
                 "type": "task",
                 "title": "T",
-                "status": "Complete",
+                "status": leaf,
             },
         ]
     )
     warn_stale_parent_status(nodes)
-    assert capsys.readouterr().err == ""
+    err = capsys.readouterr().err
+    assert (f"specy-road edit-node M1 --set status={leaf}" in err) is warned
+    assert bool(err) is warned
 
 
 def test_cycle_check_detects_cycle() -> None:
@@ -327,3 +344,39 @@ def test_run_validation_accepts_implementation_review_pending_when_gate_on(
         ],
     }
     run_validation(roadmap, registry, True, repo_root=DOGFOOD)
+
+
+@pytest.mark.parametrize(
+    ("manifest_pin", "requirements", "expected"),
+    [
+        ("0.2.3", "specy-road==0.1.0\n", ("0.2.3", ".specyrd/manifest.json")),
+        (None, "requests>=2\nspecy-road[gui-next] == 0.2.3  # pinned\n", ("0.2.3", "requirements.txt")),
+        (None, "specy-road>=0.2\n", None),
+    ],
+)
+def test_the_declared_pin_comes_from_the_manifest_then_requirements(
+    tmp_path: Path, manifest_pin: str | None, requirements: str, expected: tuple[str, str] | None
+) -> None:
+    if manifest_pin is not None:
+        (tmp_path / ".specyrd").mkdir()
+        (tmp_path / ".specyrd" / "manifest.json").write_text(json.dumps({"pin": manifest_pin}), encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text(requirements, encoding="utf-8")
+
+    assert vr.pinned_version(tmp_path) == expected
+
+
+def test_validate_warns_once_when_the_running_version_is_not_the_pin(
+    tmp_path: Path, capsys
+) -> None:
+    (tmp_path / "requirements.txt").write_text("specy-road==0.0.1\n", encoding="utf-8")
+    (tmp_path / "requirements-dev.txt").write_text("specy-road==0.0.2\n", encoding="utf-8")
+
+    vr.warn_if_pin_differs(tmp_path)
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1
+    assert f"pins specy-road 0.0.2 (requirements-dev.txt) but {__version__} is running" in err
+
+    for req in ("requirements.txt", "requirements-dev.txt"):
+        (tmp_path / req).write_text(f"specy-road=={__version__}\n", encoding="utf-8")
+    vr.warn_if_pin_differs(tmp_path)
+    assert capsys.readouterr().err == ""
