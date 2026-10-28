@@ -56,6 +56,9 @@ _TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git c
 #: ``git -C <dir>`` / ``--work-tree`` act on another tree: never scope those to the caller's.
 _NAMES_A_TREE = re.compile(r"(^|\s)(-C\S*|--work-tree(=|\s)|--git-dir(=|\s))")
 _GIT_WORD = re.compile(r"\bgit\b")
+#: Shell expansion in a word: parameter/command substitution, brace expansion, globs.
+_EXPANSION = re.compile(r"[$`*?\[]|\{[^}]*(,|\.\.)")
+_EXPANSION_SYNTAX = re.compile(r"\$\{[^}]*\}|\$\w+|[$`{}*?\[\],]")
 _FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
 _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
 #: ``$(…)``, ``<(…)``, ``>(…)`` and backticks all run their body as a command.
@@ -264,9 +267,10 @@ def classify_segment(segment: str) -> str | None:  # noqa: C901 — baseline 202
 def _opaque(segment: str) -> str | None:
     """Shapes a token parser cannot follow: refused when they mention git, rather than waved through.
 
-    A shell function whose body mentions git, a command name that comes from
-    a variable, and an interpreter one-liner that mentions git all run git
-    where the guard cannot see the arguments.
+    A shell function whose body mentions git, a command name built by shell
+    expansion (``$X``, ``git${IFS}stash``, ``{git,stash}``, ``gi?``), a later
+    word that expansion could turn into ``git``, and an interpreter one-liner
+    that mentions git all run git where the guard cannot see the arguments.
     """
     if _FUNC_DEF.search(segment) and _GIT_WORD.search(segment):
         return "defines a shell function and mentions git; the guard cannot follow it — run the git command plainly"
@@ -274,12 +278,14 @@ def _opaque(segment: str) -> str | None:
         head = _unwrap(shlex.split(segment, comments=True))
     except ValueError:
         return None
-    if head and head[0].startswith("$"):
-        return "the command name comes from a variable; the guard cannot see it — run the command plainly"
     try:
         raw = shlex.split(segment, comments=True)
     except ValueError:
         raw = []
+    if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[["):
+        return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
+    if any(_EXPANSION.search(t) and " " not in t and _EXPANSION_SYNTAX.sub("", t).startswith("git") for t in raw):
+        return "a shell expansion could build `git` here; the guard cannot see it — run the git command plainly"
     if shapes.env_config(raw):
         return shapes.env_config(raw)
     if raw and raw[0] == "env" and any(a in _ENV_SPLIT or a.startswith("--split-string=") for a in raw[1:]) \

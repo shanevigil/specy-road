@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import io
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
@@ -134,6 +136,11 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
 
     def fetch(url):
         calls.append(url)
+        if len(calls) == 1:   # another process adds an idea mid-fetch: verify must not hold the lock, nor drop it
+            add = subprocess.run([sys.executable, "-m", "specy_road.cli", "brainstorm", "add-idea", "--title", "Two",
+                                  "--repo-root", str(repo)], cwd=REPO, env=script_subprocess_env(),
+                                 capture_output=True, text=True, timeout=60)
+            assert add.returncode == 0, add.stderr
         return 200, "exact words" if url.endswith("ok") else "nope"
 
     monkeypatch.setattr(bv, "default_fetch", fetch)
@@ -146,6 +153,7 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
     assert code == 0 and sorted(calls) == ["https://example.com/miss", "https://example.com/ok"]
     states = {s["url"]: s["verification"] for s in _session(repo).by_id("B1").sources}
     assert states == {"https://example.com/ok": "retrieved", "https://example.com/miss": "not-found"}
+    assert [i.title for i in _session(repo).ideas] == ["One", "Two"]
     assert "B1 retrieved" in out and "B1 not-found" in out
     code, out, _ = _cli(repo, "verify", "--yes")
     assert code == 0 and "nothing unverified" in out and len(calls) == 2

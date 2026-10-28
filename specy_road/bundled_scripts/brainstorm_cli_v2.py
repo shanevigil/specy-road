@@ -19,6 +19,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     read_session,
     resolve_slug,
+    session_lock,
     set_status,
     write_session,
 )
@@ -102,6 +103,7 @@ def cmd_add_evidence(ns: argparse.Namespace) -> int:
 
 
 def cmd_verify(ns: argparse.Namespace) -> int:
+    """Ask and fetch without the brainstorm lock; take it only to merge the results into a fresh read."""
     root, session = _load(ns)
     ideas = [session.by_id(i) for i in ns.idea_id] if ns.idea_id else session.ideas
     todo = pending(ideas)
@@ -112,7 +114,12 @@ def cmd_verify(ns: argparse.Namespace) -> int:
         return 1
     for line in verify_session(session, ideas):
         print(line)
-    write_session(root, session)
+    results = {(i.id, s.get("url"), s.get("quote")): s["verification"] for i, s in todo}
+    with session_lock(root):   # ideas and sources added meanwhile are kept
+        fresh = read_session(root, session.slug)
+        for idea, src in pending(fresh.ideas):
+            src["verification"] = results.get((idea.id, src.get("url"), src.get("quote")), "unverified")
+        write_session(root, fresh)
     return 0
 
 

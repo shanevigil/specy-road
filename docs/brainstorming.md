@@ -259,7 +259,9 @@ public `https` pages only, with a timeout and a size cap (a larger page is
 quote was given; `add-evidence` requires one), or
 `blocked` (paywall, robots, transport error — never "fabricated"). Sources
 it did not fetch stay `unverified`. This is the only network call the CLI
-makes.
+makes. Other brainstorm commands (CLI or GUI) are not blocked while it asks
+or fetches; it records its results into the session as it then stands, so
+ideas added meanwhile are kept.
 
 ## 4. Triage
 

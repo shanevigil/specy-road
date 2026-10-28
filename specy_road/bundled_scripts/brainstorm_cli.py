@@ -277,7 +277,8 @@ def _serialised(handler):
     return run
 
 
-HANDLERS = {name: _serialised(fn) for name, fn in {
+#: ``verify`` takes the lock itself, only to write: never across its y/n prompt and page fetches.
+HANDLERS = {name: fn if name == "verify" else _serialised(fn) for name, fn in {
     "start": cmd_start,
     "add-idea": cmd_add_idea,
     "list": cmd_list,
