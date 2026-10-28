@@ -62,6 +62,13 @@ entries:
       - specy_road/templates/project/schemas/git-workflow.schema.json
       - sr/schemas/git-workflow.schema.json
       - tests/fixtures/specy_road_dogfood/schemas/
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/bundled_scripts/grind_session_step.py
+      - docs/grind-session.md
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
