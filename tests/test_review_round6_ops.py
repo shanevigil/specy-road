@@ -238,21 +238,34 @@ def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> Non
 
 def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, capsys) -> None:
     # Pre-release review: the worker would edit the same tree, overwriting this
-    # work, and `reconcile` could not tell its edits from it. work/ is bookkeeping.
+    # work, and `reconcile` could not tell its edits from it. Only the leaf's
+    # untracked bookkeeping is exempt, not the rest of work/ (re-review N2).
     repo, _ = _repo(tmp_path)
     (repo / ".gitignore").write_text("work/.workers/\nwork/prompt-*.md\n")   # as the project template: briefs tracked
-    git(repo, "commit", "-qam", "template ignores")
     (repo / "work").mkdir(exist_ok=True)
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("committed summary\n")
+    git(repo, "add", ".gitignore", "work/implementation-summary-M1.1.md")
+    git(repo, "commit", "-qm", "template ignores")
     (repo / "work" / "brief-M1.1.md").write_text("pickup's brief, untracked\n")
+    (repo / "work" / "notes.md").write_text("the human's notes\n")
+    (repo / "work" / "implementation-summary-M1.1.md").write_text("edited before delegate\n")
     (repo / "pre.txt").write_text("dirt before delegate\n")
     (repo / "src" / "a.py").write_text("edited before delegate\n")
     assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
-    assert "uncommitted changes" in err and "pre.txt, src/a.py;" in err and "commit or stash" in err
+    assert ("uncommitted changes" in err and "commit or stash" in err
+            and "pre.txt, src/a.py, work/implementation-summary-M1.1.md, work/notes.md;" in err)
     assert (repo / "src" / "a.py").read_text() == "edited before delegate\n" and not ws.list_records(repo)
     (repo / "pre.txt").unlink()
-    git(repo, "checkout", "--", "src/a.py")
-    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only work/ left
+    (repo / "work" / "notes.md").unlink()
+    git(repo, "checkout", "--", "src/a.py", "work/implementation-summary-M1.1.md")
+    index = repo / ".git" / "index"
+    saved = index.read_bytes()
+    index.write_bytes(b"not an index")   # re-review N9: a status git cannot read is not a clean tree
+    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "cannot read `git status`" in capsys.readouterr().err and not ws.list_records(repo)
+    index.write_bytes(saved)
+    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only the brief left
     _wait(repo, "w-0001")
 
 

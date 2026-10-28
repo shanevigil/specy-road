@@ -52,8 +52,15 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     return sorted(set(changed) | {p for p in untracked.splitlines() if p.strip()})
 
 
-def _bookkeeping(path: str) -> bool:
-    return path.startswith("work/") or path == "roadmap/registry.yaml"
+#: specy-road's state under work/: gitignored by the project template, listed by git where it is not.
+_STATE_DIRS = ("work/reviews/", "work/.workers/", "work/.sessions/", "work/.worktrees/")
+
+
+def _bookkeeping(path: str, node_id: str) -> bool:
+    """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
+    out (role_prompt), the prompts ``delegate`` writes, and the toolkit's state."""
+    return (path in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
+            or path.startswith((f"work/prompt-{node_id}-", *_STATE_DIRS)))
 
 
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:
@@ -71,9 +78,10 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
     on_branch = _changed_since(Path(rec.worktree), origin) if origin != since else changed
-    # Toolkit bookkeeping is never a breach: briefs, prompts, hand-off and
-    # brainstorm files under work/, and the registry row the claim lives in.
-    substantive = [p for p in sorted(set(changed) | set(on_branch)) if not _bookkeeping(p)]
+    # Toolkit bookkeeping is never a breach: the leaf's brief, summary and
+    # review files, and the registry row the claim lives in.
+    substantive = [p for p in sorted(set(changed) | set(on_branch))
+                   if not (_bookkeeping(p, rec.node_id) or p == "roadmap/registry.yaml")]
     outside = [p for p in substantive if zones and not any(zone_matches(z, p) for z in zones)]
     text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
     # A prompt that can no longer be built (the model lost the leaf's
