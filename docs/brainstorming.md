@@ -197,7 +197,9 @@ first and re-run `start` to give the shards them. Run them as
 sub-agents of your session or on other harnesses from the roster (the best
 measured gains come from different *model families*); each records with
 `--origin …/1/sN` into the same session file, and converge clusters the
-merge. specy-road does not launch them itself.
+merge. specy-road does not launch them itself. Hand each worker its prompt inline, or name the
+`work/brainstorm-*` file and say to open it first: an agent that follows AGENTS.md's read-first
+rule otherwise reads `roadmap-context.md` before it sees the prompt (Cursor did, 4 of 4).
 
 ## 2. Converge
 
