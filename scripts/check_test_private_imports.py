@@ -7,7 +7,10 @@ in ``constraints/test-private-imports-baseline.txt`` and fails on new entries.
 
 Detected via ``ast``: ``from specy_road.mod import _name``, ``import specy_road.mod._name``,
 ``specy_road.mod._name`` attribute access, and ``monkeypatch.setattr("specy_road.mod._name", ..)``
-or ``mock.patch(...)`` targets. Aliases such as ``import mod as _m`` are fine.
+or ``mock.patch(...)`` targets. Import aliases (``import specy_road.mod as m``,
+``from specy_road import mod``) are resolved, so ``m._name`` and
+``monkeypatch.setattr(m, "_name", ..)`` / ``mock.patch.object(m, "_name")`` count too;
+a private alias name itself (``import mod as _m``) is fine.
 
 Usage: ``python scripts/check_test_private_imports.py [--update-baseline]``
 """
@@ -28,21 +31,36 @@ def _is_private(name: str) -> bool:
     return name.startswith("_") and not name.startswith("__")
 
 
-def _dotted(node: ast.AST) -> str | None:
-    """Rebuild a dotted name from an Attribute/Name chain, else None."""
+def _in_package(name: str) -> bool:
+    return name == PACKAGE or name.startswith(PACKAGE + ".")
+
+
+def _dotted(node: ast.AST, aliases: dict[str, str]) -> str | None:
+    """Rebuild a dotted name from an Attribute/Name chain (root alias resolved), else None."""
     parts: list[str] = []
     while isinstance(node, ast.Attribute):
         parts.append(node.attr)
         node = node.value
     if not isinstance(node, ast.Name):
         return None
-    parts.append(node.id)
+    parts.append(aliases.get(node.id, node.id))
     return ".".join(reversed(parts))
+
+
+def _aliases(tree: ast.AST) -> dict[str, str]:
+    """Local names that imports bind to specy_road modules or objects."""
+    bound: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            bound.update({a.asname: a.name for a in node.names if a.asname and _in_package(a.name)})
+        elif isinstance(node, ast.ImportFrom) and _in_package(node.module or ""):
+            bound.update({a.asname or a.name: f"{node.module}.{a.name}" for a in node.names})
+    return bound
 
 
 def _import_from_refs(node: ast.ImportFrom) -> set[str]:
     module = node.module or ""
-    if module != PACKAGE and not module.startswith(PACKAGE + "."):
+    if not _in_package(module):
         return set()
     return {f"{module}.{a.name}" for a in node.names if _is_private(a.name)}
 
@@ -55,35 +73,44 @@ def _import_refs(node: ast.Import) -> set[str]:
     }
 
 
-def _attribute_ref(node: ast.Attribute) -> str | None:
+def _attribute_ref(node: ast.Attribute, aliases: dict[str, str]) -> str | None:
     if not _is_private(node.attr):
         return None
-    dotted = _dotted(node)
+    dotted = _dotted(node, aliases)
     return dotted if dotted and dotted.startswith(PACKAGE + ".") else None
 
 
-def _patch_target(node: ast.Call) -> str | None:
-    """First string argument of monkeypatch.setattr(...) / mock.patch(...)."""
+def _patch_target(node: ast.Call, aliases: dict[str, str]) -> str | None:
+    """Target of setattr(...) / mock.patch(...) / patch.object(...): string or (owner, "_name")."""
     func = node.func
     name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
-    if name not in {"setattr", "patch"} or not node.args:
+    args = node.args
+    if name not in {"setattr", "patch", "object"} or not args:
         return None
-    target = getattr(node.args[0], "value", None)
-    return target if isinstance(target, str) and STRING_TARGET_RE.match(target) else None
+    target = getattr(args[0], "value", None)
+    if isinstance(target, str):
+        return target if STRING_TARGET_RE.match(target) else None
+    attr = getattr(args[1], "value", None) if len(args) > 1 else None
+    owner = _dotted(args[0], aliases)
+    if isinstance(attr, str) and _is_private(attr) and owner and owner.startswith(PACKAGE + "."):
+        return f"{owner}.{attr}"
+    return None
 
 
 def find_private_refs(source: str, filename: str) -> set[str]:
     """Return dotted private names referenced in one test module."""
     found: set[str] = set()
-    for node in ast.walk(ast.parse(source, filename=filename)):
+    tree = ast.parse(source, filename=filename)
+    aliases = _aliases(tree)
+    for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             found |= _import_from_refs(node)
         elif isinstance(node, ast.Import):
             found |= _import_refs(node)
         elif isinstance(node, ast.Attribute):
-            found.add(_attribute_ref(node) or "")
+            found.add(_attribute_ref(node, aliases) or "")
         elif isinstance(node, ast.Call):
-            found.add(_patch_target(node) or "")
+            found.add(_patch_target(node, aliases) or "")
     found.discard("")
     return found
 

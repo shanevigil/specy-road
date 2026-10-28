@@ -9,6 +9,9 @@ on:
     - cron: "17 3 * * 1"  # Mondays 03:17 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mutmut:
     runs-on: ubuntu-latest
@@ -24,7 +27,7 @@ jobs:
       - name: Install package, test deps and mutmut
         run: |
           pip install -r requirements-ci.txt
-          pip install mutmut==3.8.0 coverage
+          pip install mutmut==3.8.0 coverage==7.17.0
       - name: Write mutmut config (setup.cfg is read when pyproject has no [tool.mutmut])
         run: |
           cat > setup.cfg <<'CFG'
