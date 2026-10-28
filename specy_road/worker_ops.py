@@ -30,8 +30,8 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_baseline import write_baseline
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
+from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_runner import spawn
 from specy_road.worker_sessions import check_session_id
 from specy_road.worker_state import (
@@ -41,6 +41,7 @@ from specy_road.worker_state import (
     active_for_node,
     append_event,
     create_record,
+    dirty_paths,
     list_records,
     load_record,
     mutate,
@@ -221,13 +222,19 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
                    text: str, prompt: Path, worktree: Path | None) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
+    # The worker edits this tree: uncommitted work in it could be overwritten, and
+    # `reconcile` could not tell the worker's edits from it. work/ is bookkeeping
+    # (pickup leaves the brief there untracked).
+    dirty = [p for p in dirty_paths(wt) if not _bookkeeping(p)]
+    if dirty:
+        raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
+                          "commit or stash them, then delegate again")
     _brief_into(wt, repo_root, node_id, t)
     cli, api_id = _cli_for(repo_root, entry, harness)
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
-    write_baseline(repo_root, rec.worker_id, wt)   # pre-delegation dirt is the coordinator's, not the worker's
     try:
         spawn(repo_root, rec, launch)
     except OSError as e:

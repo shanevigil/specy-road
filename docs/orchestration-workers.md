@@ -114,8 +114,10 @@ branch (`do-next-available-task --under M2.3`). It writes the executor prompt
 (`work/prompt-M2.3-executor-<model>.md`, the same text `specy-road prompt`
 writes), chooses the worktree — this checkout when it has the claim's branch
 checked out, otherwise a linked worktree at `work/.worktrees/<codename>` —
-hashes the prompt as the worker's `contract_hash`, launches the harness
-detached, and returns the worker id. Delegating the same leaf again returns
+refuses that worktree while it has uncommitted changes outside `work/` (it names
+them: the worker would edit the same files, and `reconcile` could not tell its
+edits from yours; commit or stash them first), hashes the prompt as the
+worker's `contract_hash`, launches the harness detached, and returns the worker id. Delegating the same leaf again returns
 the existing worker; more than `max_workers` active is refused; `--op-id`
 makes a retried call answer from its first result (an op id is bound to its
 kind, target and arguments — for `message --file`, the file's text — so a
@@ -141,7 +143,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `terminate W` | SIGTERM the recorded process group (wrapper, harness and children), SIGKILL after 5 s, and confirm the group is gone — also when the wrapper itself already died; state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker, and for an id that is not the harness's own shape (a UUID for Claude Code and Codex; shell-safe characters for all). |
-| `reconcile W` | Paths changed since the checkpoint (paths already dirty when `delegate` ran are the coordinator's and are left out), and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
+| `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human

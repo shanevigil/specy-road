@@ -331,12 +331,20 @@ def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
 
 
 def dirty_paths(worktree: Path) -> list[str]:
-    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human."""
+    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human,
+    and what ``delegate`` refuses to launch over."""
     # ``-z`` on the raw output: ``git_text`` strips the leading space of a `` M path`` line.
     r = run(["status", "--porcelain", "--untracked-files=all", "-z"], worktree)
     if not r.ok:
         return []
-    return sorted({e[3:] for e in r.out.split("\0") if len(e) > 3})
+    out: set[str] = set()
+    fields = iter(r.out.split("\0"))
+    for entry in fields:
+        if len(entry) > 3:
+            out.add(entry[3:])
+            if entry[0] in "RC":
+                next(fields, None)   # a rename carries the old path as the next field
+    return sorted(out)
 
 
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:
