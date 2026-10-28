@@ -37,12 +37,15 @@ role_fit:
 - Generic effort names collapse silently: minimal maps to low, and medium and xhigh map to high | trigger: a vendor-neutral orchestrator assumes effort names mean the same thing across vendors | mitigation in prompt: map explicitly to none, low, high, or max and record the mapped level [S5]
 - The default output allowance is much lower than the model maximum unless configured | trigger: the orchestrator assumes 393,216 output tokens are available automatically | mitigation in prompt: set max_tokens deliberately; documented defaults vary by thinking mode and effort [S5]
 - Alias and compatibility layers can hide the real underlying model | trigger: using the retired deepseek-v4-flash names | mitigation in prompt: use deepseek-flash, then log the returned provider model version separately [S3]
+## Code and test tendencies
+- No measured code-shape or test data for this family in either lean-code report (2026-10-27); the generic lean rules apply unmodified (researched 2026-10-27 from the lean-code reports, not human-verified) [S10]
 ## Prompting rules
 - Put stable role and policy constraints in the system message; DeepSeek's OpenAI-format examples support a system message [S5]
 - Map reasoning effort mechanically: none for non-thinking, low for inexpensive bounded tasks, high for normal complex work, max for the hardest coding-agent tasks [S5]
 - Under Claude Code, set both the main model and the subagent model explicitly to deepseek-flash so Claude model-name defaults do not route to another DeepSeek tier [S4]
 - Set auto-compaction before the full 1M context is exhausted; DeepSeek's own Claude Code setup recommends 786,432 tokens [S4]
 - Treat unsupported or compatibility-mapped API parameters as an integration test requirement; do not assume OpenAI or Anthropic API compatibility is exact [S5]
+- No family-specific lean rule exists: keep the project's `## Lean changes and tests` block and require the `## Added` inventory in the summary [S10]
 ## Change from previous version
 - improved: Terminal-Bench 4.0 vendor-reported result rose 11.1 points, from 31.2 to 42.3 [S1]
 - improved: DeepSWE v1.1 rose from 74.2 to 77.0 [S1]
@@ -64,3 +67,4 @@ role_fit:
 - S7: source not listed in ChatGPT report (cited as S44) (chatgpt run)
 - S8: source not listed in ChatGPT report (cited as S45) (chatgpt run)
 - S9: source not listed in ChatGPT report (cited as S46) (chatgpt run)
+- S10: Lean LLM-written code and tests: what the evidence supports for specy-road, in-repo research reports (two runs), 2026-10-27, no measured code-shape or test data for this family, research (lean-code reports)

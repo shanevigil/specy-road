@@ -39,6 +39,10 @@ role_fit:
 - May continue after a failed information or tool path without disclosing the problem | trigger: broken or unavailable tool during an agentic task | mitigation in prompt: "If a required tool fails or its output cannot be verified, stop that branch, report the failure explicitly, and do not substitute guessed results." [S1]
 - Native multi-agent operation can add unnecessary delegation cost and complexity | trigger: broad prompts that do not state when delegation is permitted | mitigation in prompt: "Delegate only when subtasks are independent and materially benefit from parallelism; otherwise work directly. Never delegate merely to re-check completed work." [S9]
 - Harness state, compaction, retained reasoning and tool implementation affect agent scores; a long context window is not reliable working memory | trigger: long-lived sessions with repeated tool calls | mitigation in prompt: preserve relevant state and compact deliberately in the harness rather than relying on the raw context limit [S10]
+## Code and test tendencies
+- GPT-5.x High was the most verbose model in Sonar's December 2025 leaderboard data (974,379 LOC on the same Java task set vs Gemini 3 Pro ~289,752); vendor benchmark, single-file Java, directional only (researched 2026-10-27 from the lean-code reports, not human-verified) [S14]
+- Codex PRs reverted least in the field: 6.1 percent vs 11.5 percent human (OR 0.50), median 63 changed lines (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S15]
+- OpenAI's Codex guidance says to search for prior art and reuse or extract a shared helper before adding new helpers or logic, and warns against speculative changes, broad catches and silent defaults (read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S16]
 ## Prompting rules
 - Use the Responses API for any tool calling; Chat Completions does not support tools for this model [S2]
 - Never send reasoning effort none or minimal; use low [S2]
@@ -49,6 +53,7 @@ role_fit:
 - Bound multi-agent use: name which work may be delegated, the maximum useful fan-out, and which agent keeps responsibility for final integration [S9]
 - Use codex exec for headless CI and background runs, and set sandbox and approval policy in the harness rather than only in natural-language prohibitions [S10]
 - Treat prompt instructions as a complement to enforcement: keep sandboxing, action allowlists, execution limits and approval controls outside the model [S10]
+- Require a prior-art search before any new helper and a named reuse in the summary, and fix the output format; this family writes the most code per task but its merged work holds up [S14, S16]
 ## Change from previous version
 - improved: cached input $0.20 to $0.10; standard input and output stay $2/$10 [S1, S3, S8, S12]
 - improved: DeepSWE v1.1 best score up 6.4 points versus GPT-6 Sol [S1]
@@ -79,3 +84,6 @@ role_fit:
 - S11: API data controls and Zero Data Retention documentation, OpenAI, accessed 2026-10-20, https://platform.openai.com/docs/guides/your-data, primary (chatgpt run)
 - S12: GPT-6 Sol model documentation, OpenAI, accessed 2026-10-20, https://developers.openai.com/api/docs/models/gpt-6-sol, primary (chatgpt run)
 - S13: Terminal-Bench 4.0, Vals AI, updated 2026-10-18, https://www.vals.ai/benchmarks/terminal-bench-4, independent (chatgpt run)
+- S14: New data on code quality: GPT-5.2 high, Opus 4.5, Gemini 3, and more, Sonar, 2025-12, https://www.sonarsource.com/blog/new-data-on-code-quality-gpt-5-2-high-opus-4-5-gemini-3-and-more/, vendor benchmark on Java single-file tasks (lean-code reports)
+- S15: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
+- S16: Codex best practices (search for prior art before adding helpers), OpenAI, accessed 2026-10-27, https://developers.openai.com/codex/learn/best-practices, primary (lean-code reports)

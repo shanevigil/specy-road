@@ -39,6 +39,8 @@ role_fit:
 - Very long output exceeds ordinary synchronous generation | trigger: asking for tens or hundreds of thousands of output tokens in one ordinary request | mitigation in prompt: use the documented background or long-running mechanism with continuation or state ids instead of one synchronous response [S1]
 - Legacy Gemini sampling controls are ignored or unsupported | trigger: carrying temperature, top_p, top_k, candidate_count or prefilled assistant turns into newer Gemini APIs | mitigation in prompt: remove deprecated controls and use thinking_level plus supported server-side interaction state [S1]
 - Subagents may not inherit the coordinator's model | trigger: assuming every delegated Gemini CLI agent runs Argon | mitigation in prompt: set and verify each subagent's model explicitly when model identity matters to the evaluation [S12]
+## Code and test tendencies
+- Gemini 3 Pro was the most concise model in Sonar's December 2025 data (~289,752 LOC) but had the highest control-flow error rate (200 per MLOC); vendor benchmark, single-file Java, directional only (researched 2026-10-27 from the lean-code reports, not human-verified) [S16]
 ## Prompting rules
 - Start at thinking_level medium for ordinary agentic coding; use high for hard math, science and coding, or when your own task evals show a gain [S1, S8, S11]
 - Set max_output_tokens high enough to cover thinking plus the answer [S1]
@@ -49,6 +51,7 @@ role_fit:
 - Put critical role, safety, scope and output constraints in the system instruction or at the start of the user request [S13]
 - With very long context, place the source material first and the concrete question and instructions after it [S13]
 - Pin pricing assumptions: introductory $2/$10 ends 2026-11-30; $4/$20 from 2026-12-01 [S1, S2]
+- Conciseness is not the risk here: require a test that reaches every new branch and loop exit, and have the reviewer re-run the verifier rather than read the control flow [S16]
 ## Change from previous version
 - changed: new tier above Flash; adds long decode and a unified 1M window, well beyond 3.8 Flash's 65,536 output-token limit [S1, S8, S9]
 - improved: CursorBench 4.0 High 39.6 percent (Gemini 3.8 Flash) to 52.9 percent (Argon) [S11]
@@ -81,3 +84,4 @@ role_fit:
 - S13: Gemini prompting strategies, Google, accessed 2026-10-20, https://ai.google.dev/gemini-api/docs/prompting-strategies, primary (chatgpt run)
 - S14: Gemini API data-use/retention documentation, Google, accessed 2026-10-20, https://ai.google.dev/gemini-api/, primary (chatgpt run)
 - S15: LMArena Text/Multi-turn dataset presentation, Arena data via BenchLeader, data 2026-10-19, https://www.benchleader.com/benchmarks/lmarena_text, independent (chatgpt run)
+- S16: New data on code quality: GPT-5.2 high, Opus 4.5, Gemini 3, and more, Sonar, 2025-12, https://www.sonarsource.com/blog/new-data-on-code-quality-gpt-5-2-high-opus-4-5-gemini-3-and-more/, vendor benchmark on Java single-file tasks (lean-code reports)

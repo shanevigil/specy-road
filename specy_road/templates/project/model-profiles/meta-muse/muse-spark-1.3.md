@@ -31,9 +31,12 @@ role_fit:
 - Low price: $1.25/$4.25 with no long-context premium [S3] (confidence: high)
 ## Failure modes
 - Degraded responses on audio input | trigger: requests including audio | mitigation in prompt: do not send audio; use Spark 1.2 for audio [S1]
+## Code and test tendencies
+- No measured code-shape or test data for this family in either lean-code report (2026-10-27); the generic lean rules apply unmodified (researched 2026-10-27 from the lean-code reports, not human-verified) [S8]
 ## Prompting rules
 - Never use the contributor model id for proprietary code [S2, S3]
 - Do not send reasoning effort none; it returns HTTP 400 [S3]
+- No family-specific lean rule exists: keep the project's `## Lean changes and tests` block and require the `## Added` inventory in the summary [S8]
 ## Change from previous version
 - improved: coding and long-horizon agent work over 1.2 (vendor) [S1]
 - unchanged: price and context [S3]
@@ -47,3 +50,4 @@ role_fit:
 - S5: Muse Spark 1.3 pricing, providers, and specs, models.dev, accessed 2026-10-26, https://models.dev/models/meta/muse-spark-1.3/, independent (claude run)
 - S6: Meta launches Muse Wonder and Wonder Full for AI agents, TestingCatalog, 2026-10, https://www.testingcatalog.com/meta-launches-muse-wonder-and-wonder-full-for-ai-agents/, community (claude run)
 - S7: AA Agentic Index Leaderboard, BenchLM, 2026-10-10, https://benchlm.ai/benchmarks/aaagenticindex, independent (claude run)
+- S8: Lean LLM-written code and tests: what the evidence supports for specy-road, in-repo research reports (two runs), 2026-10-27, no measured code-shape or test data for this family, research (lean-code reports)

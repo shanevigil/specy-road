@@ -30,9 +30,15 @@ role_fit:
 - Led ARC-AGI-1 among listed models in August 2026 (aggregator reading) [S7] (confidence: low)
 ## Failure modes
 - unknown: no failure mode met the inclusion bar (vendor documentation or two independent community reports)
+## Code and test tendencies
+- Opus 4.5 and 4.6 tend to over-engineer: extra files, unnecessary abstractions, flexibility that was not requested; Anthropic's own prompting guidance, live page read 2026-10-27 (researched 2026-10-27 from the lean-code reports, not human-verified) [S9]
+- Opus 5 verifies its own work unprompted; self-check instructions cause over-verification (Anthropic prompting best practices, read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S9]
+- Claude Code PRs measured largest and deepest in the field: median 495 changed lines vs 52 human, nesting depth 4 vs 3, highest branch density; n=459, task mix confounded (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S10]
+- Strong test oracles: Claude Code is among the agents with the strongest assertion signals in field PRs (Banik et al., 2026-06; researched 2026-10-27 from the lean-code reports, not human-verified) [S11]
 ## Prompting rules
 - Migrate to Fable 5.1; Anthropic marks Fable 5 legacy [S1]
 - Build a fallback model path for this track; access was suspended for 19 days in June 2026 [S2, S3]
+- Name the smallest behaviour-complete change and forbid extra files, abstractions, fallbacks and validation inside boundaries; this family's measured risk is diff size and depth, not weak tests [S9, S10]
 ## Change from previous version
 - unknown: first Fable release; no earlier version in this track
 ## Open questions
@@ -46,3 +52,6 @@ role_fit:
 - S6: AA Agentic Index Leaderboard, BenchLM, 2026-10-10, https://benchlm.ai/benchmarks/aaagenticindex, independent (claude run)
 - S7: Top AI Models Ranked on LLM Leaderboards, Green Flag Digital, 2026-08-21, https://greenflagdigital.com/top-ai-models-ranked/, independent (claude run)
 - S8: Claude Fable, Anthropic, accessed 2026-10-26, https://www.anthropic.com/claude/fable, primary (claude run)
+- S9: Claude prompting best practices (over-engineering and self-check notes), Anthropic, accessed 2026-10-27, https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, primary (lean-code reports)
+- S10: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
+- S11: All Smoke, No Alarm: Oracle Signals in Agent-Authored Test Code, Banik, Chowdhury and Shamim, arXiv 2606.18168, 2026-06, https://arxiv.org/html/2606.18168v1, independent (lean-code reports)
