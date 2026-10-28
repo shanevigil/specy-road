@@ -380,3 +380,21 @@ def test_validate_warns_once_when_the_running_version_is_not_the_pin(
         (tmp_path / req).write_text(f"specy-road=={__version__}\n", encoding="utf-8")
     vr.warn_if_pin_differs(tmp_path)
     assert capsys.readouterr().err == ""
+
+
+def test_validate_reads_past_a_requirements_file_that_is_not_utf8(tmp_path: Path, capsys) -> None:
+    """`pip freeze > requirements.txt` in Windows PowerShell writes UTF-16."""
+    from specy_road.init_project import run_init_project
+
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    assert run_init_project(tmp_path) == 0
+    capsys.readouterr()
+    (tmp_path / "requirements-dev.txt").write_bytes("pytest==8.0\n".encode("utf-16"))
+    (tmp_path / "requirements.txt").write_text("specy-road==0.0.1\n", encoding="utf-8")
+
+    vr.validate_at(tmp_path)
+
+    out, err = capsys.readouterr()
+    assert "OK: roadmap and registry validate." in out
+    assert err.count("pins specy-road") == 1
+    assert f"pins specy-road 0.0.1 (requirements.txt) but {__version__} is running" in err
