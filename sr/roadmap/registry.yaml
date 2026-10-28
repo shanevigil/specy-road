@@ -53,3 +53,18 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: graph-apply
+    node_id: M4.7
+    branch: feature/rm-graph-apply
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_crud_dependency_ops.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
