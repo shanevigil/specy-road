@@ -22,3 +22,22 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: brainstorm-prompt-fixes
+    node_id: M3.4
+    branch: feature/rm-brainstorm-prompt-fixes
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_prompt.py
+      - specy_road/bundled_scripts/brainstorm_prompt_diverge.py
+      - specy_road/bundled_scripts/brainstorm_prompt_evidence.py
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_cli_v2.py
+      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - specy_road/templates/specyrd/commands/specyrd-brainstorm.md
+      - specy_road/templates/specyrd/agents-md-block.md
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
