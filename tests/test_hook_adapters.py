@@ -73,6 +73,9 @@ def test_deny_answers_the_way_the_harness_reads_it(tmp_path: Path, fmt: str) -> 
     assert "refused in a shared checkout" in text and "live sessions: alice" in text
     if channel == "stdout":
         assert json.loads(r.stdout)["permission"] == "deny"
+    if fmt == "claude-code":   # Cursor runs .claude/settings.json hooks as tool "Shell"
+        r = _run(repo, fmt, {**PAYLOADS[fmt]("git reset --hard"), "tool_name": "Shell"})
+        assert r.returncode == 2 and "refused in a shared checkout" in r.stderr
 
 
 @pytest.mark.parametrize("fmt", sorted(ADAPTERS))

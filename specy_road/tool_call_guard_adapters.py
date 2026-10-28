@@ -31,8 +31,12 @@ class Adapter:
 
 
 def _bash_command(payload: dict[str, Any]) -> str | None:
-    """Claude Code and Codex ``PreToolUse``: ``tool_input.command`` of the Bash tool; other tools are not ours to judge."""
-    if payload.get("tool_name") != "Bash":
+    """Claude Code and Codex ``PreToolUse``: ``tool_input.command`` of the Bash tool; other tools are not ours to judge.
+
+    Cursor also runs ``.claude/settings.json`` hooks and names its shell tool ``Shell`` there (sandbox run,
+    2026-10-28), so a checkout guarded only for Claude Code would otherwise be unguarded under Cursor.
+    """
+    if payload.get("tool_name") not in ("Bash", "Shell"):
         return None
     return _string_command((payload.get("tool_input") or {}).get("command"), shell_event=True)
 

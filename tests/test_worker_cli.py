@@ -186,7 +186,8 @@ def test_handoff_reclaim_round_trip_and_hook_evidence(tmp_path: Path, capsys) ->
 def test_hook_print_config_names_the_harness(capsys) -> None:
     for fmt in ("claude-code", "codex", "cursor"):
         assert _cli("worker", "hook", "--format", fmt, "--print-config") == 0
-        assert f"worker hook --format {fmt}" in capsys.readouterr().out
+        out = capsys.readouterr()
+        assert f"worker hook --format {fmt}" in json.dumps(json.loads(out.out)) and out.err.startswith("# ")
 
 
 def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
