@@ -324,3 +324,13 @@ def test_finish_bookkeeping_paths_are_matched_under_the_project_prefix(layout: t
     _git(top, "add", "-A")
     _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "code")
     assert stray_finish_paths(project, "feature/rm-x") == ["README.md"]
+
+
+def test_landing_runs_in_the_holders_project_root(layout: tuple[Path, Path]) -> None:
+    """When another worktree holds the integration branch, finish lands there; in the
+    nested layout the bookkeeping files live below that worktree's git root."""
+    from specy_road.finish_land_integration import holder_project_root
+
+    top, project = layout
+    holder = top.parent / "holder"
+    assert holder_project_root(project, holder) == holder / project.relative_to(top)
