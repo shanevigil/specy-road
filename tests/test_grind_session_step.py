@@ -41,7 +41,7 @@ def _own_claim(monkeypatch, h: _Harness, *, ready=()):
     monkeypatch.setattr(gsif, "checkout_branch", lambda _root, _b: (0, ""))
     monkeypatch.setattr(
         gs, "gather_plan",
-        lambda _r, _u: ([{"id": "M1.1", "codename": "cn"}],
+        lambda _r, _u, **_kw: ([{"id": "M1.1", "codename": "cn"}],
                         _reg(_entry("M1.1", "cn")),
                         _plan(ready=list(ready), active=["M1.1"])),
     )
@@ -157,6 +157,14 @@ def test_pickup_passes_scope_and_mode_through(monkeypatch, capsys):
     assert pickup[pickup.index("--under") + 1] == "M1"
     assert pickup[pickup.index("--base") + 1] == "dev"
     assert pickup[pickup.index("--on-complete") + 1] == "merge"
+    assert "--allow-unauthored" not in pickup and h.gather_allow == [False]
+
+
+def test_pickup_passes_allow_unauthored_to_the_plan_and_pickup(monkeypatch, capsys):
+    h = _Harness(monkeypatch, [_plan(ready=["M1.1"])])
+    _run(["--step", "pickup", "--allow-unauthored", *MERGE])
+    assert "--allow-unauthored" in h.cli_calls[0]
+    assert h.gather_allow == [True]
 
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,8 @@ from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 from specy_road.review_gate import review_required
 from specy_road.runtime_paths import default_user_repo_root
 
-from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing
+from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged, warn_acceptance_missing, warn_unauthored
+from specy_road.bundled_scripts.planning_sheet_bootstrap import unauthored_leaves
 from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.node_kinds import is_gate
@@ -303,6 +304,7 @@ def run_validation(
     no_overlap_warn: bool,
     *,
     repo_root: Path | None = None,
+    show_all: bool = False,
 ) -> None:
     r = repo_root or default_user_repo_root()
     _validate_roadmap_and_registry_schemas(roadmap, registry, r)
@@ -369,6 +371,7 @@ def run_validation(
     warn_touch_zones_match_nothing(nodes, r)
     warn_acceptance_missing(nodes, gate)
     warn_acceptance_merged(nodes)
+    warn_unauthored(unauthored_leaves(r, nodes), show_all=show_all)
     if registry.get("entries") and not no_overlap_warn:
         touch_zone_overlap(registry["entries"])
 

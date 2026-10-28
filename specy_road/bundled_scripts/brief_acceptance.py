@@ -14,6 +14,8 @@ Public surface:
   cannot attest per criterion.
 * :func:`warn_acceptance_merged` — ``validate``'s warning for a criterion that
   looks like several joined with ``|``.
+* :func:`warn_unauthored` — ``validate``'s block for leaves pickup skips because
+  their sheet is a placeholder and they have no acceptance.
 """
 
 from __future__ import annotations
@@ -88,3 +90,23 @@ def warn_acceptance_merged(nodes: list[dict]) -> None:
               "--set acceptance='First' --set acceptance='Second'", file=sys.stderr)
     if len(merged) > _WARN_CAP:
         print(f"warning: … and {len(merged) - _WARN_CAP} more nodes with '|' in a criterion", file=sys.stderr)
+
+
+def warn_unauthored(unauthored: dict[str, str], *, show_all: bool = False) -> None:
+    """Warn (stderr only), in one block, on the leaves pickup skips as unauthored.
+
+    ``unauthored`` maps node id to ``planning_sheet_bootstrap.placeholder_sheet``'s
+    reason. Capped like the acceptance warning; ``show_all`` (``validate --all``)
+    lists every one.
+    """
+    if not unauthored:
+        return
+    items = list(unauthored.items())
+    shown = items if show_all else items[:_WARN_CAP]
+    print(f"warning: {len(items)} open leaf/leaves have a placeholder planning sheet and no acceptance criteria; "
+          "do-next-available-task and grind-session skip them until the sheet is written or acceptance is set "
+          "(--allow-unauthored picks them anyway):", file=sys.stderr)
+    for nid, reason in shown:
+        print(f"  {nid}: {reason}", file=sys.stderr)
+    if len(items) > len(shown):
+        print(f"  … and {len(items) - len(shown)} more (specy-road validate --all lists every one)", file=sys.stderr)

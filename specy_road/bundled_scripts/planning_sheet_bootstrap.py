@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
+from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.planning_artifacts import (
     expected_planning_rel,
     normalize_planning_dir,
     resolve_planning_path,
 )
+from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.runtime_paths import specy_road_package_dir
-from specy_road.node_kinds import is_gate
+from specy_road.node_kinds import is_gate, is_pickable
 
 _TYPES_WITH_PLANNING = frozenset({"vision", "phase", "milestone", "task", "gate"})
 _TEMPLATES = specy_road_package_dir() / "templates" / "planning-node"
@@ -189,3 +192,79 @@ def remove_planning_sheet_if_present(repo_root: Path, planning_dir: object) -> N
     p = resolve_planning_path(repo_root, norm)
     if p.is_file():
         p.unlink()
+
+
+#: The line ``brainstorm promote`` appends to the ``## Intent`` it seeds. While
+#: it is still there, nobody has scoped the slice.
+PROMOTE_PLACEHOLDER = "Rewrite this section once the slice is properly scoped."
+
+#: Scaffold sections whose template body means nobody wrote one. Authored
+#: sheets keep generic lines under Tasks and References too, so those say
+#: nothing about whether the sheet was written.
+_PLACEHOLDER_SECTIONS = ("Intent", "Approach")
+
+
+def _section_bodies(text: str) -> dict[str, str]:
+    """``## title`` -> body with whitespace collapsed (``###`` stays in the body)."""
+    out: dict[str, str] = {}
+    title: str | None = None
+    body: list[str] = []
+    for line in [*text.splitlines(), "## "]:
+        if line.startswith("## "):
+            if title is not None:
+                out[title] = " ".join(" ".join(body).split())
+            title, body = line[3:].strip(), []
+        elif title is not None:
+            body.append(line)
+    return out
+
+
+@lru_cache(maxsize=1)
+def _scaffold_bodies() -> dict[str, str]:
+    try:
+        bodies = _section_bodies(render_feature_sheet_template(""))
+    except FileNotFoundError:
+        return {}
+    return {t: bodies[t] for t in _PLACEHOLDER_SECTIONS if bodies.get(t)}
+
+
+def placeholder_sheet(root: Path, node: dict) -> str | None:
+    """Why ``node`` is unauthored, or ``None`` when an agent has something to build from.
+
+    Unauthored: no ``acceptance`` on the node, and its planning sheet still
+    carries text the toolkit wrote itself — brainstorm promote's line under
+    ``## Intent``, or scaffold-planning's body under ``## Intent`` or
+    ``## Approach``. Pickup skips such a leaf and ``validate`` lists it.
+    """
+    if acceptance_ids(node):
+        return None
+    pd = node.get("planning_dir")
+    if not isinstance(pd, str) or not pd.strip():
+        return None
+    try:
+        rel = normalize_planning_dir(pd.strip())
+        bodies = _section_bodies(resolve_planning_path(root, rel).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    tail = "and the node has no acceptance criteria"
+    if PROMOTE_PLACEHOLDER in bodies.get("Intent", ""):
+        return f"{rel} still has brainstorm promote's placeholder under ## Intent {tail}"
+    for title, scaffold in _scaffold_bodies().items():
+        if scaffold in bodies.get(title, ""):
+            return f"{rel} still has scaffold-planning's placeholder under ## {title} {tail}"
+    return None
+
+
+def unauthored_leaves(root: Path, nodes: list[dict]) -> dict[str, str]:
+    """Open pickable leaves for which :func:`placeholder_sheet` gives a reason, id -> reason."""
+    leaves = structural_leaf_ids(nodes)
+    out: dict[str, str] = {}
+    for n in nodes:
+        if n.get("id") not in leaves or not is_pickable(n):
+            continue
+        if n.get("status") in ("Complete", "Cancelled"):
+            continue
+        reason = placeholder_sheet(root, n)
+        if reason is not None:
+            out[n["id"]] = reason
+    return out

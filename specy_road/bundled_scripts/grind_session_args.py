@@ -133,6 +133,10 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                    help="Pass through to pickup registration commit.")
     p.add_argument("--milestone-subtree", action="store_true",
                    help="Pass through to pickup (uses work/.milestone-session.yaml).")
+    p.add_argument("--allow-unauthored", action="store_true",
+                   help="Treat leaves whose planning sheet is still a placeholder and "
+                        "whose node has no acceptance as ready (--plan lists them as not "
+                        "ready by default); passed through to pickup.")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
     p.add_argument("--delete-merged-branches", action="store_true",

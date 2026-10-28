@@ -90,12 +90,14 @@ def validate_at(
     no_overlap_warn: bool = False,
     require_registry: bool = True,
     auto_heal: bool = True,
+    show_all: bool = False,
 ) -> None:
     """Validate roadmap + registry under ``root`` (repo root containing ``roadmap/``).
 
     F-006/F-008: self-heal pass runs first (silent fixes for missing
     codenames, deprecated fields). Pass ``auto_heal=False`` to disable,
-    e.g. in a read-only CI drift check.
+    e.g. in a read-only CI drift check. ``show_all`` lists every unauthored
+    leaf instead of the first ten.
     """
     reg_path = registry_path(root)
     if require_registry and not reg_path.is_file():
@@ -132,6 +134,7 @@ def validate_at(
         registry,
         no_overlap_warn,
         repo_root=root,
+        show_all=show_all,
     )
 
 
@@ -157,6 +160,12 @@ def main() -> None:
         help="Exit 1 when validation passes with warnings (or self-heal notes), "
         "e.g. as a CI gate once an upgrade window closes.",
     )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="List every open leaf with a placeholder planning sheet and no acceptance "
+        "(do-next-available-task skips them), not just the first ten.",
+    )
     add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
@@ -165,6 +174,7 @@ def main() -> None:
             root,
             no_overlap_warn=args.no_overlap_warn,
             require_registry=True,
+            show_all=args.all,
         )
     if args.strict and stderr.lines:
         sys.stdout.flush()   # the OK line first, then why it does not count

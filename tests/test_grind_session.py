@@ -67,8 +67,10 @@ class _Harness:
         self.pre_finish_rc = pre_finish_rc
         self.pickup_rc = pickup_rc
         self.finish_rc = finish_rc
+        self.gather_allow: list[bool] = []
 
-        def fake_gather(repo_root, under):
+        def fake_gather(repo_root, under, *, allow_unauthored=False):
+            self.gather_allow.append(allow_unauthored)
             plan = self.plans[min(self.idx, len(self.plans) - 1)]
             nodes = [_node(nid) for nid in plan.ready]
             return nodes, {"version": 1, "entries": []}, plan

@@ -27,6 +27,8 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 
 **Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism. Outline order is **delivery** order, not the order you would choose to *design* in: to cut a seam first, pick by number with **`--interactive`** or scope with **`--under <NODE_ID>`**. `grind-session --plan` reports dependency **waves**, which is what can run in parallel — not the order auto-pick will walk.
 
+**Unauthored leaves are skipped.** A leaf whose planning sheet still carries the text `scaffold-planning` or `brainstorm promote` wrote (an unedited `## Intent` / `## Approach`, or promote's "Rewrite this section once the slice is properly scoped.") **and** whose node has no `acceptance` gives an agent nothing to build from, so pickup skips it and prints why. Write the sheet or set `acceptance` (`specy-road edit-node <ID> --set acceptance=...`), or pass **`--allow-unauthored`** to pick it anyway. `specy-road validate` lists every such open leaf in one block (first ten; **`validate --all`** for all of them), and `grind-session --plan` reports them as `unauthored`.
+
 ## Quick reference
 
 ```bash

@@ -26,6 +26,7 @@ from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
     planning_artifact_paths,
 )
+from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER
 from specy_road.bundled_scripts.roadmap_crud_ops import (
     append_node_to_chunk,
     run_validate_raise,
@@ -92,8 +93,7 @@ def _intent_body(idea: Idea) -> str:
     if idea.effort.strip():
         parts.append(f"Initial sizing at brainstorm time: {idea.effort.strip()}.")
     parts.append(
-        f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). "
-        "Rewrite this section once the slice is properly scoped."
+        f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). {PROMOTE_PLACEHOLDER}"
     )
     return "\n\n".join(parts)
 

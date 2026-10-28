@@ -66,6 +66,9 @@ classification plus a dependency **wave** layout. No git, no pickup.
 - **`blocked`** — leaves with unmet effective dependencies. Each entry has
   `waiting_on` (the blocking node **display ids**) and a `reason`:
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
+- **`unauthored`** — leaves pickup skips (with a `reason`): the planning sheet still has
+  scaffold-planning's or brainstorm promote's placeholder text and the node has no
+  `acceptance`. `--allow-unauthored` (on `--plan`, the loop and `--step`) makes them ready.
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
 - **`waves`** — all schedulable leaves layered by dependency depth: a leaf sits
@@ -153,6 +156,7 @@ dispatched until `M10.5` completes.
   "gated": [],
   "gates_open": [],
   "needs_codename": [],
+  "unauthored": [],
   "waves": [
     {"index": 0, "node_ids": ["M10.3", "M10.4"]},
     {"index": 1, "node_ids": ["M10.5"]},

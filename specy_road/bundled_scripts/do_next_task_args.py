@@ -27,6 +27,10 @@ says Complete.
 
 execution_milestone (Human-led / Agentic-led / Mixed) is advisory metadata for
 humans reading the roadmap. It does NOT gate pickup.
+
+A leaf whose planning sheet is still the scaffold-planning or brainstorm promote
+placeholder, and whose node has no acceptance, is skipped with the reason
+printed; --allow-unauthored picks it anyway.
 """
 
 
@@ -84,6 +88,15 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
         help=(
             "Omit CI skip tokens from the registration commit message "
             "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
+        ),
+    )
+    p.add_argument(
+        "--allow-unauthored",
+        action="store_true",
+        help=(
+            "Also pick leaves whose planning sheet is still the scaffold-planning or "
+            "brainstorm promote placeholder and whose node has no acceptance "
+            "(skipped by default, with the reason printed)."
         ),
     )
     _add_claim_visibility_args(p)
