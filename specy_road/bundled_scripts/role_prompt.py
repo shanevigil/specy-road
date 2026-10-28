@@ -260,6 +260,8 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
         return "", prof, f"profile for {model!r}: " + "; ".join(prof.errors)
     zones = list(t.touch_zones) if t else []
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
+    if t and t.commit:   # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
+        lines += [f"base: {t.commit}", ""]
     if t:
         lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME)
     if role == "executor":
