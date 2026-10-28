@@ -21,6 +21,7 @@ from specy_road.agents_md_block import warn_if_agents_md_block_stale, warn_missi
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.orchestration_config import load_orchestration_config
+from specy_road.orchestration_pinned import roster_source
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
 from specy_road.specyrd_init import _load_manifest
 from specy_road.bundled_scripts.validate_roadmap_checks import (
@@ -120,11 +121,16 @@ def validate_orchestration_contract(root: Path) -> None:
 
     A missing file is not a warning: it means the default review policy
     (one reviewer, any family), which is the scaffolded template's content.
+    A file that is not what routing reads (absent on the integration branch,
+    or different there) is, as ``orchestrate plan`` says.
     """
     _data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
+    _ref, drift = roster_source(root)
+    if drift:
+        print(f"warning: {drift}", file=sys.stderr)
 
 
 def validate_at(

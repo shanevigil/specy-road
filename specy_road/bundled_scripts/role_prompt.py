@@ -45,7 +45,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.review_files import PACKET_NAME, reviews_dir
 from specy_road.review_target import ReviewTargetError, resolve_target
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_repo_root
 
 CHANNELS = ("cli", "paste", "subagent")
 _CITE = re.compile(r"\s*\[S\d+(?:,\s*S\d+)*\]")
@@ -83,12 +83,23 @@ _EXCESS_CHECKLIST = (
 
 # specy-road's own files under work/: the brief (pickup), the summary (executor) and the review
 # hand-offs are never committed before review, so a plain `git status` always lists them.
-# `:(top)` anchors every pathspec at the repository root, so the check is the same from any directory.
-_DIRTY_CHECK = ("git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude)work/brief-*.md' "
-                "':(top,exclude)work/implementation-summary-*.md' ':(top,exclude)work/reviews/'")
+# `:(top)` anchors every pathspec at the repository root, so the check is the same from any directory;
+# in the nested layout that root is not the project's, so the bookkeeping carries the project prefix.
+def _dirty_check(prefix: str = "") -> str:
+    return (f"git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude){prefix}work/brief-*.md' "
+            f"':(top,exclude){prefix}work/implementation-summary-*.md' ':(top,exclude){prefix}work/reviews/'")
 
 
-def _precondition(role: str, node_id: str, t, packet: Path) -> list[str]:
+def _where(prefix: str) -> list[str]:
+    """Nested layout only: name the project root and pin the working directory the paths are relative to."""
+    if not prefix:
+        return []
+    return [f"Work from the git root (`cd \"$(git rev-parse --show-toplevel)\"`). The project root is `{prefix}` "
+            "under it; the brief, implementation summary and hand-off paths in this prompt are given from the "
+            "git root, so never write them in the git root's own `work/`.", ""]
+
+
+def _precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> list[str]:
     branch = t.entry.get("branch") if t.entry else None
     found = []
     if role == "reviewer":
@@ -96,24 +107,25 @@ def _precondition(role: str, node_id: str, t, packet: Path) -> list[str]:
         found = ["The packet is gitignored, so file-search and glob tools may not list it: open that "
                  f"absolute path directly (`ls {packet}`).", ""]
     elif role == "executor":
-        missing = (f"`work/brief-{node_id}.md` does not exist, or the branch "
+        missing = (f"`{prefix}work/brief-{node_id}.md` does not exist, or the branch "
                    f"`{branch or 'feature/rm-<codename>'}` is not checked out")
     else:
         missing = f"the registry claim for `{node_id}` does not exist"
     return [
         "## Precondition",
         "",
-        f"If {missing}, or `{_DIRTY_CHECK}` lists changes you did not make, "
+        *(_where(prefix) if role == "executor" else []),
+        f"If {missing}, or `{_dirty_check(prefix)}` lists changes you did not make, "
         f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
-        "only specy-road's bookkeeping (`work/brief-*.md`, `work/implementation-summary-*.md`, "
-        "`work/reviews/`); any other change, tracked or untracked, counts.",
+        f"only specy-road's bookkeeping (`{prefix}work/brief-*.md`, `{prefix}work/implementation-summary-*.md`, "
+        f"`{prefix}work/reviews/`); any other change, tracked or untracked, counts.",
         "",
         *found,
     ]
 
 
 def _executor_preamble(node_id: str, model: str, zones: list[str], family_lock: str | None = None,
-                       reviews: Path | None = None) -> list[str]:
+                       reviews: Path | None = None, prefix: str = "") -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
              "defeats the reason you were chosen.", ""] if family_lock else [])
@@ -125,14 +137,15 @@ def _executor_preamble(node_id: str, model: str, zones: list[str], family_lock: 
         "1. Read the brief and every file it names before editing.",
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
         "3. Run the verifier and tests the brief names. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
-        f"4. Write `work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
+        f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
         f"Then `READY-{model}.md` (`{model}` is your roster id; use it as `agent:` too, not an API model id; "
         "`commit:` is the branch's last commit, the one that adds the summary) "
-        "from `work/handoff-ready.template.md` into "
-        f"`{reviews or f'work/reviews/{node_id}'}` "
-        "(that is the main checkout's directory: use it as written even if you are in a worktree).",
+        f"from `{prefix}work/handoff-ready.template.md` into "
+        f"`{reviews or f'{prefix}work/reviews/{node_id}'}` "
+        f"(that is the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory: "
+        "use it as written even if you are in a worktree).",
         "5. Stop.",
         "",
         "You may not: update roadmap status, mark review done, merge, push, start another leaf, weaken a verifier, "
@@ -262,10 +275,12 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
     if t and t.commit:   # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
         lines += [f"base: {t.commit}", ""]
+    prefix = project_prefix(root)
     if t:
-        lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME)
+        lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME, prefix)
     if role == "executor":
-        lines += _executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
+        lines += _executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
+                                    reviews_dir(root, node_id), prefix)
     elif role == "reviewer":
         lines += _reviewer_preamble(node_id, model)
     else:

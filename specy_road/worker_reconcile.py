@@ -17,6 +17,7 @@ from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
 from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
     FLAG_RECONCILE,
@@ -56,9 +57,14 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
 _STATE_DIRS = ("work/reviews/", "work/.workers/", "work/.sessions/", "work/.worktrees/")
 
 
-def _bookkeeping(path: str, node_id: str) -> bool:
+def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
-    out (role_prompt), the prompts ``delegate`` writes, and the toolkit's state."""
+    out (role_prompt), the prompts ``delegate`` writes, and the toolkit's state.
+
+    ``prefix`` is the project's (nested layout): git names a path from the git root, ``ls-files``
+    from the directory it runs in, so a path under the prefix is read without it.
+    """
+    path = rebase_to_project(path, prefix) or path
     return (path in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
             or path.startswith((f"work/prompt-{node_id}-", *_STATE_DIRS)))
 
@@ -80,8 +86,9 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     on_branch = _changed_since(Path(rec.worktree), origin) if origin != since else changed
     # Toolkit bookkeeping is never a breach: the leaf's brief, summary and
     # review files, and the registry row the claim lives in.
+    prefix = project_prefix(repo_root)
     substantive = [p for p in sorted(set(changed) | set(on_branch))
-                   if not (_bookkeeping(p, rec.node_id) or p == "roadmap/registry.yaml")]
+                   if not (_bookkeeping(p, rec.node_id, prefix) or p == "roadmap/registry.yaml")]
     outside = [p for p in substantive if zones and not any(zone_matches(z, p) for z in zones)]
     text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
     # A prompt that can no longer be built (the model lost the leaf's
@@ -108,12 +115,23 @@ def _sync_path(repo_root: Path) -> Path:
     return workers_dir(repo_root) / "sync.yaml"
 
 
+def _gaps(after: int, seqs: list[int]) -> list[list[int]]:
+    """``[first, last]`` per run of sequence numbers missing between the mark ``after`` and the events read."""
+    out, expect = [], after + 1
+    for seq in seqs:
+        if seq > expect:
+            out.append([expect, seq - 1])
+        expect = max(expect, seq + 1)
+    return out
+
+
 def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
     """Per worker, the events after the last acknowledged one; ``ack`` moves the mark.
 
     Under the workers lock: dead wrappers are closed first so their ``error``
     is in this delta, and an acknowledgement only ever moves a mark forward,
-    so two coordinators acking at once cannot push one back.
+    so two coordinators acking at once cannot push one back. ``gaps`` lists the
+    sequence numbers missing before an event read (a lost or unreadable line).
     """
     from specy_road.worker_ops import sweep_dead_wrappers   # noqa: PLC0415 — ops imports this module
 
@@ -130,6 +148,7 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
                 continue
             out.append({"worker_id": rec.worker_id, "node_id": rec.node_id, "state": rec.state,
                         "lease": rec.lease.get("holder"), "flags": list(rec.flags), "epoch": rec.instruction_epoch,
+                        "gaps": _gaps(marks.get(rec.worker_id, 0), [e.seq for e in evs]),
                         "events": [{"seq": e.seq, "type": e.type, "source": e.source, "summary": e.summary} for e in evs]})
             if ack:
                 marks[rec.worker_id] = max(marks.get(rec.worker_id, 0), evs[-1].seq)

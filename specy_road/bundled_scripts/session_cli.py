@@ -144,7 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
     for name, help_ in (("start", "Announce this session and the paths it will edit (renews an existing record)"),
                         ("touch", "Renew this session's expiry (same as start)")):
         sp = ssub.add_parser(name, help=help_)
-        sp.add_argument("--path", action="append", default=[], metavar="PATH", help="Repo-relative path or glob (repeatable)")
+        sp.add_argument("--path", action="extend", nargs="+", default=[], metavar="PATH",
+                        help="Repo-relative paths or globs (several after one --path, or repeat the flag)")
         sp.add_argument("--note", help="One line on what you are doing")
         sp.add_argument("--ttl-hours", type=float, default=DEFAULT_TTL_HOURS)
         common(sp)
@@ -161,7 +162,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_list)
 
     sp = ssub.add_parser("check", help="Exit 1 if staged paths (or --path) overlap another live session; a pre-commit guard")
-    sp.add_argument("--path", action="append", default=[], metavar="PATH")
+    sp.add_argument("--path", action="extend", nargs="+", default=[], metavar="PATH")
     common(sp)
     sp.set_defaults(func=cmd_check)
 

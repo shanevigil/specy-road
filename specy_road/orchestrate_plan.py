@@ -38,7 +38,7 @@ from typing import Any
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.session_plan import compute_session_plan
 from specy_road.model_profiles import Profile
-from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.orchestration_config import active_substitutions
 from specy_road.registry_yaml import read_registry, registry_path
 
@@ -131,6 +131,8 @@ class OrchestrationPlan:
     batches: list[list[Assignment]]
     blocked: list[str]
     active: list[str]
+    roster_ref: str | None = None      # where the roster was read from; None outside git
+    roster_drift: str | None = None    # the working-tree roster is absent there or differs
 
     @property
     def ok(self) -> bool:
@@ -138,6 +140,7 @@ class OrchestrationPlan:
 
     def to_dict(self) -> dict[str, Any]:
         return {"under": self.under, "policy": self.policy, "ok": self.ok,
+                "roster_ref": self.roster_ref, "roster_drift": self.roster_drift,
                 "batches": [[a.to_dict() for a in b] for b in self.batches],
                 "blocked": self.blocked, "active": self.active}
 
@@ -156,12 +159,15 @@ def _valid(pool: list[Candidate], a: Assignment) -> list[Candidate]:
     return [c for c in pool if c not in bad]
 
 
-def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None) -> None:
+def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None, drift: str | None = None) -> None:
     pool = [c for c in cands if "executor" in (c.entry.get("roles") or []) and _usable(c, a.sensitivity, today)]
     if a.eligibility != ANY:
         pool = [c for c in pool if str(c.entry.get("class") or "") == a.eligibility]
     capable = [c for c in _valid(pool, a) if c.profile is None or c.score("executor") >= MIN_EXECUTOR_SCORE]
     capable.sort(key=lambda c: (c.cost if c.cost is not None else float("inf"), -c.score("executor")))
+    if not capable and drift:   # the may_process hint would send the adopter to a file routing does not read
+        a.problems.append(f"no eligible executor: {drift}")
+        return
     if not capable:
         need = f"may_process containing {a.sensitivity!r}"
         if a.eligibility != ANY:
@@ -208,9 +214,9 @@ def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None)
 
 
 def assign_leaf(node: dict[str, Any], cands: list[Candidate], config: dict[str, Any],
-                today: date | None = None) -> Assignment:
+                today: date | None = None, drift: str | None = None) -> Assignment:
     a = Assignment(node["id"], node_sensitivity(node), node_eligibility(node))
-    _pick_executor(cands, a, today)
+    _pick_executor(cands, a, today, drift)
     _pick_reviewers(cands, a, config, today)
     _pick_coordinator(cands, a, today)
     return a
@@ -227,7 +233,8 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
         return None, f"unknown node id: {under}"
     sp = compute_session_plan(nodes, read_registry(registry_path(root)), under=under)
     cands = [Candidate(e, pinned_profile_for_entry(root, e)) for e in config.get("roster") or []]
-    batches = [[assign_leaf(by_id[nid], cands, config, today) for nid in batch if nid in by_id]
+    ref, drift = roster_source(root)
+    batches = [[assign_leaf(by_id[nid], cands, config, today, drift) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     return OrchestrationPlan(under, dict(config["policy"]), batches,
-                             [b.node_id for b in sp.blocked], list(sp.active)), None
+                             [b.node_id for b in sp.blocked], list(sp.active), ref, drift), None
