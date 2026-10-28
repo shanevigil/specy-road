@@ -43,6 +43,12 @@ body. Keep section bodies focused; link to PRs for detail.
   `risks`, `touch_zones`, `dependencies`) now appends one item each; a
   repeated scalar key is an error; `--set` has help text; `validate` warns
   on an open node whose criterion contains `|`.
+- In the nested layout, the review gate compared git's repository-root paths
+  with `roadmap/registry.yaml`, so the registry-only commit that
+  `mark-implementation-reviewed` writes staled every review and `finish`
+  refused each approval; the deterministic merge of bookkeeping files and
+  the integration-registry reads had the same blind spot. All use the
+  project prefix now.
 - In the nested layout (project under `sr/`), every read of a file *as
   committed on a ref* — the review policy and roster from the integration
   branch, pinned model profiles, the packet's committed summary, the roadmap

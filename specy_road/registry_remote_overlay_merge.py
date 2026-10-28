@@ -77,7 +77,7 @@ def read_registry_at_ref(
     ref: str,
     timeout: float,
 ) -> dict[str, Any] | None:
-    spec = f"{ref}:{REGISTRY_REL.as_posix()}"
+    spec = f"{ref}:./{REGISTRY_REL.as_posix()}"   # ./ = project-root relative (nested layout)
     ok, blob = git_ok(["show", spec], repo_root, timeout)
     if not ok or not blob.strip():
         return None

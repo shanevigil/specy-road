@@ -40,6 +40,7 @@ from specy_road.generated_files import (
 from specy_road.git_subprocess import git_code, git_ok
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import REGISTRY_REL, registry_path, write_registry
+from specy_road.runtime_paths import project_prefix
 
 #: Branch prefix a roadmap leaf's work lives on.
 FEATURE_RM_PREFIX = "feature/rm-"
@@ -273,7 +274,8 @@ def merge_feature_deterministically(
     code, out = git_code(["merge", "--no-commit", "--no-ff", feature_branch], repo)
     if code != 0:
         unmerged = unmerged_paths(repo)
-        stray = [p for p in unmerged if p not in DETERMINISTIC_PATHS]
+        prefix = project_prefix(repo)   # git names conflicted paths from the repository root
+        stray = [p for p in unmerged if p not in [prefix + d for d in DETERMINISTIC_PATHS]]
         if not unmerged or stray:
             # Either not a content conflict at all, or a real one in the
             # source. Both are the caller's existing hard failure.

@@ -120,7 +120,7 @@ def remote_registry_overlay_fingerprint_addendum(repo_root: Path) -> int:
     ok_ib, _ = git_ok(["show-ref", "--verify", ib_ref], repo_root, 15.0)
     if ok_ib:
         ok_blob, blob_rev = git_ok(
-            ["rev-parse", f"{ib_ref}:{REGISTRY_REL.as_posix()}"],
+            ["rev-parse", f"{ib_ref}:./{REGISTRY_REL.as_posix()}"],   # ./ = project-root relative
             repo_root,
             15.0,
         )

@@ -284,3 +284,23 @@ def test_committed_copies_are_read_relative_to_the_project_root(layout: tuple[Pa
 
     nodes = load_roadmap_nodes_at_ref(project, "HEAD")
     assert nodes and any(n.get("id") == "M1" for n in nodes)
+
+
+def test_a_registry_only_tip_commit_does_not_stale_a_review(layout: tuple[Path, Path]) -> None:
+    """`mark-implementation-reviewed` commits only the registry on the feature branch; the review
+    stays bound to the implementation commit. git names that path from the repository root,
+    so the nested layout compared `sr/roadmap/registry.yaml` with `roadmap/registry.yaml` and
+    `finish-this-task` refused every approval."""
+    from specy_road.review_target import reviewed_commit
+
+    top, project = layout
+    (project / "vision.md").write_text("real change\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "work")
+    work = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    reg = project / "roadmap" / "registry.yaml"
+    reg.write_text(reg.read_text(encoding="utf-8") + "# approved\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "chore: mark reviewed")
+
+    assert reviewed_commit(project, "HEAD", None) == work
