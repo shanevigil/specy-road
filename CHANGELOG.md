@@ -338,6 +338,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   as the model-calling exception, `acceptEdits` wording, grind waves are
   per-leaf, the AGENTS block says pickup and finish change the registry,
   the bootstrap prompt merges the block verbatim.
+- **Cloud pre-release run (Linux, at 9f3b9df):** `ps -o command=` without a
+  terminal is cut at 80 columns by procps, so a live wrapper with a normal
+  repo path looked dead: a second `delegate` launched a duplicate harness and
+  `terminate` closed the record without signalling the group. Fixed with
+  `ps -ww`. A SIGKILLed harness reports `137` where `/bin/sh` is dash (it
+  forks under `sh -c`) and `-9` where it is bash; the worker ends `failed`
+  either way, and the test and runbook say so.
 - **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
   judges touch zones over the worker's lifetime (`started_head`), not only
   since the last checkpoint; a READY must be at the worktree's HEAD;

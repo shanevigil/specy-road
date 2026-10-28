@@ -31,7 +31,7 @@
 
 **Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
 
-The suite (`pytest`, ~1,780 tests) proves the toolkit's logic with fake
+The suite (`pytest`, ~2,100 tests) proves the toolkit's logic with fake
 harnesses and stub fetchers. Everything below needs a machine with the
 vendor CLIs installed and signed in, and is **not** claimed by any test.
 

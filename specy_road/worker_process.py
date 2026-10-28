@@ -47,9 +47,14 @@ def new_token() -> str:
 
 
 def _ps(fields: str, pid: int) -> str | None:
-    """``ps -o <fields>`` for ``pid``: the line, ``""`` when ps found no such process, ``None`` when ps cannot say."""
+    """``ps -o <fields>`` for ``pid``: the line, ``""`` when ps found no such process, ``None`` when ps cannot say.
+
+    ``-ww``: without a terminal procps cuts the line at 80 columns, which drops
+    the worker id after any realistic repo path (found by the cloud pre-release
+    run on Linux; BSD ``ps`` accepts the flag too).
+    """
     try:
-        r = subprocess.run(["ps", "-o", fields, "-p", str(pid)], capture_output=True, text=True,
+        r = subprocess.run(["ps", "-ww", "-o", fields, "-p", str(pid)], capture_output=True, text=True,
                            check=False, timeout=5)
     except (OSError, subprocess.SubprocessError):
         return None
