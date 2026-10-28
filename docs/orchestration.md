@@ -162,8 +162,8 @@ A READY naming another node or branch is misfiled: listed as invalid, never read
 2. the implementation summary;
 3. every changed path since the merge base, both sides of a rename or copy,
    with paths outside the touch zones flagged (roadmap bookkeeping is exempt);
-   `roadmap/registry.yaml` is labelled toolkit bookkeeping, not under review;
-4. the diff, minus `roadmap/registry.yaml` (claim and approval rows), with a one-line note when it changed;
+   `roadmap/registry.yaml` is labelled toolkit bookkeeping;
+4. the diff, `roadmap/registry.yaml` included: only this node's claim row and approval stamp are expected there, anything else is under review;
 5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
    each section states if it was computed from git, executor-asserted, or run now.
 
@@ -351,8 +351,8 @@ absolute path or `--pathspec-from-file` (a plain directory such as `src/` passes
 `rm <files>`, which git refuses for a changed file) — only while another session is live (`--always`
 to deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`, `eval`, aliases,
 after `if`/`then`/`do`/`!`, and where `git` follows another word (`case … a) git …`, `find -exec git …`);
-what the guard cannot see is refused, not waved through: a shell function, a command name or git verb
-built by expansion (`$X`, `git${IFS}…`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
+what the guard cannot see is refused, not waved through: a shell function, a git verb or command name built by expansion
+that could be git (`$X`, `git${IFS}…`, `G=git; $G`; not `$HOME/bin/pytest`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
 Working-tree commands count only sessions in the caller's worktree (`git -C`, `stash`, `rebase`,
 force-push count every session). The adapters (`--format`) know each harness's stdin shape;
 `docs/optional-ai-tooling-patterns.md` wires them. A non-denial never sets a harness permission

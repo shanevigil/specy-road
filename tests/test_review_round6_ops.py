@@ -251,6 +251,8 @@ def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, ca
     (repo / "work" / "implementation-summary-M1.1.md").write_text("edited before delegate\n")
     (repo / "pre.txt").write_text("dirt before delegate\n")
     (repo / "src" / "a.py").write_text("edited before delegate\n")
+    prompt = repo / "work" / "prompt-M1.1-executor-opus.md"   # third review F4: nothing is written before the check
+    prompt.write_text("an earlier prompt\n")
     assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert ("uncommitted changes" in err and "commit or stash" in err
@@ -264,6 +266,7 @@ def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, ca
     index.write_bytes(b"not an index")   # re-review N9: a status git cannot read is not a clean tree
     assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     assert "cannot read `git status`" in capsys.readouterr().err and not ws.list_records(repo)
+    assert prompt.read_text() == "an earlier prompt\n"
     index.write_bytes(saved)
     assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only the brief left
     _wait(repo, "w-0001")

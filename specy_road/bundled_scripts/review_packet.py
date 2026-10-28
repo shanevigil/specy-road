@@ -51,10 +51,10 @@ NO_INVENTORY = ("_No `Added` inventory in the summary: helpers, guards, mocks an
                 "listed; inventory the diff's additions yourself._")
 _INVENTORY = re.compile(r"(?im)^(?:#+\s*added\b|\*\*added\b|added:)")
 RENDERED = "_Rendered from the roadmap at the working tree._"
-# Claim and approval rows written by pickup and mark-implementation-reviewed: shown, never reviewed.
-BOOKKEEPING_MARK = "  _← toolkit bookkeeping — not under review_"
-BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL}` is left out of this diff: specy-road's claim and approval bookkeeping "
-                    "(pickup, `mark-implementation-reviewed`), not under review; the gate ignores it._")
+# The registry stays in the diff: only this node's claim row and approval stamp are bookkeeping.
+BOOKKEEPING_MARK = "  _← toolkit bookkeeping; any edit beyond this node's claim and approval is under review_"
+BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL}` is in this diff. Expected there: this node's claim row (pickup) and its "
+                    "approval stamp (`mark-implementation-reviewed`). Any other edit in that file is under review._")
 
 
 def _computed(t: ReviewTarget) -> str:
@@ -147,7 +147,7 @@ def _diff(root: Path, t: ReviewTarget, paths: list[str]) -> list[str]:
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
     note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL in paths else []
-    diff = git_stdout(["diff", f"{t.base}...{t.commit}", "--", ":/", f":(top,exclude){REGISTRY_REL}"], root) or ""
+    diff = git_stdout(["diff", f"{t.base}...{t.commit}"], root) or ""
     return out + [_computed(t), ""] + note + (_fence(diff, "diff") if diff.strip() else ["_(empty)_", ""])
 
 

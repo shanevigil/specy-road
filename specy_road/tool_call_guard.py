@@ -59,6 +59,8 @@ _GIT_WORD = re.compile(r"\bgit\b")
 #: Shell expansion in a word: parameter/command substitution, brace expansion, globs.
 _EXPANSION = re.compile(r"[$`*?\[]|\{[^}]*(,|\.\.)")
 _EXPANSION_SYNTAX = re.compile(r"\$\{[^}]*\}|\$\w+|[$`{}*?\[\],]")
+#: ``${NAME:-word}`` / ``${NAME=word}``: the word the author wrote as the fallback.
+_DEFAULT = re.compile(r"\$\{\w+:?[-=]([^}]*)\}")
 _FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
 _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
 #: ``$(…)``, ``<(…)``, ``>(…)`` and backticks all run their body as a command.
@@ -268,7 +270,7 @@ def _opaque(segment: str) -> str | None:
     """Shapes a token parser cannot follow: refused when they mention git, rather than waved through.
 
     A shell function whose body mentions git, a command name built by shell
-    expansion (``$X``, ``git${IFS}stash``, ``{git,stash}``, ``gi?``), a later
+    expansion that could be git (``$X``, ``git${IFS}stash``, ``{git,stash}``, ``gi?``), a later
     word that expansion could turn into ``git``, and an interpreter one-liner
     that mentions git all run git where the guard cannot see the arguments.
     """
@@ -282,7 +284,7 @@ def _opaque(segment: str) -> str | None:
         raw = shlex.split(segment, comments=True)
     except ValueError:
         raw = []
-    if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[["):
+    if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[[") and _may_name_git(head[0]):
         return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
     if any(_EXPANSION.search(t) and " " not in t and _EXPANSION_SYNTAX.sub("", t).startswith("git") for t in raw):
         return "a shell expansion could build `git` here; the guard cannot see it — run the git command plainly"
@@ -299,9 +301,21 @@ def _opaque(segment: str) -> str | None:
     return None
 
 
+def _may_name_git(word: str) -> bool:
+    """Whether a command word built by expansion could be ``git``.
+
+    With the expansion removed (a ``${X:-default}`` kept as its default), a name
+    that is empty, starts with ``git`` or is a prefix of it could be git
+    (``${G}``, ``git${IFS}stash``, ``g{i,}t``, ``gi?``); ``$HOME/bin/pytest`` and
+    ``${PYTHON:-python}`` cannot. A command substitution's output is unknowable.
+    """
+    name = _EXPANSION_SYNTAX.sub("", _DEFAULT.sub(r"\1", word)).rsplit("/", 1)[-1]
+    return bool(_UNBALANCED.search(word)) or "`" in word or name.startswith("git") or "git".startswith(name)
+
+
 def classify(command: str) -> str | None:
     """The first destructive segment's reason, else ``None``."""
-    for seg in split_segments(command.strip()):
+    for seg in split_segments(shapes.inline_git_vars(command).strip()):
         reason = classify_segment(seg)
         if reason:
             return reason
