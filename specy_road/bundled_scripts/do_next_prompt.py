@@ -213,8 +213,10 @@ def _finish_instruction_lines(
         ),
         "2. Stay within the declared touch zones.",
         (
-            "3. Commit incrementally — the pre-commit hook validates "
-            "on every commit."
+            "3. Run the verifier and tests the brief names. Commit incrementally "
+            "by explicit path (`git commit --only <paths>`), never `-A`, `-a`, "
+            "or a bare `git commit`. If this repo has a pre-commit hook, it "
+            "also checks each commit."
         ),
     ]
     oc_lines = _on_complete_hint_lines(on_complete)
@@ -224,9 +226,11 @@ def _finish_instruction_lines(
                 f"4. When implementation is complete, write "
                 f"`work/implementation-summary-{node_id}.md` with sections "
                 "**Summary**, **Changes**, **Verification**, and optional "
-                "**## Walkthrough** (numbered steps for the reviewer), and commit "
-                "it on the feature branch: reviewers judge it, and finish removes "
-                "it from `work/`."
+                "**## Walkthrough** (numbered steps for the reviewer), ending with "
+                "an `## Added` inventory: every helper, branch or guard, mock and "
+                "test you added, one line each with its reason (`none` under a "
+                "heading is fine), and commit it on the feature branch by explicit "
+                "path: reviewers judge it, and finish removes it from `work/`."
             ),
             (
                 "5. Hand off for review: write "

@@ -69,7 +69,8 @@ classification plus a dependency **wave** layout. No git, no pickup.
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
 - **`waves`** — all schedulable leaves layered by dependency depth: a leaf sits
-  in wave `k` when its own unmet dependencies all sit in waves `< k`. The wave
+  in wave `k` when its own unmet dependencies all sit in waves `< k` (for a
+  phase or milestone dependency, all of its unfinished leaves do). The wave
   number is a reading aid, not a barrier — a leaf becomes pickable when **its
   own** dependencies are `Complete`, whatever else its wave's predecessors hold.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
@@ -213,6 +214,14 @@ goes straight to implement and finish without a second pickup. Only claims
 registered to a branch that **exists in this clone** qualify — a claim held by
 another lane reaches `active` through the shared registry or an *In Progress*
 status, and resuming one would put two implementers on the same node.
+
+A resumed cycle **always runs `--implement-cmd` again**, even when the work is
+done and only the review gate stopped finish (exit `1`, or `4` from the pre-finish
+hook). A new commit from that run makes earlier READY files and reviews stale.
+To finish without re-implementing, use step mode: `--step pickup` (checks out the
+claim, never implements) if HEAD is not on it, then `grind-session --step finish
+--json --on-complete merge --pre-finish-cmd '<review, then mark-implementation-reviewed --yes>'`.
+Then restart the hook loop without `--resume-in-flight`.
 
 ### Asking about one node (`why-blocked`, `list-gates`)
 
