@@ -67,6 +67,10 @@ and data are deliberately not recorded here.
 | `review-packet -o` writes only the given path; `prompt --role reviewer` then reports no packet | Wording / gap | Write the canonical copy too, or say the packet must be at the default path |
 | The reviewer precondition does not say which checkout to check; coordinator bookkeeping in the main checkout makes it report "not landed" | Wording | Name the leaf's worktree; ignore `work/` bookkeeping |
 | A stale session of the same user can only be warned about | Gap | `session end <id>` / takeover |
+| The docs never name the Cursor CLI binary (`agent` / `cursor agent`), its login or `--trust`; an operator trying the `cursor` editor launcher sees a silent failure | Doc gap | Name the binary, login and a `preflight: agent status` roster entry |
+| `prompt --role reviewer` and `worker delegate` need a registry claim, so a Complete node cannot get a second-family review through the dispatch layer (`review record --ref` works) | Gap | `prompt --ref` without a claim |
+| `review-packet` at the merge base yields an empty diff with no explanation | Gap | Warn; `--base <ref>` |
+| With no `roadmap/orchestration.yaml`, the default policy applies silently | Gap | One `validate` notice |
 | The cursor adapter's default launch omits `--trust`; untested whether a fresh worktree stalls | Check | Verify; add if needed |
 | `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
 | `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |

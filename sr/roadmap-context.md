@@ -53,6 +53,7 @@ Do not pick these up.
 
 - `M3.3` on `feature/rm-chunk-key-order` since 2026-10-28
 - `M3.4` on `feature/rm-brainstorm-prompt-fixes` since 2026-10-28
+- `M3.9` on `feature/rm-worker-cli-fixes` since 2026-10-28
 
 ## Reaching the detail behind this
 

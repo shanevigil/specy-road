@@ -343,7 +343,11 @@
         "`review-packet -o` also writes the canonical work/reviews/<ID>/PACKET.md, or `prompt --role reviewer` says the packet must be at that path",
         "The reviewer prompt's precondition names the checkout to check (the worktree with the leaf branch) and ignores coordinator bookkeeping under work/",
         "`session end <id>` (or `session takeover`) retires a stale session owned by the same user",
-        "The cursor adapter's default launch passes --trust, verified on a fresh worktree"
+        "The cursor adapter's default launch passes --trust, verified on a fresh worktree",
+        "docs/orchestration-workers.md names the Cursor CLI binary (`agent`, also `cursor agent`; not the `cursor` editor launcher), its login (`agent login` or CURSOR_API_KEY) and `--trust`, and shows a roster `preflight: agent status` entry for it",
+        "`prompt --role reviewer --ref <branch or commit>` renders a reviewer prompt for a node with no registry claim (a Complete node reviewed after the fact), as `review record --ref` already allows",
+        "`review-packet` warns when the merge-base diff is empty and accepts `--base <ref>` to set the diff range",
+        "`validate` prints one notice when roadmap/orchestration.yaml is absent, stating that the default policy (one reviewer, any family) applies"
       ],
       "codename": "roster-profiles-and-packet-path",
       "dependencies": [],
@@ -367,7 +371,9 @@
         "specy_road/worker_adapters.py",
         "docs/orchestration-models.md",
         "docs/orchestration.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     }
