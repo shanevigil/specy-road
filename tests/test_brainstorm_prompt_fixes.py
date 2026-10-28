@@ -3,13 +3,14 @@
 Start before reading anything; frame with proposed answers over the
 canonical keys; panel shard cells from the recorded allocation, with the
 frame; one prompt file per pass; no "(missing)" digest line; a warning on the
-integration branch; and every pass command naming the next one.
+integration branch; and every command naming the next step.
 """
 
 from __future__ import annotations
 
 import contextlib
 import io
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -121,6 +122,33 @@ def test_each_pass_keeps_its_own_prompt_and_names_the_next_command(repo: Path) -
     assert _prompt(repo, "recommend").startswith("# Recommend: ")
     assert _prompt(repo, "evidence").startswith("# Evidence: ")
     assert not (repo / "work" / f"brainstorm-{SLUG}-prompt.md").exists()
+
+
+def test_in_pass_and_session_commands_name_the_step_too(repo: Path) -> None:
+    nxt = f"--slug {SLUG}`"
+    _start(repo)
+    for args in (("frame", "--answer", "outcome=fewer failed payments"), ("add-idea", "--title", "Stored vault"),
+                 ("list",)):
+        code, out, err = _cli(repo, *args)
+        assert code == 0, err
+        assert f"next: when the agent has recorded its ideas, `specy-road brainstorm next-round {nxt}" in out, args
+    _, out, err = _cli(repo, "list", "--json")
+    assert json.loads(out)["slug"] == SLUG and "next-round" in err   # stdout stays JSON
+    _cli(repo, "recommend")
+    _, out, _ = _cli(repo, "revise", "B1", "--recommendation", "strong")
+    assert f"next: when the verdicts are recorded, `specy-road brainstorm evidence {nxt}" in out
+    _, out, _ = _cli(repo, "add-evidence", "B1", "--url", "https://example.com/a", "--quote", "a quote")
+    assert f"next: when the sources are recorded, `specy-road brainstorm verify {nxt}" in out
+    _cli(repo, "accept", "B1")
+    code, out, err = _cli(repo, "promote", "--dry-run")
+    assert code == 0, err
+    assert "Dry run — nothing written." in out and f"next: `specy-road brainstorm promote {nxt} to apply" in out
+    _, out, _ = _cli(repo, "sessions")
+    assert "next: `specy-road brainstorm list --slug SLUG`" in out
+    _, out, _ = _cli(repo, "close")
+    assert out.splitlines()[-1].startswith("done: nothing follows for this session")
+    _, out, _ = _cli(repo, "sessions")
+    assert "next: `specy-road brainstorm start --topic '<question>'`" in out
 
 
 def test_prompts_omit_the_digest_line_when_there_is_no_digest(repo: Path) -> None:

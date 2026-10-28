@@ -14,6 +14,7 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
     write_prompt,
 )
 from specy_road.bundled_scripts.brainstorm_prompt_evidence import shortlist
+from specy_road.bundled_scripts.brainstorm_promote import pending_ideas
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
@@ -64,8 +65,22 @@ def next_step(session: BrainstormSession, done: str) -> str:
         "evidence": f"when the sources are recorded, `{cmd('verify')}`",
         "verify": f"triage: `{cmd('list --by cluster')}`, then accept / reject --reason / park --reason",
         "triage": f"when triage is done, `{cmd('promote --dry-run')}`, then `{cmd('promote')}`",
+        "dry-run": f"`{cmd('promote')}` to apply",
         "promote": f"`specy-road export && specy-road digest`, then `{cmd('close')}`",
     }[done]
+
+
+def stage(session: BrainstormSession) -> str:
+    """The pass ``session`` is in, read from what it records: the ``done`` key for ``next_step``."""
+    if session.mode != "roadmap":
+        return "round"
+    if any(i.promoted_node_key for i in session.ideas) and not pending_ideas(session):
+        return "promote"
+    if any(i.status in ("accepted", "rejected", "parked") for i in session.ideas):
+        return "triage"
+    if any(i.sources for i in session.ideas):
+        return "evidence" if pending(session.ideas) else "verify"
+    return "recommend"
 
 
 def integration_branch_warning(root, slug: str) -> str | None:
@@ -109,6 +124,7 @@ def cmd_frame(ns: argparse.Namespace) -> int:
         # Shards are written at `start`, before any frame exists; rewrite them so they carry it.
         for path in _write_shard_prompts(root, session, count=session.count or DEFAULT_COUNT):
             print(f"shard:   {path.relative_to(root)} (rewritten)")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -137,6 +153,7 @@ def cmd_add_evidence(ns: argparse.Namespace) -> int:
         idea.evidence.append(rec["url"])
     write_session(root, session)
     print(f"[ok] {idea.id} source {len(idea.sources)}: {rec['url']} ({rec['stance']})")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -185,4 +202,4 @@ HANDLERS_V2 = {
     "park": cmd_park,
 }
 
-__all__ = ["HANDLERS_V2", "integration_branch_warning", "next_step", "write_round_prompts", "sys"]
+__all__ = ["HANDLERS_V2", "integration_branch_warning", "next_step", "stage", "write_round_prompts", "sys"]

@@ -22,6 +22,7 @@ from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     HANDLERS_V2,
     integration_branch_warning,
     next_step,
+    stage,
     write_round_prompts,
 )
 from specy_road.bundled_scripts.brainstorm_close import close_session
@@ -117,6 +118,7 @@ def cmd_add_idea(ns: argparse.Namespace) -> int:
     )
     write_session(root, session)
     print(f"[ok] {idea.id} {idea.title}")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -155,23 +157,25 @@ def cmd_list(ns: argparse.Namespace) -> int:
         payload = _idea_payload(session)
         payload["ideas"] = [i.to_dict() for i in ideas]
         print(json.dumps(payload, indent=2))
+        print(next_step(session, stage(session)), file=sys.stderr)   # stdout stays JSON
         return 0
     anchor = session.under or "(roadmap root)"
     print(f"{session.slug} — {session.topic or '(no topic)'}")
     print(f"mode: {session.mode}   anchor: {anchor}   ideas: {len(session.ideas)}")
     if not ideas:
         print("\n(no ideas match)")
-        return 0
-    print("")
-    if ns.by == "cluster":
+    elif ns.by == "cluster":
+        print("")
         clusters: dict[str, list] = {}
         for i in ideas:
             clusters.setdefault(i.cluster_id or "(unclustered)", []).append(i)
         for cid, members in sorted(clusters.items(), key=lambda kv: (kv[0] == "(unclustered)", kv[0])):
             print(f"{cid}  ({len(members)})")
             _print_rows(members, verdicts=ns.show_verdicts)
-        return 0
-    _print_rows(ideas, verdicts=ns.show_verdicts)
+    else:
+        print("")
+        _print_rows(ideas, verdicts=ns.show_verdicts)
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -228,6 +232,7 @@ def cmd_revise(ns: argparse.Namespace) -> int:
         idea.status = "revised"
     write_session(root, session)
     print(f"[ok] {idea.id} {idea.status} (recommendation: {idea.recommendation or '-'})")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -263,7 +268,8 @@ def cmd_promote(ns: argparse.Namespace) -> int:
         parent = r.parent_id or "(root)"
         print(f"{prefix} {r.node_id} under {parent} — {r.title}  (from {r.idea_id})")
     if ns.dry_run:
-        print("\nDry run — nothing written. Re-run without --dry-run to apply.")
+        print("\nDry run — nothing written.")
+        print(next_step(session, "dry-run"))
     else:
         print(f"\nPromoted {len(results)} idea(s).")
         print(next_step(session, "promote"))
@@ -275,6 +281,7 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
     slugs = list_slugs(root)
     if not slugs:
         print("no brainstorm sessions in work/")
+        print("next: `specy-road brainstorm start --topic '<question>'`")
         return 0
     unreadable = 0
     for slug in slugs:
@@ -286,6 +293,7 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
             print(f"{slug}: unreadable — {e}", file=sys.stderr)
             continue
         print(f"  {slug:<24} {session.mode:<10} {len(session.ideas):>3} ideas")
+    print("next: `specy-road brainstorm list --slug SLUG` shows a session's ideas and its next step")
     return 1 if unreadable else 0
 
 
@@ -295,6 +303,7 @@ def cmd_close(ns: argparse.Namespace) -> int:
     for src, dst in close_session(root, slug):
         print(f"moved {src.relative_to(root).as_posix()} -> {dst.relative_to(root).as_posix()}")
     print(f"[ok] closed {slug}; it no longer counts as an open session")
+    print("done: nothing follows for this session; `specy-road brainstorm start --topic '<question>'` opens another")
     return 0
 
 
