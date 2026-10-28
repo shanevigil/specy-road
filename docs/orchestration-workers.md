@@ -136,13 +136,13 @@ specy-road worker sync --ack           # once you have acted on the events
 ```
 
 `delegate` runs **after pickup**: the leaf must hold a registry claim with a
-branch (`do-next-available-task --under M2.3`). It writes the executor prompt
+branch (`do-next-available-task --under M2.3`). It builds the executor prompt
 (`work/prompt-M2.3-executor-<model>.md`, the same text `specy-road prompt`
 writes), chooses the worktree — this checkout when it has the claim's branch
 checked out, otherwise a linked worktree at `work/.worktrees/<codename>` —
 refuses that worktree while it has uncommitted changes other than the leaf's own untracked bookkeeping (`work/brief-<ID>.md`, `work/implementation-summary-<ID>.md`, its prompts, and `work/reviews/`, `.workers/`, `.sessions/`, `.worktrees/`), or while `git status` cannot read it (it names
 them: the worker would edit the same files, and `reconcile` could not tell its
-edits from yours; commit or stash them first), hashes the prompt as the
+edits from yours; commit or stash them first; nothing is written then), writes the prompt, hashes it as the
 worker's `contract_hash`, launches the harness detached, and returns the worker id. Delegating the same leaf again returns
 the existing worker; more than `max_workers` active is refused; `--op-id`
 makes a retried call answer from its first result (an op id is bound to its

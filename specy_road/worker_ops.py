@@ -208,18 +208,15 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     text, _prof, err = build_prompt(repo_root, node_id, role="executor", model=model)
     if err:
         raise WorkerError(err)
-    prompt = repo_root / "work" / f"prompt-{node_id}-executor-{model}.md"
-    prompt.parent.mkdir(parents=True, exist_ok=True)
-    prompt.write_text(text, encoding="utf-8")
     with workers_lock(repo_root):
         existing = _slot_or_existing(repo_root, node_id, limit)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
-        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, prompt, worktree), True
+        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree), True
 
 
 def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
-                   text: str, prompt: Path, worktree: Path | None) -> WorkerRecord:
+                   text: str, worktree: Path | None) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
     # The worker edits this tree: uncommitted work in it could be overwritten, and
@@ -233,6 +230,9 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     if dirty:
         raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
                           "commit or stash them, then delegate again")
+    prompt = repo_root / "work" / f"prompt-{node_id}-executor-{model}.md"   # written only once the tree is clean
+    prompt.parent.mkdir(parents=True, exist_ok=True)
+    prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
     cli, api_id = _cli_for(repo_root, entry, harness)
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli)
