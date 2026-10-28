@@ -33,5 +33,5 @@ policy:
   reviewer_fresh_session: true
   signed_reviews: false
   reviewer_reruns_required: true
-  max_workers: 3
+  max_workers: 4
 substitutions: []
