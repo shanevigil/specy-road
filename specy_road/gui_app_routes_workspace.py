@@ -15,6 +15,7 @@ from specy_road.bundled_scripts.roadmap_gui_lib import (
     settings_api_payload,
 )
 from specy_road.bundled_scripts.roadmap_gui_remote import test_git_remote, test_llm_connection
+from specy_road.bundled_scripts.roadmap_gui_settings import with_stored_secrets
 
 from specy_road.bundled_scripts.review_node import ReviewError, run_review
 
@@ -160,20 +161,21 @@ def register_settings_and_remote(api: APIRouter) -> None:
 
     @api.put("/settings")
     def api_settings_put(body: GuiSettingsPutBody) -> dict[str, str]:
+        root = get_repo_root()
         save_settings_for_repo(
-            get_repo_root(),
+            root,
             inherit_llm=body.inherit_llm,
             inherit_pm_gui=body.inherit_pm_gui,
-            llm=body.llm,
-            git_remote=body.git_remote,
+            llm=with_stored_secrets(root, "llm", body.llm),
+            git_remote=with_stored_secrets(root, "git_remote", body.git_remote),
             pm_gui=body.pm_gui,
-            research=body.research,
+            research=with_stored_secrets(root, "research", body.research),
         )
         return {"ok": "true"}
 
     @api.post("/llm/test")
     def api_llm_test(body: LlmTestBody) -> dict[str, Any]:
-        ok, msg = test_llm_connection(body.llm)
+        ok, msg = test_llm_connection(with_stored_secrets(get_repo_root(), "llm", body.llm))
         if not ok:
             raise HTTPException(status_code=400, detail=msg)
         return {"ok": True, "message": msg}
@@ -181,7 +183,7 @@ def register_settings_and_remote(api: APIRouter) -> None:
     @api.post("/llm/review")
     def api_llm_review(body: LlmReviewBody) -> dict[str, str]:
         root = get_repo_root()
-        apply_llm_env_from_settings(body.llm)
+        apply_llm_env_from_settings(with_stored_secrets(root, "llm", body.llm))
         try:
             report = run_review(
                 body.node_id.strip(),
@@ -196,7 +198,7 @@ def register_settings_and_remote(api: APIRouter) -> None:
 
     @api.post("/git/test")
     def api_git_test(body: GitTestBody) -> dict[str, Any]:
-        ok, msg = test_git_remote(body.git_remote)
+        ok, msg = test_git_remote(with_stored_secrets(get_repo_root(), "git_remote", body.git_remote))
         if not ok:
             raise HTTPException(status_code=400, detail=msg)
         set_git_remote_tested_ok(get_repo_root(), True)

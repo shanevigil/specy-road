@@ -74,6 +74,23 @@ def obfuscate_block(name: str, block: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+#: What ``GET /api/settings`` shows in place of a stored credential, so the
+#: page never holds the secret. A client that sends it back (save, Test LLM,
+#: chat) means "the stored one": :func:`restore_secrets` swaps it back.
+SECRET_MASK = "********"
+
+
+def mask_secrets(name: str, block: dict[str, Any]) -> dict[str, Any]:
+    """A copy of ``block`` with each set credential field replaced by :data:`SECRET_MASK`."""
+    return {k: SECRET_MASK if k in TOKEN_FIELDS.get(name, ()) and v else v for k, v in block.items()}
+
+
+def restore_secrets(name: str, block: dict[str, Any], stored: dict[str, Any]) -> dict[str, Any]:
+    """A copy of ``block`` with each :data:`SECRET_MASK` replaced by the ``stored`` credential."""
+    return {k: stored.get(k, "") if k in TOKEN_FIELDS.get(name, ()) and v == SECRET_MASK else v
+            for k, v in block.items()}
+
+
 def _obfuscate_llm_git(
     llm: dict[str, Any],
     git_remote: dict[str, Any],

@@ -31,12 +31,21 @@ from specy_road.bundled_scripts.brainstorm_session import BrainstormSession, Ide
 TIMEOUT_SECONDS = 20
 MAX_BYTES = 2_000_000
 Fetcher = Callable[[str], tuple[int, str]]
+#: Inline elements sit inside running text, so removing one must not put a
+#: space into a word or before the punctuation that follows it; other tags
+#: (paragraphs, cells, line breaks) do separate words.
+_INLINE_TAGS = re.compile(
+    r"</?(?:a|abbr|b|bdi|bdo|cite|code|data|del|dfn|em|font|i|ins|kbd|mark|q|s|samp|small"
+    r"|span|strong|sub|sup|time|u|var)(?:\s[^>]*)?/?>", re.IGNORECASE)
 _TAGS = re.compile(r"<[^>]+>")
 _WS = re.compile(r"\s+")
+#: A space before closing or after opening punctuation, dropped on both sides alike.
+_PUNCT_SPACE = re.compile(r" (?=[.,;:!?)\]])|(?<=[(\[]) ")
 
 
 def _norm(text: str) -> str:
-    return _WS.sub(" ", unescape(_TAGS.sub(" ", text))).strip().lower()
+    text = _TAGS.sub(" ", _INLINE_TAGS.sub("", text))
+    return _PUNCT_SPACE.sub("", _WS.sub(" ", unescape(text)).strip().lower())
 
 
 MAX_REDIRECTS = 5
