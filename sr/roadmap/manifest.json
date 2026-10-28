@@ -1,0 +1,11 @@
+{
+  "includes": [
+    "phases/M1.json",
+    "phases/M2.json",
+    "phases/M3.json",
+    "phases/M4.json",
+    "phases/M5.json",
+    "phases/M6.json"
+  ],
+  "version": 1
+}

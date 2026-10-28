@@ -20,7 +20,7 @@ For toolkit work, keep context small:
 - **Dogfood fixture graph:** `manifest.json` + JSON chunks under `roadmap/` inside the fixture tree.
 - **Fixture registry:** `roadmap/registry.yaml` in that same tree; use it only for fixture/sample coordination.
 - **Generated fixture index:** `roadmap.md` next to the graph (`specy-road export --repo-root tests/fixtures/specy_road_dogfood`).
-- **Toolkit product roadmap:** intentionally not defined yet.
+- **Toolkit product roadmap:** nested under `sr/` on the `WIP/improvements-0-3-1` line only (`.specyrd/manifest.json` records `project_root: sr`); it is stripped before promotion to `main` and never ships. Run roadmap commands from the checkout root; they resolve `sr/` automatically.
 
 Brief:
 

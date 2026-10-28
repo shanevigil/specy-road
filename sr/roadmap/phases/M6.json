@@ -1,0 +1,92 @@
+{
+  "nodes": [
+    {
+      "codename": "release-0-3-1-rc2",
+      "dependencies": [],
+      "goal": "The second release candidate is cut from a line whose triage note, changelog and what's-new are closed out and whose pre-release checks pass.",
+      "id": "M6",
+      "node_key": "856ec58c-bea4-461f-8a37-70a3c87a74b4",
+      "planning_dir": "planning/M6_release-0-3-1-rc2_856ec58c-bea4-461f-8a37-70a3c87a74b4.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "0.3.1-rc2 release",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "The rc1 triage note's pre-final rows are marked fixed with the fixing node, and the remaining rows say so",
+        "CHANGELOG [Unreleased] is curated into Fixed / Added / Changed with no duplicate bullets",
+        "docs/whats-new.md has a section for the coming release naming the upgrade command and the brainstorm changes",
+        "suggested_prompts/*.md match the formats that changed"
+      ],
+      "codename": "rc2-closeout-docs",
+      "dependencies": [
+        "07daa56a-7dff-4444-9b72-f2bf7cde7451",
+        "1296cce5-a445-4edc-80b0-14c22e8da22f",
+        "2a9def0a-45e8-4fa5-8f06-02e426749f85",
+        "40829e1f-f1d9-4368-a53f-ee8f27cd2566",
+        "4785eb3e-6445-4f0f-9147-925ae859db43",
+        "5bac319f-6749-4980-8576-248df4e287e7",
+        "71602a0f-024d-45ca-9161-efe5b0570658",
+        "7433fe33-15a2-4574-9b4e-3a166b207ac4",
+        "9834a43e-0495-4d25-ba3e-d41d54d22e0d",
+        "9dd1abfb-0fdd-43a9-bd84-b63a02dea6ee",
+        "a4cdff1a-4b57-4fc1-9c36-9357c656df78",
+        "ac36c1fd-1afc-45b9-89f8-9f1e2cacda10",
+        "acbadda9-3756-4e55-aad3-e7153ad5be97",
+        "b06d628f-8f02-49c0-9366-7f9beee7ce20",
+        "b7f094e3-dce5-4ab0-9e14-e00f8f412609",
+        "d1ffe271-ef17-495a-90de-74a35990666e",
+        "d2f29378-7143-4bf3-8b5b-dc6846ab82bb",
+        "e23d24a4-b720-4f95-b5c5-e715a49cb6a8",
+        "e6871451-eb23-42bb-8877-9228bb521193",
+        "e94029df-277a-47a3-a4fb-16036d6c9d0e",
+        "f3e2008b-1cb2-4f0f-92c3-05864482d958",
+        "fed16291-24ba-47dd-a301-300e59ece353"
+      ],
+      "execution_milestone": "Agentic-led",
+      "goal": "Everything rc2 ships is accounted for in the repo's own records.",
+      "id": "M6.1",
+      "node_key": "3835b0ce-3da0-4d0d-9c1f-a14ea77947aa",
+      "parent_id": "M6",
+      "planning_dir": "planning/M6.1_rc2-closeout-docs_3835b0ce-3da0-4d0d-9c1f-a14ea77947aa.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Close out the triage note, changelog and what's-new for rc2",
+      "touch_zones": [
+        "docs/design-notes/v0-3-1-rc1-adopter-feedback-triage.md",
+        "CHANGELOG.md",
+        "docs/whats-new.md",
+        "suggested_prompts/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "WIP/pre-release-checks branch created from the WIP tip; harness review, cleanup and security passes run on the delta since v0.3.1-rc1",
+        "The sandbox runbook is replayed on the three harnesses and its evidence attached",
+        "The maintainer states the version, the release branch is cut and the PR to main is opened per docs/release-runbook.md"
+      ],
+      "codename": "rc2-cut",
+      "dependencies": [
+        "3835b0ce-3da0-4d0d-9c1f-a14ea77947aa"
+      ],
+      "execution_milestone": "Human-led",
+      "goal": "0.3.1-rc2 is on TestPyPI with a green pre-release gate.",
+      "id": "M6.2",
+      "node_key": "fb3572b0-3c7e-4d33-9a2e-6d5135bbd3fc",
+      "parent_id": "M6",
+      "planning_dir": "planning/M6.2_rc2-cut_fb3572b0-3c7e-4d33-9a2e-6d5135bbd3fc.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "Pre-release checks and the 0.3.1-rc2 cut",
+      "touch_zones": [
+        "docs/release-runbook.md",
+        "CHANGELOG.md",
+        "pyproject.toml"
+      ],
+      "type": "task"
+    }
+  ]
+}

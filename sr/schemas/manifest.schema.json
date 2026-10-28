@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/manifest.schema.json",
+  "title": "specy-road roadmap manifest",
+  "type": "object",
+  "required": ["version", "includes"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "includes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Chunk paths relative to roadmap/, merged in order."
+    }
+  }
+}

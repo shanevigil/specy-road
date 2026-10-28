@@ -1,0 +1,196 @@
+{
+  "nodes": [
+    {
+      "codename": "context-and-outcomes",
+      "dependencies": [],
+      "goal": "The research-backed additions chosen from the PM-role and agent-context studies: rules that carry their provenance, measurable always-injected context, a stale-command check, and an outcome record that closes the loop from shipped to learned.",
+      "id": "M5",
+      "node_key": "0e8ca94e-4046-47b3-ab39-50e2c9bad986",
+      "planning_dir": "planning/M5_context-and-outcomes_0e8ca94e-4046-47b3-ab39-50e2c9bad986.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "Agent context and outcomes",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "Every rule bullet in the managed AGENTS.md and CLAUDE.md templates is followed by an HTML comment naming the failure it prevents, where it is enforced, and a reference",
+        "The renderer strips those comments, so rendered sections are byte-identical to today's apart from intended text",
+        "A test fails when a rule bullet has no provenance comment"
+      ],
+      "codename": "rule-provenance",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "Each rule the toolkit ships can name the failure it prevents, without costing consumers a byte of context.",
+      "id": "M5.1",
+      "node_key": "40829e1f-f1d9-4368-a53f-ee8f27cd2566",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.1_rule-provenance_40829e1f-f1d9-4368-a53f-ee8f27cd2566.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Every managed AGENTS.md rule carries its provenance in the template",
+      "touch_zones": [
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "specy_road/templates/specyrd/claude-md-block.md",
+        "specy_road/agents_md_block.py",
+        "specy_road/agent_guide_block.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "validate warns for each `specy-road <subcommand>` or `specyrd <subcommand>` mentioned in AGENTS.md or CLAUDE.md (outside managed blocks) whose subcommand is not registered",
+        "Known aliases and deprecated names are listed with their replacement",
+        "The check never fails validation and has no false positive on the toolkit's own docs"
+      ],
+      "codename": "stale-command-check",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "A consumer's own AGENTS.md or CLAUDE.md never sends agents to a specy-road command that no longer exists.",
+      "id": "M5.2",
+      "node_key": "e94029df-277a-47a3-a4fb-16036d6c9d0e",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.2_stale-command-check_e94029df-277a-47a3-a4fb-16036d6c9d0e.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "validate flags specy-road commands that do not exist in the consumer's agent files",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/cli.py",
+        "specy_road/managed_block.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`validate` (or `specy-road context show`) prints lines and bytes of AGENTS.md, CLAUDE.md and the managed sections per harness, with the documented limits (Codex 32 KiB project-doc budget, Claude Code 200-line target)",
+        "A warning fires when a documented limit is exceeded"
+      ],
+      "codename": "context-budget-meter",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "A team can see how much context every agent session pays before a harness truncates it.",
+      "id": "M5.3",
+      "node_key": "1296cce5-a445-4edc-80b0-14c22e8da22f",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.3_context-budget-meter_1296cce5-a445-4edc-80b0-14c22e8da22f.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "validate reports always-injected context per harness against documented limits",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/agents_md_block.py",
+        "specy_road/agent_guide_block.py",
+        "docs/install-and-usage.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each rule that the review gate, the tool-call guard or validate already enforces is reduced to one line that names the enforcement",
+        "No rule is dropped: a test maps every removed sentence to an enforcement point",
+        "The managed section is shorter than before in lines and bytes, and the budget meter confirms it"
+      ],
+      "codename": "enforced-rules-pointers",
+      "dependencies": [
+        "1296cce5-a445-4edc-80b0-14c22e8da22f",
+        "40829e1f-f1d9-4368-a53f-ee8f27cd2566"
+      ],
+      "execution_milestone": "Agentic-led",
+      "goal": "The managed AGENTS.md section carries guidance, not restatements of what the toolkit already enforces.",
+      "id": "M5.4",
+      "node_key": "71602a0f-024d-45ca-9161-efe5b0570658",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.4_enforced-rules-pointers_71602a0f-024d-45ca-9161-efe5b0570658.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "Rules the CLI or hooks enforce shrink to one-line pointers in the managed block",
+      "touch_zones": [
+        "specy_road/templates/specyrd/agents-md-block.md",
+        "specy_road/templates/specyrd/claude-md-block.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "docs/context-regressions.yaml holds at most ten destination-shaped cases drawn from past review-round findings, each with app, harnesses, prompt, pass condition read from artifacts, and run count",
+        "docs/agentic-sandbox-runbook.md has a step that replays the set on harness or model upgrades and records results",
+        "The format is documented and the file validates against a small schema test"
+      ],
+      "codename": "context-regression-set",
+      "dependencies": [],
+      "execution_milestone": "Mixed",
+      "goal": "A harness or model upgrade that breaks the managed guidance is caught before adopters hit it.",
+      "id": "M5.5",
+      "node_key": "6bea8860-1394-4fff-9094-c781dc86a11a",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.5_context-regression-set_6bea8860-1394-4fff-9094-c781dc86a11a.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "A replayable context regression set for the sandbox runbook",
+      "touch_zones": [
+        "docs/agentic-sandbox-runbook.md",
+        "docs/",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The sandbox runbook includes a three-line structured context-feedback block (missing / wrong / unused, quoting the line or naming the turn) in the executor prompt for its scenarios",
+        "A triage rule is documented: act only on items that quote a line or name a turn and that recur or reproduce",
+        "The pilot's hit rate is recorded in a design note; shipping the block in the summary template is a separate decision"
+      ],
+      "codename": "context-feedback-pilot",
+      "dependencies": [
+        "6bea8860-1394-4fff-9094-c781dc86a11a"
+      ],
+      "execution_milestone": "Mixed",
+      "goal": "The toolkit learns whether agents' reports of missing or wrong context reproduce, before adding a question to every implementation summary.",
+      "id": "M5.6",
+      "node_key": "1bd3af2e-a948-4b50-b678-5ef27f9e290d",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.6_context-feedback-pilot_1bd3af2e-a948-4b50-b678-5ef27f9e290d.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Pilot the context-feedback question in the sandbox before shipping it",
+      "touch_zones": [
+        "docs/agentic-sandbox-runbook.md",
+        "docs/design-notes/",
+        "specy_road/bundled_scripts/role_prompt.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Three sandbox apps x three harnesses x three runs with and without the managed section, same task list",
+        "Turns, tokens, cost and first-round review outcomes recorded per cell in a design note",
+        "The note states what the numbers justify: trim, keep, or test further"
+      ],
+      "codename": "managed-section-ablation",
+      "dependencies": [
+        "6bea8860-1394-4fff-9094-c781dc86a11a",
+        "71602a0f-024d-45ca-9161-efe5b0570658"
+      ],
+      "execution_milestone": "Human-led",
+      "goal": "The decision to trim or keep the managed section rests on the toolkit's own numbers.",
+      "id": "M5.7",
+      "node_key": "2dfefcb7-224f-49cd-b36a-0782a52b6e6c",
+      "parent_id": "M5",
+      "planning_dir": "planning/M5.7_managed-section-ablation_2dfefcb7-224f-49cd-b36a-0782a52b6e6c.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "Measure the managed section on and off across the sandbox apps",
+      "touch_zones": [
+        "docs/design-notes/",
+        "docs/agentic-sandbox-runbook.md"
+      ],
+      "type": "task"
+    }
+  ]
+}

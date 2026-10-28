@@ -1,0 +1,37 @@
+# Who may coordinate, execute, and review leaves of the toolkit's own roadmap.
+# Read by the gate from origin/WIP/improvements-0-3-1 (this checkout points
+# origin/HEAD at that line: `git remote set-head origin WIP/improvements-0-3-1`).
+version: 1
+roster:
+  - id: human
+    family: human
+    roles: [coordinator, reviewer]
+  - id: claude-opus-5.5
+    family: anthropic
+    roles: [coordinator, executor]
+    harness: claude-code
+    billing_route: claude_subscription
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road-agent-guidance/sr/tools/claude-worker.sh {session} {prompt}"
+  - id: grok-4.7-high
+    family: xai
+    roles: [reviewer]
+    harness: cursor
+    billing_route: cursor_subscription
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road-agent-guidance/sr/tools/cursor-review.sh grok-4.7-high \"<prompt>\""
+  - id: gpt-5.6-sol-high
+    family: openai
+    roles: [reviewer]
+    harness: cursor
+    billing_route: cursor_subscription
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road-agent-guidance/sr/tools/cursor-review.sh gpt-5.6-sol-high \"<prompt>\""
+policy:
+  reviewers_required: 2
+  reviewers_distinct_families: true
+  reviewer_fresh_session: true
+  signed_reviews: false
+  reviewer_reruns_required: true
+  max_workers: 2
+substitutions: []

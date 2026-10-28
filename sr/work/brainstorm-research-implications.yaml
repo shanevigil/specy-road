@@ -1,0 +1,2010 @@
+version: 2
+slug: research-implications
+topic: What do the PM-role and agent-context research findings mean for specy-road?
+under: null
+mode: roadmap
+round: 2
+rounds: 2
+profile: product
+panel: 2
+frame:
+  outcome: Teams using specy-road can tell whether what they shipped mattered, and
+    their agents waste fewer turns on wrong or missing context, without more paperwork;
+    and specy-road itself keeps adapting as models and best practices change
+  metric: share of shipped work with a recorded result; agent turns and cost per task
+    in sandbox runs; first-round review approval rate; share of agent context-reports
+    that reproduce; how stale the shipped agent guidance is relative to current vendor
+    guidance
+  served: 'small-to-medium teams, including one person who is both dev and PM, and
+    teams with several PMs; plus the coding agents doing the work. Not served: large
+    product orgs whose analytics, experimentation and discovery tools specy-road should
+    not replace'
+  assumed: adopters care whether shipped work achieved anything (assumed); context
+    quality changes agent outcomes (measured, mixed); people will record outcomes
+    at all (unknown, main paperwork risk)
+  tried: AGENTS block trimmed 83->39 lines then grew to 50 with lean rules; brainstorm
+    hypothesis field exists but is never read after promote; agent headers on docs;
+    ad-hoc deep-research prompts run by the maintainer. Nothing stopped yet
+  fixed-but-a-choice: specy-road is only a delivery-coordination tool; the CLI never
+    calls a model (true for now, could change later); acceptance is the definition
+    of done; context ships as one fixed managed section; there is a single PM (there
+    may be many, or one dev-PM)
+  not-the-question: if rc1 adopters' real pain is elsewhere (install, upgrade, review
+    gate); this line is kept separate from the 0.3.1-rc1 evaluation and its fixes
+  do-nothing-for-a-year: the managed guidance goes stale against new models and harnesses,
+    and specy-road becomes a faster feature factory with no way to show otherwise;
+    the maintainer's deep-research process needs to become a regular, repeatable practice
+  neutralised: What problem would outcome fields solve that the team's analytics tool
+    does not, and what would show they are paperwork? Does the managed section need
+    to shrink or to be measured first, and what would show a line does harm? Is the
+    PM role shifting to strategy, and does specy-road need to follow either way? What
+    would a regular research cadence change that ad-hoc research does not?
+allocation: 's1 (sub-agent, unread research): 2 lenses of its choice x user segments/technical
+  layers, operator=ordinary personas, quota 15 | s2 (sub-agent, unread research):
+  2 lenses x business model/risk, operator=random constraints, quota 15 | coordinator
+  (has read the research): Pre-mortem x risk & compliance, operator=analogical transfer,
+  4 | Analogous domains x technical layers, operator=analogical transfer, 4 | SCAMPER
+  x business model, operator=low typicality, 3 | Constraint removal x competing team''s
+  PM, operator=unoccupied regions, 3 | Jobs to be done x user segments (dev-PM, many
+  PMs), operator=ordinary personas, 3 | 10x/0.1x x technical layers, operator=random
+  constraints, 3 — total >= 50'
+ideas:
+- id: B1
+  title: Add a one-line result prompt to the merge/PR template
+  rationale: Dana, a solo dev-PM, will fill in one line at merge time but not open
+    a second tool later.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C7
+  critic:
+    evidence: timing mismatch, outcomes lag shipping by weeks
+  hypothesis: If we do this, share of shipped work with a recorded result rises because
+    it is asked at the moment she already has the context.
+  verdict_why: 'Alternative channel: a result prompt in the merge/PR template. At
+    merge time the result is not yet known, so it records expectation, not outcome.'
+- id: B2
+  title: Treat 'unknown' as a valid recorded result
+  rationale: A result of worked / didn't / unknown costs five seconds; forcing a verdict
+    makes people skip it.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C1
+  hypothesis: If we do this, share with a recorded result rises because skipping is
+    no longer easier than answering honestly.
+  verdict_why: 'A design detail for B50: ''unknown''/''waived'' as a legitimate verdict
+    (OpenAI report''s status pending|reviewed|waived). Fold into B50 if accepted.'
+- id: B3
+  title: List shipped nodes with no result after N days
+  rationale: Dana forgets by Friday; a due list in the weekly view reminds her without
+    a new tool.
+  kind: feature
+  effort: S
+  evidence: []
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 6f1bd0d5-313c-4b72-9803-22ab1edfeef3
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C5
+  critic:
+    value: makes outcome debt visible without a form
+    evidence: unmeasured whether visibility raises recording; the pilot measures it
+  hypothesis: If we do this, recorded-result share rises because forgotten items surface
+    on a schedule.
+  verdict_why: Deterministic digest list of shipped nodes whose outcome is due/unrecorded;
+    both research reports recommend it; near-zero cost; P1, P9. Completion date is
+    derivable from the history index.
+- id: B4
+  title: Store a pointer to the team's analytics query, not the data
+  rationale: Priya's team already has analytics; a result is a link plus one sentence,
+    so specy-road does not replace it.
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C1
+  hypothesis: If we do this, adopters with analytics tools record results because
+    it costs a paste, not a re-entry.
+  verdict_why: Same bet as B50, which states it better (pointer and verdict together).
+- id: B5
+  title: 'Sunday ledger: one-page weekly text of shipped, with result, turns spent'
+  rationale: A solo dev-PM wants a ten-line summary she can read in a minute, derived
+    from existing records.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C15
+  hypothesis: If we do this, results get recorded because the ledger shows the gaps
+    weekly.
+  verdict_why: Same bet as B38.
+- id: B6
+  title: Add an optional expected-signal field next to acceptance criteria
+  rationale: Acceptance criteria say done; a signal line says what would show it mattered,
+    written before building.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C1
+  hypothesis: If we do this, results are easier to judge because the expectation was
+    set in advance.
+  verdict_why: Same bet as B50; an expected-signal field next to acceptance is B50's
+    hypothesis/metric slot.
+- id: B7
+  title: Agent drafts the result from the merged PR and comments; human confirms in
+    one keystroke
+  rationale: 'Pre-mortem: people stop recording because it is a chore. Move the writing
+    to the agent, keep the decision human.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C11
+  critic:
+    evidence: an agent reading its own PR is the weakest judge of its outcome
+  hypothesis: If we do this, recorded-result share rises because the human only confirms.
+  verdict_why: 'Harness-side drafting keeps P1 (CLI calls no model) and P4 (human
+    confirms). Evidence on agent self-assessment is weak (AgenTracer: <10% failure
+    attribution; Dixit et al. confabulation), so drafts must be treated as leads.'
+- id: B8
+  title: Show past results of similar nodes at the start of a brainstorm
+  rationale: 'Pre-mortem: results get recorded but never read. Put them where decisions
+    are made.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C16
+  hypothesis: If we do this, recorded results influence new ideas because they appear
+    in the session prompt.
+  verdict_why: Feeds recorded results back into the next brainstorm (closes the loop
+    the frame asks for); depends on B50 producing data first.
+- id: B9
+  title: Per-PM ownership on nodes and results, with a digest per PM
+  rationale: Priya shares the roadmap with two other PMs and cannot see only her results;
+    the single-PM assumption breaks.
+  kind: feature
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C14
+  hypothesis: If we do this, multi-PM teams record results because each sees their
+    own gaps.
+  verdict_why: Same bet as B37.
+- id: B10
+  title: 'Seed init with one worked example: a shipped node and its result'
+  rationale: A first-week user does not know what a good result looks like; an example
+    answers it without docs.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C19
+  hypothesis: If we do this, first-week result recording rises because the format
+    is visible.
+  verdict_why: Once B50 exists, the init scaffold's M1.1 sample could show a recorded
+    outcome as a worked example; depends on B50.
+- id: B11
+  title: Harness hook appends turns and cost per task to a file in git
+  rationale: No signal for agent cost exists today; the harness knows it and the CLI
+    need not call a model.
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C23
+  hypothesis: If we do this, turns and cost per task become measurable because every
+    task writes one row.
+  verdict_why: Same bet as B46.
+- id: B12
+  title: Agent logs 'had to search for X' when context was missing
+  rationale: A new agent on its first turn hits gaps; a one-line note per gap, tallied
+    weekly, shows which context to add.
+  kind: experiment
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C24
+  hypothesis: If we do this, wasted turns fall because missing context is named and
+    added.
+  verdict_why: Free-form version of B13; free-form self-diagnosis confabulates (Dixit
+    et al. 0/121).
+- id: B13
+  title: 'Context receipt: agent marks which brief files it used and which it ignored'
+  rationale: 'Tests whether agent context should shrink: files never used across many
+    tasks are candidates to drop.'
+  kind: experiment
+  effort: M
+  evidence:
+  - https://arxiv.org/html/2605.29463v1
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C24
+  sources:
+  - url: https://arxiv.org/html/2605.29463v1
+    quote: increasing correct object mention from 0% to 86%
+    supports: a grounded, structured report format sharply improves self-reports
+    stance: for
+    tool: claude WebFetch
+    source_type: paper
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  hypothesis: If we do this, turns per task fall because unused context is removed
+    on evidence.
+  verdict_why: Context receipt is a structured self-report; Dixit et al. show grounded
+    templates help, AgenTracer shows attribution is weak. Pilot in the sandbox before
+    shipping (OpenAI report).
+- id: B14
+  title: Set a size budget for the managed AGENTS section; each addition removes a
+    line
+  rationale: Evidence on context quality is mixed; a budget forces shrinking before
+    measuring.
+  kind: refactor
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C40
+  hypothesis: If we do this, agent turns do not rise from bloat because the section
+    cannot grow.
+  verdict_why: Same family as B43 with a hard line budget; the meter comes first.
+- id: B15
+  title: Record vendor guidance sources and last-reviewed date per managed paragraph;
+    warn when old
+  rationale: 'Pre-mortem: the guidance went stale and nobody noticed. Make age a visible
+    number.'
+  kind: feature
+  effort: M
+  evidence:
+  - https://newsletter.posthog.com/p/your-agentsmd-is-holding-you-back
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C31
+  sources:
+  - url: https://newsletter.posthog.com/p/your-agentsmd-is-holding-you-back
+    quote: For each line, if you can’t name the failure it prevents, delete it.
+    supports: every rule should carry the failure it prevents
+    stance: for
+    tool: claude WebFetch
+    source_type: customer-report
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  critic:
+    evidence: OpenAI report warns provenance itself rots and can lend weak rules legitimacy
+  hypothesis: If we do this, staleness against vendor guidance falls because each
+    paragraph shows its review date.
+  verdict_why: 'Per-rule source and last-reviewed date: the provenance both reports
+    recommend, kept in the template and stripped at render (zero runtime cost). Implements
+    the adopted rule-provenance item.'
+- id: B16
+  title: Quarterly model-and-practice review as a templated brainstorm session
+  rationale: The maintainer wants research to be regular; a seeded session with a
+    checklist makes it a habit, human-run.
+  kind: experiment
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C34
+  hypothesis: If we do this, guidance staleness falls because a review is scheduled
+    and has a shape.
+  verdict_why: 'Mechanism for B41: run the review as a templated brainstorm session
+    (dogfoods brainstorm).'
+- id: B17
+  title: A harness skill that diffs shipped guidance against current vendor docs,
+    run by the human
+  rationale: Keeps the CLI model-free (principle 4) while letting the maintainer audit
+    drift with their own harness.
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C35
+  hypothesis: If we do this, drift is found sooner because audit costs one command
+    in the maintainer's IDE.
+  verdict_why: Same bet as B42.
+- id: B18
+  title: Alternate two variants of the managed section across tasks and compare outcomes
+  rationale: First-round approval rate and turns per task already exist as signals;
+    use them as the test of guidance changes.
+  kind: experiment
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C26
+  hypothesis: If we do this, guidance changes are judged by evidence because variants
+    are compared on the same signals.
+  verdict_why: Same bet as B27.
+- id: B19
+  title: Add a bets level above phases with a hypothesis and kill criteria
+  rationale: If the PM role is moving toward strategy, acceptance criteria are the
+    wrong unit at the top; a bet is checked by result.
+  kind: feature
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C12
+  critic:
+    dissent: B21/B63 framing would make this core
+  hypothesis: If we do this, strategy-minded PMs adopt because the top of the graph
+    states what to learn, not only what to build.
+  verdict_why: Imports strategic-PM machinery; both research reports advise against
+    a strategy subsystem (no evidence for outcome roadmaps or bets formats); P9.
+- id: B20
+  title: Flag adjacent planned work when a shipped node's result says it did not matter
+  rationale: A faster feature factory keeps building more of what failed; connect
+    results back to the plan.
+  kind: feature
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: pre-mortem
+    round: '1'
+    shard: s1
+  cluster_id: C17
+  hypothesis: If we do this, less follow-on work is built on failed bets because it
+    is flagged for review.
+  verdict_why: Flags dependent planned work when a result says 'did not matter'; deterministic
+    once results exist; depends on B50.
+- id: B21
+  title: Reposition specy-road as delivery plus learning coordination
+  rationale: The fixed assumption that this is delivery-only is a choice; naming learning
+    as in scope changes the product story.
+  kind: research
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-sonnet-5-5
+    lens: jobs-to-be-done
+    round: '1'
+    shard: s1
+  cluster_id: C39
+  hypothesis: If we decide this, the roadmap gains a place for results because the
+    scope statement allows it.
+  verdict_why: Repositioning as delivery plus learning coordination changes the purpose
+    statement; both reports say stay delivery with thin learning hooks (which B50/B3
+    already are). A PM decision.
+- id: B22
+  title: Expiry dates on managed agent rules
+  rationale: 'Like a drug''s shelf life: each rule in the managed AGENTS.md section
+    carries a review-by date or model generation; validate warns after it lapses,
+    so guidance is re-justified on a schedule instead of accreting.'
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem
+    round: '1'
+  cluster_id: C31
+  hypothesis: If rules expire, the share of managed rules re-justified within a model
+    generation rises because lapsed rules are surfaced instead of forgotten.
+  verdict_why: Same bet as B15 (expiry is the review date).
+- id: B23
+  title: Guardrail fire drills
+  rationale: Trap tasks that tempt an agent to self-approve, write in another worker's
+    checkout or skip the brief, run on a schedule like a fire drill; pass/fail read
+    from recorded artifacts, not model judgement.
+  kind: experiment
+  effort: M
+  evidence:
+  - https://newsletter.posthog.com/p/your-agentsmd-is-holding-you-back
+  - https://github.com/dbaggott/claude-plugins/issues/25
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem
+    round: '1'
+  cluster_id: C29
+  sources:
+  - url: https://newsletter.posthog.com/p/your-agentsmd-is-holding-you-back
+    quote: '`wizard-ci` runs the PostHog Wizard on all ~40 sample apps and creates
+      one PR for each.'
+    supports: teams regression-test agent context on sample apps
+    stance: for
+    tool: claude WebFetch
+    source_type: customer-report
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  - url: https://github.com/dbaggott/claude-plugins/issues/25
+    quote: needs roughly 120 runs per arm to separate from zero.
+    supports: a small regression suite catches gross breaks, not subtle ones
+    stance: against
+    tool: claude WebFetch
+    source_type: customer-report
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  - url: https://github.com/dbaggott/claude-plugins/issues/25
+    quote: 'The mis-route only appeared on destination-shaped phrasings:'
+    supports: regression prompts must be end-to-end task phrasings
+    stance: for
+    tool: claude WebFetch
+    source_type: customer-report
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  critic:
+    evidence: 'dbaggott #25 shows obvious prompts catch nothing; cases must be destination-shaped'
+    feasibility: about $10-20 per upgrade run
+  hypothesis: If drills run per harness upgrade, silent guardrail regressions are
+    caught before adopters hit them.
+  verdict_why: The regression/trap suite both reports rank first or high; guardrails
+    hide their own failures, so trap tasks are the only way to test rare high-cost
+    rules; runs in the existing sandbox runbook (P5, harness runs it, P1).
+- id: B24
+  title: Outcome aging report
+  rationale: 'Borrowed from accounts-receivable aging: shipped nodes whose outcome
+    is due sit in 0-30/30-60/60+ day buckets in the digest, so outcome debt is visible
+    without a form.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem
+    round: '1'
+  cluster_id: C5
+  hypothesis: If outcome debt is shown as aging buckets, the share of shipped work
+    with a recorded result rises because overdue items become embarrassing to ignore.
+  verdict_why: Same bet as B3 with aging buckets as presentation; fold into B3 if
+    wanted.
+- id: B25
+  title: Rule recall notices on upgrade
+  rationale: 'Like a product recall: when a managed rule is withdrawn or found harmful,
+    upgrade prints why and what the adopter should check in their own AGENTS.md text
+    that copied it.'
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem
+    round: '1'
+  cluster_id: C33
+  hypothesis: If withdrawals come with a recall notice, consumer-authored copies of
+    bad rules are removed instead of lingering.
+  verdict_why: Recall notices on upgrade help adopters who copied a withdrawn rule;
+    cheap; only matters once rules are withdrawn.
+- id: B26
+  title: Context lockfile
+  rationale: 'Like package-lock.json: a generated record of every context artifact
+    injected (block version, skill hashes, digest hash) per commit, so a behaviour
+    change can be bisected to a context change.'
+  kind: platform
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: analogous-domains
+    round: '1'
+  cluster_id: C37
+  hypothesis: If context is locked and hashed, time to attribute an agent regression
+    to a context change drops because bisecting becomes possible.
+  verdict_why: Same bet as B55.
+- id: B27
+  title: Context variants behind a flag
+  rationale: 'Like feature flags: a repo setting selects lean or full managed guidance,
+    so any team can run its own on/off comparison instead of trusting the toolkit''s
+    average.'
+  kind: experiment
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: analogous-domains
+    round: '1'
+  cluster_id: C26
+  hypothesis: If teams can flip variants, adopters produce their own evidence on whether
+    the guidance earns its cost.
+  verdict_why: Variant switch lets adopters run their own lean/full comparison; the
+    maintainer's on/off run (already chosen) needs no flag, so this is second-stage.
+- id: B28
+  title: Pre-registered outcome at promote time
+  rationale: 'Like clinical-trial registration: when a brainstorm idea is promoted,
+    its hypothesis, metric and check date are frozen, so the result cannot be rationalised
+    after shipping.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: analogous-domains
+    round: '1'
+  cluster_id: C1
+  hypothesis: If outcomes are pre-registered, recorded results are less often reframed
+    to look like success.
+  verdict_why: 'Carry-over mechanism for B50: freeze hypothesis and metric at promote
+    (brainstorm already holds them, P3 reuse). Fold into B50; pre-registration framing
+    is analogy, not evidence.'
+- id: B29
+  title: Agent session flight recorder
+  rationale: 'Like an aircraft data recorder: a harness hook writes turns, tokens,
+    files re-read and wasted commands per task into work/, without the CLI calling
+    a model, giving teams a cost-per-task signal.'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: analogous-domains
+    round: '1'
+  cluster_id: C23
+  hypothesis: If per-task cost is recorded, context changes can be judged by turns
+    and tokens instead of impressions.
+  verdict_why: Same bet as B46.
+- id: B30
+  title: Ship a practice advisory with each release
+  rationale: 'Put the maintainer''s periodic research to another use: each release
+    carries a short ''what changed in agent practice'' advisory that also explains
+    every managed-guidance change.'
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: scamper
+    round: '1'
+  cluster_id: C32
+  hypothesis: If each release explains guidance changes with evidence, adopters trust
+    and keep the managed section instead of editing around it.
+  verdict_why: A per-release 'what changed in agent practice' note is cheap and fits
+    the existing whats-new doc; it is the publishing end of B41.
+- id: B31
+  title: Learned, not Complete, as the last status
+  rationale: 'Reverse the lifecycle: in opt-in projects a node ends at Learned, which
+    a human sets with one line on what happened; Complete becomes an intermediate
+    state.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: parked
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: scamper
+    round: '1'
+  cluster_id: C9
+  critic:
+    dissent: it is the only idea that stops treating acceptance as done by construction
+  hypothesis: If the terminal state is Learned, teams stop treating acceptance as
+    success.
+  decision:
+    status: parked
+    reason: Changes the status every tool reads; both research reports reject a post-ship
+      stage; B50 records outcomes without a new state
+    decided_at: '2026-10-28'
+    revisit_when: the B50 pilot shows outcome records are kept but ignored
+  verdict_why: 'Changes the status lifecycle every tool reads (finish, rollup, GUI,
+    digest). Both research reports reject a post-ship node type; a terminal status
+    is the same weight. P9 smallest change: B50 adds the record without a new state.'
+- id: B32
+  title: Community regression corpus
+  rationale: 'Combine adopters'' context failures into one shared set: an issue form
+    lets teams contribute a reproducible case that broke their agents, and the toolkit''s
+    regression suite grows from real use.'
+  kind: platform
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: scamper
+    round: '1'
+  cluster_id: C25
+  hypothesis: If adopters contribute cases, the regression set covers failures the
+    maintainer's sandbox never sees.
+  verdict_why: Community-contributed regression cases widen coverage beyond the maintainer's
+    sandbox; needs a reproducibility bar so it does not become an issue tracker.
+- id: B33
+  title: Outcome review drafter (when the CLI may call a model)
+  rationale: 'Remove the no-model constraint for one opt-in command: given an analytics
+    export the human pastes, draft the outcome review for the human to edit and record.
+    Parked until the constraint changes.'
+  kind: research
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal
+    round: '1'
+  cluster_id: C11
+  hypothesis: If drafting is cheap, more outcomes get recorded because the blank-page
+    cost disappears.
+  verdict_why: 'Can run without a constitution change: the CLI hands the draft job
+    to the team''s harness one-shot, as worker delegate already does (P1 holds because
+    the harness calls the model; P5). Build only if the B50 pilot shows the blank
+    page is the obstacle; the draft is a starting point, never the verdict (agent
+    self-assessment <10% accurate, AgenTracer).'
+- id: B34
+  title: Bets portfolio view
+  rationale: 'A competing PM''s instinct: show every open hypothesis as a bet with
+    confidence, cost so far and kill criterion, so the roadmap reads as a portfolio
+    rather than a queue.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal
+    round: '1'
+  cluster_id: C12
+  hypothesis: If hypotheses are shown as a portfolio, more ideas are killed or iterated
+    early because weak bets stand out.
+  verdict_why: Same bet as B19.
+- id: B35
+  title: Decision journal with calibration
+  rationale: Each keep/iterate/kill decision records what was predicted and later
+    what happened; over a year each PM sees how calibrated their bets were.
+  kind: experiment
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal
+    round: '1'
+  cluster_id: C13
+  hypothesis: If PMs see their own calibration, prediction quality improves over successive
+    quarters.
+  verdict_why: No evidence base; heavy; personal calibration scoring strains P7 human-owned
+    decisions only weakly but adds paperwork the frame rules out.
+- id: B36
+  title: Outcome checks in the solo dev-PM loop
+  rationale: 'For one person who is dev and PM: do-next-available-task mentions outcomes
+    that are due before handing out the next task, so learning happens inside the
+    loop they already run.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: jobs-to-be-done
+    round: '1'
+  cluster_id: C6
+  critic:
+    feasibility: do-next output is already long; one line only
+    value: for teams with a separate PM this lands on the wrong person
+  hypothesis: If due outcomes appear where the solo dev-PM already looks, recording
+    rates rise without a separate ritual.
+  verdict_why: 'Serves the solo dev-PM segment named in the frame: due outcomes appear
+    in do-next output, where that person already looks; no new ritual (P9). Depends
+    on B50/B3.'
+- id: B37
+  title: 'Several PMs: owners and an outcome reviewer per node'
+  rationale: 'For teams with many PMs: a node names its owning PM and who judges its
+    outcome; the digest groups due outcomes by person.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: jobs-to-be-done
+    round: '1'
+  cluster_id: C14
+  critic:
+    feasibility: touches schema, digest, GUI
+  hypothesis: If ownership is explicit, fewer due outcomes are orphaned between PMs.
+  verdict_why: Frame says several PMs is a real case; owner plus outcome reviewer
+    per node is the clearest statement. Needs a decision on whether node ownership
+    belongs in the graph or the registry.
+- id: B38
+  title: Five-minute weekly PM brief
+  rationale: 'A generated weekly read: what shipped, outcomes due, open hypotheses,
+    guidance warnings. It replaces status meetings for small teams, not with more
+    paperwork but less.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: jobs-to-be-done
+    round: '1'
+  cluster_id: C15
+  critic:
+    value: duplicates roadmap-context.md unless scoped to 'since last week'
+  hypothesis: If the weekly brief exists, PM time on status assembly falls and outcome
+    reviews happen on cadence.
+  verdict_why: A weekly generated read could replace status assembly for small teams;
+    overlaps the existing digest, so it may be a digest view rather than a new artifact
+    (P3 reuse).
+- id: B39
+  title: 'The 0.1x outcome: one learned line'
+  rationale: 'The smallest possible version: one optional free-text ''learned:'' field
+    set when a node is marked Complete; no metrics, no gates, no dates.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: 10x-0.1x
+    round: '1'
+  cluster_id: C1
+  critic:
+    value: lowest paperwork, but cannot be listed as due without a date
+  hypothesis: If the field is one line, it gets filled often enough to test whether
+    teams care at all.
+  verdict_why: 'The 0.1x alternative to B50: one free-text line. A real design choice
+    for the PM (structured record vs one line); the OpenAI report''s paperwork-risk
+    test favours starting here if adoption is the doubt.'
+- id: B40
+  title: Guidance rendered per model family
+  rationale: 'At 10x: render the managed section per harness and model family from
+    the model profiles specy-road already ships, so each model gets the tendencies
+    and rules that matter for it.'
+  kind: platform
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: 10x-0.1x
+    round: '1'
+  cluster_id: C28
+  hypothesis: If guidance is tailored per model family, turns per task fall because
+    each model stops paying for rules aimed at another.
+  verdict_why: Same bet as B78, without the measurement.
+- id: B41
+  title: Research cadence as part of the release process
+  rationale: 'Make the maintainer''s deep-research runs a versioned, scheduled practice:
+    research prompts live in the repo with an evidence-table template, run on every
+    major model release, and their findings must be triaged before the next release.'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: 10x-0.1x
+    round: '1'
+  cluster_id: C34
+  critic:
+    feasibility: cadence needs an owner and a trigger, or it lapses
+  hypothesis: If research runs on a cadence, the lag between a vendor's guidance change
+    and specy-road's managed guidance shrinks.
+  verdict_why: 'The PM named this directly (frame: do-nothing-for-a-year); versioned
+    research prompts with an evidence template, run on major model releases, with
+    findings triaged before the next release. Builds on the maintainer''s existing
+    research prompts (P3).'
+- id: B42
+  title: Agent-run guidance refresh skill
+  rationale: A harness-native skill (no CLI model call) that has the agent compare
+    the managed rules with current vendor docs and write a dated report for the maintainer
+    to triage.
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: 10x-0.1x
+    round: '1'
+  cluster_id: C35
+  hypothesis: If the agent does the comparison, staleness is detected between full
+    research runs at near-zero cost.
+  verdict_why: Cheap between-run staleness check run by the agent in the harness (P1,
+    P5); no evidence on its precision.
+- id: B43
+  title: Context budget meter
+  rationale: validate reports how many lines and bytes of always-injected context
+    each harness receives (AGENTS chain, CLAUDE.md, block) against documented limits
+    such as Codex's 32 KiB, deterministically.
+  kind: capability
+  effort: S
+  evidence:
+  - https://code.claude.com/docs/en/memory
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: 10x-0.1x
+    round: '1'
+  cluster_id: C40
+  sources:
+  - url: https://code.claude.com/docs/en/memory
+    quote: target under 200 lines per CLAUDE.md file.
+    supports: harnesses document size targets for always-loaded context
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  hypothesis: If the budget is visible, teams notice truncation and bloat before agents
+    silently lose instructions.
+  verdict_why: Deterministic meter of always-injected context per harness against
+    documented limits (Codex 32 KiB silent truncation; Claude <200 lines target).
+    Cheap; P1; no new behaviour.
+- id: B44
+  title: Stamp the managed AGENTS.md section with a reviewed-against date and warn
+    when it ages
+  rationale: 'Pre-mortem: guidance went stale and nobody noticed. Constraint: no network.
+    A local date plus a validate warning after N days is the cheapest staleness signal
+    that needs no vendor lookup.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C31
+  hypothesis: If validate warns on aged guidance, the guidance-staleness signal becomes
+    visible per repo because the age is checked on every run instead of never.
+  assumptions:
+  - Teams run validate often enough to see the warning.
+  verdict_why: Same bet as B15 at section level.
+- id: B45
+  title: Record shipped outcomes as a git commit trailer instead of a new file
+  rationale: 'Pre-mortem: nobody filled in the outcome field. Constraint: no GUI and
+    no extra files. An ''Outcome: <node> moved|flat|unknown'' trailer on any later
+    commit costs one line where people already type.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C1
+  critic:
+    feasibility: the digest would have to scan history for trailers
+  hypothesis: If outcome capture is a commit trailer, share of shipped work with a
+    recorded result rises because the recording happens inside an existing habit.
+  assumptions:
+  - People will record outcomes at all if the cost is near zero.
+  verdict_why: 'Storage alternative for B50: a git commit trailer is git-native (P5)
+    and needs no schema, but is hard to list as ''due'' and invisible to the PM UI.'
+- id: B46
+  title: Have harness hooks append turn and token counts to the review record
+  rationale: 'Pre-mortem: we claimed context improvements with no numbers. Constraint:
+    the CLI still never calls a model. Post-session hooks read the harness''s own
+    transcript/usage output and write counts into the commit-bound record.'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C23
+  critic:
+    feasibility: Claude Code, Codex and Cursor hooks expose different data
+  hypothesis: If each task's review record carries turns and cost, agent turns and
+    cost per task become measurable because the data rides on a record that already
+    exists.
+  assumptions:
+  - Each supported harness exposes usage counts to a hook.
+  verdict_why: 'Per-task turns/tokens attached to the review record would give the
+    frame''s cost metric. Feasibility unverified: harness hooks may not expose token
+    counts on all three harnesses (P5).'
+- id: B47
+  title: Compute first-round review approval rate from existing records with a read-only
+    stats command
+  rationale: 'Pre-mortem: we never knew if context changes helped. Constraint: no
+    new data capture allowed. Review records already exist in git; a read-only rollup
+    yields one signal for free.'
+  kind: feature
+  effort: S
+  evidence:
+  - https://243608892.fs1.hubspotusercontent-na2.net/hubfs/243608892/AI_Engineering_Impact_Report_July_2025_Faros_AI.pdf
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C22
+  sources:
+  - url: https://243608892.fs1.hubspotusercontent-na2.net/hubfs/243608892/AI_Engineering_Impact_Report_July_2025_Faros_AI.pdf
+    quote: PR review time increased by 91%, indicating that human review remains a
+      bottleneck.
+    supports: review is the measured bottleneck, so review metrics matter
+    stance: for
+    tool: claude WebFetch
+    source_type: customer-report
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  critic:
+    evidence: approval rate also moves with reviewer strictness, so read it as a trend
+  hypothesis: If approval rate is computed from history, first-round approval becomes
+    a tracked signal because no one has to do new paperwork to get it.
+  verdict_why: Computes a frame metric (first-round review approval rate) from records
+    that already exist (P3, P6); read-only, deterministic, no new artifact.
+- id: B48
+  title: Keep a dated research ledger that the managed section is generated from
+  rationale: 'Pre-mortem: research happened in chat and evaporated. Constraint: one
+    engineer. A tracked research/ ledger of dated findings (vendor guidance version,
+    what changed) with the managed section derived from it makes the cadence auditable
+    and survivable.'
+  kind: research
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C32
+  hypothesis: If guidance is generated from a dated ledger, staleness relative to
+    vendor guidance drops because each rule cites the finding and date it came from.
+  assumptions:
+  - The maintainer will keep a research cadence once it has a home.
+  verdict_why: A research ledger that the managed section is generated from would
+    make every rule traceable to evidence; heavier than B15; decide after B15.
+- id: B49
+  title: Give briefs a hard token budget that fails over the limit
+  rationale: 'Pre-mortem: context bloat crept in a paragraph at a time. Constraint:
+    pretend the agent has an 8k window. A deterministic size estimate and ''brief
+    --budget'' failure makes growth a visible decision.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C41
+  hypothesis: If briefs have a budget, agent turns per task fall because irrelevant
+    context is cut before it reaches the agent.
+  assumptions:
+  - Brief size correlates with wasted turns, which the research says is measured but
+    mixed.
+  verdict_why: 'A hard brief token budget has no evidence (Khatri 2026: correctness
+    unaffected by injection strategy) and could truncate needed intent.'
+- id: B50
+  title: Store a pointer and a human verdict for outcomes, never the metric itself
+  rationale: 'Pre-mortem: we rebuilt a worse analytics tool. Constraint: specy-road
+    may store no metric data. A node keeps a link to the team''s dashboard/query,
+    a check-back date, and a moved/flat/unknown verdict. Privacy: the record holds
+    a pointer to the metric plus the human verdict; a raw value is optional and is
+    committed to git, so confidential metrics record only the pointer. The record
+    lives on the node and inherits its sensitivity and may_process rules.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: accepted
+  recommendation: strong
+  promoted_node_key: b6b6590d-4b43-48aa-8bd9-92a92b57d977
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C1
+  critic:
+    value: 'closes the one lifecycle gap both reports found: brainstorm hypotheses
+      are dropped at ship'
+    feasibility: schema change reaches consumers only via refresh-schemas/upgrade
+    evidence: 'no study shows an outcome field improves products; pilot with a kill
+      test (OpenAI report: ~20 nodes)'
+  hypothesis: If outcomes are pointer-plus-verdict, recorded-result share rises without
+    overlapping analytics tools because the cost is a link and one word.
+  assumptions:
+  - Teams already have somewhere their metrics live.
+  verdict_why: 'Best statement of the outcome-record bet: pointer plus human verdict
+    keeps metrics in the team''s analytics tool (P1 no API, P4 human decides, P8 use
+    existing tools). Both research reports independently rank an optional, human-closed
+    outcome record as the smallest worthwhile addition; indirect support from Kohavi
+    2009 (about 2/3 of ideas fail their metric) and Allen & McDonald 2025 (quant+qual
+    beats either).'
+- id: B51
+  title: Let each node name its owning PM and route outcome check-ins to them
+  rationale: 'Pre-mortem: with several PMs, nobody owned the post-ship question. Constraint:
+    two PMs in different time zones who never meet. An owner field plus per-owner
+    due check-ins replaces the single-PM assumption.'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C14
+  hypothesis: If outcome check-ins have a named owner, recorded-result share rises
+    in multi-PM teams because the question is no longer everyone's and therefore no
+    one's.
+  verdict_why: Same bet as B37.
+- id: B52
+  title: Warn when review records show a newer model than the guidance was last checked
+    against
+  rationale: 'Pre-mortem: a model upgrade silently broke the guidance. Constraint:
+    air-gapped, no network ever. Review records already know which model reviewed;
+    if a model id appears that the guidance ledger has not seen, flag it locally.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C31
+  hypothesis: If unseen model ids raise a flag, guidance staleness is caught at the
+    moment it starts because the trigger is the team's own model change.
+  assumptions:
+  - Review records capture the model id reliably.
+  verdict_why: 'A sharper trigger for B15: warn when review records show a model newer
+    than the guidance was checked against; deterministic from existing records (P6).'
+- id: B53
+  title: Make the outcome check-in a one-line command usable from a phone terminal
+  rationale: 'Pre-mortem: outcome review needed a laptop and a meeting, so it never
+    happened. Constraint: must work from a phone. ''specy-road outcome <node> moved
+    "note"'' over SSH or a chat-ops bot is the whole interaction.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: pre-mortem-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C8
+  hypothesis: If an outcome takes one short command, recorded-result share rises because
+    the moment of knowing and the moment of recording can coincide.
+  verdict_why: Ergonomics only; recording via edit-node is already one line; revisit
+    after B50 exists.
+- id: B54
+  title: Add an opt-in guidance refresh command as a named model/network exception
+  rationale: 'Remove ''CLI never calls a model'' for one command, like review-node:
+    fetch named vendor guidance pages, diff them against the managed section, and
+    propose edits for a human to accept. Constraint: must be free, so it uses the
+    team''s own key or none (diff only).'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C36
+  hypothesis: If refresh is one opt-in command, staleness against vendor guidance
+    shrinks because checking becomes cheaper than ignoring.
+  assumptions:
+  - Vendor guidance is stable enough at known URLs to diff.
+  verdict_why: A CLI model/network exception contradicts P4 today; the PM said not
+    now.
+- id: B55
+  title: Ship guidance as versioned modules pinned by a lockfile with an outdated
+    command
+  rationale: 'Remove ''one fixed managed section'': guidance becomes modules per harness
+    and model family, pinned in a lock file, with ''guidance outdated'' like pip list
+    --outdated. Constraint: offline installs must still work, so modules are vendored
+    in the wheel.'
+  kind: platform
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C37
+  hypothesis: If guidance is pinned per module, teams adopt updates selectively and
+    staleness falls because updating one harness's rules no longer means taking all
+    changes.
+  assumptions:
+  - Guidance differs meaningfully by harness and model family.
+  verdict_why: Versioned guidance modules with a lockfile is heavy and unsupported
+    by evidence; revisit if B63 direction is chosen.
+- id: B56
+  title: 'Add a post-ship lifecycle state after done: shipped, then validated or not'
+  rationale: 'Remove ''acceptance criteria are the definition of done'': nodes carry
+    a success signal alongside acceptance criteria, and done splits into shipped and
+    validated/refuted after a check-back date. Constraint: no extra required fields;
+    the signal is optional.'
+  kind: feature
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C9
+  hypothesis: If the graph has a post-ship state, the share of shipped work with a
+    recorded result rises because unvalidated work stays visibly open.
+  assumptions:
+  - Adopters care whether shipped work achieved anything.
+  verdict_why: Same bet as B31.
+- id: B57
+  title: 'Apply separated roles to outcome verdicts: the implementer cannot record
+    them'
+  rationale: 'Remove ''specy-road is only delivery coordination'' by reusing its strongest
+    mechanism: an outcome verdict is a recorded file bound to a date, and the implementing
+    session cannot write it. Constraint: no new roles beyond what review already has.'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C10
+  critic:
+    value: guards against marking your own work a success
+  hypothesis: If outcome verdicts need a separate recorder, recorded results become
+    more trustworthy because nobody grades their own shipment.
+  verdict_why: Extends P6 (separated roles) to outcome verdicts. Strains the solo
+    dev-PM segment in the frame, where implementer and PM are one person; would need
+    to be opt-in.
+- id: B58
+  title: Publish agent guidance from its own repo on a research cadence, independent
+    of package releases
+  rationale: 'Remove ''guidance ships with the package version'': a separate guidance
+    repo releases on a monthly research cadence; consumers pin or vendor it. Constraint:
+    one maintainer, so the cadence is fixed and small.'
+  kind: platform
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C38
+  hypothesis: If guidance releases on its own cadence, staleness drops because guidance
+    updates are not blocked on human-owned version bumps of the toolkit.
+  assumptions:
+  - Consumers will accept a second thing to pin.
+  verdict_why: Same direction as B63.
+- id: B59
+  title: Let teams emit a structured 'this rule cost us turns' report to send upstream
+  rationale: 'Constraint: research must be free for the maintainer. Remove the assumption
+    that the maintainer does all research: adopters run a command that summarises
+    which guidance rules their agents tripped on and open a PR or issue with it.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C25
+  hypothesis: If adopters report rule friction, guidance quality improves faster because
+    the evidence comes from many real repos instead of one maintainer's reading.
+  assumptions:
+  - Adopters will share friction data without it being sensitive.
+  verdict_why: Same bet as B32.
+- id: B60
+  title: Run lean-versus-full context as a deterministic A/B inside briefs
+  rationale: 'Answers ''shrink or measure first'': assign each node a brief variant
+    by hashing its id, record the variant in the review record, and compare first-round
+    approval and turns. Constraint: no model calls, so variant assignment and comparison
+    are pure bookkeeping.'
+  kind: experiment
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C26
+  hypothesis: If variants are assigned and recorded, we learn whether context size
+    changes approval rate because the comparison is on the team's own tasks.
+  assumptions:
+  - Teams have enough tasks for a difference to show.
+  verdict_why: Same bet as B27.
+- id: B61
+  title: Make research a recurring gate node that reopens itself and fails validate
+    when overdue
+  rationale: 'Constraint: one engineer who forgets. Remove ''gates are one-off'':
+    a recurring research gate in the graph reopens every N weeks and validate fails
+    while it is overdue, so cadence is enforced by the same tool that enforces everything
+    else.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C34
+  hypothesis: If research is an overdue-able gate, the cadence holds because missing
+    it blocks the normal workflow.
+  verdict_why: Same bet as B41 with a validate failure when research is overdue; failing
+    consumer validate on the toolkit's own process is wrong for consumers.
+- id: B62
+  title: Shrink the managed AGENTS.md section to a few pointer lines and move everything
+    else into just-in-time briefs
+  rationale: 'Constraint: a 200-token cap on AGENTS.md. Remove ''agent context ships
+    as one fixed section'': AGENTS.md says only how to get a brief; task-specific
+    rules arrive in the brief when relevant.'
+  kind: refactor
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C42
+  hypothesis: If always-loaded context is tiny, agent turns per task fall because
+    each agent reads only the rules its task needs.
+  assumptions:
+  - Agents reliably fetch the brief when told to.
+  verdict_why: The radical version of B64 (a few pointer lines, everything else just-in-time).
+    Decide after the on/off run.
+- id: B63
+  title: Reposition specy-road as a maintained agent-guidance distribution with the
+    roadmap as its delivery vehicle
+  rationale: 'Change of direction. Remove ''specy-road is a delivery-coordination
+    tool'': the thing teams most lack is current, harness-specific guidance that tracks
+    model change; the roadmap, briefs and reviews become the channel that delivers
+    and measures it.'
+  kind: research
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: constraint-removal-random-constraints
+    round: '1'
+    shard: s2
+  cluster_id: C38
+  critic:
+    dissent: the frame's 'keeps adapting' outcome is exactly what this optimises
+  hypothesis: If guidance becomes the product, adoption and retention rise because
+    guidance staleness is a pain every agent-using team has, roadmap or not.
+  assumptions:
+  - Teams would value maintained guidance enough to adopt a roadmap tool for it.
+  verdict_why: 'Change of direction: specy-road as a maintained agent-guidance distribution.
+    Purpose says roadmap-first coordination kit; both reports advise against a context-management
+    framework. A PM decision, not an agent one.'
+- id: B64
+  title: Turn enforceable rules into checks and keep only a pointer in prose
+  rationale: A 100-repo study found most context files restate what linters already
+    enforce. Every managed rule the CLI or a hook can enforce (review gate, shared
+    checkout, file limits) becomes a check; the prose shrinks to one line saying it
+    is enforced.
+  kind: refactor
+  effort: M
+  evidence:
+  - https://code.claude.com/docs/en/memory
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C42
+  sources:
+  - url: https://code.claude.com/docs/en/memory
+    quote: Claude treats them as context, not enforced configuration. To block an
+      action regardless of what Claude decides, use a PreToolUse hook instead.
+    supports: must-never rules belong in enforcement, not prose
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  critic:
+    dissent: prose still prevents wasted turns before enforcement fires; keep one-line
+      pointers
+  hypothesis: If enforced rules leave the prose, always-injected context shrinks without
+    losing any guarantee.
+  verdict_why: Anthropic's memory docs say enforce must-never rules with hooks, not
+    prose; Santos et al. find 62% of context files restate enforced rules. specy-road
+    already enforces the review gate in the CLI; shrink those lines to pointers. P9.
+- id: B65
+  title: Flag lint leakage in the consumer's own AGENTS.md
+  rationale: validate notices lines in the consumer's AGENTS.md that restate rules
+    their configured linters, file-limits or CI already enforce, and suggests deleting
+    them.
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C43
+  hypothesis: If restated lint rules are flagged, consumer context files get shorter
+    and agents spend fewer turns re-checking enforced rules.
+  verdict_why: Flags consumer lines that restate enforced lint rules (Santos et al.);
+    OpenAI report sets ~90% precision before default-on. The adopted stale-command
+    check is the narrower first step.
+- id: B66
+  title: Brief names the files most likely to need changing
+  rationale: Agents in a 2026 benchmark never touched any file that needed changing
+    in about a third of runs. The brief lists likely files from touch zones and git
+    history of related nodes, deterministically, before the agent searches.
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C46
+  hypothesis: If the brief points at likely files, turns spent searching fall because
+    retrieval is the measured failure surface.
+  verdict_why: Retrieval is a measured failure surface (agents miss all needed files
+    in 27-35% of runs); deterministic from touch zones and history; extra brief lines
+    also add cost (Gloaguen).
+- id: B67
+  title: Throttle agent work to review capacity
+  rationale: Review, not building, is the measured bottleneck after coding agents
+    (review time up 91% while merged PRs nearly doubled). do-next-available-task holds
+    back new leaves when unreviewed hand-offs exceed a team-set limit.
+  kind: feature
+  effort: M
+  evidence:
+  - https://243608892.fs1.hubspotusercontent-na2.net/hubfs/243608892/AI_Engineering_Impact_Report_July_2025_Faros_AI.pdf
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C20
+  sources:
+  - url: https://243608892.fs1.hubspotusercontent-na2.net/hubfs/243608892/AI_Engineering_Impact_Report_July_2025_Faros_AI.pdf
+    quote: PR review time increased by 91%, indicating that human review remains a
+      bottleneck.
+    supports: throttling work to review capacity targets the measured bottleneck
+    stance: for
+    tool: claude WebFetch
+    source_type: customer-report
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  critic:
+    value: the only idea aimed at the measured bottleneck
+    feasibility: unreviewed hand-offs are countable from work/reviews
+  hypothesis: If pickup is capped by review backlog, review wait time and skipped
+    reviews fall because work stops piling up ahead of reviewers.
+  verdict_why: 'Review is the measured bottleneck (Faros 2025: +98% merged PRs, +91%
+    review time, flat lead time). Throttling pickup to review capacity targets it
+    directly, but changes do-next behaviour adopters rely on; needs a PM decision
+    and a default-off flag.'
+- id: B68
+  title: Digest shows the review backlog
+  rationale: A digest line with unreviewed hand-offs and their age, so the PM sees
+    the real bottleneck instead of the build queue.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C22
+  hypothesis: If the review backlog is visible, PMs reprioritise toward unblocking
+    review rather than adding work.
+  verdict_why: Review backlog line in the digest; cheap and aimed at the measured
+    bottleneck (Faros); same family as B47.
+- id: B69
+  title: Outcome-gated work-in-progress limit
+  rationale: 'Product research finds an inverted U between development speed and product
+    performance. An opt-in limit: no new leaves under a milestone while more than
+    N shipped nodes there have no recorded outcome.'
+  kind: experiment
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: low-typicality
+    round: '2'
+  cluster_id: C21
+  hypothesis: If unexamined shipping blocks new work, outcome records get filled because
+    they become the way to unblock.
+  verdict_why: Coercive gating on outcomes, no evidence; the inverted-U speed result
+    is SME product data, not a mechanism; paperwork risk the frame rules out.
+- id: B70
+  title: Outcome record holds one number and one customer quote
+  rationale: A 3,768-launch study found the best results came from combining quantitative
+    and qualitative evidence. The outcome record has exactly two slots, a metric reading
+    and a verbatim customer quote, and brainstorm evidence quotes can be linked into
+    it.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C1
+  critic:
+    evidence: the study is CPG products, not software teams
+  hypothesis: If outcomes need both a number and a quote, recorded learnings are more
+    often acted on.
+  verdict_why: Two-slot record (number + customer quote) is the closest design to
+    the measured effect in Allen & McDonald 2025 (3,768 launches); adds a second required
+    slot, which raises paperwork risk.
+- id: B71
+  title: Turn review rejections into regression cases automatically
+  rationale: Agents diagnose their own failures badly, under 10% accuracy in one study.
+    Instead of asking them, each rejected review becomes a replayable case (task,
+    brief and commit) proposed for the regression set, with a human choosing.
+  kind: capability
+  effort: M
+  evidence:
+  - https://arxiv.org/html/2605.29463v1
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C29
+  sources:
+  - url: https://arxiv.org/html/2605.29463v1
+    quote: 0 of 121 reflections mention the correct target object
+    supports: agent self-diagnosis is unreliable; source cases from recorded failures
+      instead
+    stance: for
+    tool: claude WebFetch
+    source_type: paper
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  hypothesis: If regression cases come from rejected reviews instead of agent self-reports,
+    the set catches real failures with fewer false leads.
+  verdict_why: Sources regression cases from rejected reviews instead of agent self-reports,
+    which are unreliable (AgenTracer <10%); uses records P6 already produces.
+- id: B72
+  title: Measure the digest's own cost
+  rationale: Repository overviews did not help agents in the 2026 context-file study,
+    and the digest is read first on every task. Test it on and off in the sandbox
+    and cut any section that does not change turns or review results.
+  kind: experiment
+  effort: S
+  evidence:
+  - https://arxiv.org/abs/2602.11988
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C27
+  sources:
+  - url: https://arxiv.org/abs/2602.11988
+    quote: repository overviews, although popular and recommended by model providers,
+      are not helpful.
+    supports: always-read overview context may not earn its cost
+    stance: for
+    tool: claude WebFetch
+    source_type: paper
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  - url: https://arxiv.org/abs/2602.11988
+    quote: increasing inference cost by over 20% on average
+    supports: context files add measurable cost
+    stance: for
+    tool: claude WebFetch
+    source_type: paper
+    retrieved_at: '2026-10-28'
+    verification: unverified
+  critic:
+    dissent: the digest replaced crawling planning/ and work/, so removing it may
+      raise cost
+  hypothesis: If the digest is measured, always-paid context shrinks to the parts
+    agents actually use.
+  verdict_why: The digest is always-read context; Gloaguen et al. (arXiv 2602.11988)
+    found repository overviews unhelpful and context adds ~20% cost. Measure it in
+    the on/off run already chosen; cheap.
+- id: B73
+  title: specy-road context show
+  rationale: 'Like Gemini CLI''s /memory show: print exactly what each harness will
+    load for this repo (AGENTS chain, CLAUDE.md, managed section, skill descriptions),
+    so a PM can see what agents see.'
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: analogous-domains
+    round: '2'
+  cluster_id: C44
+  hypothesis: If assembled context is visible, teams find contradictions and duplicates
+    that no single file shows.
+  verdict_why: Shows what each harness loads (like Gemini's /memory show); cheap visibility,
+    no evidence of effect; pairs with B43.
+- id: B74
+  title: Ship the skills as a Claude Code plugin with an eval suite
+  rationale: Claude Code now ships plugin evals with a no-plugin baseline. Packaging
+    the specyrd skills as a plugin lets the vendor's own tool measure whether they
+    help, instead of a homegrown harness.
+  kind: platform
+  effort: M
+  evidence:
+  - https://claude-codex.fr/en/content/test-plugins-with-plugin-eval/
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C30
+  hypothesis: If the skills are evaluated with the harness's eval tool, the maintainer
+    gets a with-versus-without measurement on each release at low cost.
+  verdict_why: Claude Code's plugin eval gives a with/without baseline for skills
+    (P8 use the harness's tools), but covers one harness of three.
+- id: B75
+  title: Generate path-scoped rules from touch zones
+  rationale: Copilot and Cursor load path-specific instructions only when a matching
+    file is open. specy-road could emit path-scoped rule files from planning sheets
+    and touch zones, so guidance arrives only where it applies.
+  kind: platform
+  effort: L
+  evidence:
+  - https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions
+  - https://cursor.com/docs/rules
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: low-typicality
+    round: '2'
+  cluster_id: C45
+  hypothesis: If guidance is path-scoped, always-on context shrinks and relevant guidance
+    arrives at the moment it is needed.
+  verdict_why: Path-scoped guidance from touch zones follows Copilot and Cursor docs;
+    large effort; three harnesses differ in mechanism.
+- id: B76
+  title: Agent interviews the PM to write the planning sheet
+  rationale: 'If writing is for thinking, the planning sheet''s Intent should come
+    from questions, not a template: a skill has the agent interview the PM and draft
+    Intent and Approach from the answers.'
+  kind: capability
+  effort: M
+  evidence:
+  - https://dpereira.substack.com/p/are-pms-becoming-irrelevant
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: low-typicality
+    round: '2'
+  cluster_id: C47
+  hypothesis: If sheets come from an interview, Intent sections state decisions instead
+    of restating titles.
+  verdict_why: 'Writing as thinking (Pereira, anecdote): an interview skill drafting
+    Intent/Approach; harness-native (P1, P5); no evidence it improves sheets.'
+- id: B77
+  title: Keep a durable not-doing list
+  rationale: Rejected and killed ideas, with their reasons, become a short list in
+    the digest, so agents and later brainstorms do not re-propose them and the team
+    remembers why.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C18
+  hypothesis: If rejected ideas stay visible, repeat proposals fall and triage time
+    drops.
+  verdict_why: Durable not-doing list from rejected/killed ideas; brainstorm already
+    records rejections with reasons (P3 reuse); risk of becoming another always-read
+    list.
+- id: B78
+  title: Probe-and-refine guidance per model in the sandbox
+  rationale: Tuned guidance raised one model's success by 7.5 points and did not carry
+    over to another. Run a probe-and-refine loop per model family in the sandbox and
+    keep a variant only where it measurably helps.
+  kind: research
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: research
+    round: '2'
+  cluster_id: C28
+  hypothesis: If guidance is tuned per model with evidence, success rises where it
+    helps and cost falls where it does not.
+  verdict_why: Per-model tuning helped one model by 7.5 pp and did not transfer (Shepard
+    & Albrecht 2026); real but expensive; after the regression suite exists.
+- id: B79
+  title: validate flags specy-road commands that do not exist in the consumer's own
+    AGENTS.md and CLAUDE.md
+  rationale: Text outside the managed blocks goes stale as commands are renamed or
+    removed. The toolkit knows its own command list, so the check is deterministic
+    with near-100% precision; it helps Codex and Cursor users, who have no /doctor
+    prompt-audit.
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: strong
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: gap-fill
+    round: '2'
+  cluster_id: C43
+  critic:
+    value: only catches specy-road commands, not the merge-queue kind of staleness
+      PostHog hit
+  hypothesis: If stale specy-road commands are flagged, agents waste fewer turns on
+    commands that no longer exist.
+  verdict_why: The PM already chose this check; deterministic against specy-road's
+    own command list, so it clears the OpenAI report's ~90% precision bar by construction;
+    P1, P9. First step before B65 (lint leakage).
+- id: B80
+  title: PM UI shows outcome status and due markers on shipped work
+  rationale: Once outcome records exist, the Gantt shows each shipped node's outcome
+    status and a due marker, read-only at first; recording stays in the CLI until
+    the pilot shows outcomes get recorded.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-opus-5-5
+    lens: gap-fill
+    round: '2'
+  cluster_id: C48
+  hypothesis: If due outcomes are visible where the PM plans, more get recorded on
+    time.
+  verdict_why: Depends on B50 and its pilot; OpenAI report estimates +1-2 days for
+    UI; read-only first so the UI does not become a second recording path.
