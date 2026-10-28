@@ -46,6 +46,10 @@ entries:
       - docs/orchestration-workers.md
       - docs/orchestration.md
       - tests/
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - specy_road/worker_reconcile.py
+      - specy_road/bundled_scripts/worker_cli.py
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending

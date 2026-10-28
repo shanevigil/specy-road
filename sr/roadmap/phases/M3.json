@@ -301,7 +301,11 @@
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration-workers.md",
         "docs/orchestration.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/bundled_scripts/worker_cli.py"
       ],
       "type": "task"
     },
