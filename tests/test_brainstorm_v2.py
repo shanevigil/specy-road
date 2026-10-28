@@ -198,6 +198,10 @@ def test_panel_writes_independent_shards(repo: Path) -> None:
     assert s1.split("**Operator:**")[1].splitlines()[0] != s3.split("**Operator:**")[1].splitlines()[0]
     assert "/1/s1" in s1 and "/1/s3" in s3
     assert "`M0.1`" not in s1
+    # One allocation per session, replaced by `frame --allocation`: only the
+    # coordinator's prompt records it, so parallel shards cannot erase each other's.
+    assert "frame --slug" in _prompt(repo) and "--allocation \"" in _prompt(repo)
+    assert "--allocation \"" not in s1 and "do not run `brainstorm frame --allocation`" in s1
     # Round 2 writes no shards: regeneration needs the whole pool.
     _cli(repo, "add-idea", "--title", "x")
     _cli(repo, "next-round")

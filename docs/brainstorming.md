@@ -189,7 +189,11 @@ specy-road brainstorm start --topic "…" --count 30 --panel 3
 Also writes `work/brainstorm-<slug>-s1-prompt.md` … `-s3-prompt.md`: one
 cell each with a distinct operator and direction, and the rule that the
 worker must **not** read the other shards, the session file, or the roadmap
-before it finishes — workers that see each other converge. Run them as
+before it finishes — workers that see each other converge. A shard plans
+inside its own cell and does not record an allocation: the session keeps one
+grid, the coordinator's, and `frame --allocation` replaces it. Shard prompts
+carry the frame and grid recorded when they were written, so record those
+first and re-run `start` to give the shards them. Run them as
 sub-agents of your session or on other harnesses from the roster (the best
 measured gains come from different *model families*); each records with
 `--origin …/1/sN` into the same session file, and converge clusters the

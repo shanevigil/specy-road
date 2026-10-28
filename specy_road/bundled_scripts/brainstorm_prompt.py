@@ -135,7 +135,7 @@ def render_shard_prompt(root: Path, session: BrainstormSession, *, count: int,
     lines += _governance_lines(root, roadmap=False)
     if session.frame:
         lines += ["## The agreed frame", ""] + [f"- **{k}:** {v}" for k, v in session.frame.items()] + [""]
-    lines += allocation_lines(session, count)
+    lines += allocation_lines(session, count, shard=True)
     lines += shard_lines(session, shard, total)
     lines += quantity_lines(count, first_round=True)
     lines += recording_lines(session, shard=f"s{shard}")
