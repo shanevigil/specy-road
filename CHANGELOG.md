@@ -370,6 +370,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   GUI; `archive`/`restore-archive` regenerate both generated files;
   `refresh-stubs` with no stub pack is a no-op; aborting a `--local` pickup
   drops the claim without pushing. Sandbox §2 and §6 on real harnesses:
+  the reviewer's clean-tree precondition ignores only the toolkit's work/
+  bookkeeping (brief, summary, reviews) and the prompt names the packet's
+  path; re-running `finish-this-task` after a failed merge landing retries
+  the landing; the executor commits its implementation summary, and one
+  left uncommitted is kept under `work/reviews/<ID>/` instead of deleted;
+  reviewers start no presence session; review packets label registry
+  bookkeeping and leave it out of the diff;
   panel shards no longer overwrite the session's allocation; `brainstorm
   verify` matches quotes across inline tags and punctuation; round-1 and
   shard prompts say not to open the roadmap even where AGENTS.md says read it
