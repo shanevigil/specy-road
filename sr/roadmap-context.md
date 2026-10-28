@@ -53,6 +53,8 @@ Do not pick these up.
 
 - `M3.9` on `feature/rm-worker-cli-fixes` since 2026-10-28
 - `M4.7` on `feature/rm-graph-apply` since 2026-10-28
+- `M4.8` on `feature/rm-graph-listing-and-moves` since 2026-10-28
+- `M4.9` on `feature/rm-pick-ordering` since 2026-10-28
 
 ## Reaching the detail behind this
 

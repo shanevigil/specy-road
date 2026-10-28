@@ -58,6 +58,9 @@ entries:
       - specy_road/git_workflow_config.py
       - docs/dev-workflow.md
       - tests/
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - sr/schemas/git-workflow.schema.json
+      - tests/fixtures/specy_road_dogfood/schemas/
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
