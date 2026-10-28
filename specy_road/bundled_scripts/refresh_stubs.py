@@ -35,6 +35,7 @@ from specy_road.runtime_paths import (
     add_repo_root_arg,
     git_root,
     prefix_within,
+    project_root,
     recorded_project_root,
 )
 from specy_road.managed_block import REFUSED, UNCHANGED, resolves_outside
@@ -163,18 +164,19 @@ def _on_disk(path: Path) -> bool:
 
 
 def refresh_stubs(
-    repo_root: Path, *, dry_run: bool = False
+    repo_root: Path, *, dry_run: bool = False, project: Path | None = None
 ) -> tuple[list[str], list[str]]:
-    """Rewrite the managed stubs and blocks. Returns ``(written, orphans)``."""
+    """Rewrite the managed stubs and blocks. Returns ``(written, orphans)``.
+
+    The stub pack is optional; the managed blocks are not. A repo that never ran
+    ``specyrd init`` still gets its ``AGENTS.md`` and ignore-file blocks, and no
+    manifest is created for it. ``project`` is the project root to use when the
+    manifest records none.
+    """
     manifest = _load_manifest(repo_root)
     agents: dict[str, list[str]] = manifest.get("agents") or {}
-    if not agents:
-        raise ValueError(
-            "no specyrd packs recorded in .specyrd/manifest.json — "
-            "run: specyrd init --ai cursor|claude-code|generic"
-        )
 
-    project = recorded_project_root(repo_root)
+    project = recorded_project_root(repo_root) or project
     prefix = prefix_within(repo_root, project or repo_root)
 
     written: list[str] = []
@@ -205,7 +207,7 @@ def refresh_stubs(
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
     apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
 
-    if not dry_run:
+    if agents and not dry_run:
         manifest["agents"] = agents
         _save_manifest(repo_root, manifest)
     # A dry run writes nothing, so every pack sharing a skill reports it again.
@@ -290,20 +292,19 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _resolve_root(args.repo_root)
-    if not _load_manifest(root).get("agents"):
-        # The stub pack is optional; the documented upgrade runs this anyway.
-        print(
-            f"nothing to refresh: no specyrd stub pack is installed ({root}). "
-            "Optional — add one with: specyrd init --ai cursor|claude-code|codex|generic"
-        )
-        return
     try:
-        written, orphans = refresh_stubs(root, dry_run=args.dry_run)
+        written, orphans = refresh_stubs(root, dry_run=args.dry_run, project=project_root(args.repo_root))
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
+    if not _load_manifest(root).get("agents"):
+        # The stub pack is optional; the documented upgrade runs this anyway.
+        print(
+            f"no specyrd stub pack installed ({root}); managed blocks only. "
+            "Optional — add one with: specyrd init --ai cursor|claude-code|codex|generic"
+        )
     if not written and not orphans:
-        print(f"stubs already match specy-road {__version__} ({root})")
+        print(f"stubs and managed blocks already match specy-road {__version__} ({root})")
         return
     _report(written, orphans, dry_run=args.dry_run)
 

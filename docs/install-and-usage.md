@@ -181,7 +181,9 @@ stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
 `specyrd-digest` and `specyrd-history`), re-applies the managed blocks in
 `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, and bumps the recorded
 `specyrd_version`. `specy-road validate` warns while the manifest lags. In a
-repo with no stub pack installed it prints `nothing to refresh` and exits 0.
+repo with no stub pack installed it still re-applies the managed blocks in
+`AGENTS.md`, `.gitignore` and `.cursorindexingignore`, says no pack is
+installed, and creates no manifest.
 
 Stubs this version no longer installs for your recorded `--role` are **listed,
 not deleted** — they are yours to remove. A repo initialised before 0.3.0 has
@@ -190,7 +192,8 @@ writes the skills, lists those old files, and prints the `rm` that removes
 them, so each `/specyrd-…` entry exists once.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
-every scaffold file, including `roadmap/manifest.json` and your phase chunks.
+every scaffold file, including `roadmap/manifest.json` and your phase chunks
+(only `.gitignore` and `AGENTS.md` keep your content).
 `specyrd init --force` overwrites the stubs the manifest records; it is fine,
 but `refresh-stubs` is narrower and needs no flag. Neither one will touch
 anything outside a `>>> specy-road managed block <<<` in a file you own.

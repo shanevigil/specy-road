@@ -26,7 +26,7 @@ from specy_road.bundled_scripts.brainstorm_fields import (
     parse_extra,
 )
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
-from specy_road.history_cache import CACHE_DIR
+from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
 from specy_road.worker_lock import _lock_file
 
 SESSION_VERSION = 2
@@ -385,7 +385,7 @@ def session_lock(root: Path):
     in the ignored ``.specyrd/cache/`` so it never shows up as an untracked file.
     """
     lock = root / CACHE_DIR / "brainstorm.lock"
-    lock.parent.mkdir(parents=True, exist_ok=True)
+    ensure_cache_dir(lock.parent)
     with lock.open("a+") as f:
         unlock = _lock_file(f)
         try:

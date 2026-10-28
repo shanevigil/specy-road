@@ -64,6 +64,15 @@ def test_the_cache_lives_under_dot_specyrd_cache(repo: Path) -> None:
     assert rel.parts[:2] == (".specyrd", "cache")
 
 
+def test_the_cache_ignores_itself_without_a_gitignore_block(tmp_path: Path) -> None:
+    """A repo that never ran refresh-stubs has no ignore rule; the first validate must not dirty it."""
+    git(tmp_path, "init", "-q")
+
+    assert save_cache(tmp_path, {"cache_version": CACHE_VERSION})
+
+    assert git(tmp_path, "status", "--porcelain", "--untracked-files=all") == ""
+
+
 def test_an_unmoved_head_reuses_the_cache_verbatim(repo: Path) -> None:
     first = index(repo)
     clear_memo()

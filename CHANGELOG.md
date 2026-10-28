@@ -11,6 +11,23 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Fixed (rc1 upgrade feedback)
+
+- `refresh-stubs` in a repo without a stub pack (never ran `specyrd init`)
+  printed `nothing to refresh` and wrote nothing, while `validate` kept
+  telling the operator to run it. It now re-applies the managed blocks in
+  `AGENTS.md`, `.gitignore` and `.cursorindexingignore`, says no pack is
+  installed, and still creates no manifest.
+- `validate`'s missing-`AGENTS.md`-section warning no longer offers
+  `init project --force`, which overwrites the roadmap scaffold.
+- `.specyrd/cache/` ignores itself (a `.gitignore` of `*` inside it), so the
+  first `validate`, `search` or `brainstorm` after an upgrade no longer
+  leaves `?? .specyrd/` in a repo whose `.gitignore` predates the block.
+- `specyrd init` writes the `AGENTS.md` block when it finds a project.
+- `init project --force` keeps the consumer's `.gitignore` (and re-applies
+  its managed block); its help and its refusal message now say what
+  `--force` overwrites and point at the refresh commands.
+
 ## [v0.3.1-rc1] - 2026-10-28
 
 First prerelease for v0.3.1. Routed to TestPyPI by

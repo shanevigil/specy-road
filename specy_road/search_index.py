@@ -29,7 +29,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from specy_road.history_cache import CACHE_DIR
+from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
 from specy_road.search_corpus import Chunk, build_node_info
 from specy_road.search_sources import chunks_for, iter_source_files
 
@@ -76,7 +76,7 @@ def fts5_available() -> bool:
 
 def _open(path: Path) -> sqlite3.Connection | None:
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_cache_dir(path.parent)
         con = sqlite3.connect(path)
         con.row_factory = sqlite3.Row
         con.executescript(_SCHEMA)

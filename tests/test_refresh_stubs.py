@@ -66,9 +66,29 @@ def _manifest(root: Path) -> dict:
     )
 
 
-def test_an_uninitialized_repo_is_told_to_run_init(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="specyrd init"):
-        refresh_stubs(tmp_path)
+def test_a_repo_without_a_stub_pack_still_gets_the_managed_blocks(tmp_path: Path) -> None:
+    """The upgrade path for repos that never ran `specyrd init` (rc1 feedback)."""
+    (tmp_path / "AGENTS.md").write_text("# Ours\n", encoding="utf-8")
+
+    written, orphans = refresh_stubs(tmp_path)
+
+    assert "AGENTS.md (updated)" in written
+    assert any(w.startswith(".gitignore") for w in written)
+    assert orphans == []
+    assert "specy-road managed block" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert ".specyrd/cache/" in (tmp_path / ".gitignore").read_text(encoding="utf-8")
+    assert not (tmp_path / ".specyrd" / "manifest.json").exists()
+    assert refresh_stubs(tmp_path) == ([], [])
+
+
+def test_a_repo_without_a_stub_pack_uses_the_given_project_root(tmp_path: Path) -> None:
+    """No manifest records the nested root, so the caller's project root places AGENTS.md."""
+    (tmp_path / "sr").mkdir()
+
+    written, _ = refresh_stubs(tmp_path, project=tmp_path / "sr")
+
+    assert "sr/AGENTS.md (updated)" in written   # the H1 is written first, then the block
+    assert not (tmp_path / "AGENTS.md").exists()
 
 
 def test_stubs_shipped_since_the_repo_was_scaffolded_are_added(
