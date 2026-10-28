@@ -184,6 +184,14 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
 
 ### Fixed
 
+- Found while setting up the real-harness sandbox: `add-node` appends a new
+  phase's chunk to `manifest.json` `includes` in creation order (it was
+  slotted after the first phase); every new node, not only tasks, gets a
+  codename from its title, so a new phase or milestone no longer gets an
+  `<id>_unnamed_…` planning sheet; `models stale` names the family for a
+  profile with `track: none` instead of "a newer none release"; `specyrd
+  init` no longer says "already initialized" on its first run after `init
+  project`, and its `--role` help lists the stubs from the install table.
 - `grind-session --implement-mode hook` with the Claude CLI: the hook's output
   now streams to stderr line by line instead of appearing in one lump after
   exit, so a long run and the wait before a limit message no longer look like
