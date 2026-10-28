@@ -125,6 +125,9 @@ def _add_list(sub) -> None:
     s = sub.add_parser("sessions", help="list every open brainstorm session")
     add_repo_root_arg(s)
 
+    c = sub.add_parser("close", help="move a finished session to work/brainstorm-closed/ so it stops counting as open")
+    _add_slug(c)
+
 
 def _add_triage(sub) -> None:
     for name, verb in (("accept", "keep"), ("reject", "discard")):

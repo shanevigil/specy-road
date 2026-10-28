@@ -99,10 +99,12 @@ before fetching); converge clusters ideas with critics and cited verdicts.
   default branch. If your clone has no `origin/HEAD`, run
   `git remote set-head origin --auto`, or the gate stays shut.
 - **`review record`** refuses `--model human` and models not in the roster.
-- Then run, once per repo: `specy-road refresh-stubs` (managed blocks and
-  skills), `specy-road refresh-schemas`, and `specy-road refresh-profiles`;
-  add `work/reviews/`, `work/.workers/`, `work/.worktrees/` and
-  `work/.sessions/` to `.gitignore`.
+- Then run, once per repo: `specy-road upgrade --prune`. It refreshes
+  schemas, profiles, skills and the managed blocks (including the
+  `.gitignore` entries for `work/reviews/`, `work/.workers/`,
+  `work/.worktrees/` and `work/.sessions/`), deletes the pre-0.3 command
+  stubs, and validates. See
+  [Upgrading from 0.2.x](install-and-usage.md#upgrading-from-02x).
 
 ### Removed
 

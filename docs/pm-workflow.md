@@ -30,7 +30,7 @@ This guide is for **product managers, program leads, and tech leads** who shape 
 - **Git** is how the team shares changes. You pull updates before you edit, and you commit when you save roadmap changes.
 - You can work in two ways: a **visual dashboard** in the browser (recommended if you prefer clicking to typing), or the **command line** (`specy-road` …) for quick edits and scripts.
 
-There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `roadmap.md` (in your project) is a **generated index** — refresh it with `specy-road export` or `specy-road sync`.
+There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `roadmap.md` (in your project) is a **generated index** — refresh it with `specy-road export` (`specy-road sync` does too, but first fast-forwards your integration branch from the remote).
 
 ### Establish the constitution (purpose and principles)
 

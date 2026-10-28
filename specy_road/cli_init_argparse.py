@@ -32,7 +32,12 @@ def build_specy_road_init_parser() -> argparse.ArgumentParser:
     pr.add_argument(
         "--force",
         action="store_true",
-        help="Overwrite template files; required if roadmap/manifest.json already exists",
+        help=(
+            "Overwrite every existing scaffold file (roadmap/, planning/, constitution/, "
+            "schemas/, model-profiles/, vision.md, ...); required if roadmap/manifest.json "
+            "already exists. .gitignore and AGENTS.md keep your content. Not an upgrade "
+            "path: use refresh-schemas, refresh-profiles and refresh-stubs."
+        ),
     )
     pg = sub.add_parser(
         "gui",

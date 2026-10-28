@@ -12,7 +12,10 @@ migration path to write.
 
 It lives under ``.specyrd/cache/`` rather than in ``.specyrd/`` proper because
 ``.specyrd/manifest.json`` is deliberately tracked; only the ``cache/``
-subdirectory is ignored.
+subdirectory is ignored. The directory ignores itself (:func:`ensure_cache_dir`
+writes a ``.gitignore`` of ``*`` into it): the managed ``.gitignore`` block
+reaches only repos that ran ``refresh-stubs`` or ``init project``, and the
+first ``validate`` after an upgrade must not leave ``?? .specyrd/`` behind.
 
 Every failure here is silent by design. A read-only checkout, a missing
 directory, or a half-written file costs a rebuild, never a failed command.
@@ -38,6 +41,14 @@ _REQUIRED = ("cache_version", "head", "last_indexed_commit", "events")
 
 def cache_path(root: Path) -> Path:
     return root / CACHE_DIR / CACHE_FILENAME
+
+
+def ensure_cache_dir(cache_dir: Path) -> None:
+    """Create ``cache_dir`` with a ``.gitignore`` of ``*`` in it; raises ``OSError``."""
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    ignore = cache_dir / ".gitignore"
+    if not ignore.is_file():
+        ignore.write_text("# Written by specy-road: everything here is derived.\n*\n", encoding="utf-8")
 
 
 def load_cache(root: Path) -> dict[str, Any] | None:
@@ -72,7 +83,7 @@ def save_cache(root: Path, doc: dict[str, Any]) -> bool:
     """
     path = cache_path(root)
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_cache_dir(path.parent)
         fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".history-", suffix=".json")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:

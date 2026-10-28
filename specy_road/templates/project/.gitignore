@@ -17,6 +17,7 @@ work/prompt-*.md
 work/pr-body-*.md
 work/.milestone-session.yaml
 work/brainstorm-*-prompt.md
+work/brainstorm-closed/*-prompt.md
 
 # Review hand-offs (READY-*, REVIEW-*, PACKET.md; see docs/orchestration.md).
 # A review binds to the commit it read, so committing the review would move the

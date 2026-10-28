@@ -78,9 +78,9 @@ def test_many_drifted_nodes_share_one_header_and_one_fix_line(
 
     assert err.count("warning") == 1
     assert err.count("specy-road edit-node") == 1
-    # One header, one line per node, one line of guidance — nothing per-node
+    # One header, one line per node, two lines of guidance — nothing per-node
     # repeated.
-    assert len(lines) == len(nodes) + 2
+    assert len(lines) == len(nodes) + 3
     for i in range(1, 6):
         assert f"M1.{i}" in err
 
@@ -179,3 +179,10 @@ def test_a_bounded_glob_that_matches_stays_quiet(tmp_path: Path, capsys) -> None
     (tmp_path / "src" / "deep" / "a.py").write_text("x", encoding="utf-8")
 
     assert _warn([_node(touch_zones=["src/**/*.py"])], tmp_path, capsys) == ""
+
+
+def test_the_hint_says_what_to_do_for_work_not_started(tmp_path: Path, capsys) -> None:
+    """rc1 feedback: adopters could not tell whether a future path was an error."""
+    err = _warn([_node(touch_zones=["src/sync/engine.py"])], tmp_path, capsys)
+
+    assert "For work not started yet, list only paths that exist today" in err

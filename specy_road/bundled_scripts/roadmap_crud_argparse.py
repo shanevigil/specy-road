@@ -113,6 +113,12 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         action="append",
         required=True,
         metavar="KEY=VALUE",
+        help=(
+            "Field to set; repeatable. List fields (acceptance, risks, touch_zones, "
+            "dependencies) take one --set per item: --set acceptance='Saves offline' "
+            "--set acceptance='Syncs on reconnect'. touch_zones also splits on commas; "
+            "'|' is not a separator. An empty value (acceptance=) removes the field."
+        ),
     )
     sp.add_argument(
         "--sync-codename",

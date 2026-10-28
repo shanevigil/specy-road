@@ -198,14 +198,14 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. Auto-derived from `title` when omitted, and re-derived when the title changes — **unless you chose it yourself**, in which case `edit-node --set title=…` keeps it and says so. Pass `--sync-codename` to re-derive anyway. It is the branch identity and the registry key, so renaming it mid-flight desynchronizes a live `feature/rm-*` from its node. |
 | `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | **Advisory** dominant work type: `Human-led` / `Agentic-led` / `Mixed`. Read by humans and by the PM UI; it does **not** gate pickup — use a `type: gate` dependency for that. |
-| `touch_zones` | Paths or globs, relative to the project root, that this node modifies (enables overlap detection). `specy-road validate` warns when a zone on an open node matches nothing in the working tree. |
+| `touch_zones` | Paths or globs, relative to the project root, that this node modifies (enables overlap detection). `specy-road validate` warns when a zone on an open node matches nothing in the working tree. For work not started yet, list only paths that exist today (its planning sheet, the directories it will change) and widen the zones as it lands; a zone naming a future file reads the same as a typo. `edit-node --set touch_zones=a,b` (commas or one `--set` per path). |
 | `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). |
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
-| `acceptance` | List of observable acceptance criteria. |
+| `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. |
 | `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
 | `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
-| `risks` | List of known risks or blockers to surface during planning. |
+| `risks` | List of known risks or blockers to surface during planning (one `--set risks=…` per item). |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
 

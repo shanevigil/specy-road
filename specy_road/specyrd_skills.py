@@ -27,6 +27,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
 
 SKILLS_REL = Path(".agents/skills")
@@ -51,7 +52,7 @@ def _read_template(name: str) -> str:
     """Load a command template; substitute version placeholder."""
     path = _package_templates_dir() / "commands" / name
     text = path.read_text(encoding="utf-8") if path.is_file() else (_commands_traversable() / name).read_text(encoding="utf-8")
-    return text.replace("{{SPECYRD_VERSION}}", __version__)
+    return link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__))
 
 
 def stem(name: str) -> str:

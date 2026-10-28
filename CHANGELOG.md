@@ -11,6 +11,67 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Fixed (rc1 upgrade feedback)
+
+- `refresh-stubs` in a repo without a stub pack (never ran `specyrd init`)
+  printed `nothing to refresh` and wrote nothing, while `validate` kept
+  telling the operator to run it. It now re-applies the managed blocks in
+  `AGENTS.md`, `.gitignore` and `.cursorindexingignore`, says no pack is
+  installed, and still creates no manifest.
+- `validate` no longer warns that IDE stubs lag the installed version in a
+  repo that has no stub pack (0.2.x `init project` recorded a version with
+  no pack, so the warning could never clear).
+- `validate`'s missing-`AGENTS.md`-section warning no longer offers
+  `init project --force`, which overwrites the roadmap scaffold.
+- `.specyrd/cache/` ignores itself (a `.gitignore` of `*` inside it), so the
+  first `validate`, `search` or `brainstorm` after an upgrade no longer
+  leaves `?? .specyrd/` in a repo whose `.gitignore` predates the block.
+- `specyrd init` writes the `AGENTS.md` block when it finds a project.
+- `init project --force` keeps the consumer's `.gitignore` (and re-applies
+  its managed block); its help and its refusal message now say what
+  `--force` overwrites and point at the refresh commands.
+- `refresh-schemas` labels a schema that is new in this version (an
+  untracked file a schemas-only diff review misses).
+- The managed `.gitignore` block now carries the 0.3 run-time paths
+  (`work/reviews/`, `work/.sessions/`, `work/.workers/`, `work/.worktrees/`,
+  `work/brainstorm-*-prompt.md`, `work/brainstorm-closed/*-prompt.md`),
+  which upgraders had to add by hand.
+- `suggested_prompts/bootstrap-agents-md.md` no longer asks for a second load
+  order around the managed block, which already carries one.
+- `edit-node --set acceptance=a|b` stored one criterion while adopters
+  believed it set two. Repeating `--set` for a list field (`acceptance`,
+  `risks`, `touch_zones`, `dependencies`) now appends one item each; a
+  repeated scalar key is an error; `--set` has help text; `validate` warns
+  on an open node whose criterion contains `|`.
+- The touch-zone warning says what to do for work not started yet (list the
+  paths that exist today, widen as the work lands); `roadmap-authoring.md`
+  documents both list syntaxes.
+- Skills and the `AGENTS.md` block cited `docs/*.md` files that exist only in
+  the toolkit (e.g. `docs/brainstorming.md`). They now render as links to the
+  toolkit's GitHub docs at the installed version's tag (`main` for dev
+  builds); `docs/supply-chain-security.md`, which `init project` ships, stays
+  local. A test fails if a template cites a doc that does not exist.
+- Docs no longer offer `specy-road sync` as a way to refresh `roadmap.md` or
+  the digest without saying it fast-forwards the integration branch first.
+- `brainstorm sessions` no longer aborts on the first unreadable
+  `work/brainstorm-*.yaml`: it flags that session, lists the rest, and exits 1.
+  Session read errors now name the file and the edit that fixes it.
+
+### Added (rc1 upgrade feedback)
+
+- `specy-road upgrade [--dry-run] [--prune]`: `refresh-schemas`,
+  `refresh-profiles`, `refresh-stubs`, then `validate` and `digest --check`,
+  ending with what is left to do by hand. See *Upgrading from 0.2.x* in
+  `docs/install-and-usage.md`.
+- `refresh-stubs --prune` deletes the stubs the manifest recorded that this
+  version no longer installs (the pre-0.3.0 `.cursor/commands/specyrd-*.md`
+  and `.claude/commands/specyrd-*.md`) instead of leaving an `rm` to copy.
+- `specy-road validate --strict` exits 1 when validation passes with
+  warnings or self-heal notes, for CI once an upgrade window closes.
+- `specy-road brainstorm close [--slug SLUG]` moves a finished session and its
+  prompts to `work/brainstorm-closed/`, so it stops counting as open and
+  `--slug` stops being required for the others.
+
 ## [v0.3.1-rc1] - 2026-10-28
 
 First prerelease for v0.3.1. Routed to TestPyPI by

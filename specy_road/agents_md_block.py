@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import (
     HTML_COMMENT,
     UNCHANGED,
@@ -40,7 +41,7 @@ _H1 = "# Agents — load order\n"
 
 
 def render_agents_lines() -> list[str]:
-    text = _TEMPLATE.read_text(encoding="utf-8").replace("{{SPECYRD_VERSION}}", __version__)
+    text = link_toolkit_docs(_TEMPLATE.read_text(encoding="utf-8").replace("{{SPECYRD_VERSION}}", __version__))
     return text.rstrip("\n").splitlines()
 
 
@@ -79,7 +80,7 @@ def warn_if_agents_md_block_stale(project_root: Path) -> None:
     what = "has no specy-road section" if state == "missing" else "has a specy-road section from another version"
     print(
         f"agents: warning — {AGENTS_MD} {what}, so agents here miss the current coordination "
-        "rules. Run: specy-road refresh-stubs (or specy-road init project --force to add it)",
+        "rules. Run: specy-road refresh-stubs (it needs no stub pack and touches only managed blocks)",
         file=sys.stderr,
     )
 

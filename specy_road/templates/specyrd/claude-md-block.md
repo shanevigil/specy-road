@@ -68,6 +68,6 @@ specy-road file-limits       # per-file line caps
 
 ### Keeping this in sync
 
-`specy-road refresh-stubs` updates the IDE command stubs and this section after
+`specy-road upgrade` updates the schemas, the IDE skills and this section after
 a `pip install -U specy-road`. It rewrites only what `.specyrd/manifest.json`
 records as managed, and never touches anything outside those markers.

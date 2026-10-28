@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import sys
 from pathlib import Path
 
@@ -150,14 +151,54 @@ def main() -> None:
             "because the authored chunk value is what a reviewer reads."
         ),
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 1 when validation passes with warnings (or self-heal notes), "
+        "e.g. as a CI gate once an upgrade window closes.",
+    )
     add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
-    validate_at(
-        root,
-        no_overlap_warn=args.no_overlap_warn,
-        require_registry=True,
-    )
+    with _counting_stderr() as stderr:
+        validate_at(
+            root,
+            no_overlap_warn=args.no_overlap_warn,
+            require_registry=True,
+        )
+    if args.strict and stderr.lines:
+        sys.stdout.flush()   # the OK line first, then why it does not count
+        print(f"FAILED (--strict): validation passed with {stderr.lines} line(s) of warnings above.",
+              file=sys.stderr)
+        raise SystemExit(1)
+
+
+class _CountingStderr:
+    """Pass writes through to the real stderr and count the lines.
+
+    Every warning ``validate`` emits goes to stderr and every error exits, so a
+    validation that returns having written to stderr is one that warned. One
+    count here is the whole of ``--strict``, rather than a registry each of the
+    dozen warning sites would have to remember to use.
+    """
+
+    def __init__(self, inner) -> None:
+        self.inner = inner
+        self.lines = 0
+
+    def write(self, text: str) -> int:
+        self.lines += text.count("\n")
+        return self.inner.write(text)
+
+    def flush(self) -> None:
+        self.inner.flush()
+
+
+@contextlib.contextmanager
+def _counting_stderr():
+    counter = _CountingStderr(sys.stderr)
+    with contextlib.redirect_stderr(counter):
+        yield counter
 
 
 if __name__ == "__main__":

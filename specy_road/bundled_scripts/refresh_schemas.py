@@ -81,6 +81,21 @@ def stale_schema_names(repo_root: Path) -> list[str]:
     return out
 
 
+def missing_schema_names(repo_root: Path) -> list[str]:
+    """Bundled schema filenames a scaffolded ``schemas/`` lacks: new since it was copied.
+
+    Not a ``validate`` warning: the CLI reads its own copy of the schemas it adds
+    later (git-workflow, orchestration), so a missing one breaks nothing. It only
+    labels the new, untracked files a refresh writes, which a schemas-only diff
+    review otherwise misses.
+    """
+    src_dir = bundled_schemas_dir()
+    dst_dir = repo_root / SCHEMAS_DIRNAME
+    if not src_dir.is_dir() or not dst_dir.is_dir():
+        return []
+    return [src.name for src in sorted(src_dir.glob("*.json")) if not (dst_dir / src.name).is_file()]
+
+
 def warn_if_schemas_stale(repo_root: Path) -> None:
     """Print a one-line warning per structurally stale schema. Never fatal."""
     for name in stale_schema_names(repo_root):
@@ -126,6 +141,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = (args.repo_root or default_user_repo_root()).resolve()
+    new = {f"{SCHEMAS_DIRNAME}/{name}" for name in missing_schema_names(root)}
     try:
         written = refresh_schemas(root, dry_run=args.dry_run)
     except ValueError as e:
@@ -136,13 +152,15 @@ def main(argv: list[str] | None = None) -> None:
         return
     verb = "would write" if args.dry_run else "wrote"
     for rel in written:
-        print(f"{verb} {rel}")
+        print(f"{verb} {rel}" + (" (new in this version: an untracked file to add)" if rel in new else ""))
     if args.dry_run:
         print("\n(dry-run; no files written)")
         return
     print(
         "\nReview the diff and run specy-road validate. Schemas are the only "
-        "files this command touches."
+        "files this command touches.\n"
+        "Next: specy-road refresh-profiles, then refresh-stubs "
+        "(specy-road upgrade runs the whole sequence)."
     )
 
 

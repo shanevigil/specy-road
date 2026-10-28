@@ -8,7 +8,7 @@
 **Must know without reading on:**
 - Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); an RC pins an exact version from TestPyPI with `--extra-index-url https://pypi.org/simple/`.
 - New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
-- After `pip install -U specy-road`: `specy-road refresh-schemas`, `refresh-profiles`, `refresh-stubs` (each takes `--dry-run`); never `init project --force` for that.
+- After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
 - Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
 
@@ -100,8 +100,7 @@ specy-road --version
 
 RCs are for evaluation. Pin a final release for day-to-day work, and expect an
 RC to warn that IDE stubs and JSON schemas were written by an older version —
-`specy-road refresh-stubs` and `specy-road refresh-schemas` clear those once
-your team accepts the new pin.
+`specy-road upgrade` clears those once your team accepts the new pin.
 
 ## Install from source (toolkit contributors)
 
@@ -152,45 +151,76 @@ Preview without writing: `--dry-run`.
 
 ### Keeping a consumer repo current after an upgrade
 
-`pip install -U specy-road` upgrades the CLI. Two things it copied into your
-repo do **not** follow along, and each has its own command. Both are safe to run
-on every upgrade: they are idempotent, they report what they would change with
-`--dry-run`, and neither has a `--force`, because neither needs one.
+`pip install -U specy-road` upgrades the CLI. What it copied into your repo
+(schemas, model profiles, IDE skills, the managed blocks) does **not** follow
+along. One command brings it up to date and then checks the result:
 
 ```bash
 pip install -U specy-road
 
-specy-road refresh-schemas --dry-run   # then without --dry-run
-specy-road refresh-profiles --dry-run  # model-profiles/ this version ships that you lack
-specy-road refresh-stubs    --dry-run   # then without --dry-run
+specy-road upgrade --dry-run      # what each refresh would write
+specy-road upgrade --prune        # write, delete stubs this version dropped, validate
 ```
+
+`upgrade` runs `refresh-schemas`, `refresh-profiles` and `refresh-stubs` in
+that order, then `validate` and `digest --check`, and ends with what is left for
+you: review the diff, commit the new untracked files, and run `specy-road
+digest` if the digest is missing or out of date (not `specy-road sync`, which
+also fast-forwards your integration branch from the remote). It exits non-zero
+only when `validate` fails. Each refresh is also a command of its own; all
+three are idempotent, take `--dry-run`, and never touch the roadmap, planning
+sheets, or anything outside a managed block.
 
 **`refresh-schemas` — `schemas/`.** `init project` copies the JSON schemas in
 once, so a repo scaffolded against an older version can reject output the
 current CLI legitimately produces (for example `type: gate` nodes, or the
 `implementation_review` fields that `mark-implementation-reviewed` writes).
-`specy-road validate` warns when it notices this. The command touches
-`schemas/` and nothing else.
+`specy-road validate` warns when it notices this. A schema new in this version
+is reported as such, because it is an untracked file to add. The command
+touches `schemas/` and nothing else.
 
-**`refresh-stubs` — the skills from `specyrd init`.** One skill per command
-under `.agents/skills/<name>/SKILL.md`, read natively by Cursor and Codex and
-through a symlink per skill under `.claude/skills/` by Claude Code (or a flat
-directory for `--ai generic`), plus `.specyrd/README.md`. It
-rewrites exactly the paths `.specyrd/manifest.json` records as managed, installs
-stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
-`specyrd-digest` and `specyrd-history`), re-applies the managed blocks in
-`.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, and bumps the recorded
-`specyrd_version`. `specy-road validate` warns while the manifest lags. In a
-repo with no stub pack installed it prints `nothing to refresh` and exits 0.
+**`refresh-profiles` — `model-profiles/`.** Copies the profiles this version
+ships that you lack, and never overwrites one you have (`--force PATH` takes
+the toolkit's copy of one profile).
 
-Stubs this version no longer installs for your recorded `--role` are **listed,
-not deleted** — they are yours to remove. A repo initialised before 0.3.0 has
-its commands under `.cursor/commands/` or `.claude/commands/`; `refresh-stubs`
-writes the skills, lists those old files, and prints the `rm` that removes
-them, so each `/specyrd-…` entry exists once.
+**`refresh-stubs` — the skills from `specyrd init`, and the managed blocks.**
+One skill per command under `.agents/skills/<name>/SKILL.md`, read natively by
+Cursor and Codex and through a symlink per skill under `.claude/skills/` by
+Claude Code (or a flat directory for `--ai generic`), plus `.specyrd/README.md`.
+It rewrites exactly the paths `.specyrd/manifest.json` records as managed,
+installs stubs that shipped since you initialized, re-applies the managed
+blocks in `AGENTS.md`, `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`,
+and bumps the recorded `specyrd_version`. `specy-road validate` warns while the
+manifest lags. In a repo with no stub pack it still re-applies the managed
+blocks, says no pack is installed, and creates no manifest.
+
+Stubs this version no longer installs for your recorded `--role` are
+**listed, not deleted**, unless you pass `--prune`. They are paths the
+manifest recorded as the kit's, so `--prune` deletes exactly the list shown
+(and a directory it leaves empty).
+
+Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any
+warning) can gate CI next to `export --check` and `digest --check`.
+
+#### Upgrading from 0.2.x
+
+- **Commands became skills.** 0.2.x installed `.cursor/commands/specyrd-*.md`
+  and `.claude/commands/specyrd-*.md`; 0.3 installs one skill per command under
+  `.agents/skills/`, which Cursor, Codex and Claude Code all read. Until the old
+  files are gone each `/specyrd-…` command appears twice: `upgrade --prune`
+  (or `refresh-stubs --prune`) removes them.
+- **`AGENTS.md` has a managed block.** `refresh-stubs` inserts it, with or
+  without a stub pack; your own text outside the markers stays. If your
+  `AGENTS.md` repeats a load order of its own, trim it to what is specific to
+  your project: the block carries the toolkit's.
+- **New files:** `schemas/orchestration.schema.json`, `model-profiles/`, and
+  the skills are untracked after the upgrade; add them.
+- **Text outside the managed blocks** (your `CLAUDE.md`, docs pinning a version
+  or naming `.cursor/commands/`) is yours: search it for the old version.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
-every scaffold file, including `roadmap/manifest.json` and your phase chunks.
+every scaffold file, including `roadmap/manifest.json` and your phase chunks
+(only `.gitignore` and `AGENTS.md` keep your content).
 `specyrd init --force` overwrites the stubs the manifest records; it is fine,
 but `refresh-stubs` is narrower and needs no flag. Neither one will touch
 anything outside a `>>> specy-road managed block <<<` in a file you own.

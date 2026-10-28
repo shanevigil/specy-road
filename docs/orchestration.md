@@ -392,7 +392,8 @@ scaffold `AGENTS.md` repeats these rules; [design-notes/agent-guidance-and-share
   works as before under the default policy, because **approve** files the human record. **`--yes` without a satisfying record now exits 1.**
 - `roadmap/orchestration.yaml` is optional; copy it from a fresh
   `specy-road init project` to change the policy.
-- Add `work/reviews/` to `.gitignore`, as new scaffolds do: a review binds to
+- `work/reviews/` must be gitignored, as new scaffolds do (`specy-road
+  upgrade` adds it to the managed `.gitignore` block): a review binds to
   the commit it read, so committing review files would move the branch past it
   (approvals are kept as `Reviewed-by` trailers). No consumer schema changed:
   `orchestration.schema.json` is new in `schemas/` for new scaffolds, and the

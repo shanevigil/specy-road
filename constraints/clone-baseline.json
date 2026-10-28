@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-27",
+  "generated": "2026-10-28",
   "tool": "pylint duplicate-code (R0801)",
   "min_similarity_lines": 6,
   "clones": [
@@ -50,7 +50,7 @@
         "specy_road.bundled_scripts.refresh_schemas",
         "specy_road.bundled_scripts.refresh_stubs"
       ],
-      "lines": 10
+      "lines": 9
     },
     {
       "modules": [
