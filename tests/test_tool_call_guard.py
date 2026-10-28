@@ -63,6 +63,15 @@ from specy_road.bundled_scripts import session_cli
     ("git commit -m 'x'", "commits whatever another session staged"),
     ("git commit -m 'a; b' --no-verify", "commits whatever another session staged"),
     ("git -c alias.x='!cd /tmp && git reset --hard' x", "discards other sessions"),
+    ("if true; then git stash; fi", "stash stack is shared"),
+    ("! git stash", "stash stack is shared"),
+    ("while ! git diff --quiet; do git reset --hard; done", "discards other sessions"),
+    ("if true; then sh -c 'git stash'; fi", "stash stack is shared"),
+    ("case x in a) git stash;; esac", "stash stack is shared"),
+    ("find . -name '*.py' -exec git rm -f {} +", "git rm -f"),
+    ("git rm -f src/a.py", "git rm -f"),
+    ("git rm -rf src", "git rm -f"),
+    ("git rm --force src/a.py", "git rm -f"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
@@ -87,6 +96,7 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
     "make test && python -m pytest",
     "echo 'git stash' > notes.txt",
     "gitk",
+    "grep -rn git src",
 ])
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command
