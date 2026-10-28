@@ -11,6 +11,21 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.3.1-rc1] - 2026-10-28
+
+First prerelease for v0.3.1. Routed to TestPyPI by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.3.1rc1
+
+**Read *Breaking* before upgrading**: the review gate changes how
+`mark-implementation-reviewed` and `finish-this-task` behave. Existing
+adopters run `specy-road refresh-stubs`, `refresh-schemas` and
+`refresh-profiles`, and add the `work/` paths listed below to `.gitignore`.
+The user-facing summary is [`docs/whats-new.md`](docs/whats-new.md#specy-road-031).
+
 Model-aware orchestration, slice 1: review and hand-off core. Design:
 [`docs/design-notes/v0-3-0-orchestration-slices.md`](docs/design-notes/v0-3-0-orchestration-slices.md);
 reference: [`docs/orchestration.md`](docs/orchestration.md) and

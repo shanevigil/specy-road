@@ -59,11 +59,11 @@ version and keep real PyPI as an extra index so dependencies still resolve:
 ```bash
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            "specy-road==0.2.3rc1"
+            "specy-road==0.3.1rc1"
 ```
 
 **`--pre` is not needed when you pin an exact prerelease.** A specifier that
-names the prerelease itself (`==0.2.3rc1`) already permits it. Add `--pre` only
+names the prerelease itself (`==0.3.1rc1`) already permits it. Add `--pre` only
 when you are asking for *whatever the latest prerelease is* — an unpinned
 install, or `pip index versions specy-road`, both of which hide prereleases
 without it.
@@ -76,7 +76,7 @@ RC — so it reports `No solution found`:
 uv pip install --index-url https://test.pypi.org/simple/ \
                --extra-index-url https://pypi.org/simple/ \
                --index-strategy unsafe-best-match \
-               "specy-road==0.2.3rc1"
+               "specy-road==0.3.1rc1"
 ```
 
 That default is uv's protection against dependency-confusion attacks, and

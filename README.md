@@ -2,6 +2,8 @@
 
 **One roadmap for the whole team**—so product, engineering, and coding agents share the same plan.
 
+**What's new:** [specy-road 0.3.1](docs/whats-new.md#specy-road-031) — coordinate several coding agents on one roadmap, with a review gate before work lands.
+
 ## What it is
 
 **specy-road** is a toolkit for keeping priorities, written specs, and implementation work aligned. It fits teams that use AI-assisted editors (for example Claude or Cursor) together with product-led planning. Your team maintains a **roadmap** in the repository: what matters, in what order, and what depends on what. A small command-line tool checks that the roadmap is consistent, publishes a readable index, and can build **briefs**—focused packets of context for a single task—so nobody has to reread the entire project to know what to do next.
