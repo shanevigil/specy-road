@@ -30,11 +30,11 @@ Nothing outside these zones was needed.
 
 ## Verification
 
-- `python -m pytest -q`: 2213 passed, 2 skipped (exit 0)
+- `python -m pytest -q`: 2214 passed, 2 skipped (exit 0), after the review fix
 - `specy-road file-limits`: OK (exit 0)
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK (exit 0). Its one `agents:` warning (the fixture has no AGENTS.md section) was already there on the base commit
 - `specy-road export --check` / `digest --check` on the fixture: OK (exit 0)
-- Implementation commit: `aa799e6`
+- Implementation commit: `aa799e6`; review fix (non-UTF-8 requirements test): `f61547d`
 
 ## Added
 
@@ -48,7 +48,7 @@ Nothing outside these zones was needed.
 - `roadmap_edit_fields._looks_like_json_list`: the A5 shape check (a `json.loads` result that is a list).
 
 ### Branches and guards
-- `pinned_version`: skips a `requirements*.txt` that cannot be read (`OSError`/`UnicodeDecodeError`). Trigger: a binary or unreadable file matching the glob. Not tested, so it falls short of the block's rule that every guard has a reaching test. Same pattern as `agents_md_block_state`.
+- `pinned_version`: skips a `requirements*.txt` that cannot be read (`OSError`/`UnicodeDecodeError`) and keeps looking. Trigger: a requirements file that is not UTF-8, e.g. `pip freeze > requirements.txt` in Windows PowerShell writes UTF-16 (test: `test_validate_reads_past_a_requirements_file_that_is_not_utf8`, added after review; it fails when the `except` stops catching `UnicodeDecodeError`).
 - `warn_missing_load_order_paths`: returns quietly when `AGENTS.md` is unreadable (the missing-file case is covered by the dogfood validate tests). With no block it is also quiet, because `warn_if_agents_md_block_stale` already reports that.
 - `copy_missing_docs`: skips a destination that already exists or is a link (test: `test_a_doc_the_project_has_is_kept`). Refuses a destination under a symlink that leads outside the repo (test: `test_a_docs_link_out_of_the_repo_is_not_followed`). Copies only `docs/` paths, because the constitution, constraints and shared files are the project's to author.
 - `_report`: prints the migration line only on a dry run with old `*/commands/` orphans (A4).
@@ -61,6 +61,7 @@ Nothing outside these zones was needed.
 - `tests/test_refresh_stubs.py::test_a_dry_run_summarises_the_migration_in_one_line`: A4 through `refresh-stubs --dry-run` (`main`).
 - `tests/test_validate_roadmap.py::test_the_declared_pin_comes_from_the_manifest_then_requirements` (3 cases): A1 sources and precedence; a `>=` range is not a pin.
 - `tests/test_validate_roadmap.py::test_validate_warns_once_when_the_running_version_is_not_the_pin`: A1, one line with two pinning files, quiet when the pin matches.
+- `tests/test_validate_roadmap.py::test_validate_reads_past_a_requirements_file_that_is_not_utf8`: A1 through `validate_at`. A UTF-16 `requirements-dev.txt` sorted before a readable pin: validation passes and emits the one mismatch warning (review finding on `b6652f2`).
 - `tests/test_agents_md_block.py::test_validate_warning_states`: A2. The assertion changed from "from another version" to the new wording; the acceptance item changes this behaviour.
 - `tests/test_agents_md_block.py::test_validate_names_load_order_files_the_project_lacks`: A3 validate side, quiet on a fresh scaffold, one line naming both missing files.
 - `tests/test_upgrade.py`: `_old_repo` now lacks `docs/supply-chain-security.md`. `test_one_run_clears_every_upgrade_warning` asserts the doc is copied, and its existing "no `agents: warning`" check now also covers the load-order warning. `test_dry_run_writes_nothing_and_skips_validate` asserts the would-write line, the A4 migration line, and that nothing was written.
