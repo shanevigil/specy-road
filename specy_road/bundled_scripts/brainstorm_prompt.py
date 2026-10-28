@@ -66,6 +66,17 @@ def _governance_lines(root: Path, *, roadmap: bool = True) -> list[str]:
         state = "" if (root / rel).is_file() else " _(missing)_"
         lines.append(f"- **{label}:** `{rel}`{state}")
     lines.append("")
+    if not roadmap:
+        # The managed AGENTS.md / CLAUDE.md block says to read the digest first;
+        # an agent that obeys it here is anchored before it generates anything.
+        lines += [
+            "**Do not open `roadmap-context.md`, `roadmap.md`, anything under "
+            "`roadmap/`, or `planning/` in this round**, even if AGENTS.md or "
+            "CLAUDE.md says to read `roadmap-context.md` first: for this task, "
+            "until you hand back to the PM, this instruction overrides that rule. "
+            "The node inventory anchors ideas to what already exists.",
+            "",
+        ]
     return lines
 
 

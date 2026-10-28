@@ -145,6 +145,9 @@ def test_round_one_plans_then_generates_without_anchors(repo: Path) -> None:
     assert "concept card" in text and "bolder and more different" in text
     assert "at least 30 distinct ideas" in text
     assert "`M0.1`" not in text and "## What already exists" not in text
+    # The managed block says "read roadmap-context.md first"; round 1 names what not to open.
+    assert "Do not open `roadmap-context.md`, `roadmap.md`, anything under `roadmap/`" in text
+    assert "this instruction overrides that rule" in text
     assert "--origin" in text and "--hypothesis" in text
     assert "specy-road calls no model and no search API from the CLI" in text
 
@@ -197,7 +200,7 @@ def test_panel_writes_independent_shards(repo: Path) -> None:
     assert "at least 10 distinct ideas" in s1
     assert s1.split("**Operator:**")[1].splitlines()[0] != s3.split("**Operator:**")[1].splitlines()[0]
     assert "/1/s1" in s1 and "/1/s3" in s3
-    assert "`M0.1`" not in s1
+    assert "`M0.1`" not in s1 and "Do not open `roadmap-context.md`" in s1
     # One allocation per session, replaced by `frame --allocation`: only the
     # coordinator's prompt records it, so parallel shards cannot erase each other's.
     assert "frame --slug" in _prompt(repo) and "--allocation \"" in _prompt(repo)
