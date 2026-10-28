@@ -9,7 +9,7 @@ from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, 
 
 from specy_road.bundled_scripts.role_prompt import run_cli_channel
 from specy_road.review_files import reviews_dir
-from specy_road.review_gate import evaluate_gate, policy_source, review_required
+from specy_road.review_gate import evaluate_gate, human_approval_completes, policy_source, review_required
 
 ROSTER = """version: 1
 roster:
@@ -64,6 +64,21 @@ def test_a_public_only_reviewer_cannot_approve_a_restricted_node(tmp_path: Path)
     assert sorted(r.path.name for r, why in gate.ineligible if "may process only" in why) == [
         "REVIEW-pub.md", "REVIEW-sub.md"]
     assert evaluate_gate(repo, NODE, head).passed   # the same records count on a public node
+
+
+def test_the_human_approval_is_not_offered_on_a_node_the_human_may_not_process(tmp_path: Path) -> None:
+    # Follows from the reviewer sensitivity rule: an approval the gate would not count is not offered.
+    roster = SENSITIVE.replace("{id: human, family: human, roles: [coordinator]}",
+                               "{id: human, family: human, roles: [coordinator, reviewer]}")
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    git(repo, "update-ref", "refs/heads/dev", "HEAD")
+    head = git(repo, "rev-parse", "HEAD")
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / "REVIEW-wide.md").write_text(review_text(head, model="wide"))
+    restricted = {**NODE, "sensitivity": "restricted"}
+    assert not human_approval_completes(repo, evaluate_gate(repo, restricted, head), restricted)
+    assert human_approval_completes(repo, evaluate_gate(repo, NODE, head), NODE)
 
 
 def test_the_cli_channel_neither_echoes_the_prompt_nor_crashes_on_a_huge_one(tmp_path: Path, capsys) -> None:

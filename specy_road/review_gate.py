@@ -253,17 +253,19 @@ def evaluate_gate(
     return result
 
 
-def human_approval_completes(repo_root: Path, gate: GateResult, sign_key: Path | None = None) -> bool:
+def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, Any],
+                             sign_key: Path | None = None) -> bool:
     """Whether one interactive human approval would satisfy the policy.
 
-    True only when ``human`` is a rostered reviewer, nothing blocks, the
-    config loads, the human's family is the one approval still missing, and —
-    under ``signed_reviews`` — a key was given and the roster has its public key.
+    True only when ``human`` is a rostered reviewer that may process the node's
+    sensitivity, nothing blocks, the config loads, the human's family is the one
+    approval still missing, and — under ``signed_reviews`` — a key was given and
+    the roster has its public key.
     """
     if gate.config_error or gate.commit is None or gate.blocks:
         return False
     config = gate.config
-    if not is_rostered_reviewer(config, HUMAN):
+    if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):
         return False
     has_key = bool((roster_entry(config, HUMAN) or {}).get("public_key"))
     if config["policy"].get("signed_reviews") and (sign_key is None or not has_key):

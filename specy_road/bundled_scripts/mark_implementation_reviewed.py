@@ -220,7 +220,7 @@ def _gate_or_human_approval(
         return gate
     interactive = sys.stdin.isatty() and not args.yes
     sign_key = Path(args.sign_key) if args.sign_key else None
-    if interactive and human_approval_completes(ROOT, gate, sign_key):
+    if interactive and human_approval_completes(ROOT, gate, node, sign_key):
         if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough,
                               approve_label=_APPROVE_AS_HUMAN):
             print("Aborted (registry unchanged).")
