@@ -88,18 +88,44 @@ roster:
     roles: [executor, reviewer]
     harness: claude-code            # claude-code | codex | cursor | generic
     billing_route: claude_subscription   # a label, recorded on the worker
-    # Optional: your own launch command. {prompt} is the prompt file path;
-    # {session} is the native session id and makes the same command serve
-    # `message` / `resume`. Without it, the default command is used.
+    # Optional: your own command. {prompt} is the prompt file path; {session}
+    # is the native session id. A command that names {session} serves launch
+    # AND `message` / `resume` (the same line, run again with the recorded id);
+    # one without it is used for launch only, and resumes run the default
+    # command with the default's permissions. No channels.cli: the default
+    # command (Claude: --session-id on launch, --resume on resume).
     # channels:
     #   (a placeholder must be a whole argument, bare or in one pair of quotes —
     #   `--session-id={session}` and `"prefix <prompt>"` are refused; `< {prompt}` feeds the file on stdin)
-    #   cli: "claude -p --output-format stream-json --verbose --dangerously-skip-permissions --session-id {session} < {prompt}"
+    #   cli: "/abs/path/claude-worker.sh {session} {prompt}"   # the wrapper below
 policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
-**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
+**Claude and `{session}`.** Claude Code refuses `--session-id` for a session
+that already exists ("Session ID … is already in use", exit 1), so a
+`channels.cli` of the form `claude -p … --session-id {session} < {prompt}`
+launches fine and then fails every `message` / `resume`, closing the worker as
+`failed`. No single `claude` command line serves both. Either keep the default
+command, or point `channels.cli` at a small wrapper that resumes when the
+session exists:
+
+```sh
+#!/bin/sh
+# claude-worker.sh <session> <prompt file>: start the session, or resume it.
+sid=$1 prompt=$2
+set -- -p --output-format stream-json --verbose --dangerously-skip-permissions --model claude-opus-5-5
+if ls "$HOME"/.claude/projects/*/"$sid".jsonl >/dev/null 2>&1; then
+  exec claude "$@" --resume "$sid" < "$prompt"
+fi
+exec claude "$@" --session-id "$sid" < "$prompt"
+```
+
+It looks for Claude Code's own transcript of the session (checked on Claude
+Code 2.1.312; re-check after upgrading), and `exec` keeps `claude` itself as
+the worker's harness process.
+
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
 
 ## The loop
 
@@ -173,6 +199,16 @@ only while the harness pid is alive with its recorded start time; a group
 with members but neither identity is refused (a group id can be reused):
 kill this worker's processes in it by hand, then run `terminate` again. On an adopted (`native`) record it closes the record and
 says the session was not signalled.
+
+**Processes outside the group.** The recorded group covers the wrapper, the
+harness and what the harness forks directly, not what it puts in a group of
+its own. Claude Code runs each Bash-tool command in its own process group: on
+SIGTERM (what `terminate` sends first) claude stops those commands itself, but
+after a SIGKILL — `terminate`'s escalation after 5 s, `kill -9` of the harness
+or the group, a crash — whatever the tool was running (a test suite, a server)
+keeps running with ppid 1, and no `worker` command sees it. Stop workers with
+`terminate` rather than `kill -9`; after any SIGKILL, list what still runs in
+the worker's worktree (`lsof -d cwd | grep <worktree>`) and kill it by hand.
 
 `reclaim` always returns the worker to `idle`, even one that was
 `completed`: the coordinator re-verifies READY against the branch after a
@@ -278,4 +314,9 @@ must not edit files in that leaf's touch zones while the worker runs — the
 presence guard (`session guard`) already refuses the git operations that
 would collide. Finishing the leaf is still `finish-this-task` from the
 leaf's branch after the gate; `terminate` the idle worker afterwards so its
-record closes and the slot frees.
+record closes and the slot frees. From a linked worktree with
+`on_complete: merge`, finish cannot check the integration branch out while
+the coordinator's checkout holds it, so it merges and pushes **in that
+checkout** instead. That checkout must have no uncommitted changes to tracked
+files (untracked files are fine): otherwise finish refuses before its
+bookkeeping commit and names the checkout to commit or stash in.

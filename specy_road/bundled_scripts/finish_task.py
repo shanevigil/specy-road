@@ -26,7 +26,7 @@ from specy_road.finish_work_artifacts import (
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
-from specy_road.finish_modes import apply_on_complete_mode
+from specy_road.finish_modes import apply_on_complete_mode, merge_landing_preflight
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -227,6 +227,8 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
         remote=gw_remote, integration_branch=ib,
         allow_empty=args.allow_empty_implementation,
     )
+    if on_mode == "merge":
+        merge_landing_preflight(ROOT, ib)
     print(f"Finishing [{node_id}] {node.get('title', '')}")
     print(f"Branch:   {branch}")
     print(f"on_complete: {on_mode}\n")

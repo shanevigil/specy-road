@@ -202,8 +202,10 @@ coordinator chat (any harness):
    each drew on as `billing_route`.
 2. **Permission stop.** With the default command, note whether the Claude
    worker stops at a shell permission (`acceptEdits`). If it does, set
-   `channels.cli` on the roster entry and delegate again. Pass: the worker
-   reaches `idle`/`completed` with a READY file.
+   `channels.cli` on the roster entry to the create-or-resume wrapper in
+   orchestration-workers.md ("Roster setup"; a bare `claude …
+   --session-id {session}` line fails every later `message`) and delegate
+   again. Pass: the worker reaches `idle`/`completed` with a READY file.
 3. **Cap and idempotency.** A third `delegate` is refused by `max_workers`;
    re-running `delegate <ID1>` returns the same worker id; `--op-id` replay
    returns the first result without a second launch.
@@ -264,7 +266,12 @@ coordinator chat (any harness):
    `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
    and `worker status <W>` show exactly that.
 10. **Finish.** Review and `finish-this-task` the leaf as in §2 (with
-    `on_complete: merge`; `pr` cannot land against a bare local remote);
+    `on_complete: merge`; `pr` cannot land against a bare local remote),
+    run **from the leaf's linked worktree** while the coordinator's checkout
+    stays on the integration branch: the merge lands and is pushed from the
+    coordinator's checkout, and both trees are clean afterwards. First, with
+    an uncommitted edit to a tracked file in the coordinator's checkout,
+    finish must refuse before its bookkeeping commit and name that checkout.
     `worker terminate` the idle worker; `handoff status` no longer lists it.
 
 Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their

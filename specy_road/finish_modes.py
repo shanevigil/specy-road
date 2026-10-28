@@ -7,7 +7,10 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
-from specy_road.finish_land_integration import land_merge_feature_into_integration
+from specy_road.finish_land_integration import (
+    integration_worktree_problem,
+    land_merge_feature_into_integration,
+)
 from specy_road.on_complete_session import remove_on_complete_session
 
 
@@ -101,6 +104,14 @@ def merge_landing_failed(ib: str, err_msg: str) -> NoReturn:
         file=sys.stderr,
     )
     raise SystemExit(1)
+
+
+def merge_landing_preflight(repo: Path, ib: str) -> None:
+    """Exit 1 before the bookkeeping commit when the merge could not land."""
+    problem = integration_worktree_problem(repo, ib)
+    if problem is not None:
+        print(f"error: cannot land merge to {ib}: {problem}", file=sys.stderr)
+        raise SystemExit(1)
 
 
 def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
