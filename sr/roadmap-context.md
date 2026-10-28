@@ -45,6 +45,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
 
+## Claimed and in flight
+
+Do not pick these up.
+
+- `M3.1` on `feature/rm-unauthored-leaf-guard` since 2026-10-28
+- `M3.8` on `feature/rm-upgrade-and-validate-checks` since 2026-10-28
+
 ## Reaching the detail behind this
 
 This digest is a summary. The full text of planning sheets, shared contracts and archived work is searchable:
