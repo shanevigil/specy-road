@@ -54,6 +54,9 @@ section before copying a CLI line into production.
   an alias; piping a prompt file to it is undocumented). The profile itself is
   read from the integration branch, like the roster: a working-tree copy that
   differs from the committed one is refused until it is committed there.
+  It logs the command template, never the prompt text; when the operating
+  system refuses to launch it (a `<prompt>` too long for a command line) it
+  exits 1 with the reason — use `{prompt}` for long prompts.
 
 ## Planning assignments: `orchestrate plan`
 

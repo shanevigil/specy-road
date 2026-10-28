@@ -7,6 +7,7 @@ from pathlib import Path
 
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
 
+from specy_road.bundled_scripts.role_prompt import run_cli_channel
 from specy_road.review_files import reviews_dir
 from specy_road.review_gate import evaluate_gate, policy_source, review_required
 
@@ -64,3 +65,13 @@ def test_a_public_only_reviewer_cannot_approve_a_restricted_node(tmp_path: Path)
         "REVIEW-pub.md", "REVIEW-sub.md"]
     assert evaluate_gate(repo, NODE, head).passed   # the same records count on a public node
 
+
+def test_the_cli_channel_neither_echoes_the_prompt_nor_crashes_on_a_huge_one(tmp_path: Path, capsys) -> None:
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("SECRET-BRIEF\n")
+    assert run_cli_channel(None, prompt, tmp_path, entry_cli='true "<prompt>"') == 0
+    err = capsys.readouterr().err
+    assert '"<prompt>"' in err and "SECRET-BRIEF" not in err
+    prompt.write_text("x" * 4_000_000)   # beyond any ARG_MAX: launching raises E2BIG
+    assert run_cli_channel(None, prompt, tmp_path, entry_cli='true "<prompt>"') == 1
+    assert "could not launch the cli" in capsys.readouterr().err
