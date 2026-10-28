@@ -304,3 +304,23 @@ def test_a_registry_only_tip_commit_does_not_stale_a_review(layout: tuple[Path, 
     _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "chore: mark reviewed")
 
     assert reviewed_commit(project, "HEAD", None) == work
+
+
+def test_finish_bookkeeping_paths_are_matched_under_the_project_prefix(layout: tuple[Path, Path]) -> None:
+    """Re-landing a finished branch counted every bookkeeping write as a stray commit in the nested layout."""
+    from specy_road.finish_modes import stray_finish_paths
+
+    top, project = layout
+    subprocess.run(["git", "-C", str(top), "checkout", "-q", "-b", "feature/rm-x"], check=True)
+    (project / "roadmap.md").write_text("regenerated\n", encoding="utf-8")
+    (project / "work").mkdir(exist_ok=True)
+    (project / "work" / "note.md").write_text("x\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "finish bookkeeping")
+
+    assert stray_finish_paths(project, "feature/rm-x") == []
+
+    (top / "README.md").write_text("code\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "code")
+    assert stray_finish_paths(project, "feature/rm-x") == ["README.md"]

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import NoReturn
 
 from specy_road.finish_land_deterministic import codename_from_branch
+from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
@@ -121,6 +122,18 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
 _FINISH_WRITES = ("roadmap/", "roadmap.md", "roadmap-context.md", "work/", "planning/")
 
 
+def stray_finish_paths(repo: Path, branch: str) -> list[str]:
+    """Paths the branch tip changed that finish's bookkeeping never writes.
+
+    git names paths from the repository root, so the finish writes are matched
+    under the project prefix (``sr/roadmap/`` in the nested layout).
+    """
+    _ok, changed = git_ok(["diff", "--name-only", f"{branch}^", branch], repo)
+    prefix = project_prefix(repo)
+    writes = tuple(prefix + w for w in _FINISH_WRITES)
+    return [p for p in changed.splitlines() if not p.startswith(writes)]
+
+
 def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
     doc = read_registry_at_ref(repo, ref, 30.0) or {}
     entries = doc.get("entries") or []
@@ -134,8 +147,7 @@ def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoR
     row -- is landed: a commit added after it was never reviewed or checked.
     """
     codename = codename_from_branch(branch)
-    _ok, changed = git_ok(["diff", "--name-only", f"{branch}^", branch], repo)
-    stray = [p for p in changed.splitlines() if not p.startswith(_FINISH_WRITES)]
+    stray = stray_finish_paths(repo, branch)
     if stray or _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
         print(
             f"error: {branch} has moved past its finish-this-task commit; new commits "

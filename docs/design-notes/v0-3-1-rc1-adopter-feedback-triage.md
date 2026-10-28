@@ -25,6 +25,7 @@ and data are deliberately not recorded here.
 | Bootstrap prompt asked for a second load order beside the managed block | Prompt corrected |
 | CI wanted a strict mode | `validate --strict` |
 | Scaffold M1.1 had no acceptance, so a fresh project warned (and failed `--strict`) | Sample is now the project's setup task with five criteria |
+| Re-landing a finished branch after a failed merge refused in the nested layout: finish's bookkeeping paths were matched without the project prefix; found dogfooding | Defect. Prefix applied |
 | In the nested layout, the review gate's registry-only allowance, the deterministic bookkeeping merge and the integration-registry reads compared repository-root paths with project-relative ones; `finish` refused approved leaves; found dogfooding | Defect. Project prefix applied |
 | In the nested layout, committed-copy reads (roster and policy from the integration branch, pinned profiles, packet summary, roadmap at a ref) resolved paths from the git root and found nothing; found while running the toolkit's own roadmap | Defect. Reads resolve from the project root (`<ref>:./<path>`) |
 | A test suite run inside a delegated worker saw itself as a live worker (the runner's `SPECY_ROAD_WORKER_ID` leaked into guard and presence tests); found dogfooding | Defect. `conftest` clears the variable like `SPECY_ROAD_REPO_ROOT` |
