@@ -399,6 +399,15 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   same. **Existing adopters:** `refresh-profiles --force
   model-profiles/openai-gpt/<id>.md` for each GPT profile you have not
   edited.
+  The same runs found: Cursor runs `.claude/settings.json` hooks with its
+  shell tool named `Shell`, which the `claude-code` guard format let
+  through, so a checkout guarded only for Claude Code was unguarded under
+  Cursor (now denied; checked live); `session guard` and `worker hook`
+  `--print-config` print pure JSON on stdout (caveats on stderr), so the
+  output pastes whole; `digest` no longer lists a re-added dependency as
+  removed; `prompt` on an unclaimed leaf points at pickup instead of a
+  `--ref` it does not take; `refresh-stubs --dry-run` names each shared
+  skill once.
 - **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
   judges touch zones over the worker's lifetime (`started_head`), not only
   since the last checkpoint; a READY must be at the worktree's HEAD;
