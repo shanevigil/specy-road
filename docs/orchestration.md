@@ -310,15 +310,15 @@ loop has to record an independent review each cycle. One way is a pre-finish hoo
 ```bash
 specy-road grind-session --on-complete merge --implement-mode hook \
   --implement-cmd 'executor-cli "$SPECY_ROAD_PROMPT"' \
-  --pre-finish-cmd 'specy-road review-packet "$SPECY_ROAD_NODE_ID" &&
-    reviewer-cli work/reviews/"$SPECY_ROAD_NODE_ID"/PACKET.md > work/reviews/"$SPECY_ROAD_NODE_ID"/notes.md &&
-    specy-road review record "$SPECY_ROAD_NODE_ID" --model <reviewer-id> --verdict approve \
-      --file work/reviews/"$SPECY_ROAD_NODE_ID"/notes.md &&
+  --pre-finish-cmd 'ID="$SPECY_ROAD_NODE_ID"; specy-road review-packet "$ID" &&
+    specy-road prompt "$ID" --role reviewer --model <reviewer-id> --channel paste &&
+    reviewer-cli "$(cat work/prompt-"$ID"-reviewer-<reviewer-id>.md)" &&
+    specy-road handoff status "$ID" &&
     specy-road mark-implementation-reviewed --yes'
 ```
 
-`review record` refuses notes whose verdict disagrees with `--verdict`, so a
-blocking reviewer fails the hook and stops the loop (exit `4`).
+The reviewer prompt has the reviewer file its own `review record`. A block, or no record,
+leaves the gate unmet, so `--yes` refuses, the hook fails and the loop stops (exit `4`).
 
 From an IDE agent, use **step mode** ([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)):
 the agent session is the coordinator; it runs `grind-session --step pickup`, hands the prompt to a
