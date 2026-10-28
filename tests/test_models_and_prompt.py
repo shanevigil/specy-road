@@ -168,6 +168,9 @@ def test_prompt_refuses_unrostered_model_and_wrong_role(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     assert "not in the roster" in role_prompt.build_prompt(repo, "M1.1", role="executor", model="ghost")[2]
     assert "does not have the executor role" in role_prompt.build_prompt(repo, "M1.1", role="executor", model="sol")[2]
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+    err = role_prompt.build_prompt(repo, "M1.1", role="executor", model="opus")[2]
+    assert "no registry claim for M1.1; pick it up first (`specy-road do-next-available-task --under M1.1`)" in err
 
 
 def test_prompt_without_profile_still_writes(tmp_path: Path, capsys) -> None:
