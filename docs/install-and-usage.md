@@ -145,9 +145,9 @@ specy-road export
 `init project` writes `.gitignore`, `roadmap/`, `planning/`, `constitution/`,
 `constraints/`, `shared/`, `schemas/`, `work/`, `model-profiles/`, `vision.md`, and a
 specy-road section in `AGENTS.md` (a managed block: an `AGENTS.md` you already
-have keeps everything outside the markers).
-It refuses to overwrite an existing scaffold unless you pass `--force`.
-Preview without writing: `--dry-run`.
+have keeps everything outside the markers). The roadmap starts with task M1.1,
+whose acceptance criteria and planning sheet are the setup steps above and more.
+It refuses to overwrite an existing scaffold unless you pass `--force` (`--dry-run` previews).
 
 ### Keeping a consumer repo current after an upgrade
 
