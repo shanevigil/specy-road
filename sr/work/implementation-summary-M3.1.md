@@ -70,6 +70,14 @@ coordinator. Every changed path is inside it.
 - Tests: `tests/test_unauthored_leaf_guard.py` (new), stub signatures in
   `tests/test_grind_session.py`, `tests/test_grind_session_in_flight.py`,
   `tests/test_grind_session_step.py`.
+- Review round 1 (gpt-5.6-sol-high, blocked `f491178`, A1–A4 pass):
+  - This summary now sits at `sr/work/implementation-summary-M3.1.md`, the
+    nested project's `work/`, and the git-root copy is gone, so review-packet and
+    finish-this-task can find it and clean it up.
+  - The `--allow-unauthored` step tests now check behaviour without pinning
+    call history (`9deaf54`).
+  - `WIP/improvements-0-3-1` is merged in (`bc7e89c`). This brings in the
+    conftest fix `2611da2`, which clears `SPECY_ROAD_WORKER_ID`.
 
 Not changed (outside the zones; possible follow-ups):
 
@@ -82,11 +90,10 @@ Not changed (outside the zones; possible follow-ups):
 
 ## Verification
 
-- `pytest`: 2215 passed, 2 skipped, 2 failed. The same two failures
-  (`test_tool_call_guard.py::test_guard_sees_a_worker_running_in_this_checkout`,
-  `test_worker_review_round2.py::test_a_worker_does_not_count_itself`) also fail
-  on the untouched base `ef2f4a4` (2197 passed there). They react to other live
-  agent sessions on this machine and are unrelated to this leaf.
+- `pytest` (after merging `WIP/improvements-0-3-1`): 2217 passed, 2 skipped,
+  0 failed. Before the merge, two tests failed both here and on the base
+  `ef2f4a4`. `SPECY_ROAD_WORKER_ID` leaked into the suite from the environment,
+  and `2611da2` fixes that.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road file-limits`: OK. `ruff check specy_road tests scripts`: clean.
 - `scripts/check_test_private_imports.py`: 0 new.
@@ -117,4 +124,4 @@ Not changed (outside the zones; possible follow-ups):
 - Pickup forwarding of `--allow-unauthored` in `grind_session._pickup_args`: without it, the loop would plan a leaf that pickup then refuses.
 - Mocks: `_Harness.gather_allow` (records the flag that reaches the plan) and keyword-tolerant `gather_plan` stubs in three grind test files, needed because the stubs had a fixed two-argument signature.
 - Tests in `tests/test_unauthored_leaf_guard.py` (17): scaffolded / promote-skeleton / leftover-Approach sheets refused; filled sheet, acceptance, or missing sheet not refused; pickup skips with the reason, `--allow-unauthored` overrides, acceptance or filled sheet picked as before, an all-unauthored queue exits with the reason; `--plan` JSON and text list them, `--allow-unauthored` makes them ready, dependents keep their wave; validate prints one block, caps at ten, `--all` lists all, and stays silent for authored or closed leaves.
-- Tests in `tests/test_grind_session_step.py`: `--step pickup` passes `--allow-unauthored` to the plan and to pickup, and an existing pass-through test now checks it is absent by default.
+- Tests in `tests/test_grind_session_step.py`: with `--allow-unauthored`, at least one plan read and one pickup are observed, every plan read gets `allow_unauthored=True`, and every `do-next-available-task` call carries the flag. Without it, at least one plan read is observed, every plan read gets `False`, and no CLI call carries the flag (added to the existing pass-through test). No call count, order or position is pinned.
