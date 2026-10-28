@@ -305,12 +305,15 @@ def _may_name_git(word: str) -> bool:
     """Whether a command word built by expansion could be ``git``.
 
     With the expansion removed (a ``${X:-default}`` kept as its default), a name
-    that is empty, starts with ``git`` or is a prefix of it could be git
-    (``${G}``, ``git${IFS}stash``, ``g{i,}t``, ``gi?``); ``$HOME/bin/pytest`` and
-    ``${PYTHON:-python}`` cannot. A command substitution's output is unknowable.
+    that starts with ``git`` or whose letters appear in ``git`` in order (empty
+    included) could be git (``${G}``, ``git${IFS}stash``, ``g{i,}t``, ``gi?``,
+    ``g${X}t``); ``$HOME/bin/pytest`` and ``${PYTHON:-python}`` cannot. A command
+    substitution's output is unknowable.
     """
     name = _EXPANSION_SYNTAX.sub("", _DEFAULT.sub(r"\1", word)).rsplit("/", 1)[-1]
-    return bool(_UNBALANCED.search(word)) or "`" in word or name.startswith("git") or "git".startswith(name)
+    rest = iter("git")
+    in_order = all(c in rest for c in name)   # a subsequence of "git": the expansion may fill the gaps
+    return bool(_UNBALANCED.search(word)) or "`" in word or name.startswith("git") or in_order
 
 
 def classify(command: str) -> str | None:
