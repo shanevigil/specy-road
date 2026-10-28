@@ -49,6 +49,9 @@ body. Keep section bodies focused; link to PRs for detail.
   refused each approval; the deterministic merge of bookkeeping files and
   the integration-registry reads had the same blind spot. All use the
   project prefix now.
+- Re-landing a finished branch whose merge had failed counted every
+  bookkeeping write as an unreviewed commit in the nested layout, for the
+  same reason; fixed.
 - In the nested layout (project under `sr/`), every read of a file *as
   committed on a ref* — the review policy and roster from the integration
   branch, pinned model profiles, the packet's committed summary, the roadmap
