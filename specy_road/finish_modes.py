@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 from specy_road.finish_land_integration import land_merge_feature_into_integration
 from specy_road.on_complete_session import remove_on_complete_session
@@ -88,6 +89,31 @@ def print_pr_gated_state(
     )
 
 
+def merge_landing_failed(ib: str, err_msg: str) -> NoReturn:
+    """Exit 1 after a failed merge landing, naming the re-run that retries it."""
+    print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
+    print(
+        "\n--on-complete merge cannot fall back to PR instructions. "
+        "Fix the integration branch (see error above), then run "
+        "`specy-road finish-this-task --on-complete merge` again on this "
+        "branch: the bookkeeping is already committed, so it retries only "
+        "the landing. Or rerun with --on-complete pr to open a PR instead.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
+    """Land a branch whose finish bookkeeping is committed but whose merge failed."""
+    ok, err_msg = land_merge_feature_into_integration(
+        repo, remote=remote, integration_branch=ib, feature_branch=branch,
+    )
+    if not ok:
+        merge_landing_failed(ib, err_msg)
+    print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
+    raise SystemExit(0)
+
+
 def apply_on_complete_mode(
     repo: Path,
     args: argparse.Namespace,
@@ -130,23 +156,15 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
+    if on_mode == "merge":
+        # F-012: --on-complete merge means MERGE. Do NOT print PR
+        # instructions as a fallback — that's exactly the bug being fixed.
+        merge_landing_failed(ib, err_msg)
+
     print(
         f"\nerror: could not land merge to {ib}: {err_msg}",
         file=sys.stderr,
     )
-    if on_mode == "merge":
-        # F-012: --on-complete merge means MERGE. Do NOT print PR
-        # instructions as a fallback — that's exactly the bug being fixed.
-        # Exit hard so the user investigates the integration-branch issue.
-        print(
-            "\n--on-complete merge cannot fall back to PR instructions. "
-            "Fix the integration branch (see error above) and re-run, or "
-            "rerun finish-this-task with --on-complete pr if you intend to "
-            "open a PR instead.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
     # on_mode == "auto": fall back to PR tail only here.
     print(
         "\n(auto) Merge to integration failed — use PR/MR or fix locally "
