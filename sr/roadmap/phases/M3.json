@@ -93,7 +93,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.3_chunk-key-order_a4cdff1a-4b57-4fc1-9c36-9357c656df78.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Document the canonical chunk key order and offer a deliberate normalisation",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_rebalance.py",
