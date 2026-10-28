@@ -27,6 +27,15 @@ body. Keep section bodies focused; link to PRs for detail.
 - `init project --force` keeps the consumer's `.gitignore` (and re-applies
   its managed block); its help and its refusal message now say what
   `--force` overwrites and point at the refresh commands.
+- `brainstorm sessions` no longer aborts on the first unreadable
+  `work/brainstorm-*.yaml`: it flags that session, lists the rest, and exits 1.
+  Session read errors now name the file and the edit that fixes it.
+
+### Added
+
+- `specy-road brainstorm close [--slug SLUG]` moves a finished session and its
+  prompts to `work/brainstorm-closed/`, so it stops counting as open and
+  `--slug` stops being required for the others.
 
 ## [v0.3.1-rc1] - 2026-10-28
 

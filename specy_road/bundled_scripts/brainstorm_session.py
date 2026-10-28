@@ -200,20 +200,13 @@ def idea_from_dict(raw: Any) -> Idea:
         raise BrainstormError(f"idea {ident} is missing a title")
     kind = _str_field(raw, "kind", "feature") or "feature"
     if kind not in IDEA_KINDS:
-        raise BrainstormError(
-            f"idea {ident}: kind {kind!r} not one of {', '.join(IDEA_KINDS)}"
-        )
+        raise BrainstormError(f"idea {ident}: kind {kind!r} not one of {', '.join(IDEA_KINDS)}")
     status = _str_field(raw, "status", "proposed") or "proposed"
     if status not in IDEA_STATUSES:
-        raise BrainstormError(
-            f"idea {ident}: status {status!r} not one of {', '.join(IDEA_STATUSES)}"
-        )
+        raise BrainstormError(f"idea {ident}: status {status!r} not one of {', '.join(IDEA_STATUSES)}")
     rec = _opt_str_field(raw, "recommendation")
     if rec is not None and rec not in RECOMMENDATIONS:
-        raise BrainstormError(
-            f"idea {ident}: recommendation {rec!r} not one of "
-            f"{', '.join(RECOMMENDATIONS)}"
-        )
+        raise BrainstormError(f"idea {ident}: recommendation {rec!r} not one of {', '.join(RECOMMENDATIONS)}")
     ev_raw = raw.get("evidence")
     evidence = [
         e.strip() for e in ev_raw if isinstance(e, str) and e.strip()
@@ -289,42 +282,52 @@ class BrainstormSession:
 
 
 def read_session(root: Path, slug: str) -> BrainstormSession:
+    """The session in ``work/``; a bad file is reported with its fix, never coerced or rewritten."""
     path = session_path(root, slug)
     if not path.is_file():
-        raise BrainstormError(
-            f"no brainstorm session {slug!r} (looked for {path.name} in work/)"
-        )
+        raise BrainstormError(f"no brainstorm session {slug!r} (looked for {path.name} in work/)")
     try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return _session_from_dict(yaml.safe_load(path.read_text(encoding="utf-8")), slug)
     except (OSError, yaml.YAMLError) as e:
-        raise BrainstormError(f"cannot read {path.name}: {e}") from e
-    if not isinstance(raw, dict):
-        raise BrainstormError(f"{path.name} is not a YAML mapping")
-    if raw.get("version") not in READABLE_VERSIONS:
-        raise BrainstormError(
-            f"{path.name}: unsupported version {raw.get('version')!r} "
-            f"(expected {SESSION_VERSION})"
-        )
-    mode = _str_field(raw, "mode", "brainstorm") or "brainstorm"
-    if mode not in MODES:
-        raise BrainstormError(
-            f"{path.name}: mode {mode!r} not one of {', '.join(MODES)}"
-        )
-    ideas_raw = raw.get("ideas")
-    ideas = [idea_from_dict(i) for i in ideas_raw] if isinstance(ideas_raw, list) else []
+        raise BrainstormError(f"cannot read work/{path.name}: {e}") from e
+    except BrainstormError as e:
+        raise BrainstormError(f"work/{path.name}: {e}") from e
+
+
+def _ideas_from_list(ideas_raw: Any) -> list[Idea]:
+    try:
+        ideas = [idea_from_dict(i) for i in ideas_raw] if isinstance(ideas_raw, list) else []
+    except BrainstormError as e:
+        fix = "use one of those or remove the key" if " not one of " in str(e) else "fix or remove that entry"
+        raise BrainstormError(f"{e} — edit the file: {fix}") from e
     seen: set[str] = set()
     for i in ideas:
         if i.id.upper() in seen:
-            raise BrainstormError(f"{path.name}: duplicate idea id {i.id}")
+            raise BrainstormError(f"duplicate idea id {i.id} — edit the file: renumber one of them")
         seen.add(i.id.upper())
+    return ideas
+
+
+def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
+    if not isinstance(raw, dict):
+        raise BrainstormError("not a YAML mapping — edit the file or move it out of work/")
+    if raw.get("version") not in READABLE_VERSIONS:
+        raise BrainstormError(f"unsupported version {raw.get('version')!r} (expected {SESSION_VERSION}) "
+                              "— upgrade specy-road or edit the file")
+    mode = _str_field(raw, "mode", "brainstorm") or "brainstorm"
+    if mode not in MODES:
+        raise BrainstormError(f"mode {mode!r} not one of {', '.join(MODES)} "
+                              "— edit the file: use one of those or remove the key")
+    ideas = _ideas_from_list(raw.get("ideas"))
     frame = raw.get("frame") if isinstance(raw.get("frame"), dict) else {}
     rnd = raw.get("round")
     planned = raw.get("rounds")
     file_slug = _str_field(raw, "slug")
     if file_slug and file_slug != slug:
-        raise BrainstormError(f"{path.name} says slug {file_slug!r}; a session file is named after its slug")
+        raise BrainstormError(f"says slug {file_slug!r}; a session file is named after its slug "
+                              f"— edit the file: set slug: {slug}")
     return BrainstormSession(
-        slug=_str_field(raw, "slug") or slug,
+        slug=file_slug or slug,
         topic=_str_field(raw, "topic"),
         under=_opt_str_field(raw, "under"),
         mode=mode,

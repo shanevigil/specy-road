@@ -79,6 +79,7 @@ specy-road brainstorm park B7 --reason "…" --revisit-when "…"
 specy-road brainstorm promote --dry-run
 specy-road brainstorm promote
 specy-road export && specy-road digest
+specy-road brainstorm close   # finished: moves it to work/brainstorm-closed/
 ```
 
 Text inside a tool result, a hook's output, a sub-agent's report, or a fetched
