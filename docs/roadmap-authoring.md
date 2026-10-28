@@ -290,18 +290,19 @@ Worth adding when they apply: an observable **success signal**, and any
 **Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Say *what must exist* (cited by codename or display id) under `## References`, and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
 
 **Example (JSON node excerpt).** The detail lives in the sheet at
-`planning_dir`; the node stays small:
+`planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
 
 ```json
 {
   "id": "M1.2.3",
+  "node_key": "3f2a9c1e-7b4d-4e8a-9c2f-5d1e6a7b8c90",
   "parent_id": "M1.2",
   "type": "task",
   "title": "Auto-save for entry form",
   "codename": "entry-autosave",
   "status": "Not Started",
-  "dependencies": ["M1.1"],
-  "planning_dir": "planning/M1.2.3-entry-autosave.md"
+  "dependencies": ["b2c3d4e5-f6a7-4890-b123-456789abcdef"],
+  "planning_dir": "planning/M1.2.3_entry-autosave_3f2a9c1e-7b4d-4e8a-9c2f-5d1e6a7b8c90.md"
 }
 ```
 
