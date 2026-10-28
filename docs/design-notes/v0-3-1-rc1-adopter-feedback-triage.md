@@ -55,6 +55,7 @@ and data are deliberately not recorded here.
 | `session start --path a b` fails; `--path` must be repeated | Wording | Accept several values or say to repeat the flag |
 | `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
 | `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |
+| Widening a claimed node's touch zones with `edit-node` leaves the registry claim's copy stale, and the packet boundary and finish check read the claim's copy first; no command updates a live claim | Gap (found dogfooding) | `edit-node --set touch_zones` on a claimed node also updates its registry entry, or a `claim update` command |
 | The brief's touch-zone section tells the implementer to add or remove zones as needed, while the executor prompt says an out-of-zone change stops the leaf; a worker following the prompt stops where the brief would have let it continue | Contradiction (found dogfooding) | The brief says: propose zone changes in the summary and stop; the executor prompt stays authoritative |
 
 ## Feature batch

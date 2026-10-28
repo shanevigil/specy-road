@@ -6,11 +6,21 @@ entries:
     touch_zones:
       - specy_road/bundled_scripts/do_next_task_leaf_guards.py
       - specy_road/bundled_scripts/do_next_available.py
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/bundled_scripts/grind_session_step.py
       - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/bundled_scripts/planning_sheet_bootstrap.py
       - specy_road/bundled_scripts/brainstorm_promote.py
       - specy_road/bundled_scripts/brief_acceptance.py
       - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
+      - docs/grind-session.md
+      - docs/dev-workflow.md
       - tests/
     started: '2026-10-28'
     owner: savigil
@@ -23,7 +33,10 @@ entries:
       - specy_road/bundled_scripts/upgrade.py
       - specy_road/agents_md_block.py
       - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/bundled_scripts/validate_roadmap_checks.py
       - specy_road/bundled_scripts/roadmap_edit_fields.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
       - docs/install-and-usage.md
       - tests/
     started: '2026-10-28'
