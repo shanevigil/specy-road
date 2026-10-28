@@ -239,7 +239,7 @@
       "acceptance": [
         "validate warns once when the running version differs from a pin declared in .specyrd/manifest.json or requirements*.txt",
         "The AGENTS.md section warning says the section differs from what this version writes, not 'from another version'",
-        "`upgrade` copies shipped docs the load order names (docs/supply-chain-security.md) when missing, and validate warns on a load-order path that does not exist",
+        "`upgrade` copies shipped docs the load order names (docs/supply-chain-security.md) when missing, and validate warns on a load-order path that does not exist, except generated files (roadmap-context.md) whose absence `digest --check` already reports, so a fresh scaffold still passes validate --strict",
         "`refresh-stubs --dry-run` prints a one-line migration summary (N command stubs become skills)",
         "edit-node warns when a list field receives a value that looks like a JSON list",
         "The parent-status warning fires only when a stored Complete disagrees with a non-Complete rollup or vice versa; an In Progress parent with a Not Started rollup is not told to downgrade",
