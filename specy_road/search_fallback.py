@@ -64,7 +64,7 @@ def _snippet(body: str, terms: list[str]) -> str:
     return f"{prefix}{window}{suffix}"
 
 
-def search(
+def search(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     root: Path,
     query: str,
     *,

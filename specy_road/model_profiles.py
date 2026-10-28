@@ -113,7 +113,7 @@ def _as_date(raw: Any) -> date | None:
         return None
 
 
-def _structure_errors(data: dict[str, Any]) -> list[str]:
+def _structure_errors(data: dict[str, Any]) -> list[str]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Shapes the readers assume: wrong ones made ``profile_ok`` true and then raised."""
     out = []
     access = data.get("access")

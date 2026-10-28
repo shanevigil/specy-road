@@ -88,7 +88,7 @@ def is_link_path(rel: str) -> bool:
     return any(Path(rel).parent == d for d in LINK_DEST.values())
 
 
-def ensure_link(
+def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     repo_root: Path, agent: str, name: str, *, dry_run: bool = False, repair: bool = True, owned: bool = False,
 ) -> str:
     """Create or repair the symlink for ``name``; copy the skill when symlinks fail.

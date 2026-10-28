@@ -118,7 +118,7 @@ def cmd_show(ns: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_stale(ns: argparse.Namespace) -> int:
+def cmd_stale(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     root = resolve_repo_root(ns)
     today = date.fromisoformat(ns.today) if ns.today else None
     config, _ = pinned_config(root)

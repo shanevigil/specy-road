@@ -226,7 +226,7 @@ def _set_roadmap_status(node: dict, raw_val: str) -> None:
     node["status"] = v
 
 
-def _apply_scalar_top_level(
+def _apply_scalar_top_level(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     node: dict,
     key: str,
     raw_val: str,

@@ -241,7 +241,7 @@ def _leaf_diagnostics(nodes: list[dict], reg: dict) -> dict[str, list[str] | int
     }
 
 
-def _collect_do_next_tiers(
+def _collect_do_next_tiers(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     nodes: list[dict],
     base_ok,
     st,
