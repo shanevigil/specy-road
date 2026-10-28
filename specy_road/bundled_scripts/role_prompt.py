@@ -160,6 +160,10 @@ def _reviewer_preamble(node_id: str, model: str) -> list[str]:
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
         "`mark-implementation-reviewed` or `finish-this-task`.",
         "",
+        "You edit no tracked file, so start no `specy-road session` (AGENTS.md's rule is for editors). If you "
+        "started one anyway, run `specy-road session end` before you stop: a claim left behind lasts hours and "
+        "blocks the next reviewer.",
+        "",
         _DATA_LINE,
         "",
     ]
