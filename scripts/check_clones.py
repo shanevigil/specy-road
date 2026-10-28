@@ -40,7 +40,10 @@ def pylint_args(source: Path, pylint: str) -> list[str]:
         "--ignore-docstrings=y",
         "--ignore-signatures=y",
         "--score=n",
-        source.name,
+        # Sorted files, not the package: pylint pairs up a block shared by three or more
+        # files in the order it reads them, and a directory walk is ordered differently on
+        # macOS and Linux, so the same tree reported different pairs on each.
+        *sorted(f.relative_to(source.parent).as_posix() for f in source.rglob("*.py")),
     ]
 
 
