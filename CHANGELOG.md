@@ -366,6 +366,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `ps -ww`. A SIGKILLed harness reports `137` where `/bin/sh` is dash (it
   forks under `sh -c`) and `-9` where it is bash; the worker ends `failed`
   either way, and the test and runbook say so.
+- **Sandbox runbook setup (local, at de6a641):** a roster entry with
+  `profile:` on `claude-code`, `codex` or `cursor` launched the profile's
+  plain `access.cli` instead of the harness's default command, so the
+  worker had no JSON events, no session id and no `--model`, and `sync`,
+  `message`, `resume` and `handoff` could not work. The profile's command
+  now stands in only for `generic`; `channels.cli` still overrides any
+  harness.
 - **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
   judges touch zones over the worker's lifetime (`started_head`), not only
   since the last checkpoint; a READY must be at the worktree's HEAD;

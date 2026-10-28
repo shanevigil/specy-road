@@ -15,9 +15,10 @@ limits, prices, headless invocation, failure modes, and prompting rules.
 > depend on it.
 
 `specy-road models list|show|stale` read these files, `specy-road prompt` folds a
-profile's rules into a role prompt, and `prompt --channel cli` / `worker delegate`
-run its `access.cli` (`<prompt>` or `{prompt}` is the placeholder; a roster
-`channels.cli` overrides it).
+profile's rules into a role prompt, and `prompt --channel cli` and a `generic`
+worker run its `access.cli` (`<prompt>` or `{prompt}` is the placeholder; a roster
+`channels.cli` overrides it). A worker on `claude-code`, `codex` or `cursor` uses
+that harness's default command unless the roster sets `channels.cli`.
 
 ## Where this comes from
 

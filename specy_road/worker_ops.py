@@ -127,12 +127,18 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
     return _check_tree(wt, branch)
 
 
-def _cli_for(repo_root: Path, entry: dict[str, Any]) -> tuple[str | None, str]:
-    """``(custom cli, model id the harness is told)``."""
+def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str]:
+    """``(custom cli, model id the harness is told)``.
+
+    ``channels.cli`` wins; a profile's ``access.cli`` stands in only for ``generic``, since a named
+    harness's default command is what gives it JSON events and a session id.
+    """
     prof = pinned_profile_for_entry(repo_root, entry)   # the committed profile, as the roster is
     if prof is not None and not prof.ok:
         raise WorkerError(f"profile for {entry.get('id')!r}: " + "; ".join(prof.errors))
-    cli = (entry.get("channels") or {}).get("cli") or (prof.cli() if prof and prof.ok else None)
+    cli = (entry.get("channels") or {}).get("cli")
+    if not cli and harness == "generic" and prof is not None:
+        cli = prof.cli()
     return cli, (prof.api_id if prof and prof.ok else str(entry["id"]))
 
 
@@ -214,7 +220,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
     _brief_into(wt, repo_root, node_id, t)
-    cli, api_id = _cli_for(repo_root, entry)
+    cli, api_id = _cli_for(repo_root, entry, harness)
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
@@ -255,7 +261,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
-    cli, api_id = _cli_for(repo_root, entry)
+    cli, api_id = _cli_for(repo_root, entry, rec.harness)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
