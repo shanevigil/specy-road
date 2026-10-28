@@ -75,6 +75,10 @@ def _text(prompt_path: Path) -> str:
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
 
 
+# `codex exec` has no --ask-for-approval (codex-cli 0.165): set both as config, which exec and resume take.
+CODEX_POLICY = ("-c", "sandbox_mode=workspace-write", "-c", "approval_policy=never")
+
+
 def _model_flag(flag: str, model: str | None) -> list[str]:
     """No model means the harness's own default (a profile whose ``api_id`` is ``unknown``)."""
     return [flag, model] if model else []
@@ -266,17 +270,18 @@ class Codex(Adapter):
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
-        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), "--sandbox", "workspace-write",
-                       "--ask-for-approval", "never", "-C", str(worktree), "-"], stdin=_text(prompt_path))
+        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *CODEX_POLICY,
+                       "-C", str(worktree), "-"], stdin=_text(prompt_path))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
-        # Same sandbox and approval flags as the launch, and the prompt on
-        # stdin again: an argv string is capped at 128 KiB on Linux.
-        return Launch(["codex", "exec", "resume", "--json", "--sandbox", "workspace-write",
-                       "--ask-for-approval", "never", "-C", str(worktree), session_id, "-"],
+        # Same sandbox and approval policy as the launch, and the prompt on
+        # stdin again: an argv string is capped at 128 KiB on Linux. `exec
+        # resume` takes neither --sandbox nor -C (the wrapper runs it in the
+        # worktree), so the policy goes in as config overrides.
+        return Launch(["codex", "exec", "resume", "--json", *CODEX_POLICY, session_id, "-"],
                       stdin=_text(prompt_path), session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:

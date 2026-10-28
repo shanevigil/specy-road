@@ -99,7 +99,7 @@ policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
-**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs in `--sandbox workspace-write --ask-for-approval never`; that flag pair is in OpenAI's reference but was not run here.
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
 
 ## The loop
 
@@ -230,7 +230,7 @@ session, which is the case the hook exists for.
 | Harness | Launch | Session id | Resume (`message`) | Interrupt / steer | Handoff command |
 |---|---|---|---|---|---|
 | `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit) | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
-| `codex` | `codex exec --json -m … --sandbox workspace-write --ask-for-approval never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json --sandbox workspace-write --ask-for-approval never -C <worktree> <id> -` (same flags, prompt on stdin) | unsupported | `codex resume <id>` |
+| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
 | `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
 | `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies) | none | unsupported | unsupported | none |
 

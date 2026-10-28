@@ -97,7 +97,7 @@ Notes:
 | Model | Command in the profile | Vendor-verified |
 |---|---|---|
 | Claude (Opus, Fable) | `claude -p "<prompt>"` | yes |
-| GPT Sol | `codex exec --model <id> --sandbox workspace-write --ask-for-approval never "<prompt>"` | **no: verify before use** |
+| GPT Sol | `codex exec --model <id> -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"` | run on codex-cli 0.165.0 (2026-10-28) |
 | Gemini | `gemini -m <id> -p "<prompt>" --output-format json` | **no: verify before use** |
 | Grok | `grok -p "<prompt>"` (no model flag in the verified form) | yes |
 | Muse Spark 1.3 | `muse exec --model muse-spark-1.3 '<prompt>'` | **no: verify before use** |
