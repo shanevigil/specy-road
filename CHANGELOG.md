@@ -36,9 +36,13 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `require_implementation_review_before_finish` is on — from the integration
   branch (remote-tracking ref first), so a feature branch cannot lower its own
   bar. Change policy on the integration branch. The integration branch's name
-  is read from `git-workflow.yaml` as committed at `HEAD` (not the working tree
-  or `SPECY_ROAD_INTEGRATION_BRANCH`), and when that branch cannot be found the
-  gate fails closed — it counts as on, and nothing passes it.
+  is read from `git-workflow.yaml` as committed on the remote's default branch
+  (`refs/remotes/<remote>/HEAD`; run `git remote set-head <remote> --auto` if
+  it is missing), else at `HEAD` — never the working tree or
+  `SPECY_ROAD_INTEGRATION_BRANCH`. A remote name that is not configured, or an
+  integration branch that cannot be found, fails closed: the gate counts as
+  on, and nothing passes it. Reviewers, the human included, count only on
+  nodes their roster `may_process` covers.
 - **`review record` is stricter.** It refuses `--model human` (a human approves
   only through the interactive menu), refuses models that are not in the roster,
   and no longer takes `--family`: a reviewer's family always comes from the
