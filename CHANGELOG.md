@@ -81,9 +81,9 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   public key line); `review record --sign-key <private key>` signs the record
   with `ssh-keygen -Y sign` (namespace `specy-road-review`), and the gate
   verifies it. With `policy.signed_reviews: true` an unsigned record does not
-  count; a present signature is verified regardless, so a tampered front
-  matter (the Markdown body below it is not signed)
-  never counts. `mark-implementation-reviewed --sign-key` signs the interactive
+  count; a present signature is verified regardless, so a tampered record
+  never counts: the signature covers the front matter, which carries
+  `notes_sha256` of the Markdown notes below it. `mark-implementation-reviewed --sign-key` signs the interactive
   human approval. Needs OpenSSH 8.1+; no new Python dependency.
 - **Workers: `specy-road worker`** (slice 7, design:
   [`docs/design-notes/v0-3-1-worker-orchestration.md`](docs/design-notes/v0-3-1-worker-orchestration.md);
