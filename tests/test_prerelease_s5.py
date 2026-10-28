@@ -71,3 +71,18 @@ def test_finish_refuses_before_bookkeeping_when_that_worktree_is_dirty(
     assert _finish(leaf) == 1
     assert f"could not read the status of {holder}" in capsys.readouterr().err
     assert git(leaf, "rev-parse", "HEAD") == before
+
+
+def test_abort_from_a_delegated_leaf_refuses_cleanly_while_the_base_is_held_elsewhere(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    # §5 re-check F-R2: abort from the leaf's worktree crashed in `git checkout dev`.
+    from specy_road.bundled_scripts import abort_task_pickup
+
+    repo, leaf, bare = _delegate_layout(tmp_path, monkeypatch)
+    before = git(bare, "rev-parse", "dev")
+    with pytest.raises(SystemExit) as e:
+        abort_task_pickup.main(["--repo-root", str(leaf)])
+    err = capsys.readouterr().err
+    assert e.value.code == 1 and f"'dev' is checked out in {repo}" in err and "git worktree remove" in err
+    assert git(leaf, "branch", "--show-current") == "feature/rm-thing" and git(bare, "rev-parse", "dev") == before

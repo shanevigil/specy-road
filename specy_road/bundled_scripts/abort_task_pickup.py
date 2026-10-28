@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.finish_land_integration import integration_worktree
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
@@ -58,10 +60,16 @@ def _dirty_entries(ignore_untracked: set[str]) -> list[str]:
         if not line.strip():
             continue
         status, _, path = line[:2], line[2], line[3:]
-        if status == "??" and path in ignore_untracked:
+        # Another leaf's untracked toolkit bookkeeping survives the checkout and is not
+        # this abort's business (§5 re-check F-R3); anything else untracked still blocks.
+        if status == "??" and (path in ignore_untracked or _OTHER_BOOKKEEPING.match(path)):
             continue
         blocking.append(line)
     return blocking
+
+
+_OTHER_BOOKKEEPING = re.compile(
+    r"work/((brief|implementation-summary)-[^/]+\.md|prompt-[^/]+\.md|(reviews|\.workers|\.sessions|\.worktrees)/)")
 
 
 def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None:
@@ -304,6 +312,18 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
     git_run(ROOT, "push", remote, base)
 
 
+def _exit_if_base_checked_out_elsewhere(base: str, branch: str) -> None:
+    """Abort moves this checkout to ``base``; git refuses while another worktree holds it."""
+    holder = integration_worktree(ROOT, base)
+    if holder is None:
+        return
+    print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
+    print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
+    print(f"  `git worktree remove {ROOT}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
+          file=sys.stderr)
+    raise SystemExit(1)
+
+
 def main(argv: list[str] | None = None) -> None:
     global ROOT
     args = _parse_args(argv if argv is not None else sys.argv[1:])
@@ -328,6 +348,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     node_id = entry["node_id"]
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
+    _exit_if_base_checked_out_elsewhere(base, branch)
 
     git_run(ROOT, "fetch", remote)
     local_claim = all(
