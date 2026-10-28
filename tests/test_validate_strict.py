@@ -18,12 +18,13 @@ def _validate(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def _scaffold(root: Path, *, acceptance: bool) -> Path:
+    """A fresh scaffold validates quietly; clearing M1.1's acceptance makes it warn."""
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     assert run_init_project(root) == 0
-    if acceptance:
+    if not acceptance:
         r = subprocess.run(
             [sys.executable, "-m", "specy_road.cli", "edit-node", "M1.1", "--repo-root", str(root),
-             "--set", "acceptance=Works"],
+             "--set", "acceptance="],
             cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
         )
         assert r.returncode == 0, r.stderr
@@ -42,7 +43,8 @@ def test_strict_fails_a_validation_that_warned(tmp_path: Path) -> None:
     assert "OK: roadmap and registry validate." in r.stdout
 
 
-def test_strict_passes_a_quiet_validation(tmp_path: Path) -> None:
+def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:
+    """The scaffold's sample task carries acceptance criteria, so a new project starts clean."""
     root = _scaffold(tmp_path, acceptance=True)
 
     r = _validate(root, "--strict")

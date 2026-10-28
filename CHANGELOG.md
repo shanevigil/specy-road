@@ -68,6 +68,17 @@ body. Keep section bodies focused; link to PRs for detail.
   and `.claude/commands/specyrd-*.md`) instead of leaving an `rm` to copy.
 - `specy-road validate --strict` exits 1 when validation passes with
   warnings or self-heal notes, for CI once an upgrade window closes.
+
+### Changed
+
+- The `init project` sample roadmap is real onboarding work: phase M1
+  *Adopt specy-road* and task M1.1 *Set up the project's specy-road basics*
+  (codename `project-setup`), with a goal, five acceptance criteria (purpose,
+  principles, vision, git workflow, first real work, generated files and
+  `validate --strict`), touch zones that exist, and filled planning sheets.
+  It replaces the placeholder milestone that `do-next-available-task` could
+  claim and that made a fresh project warn under the review gate. Existing
+  repos are unaffected.
 - `specy-road brainstorm close [--slug SLUG]` moves a finished session and its
   prompts to `work/brainstorm-closed/`, so it stops counting as open and
   `--slug` stops being required for the others.

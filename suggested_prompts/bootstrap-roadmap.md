@@ -50,6 +50,8 @@ Find and consolidate:
 
 After merge, every node must conform to `schemas/roadmap.schema.json` (validated on the **merged** graph).
 
+**The scaffold's own nodes.** `init project` ships phase **M1** *Adopt specy-road* and task **M1.1** *Set up the project's specy-road basics* (`project-setup`), whose acceptance criteria are the setup this migration completes. Keep them: put the migrated work in new phases (`M2`, …) or under M1, and mark M1.1 `Complete` through the normal review and finish once its criteria hold. Do not rename them into project work.
+
 ### Required on each node
 
 - **`id`** — Display id, pattern `M[0-9]+(\.[0-9]+)*` (e.g. `M1`, `M1.2`). **Immutable**; never renumber existing ids (gaps allowed).
