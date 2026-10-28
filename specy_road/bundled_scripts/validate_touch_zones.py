@@ -6,9 +6,11 @@ working tree. A zone naming a file that does not exist survives all the way to
 the implementing agent, where the brief's "confirm touch zones" TODO is the first
 thing to catch it. This is the authoring-time catch for the same mistake.
 
-Non-fatal on purpose. A zone that is genuinely ahead of the code is legitimate
-for work that has not started, and the overlap heuristic next door is advisory
-for the same reason.
+Non-fatal on purpose, and silent for nodes that have not started: their zones
+name the files the work will create, so "matches nothing" is the expected state.
+Reporting them taught agents to "fix" the warning by deleting those zones,
+which is the opposite of what the check is for. It reports In Progress and Blocked nodes, where a zone
+that matches nothing is more likely a typo or a path that moved.
 """
 
 from __future__ import annotations
@@ -76,6 +78,11 @@ def _zone_matches(root: Path, zone: str) -> bool:
         return True
 
 
+def _not_started(node: dict) -> bool:
+    value = node.get("rollup_status") or node.get("status")
+    return isinstance(value, str) and value.strip().lower() == "not started"
+
+
 def _is_settled(node: dict) -> bool:
     for key in ("rollup_status", "status"):
         value = node.get(key)
@@ -88,7 +95,7 @@ def _missing_zones(nodes: list[dict], root: Path) -> list[tuple[str, list[str]]]
     out: list[tuple[str, list[str]]] = []
     for node in nodes:
         zones = node.get("touch_zones")
-        if not isinstance(zones, list) or not zones or _is_settled(node):
+        if not isinstance(zones, list) or not zones or _is_settled(node) or _not_started(node):
             continue
         missing = [
             z for z in zones
@@ -122,9 +129,9 @@ def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
     for nid, zones in missing:
         print(f"  {nid}: {', '.join(repr(z) for z in zones)}", file=sys.stderr)
     print(
-        "  Zones are paths or globs relative to the project root. Fix one with: "
-        "specy-road edit-node <NODE_ID> --set touch_zones=<paths>\n"
-        "  For work not started yet, list only paths that exist today (its planning "
-        "sheet, the directories it will change) and widen the zones as it lands.",
+        "  Zones are paths or globs relative to the project root, and may name files "
+        "the work will still create.\n"
+        "  Correct only a typo or a path that moved (specy-road edit-node <NODE_ID> "
+        "--set touch_zones=<paths>); do not remove zones just to silence this.",
         file=sys.stderr,
     )

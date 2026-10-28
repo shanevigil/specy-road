@@ -19,7 +19,7 @@ from specy_road.bundled_scripts.validate_touch_zones import (
 
 
 def _node(**over) -> dict:
-    base = {"id": "M1.1", "status": "Not Started", "touch_zones": []}
+    base = {"id": "M1.1", "status": "In Progress", "touch_zones": []}
     base.update(over)
     return base
 
@@ -181,8 +181,21 @@ def test_a_bounded_glob_that_matches_stays_quiet(tmp_path: Path, capsys) -> None
     assert _warn([_node(touch_zones=["src/**/*.py"])], tmp_path, capsys) == ""
 
 
-def test_the_hint_says_what_to_do_for_work_not_started(tmp_path: Path, capsys) -> None:
-    """rc1 feedback: adopters could not tell whether a future path was an error."""
+def test_a_not_started_node_naming_files_it_will_create_is_quiet(tmp_path: Path, capsys) -> None:
+    """Agents "fixed" this warning on unbuilt work by deleting the zones."""
+    nodes = [_node(status="Not Started", touch_zones=["src/feature/new_module.py"])]
+
+    assert _warn(nodes, tmp_path, capsys) == ""
+
+
+def test_a_started_subtree_is_judged_by_its_rollup(tmp_path: Path, capsys) -> None:
+    nodes = [_node(id="M2", status="Not Started", rollup_status="In Progress", touch_zones=["gone/"])]
+
+    assert "M2" in _warn(nodes, tmp_path, capsys)
+
+
+def test_the_hint_does_not_invite_removing_zones(tmp_path: Path, capsys) -> None:
     err = _warn([_node(touch_zones=["src/sync/engine.py"])], tmp_path, capsys)
 
-    assert "For work not started yet, list only paths that exist today" in err
+    assert "do not remove zones just to silence this" in err
+    assert "planning sheet" not in err
