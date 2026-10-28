@@ -34,15 +34,14 @@ from specy_road.bundled_scripts.brainstorm_session import (
     list_slugs,
     read_session,
     resolve_slug,
+    session_lock,
     session_path,
     set_status,
     slugify,
     write_session,
 )
 from specy_road.cli_entry import run_forwarded_cli
-from specy_road.history_cache import CACHE_DIR
 from specy_road.runtime_paths import resolve_repo_root
-from specy_road.worker_lock import _lock_file
 
 
 def _load(ns: argparse.Namespace) -> tuple:
@@ -271,22 +270,10 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
 
 
 def _serialised(handler):
-    """Run ``handler`` under the repo's brainstorm lock.
-
-    Panel shards run ``add-idea`` in parallel against one session; without one
-    lock around load, ``B<n>`` allocation and write, two take the same id and
-    the last writer drops the other's idea. The lock file lives in the ignored
-    ``.specyrd/cache/`` so it never shows up as an untracked file.
-    """
+    """Run ``handler`` under the repo's brainstorm lock (``session_lock``)."""
     def run(ns: argparse.Namespace) -> int:
-        lock = resolve_repo_root(ns) / CACHE_DIR / "brainstorm.lock"
-        lock.parent.mkdir(parents=True, exist_ok=True)
-        with lock.open("a+") as f:
-            unlock = _lock_file(f)
-            try:
-                return handler(ns)
-            finally:
-                unlock()
+        with session_lock(resolve_repo_root(ns)):
+            return handler(ns)
     return run
 
 
