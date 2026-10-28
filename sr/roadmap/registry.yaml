@@ -48,3 +48,16 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: pick-ordering
+    node_id: M4.9
+    branch: feature/rm-pick-ordering
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_available.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/git_workflow_config.py
+      - docs/dev-workflow.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
