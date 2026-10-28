@@ -50,15 +50,8 @@ def guard_lines(src: str) -> dict[int, str]:
     return out
 
 
-def main(argv: list[str]) -> int:
-    listing = "--list" in argv
-    only = argv[argv.index("--module") + 1] if "--module" in argv else None
-    args = [a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or argv[i - 1] != "--module")]
-    data = CoverageData(args[0] if args else ".coverage")
-    data.read()
-    executed: dict[str, set[int]] = {}
-    for f in data.measured_files():
-        executed[str(Path(f).resolve())] = set(data.lines(f) or ())
+def _collect(executed: dict[str, set[int]], only: str | None):
+    """Per module: unexecuted guard counts, all guard counts, and one row per unexecuted guard line."""
     per_module: dict[str, Counter] = defaultdict(Counter)
     totals: dict[str, Counter] = defaultdict(Counter)
     rows: list[tuple[str, int, str, str]] = []
@@ -74,10 +67,10 @@ def main(argv: list[str]) -> int:
             if line not in ran:
                 per_module[mod][kind] += 1
                 rows.append((mod, line, kind, lines[line - 1].strip()))
-    if listing:
-        for mod, line, kind, text in rows:
-            print(f"{mod}:{line}\t{kind}\t{text}")
-        return 0
+    return per_module, totals, rows
+
+
+def _print_table(per_module: dict[str, Counter], totals: dict[str, Counter]) -> None:
     grand = Counter()
     grand_tot = Counter()
     print("| module | " + " | ".join(f"{k} (of)" for k in KINDS) + " | unexecuted guards |")
@@ -91,6 +84,21 @@ def main(argv: list[str]) -> int:
         if mod not in per_module:
             grand_tot.update(totals[mod])
     print("| **total** | " + " | ".join(f"{grand[k]} ({grand_tot[k]})" for k in KINDS) + f" | {sum(grand.values())} |")
+
+
+def main(argv: list[str]) -> int:
+    listing = "--list" in argv
+    only = argv[argv.index("--module") + 1] if "--module" in argv else None
+    args = [a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or argv[i - 1] != "--module")]
+    data = CoverageData(args[0] if args else ".coverage")
+    data.read()
+    executed = {str(Path(f).resolve()): set(data.lines(f) or ()) for f in data.measured_files()}
+    per_module, totals, rows = _collect(executed, only)
+    if listing:
+        for mod, line, kind, text in rows:
+            print(f"{mod}:{line}\t{kind}\t{text}")
+        return 0
+    _print_table(per_module, totals)
     return 0
 
 
