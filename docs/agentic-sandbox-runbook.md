@@ -264,7 +264,12 @@ coordinator chat (any harness):
    `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
    and `worker status <W>` show exactly that.
 10. **Finish.** Review and `finish-this-task` the leaf as in §2 (with
-    `on_complete: merge`; `pr` cannot land against a bare local remote);
+    `on_complete: merge`; `pr` cannot land against a bare local remote),
+    run **from the leaf's linked worktree** while the coordinator's checkout
+    stays on the integration branch: the merge lands and is pushed from the
+    coordinator's checkout, and both trees are clean afterwards. First, with
+    an uncommitted edit to a tracked file in the coordinator's checkout,
+    finish must refuse before its bookkeeping commit and name that checkout.
     `worker terminate` the idle worker; `handoff status` no longer lists it.
 
 Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their

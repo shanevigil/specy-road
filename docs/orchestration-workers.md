@@ -278,4 +278,9 @@ must not edit files in that leaf's touch zones while the worker runs — the
 presence guard (`session guard`) already refuses the git operations that
 would collide. Finishing the leaf is still `finish-this-task` from the
 leaf's branch after the gate; `terminate` the idle worker afterwards so its
-record closes and the slot frees.
+record closes and the slot frees. From a linked worktree with
+`on_complete: merge`, finish cannot check the integration branch out while
+the coordinator's checkout holds it, so it merges and pushes **in that
+checkout** instead. That checkout must have no uncommitted changes to tracked
+files (untracked files are fine): otherwise finish refuses before its
+bookkeeping commit and names the checkout to commit or stash in.

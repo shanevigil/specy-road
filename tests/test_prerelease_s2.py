@@ -61,10 +61,12 @@ def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeyp
     git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
     git(repo, "remote", "add", "origin", str(bare))
     git(repo, "fetch", "-q", "origin")
-    git(repo, "worktree", "add", "-q", str(tmp_path / "hold"), "dev")   # the landing cannot check dev out
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n")   # the landing's push is refused
+    hook.chmod(0o755)
     assert _finish(repo) == 1
     assert "run `specy-road finish-this-task --on-complete merge` again" in capsys.readouterr().err
-    git(repo, "worktree", "remove", str(tmp_path / "hold"))
+    hook.unlink()
     assert _finish(repo) == 0
     assert "[ok] merged feature/rm-thing into dev and pushed to origin" in capsys.readouterr().out
     git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", "feature/rm-thing"), "dev")
