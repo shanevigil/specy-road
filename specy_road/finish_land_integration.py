@@ -65,12 +65,20 @@ def integration_worktree_problem(repo: Path, integration_branch: str) -> str | N
 
     Untracked files do not count: a coordinator checkout routinely holds
     untracked pickup briefs, and a merge that would overwrite one is refused by
-    git itself before it changes anything.
+    git itself before it changes anything -- except ``roadmap.md`` and
+    ``roadmap-context.md``, which the landing regenerates in place.
     """
     holder = integration_worktree(repo, integration_branch)
     if holder is None:
         return None
-    _ok, out = git_ok(["status", "--porcelain", "--untracked-files=no"], holder)
+    ok, out = git_ok(["status", "--porcelain", "--untracked-files=no"], holder)
+    if not ok:
+        return (
+            f"{integration_branch!r} is checked out in {holder}, but could not read "
+            f"the status of {holder} ({out or 'git did not run'}); finish lands the "
+            "merge there only when it is known to be clean. Fix or prune that "
+            "worktree, then re-run."
+        )
     if not out:
         return None
     return (

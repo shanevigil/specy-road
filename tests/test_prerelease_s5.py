@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -62,3 +63,11 @@ def test_finish_refuses_before_bookkeeping_when_that_worktree_is_dirty(
     assert f"'dev' is checked out in {repo} with uncommitted changes" in capsys.readouterr().err
     assert git(leaf, "rev-parse", "HEAD") == before
     assert git(repo, "status", "--porcelain") == "M roadmap/git-workflow.yaml"
+    git(repo, "checkout", "--", "roadmap/git-workflow.yaml")
+    git(repo, "checkout", "-q", "--detach")
+    holder = tmp_path / "holder"
+    git(repo, "worktree", "add", "-q", str(holder), "dev")
+    shutil.rmtree(holder)   # still listed as holding dev; git status cannot run there
+    assert _finish(leaf) == 1
+    assert f"could not read the status of {holder}" in capsys.readouterr().err
+    assert git(leaf, "rev-parse", "HEAD") == before
