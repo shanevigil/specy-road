@@ -110,6 +110,8 @@ def test_find_private_refs_forms():
         from specy_road.mod import public, _helper
         from specy_road.bundled_scripts import thing as _alias
         import specy_road.other
+        import specy_road.worker_process as wp
+        from specy_road.pkg import mod
 
         def test_x(monkeypatch):
             monkeypatch.setattr("specy_road.gui._settings", None)
@@ -118,6 +120,13 @@ def test_find_private_refs_forms():
             specy_road.other._deep.call()
             specy_road.other.public()
             obj.__dunder__
+            wp._cmdline(1)
+            mod._x
+            monkeypatch.setattr(wp, "_pid", 1)
+            mock.patch.object(mod, "_y")
+            wp.public()
+            monkeypatch.setattr(wp, "public", 1)
+            _alias.public
         """
     )
     assert private_imports.find_private_refs(source, "t.py") == {
@@ -126,6 +135,10 @@ def test_find_private_refs_forms():
         "specy_road.gui._settings",
         "specy_road.gui._client",
         "specy_road.other._deep",
+        "specy_road.worker_process._cmdline",
+        "specy_road.pkg.mod._x",
+        "specy_road.worker_process._pid",
+        "specy_road.pkg.mod._y",
     }
 
 
@@ -134,10 +147,18 @@ def test_private_imports_pass_on_committed_baseline(monkeypatch):
     assert private_imports.main([]) == 0
 
 
-def test_private_imports_fail_on_new_reference(tmp_path, capsys):
+@pytest.mark.parametrize(
+    "source",
+    [
+        "from specy_road.core import _secret\n",
+        "from specy_road import core as c\nc._secret()\n",
+    ],
+    ids=["import", "aliased-module-attribute"],
+)
+def test_private_imports_fail_on_new_reference(tmp_path, capsys, source):
     tests_dir = tmp_path / "tests"
     tests_dir.mkdir()
-    (tests_dir / "test_new.py").write_text("from specy_road.core import _secret\n")
+    (tests_dir / "test_new.py").write_text(source)
     baseline = tmp_path / "baseline.txt"
     args = ["--tests-dir", str(tests_dir), "--baseline", str(baseline)]
 
