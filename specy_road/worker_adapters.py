@@ -75,6 +75,11 @@ def _text(prompt_path: Path) -> str:
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
 
 
+def _model_flag(flag: str, model: str | None) -> list[str]:
+    """No model means the harness's own default (a profile whose ``api_id`` is ``unknown``)."""
+    return [flag, model] if model else []
+
+
 #: A placeholder must be a whole shell word, bare or wrapped in exactly one
 #: pair of quotes, optionally behind a ``<`` redirection. Inside a larger
 #: word (``"prefix <prompt> suffix"``, ``--session-id={session}``) the quoting
@@ -165,7 +170,7 @@ class Adapter:
     caps = Capabilities(resume=False, interrupt=False, steer=False, handoff=False, events=False,
                         notes="runs the roster/profile cli; output lines become events, nothing else is known")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
         why = placeholder_problem(cli)
         if why:
             raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
@@ -210,13 +215,13 @@ class ClaudeCode(Adapter):
                         notes="claude -p stream-json; session id chosen up front; resume = `claude -p --resume`; "
                               "no interrupt short of SIGTERM (turn is lost); hand off with `claude --resume`")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
         sid = str(uuid.uuid4())
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
         return Launch(["claude", "-p", "--output-format", "stream-json", "--verbose", "--session-id", sid,
-                       "--model", model, "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                       *_model_flag("--model", model), "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
@@ -257,11 +262,11 @@ class Codex(Adapter):
                         notes="codex exec --json (prompt on stdin); thread id from thread.started; "
                               "resume = `codex exec resume <id> -` (prompt on stdin); hand off with `codex resume`")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
-        return Launch(["codex", "exec", "--json", "-m", model, "--sandbox", "workspace-write",
+        return Launch(["codex", "exec", "--json", *_model_flag("-m", model), "--sandbox", "workspace-write",
                        "--ask-for-approval", "never", "-C", str(worktree), "-"], stdin=_text(prompt_path))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
@@ -303,11 +308,11 @@ class Cursor(Adapter):
                               "has write and shell tools regardless); session id from the first event; resume = `agent -p --resume` "
                               "(print-mode resume with a new prompt is undocumented: verify on your install)")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
-        return Launch(["agent", "-p", "--output-format", "stream-json", "--force", "--model", model,
+        return Launch(["agent", "-p", "--output-format", "stream-json", "--force", *_model_flag("--model", model),
                        "--workspace", str(worktree), _text(prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
