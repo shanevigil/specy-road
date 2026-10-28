@@ -115,8 +115,8 @@ def cmd_guard(ns: argparse.Namespace) -> int:
     """
     adapter = ADAPTERS[ns.format]
     if ns.print_config:
-        print(adapter.config)
-        print(f"\n# {adapter.notes}")
+        print(adapter.config)   # stdout stays pure JSON, safe to paste whole
+        print(f"# {adapter.notes}", file=sys.stderr)
         return 0
     try:
         root = resolve_repo_root(ns)

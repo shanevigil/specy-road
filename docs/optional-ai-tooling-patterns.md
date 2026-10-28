@@ -129,7 +129,8 @@ When more than one agent session works in one checkout, `specy-road session
 guard` denies the git commands that move or discard another session's work
 (see `docs/orchestration.md`, Presence). Wire it into the harness's
 "before a shell command runs" hook. `specy-road session guard --format <harness>
---print-config` prints the snippet and the harness's caveats.
+--print-config` prints the snippet on stdout, pure JSON you can paste whole,
+and the harness's caveats on stderr.
 
 **Claude Code** (verified against the hooks docs, 2026-10): a `PreToolUse` hook
 matched to `Bash` in `.claude/settings.json`:
