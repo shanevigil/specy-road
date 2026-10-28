@@ -71,3 +71,5 @@ def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeyp
     assert _finish(repo) == 0
     assert "[ok] merged feature/rm-thing into dev and pushed to origin" in capsys.readouterr().out
     git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", "feature/rm-thing"), "dev")
+    assert _finish(repo) == 0   # a further re-run lands nothing and says so
+    assert "already merged into dev on origin; nothing to do" in capsys.readouterr().out

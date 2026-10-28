@@ -11,6 +11,7 @@ from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
 )
+from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
 
 
@@ -116,6 +117,10 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
 
 def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
     """Land a branch whose finish bookkeeping is committed but whose merge failed."""
+    git_ok(["fetch", "-q", remote, ib], repo)
+    if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
+        print(f"\n[ok] {branch} is already merged into {ib} on {remote}; nothing to do")
+        raise SystemExit(0)
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
     )
