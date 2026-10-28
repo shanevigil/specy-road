@@ -28,3 +28,14 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: chunk-key-order
+    node_id: M3.3
+    branch: feature/rm-chunk-key-order
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_rebalance.py
+      - specy_road/bundled_scripts/roadmap_chunk_utils.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
