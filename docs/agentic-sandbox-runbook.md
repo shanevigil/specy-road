@@ -65,9 +65,12 @@ Rating for each scenario: **PASS** (criteria met), **PASS-WITH-NOTE**
 
 In the Notes app:
 
-1. `specy-road init project` → `validate`, `export --check`, `digest --check`,
-   `file-limits` all exit 0. `roadmap/orchestration.yaml` and
-   `model-profiles/` are present.
+1. `specy-road init project` → `validate` and `file-limits` exit 0.
+   `export --check` and `digest --check` exit 1 with `missing …` because the
+   scaffold ships neither generated file (`roadmap.md`,
+   `roadmap-context.md`); run `specy-road export` and `specy-road digest`
+   once, then both exit 0. `roadmap/orchestration.yaml` and `model-profiles/` are
+   present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
    symlink to it; the `AGENTS.md` managed block is written.
@@ -80,7 +83,11 @@ In the Notes app:
 
 ## 2. Review gate and signed reviews
 
-In the Notes app with `require_implementation_review_before_finish: true`:
+In the Notes app with `require_implementation_review_before_finish: true`
+and `on_complete: merge` in `roadmap/git-workflow.yaml`, committed on the
+integration branch. The scaffold's `on_complete: pr` only prints a PR tail
+and leaves the leaf open on the integration branch, and a bare local remote
+has no host to open that PR on.
 
 1. `do-next-available-task` claims a leaf; commit a change inside its touch
    zones; write `work/implementation-summary-<ID>.md` and
@@ -215,8 +222,9 @@ executor role, `max_workers: 2`. Claim two leaves. From the coordinator chat
    resume <W>` is then refused ("is failed; delegate again instead"), and
    `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
    and `worker status <W>` show exactly that.
-10. **Finish.** Review and `finish-this-task` the leaf as in §2; `worker
-    terminate` the idle worker; `handoff status` no longer lists it.
+10. **Finish.** Review and `finish-this-task` the leaf as in §2 (with
+    `on_complete: merge`; `pr` cannot land against a bare local remote);
+    `worker terminate` the idle worker; `handoff status` no longer lists it.
 
 Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their
 notes recorded.
