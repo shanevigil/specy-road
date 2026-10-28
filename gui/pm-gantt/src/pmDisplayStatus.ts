@@ -64,12 +64,15 @@ export function pmOutlineDisplayStatus(
 /**
  * When the outline title and planning sheet should be read-only in the PM UI.
  * MR Rejected is intentionally editable so the PM can fix roadmap state after a bad merge attempt.
+ * Gates are never claimed, so a gate the PM set to In Progress stays editable.
  */
 export function pmPlanningTitleReadOnlyFromRow(
   gitCheckoutMatchesRow: boolean,
   displayStatusBase: string | undefined,
   outlineStatus: string | undefined,
+  nodeType: string | undefined,
 ): boolean {
+  if (nodeType === "gate") return false;
   if (gitCheckoutMatchesRow) return true;
   const ol = (outlineStatus || "").trim().toLowerCase();
   if (ol === "mr pending" || ol === "mr merged") return true;

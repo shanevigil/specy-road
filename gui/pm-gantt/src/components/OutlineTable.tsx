@@ -1287,6 +1287,7 @@ export function OutlineTable({
       isGitCheckoutRow,
       baseDisp,
       outlineDisp,
+      node?.type,
     );
     return {
       id: rowId,
