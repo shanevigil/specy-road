@@ -34,12 +34,13 @@ def test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes(tmp_pa
     assert err is None
     check = re.search(r"or `(git status [^`]+)` lists changes you did not make", text).group(1)
 
-    def dirty() -> str:
-        return subprocess.run(check, shell=True, cwd=repo, capture_output=True, text=True, check=True).stdout
+    def dirty(where: Path) -> str:
+        return subprocess.run(check, shell=True, cwd=where, capture_output=True, text=True, check=True).stdout
 
-    assert dirty() == ""
+    assert dirty(repo) == ""
     (repo / "src" / "b.py").write_text("x = 1\n")
-    assert dirty() == "?? src/b.py\n"
+    assert dirty(repo) == "?? src/b.py\n"
+    assert dirty(repo / "work") == "?? src/b.py\n"   # the same from a subdirectory (pathspecs are top-anchored)
 
 
 def _finish(repo: Path, *args: str) -> int:
