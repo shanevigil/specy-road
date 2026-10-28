@@ -6,7 +6,7 @@
 node_id: M1.1
 agent: your-roster-id   # the `id` of your entry in roadmap/orchestration.yaml
 branch: feature/rm-codename
-commit: "full or 7+ char SHA of your last implementation commit"
+commit: "full or 7+ char SHA of the branch's last commit (the one that adds your summary)"
 base: "SHA your branch started from (git merge-base <integration> HEAD)"
 changed_paths: [src/example.py]
 verify:
