@@ -354,14 +354,19 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   unconfigured remote fails closed (see Breaking); the gate counts a reviewer
   — the human included — only on nodes its `may_process` covers, and the
   approval is not offered otherwise. `worker delegate` refuses a worktree
-  with uncommitted changes outside `work/` (they could be overwritten and were
+  with uncommitted changes other than the leaf's own untracked bookkeeping,
+  or whose `git status` cannot be read (they could be overwritten and were
   hidden from `reconcile`); `terminate` signals a process group only when the
-  wrapper or harness is verified, never a reused one. Session records are
+  wrapper or harness is verified and still in that group. `finish-this-task`
+  in merge mode lands from a worker's worktree by merging in the worktree that
+  holds the integration branch (refusing first if it is dirty), and a re-run
+  retries a failed landing. Session records are
   written atomically and an unreadable one counts as a live peer; the guard
-  sees commands behind `if`/`then`/`while`/`do`/`!`/`case` and `-exec`, and
-  refuses `git rm -f` and tree-wide `git rm`. Brainstorm commands and the GUI
+  sees commands behind `if`/`then`/`while`/`do`/`!`/`case` and `-exec`, refuses
+  a command name built by expansion (`git${IFS}stash`), and refuses
+  `git rm -f` and tree-wide `git rm`. Brainstorm commands and the GUI
   routes share one session lock (parallel panel shards no longer drop ideas;
-  a GUI chat turn reloads before saving). `init project`, `refresh-stubs` and
+  a GUI chat turn reloads before saving; `verify` fetches outside the lock). `init project`, `refresh-stubs` and
   `specyrd init` refuse to write through a symlink that leads outside the
   repository. `orchestrate plan` skips invalid profiles for every role, and
   `prompt --channel cli` neither echoes the prompt nor crashes on one too
