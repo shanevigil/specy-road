@@ -310,9 +310,15 @@ specy-road export && specy-road digest
 ## Several sessions at once
 
 `--slug` is optional when exactly one session is open, and required when more
-than one is. `specy-road brainstorm sessions` lists them. Re-running `start`
-on an existing session keeps its ideas, frame and round and regenerates the
-prompt against the current graph.
+than one is. `specy-road brainstorm sessions` lists them; a session file it
+cannot read is reported with the fix and the rest are still listed (exit 1).
+Re-running `start` on an existing session keeps its ideas, frame and round and
+regenerates the prompt against the current graph.
+
+When a session is finished, `specy-road brainstorm close [--slug SLUG]` moves
+its file and its prompts to `work/brainstorm-closed/`, so it stops counting as
+open and `--slug` is no longer needed for the rest. The closed file stays
+tracked as the record; close refuses if that destination already exists.
 
 ## Checking it works for you
 

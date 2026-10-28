@@ -49,6 +49,9 @@ body. Keep section bodies focused; link to PRs for detail.
   local. A test fails if a template cites a doc that does not exist.
 - Docs no longer offer `specy-road sync` as a way to refresh `roadmap.md` or
   the digest without saying it fast-forwards the integration branch first.
+- `brainstorm sessions` no longer aborts on the first unreadable
+  `work/brainstorm-*.yaml`: it flags that session, lists the rest, and exits 1.
+  Session read errors now name the file and the edit that fixes it.
 
 ### Added (rc1 upgrade feedback)
 
@@ -61,6 +64,9 @@ body. Keep section bodies focused; link to PRs for detail.
   and `.claude/commands/specyrd-*.md`) instead of leaving an `rm` to copy.
 - `specy-road validate --strict` exits 1 when validation passes with
   warnings or self-heal notes, for CI once an upgrade window closes.
+- `specy-road brainstorm close [--slug SLUG]` moves a finished session and its
+  prompts to `work/brainstorm-closed/`, so it stops counting as open and
+  `--slug` stops being required for the others.
 
 ## [v0.3.1-rc1] - 2026-10-28
 

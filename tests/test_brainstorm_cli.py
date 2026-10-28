@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 
+from specy_road.bundled_scripts.brainstorm_session import resolve_slug
 from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 
@@ -285,3 +286,55 @@ def test_reopening_a_session_keeps_its_ideas(repo: Path) -> None:
 
     assert "(1 ideas, round 1 of 2" in r.stdout
     assert json.loads(_run(repo, "list", "--json").stdout)["mode"] == "brainstorm"
+
+
+def _seed(repo: Path, slug: str) -> None:
+    assert _run(repo, "start", "--slug", slug, "--topic", slug).returncode == 0
+
+
+def test_an_unreadable_session_is_flagged_and_the_rest_still_listed(repo: Path) -> None:
+    for slug in ("aa", "bb", "cc"):
+        _seed(repo, slug)
+    bad = repo / "work" / "brainstorm-bb.yaml"
+    text = bad.read_text(encoding="utf-8").replace(
+        "ideas: []", "ideas:\n- id: B3\n  title: T\n  recommendation: ship it soon\n")
+    bad.write_text(text, encoding="utf-8")
+
+    r = _run(repo, "sessions")
+
+    assert r.returncode == 1
+    assert "aa" in r.stdout and "cc" in r.stdout and "bb" not in r.stdout
+    assert "bb: unreadable — work/brainstorm-bb.yaml: idea B3: recommendation 'ship it soon'" in r.stderr
+    assert "edit the file: use one of those or remove the key" in r.stderr
+    assert bad.read_text(encoding="utf-8") == text   # reported, not rewritten
+
+
+def test_close_moves_the_session_and_its_prompts_and_nothing_else(repo: Path) -> None:
+    _seed(repo, "a")
+    _seed(repo, "ab")
+    work = repo / "work"
+    (work / "brainstorm-a-s1-prompt.md").write_text("shard", encoding="utf-8")
+
+    r = _run(repo, "close", "--slug", "a")
+
+    assert r.returncode == 0, r.stderr
+    closed = work / "brainstorm-closed"
+    assert sorted(p.name for p in closed.iterdir()) == [
+        "brainstorm-a-prompt.md", "brainstorm-a-s1-prompt.md", "brainstorm-a.yaml"]
+    assert "moved work/brainstorm-a.yaml -> work/brainstorm-closed/brainstorm-a.yaml" in r.stdout
+    assert (work / "brainstorm-ab.yaml").is_file() and (work / "brainstorm-ab-prompt.md").is_file()
+    assert resolve_slug(repo, None) == "ab"   # the closed session no longer counts as open
+    assert json.loads(_run(repo, "list", "--json").stdout)["slug"] == "ab"
+
+
+def test_close_refuses_a_missing_session_and_an_existing_destination(repo: Path) -> None:
+    _seed(repo, "a")
+    assert _run(repo, "close").returncode == 0
+
+    again = _run(repo, "close", "--slug", "a")
+    assert again.returncode == 1 and "no open brainstorm session 'a'" in again.stderr
+
+    _seed(repo, "a")
+    clash = _run(repo, "close", "--slug", "a")
+    assert clash.returncode == 1 and "work/brainstorm-closed/brainstorm-a.yaml already exists" in clash.stderr
+    assert (repo / "work" / "brainstorm-a.yaml").is_file()   # nothing moved

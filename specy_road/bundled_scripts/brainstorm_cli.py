@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 
 from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
 from specy_road.bundled_scripts.brainstorm_cli_v2 import HANDLERS_V2, write_round_prompts
+from specy_road.bundled_scripts.brainstorm_close import close_session
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin, parse_overlap
 from specy_road.bundled_scripts.brainstorm_prompt import (
     render_recommend_prompt,
@@ -263,9 +265,25 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
     if not slugs:
         print("no brainstorm sessions in work/")
         return 0
+    unreadable = 0
     for slug in slugs:
-        session = read_session(root, slug)
+        # One bad file must not hide the sessions after it; it is reported, not repaired.
+        try:
+            session = read_session(root, slug)
+        except BrainstormError as e:
+            unreadable += 1
+            print(f"{slug}: unreadable — {e}", file=sys.stderr)
+            continue
         print(f"  {slug:<24} {session.mode:<10} {len(session.ideas):>3} ideas")
+    return 1 if unreadable else 0
+
+
+def cmd_close(ns: argparse.Namespace) -> int:
+    root = resolve_repo_root(ns)
+    slug = resolve_slug(root, ns.slug)
+    for src, dst in close_session(root, slug):
+        print(f"moved {src.relative_to(root).as_posix()} -> {dst.relative_to(root).as_posix()}")
+    print(f"[ok] closed {slug}; it no longer counts as an open session")
     return 0
 
 
@@ -283,6 +301,7 @@ HANDLERS = {name: fn if name == "verify" else _serialised(fn) for name, fn in {
     "add-idea": cmd_add_idea,
     "list": cmd_list,
     "sessions": cmd_sessions,
+    "close": cmd_close,
     "accept": cmd_accept,
     "reject": cmd_reject,
     "revise": cmd_revise,
