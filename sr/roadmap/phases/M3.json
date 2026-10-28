@@ -275,7 +275,8 @@
         "A roster channels.cli can name `{session_flag}` which expands to `--session-id <id>` on launch and `--resume <id>` on resume for claude-code, so one command serves both, and docs/orchestration-workers.md documents it and the harness settings-file route",
         "orchestrate plan prints the ref the roster was read from, and when the local roadmap/orchestration.yaml is absent there or differs it says so instead of the may_process hint; validate warns the same way",
         "worker sync reports a gap in event sequence numbers",
-        "session start --path accepts several values"
+        "session start --path accepts several values",
+        "In a nested layout the executor prompt and brief name the project root and give the implementation summary and hand-off paths relative to the worker's working directory, so a worker never writes them at the git root"
       ],
       "codename": "worker-cli-fixes",
       "dependencies": [],
