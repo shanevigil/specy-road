@@ -28,7 +28,7 @@ from specy_road import orchestrate_plan as op
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import session_cli
+from specy_road.bundled_scripts import orchestrate_cli, session_cli
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.bundled_scripts.validate_roadmap import validate_orchestration_contract
 
@@ -63,10 +63,22 @@ def test_session_flag_must_be_whole_arguments(cli: str) -> None:
 EXECUTORLESS = "version: 1\nroster:\n  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
 
 
-def test_plan_names_the_roster_ref(tmp_path: Path) -> None:
-    plan, err = op.build_orchestration_plan(_plan_repo(tmp_path), today=date(2026, 11, 1))
+def _plan_text(repo: Path, capsys) -> str:
+    with pytest.raises(SystemExit):
+        orchestrate_cli.main(["orchestrate", "plan", "--today", "2026-11-01", "--repo-root", str(repo)])
+    return capsys.readouterr().out
+
+
+def test_text_plan_always_names_the_roster_ref(tmp_path: Path, capsys) -> None:
+    repo = _plan_repo(tmp_path)
+    plan, err = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
     assert err is None and plan.roster_ref and plan.roster_drift is None
-    assert plan.to_dict()["roster_ref"] == plan.roster_ref
+    out = _plan_text(repo, capsys)
+    assert f"roster: roadmap/orchestration.yaml at {plan.roster_ref}\n" in out and "! " not in out
+    (repo / "roadmap" / "orchestration.yaml").write_text(ROSTER + "# local edit\n")
+    out = _plan_text(repo, capsys)
+    assert f"roster: roadmap/orchestration.yaml at {plan.roster_ref}\n" in out
+    assert "! roadmap/orchestration.yaml in the working tree differs from" in out
 
 
 def test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint(
