@@ -60,6 +60,7 @@ GITIGNORE_LINES = [
     "work/.workers/",
     "work/.worktrees/",
     "work/brainstorm-*-prompt.md",
+    "work/brainstorm-closed/*-prompt.md",
 ]
 
 _GITIGNORE_NOTE = (

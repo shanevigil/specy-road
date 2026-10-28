@@ -31,7 +31,8 @@ body. Keep section bodies focused; link to PRs for detail.
   untracked file a schemas-only diff review misses).
 - The managed `.gitignore` block now carries the 0.3 run-time paths
   (`work/reviews/`, `work/.sessions/`, `work/.workers/`, `work/.worktrees/`,
-  `work/brainstorm-*-prompt.md`), which upgraders had to add by hand.
+  `work/brainstorm-*-prompt.md`, `work/brainstorm-closed/*-prompt.md`),
+  which upgraders had to add by hand.
 - `suggested_prompts/bootstrap-agents-md.md` no longer asks for a second load
   order around the managed block, which already carries one.
 - `edit-node --set acceptance=a|b` stored one criterion while adopters
