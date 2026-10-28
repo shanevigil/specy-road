@@ -69,17 +69,19 @@ In the Notes app:
    `export --check` and `digest --check` exit 1 with `missing …` because the
    scaffold ships neither generated file (`roadmap.md`,
    `roadmap-context.md`); run `specy-road export` and `specy-road digest`
-   once, then both exit 0. `roadmap/orchestration.yaml` and `model-profiles/` are
-   present.
+   once, then both exit 0. `roadmap/orchestration.yaml`, `model-profiles/` and
+   the `AGENTS.md` managed block are present.
 2. `specyrd init --ai cursor`, `--ai claude-code`, `--ai codex`: one
    `.agents/skills/<name>/SKILL.md` per command; `.claude/skills/<name>` is a
-   symlink to it; the `AGENTS.md` managed block is written.
+   symlink to it; `AGENTS.md` is unchanged (its block comes from step 1).
 3. In each harness, invoke `specyrd-orchestrate`, `specyrd-brainstorm` and
    `specyrd-do-next-task` by name (Claude `/name`, Codex `$name`, Cursor
    `/name` or `@name`). Pass: the skill text is loaded (the agent quotes a
    line from it), not a lookalike community skill.
 4. Edit a stub, run `specy-road refresh-stubs`: only managed files change;
-   a pre-0.3 `.claude/commands/*.md` is named for removal, not deleted.
+   a pre-0.3 `.claude/commands/*.md` that `.specyrd/manifest.json` records
+   is named for removal, not deleted. It is named on the first refresh only
+   (the refresh drops it from the manifest); an unrecorded one is never named.
 5. **Upgrade from the last release.** In a scratch repo, scaffold with
    `specy-road==0.2.3` from PyPI in its own venv (`init project`, `specyrd
    init --ai claude-code`), commit, then switch to the candidate venv:
@@ -87,8 +89,10 @@ In the Notes app:
    and tests` section and leaves every line outside the markers unchanged;
    `refresh-schemas` and `refresh-profiles` add what is missing;
    `refresh-profiles --force <path>` brings a profile's `## Code and test
-   tendencies`; with the CHANGELOG's `.gitignore` lines added, `validate`
-   exits 0.
+   tendencies`; `validate` exits 0 (with or without the CHANGELOG's
+   `.gitignore` lines, which it does not check). No refresh command creates
+   `roadmap/orchestration.yaml`; without it the default policy applies
+   (`models list` shows only `human`).
 6. `add-node` two phases with titles: `manifest.json` `includes` lists them in
    creation order, and each planning sheet is named from its title.
 
@@ -162,8 +166,10 @@ rules change model behaviour, not a FAIL.
 
 ## 4. Models, prompts, plan
 
-1. `models list` shows the roster with profile ages; `models stale` exits 1
-   with one profile's `researched` date set 200 days back, 0 otherwise.
+1. `models list` shows each roster entry's profile scores (C/E/R) and a
+   `stale` flag (`--json` adds the profile path); the `researched` dates are
+   in `models show <id>` and `models stale`. `models stale` exits 1 with one
+   rostered profile's `researched` date set 200 days back, 0 otherwise.
 2. `prompt <ID> --model <id> --role executor --channel cli` runs the
    profile's `access.cli` on the real harness and the session completes the
    leaf's precondition check (it must not implement when the leaf is not
@@ -171,8 +177,9 @@ rules change model behaviour, not a FAIL.
 3. A leaf with `sensitivity: restricted` and a roster entry whose
    `may_process` lacks it: `prompt` refuses; `orchestrate plan` names only
    eligible models and exits 1 when none qualifies.
-4. `models show <id>` prints the profile's dated `## Code and test
-   tendencies`, and `prompt --role executor --model <id>` carries that
+4. `models show <id> --section "Code and test tendencies"` prints the
+   profile's dated tendencies (bare `models show` prints Prompting rules),
+   and `prompt --role executor --model <id>` carries that
    family's counter-rule.
 
 ## 5. Workers (the 0.3.1 headline)
