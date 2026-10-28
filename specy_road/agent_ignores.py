@@ -48,15 +48,25 @@ _INDEXING_NOTE = (
     "Cursor honours this file; other tools ignore it harmlessly."
 )
 
-# The history and search indexes are derived and rebuilt on demand. init project
-# ships this rule for new repos, but it skips files that already exist, so a repo
-# scaffolded before these caches existed would show them as untracked forever.
-GITIGNORE_LINES = [".specyrd/cache/"]
+# Paths the CLI writes at run time that must never be committed. init project
+# ships these rules for new repos, but it skips files that already exist, so a
+# repo scaffolded before a path existed got it only by hand-editing .gitignore
+# (0.3 adopters had to add the work/ entries themselves). A committed review
+# file moves the branch past the commit the review read.
+GITIGNORE_LINES = [
+    ".specyrd/cache/",
+    "work/reviews/",
+    "work/.sessions/",
+    "work/.workers/",
+    "work/.worktrees/",
+    "work/brainstorm-*-prompt.md",
+]
 
 _GITIGNORE_NOTE = (
-    "Derived caches for `specy-road history` and `specy-road search`.\n"
-    "Rebuilt from git and the working tree on demand, so never committed.\n"
-    "`.specyrd/manifest.json` stays tracked."
+    "Written by specy-road at run time, never committed: derived caches for\n"
+    "`history`, `search` and `brainstorm`; review records (a commit would move\n"
+    "the branch past the reviewed commit); session, worker and worktree state;\n"
+    "brainstorm prompts. `.specyrd/manifest.json` stays tracked."
 )
 
 

@@ -90,6 +90,33 @@ def test_refresh_migrates_a_pre_skills_install_and_names_the_old_stubs(tmp_path:
     _report(written, orphans, dry_run=False)
     out = capsys.readouterr().out
     assert "pre-0.3.0 command stubs" in out and "rm .claude/commands/specyrd-validate.md" in out
+    assert "--prune" in out
+
+
+def test_prune_deletes_the_old_stubs_and_their_emptied_directory(tmp_path: Path, capsys) -> None:
+    """rc1 feedback: the printed rm was easy to miss and left two /specyrd-… entries."""
+    from specy_road.bundled_scripts.refresh_stubs import _report
+
+    commands = tmp_path / ".claude" / "commands"
+    commands.mkdir(parents=True)
+    (commands / "specyrd-validate.md").write_text("old stub\n", encoding="utf-8")
+    (tmp_path / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
+    manifest = tmp_path / ".specyrd" / "manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(json.dumps({"specyrd_version": "0.2.3", "role": "dev", "project_root": ".",
+                                    "agents": {"claude-code": [".claude/commands/specyrd-validate.md", ".specyrd/README.md"]}}))
+
+    _, listed = refresh_stubs(tmp_path, dry_run=True, prune=True)
+    assert listed == [".claude/commands/specyrd-validate.md"] and commands.is_dir()
+
+    written, orphans = refresh_stubs(tmp_path, prune=True)
+
+    assert orphans == [".claude/commands/specyrd-validate.md"]
+    assert not commands.exists()
+    assert (tmp_path / ".claude" / "settings.json").is_file()
+    _report(written, orphans, dry_run=False, pruned=True)
+    assert "removed .claude/commands/specyrd-validate.md" in capsys.readouterr().out
+    assert refresh_stubs(tmp_path, prune=True)[1] == []
 
 
 def test_generic_pack_is_unchanged(tmp_path: Path) -> None:

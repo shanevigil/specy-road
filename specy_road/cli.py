@@ -43,6 +43,7 @@ _SCRIPTS = {
     "refresh-schemas": "refresh_schemas.py",
     "refresh-profiles": "refresh_profiles.py",
     "refresh-stubs": "refresh_stubs.py",
+    "upgrade": "upgrade.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
     "move-node": "roadmap_move_node.py",

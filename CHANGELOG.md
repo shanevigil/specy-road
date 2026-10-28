@@ -27,6 +27,23 @@ body. Keep section bodies focused; link to PRs for detail.
 - `init project --force` keeps the consumer's `.gitignore` (and re-applies
   its managed block); its help and its refusal message now say what
   `--force` overwrites and point at the refresh commands.
+- `refresh-schemas` labels a schema that is new in this version (an
+  untracked file a schemas-only diff review misses).
+- The managed `.gitignore` block now carries the 0.3 run-time paths
+  (`work/reviews/`, `work/.sessions/`, `work/.workers/`, `work/.worktrees/`,
+  `work/brainstorm-*-prompt.md`), which upgraders had to add by hand.
+- `suggested_prompts/bootstrap-agents-md.md` no longer asks for a second load
+  order around the managed block, which already carries one.
+
+### Added (rc1 upgrade feedback)
+
+- `specy-road upgrade [--dry-run] [--prune]`: `refresh-schemas`,
+  `refresh-profiles`, `refresh-stubs`, then `validate` and `digest --check`,
+  ending with what is left to do by hand. See *Upgrading from 0.2.x* in
+  `docs/install-and-usage.md`.
+- `refresh-stubs --prune` deletes the stubs the manifest recorded that this
+  version no longer installs (the pre-0.3.0 `.cursor/commands/specyrd-*.md`
+  and `.claude/commands/specyrd-*.md`) instead of leaving an `rm` to copy.
 
 ## [v0.3.1-rc1] - 2026-10-28
 

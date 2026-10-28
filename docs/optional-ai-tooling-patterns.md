@@ -33,7 +33,7 @@ The **`specyrd`** CLI (installed with this package) lays down **thin** markdown 
 - **CLI-first:** Canonical invocations remain `specy-road validate|brief|export|file-limits`.
 - **No Spec Kit collision:** `specyrd` is not the Spec Kit `specify` CLI. **specy-road** uses flat **`planning/*.md`** feature sheets per node — not that tool.
 - **Second IDE later:** Run `specyrd init` again with a different `--ai` (or `--ide`) value.
-- **After upgrading specy-road:** Run **`specy-road refresh-stubs`**, not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade).
+- **After upgrading specy-road:** Run **`specy-road upgrade`** (or just **`specy-road refresh-stubs`**), not `init --force`. It rewrites exactly the paths `.specyrd/manifest.json` records, adds stubs that shipped since you initialized, and leaves everything else alone. See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade).
 - **Flags (overview):** `specyrd init [PATH] --ai cursor|claude-code|codex|generic` with optional `--here`, `--dry-run`, `--force`. For `generic`, pass `--ai-commands-dir <relative-path>` under the repo root. Running it again for a second harness adds only that harness's links; the skill files are shared.
 
 ### What `--force` may touch

@@ -15,15 +15,19 @@ stubs this version ships that the manifest predates, re-applies the managed
 blocks in the consumer-owned files, and touches nothing else. Idempotent, so it
 is safe to run on every upgrade.
 
-Orphans are **reported, not deleted**. Re-running ``init`` with a narrower
-``--role`` replaces the manifest's path list wholesale, leaving stubs on disk
-that dropped out of it; those are the consumer's to remove, and quietly deleting
-a file we no longer claim to manage is the mistake this command exists to undo.
+Orphans are **reported, not deleted**, unless ``--prune`` asks for it. Re-running
+``init`` with a narrower ``--role`` replaces the manifest's path list wholesale,
+leaving stubs on disk that dropped out of it; those are the consumer's to remove,
+and quietly deleting a file we no longer claim to manage is the mistake this
+command exists to undo. ``--prune`` deletes exactly the orphans listed, which are
+paths the manifest recorded as the kit's: in practice, the pre-0.3.0
+``*/commands/`` stubs that every upgrading repo otherwise removes by hand.
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -52,6 +56,7 @@ from specy_road.specyrd_init import (
 )
 
 MANIFEST_REL = Path(".specyrd") / "manifest.json"
+NEXT_STEP = "Next: specy-road validate (specy-road upgrade runs the whole sequence)."
 README_REL = ".specyrd/README.md"
 
 
@@ -163,15 +168,29 @@ def _on_disk(path: Path) -> bool:
     return path.is_file() or path.is_dir() or path.is_symlink()
 
 
+def _prune(repo_root: Path, orphans: list[str]) -> None:
+    """Delete the orphans, then any directory they leave empty (never ``repo_root``)."""
+    for rel in orphans:
+        path = repo_root / rel
+        if path.is_dir() and not path.is_symlink():
+            shutil.rmtree(path)
+        else:
+            path.unlink(missing_ok=True)
+        parent = path.parent
+        while parent != repo_root and parent.is_dir() and not any(parent.iterdir()):
+            parent.rmdir()
+            parent = parent.parent
+
+
 def refresh_stubs(
-    repo_root: Path, *, dry_run: bool = False, project: Path | None = None
+    repo_root: Path, *, dry_run: bool = False, project: Path | None = None, prune: bool = False
 ) -> tuple[list[str], list[str]]:
     """Rewrite the managed stubs and blocks. Returns ``(written, orphans)``.
 
     The stub pack is optional; the managed blocks are not. A repo that never ran
     ``specyrd init`` still gets its ``AGENTS.md`` and ignore-file blocks, and no
     manifest is created for it. ``project`` is the project root to use when the
-    manifest records none.
+    manifest records none. ``prune`` deletes the orphans it returns.
     """
     manifest = _load_manifest(repo_root)
     agents: dict[str, list[str]] = manifest.get("agents") or {}
@@ -210,8 +229,11 @@ def refresh_stubs(
     if agents and not dry_run:
         manifest["agents"] = agents
         _save_manifest(repo_root, manifest)
+    orphans = sorted(set(orphans))
+    if prune and not dry_run:
+        _prune(repo_root, orphans)
     # A dry run writes nothing, so every pack sharing a skill reports it again.
-    return list(dict.fromkeys(written)), sorted(set(orphans))
+    return list(dict.fromkeys(written)), orphans
 
 
 def stubs_are_stale(start: Path) -> str | None:
@@ -254,27 +276,42 @@ def _resolve_root(explicit: Path | None) -> Path:
     return (git_root(start) or start).resolve()
 
 
-def _report(written: list[str], orphans: list[str], *, dry_run: bool) -> None:
+def _report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
+    if pruned:
+        verb = "would remove" if dry_run else "removed"
+        print("")
+        for rel in orphans:
+            print(f"{verb} {rel} (no longer installed)")
+        return
+    print("\nNo longer installed for this role, left on disk for you to remove:")
+    for rel in orphans:
+        print(f"  {rel}")
+    if any(_old_command_stub(rel) for rel in orphans):
+        print(
+            "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
+            "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
+            "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
+            + " ".join(rel for rel in orphans if _old_command_stub(rel))
+        )
+    print("Rerun with --prune to delete every path listed above.")
+
+
+def _report(written: list[str], orphans: list[str], *, dry_run: bool, pruned: bool = False,
+            footer: bool = True) -> None:
     verb = "would write" if dry_run else "wrote"
     for rel in written:
         print(f"{verb} {rel}")
     if orphans:
-        print("\nNo longer installed for this role, left on disk for you to remove:")
-        for rel in orphans:
-            print(f"  {rel}")
-        if any(_old_command_stub(rel) for rel in orphans):
-            print(
-                "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
-                "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
-                "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
-                + " ".join(rel for rel in orphans if _old_command_stub(rel))
-            )
+        _report_orphans(orphans, dry_run=dry_run, pruned=pruned)
+    if not footer:
+        return
     if dry_run:
         print("\n(dry-run; no files written)")
         return
     print(
         "\nStubs and managed blocks only. Your roadmap, planning sheets and "
         "anything outside a managed block were not touched."
+        f"\n{NEXT_STEP}"
     )
 
 
@@ -290,10 +327,18 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Print what would be written; do not modify files.",
     )
+    p.add_argument(
+        "--prune",
+        action="store_true",
+        help="Delete stubs the manifest recorded that this version no longer installs "
+        "(e.g. the pre-0.3.0 .cursor/commands/specyrd-*.md); with --dry-run, list them.",
+    )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _resolve_root(args.repo_root)
     try:
-        written, orphans = refresh_stubs(root, dry_run=args.dry_run, project=project_root(args.repo_root))
+        written, orphans = refresh_stubs(
+            root, dry_run=args.dry_run, project=project_root(args.repo_root), prune=args.prune
+        )
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
@@ -306,7 +351,7 @@ def main(argv: list[str] | None = None) -> None:
     if not written and not orphans:
         print(f"stubs and managed blocks already match specy-road {__version__} ({root})")
         return
-    _report(written, orphans, dry_run=args.dry_run)
+    _report(written, orphans, dry_run=args.dry_run, pruned=args.prune)
 
 
 if __name__ == "__main__":
