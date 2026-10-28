@@ -17,6 +17,7 @@ entries:
       - specy_road/bundled_scripts/generate_brief.py
       - specy_road/worker_reconcile.py
       - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/orchestrate_cli.py
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending

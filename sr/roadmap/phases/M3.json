@@ -305,7 +305,8 @@
         "specy_road/bundled_scripts/role_prompt.py",
         "specy_road/bundled_scripts/generate_brief.py",
         "specy_road/worker_reconcile.py",
-        "specy_road/bundled_scripts/worker_cli.py"
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py"
       ],
       "type": "task"
     },
