@@ -225,7 +225,11 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     # The worker edits this tree: uncommitted work in it could be overwritten, and
     # `reconcile` could not tell the worker's edits from it. Only the leaf's own
     # untracked bookkeeping is exempt (pickup leaves the brief there untracked).
-    dirty = sorted(p for xy, p in status_entries(wt) if not (xy == "??" and _bookkeeping(p, node_id)))
+    entries = status_entries(wt)
+    if entries is None:
+        raise WorkerError(f"cannot read `git status` in {wt}, so its uncommitted changes are unknown; "
+                          "repair that checkout, then delegate again")
+    dirty = sorted(p for xy, p in entries if not (xy == "??" and _bookkeeping(p, node_id)))
     if dirty:
         raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
                           "commit or stash them, then delegate again")

@@ -330,12 +330,15 @@ def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
     mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": _now()}))
 
 
-def status_entries(worktree: Path) -> list[tuple[str, str]]:
-    """``(XY, path)`` per tracked-modified or untracked (``??``) path: what ``delegate`` refuses to launch over."""
+def status_entries(worktree: Path) -> list[tuple[str, str]] | None:
+    """``(XY, path)`` per tracked-modified or untracked (``??``) path: what ``delegate`` refuses to launch over.
+
+    ``None`` when git cannot read the tree (re-review N9): a safety check must not read that as clean.
+    """
     # ``-z`` on the raw output: ``git_text`` strips the leading space of a `` M path`` line.
     r = run(["status", "--porcelain", "--untracked-files=all", "-z"], worktree)
     if not r.ok:
-        return []
+        return None
     out: list[tuple[str, str]] = []
     fields = iter(r.out.split("\0"))
     for entry in fields:
@@ -347,8 +350,9 @@ def status_entries(worktree: Path) -> list[tuple[str, str]]:
 
 
 def dirty_paths(worktree: Path) -> list[str]:
-    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human."""
-    return sorted({p for _xy, p in status_entries(worktree)})
+    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human
+    (a label on the reclaim's diff, so none when git cannot read the tree)."""
+    return sorted({p for _xy, p in status_entries(worktree) or ()})
 
 
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:

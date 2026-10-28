@@ -259,6 +259,12 @@ def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, ca
     (repo / "pre.txt").unlink()
     (repo / "work" / "notes.md").unlink()
     git(repo, "checkout", "--", "src/a.py", "work/implementation-summary-M1.1.md")
+    index = repo / ".git" / "index"
+    saved = index.read_bytes()
+    index.write_bytes(b"not an index")   # re-review N9: a status git cannot read is not a clean tree
+    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "cannot read `git status`" in capsys.readouterr().err and not ws.list_records(repo)
+    index.write_bytes(saved)
     assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only the brief left
     _wait(repo, "w-0001")
 
