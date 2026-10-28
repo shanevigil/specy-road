@@ -69,7 +69,8 @@ classification plus a dependency **wave** layout. No git, no pickup.
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
 - **`waves`** — all schedulable leaves layered by dependency depth: a leaf sits
-  in wave `k` when its own unmet dependencies all sit in waves `< k`. The wave
+  in wave `k` when its own unmet dependencies all sit in waves `< k` (for a
+  phase or milestone dependency, all of its unfinished leaves do). The wave
   number is a reading aid, not a barrier — a leaf becomes pickable when **its
   own** dependencies are `Complete`, whatever else its wave's predecessors hold.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
