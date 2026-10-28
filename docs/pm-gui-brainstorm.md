@@ -50,7 +50,7 @@ than invent sources.
 | Enabled | Whether the assistant may search at all |
 | Provider | Which back end to call — see the table below |
 | Endpoint | Leave blank to use the provider's default; SearXNG has none, so fill it in |
-| API key | Obfuscated at rest like the LLM and git credentials |
+| API key | Obfuscated at rest like the LLM and git credentials, and like them never sent back to the page (shown as `********`; leave it to keep the stored key) |
 | Self-hosted endpoint | Permits a private or localhost address. Off by default — see below |
 | Results per search | Capped at 20 |
 
