@@ -29,7 +29,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.1_unauthored-leaf-guard_2a9def0a-45e8-4fa5-8f06-02e426749f85.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Refuse to pick up leaves whose planning sheet is still a placeholder",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task_leaf_guards.py",

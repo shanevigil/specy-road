@@ -14,7 +14,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M2.1` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |
 | `M2.2` | Store a pointer and a human verdict for outcomes, never the metric itself | milestone | Agentic-led | Not Started |
 | `M3` | 0.3.1 pre-final fixes from rc1 feedback | phase | — | Not Started |
-| `M3.1` | Refuse to pick up leaves whose planning sheet is still a placeholder | task | Agentic-led | Not Started |
+| `M3.1` | Refuse to pick up leaves whose planning sheet is still a placeholder | task | Agentic-led | Complete |
 | `M3.2` | handoff status reports review records without a claim | task | Agentic-led | Not Started |
 | `M3.3` | Document the canonical chunk key order and offer a deliberate normalisation | task | Agentic-led | Not Started |
 | `M3.4` | Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers | task | Agentic-led | Not Started |

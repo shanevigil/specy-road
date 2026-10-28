@@ -29,6 +29,7 @@ from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
 )
 from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     assert_leaf_target as _assert_leaf_target,
+    drop_unauthored,
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
@@ -106,10 +107,12 @@ def _resync_and_select(
     parent_filter,
     *,
     sync: bool = True,
+    allow_unauthored: bool = False,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty.
 
-    ``sync=False`` (``--local``) skips only the fetch and merge.
+    ``sync=False`` (``--local``) skips only the fetch and merge. Unauthored
+    leaves are dropped here, after sync, because the sync may bring their sheet.
     """
     if sync:
         sync_integration_branch(
@@ -143,6 +146,7 @@ def _resync_and_select(
     available = _drop_finished_unmerged(available, base, remote)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
+    available = drop_unauthored(ROOT, available, allow=allow_unauthored)
     if not available:
         if parent_filter:
             _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
@@ -369,7 +373,8 @@ def main(argv: list[str] | None = None) -> None:
     # Untracked work/ files ride the branch switches; the registry commit names
     # its one path, so nothing else in the index goes with it.
     nodes, reg, available, integration_statuses = _resync_and_select(
-        base, remote, parent_filter, sync=not args.local
+        base, remote, parent_filter, sync=not args.local,
+        allow_unauthored=args.allow_unauthored,
     )
     _assert_current_branch_equals(base)
     node = _pick_node(args, nodes, reg, available, integration_statuses)

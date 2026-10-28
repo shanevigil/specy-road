@@ -1,30 +1,5 @@
 version: 1
 entries:
-  - codename: unauthored-leaf-guard
-    node_id: M3.1
-    branch: feature/rm-unauthored-leaf-guard
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/bundled_scripts/grind_session_step.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/session_plan_git.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/planning_sheet_bootstrap.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/brief_acceptance.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - docs/grind-session.md
-      - docs/dev-workflow.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: upgrade-and-validate-checks
     node_id: M3.8
     branch: feature/rm-upgrade-and-validate-checks

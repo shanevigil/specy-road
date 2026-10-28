@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 from typing import Iterable
 
 from specy_road.bundled_scripts.do_next_available import _leaf_diagnostics
+from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet
 from specy_road.do_next_milestone_pickup import print_integration_branch_hint
 from specy_road.milestone_subtree import structural_leaf_ids
 
@@ -28,6 +30,30 @@ def assert_leaf_target(node: dict, nodes: list[dict]) -> None:
         file=sys.stderr,
     )
     raise SystemExit(1)
+
+
+def drop_unauthored(root: Path, available: list[dict], *, allow: bool) -> list[dict]:
+    """Remove leaves an agent would have nothing to build from, saying why for each.
+
+    A leaf whose planning sheet is still scaffold-planning's or brainstorm
+    promote's placeholder, on a node with no ``acceptance``, is skipped unless
+    ``allow`` (``--allow-unauthored``).
+    """
+    if allow:
+        return available
+    kept: list[dict] = []
+    for n in available:
+        reason = placeholder_sheet(root, n)
+        if reason is None:
+            kept.append(n)
+            continue
+        print(
+            f"skipping {n['id']}: {reason}. Write the sheet or set acceptance "
+            f"(specy-road edit-node {n['id']} --set acceptance=...), or pass "
+            "--allow-unauthored to pick it anyway.",
+            file=sys.stderr,
+        )
+    return kept
 
 
 def exit_no_actionable_leaves(
