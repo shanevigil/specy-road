@@ -207,7 +207,8 @@ def cmd_move(args: argparse.Namespace) -> None:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from None
 
-    where = f"under {parent_id}" if parent_id else "to the roadmap root"
+    new_parent = old_to_new.get(parent_id, parent_id)
+    where = f"under {new_parent}" if parent_id else "to the roadmap root"
     print(f"[ok] moved {old_to_new.get(node_id, node_id)} {where}")
     renamed = {o: n for o, n in old_to_new.items() if o != n}
     if not renamed:
