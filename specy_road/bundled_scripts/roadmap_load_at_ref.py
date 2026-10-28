@@ -31,7 +31,7 @@ def load_roadmap_nodes_at_ref(
 
     ``None`` if the ref is missing, manifest/chunks unreadable, or parse fails.
     """
-    manifest_spec = f"{ref}:roadmap/manifest.json"
+    manifest_spec = f"{ref}:./roadmap/manifest.json"   # ./ = project-root relative (nested layout)
     ok, blob = git_ok(["show", manifest_spec], repo_root, PER_SHOW_TIMEOUT_S)
     if not ok or not (blob or "").strip():
         return None
@@ -56,7 +56,7 @@ def load_roadmap_nodes_at_ref(
             return None
         rel_posix = chunk_path.relative_to(repo_root).as_posix()
         ok_c, chunk_blob = git_ok(
-            ["show", f"{ref}:{rel_posix}"],
+            ["show", f"{ref}:./{rel_posix}"],   # ./ = project-root relative (nested layout)
             repo_root,
             PER_SHOW_TIMEOUT_S,
         )

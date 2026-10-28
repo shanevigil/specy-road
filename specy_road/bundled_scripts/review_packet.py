@@ -101,7 +101,7 @@ def _summary(root: Path, t: ReviewTarget) -> list[str]:
     """The summary as committed at the reviewed commit, else the working tree's; each labelled."""
     rel = f"work/implementation-summary-{t.node_id}.md"
     out = ["## Implementation summary", ""]
-    text = git_stdout(["show", f"{t.commit}:{rel}"], root) if t.commit else None
+    text = git_stdout(["show", f"{t.commit}:./{rel}"], root) if t.commit else None   # ./ = project-root relative
     label = ASSERTED
     if text is None and (root / rel).is_file():
         text, label = (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE

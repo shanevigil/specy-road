@@ -251,3 +251,36 @@ def test_history_reports_events_in_both_layouts(layout: tuple[Path, Path]) -> No
     r = _run("history_cli.py", ["--repo-root", str(project)], cwd=project)
     assert r.returncode == 0, r.stderr
     assert "created as M0.3" in r.stdout, r.stdout
+
+
+def test_committed_copies_are_read_relative_to_the_project_root(layout: tuple[Path, Path]) -> None:
+    """The review gate, routing and packets read files *as committed on a ref*.
+
+    ``git show <ref>:roadmap/x`` resolves from the git root, so in the nested
+    layout every such read silently missed the project's files: the roster read
+    from the integration branch came back empty and routing offered only the
+    human. ``<ref>:./roadmap/x`` resolves from the process's cwd, which is the
+    project root in both layouts.
+    """
+    from specy_road.orchestration_config import effective_config
+
+    top, project = layout
+    (project / "roadmap" / "orchestration.yaml").write_text(
+        "version: 1\nroster:\n  - id: human\n    family: human\n    roles: [coordinator, reviewer]\n"
+        "  - id: reviewer-x\n    family: xai\n    roles: [reviewer]\n"
+        "policy:\n  reviewers_required: 2\n  reviewers_distinct_families: true\n",
+        encoding="utf-8",
+    )
+    _git(top, "add", "-A")
+    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "roster")
+
+    config, err = effective_config(project, "HEAD")
+
+    assert err is None
+    assert [e["id"] for e in config["roster"]] == ["human", "reviewer-x"]
+    assert config["policy"]["reviewers_required"] == 2
+
+    from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
+
+    nodes = load_roadmap_nodes_at_ref(project, "HEAD")
+    assert nodes and any(n.get("id") == "M1" for n in nodes)
