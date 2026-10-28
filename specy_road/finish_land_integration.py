@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
@@ -46,6 +47,17 @@ def _integration_branch_present(
     if _ref_exists_local(repo, f"refs/remotes/{remote}/{integration_branch}"):
         return True, f"refs/remotes/{remote}/{integration_branch}"
     return False, ""
+
+
+def holder_project_root(repo: Path, holder: Path) -> Path:
+    """The project root inside ``holder``, another worktree of the same repository.
+
+    ``git worktree list`` names the holder's git root; ``repo`` is this
+    checkout's project root, which in the nested layout sits below its git
+    root. The landing resolves registry and generated files relative to the
+    project root, so it must run there in the holder too.
+    """
+    return holder / project_prefix(repo)
 
 
 def integration_worktree(repo: Path, integration_branch: str) -> Path | None:
@@ -160,7 +172,7 @@ def land_merge_feature_into_integration(
     holder = integration_worktree(repo, integration_branch)
     if holder is not None:
         return _merge_and_push(
-            holder, remote=remote,
+            holder_project_root(repo, holder), remote=remote,
             integration_branch=integration_branch, feature_branch=feature_branch,
         )
 
