@@ -13,7 +13,10 @@ lists live sessions, ``do-next-available-task`` warns when a live session's
 paths overlap the leaf's touch zones, and ``session check`` refuses when
 staged paths overlap another live session's. Expiry is what keeps a crashed
 session from holding paths forever: nothing is enforced past the warning, and
-a record older than its ``expires`` is simply ignored.
+a record older than its ``expires`` is simply ignored. Records are replaced in
+one step, so a reader never sees a half-written one; a record that exists but
+does not load is reported by :func:`unreadable_records`, which the guard counts
+as a live peer.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ import yaml
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_subprocess import git_text
 from specy_road.review_files import reviews_root
+from specy_road.worker_state import _write_atomic as write_atomic
 
 SESSIONS_DIRNAME = ".sessions"
 DEFAULT_TTL_HOURS = 4
@@ -49,10 +53,7 @@ class Session:
     path: Path | None = field(default=None, repr=False)
 
     def is_live(self, now: datetime | None = None) -> bool:
-        try:
-            return _parse(self.expires) > (now or _now())
-        except ValueError:
-            return False
+        return _parse(self.expires) > (now or _now())
 
     def to_dict(self) -> dict[str, Any]:
         d = {"agent": self.agent, "branch": self.branch, "worktree": self.worktree, "paths": self.paths,
@@ -109,6 +110,10 @@ def load_session(path: Path) -> Session | None:
         return None
     if not isinstance(raw, dict) or not raw.get("agent"):
         return None
+    try:
+        _parse(raw.get("expires"))
+    except ValueError:   # a record cut short, or edited by hand: no expiry to trust
+        return None
     paths = [str(p) for p in raw.get("paths") or [] if str(p).strip()]
     return Session(str(raw["agent"]), raw.get("branch"), raw.get("worktree"), paths,
                    str(raw.get("started", "")), str(raw.get("touched", "")), str(raw.get("expires", "")),
@@ -121,6 +126,11 @@ def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | No
         return []
     out = [s for s in (load_session(p) for p in sorted(d.glob("*.yaml"))) if s]
     return [s for s in out if s.is_live(now)] if live_only else out
+
+
+def unreadable_records(repo_root: Path) -> list[Path]:
+    """Records that exist but do not load. Whose they are and when they expire is unknown."""
+    return [p for p in sorted(sessions_dir(repo_root).glob("*.yaml")) if load_session(p) is None]
 
 
 def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note: str = "",
@@ -138,7 +148,7 @@ def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note:
                 old.started if old else now.isoformat(), now.isoformat(),
                 (now + timedelta(hours=ttl_hours)).isoformat(), note or (old.note if old else ""), path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(s.to_dict(), sort_keys=False), encoding="utf-8")
+    write_atomic(path, yaml.safe_dump(s.to_dict(), sort_keys=False))   # the guard may be reading it now
     return s
 
 

@@ -63,6 +63,15 @@ from specy_road.bundled_scripts import session_cli
     ("git commit -m 'x'", "commits whatever another session staged"),
     ("git commit -m 'a; b' --no-verify", "commits whatever another session staged"),
     ("git -c alias.x='!cd /tmp && git reset --hard' x", "discards other sessions"),
+    ("if true; then git stash; fi", "stash stack is shared"),
+    ("! git stash", "stash stack is shared"),
+    ("while ! git diff --quiet; do git reset --hard; done", "discards other sessions"),
+    ("if true; then sh -c 'git stash'; fi", "stash stack is shared"),
+    ("case x in a) git stash;; esac", "stash stack is shared"),
+    ("find . -name '*.py' -exec git rm -f {} +", "git rm -f"),
+    ("git rm -f src/a.py", "git rm -f"),
+    ("git rm -rf src", "git rm -f"),
+    ("git rm --force src/a.py", "git rm -f"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
@@ -87,6 +96,7 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
     "make test && python -m pytest",
     "echo 'git stash' > notes.txt",
     "gitk",
+    "grep -rn git src",
 ])
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command
@@ -152,6 +162,16 @@ def test_cli_command_mode_exit_codes(tmp_path: Path, capsys) -> None:
     assert _cli("session", "guard", "--command", "git stash", "--agent", "me", "--repo-root", str(repo)) == 2
     assert "refused in a shared checkout" in capsys.readouterr().err
     assert _cli("session", "guard", "--command", "git add src/a.py", "--agent", "me", "--repo-root", str(repo)) == 0
+
+
+@pytest.mark.parametrize("text", ["", "agent: bob\nbranch: feature/x\n", "agent: [bob\n"])
+def test_a_record_that_will_not_load_counts_as_a_live_session(tmp_path: Path, capsys, text: str) -> None:
+    """Empty, cut short before its expiry, or broken YAML: the guard cannot rule the peer out, so it denies."""
+    repo = make_review_repo(tmp_path)
+    sp.start_session(repo, "bob", paths=["src"])
+    sp.session_path(repo, "bob").write_text(text, encoding="utf-8")
+    assert _cli("session", "guard", "--command", "git stash", "--agent", "me", "--repo-root", str(repo)) == 2
+    assert "bob.yaml (unreadable; fix or delete it)" in capsys.readouterr().err
 
 
 def test_cli_claude_code_payload(tmp_path: Path, capsys) -> None:

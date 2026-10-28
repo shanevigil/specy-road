@@ -341,28 +341,26 @@ specy-road session guard --command "git stash"   # exit 2 with the reason when a
 specy-road session guard --format claude-code     # the same, reading a harness hook's stdin
 ```
 
-`session guard` is the body of a harness hook (routing commands read the
-roster from the integration branch, as the gate does): it denies a command that can
-move or discard another session's work — `stash`, `reset --hard`, branch
-switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rebase`,
-`commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`
-(`commit --only <paths>`), a commit/add pathspec that is a tree root, `..`,
-glob, `:` magic, absolute path or `--pathspec-from-file` (a plain directory
-such as `src/` passes) — only while another session is live (`--always` to
-deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`,
-`eval` and aliases too; what the guard cannot see is refused, not waved
-through: a shell function, variable command name or git verb, `GIT_CONFIG*`
-in the environment, `--config-env=alias.*`, an interpreter one-liner.
-Working-tree commands count only sessions in the caller's worktree (`git -C`,
-`stash`, `rebase`, force-push count every session). The adapters (`--format`)
-know each harness's stdin shape; `docs/optional-ai-tooling-patterns.md` wires
-them. A non-denial never sets a harness permission decision (Claude Code gets
-context only; Codex nothing), so the harness's own prompt policy still applies.
+`session guard` is the body of a harness hook (routing commands read the roster from the integration
+branch, as the gate does): it denies a command that can move or discard another session's work —
+`stash`, `reset --hard`, branch switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rm -f`,
+`rebase`, `commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`
+(`commit --only <paths>`), a commit/add/rm pathspec that is a tree root, `..`, glob, `:` magic,
+absolute path or `--pathspec-from-file` (a plain directory such as `src/` passes; so does plain
+`rm <files>`, which git refuses for a changed file) — only while another session is live (`--always`
+to deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`, `eval`, aliases,
+after `if`/`then`/`do`/`!`, and where `git` follows another word (`case … a) git …`, `find -exec git …`);
+what the guard cannot see is refused, not waved through: a shell function, variable command name or
+git verb, `GIT_CONFIG*` in the environment, `--config-env=alias.*`, an interpreter one-liner.
+Working-tree commands count only sessions in the caller's worktree (`git -C`, `stash`, `rebase`,
+force-push count every session). The adapters (`--format`) know each harness's stdin shape;
+`docs/optional-ai-tooling-patterns.md` wires them. A non-denial never sets a harness permission
+decision (Claude Code gets context only; Codex nothing), so the harness's own prompt policy still applies.
 
-Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry.
-The id is `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one
-terminal or harness process, so `start`, `touch`, `end` and the hook name one record; `--agent` names it;
-`touch` keeps the paths. A crashed record ages out. `handoff status` lists live sessions first,
+Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
+`$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
+`start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
+out; one that will not load counts as live to the guard until fixed or deleted. `handoff status` lists live sessions first,
 `do-next-available-task` warns on touch-zone overlap, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout
