@@ -25,6 +25,7 @@ and data are deliberately not recorded here.
 | Bootstrap prompt asked for a second load order beside the managed block | Prompt corrected |
 | CI wanted a strict mode | `validate --strict` |
 | Scaffold M1.1 had no acceptance, so a fresh project warned (and failed `--strict`) | Sample is now the project's setup task with five criteria |
+| The review packet flagged the implementation summary under the project's `work/` as outside the touch zones in the nested layout (repository-root paths vs project-relative bookkeeping prefixes); found dogfooding | Defect. Paths rebased to the project |
 | Landing from a linked worktree ran at the holder checkout's git root, so in the nested layout the deterministic bookkeeping resolver never engaged and `registry.yaml` / the digest conflicted; found dogfooding | Defect. Lands in the holder's project root |
 | Re-landing a finished branch after a failed merge refused in the nested layout: finish's bookkeeping paths were matched without the project prefix; found dogfooding | Defect. Prefix applied |
 | In the nested layout, the review gate's registry-only allowance, the deterministic bookkeeping merge and the integration-registry reads compared repository-root paths with project-relative ones; `finish` refused approved leaves; found dogfooding | Defect. Project prefix applied |

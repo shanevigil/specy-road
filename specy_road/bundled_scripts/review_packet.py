@@ -30,7 +30,7 @@ from specy_road.git_subprocess import git_stdout, head_sha
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_gate import policy_source
 from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
 TAIL_LINES = 60
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
@@ -111,10 +111,16 @@ def _summary(root: Path, t: ReviewTarget) -> list[str]:
     return out + [label, "", text.rstrip(), ""] + note
 
 
-def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
+def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
+    """``(paths, lines)``: the project-relative changed paths and the rendered section."""
     if not t.base or not t.commit:
         return [], ["_(cannot compute: no merge base or no commit)_", ""]
-    paths = diff_paths(root, f"{t.base}...{t.commit}") or []   # both sides of a rename or copy
+    # git names paths from the repository root; zones, bookkeeping and policy
+    # paths are project-relative. A path outside the project (a monorepo's
+    # other trees) keeps its repository-root name.
+    prefix = project_prefix(root)
+    paths = [rebase_to_project(p, prefix) or p
+             for p in diff_paths(root, f"{t.base}...{t.commit}") or []]   # both sides of a rename or copy
     zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", "", _computed(t), ""]
     outside = []
@@ -185,7 +191,7 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str]) -> str:
     t = resolve_target_or_exit(root, node_id, ref)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
-    paths, changed = _changed(root, t)
+    paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
         _header(root, t),
