@@ -14,8 +14,8 @@ supersedes: gpt-6-sol
 access:
   context_tokens: 1050000
   output_tokens: 128000
-  cli: codex exec --model gpt-6.1-sol --sandbox workspace-write --ask-for-approval never "<prompt>"
-  cli_verified_from: unverified
+  cli: codex exec --model gpt-6.1-sol -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"
+  cli_verified_from: codex-cli 0.165.0, run 2026-10-28 (exec has no --ask-for-approval)
   subagents: 'yes Native multi-agent orchestration in the Responses API is in beta, per OpenAI''s API changelog and a third-party report; Codex also supplies an agent harness [S9, S3, S10]'
   effort_controls: 'low, medium, high, xhigh, max (default medium; none and minimal rejected)'
   effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }

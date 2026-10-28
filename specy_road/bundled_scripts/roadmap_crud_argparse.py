@@ -74,8 +74,8 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         "--codename",
         default=None,
         help=(
-            "Kebab-case codename. Optional: if omitted for a task, validate "
-            "auto-derives one from --title (collisions get a short suffix)."
+            "Kebab-case codename. Optional: if omitted, it is derived from "
+            "--title for every new node (collisions get a short suffix)."
         ),
     )
     sp.add_argument("--status", default="Not Started")

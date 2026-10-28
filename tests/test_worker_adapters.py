@@ -45,7 +45,13 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     assert r.argv[2:4] == ["--resume", "sid"] and r.stdin == "do the thing"
     x = wa.adapter_for("codex").launch(p, tmp_path, "gpt-6.1-sol", None)
     assert x.argv[:3] == ["codex", "exec", "--json"] and x.argv[-1] == "-" and x.stdin == "do the thing"
-    assert wa.adapter_for("codex").resume("t1", p, tmp_path, "m", None).argv[:4] == ["codex", "exec", "resume", "--json"]
+    xr = wa.adapter_for("codex").resume("t1", p, tmp_path, "m", None)
+    assert xr.argv[:4] == ["codex", "exec", "resume", "--json"] and xr.argv[-2:] == ["t1", "-"] and xr.stdin == "do the thing"
+    # codex-cli 0.165: `exec` has no --ask-for-approval, and `exec resume` no --sandbox or -C either.
+    for argv in (x.argv, xr.argv):
+        assert "approval_policy=never" in argv and "sandbox_mode=workspace-write" in argv
+        assert "--ask-for-approval" not in argv and "--sandbox" not in argv
+    assert "-C" not in xr.argv
     u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
     assert u.argv[:2] == ["agent", "-p"] and "--force" in u.argv and "--workspace" in u.argv
     assert wa.adapter_for("claude-code").human_resume("sid", tmp_path) == ["claude", "--resume", "sid"]

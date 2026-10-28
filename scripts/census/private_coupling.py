@@ -46,35 +46,66 @@ def _specy_bindings(tree: ast.AST) -> tuple[set[str], set[str]]:
     return mods, privs
 
 
+def _setattr_cats(node: ast.Call, mods: set[str]) -> set[str]:
+    """``monkeypatch.setattr`` on a private ``specy_road`` target (dotted string or module alias)."""
+    t, n = node.args[0], node.args[1]
+    if isinstance(t, ast.Constant) and isinstance(t.value, str):
+        if t.value.startswith("specy_road") and t.value.rsplit(".", 1)[-1].startswith("_"):
+            return {"patch"}
+    elif isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value.startswith("_"):
+        if isinstance(t, ast.Name) and t.id in mods:
+            return {"patch"}
+    return set()
+
+
+def _assert_cats(node: ast.Assert) -> set[str]:
+    src = ast.unparse(node.test)
+    cats: set[str] = set()
+    if any(a in src for a in MOCK_ATTRS) or any(
+        CALLREC_RE.search(n.id) for n in ast.walk(node.test) if isinstance(n, ast.Name)
+    ):
+        cats.add("callrec")
+    if "caplog" in src:
+        cats.add("log")
+    return cats
+
+
+def _node_cats(node: ast.AST, mods: set[str], privs: set[str]) -> set[str]:
+    if isinstance(node, ast.Attribute) and node.attr.startswith("_") and not node.attr.startswith("__"):
+        return {"private"} if isinstance(node.value, ast.Name) and node.value.id in mods else set()
+    if isinstance(node, ast.Name):
+        return {"private"} if node.id in privs else set()
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        if node.func.attr == "setattr" and len(node.args) >= 2:
+            return _setattr_cats(node, mods)
+        return {"callrec"} if node.func.attr.startswith("assert_called") else set()
+    if isinstance(node, ast.Assert):
+        return _assert_cats(node)
+    return set()
+
+
 def _classify(fn: ast.FunctionDef, mods: set[str], privs: set[str]) -> set[str]:
     cats: set[str] = set()
     for node in ast.walk(fn):
-        if isinstance(node, ast.Attribute) and node.attr.startswith("_") and not node.attr.startswith("__"):
-            if isinstance(node.value, ast.Name) and node.value.id in mods:
-                cats.add("private")
-        if isinstance(node, ast.Name) and node.id in privs:
-            cats.add("private")
-        if isinstance(node, ast.Call):
-            f = node.func
-            if isinstance(f, ast.Attribute) and f.attr == "setattr" and len(node.args) >= 2:
-                t, n = node.args[0], node.args[1]
-                if isinstance(t, ast.Constant) and isinstance(t.value, str):
-                    if t.value.startswith("specy_road") and t.value.rsplit(".", 1)[-1].startswith("_"):
-                        cats.add("patch")
-                elif isinstance(n, ast.Constant) and isinstance(n.value, str) and n.value.startswith("_"):
-                    if isinstance(t, ast.Name) and t.id in mods:
-                        cats.add("patch")
-            if isinstance(f, ast.Attribute) and f.attr.startswith("assert_called"):
-                cats.add("callrec")
-        if isinstance(node, ast.Assert):
-            src = ast.unparse(node.test)
-            if any(a in src for a in MOCK_ATTRS) or any(
-                CALLREC_RE.search(n.id) for n in ast.walk(node.test) if isinstance(n, ast.Name)
-            ):
-                cats.add("callrec")
-            if "caplog" in src:
-                cats.add("log")
+        cats |= _node_cats(node, mods, privs)
     return cats
+
+
+def _functions(tree: ast.Module):
+    """Top-level functions and the methods of top-level classes."""
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            yield node
+        elif isinstance(node, ast.ClassDef):
+            yield from (n for n in node.body if isinstance(n, ast.FunctionDef))
+
+
+def _calls_flagged_helper(fn: ast.FunctionDef, helpers: dict[str, set[str]]) -> bool:
+    return any(
+        isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id in helpers
+        and ("private" in helpers[c.func.id] or "patch" in helpers[c.func.id])
+        for c in ast.walk(fn)
+    )
 
 
 def scan_file(path: Path) -> dict[str, set[str]]:
@@ -82,24 +113,12 @@ def scan_file(path: Path) -> dict[str, set[str]]:
     mods, privs = _specy_bindings(tree)
     helpers: dict[str, set[str]] = {}
     tests: dict[str, set[str]] = {}
-    for node in tree.body:
-        fns = [node] if isinstance(node, ast.FunctionDef) else []
-        if isinstance(node, ast.ClassDef):
-            fns = [n for n in node.body if isinstance(n, ast.FunctionDef)]
-        for fn in fns:
-            (tests if fn.name.startswith("test_") else helpers)[fn.name] = _classify(fn, mods, privs)
+    for fn in _functions(tree):
+        (tests if fn.name.startswith("test_") else helpers)[fn.name] = _classify(fn, mods, privs)
     # One level of indirection: a test calling a flagged local helper inherits "private" via helper.
-    for node in tree.body:
-        fns = [node] if isinstance(node, ast.FunctionDef) else []
-        if isinstance(node, ast.ClassDef):
-            fns = [n for n in node.body if isinstance(n, ast.FunctionDef)]
-        for fn in fns:
-            if not fn.name.startswith("test_"):
-                continue
-            for c in ast.walk(fn):
-                if isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id in helpers:
-                    if "private" in helpers[c.func.id] or "patch" in helpers[c.func.id]:
-                        tests[fn.name].add("via_helper")
+    for fn in _functions(tree):
+        if fn.name.startswith("test_") and _calls_flagged_helper(fn, helpers):
+            tests[fn.name].add("via_helper")
     return tests
 
 

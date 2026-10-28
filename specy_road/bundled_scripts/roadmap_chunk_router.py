@@ -77,9 +77,10 @@ def write_with_routing(
         plan.stage_text(path, text)
     if decision.is_new_chunk:
         manifest_doc = load_manifest_mapping(root)
-        # A phase root's chunk starts its own group: append it, in creation
-        # order, rather than slotting it in after the first include's group.
-        base_for_insert = None if decision.new_chunk_reason == PHASE_ROOT_REASON else (
+        # A top-level phase's chunk starts its own group: append it, in creation
+        # order. A nested phase still goes after its parent's chunk (round 7, R7-2).
+        top_level = decision.new_chunk_reason == PHASE_ROOT_REASON and parent_id is None
+        base_for_insert = None if top_level else (
             hint_chunk_arg
             or default_chunk_for_parent(root, parent_id)
             or decision.chunk_rel

@@ -30,6 +30,7 @@ from specy_road.worker_adapters import placeholder_problem
 
 REPO = Path(__file__).resolve().parent.parent
 OPUS = REPO / "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md"
+COMPOSER = REPO / "specy_road/templates/project/model-profiles/cursor-composer/composer-2.5.md"
 PROFILE_REL = "model-profiles/anthropic-claude/claude-opus-5-5.md"
 ROSTER = f"""version: 1
 roster:
@@ -124,13 +125,28 @@ def test_the_committed_profile_is_used_when_the_tree_matches_or_lacks_it(tmp_pat
     assert err is None and "## Model notes" in text
 
 
-def test_a_profile_cli_does_not_replace_a_named_harness_default(tmp_path: Path, monkeypatch) -> None:
+@pytest.mark.parametrize("harness, profile, expect", [
     # Sandbox runbook §0 (2026-10-27): a profiled claude-code entry launched `claude -p '<prompt>'`.
-    repo = _repo(tmp_path, ROSTER.replace("family: anthropic", "family: anthropic\n    harness: claude-code"))
+    ("claude-code", OPUS, ["stream-json", "--session-id", "--model", "claude-opus-5-5"]),
+    # Review round 7, R7-1: Composer's `api_id: unknown` is Cursor's default model, not `--model unknown`.
+    ("cursor", COMPOSER, ["stream-json", "!--model"]),
+    # R7-5: no `harness:` is generic, which runs the profile's own access.cli (`claude -p "<prompt>"`).
+    (None, OPUS, ["-p", "!stream-json"]),
+])
+def test_a_profile_cli_launches_only_generic_workers(tmp_path: Path, monkeypatch, harness, profile, expect) -> None:
+    rel = profile.relative_to(REPO / "specy_road/templates/project").as_posix()
+    roster = ROSTER.replace(PROFILE_REL, rel)
+    if harness:
+        roster = roster.replace("family: anthropic", f"family: anthropic\n    harness: {harness}")
+    repo = _repo(tmp_path, roster)
+    if rel != PROFILE_REL:
+        commit_file(repo, rel, profile.read_text(), "composer profile")
+        git(repo, "update-ref", "refs/heads/dev", "HEAD")
     bin_dir, argv = tmp_path / "bin", tmp_path / "argv"
     bin_dir.mkdir()
-    (bin_dir / "claude").write_text(f'#!/bin/sh\necho "$@" > {argv}\ncat > /dev/null\n')
-    (bin_dir / "claude").chmod(0o755)
+    for name in ("claude", "agent"):
+        (bin_dir / name).write_text(f'#!/bin/sh\necho "$@" > {argv}\ncat > /dev/null\n')
+        (bin_dir / name).chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     ops.delegate(repo, "M1.1", "opus")
     for _ in range(100):
@@ -138,7 +154,10 @@ def test_a_profile_cli_does_not_replace_a_named_harness_default(tmp_path: Path, 
             break
         time.sleep(0.1)
     args = argv.read_text().split()
-    assert "stream-json" in args and "--session-id" in args and args[args.index("--model") + 1] == "claude-opus-5-5"
+    for e in expect:
+        assert (e[1:] not in args) if e.startswith("!") else (e in args), (e, args)
+    if "--model" in expect:
+        assert args[args.index("--model") + 1] == expect[expect.index("--model") + 1]
 
 
 # --- B6 ----------------------------------------------------------------------------

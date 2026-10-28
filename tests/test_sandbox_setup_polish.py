@@ -11,6 +11,8 @@ import pytest
 
 from tests.helpers import REPO, script_subprocess_env
 
+from specy_road.specyrd_init import ROLE_COMMAND_FILES
+
 
 def _run(module: str, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -33,8 +35,11 @@ def two_new_phases(tmp_path: Path) -> Path:
 
 
 def test_new_phase_chunks_append_to_includes_in_creation_order(two_new_phases: Path) -> None:
+    # A nested phase keeps its place after its parent's chunk (review round 7, R7-2).
+    _run("specy_road.cli", "add-node", "--id", "M1.2", "--type", "phase", "--parent-id", "M1",
+         "--title", "Nested phase", "--repo-root", str(two_new_phases))
     manifest = json.loads((two_new_phases / "roadmap" / "manifest.json").read_text())
-    assert manifest["includes"] == ["phases/M1.json", "phases/M2.json", "phases/M3.json"]
+    assert manifest["includes"] == ["phases/M1.json", "phases/M1.2.json", "phases/M2.json", "phases/M3.json"]
 
 
 def test_new_phase_planning_sheet_is_named_from_its_title(two_new_phases: Path) -> None:
@@ -49,3 +54,14 @@ def test_specyrd_init_notes_already_initialized_only_once_stubs_exist(tmp_path: 
     specyrd = ("specy_road.specyrd_cli", "init", str(tmp_path), "--ai", "cursor", "--role", "dev", "--no-prompt")
     assert "already initialized" not in _run(*specyrd).stderr
     assert "already initialized" in _run(*specyrd).stderr
+
+
+def test_specyrd_init_role_help_lists_the_installed_stubs() -> None:
+    # Review round 7, R7-6: the --role help is built from the install table.
+    env = {**script_subprocess_env(), "COLUMNS": "2000"}
+    out = subprocess.run([sys.executable, "-m", "specy_road.specyrd_cli", "init", "--help"], cwd=REPO, env=env,
+                         check=True, capture_output=True, text=True).stdout
+    for role in ("pm", "dev"):
+        names = ", ".join(f.removeprefix("specyrd-").removesuffix(".md") for f in ROLE_COMMAND_FILES[role])
+        assert f"{role} ({names})" in out
+    assert "both (same as omitting --role: every stub)" in out

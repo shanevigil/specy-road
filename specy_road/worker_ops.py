@@ -127,7 +127,7 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
     return _check_tree(wt, branch)
 
 
-def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str]:
+def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str | None]:
     """``(custom cli, model id the harness is told)``.
 
     ``channels.cli`` wins; a profile's ``access.cli`` stands in only for ``generic``, since a named
@@ -139,7 +139,9 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     cli = (entry.get("channels") or {}).get("cli")
     if not cli and harness == "generic" and prof is not None:
         cli = prof.cli()
-    return cli, (prof.api_id if prof and prof.ok else str(entry["id"]))
+    if prof is None:
+        return cli, str(entry["id"])
+    return cli, (None if prof.api_id.strip().lower() == "unknown" else prof.api_id)   # unknown: harness default
 
 
 def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
