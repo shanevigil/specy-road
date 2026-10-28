@@ -100,6 +100,7 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     assert "owner: Mallory" in reg.read_text()
     _git(app, "reset", "-q", "--hard", registration)
 
+    (app / "work" / "brief-M9.9.md").write_text("another leaf's brief\n")   # §5 re-check F-R3: not this abort's
     r = _cli(app, "abort-task-pickup")
 
     assert r.returncode == 0, r.stderr
