@@ -359,8 +359,17 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   hidden from `reconcile`); `terminate` signals a process group only when the
   wrapper or harness is verified and still in that group. `finish-this-task`
   in merge mode lands from a worker's worktree by merging in the worktree that
-  holds the integration branch (refusing first if it is dirty), and a re-run
-  retries a failed landing. Session records are
+  holds the integration branch (refusing first if it is dirty or unreadable),
+  and a re-run retries a failed landing only while the branch tip is still the
+  finish commit (anything later needs review). `abort-task-pickup` refuses
+  cleanly when another worktree holds the base (a delegated leaf), names the
+  release steps, and ignores other leaves' untracked bookkeeping; a `--local`
+  abort requires the exact claim transition. Prompts name their commit
+  (`base: <sha>`), and review packets show registry edits in the diff,
+  labelled. Known limitations in rc1: under unsigned policy the gate is
+  cooperative attestation (someone who can run git in the finishing clone can
+  retarget what it reads); a registry-only commit at the branch tip is not in
+  the packet; the guard refuses `echo git stash` while a peer is live. Session records are
   written atomically and an unreadable one counts as a live peer; the guard
   sees commands behind `if`/`then`/`while`/`do`/`!`/`case` and `-exec`, refuses
   a command name built by expansion (`git${IFS}stash`), and refuses
