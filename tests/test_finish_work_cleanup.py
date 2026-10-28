@@ -39,6 +39,9 @@ def test_cleanup_work_artifacts_removes_untracked_files(tmp_path) -> None:
         "implementation-summary-M1.1.md",
     ):
         assert not (tmp_path / "work" / name).is_file()
+    # never committed, so the reviewed summary survives beside the reviews
+    kept = tmp_path / "work" / "reviews" / "M1.1" / "implementation-summary-M1.1.md"
+    assert kept.read_text(encoding="utf-8") == "x"
 
 
 def test_cleanup_work_artifacts_tracked_paths_returned(tmp_path) -> None:

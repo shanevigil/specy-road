@@ -317,7 +317,7 @@ def main(argv: list[str] | None = None) -> None:
 
     print(f"Implementation review — [{node_id}]")
     print(f"Summary file: {spath.relative_to(ROOT)}\n")
-    if summary_text:
+    if summary_text and sys.stdin.isatty() and not args.yes:   # for the human about to approve
         print(summary_text)
         print()
 

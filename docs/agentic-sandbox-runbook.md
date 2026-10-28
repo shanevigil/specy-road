@@ -105,7 +105,7 @@ and leaves the leaf open on the integration branch, and a bare local remote
 has no host to open that PR on.
 
 1. `do-next-available-task` claims a leaf; commit a change inside its touch
-   zones; write `work/implementation-summary-<ID>.md` and
+   zones; write and commit `work/implementation-summary-<ID>.md`; write
    `work/reviews/<ID>/READY-<agent>.md`.
 2. `review-packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
    diff, and the verify tails.
@@ -129,7 +129,8 @@ has no host to open that PR on.
    For each harness's executor (here and in §5), record whether its
    implementation summary ends with `## Added` listing each helper, guard,
    mock and test with a reason. Delete that section from one summary:
-   `review-packet` prints a one-line note and still writes the packet.
+   `review-packet` still writes the packet and exits 0, with a one-line
+   note in `PACKET.md` (nothing on the terminal).
 9. **Reviewer restraint.** Make the leaf's change include one boundary check
    with a reachable trigger and a test (for example, reject an empty title
    from the CLI) and one guard with no reachable trigger. Review it in a

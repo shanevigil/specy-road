@@ -34,7 +34,7 @@ between them — not **which** agent, IDE or vendor fills a role; a human, Claud
 
 ```text
 coordinator  do-next-available-task            → work/brief-<ID>.md, feature/rm-<codename>
-executor     implement, commit, write summary  → work/implementation-summary-<ID>.md
+executor     implement, commit, commit summary → work/implementation-summary-<ID>.md
 executor     write READY-<agent>.md            → work/reviews/<ID>/READY-<agent>.md
 coordinator  specy-road review-packet <ID>     → work/reviews/<ID>/PACKET.md
 reviewer(s)  read PACKET.md, write notes       → specy-road review record <ID> …
@@ -162,7 +162,8 @@ A READY naming another node or branch is misfiled: listed as invalid, never read
 2. the implementation summary;
 3. every changed path since the merge base, both sides of a rename or copy,
    with paths outside the touch zones flagged (roadmap bookkeeping is exempt);
-4. the diff;
+   `roadmap/registry.yaml` is labelled toolkit bookkeeping, not under review;
+4. the diff, minus `roadmap/registry.yaml` (claim and approval rows), with a one-line note when it changed;
 5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
    each section states if it was computed from git, executor-asserted, or run now.
 

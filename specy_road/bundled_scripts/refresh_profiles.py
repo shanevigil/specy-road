@@ -88,7 +88,9 @@ def main(argv: list[str] | None = None) -> None:
     if not written:
         print(f"model-profiles/ already has every profile this specy-road ships ({root})")
     elif kept:
-        print(f"kept {len(kept)} existing profile(s); pass --force <path> to replace one")
+        profiles = [k for k in kept if not k.endswith("/README.md")]
+        readme = " and the README" if len(profiles) < len(kept) else ""
+        print(f"kept {len(profiles)} existing profile(s){readme}; pass --force <path> to replace one")
     if written and not args.dry_run:
         print("Next: add roster entries with `profile:` in roadmap/orchestration.yaml, then `specy-road models list`.")
 

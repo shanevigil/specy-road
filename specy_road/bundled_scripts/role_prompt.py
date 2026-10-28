@@ -81,10 +81,19 @@ _EXCESS_CHECKLIST = (
 )
 
 
-def _precondition(role: str, node_id: str, t) -> list[str]:
+# specy-road's own files under work/: the brief (pickup), the summary (executor) and the review
+# hand-offs are never committed before review, so a plain `git status` always lists them.
+_DIRTY_CHECK = ("git status --porcelain --untracked-files=all -- . ':(exclude)work/brief-*.md' "
+                "':(exclude)work/implementation-summary-*.md' ':(exclude)work/reviews/'")
+
+
+def _precondition(role: str, node_id: str, t, packet: Path) -> list[str]:
     branch = t.entry.get("branch") if t.entry else None
+    found = []
     if role == "reviewer":
-        need = f"`work/reviews/{node_id}/{PACKET_NAME}`"
+        need = f"`work/reviews/{node_id}/{PACKET_NAME}` (absolute: `{packet}`)"
+        found = ["The packet is gitignored, so file-search and glob tools may not list it: open that "
+                 f"absolute path directly (`ls {packet}`).", ""]
     elif role == "executor":
         need = f"`work/brief-{node_id}.md`, and the branch `{branch or 'feature/rm-<codename>'}` checked out"
     else:
@@ -92,13 +101,16 @@ def _precondition(role: str, node_id: str, t) -> list[str]:
     return [
         "## Precondition",
         "",
-        f"If {need} does not exist, or `git status --porcelain` shows changes you did not make, "
-        f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop.",
+        f"If {need} does not exist, or `{_DIRTY_CHECK}` lists changes you did not make, "
+        f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
+        "only specy-road's bookkeeping (`work/brief-*.md`, `work/implementation-summary-*.md`, "
+        "`work/reviews/`); any other change, tracked or untracked, counts.",
         "",
+        *found,
     ]
 
 
-def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None = None,
+def _executor_preamble(node_id: str, model: str, zones: list[str], family_lock: str | None = None,
                        reviews: Path | None = None) -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
@@ -112,8 +124,10 @@ def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None =
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
         "3. Run the verifier and tests the brief names. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
         f"4. Write `work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
-        "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine). "
-        f"Then `READY-<your model id>.md` from `work/handoff-ready.template.md` into "
+        "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
+        "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
+        f"Then `READY-{model}.md` (`{model}` is your roster id; use it as `agent:` too, not an API model id) "
+        "from `work/handoff-ready.template.md` into "
         f"`{reviews or f'work/reviews/{node_id}'}` "
         "(that is the main checkout's directory: use it as written even if you are in a worktree).",
         "5. Stop.",
@@ -146,6 +160,10 @@ def _reviewer_preamble(node_id: str, model: str) -> list[str]:
         f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>`.",
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
         "`mark-implementation-reviewed` or `finish-this-task`.",
+        "",
+        "You edit no tracked file, so start no `specy-road session` (AGENTS.md's rule is for editors). If you "
+        "started one anyway, run `specy-road session end` before you stop: a claim left behind lasts hours and "
+        "blocks the next reviewer.",
         "",
         _DATA_LINE,
         "",
@@ -240,9 +258,9 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     zones = list(t.touch_zones) if t else []
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
     if t:
-        lines += _precondition(role, node_id, t)
+        lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME)
     if role == "executor":
-        lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
+        lines += _executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
     elif role == "reviewer":
         lines += _reviewer_preamble(node_id, model)
     else:
