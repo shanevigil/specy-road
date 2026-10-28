@@ -337,7 +337,9 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
 - **Seventh review round (at 7cc4fd8):** a Cursor worker on a profile whose
   `api_id` is `unknown` (the shipped Composer profiles) launched with
   `--model unknown`; the harness's default model is used instead, on every
-  adapter. A nested phase added with `add-node` keeps its place after its
+  adapter; the Composer 2.5 profile now names its Cursor CLI slug
+  (`composer-2.5`, from `agent --list-models`), so `refresh-profiles --force`
+  it to run that model rather than Cursor's default. A nested phase added with `add-node` keeps its place after its
   parent's chunk (only a top-level phase is appended). `add-node --help`
   says every new node's codename comes from `--title`. Every published
   version gets its own What's new section in the release runbook.

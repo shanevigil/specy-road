@@ -3,7 +3,7 @@ profile_schema: 2
 family: Cursor Composer
 track: none
 model: Composer 2.5
-api_id: unknown
+api_id: composer-2.5   # Cursor CLI slug, listed by `agent --list-models` on 2026.10.22 (2026-10-28)
 checkpoint: unknown
 alias_moves: unknown
 version_rank: latest
