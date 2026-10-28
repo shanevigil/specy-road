@@ -72,7 +72,9 @@ class Profile:
         elif ((today or date.today()) - when).days > max_age_days:
             out.append(f"researched {when.isoformat()}, more than {max_age_days} days ago")
         if self.data.get("version_rank") == "previous":
-            out.append(f"version_rank: previous (superseded by a newer {self.data.get('track') or self.data.get('family')} release)")
+            track = self.data.get("track")  # `track: none` marks a family with one line
+            line = track if track and str(track).lower() != "none" else self.data.get("family")
+            out.append(f"version_rank: previous (superseded by a newer {line} release)")
         if str(self.data.get("alias_moves", "")).lower() == "yes":
             out.append("alias_moves: yes — the api_id can point at a newer checkpoint than this profile describes")
         return out

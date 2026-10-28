@@ -79,7 +79,11 @@ def test_stale_reasons(tmp_path: Path) -> None:
     assert p.stale_reasons(today=date(2026, 11, 1)) == []
     assert any("more than 180 days" in r for r in p.stale_reasons(today=date(2027, 6, 1)))
     prev = mp.load_profile(TEMPLATE_PROFILES / "anthropic-claude" / "claude-opus-5.md")
-    assert any("version_rank: previous" in r for r in prev.stale_reasons(today=date(2026, 11, 1)))
+    assert "version_rank: previous (superseded by a newer Opus release)" in prev.stale_reasons(today=date(2026, 11, 1))
+    single_line = mp.load_profile(TEMPLATE_PROFILES / "cursor-composer" / "composer-2.md")  # track: none
+    assert "version_rank: previous (superseded by a newer Cursor Composer release)" in single_line.stale_reasons(
+        today=date(2026, 11, 1)
+    )
     ds = mp.load_profile(TEMPLATE_PROFILES / "deepseek" / "deepseek-v4.1-flash-1017.md")
     assert any("alias_moves" in r for r in ds.stale_reasons(today=date(2026, 11, 1)))
 

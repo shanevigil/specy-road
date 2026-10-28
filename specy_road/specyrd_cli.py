@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from specy_road.specyrd_init import resolve_repo_root, run_init
+from specy_road.specyrd_init import ROLE_COMMAND_FILES, resolve_repo_root, run_init
 
 
 def _note_if_already_initialized(target: Path) -> None:
@@ -18,12 +18,17 @@ def _note_if_already_initialized(target: Path) -> None:
     Re-running ``init`` on an initialized repo is a supported flow (adding a
     second ``--ai`` pack), so this is a note, not a refusal — but reaching for
     ``--force`` to pick up newly shipped stubs is what a refresh command is for.
+
+    ``init project`` writes the manifest too, to record ``project_root``, but
+    with no ``agents``; only a recorded IDE pack means stubs are installed.
     """
     manifest = resolve_repo_root(target) / ".specyrd" / "manifest.json"
     if not manifest.is_file():
         return
     try:
         recorded = json.loads(manifest.read_text(encoding="utf-8"))
+        if not recorded.get("agents"):
+            return
         version = str(recorded.get("specyrd_version") or "unknown")
     except (OSError, json.JSONDecodeError, AttributeError):
         version = "unknown"
@@ -33,6 +38,11 @@ def _note_if_already_initialized(target: Path) -> None:
         "  To add another IDE pack, keep going with --ai <other>.",
         file=sys.stderr,
     )
+
+
+def _role_stub_names(role: str) -> str:
+    """The role's stubs for ``--help``, read from the install table so it cannot drift."""
+    return ", ".join(f.removeprefix("specyrd-").removesuffix(".md") for f in ROLE_COMMAND_FILES[role])
 
 
 def _parse_extras(s: str) -> list[str]:
@@ -140,9 +150,8 @@ def _add_specyrd_init_subparser(sub: argparse.Action) -> None:
         default=None,
         help=(
             "Install only the stubs relevant to a role: "
-            "pm (validate, export, author, sync, list-nodes, show-node, "
-            "add-node, review-node), dev (validate, brief, claim, finish, "
-            "do-next-task), or both (same as omitting --role: all 14 stubs). "
+            f"pm ({_role_stub_names('pm')}), dev ({_role_stub_names('dev')}), "
+            "or both (same as omitting --role: every stub). "
             "With --no-prompt this flag is required."
         ),
     )
