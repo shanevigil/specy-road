@@ -290,10 +290,12 @@ def test_round_one_does_not_point_at_the_roadmap_digest(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     (repo / "roadmap-context.md").write_text("# digest\n")
     s = BrainstormSession(slug="s", topic="t")
-    assert "roadmap-context.md" not in render_brainstorm_prompt(repo, s, count=5)
+    # Round 1 names the digest only as a file not to open, never as one to read.
+    text = render_brainstorm_prompt(repo, s, count=5)
+    assert "`roadmap-context.md`" not in text.split("**Do not open")[0]
     s.round = 2
     s.ideas = []
-    assert "roadmap-context.md" in render_brainstorm_prompt(repo, s, count=5)
+    assert "**Current roadmap state:** `roadmap-context.md`" in render_brainstorm_prompt(repo, s, count=5)
 
 
 # --- Sol F5 ----------------------------------------------------------------------
