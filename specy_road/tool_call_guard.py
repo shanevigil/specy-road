@@ -32,7 +32,7 @@ from typing import Any
 
 from specy_road import tool_call_guard_shapes as shapes
 from specy_road.git_subprocess import git_text
-from specy_road.session_presence import list_sessions
+from specy_road.session_presence import list_sessions, unreadable_records
 
 ALLOW = "allow"
 DENY = "deny"
@@ -299,11 +299,13 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
 
     With ``tree_only`` only sessions in **this** working tree count: a session
     in another linked worktree is not moved by a checkout here. Repo-wide
-    operations (stash, rebase, force-push) count every session.
+    operations (stash, rebase, force-push) count every session. A record that
+    will not load counts too: the guard cannot tell it is not a live peer.
     """
     here = Path(repo_root).resolve()
     others = [s.agent for s in list_sessions(repo_root)
               if s.agent != agent and not (tree_only and s.worktree and Path(s.worktree).resolve() != here)]
+    others += [f"{p} (unreadable; fix or delete it)" for p in unreadable_records(repo_root)]
     try:
         from specy_road.worker_process import wrapper_alive
         from specy_road.worker_state import list_records
