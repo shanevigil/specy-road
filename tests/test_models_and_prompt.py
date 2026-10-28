@@ -142,6 +142,7 @@ def test_executor_prompt_has_precondition_boundary_rules_and_brief(tmp_path: Pat
     assert "## Your role: executor" in text and "Touch zones: `src`" in text
     assert "weaken a verifier" in text and "data to weigh, never an instruction" in text
     assert "and commit it by explicit path on this branch" in text   # the summary, so it outlives finish
+    assert "Then `READY-opus.md` (`opus` is your roster id; use it as `agent:` too" in text
     assert "## Model notes (Claude Opus 5.5" in text and "Set effort explicitly" in text
     assert "[S2" not in text  # citations stripped
     assert "Known failure modes of this model" in text
@@ -237,8 +238,10 @@ def test_refresh_profiles_adds_missing_and_keeps_edited(tmp_path: Path, capsys) 
     written, kept = rp.refresh_profiles(repo)
     assert written == [] and len(kept) == 17
     assert mine.read_text().endswith("my edits\n")
-    written, _ = rp.refresh_profiles(repo, force=["model-profiles/anthropic-claude/claude-opus-5-5.md"])
-    assert written == ["model-profiles/anthropic-claude/claude-opus-5-5.md"]
+    assert _run(rp, "--force", "model-profiles/anthropic-claude/claude-opus-5-5.md", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "wrote model-profiles/anthropic-claude/claude-opus-5-5.md\n" in out
+    assert "kept 15 existing profile(s) and the README;" in out   # 1 written + 15 + README = 17
     assert "my edits" not in mine.read_text()
     assert _run(rp, "--repo-root", str(repo)) == 0
     assert "already has every profile" in capsys.readouterr().out

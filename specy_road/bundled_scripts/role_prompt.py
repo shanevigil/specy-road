@@ -110,7 +110,7 @@ def _precondition(role: str, node_id: str, t, packet: Path) -> list[str]:
     ]
 
 
-def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None = None,
+def _executor_preamble(node_id: str, model: str, zones: list[str], family_lock: str | None = None,
                        reviews: Path | None = None) -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
@@ -126,7 +126,8 @@ def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None =
         f"4. Write `work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
-        f"Then `READY-<your model id>.md` from `work/handoff-ready.template.md` into "
+        f"Then `READY-{model}.md` (`{model}` is your roster id; use it as `agent:` too, not an API model id) "
+        "from `work/handoff-ready.template.md` into "
         f"`{reviews or f'work/reviews/{node_id}'}` "
         "(that is the main checkout's directory: use it as written even if you are in a worktree).",
         "5. Stop.",
@@ -259,7 +260,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     if t:
         lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME)
     if role == "executor":
-        lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
+        lines += _executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
     elif role == "reviewer":
         lines += _reviewer_preamble(node_id, model)
     else:

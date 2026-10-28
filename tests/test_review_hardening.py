@@ -292,3 +292,4 @@ def test_scaffold_ships_hand_off_templates_and_the_prompt_names_them(tmp_path: P
         "require_implementation_review_before_finish: true\n")
     text = "\n".join(_finish_instruction_lines("M1.1", tmp_path, on_complete="merge"))
     assert "work/handoff-ready.template.md" in text and "work/review-record.template.md" in text
+    assert "READY-<your roster id>.md" in text and "commit it on the feature branch" in text

@@ -224,11 +224,14 @@ def _finish_instruction_lines(
                 f"4. When implementation is complete, write "
                 f"`work/implementation-summary-{node_id}.md` with sections "
                 "**Summary**, **Changes**, **Verification**, and optional "
-                "**## Walkthrough** (numbered steps for the reviewer)."
+                "**## Walkthrough** (numbered steps for the reviewer), and commit "
+                "it on the feature branch: reviewers judge it, and finish removes "
+                "it from `work/`."
             ),
             (
                 "5. Hand off for review: write "
-                f"`work/reviews/{node_id}/READY-<your model id>.md` from "
+                f"`work/reviews/{node_id}/READY-<your roster id>.md` (the `id` of "
+                "your entry in `roadmap/orchestration.yaml`) from "
                 "`work/handoff-ready.template.md` (branch, commit, base, changed_paths, "
                 "verify), then stop. Reviewers read "
                 f"`specy-road review-packet {node_id}` and file verdicts with "

@@ -50,12 +50,14 @@ def test_yes_without_reviews_refuses(tmp_path: Path, capsys) -> None:
     assert _review_state(repo) == "pending"
 
 
-def test_yes_with_recorded_reviews_commits_with_trailers(tmp_path: Path) -> None:
+def test_yes_with_recorded_reviews_commits_with_trailers(tmp_path: Path, capsys) -> None:
     repo = _repo(tmp_path, orchestration=TWO_FAMILIES)
     impl = git(repo, "rev-parse", "HEAD")
     _record(repo, "opus")
     _record(repo, "sol")
     assert _run(repo, "--yes") == 0
+    out = capsys.readouterr().out
+    assert "Summary file: work/implementation-summary-M1.1.md" in out and "Did it." not in out   # nobody reads it
     assert _review_state(repo) == "approved"
     msg = git(repo, "log", "-1", "--format=%B")
     assert f"Reviewed-by: opus (anthropic) approve {impl}" in msg
@@ -66,11 +68,12 @@ def test_yes_with_recorded_reviews_commits_with_trailers(tmp_path: Path) -> None
     assert evaluate_gate(repo, target.node, target.commit).passed
 
 
-def test_interactive_human_approval_files_a_record(tmp_path: Path, monkeypatch) -> None:
+def test_interactive_human_approval_files_a_record(tmp_path: Path, monkeypatch, capsys) -> None:
     repo = _repo(tmp_path)
     monkeypatch.setattr("sys.stdin.isatty", lambda: True)
     monkeypatch.setattr("builtins.input", lambda _prompt="": "a")
     assert _run(repo) == 0
+    assert "Did it." in capsys.readouterr().out   # the human approving reads the summary
     assert review_path(repo, "M1.1", "human").is_file()
     assert _review_state(repo) == "approved"
     assert "Reviewed-by: human (human) approve" in git(repo, "log", "-1", "--format=%B")
