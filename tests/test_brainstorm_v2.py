@@ -148,6 +148,10 @@ def test_round_one_plans_then_generates_without_anchors(repo: Path) -> None:
     # The managed block says "read roadmap-context.md first"; round 1 names what not to open.
     assert "Do not open `roadmap-context.md`, `roadmap.md`, anything under `roadmap/`" in text
     assert "this instruction overrides that rule" in text
+    assert "the next round opens them" in text
+    _start(repo, "--rounds", "1")   # no next round: say what does open them
+    text = _prompt(repo)
+    assert "next round" not in text and "converge (`brainstorm recommend`) shows the roadmap" in text
     assert "--origin" in text and "--hypothesis" in text
     assert "specy-road calls no model and no search API from the CLI" in text
 
@@ -171,9 +175,11 @@ def test_next_round_needs_ideas_and_then_regenerates(repo: Path) -> None:
     assert code == 1 and "no ideas yet" in err
     _cli(repo, "add-idea", "--title", "Stored vault", "--origin", "claude-code/opus/SCAMPER/1")
     _cli(repo, "add-idea", "--title", "Pay by link")
+    _cli(repo, "frame", "--answer", "outcome=fewer failed payments")
     code, out, _ = _cli(repo, "next-round", "--count", "15")
     assert code == 0 and "round 2" in out and "2 ideas in the pool" in out
     text = _prompt(repo)
+    assert "## The agreed frame" in text and "**outcome:** fewer failed payments" in text
     assert "- B1 Stored vault" in text and "- B2 Pay by link" in text
     assert "at least 15 more" in text and "Unoccupied regions" in text
     assert "Do not research yet" not in text
@@ -239,6 +245,7 @@ def test_converge_prompt_plays_critics_and_names_overlap_relations(repo: Path) -
     assert "[cursor/composer/SCAMPER/1]" in text
     assert "evidence (unverified): https://example.com/a" in text
     assert "--cluster C2 --overlap M3.1:adjacent" in text and "--why" in text
+    assert "billing" not in text   # the example must not carry another product's domain
 
 
 def test_revise_records_cluster_overlap_and_critics_without_triaging(repo: Path) -> None:

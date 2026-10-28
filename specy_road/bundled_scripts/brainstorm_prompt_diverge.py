@@ -130,7 +130,14 @@ def allocation_lines(session: BrainstormSession, count: int, *, shard: bool = Fa
     return lines
 
 
-def quantity_lines(count: int, *, first_round: bool) -> list[str]:
+def agreed_frame_lines(session: BrainstormSession) -> list[str]:
+    """The recorded frame, for prompts run by an agent that did not record it."""
+    if not session.frame:
+        return []
+    return ["## The agreed frame", "", *(f"- **{k}:** {v}" for k, v in session.frame.items()), ""]
+
+
+def quantity_lines(count: int, *, first_round: bool, more_rounds: bool = True) -> list[str]:
     lines = [
         "## Step 3 — generate, do not evaluate",
         "",
@@ -154,7 +161,9 @@ def quantity_lines(count: int, *, first_round: bool) -> list[str]:
     if first_round:
         lines += [
             "- **Do not research yet and do not read the roadmap** in this round. "
-            "Both anchor you; the next round opens them.",
+            "Both anchor you; " + ("the next round opens them." if more_rounds else
+                                   "converge (`brainstorm recommend`) shows the roadmap "
+                                   "and the evidence pass does the research."),
         ]
     lines.append("")
     return lines

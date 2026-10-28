@@ -20,6 +20,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.brainstorm_fields import OVERLAP_RELATIONS
 from specy_road.bundled_scripts.brainstorm_prompt_diverge import (
+    agreed_frame_lines,
     allocation_lines,
     frame_lines,
     header_lines,
@@ -129,10 +130,11 @@ def render_brainstorm_prompt(
         lines += _governance_lines(root, roadmap=False)
         lines += frame_lines(session)
         lines += allocation_lines(session, count)
-        lines += quantity_lines(count, first_round=True)
+        lines += quantity_lines(count, first_round=True, more_rounds=session.rounds > 1)
     else:
         lines = header_lines(session, count, title=f"Brainstorm, round {session.round}")
         lines += _governance_lines(root)
+        lines += agreed_frame_lines(session)
         lines += regeneration_lines(session, count)
         lines += quantity_lines(count, first_round=False)
     lines += recording_lines(session)
@@ -144,11 +146,10 @@ def render_shard_prompt(root: Path, session: BrainstormSession, *, count: int,
     """One independent worker's share of round 1: its cell, nothing of the others."""
     lines = header_lines(session, count, title=f"Brainstorm shard {shard}/{total}")
     lines += _governance_lines(root, roadmap=False)
-    if session.frame:
-        lines += ["## The agreed frame", ""] + [f"- **{k}:** {v}" for k, v in session.frame.items()] + [""]
+    lines += agreed_frame_lines(session)
     lines += allocation_lines(session, count, shard=True)
     lines += shard_lines(session, shard, total)
-    lines += quantity_lines(count, first_round=True)
+    lines += quantity_lines(count, first_round=True, more_rounds=session.rounds > 1)
     lines += recording_lines(session, shard=f"s{shard}")
     return "\n".join(lines) + "\n"
 
@@ -221,7 +222,7 @@ def render_recommend_prompt(root: Path, session: BrainstormSession) -> str:
         "```bash",
         f"specy-road brainstorm revise B1 --slug {session.slug} \\",
         "  --cluster C2 --overlap M3.1:adjacent \\",
-        '  --critic "feasibility: needs the billing migration first" \\',
+        '  --critic "feasibility: needs B4 to land first" \\',
         '  --recommendation strong --why "Principle 3; source on B1 for"',
         "```",
         "",
