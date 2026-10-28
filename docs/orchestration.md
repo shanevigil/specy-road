@@ -125,11 +125,11 @@ Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](o
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
-Plain files work across every harness, including IDE chats that cannot see each
-other. Each file is Markdown whose YAML front matter is the machine-readable part.
-The directory always resolves to the **main** worktree: an executor in a linked
-worktree writes its hand-off there by absolute path, and every command — including the gate
-run from that worktree — reads the same files. New scaffolds ship `work/handoff-ready.template.md` and `work/review-record.template.md`.
+Plain files work across every harness, including IDE chats that cannot see each other. Each file is Markdown whose YAML front matter is the machine-readable part.
+The directory always resolves to the **main** worktree: an executor in a linked worktree writes its hand-off there by absolute path, and every command — including the gate run from that worktree — reads the same files. New scaffolds ship `work/handoff-ready.template.md` and `work/review-record.template.md`.
+
+Records are read from the working tree and are untracked by design (`work/reviews/` is gitignored), so they never travel with a push; the review policy, by contrast, comes from `roadmap/orchestration.yaml` on the integration branch. What persists is the outcome: the gate writes one `Reviewed-by:` trailer per approval into git history.
+A repository that never pushes claims still sees its records: `handoff status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only.
 
 ### `READY-<agent>.md` — the executor's hand-off
 

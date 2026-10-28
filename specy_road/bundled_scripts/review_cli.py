@@ -4,9 +4,10 @@
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
 review record, and whether the review policy is met at the commit under
-review. ``review record`` validates one reviewer's notes, fills in the family
-from the roster, labels same-family independence, and files the record as
-``REVIEW-<model>.md`` beside the READY file.
+review. Records with no registry claim are listed without a commit unless
+``--ref`` names one. ``review record`` validates one reviewer's notes, fills
+in the family from the roster, labels same-family independence, and files the
+record as ``REVIEW-<model>.md`` beside the READY file.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from specy_road.review_files import (
     HUMAN,
     latest_ready,
     list_ready,
+    list_reviews,
     load_review,
     node_ids_with_reviews,
     render_front_matter,
@@ -50,8 +52,8 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
     return "in-review"
 
 
-def _node_status(root: Path, node_id: str) -> dict[str, Any]:
-    t = resolve_target(root, node_id)
+def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
+    t = resolve_target(root, node_id, ref)
     gate = evaluate_gate(root, t.node, t.commit)
     branch = (t.entry or {}).get("branch")
     ready = latest_ready(root, node_id, branch)
@@ -77,9 +79,10 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
 
 
 def _render(st: dict[str, Any]) -> list[str]:
-    if st["state"] in ("unclaimed", "error"):
+    if "error" in st:
         return [f"{st['node_id']}: {st['state']} — {st['error']}"]
-    lines = [f"{st['node_id']}: {st['state']} — {st['ref']} @ {(st['commit'] or '?')[:12]}"]
+    where = f"{st['ref']} @ {(st['commit'] or '?')[:12]}" if st["ref"] else "no commit under review"
+    lines = [f"{st['node_id']}: {st['state']} — {where}"]
     for r in st["ready"]:
         mark = "ok" if not r["errors"] else "INVALID: " + "; ".join(r["errors"])
         lines.append(f"  {r['file']} ({mark})")
@@ -90,21 +93,48 @@ def _render(st: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _status_or_error(root: Path, nid: str) -> dict[str, Any]:
+def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
+    """Records without a claim are listed, not called leftover: a repository may never push claims."""
+    ready, reviews = list_ready(root, nid), list_reviews(root, nid)
+    if not ready and not reviews:
+        return {"node_id": nid, "state": "unclaimed",
+                "error": "no open claim and no READY or REVIEW records; the directory can be deleted"}
+    return {
+        "node_id": nid,
+        "state": "unclaimed",
+        "ref": None,
+        "commit": None,
+        "ready": [{"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors} for r in ready],
+        "reviews": [
+            {"file": r.path.name, "model": r.data["model"], "family": r.data.get("family"),
+             "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature"))}
+            for r in reviews if r.ok
+        ],
+        "policy": "not evaluated: no claim names the commit under review",
+        "policy_met": False,
+        "problems": [f"no open claim: pass --ref <branch> to check these records against its commit, "
+                     f"or claim the leaf in this checkout with `specy-road do-next-available-task "
+                     f"--under {nid} --local`"]
+                    + [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in reviews if not r.ok],
+    }
+
+
+def _status_or_error(root: Path, nid: str, ref: str | None = None) -> dict[str, Any]:
     try:
-        return _node_status(root, nid)
+        return _node_status(root, nid, ref)
     except ReviewTargetError as e:
         msg = str(e)
         if msg.startswith("no registry claim"):
-            return {"node_id": nid, "state": "unclaimed",
-                    "error": f"no open claim; leftover hand-off files can be deleted ({msg})"}
+            return _unclaimed(root, nid)
         return {"node_id": nid, "state": "error", "error": msg}
 
 
 def cmd_handoff_status(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
+    if ns.ref and not ns.node_id:
+        return _fail("--ref names one node's branch or commit; give the node id too")
     node_ids = [ns.node_id] if ns.node_id else node_ids_with_reviews(root)
-    out = [_status_or_error(root, nid) for nid in node_ids]
+    out = [_status_or_error(root, nid, ns.ref) for nid in node_ids]
     sessions = list_sessions(root)
     workers = list_records(root, active_only=True)
     if ns.json:
@@ -121,9 +151,9 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
             print("No hand-offs under work/reviews/.")
         else:
             print("\n".join(line for st in out for line in _render(st)))
-    # Naming a node that cannot be resolved (unknown, or with no open claim) is a
-    # caller error; a stale directory in the sweep is only reported.
-    return 1 if ns.node_id and out[0]["state"] in ("error", "unclaimed") else 0
+    # Naming a node that cannot be resolved (unknown, or with neither a claim nor
+    # records) is a caller error; a stale directory in the sweep is only reported.
+    return 1 if ns.node_id and "error" in out[0] else 0
 
 
 def _fail(msg: str) -> int:
@@ -221,6 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     st = hsub.add_parser("status", help="Report hand-offs, reviews, and whether review policy is met")
     st.add_argument("node_id", nargs="?", help="One node (default: every node under work/reviews/)")
     st.add_argument("--json", action="store_true", help="Machine-readable output for polling")
+    st.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_handoff_status)
 

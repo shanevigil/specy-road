@@ -135,3 +135,40 @@ def test_counted_reviews_outrank_a_stale_ready_file(tmp_path: Path, capsys) -> N
     assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
     assert _status(repo, capsys)["state"] == "approved"
+
+
+def _drop_claim(repo: Path) -> None:
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+
+
+def test_records_without_a_claim_are_listed_with_their_verdicts(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo)
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    _drop_claim(repo)
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "M1.1: unclaimed — no commit under review" in out
+    assert "READY-composer.md (ok)" in out
+    assert "REVIEW-opus.md: approve by opus (anthropic)" in out
+    assert "--ref <branch>" in out and "do-next-available-task --under M1.1 --local" in out
+    assert "leftover" not in out and "--under M1.1`" not in out
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--ref", "feature/rm-thing", "--json",
+                "--repo-root", str(repo)) == 0
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert st["state"] == "approved" and st["policy_met"]
+    assert _run("handoff", "status", "--ref", "feature/rm-thing", "--repo-root", str(repo)) == 1
+
+
+def test_no_claim_and_no_records_is_an_empty_directory(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews_dir(repo, "M1.1").mkdir(parents=True)
+    _drop_claim(repo)
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    out = capsys.readouterr().out
+    assert "no READY or REVIEW records; the directory can be deleted" in out
+    assert "do-next-available-task" not in out
