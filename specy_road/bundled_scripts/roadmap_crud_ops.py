@@ -106,25 +106,24 @@ def cmd_list(args: object) -> None:
     ``STATUS`` is the node's own field as written in the chunk; ``ROLLUP`` is
     what ``roadmap.md`` and the PM GUI show (a parent rolls up from its leaf
     descendants). One unlabelled column let the two disagree silently.
+    ``--json`` prints each kept node whole (title untruncated) plus ``chunk``.
     """
     root = repo_root(args)
-    merged = load_roadmap(root)["nodes"]
     chunk_map = build_node_chunk_map(root)
     wanted = {s.lower() for s in (getattr(args, "status", None) or [])}
+    rows = []
+    for n in sorted(load_roadmap(root)["nodes"], key=lambda x: natural_id_sort_key(x["id"])):
+        rollup = str(n.get("rollup_status") or n.get("status", ""))
+        if not wanted or rollup.lower() in wanted:
+            ch = chunk_map.get(n["id"])
+            rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None))
+    if getattr(args, "as_json", False):
+        print(json.dumps([{**n, "chunk": rel} for n, _, rel in rows], indent=2, ensure_ascii=False))
+        return
     print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
-    for n in sorted(merged, key=lambda x: natural_id_sort_key(x["id"])):
-        nid = n["id"]
-        ch = chunk_map.get(nid)
-        rel = ch.relative_to(root) if ch else "(unknown)"
-        title = str(n.get("title", ""))[:60]
-        own = str(n.get("status", ""))
-        rollup = str(n.get("rollup_status") or own)
-        if wanted and rollup.lower() not in wanted:
-            continue
-        print(
-            f"{nid:12}  {n.get('type', ''):10}  "
-            f"{own:12}  {rollup:12}  {title}  [{rel}]",
-        )
+    for n, rollup, rel in rows:
+        print(f"{n['id']:12}  {n.get('type', ''):10}  {str(n.get('status', '')):12}  "
+              f"{rollup:12}  {str(n.get('title', ''))[:60]}  [{rel or '(unknown)'}]")
 
 
 def cmd_show(args: object) -> None:

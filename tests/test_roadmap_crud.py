@@ -237,6 +237,29 @@ def test_list_nodes_cli(tmp_path: Path) -> None:
     assert "M99.1" in r.stdout
 
 
+def test_list_nodes_json_is_the_full_untruncated_list(tmp_path: Path) -> None:
+    """The table cuts titles at 60 characters; --json is for scripts and keeps every field."""
+    _fixture_repo(tmp_path)
+    chunk = tmp_path / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    long_title = "A title well past the sixty characters the table keeps, kept whole"
+    nodes[1]["title"] = long_title
+    nodes[1]["status"] = "Complete"
+    write_json_chunk(chunk, nodes)
+
+    r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json")
+
+    assert r.returncode == 0, r.stderr
+    listed = json.loads(r.stdout)
+    assert [n["id"] for n in listed] == ["M99", "M99.1", "M99.2"]
+    one = listed[1]
+    assert one["title"] == long_title
+    assert one["chunk"] == "roadmap/phases/T.json"
+    assert one["node_key"] == nodes[1]["node_key"] and one["rollup_status"] == "Complete"
+    done = _run_crud(tmp_path, "--repo-root", str(tmp_path), "list-nodes", "--json", "--status", "Complete")
+    assert [n["id"] for n in json.loads(done.stdout)] == ["M99.1"]
+
+
 def test_show_node_cli(tmp_path: Path) -> None:
     _fixture_repo(tmp_path)
     r = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
