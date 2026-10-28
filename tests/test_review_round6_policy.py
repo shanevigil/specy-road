@@ -30,7 +30,7 @@ from specy_road.worker_adapters import placeholder_problem
 
 REPO = Path(__file__).resolve().parent.parent
 OPUS = REPO / "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md"
-COMPOSER = REPO / "specy_road/templates/project/model-profiles/cursor-composer/composer-2.5.md"
+COMPOSER = REPO / "specy_road/templates/project/model-profiles/cursor-composer/composer-2.md"   # api_id: unknown
 PROFILE_REL = "model-profiles/anthropic-claude/claude-opus-5-5.md"
 ROSTER = f"""version: 1
 roster:
