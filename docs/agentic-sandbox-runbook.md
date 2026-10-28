@@ -299,10 +299,11 @@ In the Notes app, with a real agent on two harnesses (one run each):
    prompt appears, nothing is fetched on `n`, and a hand check of five
    `retrieved` quotes finds them on the page.
 7. **Triage and promote.** `reject` without `--reason` is refused; `park
-   --revisit-when`; `accept` three; `promote --dry-run` then `promote`;
-   `validate`, `export`, `digest` pass. Pass: the new sheets carry the
-   evidence lines with verification state, hypothesis, and an
-   "Alternative considered" line from the cluster.
+   --reason … --revisit-when …` (the condition is optional); `accept`
+   three; `promote --dry-run` then `promote`; `validate`, `export`,
+   `digest` pass. Pass: the new sheets carry the evidence lines with
+   verification state, hypothesis, and an "Alternative considered" line
+   from the cluster.
 8. **GUI.** `specy-road gui`; open the Brainstorm panel on the same session:
    ideas and clusters show; Brainstorm mode produces round-1 prompt
    behaviour (no node inventory); Roadmap mode converges. Pass: the panel

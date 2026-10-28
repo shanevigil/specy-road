@@ -9,7 +9,7 @@
 - Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
 - `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
-- The human decides: `accept`, `reject --reason`, `park --revisit-when` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
+- The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
 - Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
 - The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it are gitignored.
 
@@ -270,10 +270,11 @@ specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing s
 ```
 
 Verdicts are hidden by default so they do not steer you; clusters, critics'
-objections and evidence show first. `reject` requires a reason; `park` takes
-a revisit condition. Both are recorded as the idea's decision. Editing an
-idea's content marks it `revised`. Once an idea has been promoted it can no
-longer be re-triaged: it is a roadmap node, and the node is what you edit.
+objections and evidence show first. `reject` and `park` require a reason;
+`park` also takes an optional revisit condition (`--revisit-when`). Both are
+recorded as the idea's decision. Editing an idea's content marks it
+`revised`. Once an idea has been promoted it can no longer be re-triaged: it
+is a roadmap node, and the node is what you edit.
 
 ## 5. Promote
 
