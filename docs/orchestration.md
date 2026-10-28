@@ -351,8 +351,8 @@ absolute path or `--pathspec-from-file` (a plain directory such as `src/` passes
 `rm <files>`, which git refuses for a changed file) — only while another session is live (`--always`
 to deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`, `eval`, aliases,
 after `if`/`then`/`do`/`!`, and where `git` follows another word (`case … a) git …`, `find -exec git …`);
-what the guard cannot see is refused, not waved through: a shell function, a command name or git verb
-built by expansion (`$X`, `git${IFS}…`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
+what the guard cannot see is refused, not waved through: a shell function, a git verb or command name built by expansion
+that could be git (`$X`, `git${IFS}…`, `G=git; $G`; not `$HOME/bin/pytest`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
 Working-tree commands count only sessions in the caller's worktree (`git -C`, `stash`, `rebase`,
 force-push count every session). The adapters (`--format`) know each harness's stdin shape;
 `docs/optional-ai-tooling-patterns.md` wires them. A non-denial never sets a harness permission

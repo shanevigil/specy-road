@@ -79,6 +79,9 @@ from specy_road.bundled_scripts import session_cli
     ("{git,stash}", "shell expansion"),
     ("gi? stash", "shell expansion"),
     ("case x in a) git${IFS}stash;; esac", "shell expansion could build `git`"),
+    ("$X stash", "shell expansion"),
+    ("g{i,}t stash", "shell expansion"),
+    ("G=git; case x in x) ${G} stash;; esac", "stash stack is shared"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
@@ -108,6 +111,8 @@ def test_destructive_commands_are_classified(command: str, fragment: str) -> Non
     "ls ${DIR}",
     "[ -f x ] && ls src/*.py",
     "git commit -m 'git: bump $V' src/a.py",
+    "$HOME/bin/pytest -q",
+    "${PYTHON:-python} -m pytest",
 ])
 def test_ordinary_commands_pass(command: str) -> None:
     assert g.classify(command) is None, command

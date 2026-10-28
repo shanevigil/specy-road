@@ -13,6 +13,8 @@ import re
 #: Environment variables through which git reads configuration — and so aliases — the guard cannot see.
 _ENV_CONFIG = re.compile(r"^GIT_CONFIG(_COUNT|_PARAMETERS|_GLOBAL|_SYSTEM|_KEY_\d+|_VALUE_\d+)?=")
 _EXPANSION = re.compile(r"[$`]")
+#: ``NAME=value`` anywhere in a command (quoted or bare value).
+_ASSIGN = re.compile(r"(?<![\w$])([A-Za-z_]\w*)=(?:'([^']*)'|\"([^\"]*)\"|([^\s;&|()'\"]*))")
 #: Pathspec shapes that reach beyond explicit files: tree roots, parents, pathspec magic, globs.
 _BROAD_PATHSPEC = re.compile(r"^(\.|\./.*|\.\.|\.\./.*|/.*|:.*|.*[*?\[].*)$")
 #: ``git commit`` / ``git add`` flags that take a value, so the value is not mistaken for a pathspec.
@@ -41,6 +43,19 @@ def env_config(tokens: list[str]) -> str | None:
         if key.startswith("alias."):
             return "git --config-env=alias.*: the alias body lives in the environment where the guard cannot see it"
     return None
+
+
+def inline_git_vars(command: str) -> str:
+    """``G=git; ${G} stash`` is ``git stash`` to the guard: a variable assigned a git value is expanded in place.
+
+    Only a value whose first word is ``git`` (or a path to it) is inlined; any
+    other variable stays a variable and is judged as before.
+    """
+    for m in _ASSIGN.finditer(command):
+        value = next((v for v in m.groups()[1:] if v is not None), "")
+        if re.match(r"(\S*/)?git(\s|$)", value):
+            command = re.sub(rf"\$\{{{m.group(1)}\b[^}}]*\}}|\${m.group(1)}\b", lambda _m: value, command)
+    return command
 
 
 def eval_opaque(args: list[str], segment: str) -> str | None:
