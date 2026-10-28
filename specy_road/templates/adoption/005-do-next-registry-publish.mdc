@@ -5,6 +5,6 @@ alwaysApply: true
 
 ## `do-next-available-task` and remote registration
 
-- `specy-road do-next-available-task` **always** syncs the integration branch and **pushes** the registration commit so teammates can see `roadmap/registry.yaml` on the remote integration branch.
+- `specy-road do-next-available-task` syncs the integration branch and **pushes** the registration commit so teammates can see `roadmap/registry.yaml` on the remote integration branch. The one exception is **`--local`**: it registers in this checkout without fetch, merge or push, so peers cannot see the claim until you push the integration branch. Use it only when asked (offline, private spike).
 - `specy-road abort-task-pickup` **pushes** the integration branch after removing the registry row (same coordination contract; no `--no-push`).
 - Prefer a **failed `git push`** with a clear error over stopping before push — fix network/auth and retry, or push manually with `git push <remote> <integration-branch>` per `docs/dev-workflow.md`.

@@ -48,7 +48,7 @@ def _record_layout(dst: Path) -> str | None:
     return manifest["project_root"]
 
 
-def run_init_project(
+def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     target: Path | None,
     *,
     dry_run: bool = False,

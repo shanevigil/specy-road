@@ -93,7 +93,7 @@ def _canonical_ids_after_add(
     )
 
 
-def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:
+def _api_add_node_impl(root: Path, body: AddNodeBody) -> dict[str, Any]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     nodes = load_roadmap(root)["nodes"]
     by_id = {n["id"]: n for n in nodes}
     ref = body.reference_node_id

@@ -293,7 +293,7 @@ def _overlay_suffix(limits: ResolvedLimits) -> str:
     return ""
 
 
-def run_file_limits_scan(
+def run_file_limits_scan(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     root: Path,
     cfg: dict,
     *,

@@ -29,7 +29,7 @@ from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, head_sha
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_gate import policy_source
-from specy_road.review_target import ReviewTarget, full_sha, resolve_target_or_exit, same_commit
+from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 
 TAIL_LINES = 60
@@ -51,6 +51,10 @@ NO_INVENTORY = ("_No `Added` inventory in the summary: helpers, guards, mocks an
                 "listed; inventory the diff's additions yourself._")
 _INVENTORY = re.compile(r"(?im)^(?:#+\s*added\b|\*\*added\b|added:)")
 RENDERED = "_Rendered from the roadmap at the working tree._"
+# The registry stays in the diff: only this node's claim row and approval stamp are bookkeeping.
+BOOKKEEPING_MARK = "  _← toolkit bookkeeping; any edit beyond this node's claim and approval is under review_"
+BOOKKEEPING_NOTE = (f"_`{REGISTRY_REL}` is in this diff. Expected there: this node's claim row (pickup) and its "
+                    "approval stamp (`mark-implementation-reviewed`). Any other edit in that file is under review._")
 
 
 def _computed(t: ReviewTarget) -> str:
@@ -123,6 +127,8 @@ def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
         mark = "" if inside or bookkeeping else "  **← outside touch zones**"
         if p in policy:
             mark = "  **← review policy changed on this branch**"
+        if p == REGISTRY_REL:
+            mark = BOOKKEEPING_MARK
         lines.append(f"- `{p}`{mark}")
     if not paths:
         lines.append("- _none_")
@@ -136,12 +142,13 @@ def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
     return paths, lines
 
 
-def _diff(root: Path, t: ReviewTarget) -> list[str]:
+def _diff(root: Path, t: ReviewTarget, paths: list[str]) -> list[str]:
     out = ["## Diff", ""]
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
+    note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL in paths else []
     diff = git_stdout(["diff", f"{t.base}...{t.commit}"], root) or ""
-    return out + [_computed(t), ""] + (_fence(diff, "diff") if diff.strip() else ["_(empty)_", ""])
+    return out + [_computed(t), ""] + note + (_fence(diff, "diff") if diff.strip() else ["_(empty)_", ""])
 
 
 def _ready_verify(root: Path, t: ReviewTarget) -> list[str]:
@@ -178,14 +185,14 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str]) -> str:
     t = resolve_target_or_exit(root, node_id, ref)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
-    _paths, changed = _changed(root, t)
+    paths, changed = _changed(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
         _header(root, t),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         changed,
-        _diff(root, t),
+        _diff(root, t, paths),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"

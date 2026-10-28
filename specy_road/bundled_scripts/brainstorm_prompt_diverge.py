@@ -88,19 +88,33 @@ def frame_lines(session: BrainstormSession) -> list[str]:
     return lines
 
 
-def allocation_lines(session: BrainstormSession, count: int) -> list[str]:
+def allocation_lines(session: BrainstormSession, count: int, *, shard: bool = False) -> list[str]:
     lenses = lenses_for(session.profile)
+    if shard:
+        # The session holds one allocation and `frame --allocation` replaces
+        # it, so a shard that recorded its own would erase the others'.
+        plan = [
+            f"Plan your cell only: split your quota of at least {count} across "
+            "two of the lenses below, using your cell's operator. Keep that plan "
+            "in your own notes and **do not run `brainstorm frame --allocation`**: "
+            "the session holds one allocation, the coordinator's, and that "
+            "command replaces it for every worker.",
+        ]
+    else:
+        plan = [
+            f"Write an allocation grid: rows are the lenses below, columns are "
+            f"the directions, and each cell you fill gets a quota; quotas sum to "
+            f"at least {count}. Pick cells for *coverage* — every direction, most "
+            "lenses — then attach one diversity operator to each cell. Record it:",
+            "",
+            "```bash",
+            f"specy-road brainstorm frame --slug {session.slug} --allocation \"<grid as text>\"",
+            "```",
+        ]
     lines = [
         "## Step 2 — plan the search before generating",
         "",
-        f"Write an allocation grid: rows are the lenses below, columns are "
-        f"the directions, and each cell you fill gets a quota; quotas sum to "
-        f"at least {count}. Pick cells for *coverage* — every direction, most "
-        "lenses — then attach one diversity operator to each cell. Record it:",
-        "",
-        "```bash",
-        f"specy-road brainstorm frame --slug {session.slug} --allocation \"<grid as text>\"",
-        "```",
+        *plan,
         "",
         "**Directions:** " + "; ".join(DIRECTIONS) + ".",
         "",
@@ -116,7 +130,14 @@ def allocation_lines(session: BrainstormSession, count: int) -> list[str]:
     return lines
 
 
-def quantity_lines(count: int, *, first_round: bool) -> list[str]:
+def agreed_frame_lines(session: BrainstormSession) -> list[str]:
+    """The recorded frame, for prompts run by an agent that did not record it."""
+    if not session.frame:
+        return []
+    return ["## The agreed frame", "", *(f"- **{k}:** {v}" for k, v in session.frame.items()), ""]
+
+
+def quantity_lines(count: int, *, first_round: bool, more_rounds: bool = True) -> list[str]:
     lines = [
         "## Step 3 — generate, do not evaluate",
         "",
@@ -140,7 +161,9 @@ def quantity_lines(count: int, *, first_round: bool) -> list[str]:
     if first_round:
         lines += [
             "- **Do not research yet and do not read the roadmap** in this round. "
-            "Both anchor you; the next round opens them.",
+            "Both anchor you; " + ("the next round opens them." if more_rounds else
+                                   "converge (`brainstorm recommend`) shows the roadmap "
+                                   "and the evidence pass does the research."),
         ]
     lines.append("")
     return lines

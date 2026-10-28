@@ -93,18 +93,32 @@ def finish_already_done_on_branch(repo_root: Path, branch: str) -> dict | None:
     return node
 
 
-def report_finish_already_done_on_branch(repo_root: Path, branch: str) -> None:
-    """Explain a repeat ``finish-this-task`` after bookkeeping already committed."""
-    from specy_road.finish_modes import print_pr_gated_state
-    from specy_road.git_workflow_config import resolve_integration_defaults
+def report_finish_already_done_on_branch(
+    repo_root: Path, branch: str, on_complete: str | None = None
+) -> None:
+    """Explain a repeat ``finish-this-task`` after bookkeeping already committed.
+
+    In merge mode the earlier run's landing may have failed after its
+    bookkeeping commit; the re-run its error asks for retries the landing.
+    """
+    from specy_road.finish_modes import print_pr_gated_state, retry_merge_landing
+    from specy_road.git_workflow_config import (
+        resolve_integration_defaults,
+        resolve_on_complete,
+    )
 
     node = finish_already_done_on_branch(repo_root, branch)
     if node is None:
         return
     node_id = node["id"]
-    ib, _, _ = resolve_integration_defaults(
+    ib, remote, _ = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )
+    # The session sidecar went with the bookkeeping commit; the CLI, env and
+    # git-workflow.yaml still say which mode this leaf finishes in.
+    if resolve_on_complete(repo_root, cli=on_complete, session=None) == "merge":
+        print(f"[info] {node_id} is already Complete on {branch}; landing it on {ib}.")
+        retry_merge_landing(repo_root, branch=branch, ib=ib, remote=remote)
     print(
         f"[info] {node_id} is already Complete on {branch}; "
         "finish-this-task ran on this branch and released the registry row here."
@@ -118,7 +132,7 @@ def report_finish_already_done_on_branch(repo_root: Path, branch: str) -> None:
 
 
 def resolve_feature_rm_registry_context_for_finish(
-    repo_root: Path, branch: str
+    repo_root: Path, branch: str, on_complete: str | None = None
 ) -> _Context:
     """Like :func:`resolve_feature_rm_registry_context`, with a repeat-finish hint."""
     if branch.startswith("feature/rm-"):
@@ -126,5 +140,5 @@ def resolve_feature_rm_registry_context_for_finish(
         entries = read_registry(registry_path(repo_root)).get("entries") or []
         if codename and not any(e.get("codename") == codename for e in entries):
             if finish_already_done_on_branch(repo_root, branch):
-                report_finish_already_done_on_branch(repo_root, branch)
+                report_finish_already_done_on_branch(repo_root, branch, on_complete)
     return resolve_feature_rm_registry_context(repo_root, branch)

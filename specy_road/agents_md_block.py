@@ -53,7 +53,7 @@ def apply_agents_md_block(project_root: Path, *, dry_run: bool = False) -> str:
     """
     path = project_root / AGENTS_MD
     lines = render_agents_lines()
-    if not path.is_file() and not dry_run:
+    if not path.is_file() and not path.is_symlink() and not dry_run:   # never write through a dangling link
         path.write_text(_H1, encoding="utf-8")
     return apply_managed_block(path, lines, style=HTML_COMMENT, dry_run=dry_run)
 

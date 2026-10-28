@@ -92,7 +92,7 @@ describe("sortIdeasForTriage", () => {
       idea({ id: "B2", recommendation: null }),
       idea({ id: "B3", recommendation: "strong" }),
       idea({ id: "B4", recommendation: "consider" }),
-    ]);
+    ], true);
 
     expect(sorted.map((i) => i.id)).toEqual(["B3", "B4", "B1", "B2"]);
   });
@@ -101,7 +101,7 @@ describe("sortIdeasForTriage", () => {
     const sorted = sortIdeasForTriage([
       idea({ id: "B1", recommendation: "strong", promoted_node_key: "abc" }),
       idea({ id: "B2", recommendation: "park" }),
-    ]);
+    ], true);
 
     expect(sorted.map((i) => i.id)).toEqual(["B2", "B1"]);
   });
@@ -111,9 +111,20 @@ describe("sortIdeasForTriage", () => {
       idea({ id: "B1", recommendation: "strong" }),
       idea({ id: "B2", recommendation: "strong" }),
       idea({ id: "B3", recommendation: "strong" }),
-    ]);
+    ], true);
 
     expect(sorted.map((i) => i.id)).toEqual(["B1", "B2", "B3"]);
+  });
+
+  it("keeps capture order while verdicts are hidden, promoted still last", () => {
+    const sorted = sortIdeasForTriage([
+      idea({ id: "B1", recommendation: "park" }),
+      idea({ id: "B2", recommendation: "strong", promoted_node_key: "abc" }),
+      idea({ id: "B3", recommendation: "strong" }),
+      idea({ id: "B4", recommendation: null }),
+    ], false);
+
+    expect(sorted.map((i) => i.id)).toEqual(["B1", "B3", "B4", "B2"]);
   });
 
   it("does not mutate the input", () => {
@@ -122,7 +133,7 @@ describe("sortIdeasForTriage", () => {
       idea({ id: "B2", recommendation: "strong" }),
     ];
 
-    sortIdeasForTriage(input);
+    sortIdeasForTriage(input, true);
 
     expect(input.map((i) => i.id)).toEqual(["B1", "B2"]);
   });

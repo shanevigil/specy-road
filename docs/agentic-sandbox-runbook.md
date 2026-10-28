@@ -105,7 +105,7 @@ and leaves the leaf open on the integration branch, and a bare local remote
 has no host to open that PR on.
 
 1. `do-next-available-task` claims a leaf; commit a change inside its touch
-   zones; write `work/implementation-summary-<ID>.md` and
+   zones; write and commit `work/implementation-summary-<ID>.md`; write
    `work/reviews/<ID>/READY-<agent>.md`.
 2. `review-packet <ID>` writes `PACKET.md` with the brief's `A1..An`, the
    diff, and the verify tails.
@@ -129,7 +129,8 @@ has no host to open that PR on.
    For each harness's executor (here and in §5), record whether its
    implementation summary ends with `## Added` listing each helper, guard,
    mock and test with a reason. Delete that section from one summary:
-   `review-packet` prints a one-line note and still writes the packet.
+   `review-packet` still writes the packet and exits 0, with a one-line
+   note in `PACKET.md` (nothing on the terminal).
 9. **Reviewer restraint.** Make the leaf's change include one boundary check
    with a reachable trigger and a test (for example, reject an empty title
    from the CLI) and one guard with no reachable trigger. Review it in a
@@ -201,8 +202,10 @@ coordinator chat (any harness):
    each drew on as `billing_route`.
 2. **Permission stop.** With the default command, note whether the Claude
    worker stops at a shell permission (`acceptEdits`). If it does, set
-   `channels.cli` on the roster entry and delegate again. Pass: the worker
-   reaches `idle`/`completed` with a READY file.
+   `channels.cli` on the roster entry to the create-or-resume wrapper in
+   orchestration-workers.md ("Roster setup"; a bare `claude …
+   --session-id {session}` line fails every later `message`) and delegate
+   again. Pass: the worker reaches `idle`/`completed` with a READY file.
 3. **Cap and idempotency.** A third `delegate` is refused by `max_workers`;
    re-running `delegate <ID1>` returns the same worker id; `--op-id` replay
    returns the first result without a second launch.
@@ -263,7 +266,12 @@ coordinator chat (any harness):
    `worker delegate <ID>` launches a new worker. Pass: `worker events <W>`
    and `worker status <W>` show exactly that.
 10. **Finish.** Review and `finish-this-task` the leaf as in §2 (with
-    `on_complete: merge`; `pr` cannot land against a bare local remote);
+    `on_complete: merge`; `pr` cannot land against a bare local remote),
+    run **from the leaf's linked worktree** while the coordinator's checkout
+    stays on the integration branch: the merge lands and is pushed from the
+    coordinator's checkout, and both trees are clean afterwards. First, with
+    an uncommitted edit to a tracked file in the coordinator's checkout,
+    finish must refuse before its bookkeeping commit and name that checkout.
     `worker terminate` the idle worker; `handoff status` no longer lists it.
 
 Pass: 1, 3, 5, 7, 8, 9, 9b (ii), 10 exactly; 2, 4, 6, 9b (i) with their
@@ -299,12 +307,15 @@ In the Notes app, with a real agent on two harnesses (one run each):
    prompt appears, nothing is fetched on `n`, and a hand check of five
    `retrieved` quotes finds them on the page.
 7. **Triage and promote.** `reject` without `--reason` is refused; `park
-   --revisit-when`; `accept` three; `promote --dry-run` then `promote`;
-   `validate`, `export`, `digest` pass. Pass: the new sheets carry the
-   evidence lines with verification state, hypothesis, and an
-   "Alternative considered" line from the cluster.
+   --reason … --revisit-when …` (the condition is optional); `accept`
+   three; `promote --dry-run` then `promote`; `validate`, `export`,
+   `digest` pass. Pass: the new sheets carry the evidence lines with
+   verification state, hypothesis, and an "Alternative considered" line
+   from the cluster.
 8. **GUI.** `specy-road gui`; open the Brainstorm panel on the same session:
-   ideas and clusters show; Brainstorm mode produces round-1 prompt
+   the ideas show with their triage state, verdicts only after **Show
+   verdicts** (clusters, critics, quotes and verification states are
+   CLI-only, `list --by cluster`); Brainstorm mode produces round-1 prompt
    behaviour (no node inventory); Roadmap mode converges. Pass: the panel
    and CLI agree on the session file.
 

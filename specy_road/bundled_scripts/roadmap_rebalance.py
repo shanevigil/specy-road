@@ -221,7 +221,7 @@ def _diff_summary(plan: _PackPlan, root: Path) -> str:
     return "\n".join(out)
 
 
-def apply_pack_plan(root: Path, plan: _PackPlan) -> None:
+def apply_pack_plan(root: Path, plan: _PackPlan) -> None:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Apply ``plan`` atomically and validate; restore on failure."""
     write_plan = AtomicWritePlan(root=root)
     for path, nodes in plan.chunk_writes.items():

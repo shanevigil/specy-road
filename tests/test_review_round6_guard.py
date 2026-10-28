@@ -174,6 +174,7 @@ def test_cursor_non_denial_is_an_explicit_allow_pending_ide_confirmation() -> No
     "git add 'src/*.py'",
     "git add ..",
     "git add ':(top)src'",
+    "git rm -r .",
 ])
 def test_broad_pathspecs_are_refused(command: str) -> None:
     reason = g.classify(command)
@@ -187,6 +188,7 @@ def test_broad_pathspecs_are_refused(command: str) -> None:
     "git commit -m 'a * b' src/a.py",       # a glob inside -m is a message, not a pathspec
     "git add src/a.py",
     "git add src/",
+    "git rm src/a.py",                      # refuses a file with uncommitted changes; stages a deletion like `git add`
 ])
 def test_explicit_pathspecs_pass(command: str) -> None:
     assert g.classify(command) is None, command

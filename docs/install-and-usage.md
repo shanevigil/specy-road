@@ -180,7 +180,8 @@ rewrites exactly the paths `.specyrd/manifest.json` records as managed, installs
 stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
 `specyrd-digest` and `specyrd-history`), re-applies the managed blocks in
 `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, and bumps the recorded
-`specyrd_version`. `specy-road validate` warns while the manifest lags.
+`specyrd_version`. `specy-road validate` warns while the manifest lags. In a
+repo with no stub pack installed it prints `nothing to refresh` and exits 0.
 
 Stubs this version no longer installs for your recorded `--role` are **listed,
 not deleted** — they are yours to remove. A repo initialised before 0.3.0 has

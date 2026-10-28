@@ -30,8 +30,8 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.worker_adapters import Unsupported, adapter_for
-from specy_road.worker_baseline import write_baseline
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
+from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_runner import spawn
 from specy_road.worker_sessions import check_session_id
 from specy_road.worker_state import (
@@ -46,6 +46,7 @@ from specy_road.worker_state import (
     mutate,
     require_writer,
     set_state,
+    status_entries,
     take_checkpoint,
     workers_lock,
 )
@@ -207,27 +208,37 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     text, _prof, err = build_prompt(repo_root, node_id, role="executor", model=model)
     if err:
         raise WorkerError(err)
-    prompt = repo_root / "work" / f"prompt-{node_id}-executor-{model}.md"
-    prompt.parent.mkdir(parents=True, exist_ok=True)
-    prompt.write_text(text, encoding="utf-8")
     with workers_lock(repo_root):
         existing = _slot_or_existing(repo_root, node_id, limit)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
-        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, prompt, worktree), True
+        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree), True
 
 
 def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
-                   text: str, prompt: Path, worktree: Path | None) -> WorkerRecord:
+                   text: str, worktree: Path | None) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
+    # The worker edits this tree: uncommitted work in it could be overwritten, and
+    # `reconcile` could not tell the worker's edits from it. Only the leaf's own
+    # untracked bookkeeping is exempt (pickup leaves the brief there untracked).
+    entries = status_entries(wt)
+    if entries is None:
+        raise WorkerError(f"cannot read `git status` in {wt}, so its uncommitted changes are unknown; "
+                          "repair that checkout, then delegate again")
+    dirty = sorted(p for xy, p in entries if not (xy == "??" and _bookkeeping(p, node_id)))
+    if dirty:
+        raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
+                          "commit or stash them, then delegate again")
+    prompt = repo_root / "work" / f"prompt-{node_id}-executor-{model}.md"   # written only once the tree is clean
+    prompt.parent.mkdir(parents=True, exist_ok=True)
+    prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
     cli, api_id = _cli_for(repo_root, entry, harness)
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
-    write_baseline(repo_root, rec.worker_id, wt)   # pre-delegation dirt is the coordinator's, not the worker's
     try:
         spawn(repo_root, rec, launch)
     except OSError as e:

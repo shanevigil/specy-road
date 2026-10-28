@@ -26,7 +26,7 @@ from specy_road.finish_work_artifacts import (
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
-from specy_road.finish_modes import apply_on_complete_mode
+from specy_road.finish_modes import apply_on_complete_mode, merge_landing_preflight
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -66,9 +66,9 @@ def _save_registry(doc: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
+def _resolve_context(branch: str, on_complete: str | None = None) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
-    return resolve_feature_rm_registry_context_for_finish(ROOT, branch)
+    return resolve_feature_rm_registry_context_for_finish(ROOT, branch, on_complete)
 
 
 def _update_chunk_status(node_id: str) -> list[str]:
@@ -207,7 +207,7 @@ def _impl_review_or_exit(entry: dict, node: dict) -> None:
 
 def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
-    codename, reg, entry, nodes = _resolve_context(branch)
+    codename, reg, entry, nodes = _resolve_context(branch, args.on_complete)
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
     work_dir = ROOT / "work"
@@ -227,6 +227,8 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
         remote=gw_remote, integration_branch=ib,
         allow_empty=args.allow_empty_implementation,
     )
+    if on_mode == "merge":
+        merge_landing_preflight(ROOT, ib)
     print(f"Finishing [{node_id}] {node.get('title', '')}")
     print(f"Branch:   {branch}")
     print(f"on_complete: {on_mode}\n")

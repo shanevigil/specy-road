@@ -72,6 +72,8 @@ def renumber_display_ids_inplace(nodes: list[dict]) -> dict[str, str]:
     """
     Reassign every node's ``id`` and ``parent_id`` from tree structure (``parent_id``
     links and sibling order). ``node_key`` and ``dependencies`` (node_keys) unchanged.
+    Roots keep the project's numbering base: ``M0, M1, …`` when a root is ``M0``
+    today, else ``M1, M2, …`` (the ``init project`` scaffold starts at ``M1``).
 
     Returns map old_id -> new_id for diagnostics/registry updates.
     """
@@ -86,7 +88,7 @@ def renumber_display_ids_inplace(nodes: list[dict]) -> dict[str, str]:
                 raise ValueError(f"node missing node_key: {n!r}")
             old_id = n["id"]
             if new_parent_id is None:
-                new_id = f"M{i}"
+                new_id = f"M{base + i}"
             else:
                 new_id = f"{new_parent_id}.{i + 1}"
             key_to_new_id[nk] = new_id
@@ -94,6 +96,7 @@ def renumber_display_ids_inplace(nodes: list[dict]) -> dict[str, str]:
             visit(new_id, subs)
 
     roots = ch_map.get(None, [])
+    base = 0 if any(n["id"] == "M0" for n in roots) else 1
     visit(None, roots)
 
     old_to_new = {n["id"]: key_to_new_id[n["node_key"]] for n in nodes}

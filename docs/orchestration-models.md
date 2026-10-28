@@ -54,6 +54,9 @@ section before copying a CLI line into production.
   an alias; piping a prompt file to it is undocumented). The profile itself is
   read from the integration branch, like the roster: a working-tree copy that
   differs from the committed one is refused until it is committed there.
+  It logs the command template, never the prompt text; when the operating
+  system refuses to launch it (a `<prompt>` too long for a command line) it
+  exits 1 with the reason — use `{prompt}` for long prompts.
 
 ## Planning assignments: `orchestrate plan`
 
@@ -84,7 +87,8 @@ order:
   it may spawn.
 
 Exit 1 when any ready leaf cannot be staffed, with the reason under `!`, so a
-coordinator script stops before dispatching. Set a leaf's `sensitivity` and
-`executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
+coordinator script stops before dispatching. A roster entry whose profile is
+invalid is reported and assigned no role, since `prompt` would refuse it. Set a
+leaf's `sensitivity` and `executor_eligibility` with `specy-road edit-node <ID> --set sensitivity=restricted`
 or on `add-node`; both default to `public` and `any`. Repos scaffolded before
 0.3.0 run `specy-road refresh-schemas` once so `validate` accepts the fields.

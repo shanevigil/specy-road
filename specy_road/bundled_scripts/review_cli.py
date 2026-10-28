@@ -158,7 +158,7 @@ def _check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[
     return {"data": rec.data, "body": rec.body}, None
 
 
-def cmd_review_record(ns: argparse.Namespace) -> int:
+def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     root = resolve_repo_root(ns)
     try:
         t = resolve_target(root, ns.node_id, ns.ref)

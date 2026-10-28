@@ -34,7 +34,7 @@ between them — not **which** agent, IDE or vendor fills a role; a human, Claud
 
 ```text
 coordinator  do-next-available-task            → work/brief-<ID>.md, feature/rm-<codename>
-executor     implement, commit, write summary  → work/implementation-summary-<ID>.md
+executor     implement, commit, commit summary → work/implementation-summary-<ID>.md
 executor     write READY-<agent>.md            → work/reviews/<ID>/READY-<agent>.md
 coordinator  specy-road review-packet <ID>     → work/reviews/<ID>/PACKET.md
 reviewer(s)  read PACKET.md, write notes       → specy-road review record <ID> …
@@ -106,17 +106,17 @@ duplicate roster ids and a substitute that is not in the roster.
 
 **The gate reads this file from the integration branch** — its remote-tracking ref when there is
 one, else the local branch — not from the branch under review, so a feature branch cannot lower its
-own bar. The same goes for `require_implementation_review_before_finish`: the gate is on when either
-the integration branch or the working tree turns it on. Which branch is the integration branch comes
-from `roadmap/git-workflow.yaml` as committed at `HEAD`; the working tree and the
-`SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` variables are ignored here. That name is a
-trust anchor a feature commit can rewrite, so the branch it names must name itself in its own
-committed `git-workflow.yaml`, and with a remote configured only `refs/remotes/<remote>/<branch>` is
-read: redirecting policy needs push rights to a branch the remote must protect. If the branch is
-missing, the names disagree, or the remote branch is not fetched, the gate fails closed (on, and
-nothing passes it). Change policy on the integration branch; an edit on a feature branch is ignored
-by the gate, flagged in the review packet, and, like any commit that touches more than
-`roadmap/registry.yaml`, makes that branch's reviews stale.
+own bar; the gate is also on when either that branch or the working tree sets
+`require_implementation_review_before_finish`. In a repo with remotes, the branch's name comes from
+`roadmap/git-workflow.yaml` as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`,
+which `git clone` sets and `git remote set-head <remote> --auto` restores; it must exist), whose copy
+must also name the same remote as `HEAD`'s; in a repo with no remote, from the copy at `HEAD`. The
+working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are ignored. The named branch
+must name itself in its own committed copy, and with remotes only `refs/remotes/<remote>/<branch>` is
+read. If any of this is missing, unfetched or disagrees, the gate fails closed (on, and nothing passes
+it). Outside this protection: a remote whose default branch the feature author can push to, and anyone who can run git in the
+finishing clone (they can retarget `refs/remotes/<remote>/HEAD`); unsigned, the gate is cooperative attestation. Change policy on the integration branch; an edit on
+a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
 
 ## Choosing and prompting models
 
@@ -162,7 +162,8 @@ A READY naming another node or branch is misfiled: listed as invalid, never read
 2. the implementation summary;
 3. every changed path since the merge base, both sides of a rename or copy,
    with paths outside the touch zones flagged (roadmap bookkeeping is exempt);
-4. the diff;
+   `roadmap/registry.yaml` is labelled toolkit bookkeeping;
+4. the diff, `roadmap/registry.yaml` included: only this node's claim row and approval stamp are expected there, anything else is under review;
 5. verifier output from the newest READY file, plus any `--verify-cmd` run now;
    each section states if it was computed from git, executor-asserted, or run now.
 
@@ -236,8 +237,8 @@ review record only when:
   merge counts as new work, including `git merge -s ours`, whose tree equals
   its first parent's; commits that touch only `roadmap/registry.yaml` are
   skipped, so claim bookkeeping does not;
-- its model is a rostered reviewer, or the substitute in an active substitution
-  that covers this node, and its family comes from the roster;
+- its model is a rostered reviewer, or the substitute in an active substitution that covers this
+  node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
 - no other record from the same model already counts — one vote per model, and
   a block from any of a model's records wins;
 - it attests a fresh session when policy requires one.
@@ -309,15 +310,15 @@ loop has to record an independent review each cycle. One way is a pre-finish hoo
 ```bash
 specy-road grind-session --on-complete merge --implement-mode hook \
   --implement-cmd 'executor-cli "$SPECY_ROAD_PROMPT"' \
-  --pre-finish-cmd 'specy-road review-packet "$SPECY_ROAD_NODE_ID" &&
-    reviewer-cli work/reviews/"$SPECY_ROAD_NODE_ID"/PACKET.md > work/reviews/"$SPECY_ROAD_NODE_ID"/notes.md &&
-    specy-road review record "$SPECY_ROAD_NODE_ID" --model <reviewer-id> --verdict approve \
-      --file work/reviews/"$SPECY_ROAD_NODE_ID"/notes.md &&
+  --pre-finish-cmd 'ID="$SPECY_ROAD_NODE_ID"; specy-road review-packet "$ID" &&
+    specy-road prompt "$ID" --role reviewer --model <reviewer-id> --channel paste &&
+    reviewer-cli "$(cat work/prompt-"$ID"-reviewer-<reviewer-id>.md)" &&
+    specy-road handoff status "$ID" &&
     specy-road mark-implementation-reviewed --yes'
 ```
 
-`review record` refuses notes whose verdict disagrees with `--verdict`, so a
-blocking reviewer fails the hook and stops the loop (exit `4`).
+The reviewer prompt has the reviewer file its own `review record`. A block, or no record,
+leaves the gate unmet, so `--yes` refuses, the hook fails and the loop stops (exit `4`).
 
 From an IDE agent, use **step mode** ([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)):
 the agent session is the coordinator; it runs `grind-session --step pickup`, hands the prompt to a
@@ -341,28 +342,26 @@ specy-road session guard --command "git stash"   # exit 2 with the reason when a
 specy-road session guard --format claude-code     # the same, reading a harness hook's stdin
 ```
 
-`session guard` is the body of a harness hook (routing commands read the
-roster from the integration branch, as the gate does): it denies a command that can
-move or discard another session's work — `stash`, `reset --hard`, branch
-switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rebase`,
-`commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`
-(`commit --only <paths>`), a commit/add pathspec that is a tree root, `..`,
-glob, `:` magic, absolute path or `--pathspec-from-file` (a plain directory
-such as `src/` passes) — only while another session is live (`--always` to
-deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`,
-`eval` and aliases too; what the guard cannot see is refused, not waved
-through: a shell function, variable command name or git verb, `GIT_CONFIG*`
-in the environment, `--config-env=alias.*`, an interpreter one-liner.
-Working-tree commands count only sessions in the caller's worktree (`git -C`,
-`stash`, `rebase`, force-push count every session). The adapters (`--format`)
-know each harness's stdin shape; `docs/optional-ai-tooling-patterns.md` wires
-them. A non-denial never sets a harness permission decision (Claude Code gets
-context only; Codex nothing), so the harness's own prompt policy still applies.
+`session guard` is the body of a harness hook (routing commands read the roster from the integration
+branch, as the gate does): it denies a command that can move or discard another session's work —
+`stash`, `reset --hard`, branch switching, `checkout -- …`, `restore <paths>`, `clean -f`, `rm -f`,
+`rebase`, `commit --amend`, force push, `add -A`/`-u`/`.`, `commit -a`, a bare `commit`
+(`commit --only <paths>`), a commit/add/rm pathspec that is a tree root, `..`, glob, `:` magic,
+absolute path or `--pathspec-from-file` (a plain directory such as `src/` passes; so does plain
+`rm <files>`, which git refuses for a changed file) — only while another session is live (`--always`
+to deny regardless). Each `git` segment is judged, inside `sh -c`, `$(…)`, `<(…)`, `eval`, aliases,
+after `if`/`then`/`do`/`!`, and where `git` follows another word (`case … a) git …`, `find -exec git …`);
+what the guard cannot see is refused, not waved through: a shell function, a git verb or command name built by expansion
+that could be git (`$X`, `git${IFS}…`, `G=git; $G`; not `$HOME/bin/pytest`), `GIT_CONFIG*` in env, `--config-env=alias.*`, an interpreter one-liner.
+Working-tree commands count only sessions in the caller's worktree (`git -C`, `stash`, `rebase`,
+force-push count every session). The adapters (`--format`) know each harness's stdin shape;
+`docs/optional-ai-tooling-patterns.md` wires them. A non-denial never sets a harness permission
+decision (Claude Code gets context only; Codex nothing), so the harness's own prompt policy still applies.
 
-Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry.
-The id is `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one
-terminal or harness process, so `start`, `touch`, `end` and the hook name one record; `--agent` names it;
-`touch` keeps the paths. A crashed record ages out. `handoff status` lists live sessions first,
+Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
+`$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
+`start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
+out; one that will not load counts as live to the guard until fixed or deleted. `handoff status` lists live sessions first,
 `do-next-available-task` warns on touch-zone overlap, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout

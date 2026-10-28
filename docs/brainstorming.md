@@ -9,7 +9,7 @@
 - Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
 - `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
-- The human decides: `accept`, `reject --reason`, `park --revisit-when` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
+- The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
 - Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
 - The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it are gitignored.
 
@@ -189,11 +189,17 @@ specy-road brainstorm start --topic "…" --count 30 --panel 3
 Also writes `work/brainstorm-<slug>-s1-prompt.md` … `-s3-prompt.md`: one
 cell each with a distinct operator and direction, and the rule that the
 worker must **not** read the other shards, the session file, or the roadmap
-before it finishes — workers that see each other converge. Run them as
+before it finishes — workers that see each other converge. A shard plans
+inside its own cell and does not record an allocation: the session keeps one
+grid, the coordinator's, and `frame --allocation` replaces it. Shard prompts
+carry the frame and grid recorded when they were written, so record those
+first and re-run `start` to give the shards them. Run them as
 sub-agents of your session or on other harnesses from the roster (the best
 measured gains come from different *model families*); each records with
 `--origin …/1/sN` into the same session file, and converge clusters the
-merge. specy-road does not launch them itself.
+merge. specy-road does not launch them itself. Hand each worker its prompt inline, or name the
+`work/brainstorm-*` file and say to open it first: an agent that follows AGENTS.md's read-first
+rule otherwise reads `roadmap-context.md` before it sees the prompt (Cursor did, 4 of 4).
 
 ## 2. Converge
 
@@ -253,7 +259,9 @@ public `https` pages only, with a timeout and a size cap (a larger page is
 quote was given; `add-evidence` requires one), or
 `blocked` (paywall, robots, transport error — never "fabricated"). Sources
 it did not fetch stay `unverified`. This is the only network call the CLI
-makes.
+makes. Other brainstorm commands (CLI or GUI) are not blocked while it asks
+or fetches; it records its results into the session as it then stands, so
+ideas added meanwhile are kept.
 
 ## 4. Triage
 
@@ -266,10 +274,11 @@ specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing s
 ```
 
 Verdicts are hidden by default so they do not steer you; clusters, critics'
-objections and evidence show first. `reject` requires a reason; `park` takes
-a revisit condition. Both are recorded as the idea's decision. Editing an
-idea's content marks it `revised`. Once an idea has been promoted it can no
-longer be re-triaged: it is a roadmap node, and the node is what you edit.
+objections and evidence show first. `reject` and `park` require a reason;
+`park` also takes an optional revisit condition (`--revisit-when`). Both are
+recorded as the idea's decision. Editing an idea's content marks it
+`revised`. Once an idea has been promoted it can no longer be re-triaged: it
+is a roadmap node, and the node is what you edit.
 
 ## 5. Promote
 

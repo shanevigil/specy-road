@@ -12,11 +12,13 @@ from __future__ import annotations
 
 import io
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, REPO, script_subprocess_env
 
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts import brainstorm_verify as bv
@@ -101,7 +103,9 @@ def test_add_evidence_builds_a_source_record_and_mirrors_the_url(repo: Path) -> 
 def test_check_source_states(monkeypatch) -> None:
     pages = {"https://example.com/ok": (200, "<p>Some  exact\nwords here</p>"),
              "https://example.com/miss": (200, "<p>other</p>"),
-             "https://example.com/paywall": (403, ""), "https://example.com/gone": (404, "")}
+             "https://example.com/paywall": (403, ""), "https://example.com/gone": (404, ""),
+             "https://example.com/inline": (200, "<p>defined in <code>.git/config</code>.</p>"
+                                                 "<p><b>Ex</b>port <em>files </em>, then</p><td>end</td>")}
     monkeypatch.setattr(bv, "_is_off_host", lambda host: host != "example.com")
 
     def fetch(url):
@@ -112,6 +116,10 @@ def test_check_source_states(monkeypatch) -> None:
     assert bv.check_source({"url": "https://example.com/ok", "quote": "exact words"}, fetch) == "retrieved"
     assert bv.check_source({"url": "https://example.com/ok"}, fetch) == "not-found"   # no quote, nothing verified
     assert bv.check_source({"url": "https://example.com/miss", "quote": "exact words"}, fetch) == "not-found"
+    # Inline tags are not word breaks; a space before punctuation is dropped on both sides.
+    for quote in ("defined in .git/config.", "Export files, then", "files , then"):
+        assert bv.check_source({"url": "https://example.com/inline", "quote": quote}, fetch) == "retrieved"
+    assert bv.check_source({"url": "https://example.com/inline", "quote": "thenend"}, fetch) == "not-found"
     assert bv.check_source({"url": "https://example.com/paywall", "quote": "x"}, fetch) == "blocked"
     assert bv.check_source({"url": "https://example.com/gone", "quote": "x"}, fetch) == "not-found"
     assert bv.check_source({"url": "https://example.com/boom", "quote": "x"}, fetch) == "blocked"
@@ -128,6 +136,11 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
 
     def fetch(url):
         calls.append(url)
+        if len(calls) == 1:   # another process adds an idea mid-fetch: verify must not hold the lock, nor drop it
+            add = subprocess.run([sys.executable, "-m", "specy_road.cli", "brainstorm", "add-idea", "--title", "Two",
+                                  "--repo-root", str(repo)], cwd=REPO, env=script_subprocess_env(),
+                                 capture_output=True, text=True, timeout=60)
+            assert add.returncode == 0, add.stderr
         return 200, "exact words" if url.endswith("ok") else "nope"
 
     monkeypatch.setattr(bv, "default_fetch", fetch)
@@ -140,6 +153,7 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
     assert code == 0 and sorted(calls) == ["https://example.com/miss", "https://example.com/ok"]
     states = {s["url"]: s["verification"] for s in _session(repo).by_id("B1").sources}
     assert states == {"https://example.com/ok": "retrieved", "https://example.com/miss": "not-found"}
+    assert [i.title for i in _session(repo).ideas] == ["One", "Two"]
     assert "B1 retrieved" in out and "B1 not-found" in out
     code, out, _ = _cli(repo, "verify", "--yes")
     assert code == 0 and "nothing unverified" in out and len(calls) == 2

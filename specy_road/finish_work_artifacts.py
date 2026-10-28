@@ -12,9 +12,12 @@ restores.
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+from specy_road.review_files import reviews_dir
 
 
 def work_artifact_rel_paths(node_id: str) -> tuple[str, str, str]:
@@ -84,10 +87,32 @@ def remove_work_file(root_r: Path, rel: str) -> bool | None:
     return tracked
 
 
+def _keep_untracked_summary(root_r: Path, node_id: str) -> None:
+    """Copy a never-committed summary beside the reviews that read it.
+
+    The summary is the evidence the reviewers judged; when the executor did not
+    commit it, deleting it would leave it in no commit and no file.
+    """
+    rel = f"work/implementation-summary-{node_id}.md"
+    src = root_r / rel
+    if not src.is_file() or is_git_tracked(root_r, rel):
+        return
+    if src.is_symlink() or not src.resolve().is_relative_to(root_r):
+        print(f"[warn] {rel} is a symlink or resolves outside the repo; not copying "
+              "it to work/reviews/", file=sys.stderr)
+        return
+    dst = reviews_dir(root_r, node_id) / src.name
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    print(f"[warn] {rel} was never committed; kept a copy at {dst} "
+          "(commit the summary on the feature branch to keep it in history)")
+
+
 def cleanup_work_artifacts(repo_root: Path, node_id: str) -> list[str]:
     """Remove the node's session documents; return tracked paths to stage as deletions."""
     need_add: list[str] = []
     root_r = repo_root.resolve()
+    _keep_untracked_summary(root_r, node_id)
     for rel in work_artifact_rel_paths(node_id):
         if remove_work_file(root_r, rel):
             need_add.append(rel)

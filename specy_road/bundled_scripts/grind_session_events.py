@@ -50,7 +50,7 @@ class EventEmitter:
         print(self._human(event, fields), flush=True)
 
     @staticmethod
-    def _human(event: str, fields: dict) -> str:
+    def _human(event: str, fields: dict) -> str:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
         node = fields.get("node_id")
         prefix = f"[grind-session] {event}"
         if event == "picked":

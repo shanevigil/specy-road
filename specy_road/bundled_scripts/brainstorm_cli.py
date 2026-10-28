@@ -34,6 +34,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     list_slugs,
     read_session,
     resolve_slug,
+    session_lock,
     session_path,
     set_status,
     slugify,
@@ -268,7 +269,16 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
     return 0
 
 
-HANDLERS = {
+def _serialised(handler):
+    """Run ``handler`` under the repo's brainstorm lock (``session_lock``)."""
+    def run(ns: argparse.Namespace) -> int:
+        with session_lock(resolve_repo_root(ns)):
+            return handler(ns)
+    return run
+
+
+#: ``verify`` takes the lock itself, only to write: never across its y/n prompt and page fetches.
+HANDLERS = {name: fn if name == "verify" else _serialised(fn) for name, fn in {
     "start": cmd_start,
     "add-idea": cmd_add_idea,
     "list": cmd_list,
@@ -279,7 +289,7 @@ HANDLERS = {
     "recommend": cmd_recommend,
     "promote": cmd_promote,
     **HANDLERS_V2,
-}
+}.items()}
 
 
 def main(argv: list[str] | None = None) -> None:

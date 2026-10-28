@@ -36,9 +36,14 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `require_implementation_review_before_finish` is on — from the integration
   branch (remote-tracking ref first), so a feature branch cannot lower its own
   bar. Change policy on the integration branch. The integration branch's name
-  is read from `git-workflow.yaml` as committed at `HEAD` (not the working tree
-  or `SPECY_ROAD_INTEGRATION_BRANCH`), and when that branch cannot be found the
-  gate fails closed — it counts as on, and nothing passes it.
+  is read from `git-workflow.yaml` as committed on the remote's default branch
+  (`refs/remotes/<remote>/HEAD`; run `git remote set-head <remote> --auto` if
+  it is missing) — at `HEAD` only in a repo with no remote, and never from the
+  working tree or `SPECY_ROAD_INTEGRATION_BRANCH`. A missing default-branch
+  ref, a remote name that is not configured or differs from the default
+  branch's, or an integration branch that cannot be found fails closed: the
+  gate counts as on, and nothing passes it. Reviewers, the human included, count only on
+  nodes their roster `may_process` covers.
 - **`review record` is stricter.** It refuses `--model human` (a human approves
   only through the interactive menu), refuses models that are not in the roster,
   and no longer takes `--family`: a reviewer's family always comes from the
@@ -81,9 +86,9 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   public key line); `review record --sign-key <private key>` signs the record
   with `ssh-keygen -Y sign` (namespace `specy-road-review`), and the gate
   verifies it. With `policy.signed_reviews: true` an unsigned record does not
-  count; a present signature is verified regardless, so a tampered front
-  matter (the Markdown body below it is not signed)
-  never counts. `mark-implementation-reviewed --sign-key` signs the interactive
+  count; a present signature is verified regardless, so a tampered record
+  never counts: the signature covers the front matter, which carries
+  `notes_sha256` of the Markdown notes below it. `mark-implementation-reviewed --sign-key` signs the interactive
   human approval. Needs OpenSSH 8.1+; no new Python dependency.
 - **Workers: `specy-road worker`** (slice 7, design:
   [`docs/design-notes/v0-3-1-worker-orchestration.md`](docs/design-notes/v0-3-1-worker-orchestration.md);
@@ -343,6 +348,60 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   parent's chunk (only a top-level phase is appended). `add-node --help`
   says every new node's codename comes from `--title`. Every published
   version gets its own What's new section in the release runbook.
+- **Pre-release review (GPT Sol through Cursor, at eaa8b74) and three-app
+  test:** every finding reproduced before the fix. The review policy's
+  integration branch is named by the remote's default branch, and an
+  unconfigured remote fails closed (see Breaking); the gate counts a reviewer
+  — the human included — only on nodes its `may_process` covers, and the
+  approval is not offered otherwise. `worker delegate` refuses a worktree
+  with uncommitted changes other than the leaf's own untracked bookkeeping,
+  or whose `git status` cannot be read (they could be overwritten and were
+  hidden from `reconcile`); `terminate` signals a process group only when the
+  wrapper or harness is verified and still in that group. `finish-this-task`
+  in merge mode lands from a worker's worktree by merging in the worktree that
+  holds the integration branch (refusing first if it is dirty or unreadable),
+  and a re-run retries a failed landing only while the branch tip is still the
+  finish commit (anything later needs review). `abort-task-pickup` refuses
+  cleanly when another worktree holds the base (a delegated leaf), names the
+  release steps, and ignores other leaves' untracked bookkeeping; a `--local`
+  abort requires the exact claim transition. Prompts name their commit
+  (`base: <sha>`), and review packets show registry edits in the diff,
+  labelled. Known limitations in rc1: under unsigned policy the gate is
+  cooperative attestation (someone who can run git in the finishing clone can
+  retarget what it reads); a registry-only commit at the branch tip is not in
+  the packet; the guard refuses `echo git stash` while a peer is live. Session records are
+  written atomically and an unreadable one counts as a live peer; the guard
+  sees commands behind `if`/`then`/`while`/`do`/`!`/`case` and `-exec`, refuses
+  a command name built by expansion (`git${IFS}stash`), and refuses
+  `git rm -f` and tree-wide `git rm`. Brainstorm commands and the GUI
+  routes share one session lock (parallel panel shards no longer drop ideas;
+  a GUI chat turn reloads before saving; `verify` fetches outside the lock). `init project`, `refresh-stubs` and
+  `specyrd init` refuse to write through a symlink that leads outside the
+  repository. `orchestrate plan` skips invalid profiles for every role, and
+  `prompt --channel cli` neither echoes the prompt nor crashes on one too
+  large for argv. Three-app test: renumbering keeps an M1-based project
+  M1-based (the first move used to shift every id to M0 and rename every
+  sheet); GUI Publish includes `roadmap-context.md`; a gate never locks in the
+  GUI; `archive`/`restore-archive` regenerate both generated files;
+  `refresh-stubs` with no stub pack is a no-op; aborting a `--local` pickup
+  drops the claim without pushing. Sandbox §2 and §6 on real harnesses:
+  the reviewer's clean-tree precondition ignores only the toolkit's work/
+  bookkeeping (brief, summary, reviews) and the prompt names the packet's
+  path; re-running `finish-this-task` after a failed merge landing retries
+  the landing; the executor commits its implementation summary, and one
+  left uncommitted is kept under `work/reviews/<ID>/` instead of deleted;
+  reviewers start no presence session; review packets label registry
+  bookkeeping and leave it out of the diff;
+  panel shards no longer overwrite the session's allocation; `brainstorm
+  verify` matches quotes across inline tags and punctuation; round-1 and
+  shard prompts say not to open the roadmap even where AGENTS.md says read it
+  first; later rounds restate the agreed frame; the GUI hides verdicts until
+  asked, as the CLI does; the PM GUI never sends saved secrets (LLM key,
+  Git token, research key) back to the page. Sandbox §7: `grind-session
+  --plan` waves include leaves that depend on a milestone; the pickup prompt
+  asks for the `## Added` inventory and explicit-path commits. Maintainer gates: C901 baseline
+  is per function, the private-import gate resolves module aliases, CI tools
+  are exact-pinned with read-only tokens.
 - **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
   reproduced before the fix. Guard: env-supplied git config
   (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and

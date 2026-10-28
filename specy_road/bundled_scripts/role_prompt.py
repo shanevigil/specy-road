@@ -81,24 +81,38 @@ _EXCESS_CHECKLIST = (
 )
 
 
-def _precondition(role: str, node_id: str, t) -> list[str]:
+# specy-road's own files under work/: the brief (pickup), the summary (executor) and the review
+# hand-offs are never committed before review, so a plain `git status` always lists them.
+# `:(top)` anchors every pathspec at the repository root, so the check is the same from any directory.
+_DIRTY_CHECK = ("git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude)work/brief-*.md' "
+                "':(top,exclude)work/implementation-summary-*.md' ':(top,exclude)work/reviews/'")
+
+
+def _precondition(role: str, node_id: str, t, packet: Path) -> list[str]:
     branch = t.entry.get("branch") if t.entry else None
+    found = []
     if role == "reviewer":
-        need = f"`work/reviews/{node_id}/{PACKET_NAME}`"
+        missing = f"`work/reviews/{node_id}/{PACKET_NAME}` (absolute: `{packet}`) does not exist"
+        found = ["The packet is gitignored, so file-search and glob tools may not list it: open that "
+                 f"absolute path directly (`ls {packet}`).", ""]
     elif role == "executor":
-        need = f"`work/brief-{node_id}.md`, and the branch `{branch or 'feature/rm-<codename>'}` checked out"
+        missing = (f"`work/brief-{node_id}.md` does not exist, or the branch "
+                   f"`{branch or 'feature/rm-<codename>'}` is not checked out")
     else:
-        need = f"the registry claim for `{node_id}`"
+        missing = f"the registry claim for `{node_id}` does not exist"
     return [
         "## Precondition",
         "",
-        f"If {need} does not exist, or `git status --porcelain` shows changes you did not make, "
-        f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop.",
+        f"If {missing}, or `{_DIRTY_CHECK}` lists changes you did not make, "
+        f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
+        "only specy-road's bookkeeping (`work/brief-*.md`, `work/implementation-summary-*.md`, "
+        "`work/reviews/`); any other change, tracked or untracked, counts.",
         "",
+        *found,
     ]
 
 
-def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None = None,
+def _executor_preamble(node_id: str, model: str, zones: list[str], family_lock: str | None = None,
                        reviews: Path | None = None) -> list[str]:
     z = ", ".join(f"`{x}`" for x in zones) or "_(none declared — propose them in your summary)_"
     lock = ([f"You may spawn sub-agents only of family `{family_lock}`; fanning out to another vendor "
@@ -112,8 +126,11 @@ def _executor_preamble(node_id: str, zones: list[str], family_lock: str | None =
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
         "3. Run the verifier and tests the brief names. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
         f"4. Write `work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
-        "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine). "
-        f"Then `READY-<your model id>.md` from `work/handoff-ready.template.md` into "
+        "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
+        "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
+        f"Then `READY-{model}.md` (`{model}` is your roster id; use it as `agent:` too, not an API model id; "
+        "`commit:` is the branch's last commit, the one that adds the summary) "
+        "from `work/handoff-ready.template.md` into "
         f"`{reviews or f'work/reviews/{node_id}'}` "
         "(that is the main checkout's directory: use it as written even if you are in a worktree).",
         "5. Stop.",
@@ -146,6 +163,10 @@ def _reviewer_preamble(node_id: str, model: str) -> list[str]:
         f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>`.",
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
         "`mark-implementation-reviewed` or `finish-this-task`.",
+        "",
+        "You edit no tracked file, so start no `specy-road session` (AGENTS.md's rule is for editors). If you "
+        "started one anyway, run `specy-road session end` before you stop: a claim left behind lasts hours and "
+        "blocks the next reviewer.",
         "",
         _DATA_LINE,
         "",
@@ -202,7 +223,7 @@ def _profile_lines(prof: Profile | None, role: str, zones: list[str]) -> list[st
     return out
 
 
-def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[str, Profile | None, str | None]:
+def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[str, Profile | None, str | None]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """``(text, profile, error)``."""
     config, err = pinned_config(root)
     if err:
@@ -239,10 +260,12 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
         return "", prof, f"profile for {model!r}: " + "; ".join(prof.errors)
     zones = list(t.touch_zones) if t else []
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
+    if t and t.commit:   # the AGENTS.md rule: a prompt names its commit, or the agent stops to ask
+        lines += [f"base: {t.commit}", ""]
     if t:
-        lines += _precondition(role, node_id, t)
+        lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME)
     if role == "executor":
-        lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
+        lines += _executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
     elif role == "reviewer":
         lines += _reviewer_preamble(node_id, model)
     else:
@@ -277,9 +300,14 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if why:
         print(f"error: the cli has {why}: {cli}", file=sys.stderr)
         return 1
-    cmd = substitute_prompt(cli, prompt_path)
-    print(f"running: {cmd}", file=sys.stderr)
-    return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
+    # The template, not the expansion: "<prompt>" would echo the whole brief.
+    print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
+    try:
+        return subprocess.run(substitute_prompt(cli, prompt_path), shell=True, cwd=root, check=False).returncode
+    except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
+        print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
+              'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
+        return 1
 
 
 def main(argv: list[str] | None = None) -> None:

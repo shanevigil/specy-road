@@ -10,6 +10,12 @@ on:
     branches: [main, dev]
   workflow_call:
 
+# Read-only token: checkout, audits, artifact upload and tests need no write.
+# release-publish.yml calls this workflow; a called workflow may only narrow
+# the caller's grant.
+permissions:
+  contents: read
+
 jobs:
   roadmap:
     runs-on: ubuntu-latest
@@ -132,7 +138,7 @@ jobs:
         run: python specy_road/bundled_scripts/validate_file_limits.py
       - name: Install lean-code gate tools (ruff, pylint)
         run: pip install ruff==0.17.3 pylint==4.1.3
-      - name: Lean-code gate - complexity (ruff C901, max 10; baseline in pyproject per-file-ignores)
+      - name: Lean-code gate - complexity (ruff C901, max 10; baseline is a per-function noqa)
         run: ruff check specy_road tests scripts
       - name: Lean-code gate - new clone pairs (pylint R0801 vs constraints/clone-baseline.json)
         run: python scripts/check_clones.py

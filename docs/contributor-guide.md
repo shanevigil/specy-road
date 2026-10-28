@@ -242,9 +242,9 @@ committed baseline (`pip install ruff==0.17.3 pylint==4.1.3` locally):
 
 | Gate | Command | Checks | Baseline |
 | --- | --- | --- | --- |
-| Complexity | `ruff check specy_road tests scripts` | McCabe `C901`, max 10, new code anywhere | `[tool.ruff.lint.per-file-ignores]` in `pyproject.toml`; delete a file's entry once its functions are simplified |
+| Complexity | `ruff check specy_road tests scripts` | McCabe `C901`, max 10, every function not marked | A `# noqa: C901` on each of the 23 functions over the limit on 2026-10-28; delete a marker once its function is simplified |
 | Duplication | `python scripts/check_clones.py` | new pylint `R0801` clone pairs (6+ similar lines, imports/docstrings/signatures ignored) in `specy_road/` | `constraints/clone-baseline.json`; `--update-baseline` only for deliberate duplication |
-| Private imports | `python scripts/check_test_private_imports.py` | new `_private` specy_road names imported, attribute-accessed or monkeypatched from `tests/` | `constraints/test-private-imports-baseline.txt`; `--update-baseline` only when a public API is impossible |
+| Private imports | `python scripts/check_test_private_imports.py` | new `_private` specy_road names imported, attribute-accessed (also through import aliases such as `wp._x`) or monkeypatched from `tests/` | `constraints/test-private-imports-baseline.txt`; `--update-baseline` only when a public API is impossible |
 
 Each script prints stale baseline entries so baselines shrink over time.
 

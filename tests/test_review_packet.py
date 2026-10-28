@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.review_repo_helpers import commit_file, git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.review_files import PACKET_NAME, reviews_dir
@@ -23,10 +23,15 @@ def test_packet_names_commit_base_and_acceptance(tmp_path: Path) -> None:
 
 def test_packet_flags_paths_outside_touch_zones(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
+    reg = repo / "roadmap" / "registry.yaml"   # mark-implementation-reviewed's approval, then more work
+    commit_file(repo, "roadmap/registry.yaml", reg.read_text().replace("pending", "approved"), "approve")
+    commit_file(repo, "src/a.py", "print('b')\n", "more")
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     assert "- `src/a.py`\n" in text
     assert "- `docs/x.md`  **← outside touch zones**" in text
     assert "1 path(s) outside the touch zones" in text
+    assert f"- `roadmap/registry.yaml`{rp.BOOKKEEPING_MARK}\n" in text
+    assert rp.BOOKKEEPING_NOTE in text and "+  implementation_review: approved" in text   # shown, labelled
 
 
 def test_packet_reviews_branch_tip_without_switching(tmp_path: Path) -> None:

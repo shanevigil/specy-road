@@ -290,18 +290,21 @@ def test_round_one_does_not_point_at_the_roadmap_digest(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     (repo / "roadmap-context.md").write_text("# digest\n")
     s = BrainstormSession(slug="s", topic="t")
-    assert "roadmap-context.md" not in render_brainstorm_prompt(repo, s, count=5)
+    # Round 1 names the digest only as a file not to open, never as one to read.
+    text = render_brainstorm_prompt(repo, s, count=5)
+    assert "`roadmap-context.md`" not in text.split("**Do not open")[0]
     s.round = 2
     s.ideas = []
-    assert "roadmap-context.md" in render_brainstorm_prompt(repo, s, count=5)
+    assert "**Current roadmap state:** `roadmap-context.md`" in render_brainstorm_prompt(repo, s, count=5)
 
 
 # --- Sol F5 ----------------------------------------------------------------------
 
 def test_an_invalid_configured_profile_is_a_staffing_error(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration="version: 1\nroster:\n"
+                            "  - {id: bad, family: openai, roles: [executor, reviewer, coordinator], "
+                            "profile: model-profiles/bad.md}\n"
                             "  - {id: human, family: human, roles: [coordinator, reviewer]}\n"
-                            "  - {id: bad, family: openai, roles: [executor], profile: model-profiles/bad.md}\n"
                             "policy: {reviewers_required: 1}\n")
     (repo / "model-profiles").mkdir()
     (repo / "model-profiles" / "bad.md").write_text("not a profile\n")
@@ -311,4 +314,5 @@ def test_an_invalid_configured_profile_is_a_staffing_error(tmp_path: Path) -> No
     config, _e = effective_config(repo)
     node = next(n for n in load_roadmap(repo)["nodes"] if n["id"] == "M1.1")
     a = assign_leaf(node, [Candidate(e, profile_for_entry(repo, e)) for e in config["roster"]], config)
-    assert a.executor is None and any("profile is invalid" in p for p in a.problems)
+    assert a.executor is None and sum("profile is invalid" in p for p in a.problems) == 1
+    assert a.reviewers == ["human"] and a.coordinator == "human"   # every pool skips it, as `prompt` refuses it

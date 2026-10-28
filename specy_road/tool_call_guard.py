@@ -32,7 +32,7 @@ from typing import Any
 
 from specy_road import tool_call_guard_shapes as shapes
 from specy_road.git_subprocess import git_text
-from specy_road.session_presence import list_sessions
+from specy_road.session_presence import list_sessions, unreadable_records
 
 ALLOW = "allow"
 DENY = "deny"
@@ -47,6 +47,8 @@ _GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
 _WRAPPERS = {"command", "env", "sudo", "nohup", "exec", "time", "nice", "xargs", "timeout", "doas", "ionice"}
 #: Wrappers whose first positional is not the command (``timeout 10 git …``).
 _WRAPPER_LEADING_ARG = {"timeout"}
+#: Shell words that open a command without being one: ``(``, ``{``, ``if``/``then``/``do``…, ``!``.
+_OPENERS = {"(", "{", "if", "then", "elif", "else", "while", "until", "do", "!"}
 #: ``env -S "git stash"`` splits its argument into a command: opaque to a token parser.
 _ENV_SPLIT = {"-S", "--split-string"}
 #: Reasons about the working tree only; other worktrees' sessions are not at risk.
@@ -54,6 +56,11 @@ _TREE_SCOPED = ("git switch", "git checkout", "git restore", "git clean", "git c
 #: ``git -C <dir>`` / ``--work-tree`` act on another tree: never scope those to the caller's.
 _NAMES_A_TREE = re.compile(r"(^|\s)(-C\S*|--work-tree(=|\s)|--git-dir(=|\s))")
 _GIT_WORD = re.compile(r"\bgit\b")
+#: Shell expansion in a word: parameter/command substitution, brace expansion, globs.
+_EXPANSION = re.compile(r"[$`*?\[]|\{[^}]*(,|\.\.)")
+_EXPANSION_SYNTAX = re.compile(r"\$\{[^}]*\}|\$\w+|[$`{}*?\[\],]")
+#: ``${NAME:-word}`` / ``${NAME=word}``: the word the author wrote as the fallback.
+_DEFAULT = re.compile(r"\$\{\w+:?[-=]([^}]*)\}")
 _FUNC_DEF = re.compile(r"(^|[\s;])\w+\s*\(\s*\)\s*\{")
 _INTERPRETERS = {"python", "python3", "perl", "ruby", "node", "php"}
 #: ``$(…)``, ``<(…)``, ``>(…)`` and backticks all run their body as a command.
@@ -110,7 +117,7 @@ def split_segments(command: str) -> list[str]:
 
 
 def _unwrap(tokens: list[str]) -> list[str]:
-    """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, and subshell parens."""
+    """Strip ``VAR=x``, ``command``/``env``/``sudo``-style wrappers, control-flow openers, and subshell parens."""
     i = 0
     wrapped = False
     while i < len(tokens):
@@ -118,7 +125,7 @@ def _unwrap(tokens: list[str]) -> list[str]:
         if t.startswith("(") and len(t) > 1:
             tokens = [t[1:], *tokens[i + 1:]]
             continue
-        if ("=" in t and not t.startswith("-")) or t in ("(", "{"):
+        if ("=" in t and not t.startswith("-")) or t in _OPENERS:
             i += 1
             continue
         if t in _WRAPPERS:
@@ -133,16 +140,20 @@ def _unwrap(tokens: list[str]) -> list[str]:
     return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
 
 
-def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
+def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """``(subcommand, its args)`` for a ``git …`` token list, else ``(None, [])``.
 
     ``/usr/bin/git`` counts as ``git``; a ``-c alias.<name>=<cmd>`` whose
     alias is the subcommand is expanded, so ``git -c alias.s=stash s`` is
     ``git stash``; a ``!`` alias comes back as ``("!", [shell command])``.
+    A ``git`` word after the head (``case … in a) git …``, ``find -exec git …``)
+    is read from there: it may run, so it is judged.
     """
     tokens = _unwrap(tokens)
-    if not tokens or tokens[0].rsplit("/", 1)[-1] != "git":
+    at = next((j for j, t in enumerate(tokens) if t.rsplit("/", 1)[-1] == "git"), None)
+    if at is None:
         return None, []
+    tokens = tokens[at:]
     i = 1
     aliases: dict[str, str] = {}
     while i < len(tokens) and tokens[i].startswith("-"):
@@ -177,7 +188,7 @@ def _short_flags(args: list[str]) -> str:
     return "".join(a[1:] for a in args if a.startswith("-") and not a.startswith("--") and len(a) > 1)
 
 
-def classify_segment(segment: str) -> str | None:
+def classify_segment(segment: str) -> str | None:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """The reason a single command is destructive in a shared tree, else ``None``.
 
     A segment that will not parse but mentions ``git`` is treated as
@@ -235,6 +246,8 @@ def classify_segment(segment: str) -> str | None:
         return "git restore <paths>: discards other sessions' uncommitted changes to those files"
     if sub == "clean" and ("f" in flags or "--force" in args):
         return "git clean -f: deletes untracked files other sessions are still writing"
+    if sub == "rm" and ("f" in flags or "--force" in args):
+        return "git rm -f: deletes files along with uncommitted changes that may be another session's"
     if sub == "rebase":
         return "git rebase: rewrites history under other sessions' feet"
     if sub == "commit" and "--amend" in args:
@@ -246,7 +259,7 @@ def classify_segment(segment: str) -> str | None:
     if sub == "add" and ("A" in flags or "u" in flags or "--all" in args or "--update" in args
                          or any(p in (".", ":/", "-A") for p in positional)):
         return "git add -A/-u/.: stages other sessions' files; `git add <paths>` only"
-    if sub in ("commit", "add") and shapes.broad_pathspec(sub, args):
+    if sub in ("commit", "add", "rm") and shapes.broad_pathspec(sub, args):
         return shapes.broad_pathspec(sub, args)
     if sub == "push" and ("f" in flags or any(a.startswith("--force") for a in args) or any(p.startswith("+") for p in positional)):
         return "git push --force: rewrites the remote branch other sessions pull from"
@@ -256,9 +269,10 @@ def classify_segment(segment: str) -> str | None:
 def _opaque(segment: str) -> str | None:
     """Shapes a token parser cannot follow: refused when they mention git, rather than waved through.
 
-    A shell function whose body mentions git, a command name that comes from
-    a variable, and an interpreter one-liner that mentions git all run git
-    where the guard cannot see the arguments.
+    A shell function whose body mentions git, a command name built by shell
+    expansion that could be git (``$X``, ``git${IFS}stash``, ``{git,stash}``, ``gi?``), a later
+    word that expansion could turn into ``git``, and an interpreter one-liner
+    that mentions git all run git where the guard cannot see the arguments.
     """
     if _FUNC_DEF.search(segment) and _GIT_WORD.search(segment):
         return "defines a shell function and mentions git; the guard cannot follow it — run the git command plainly"
@@ -266,12 +280,14 @@ def _opaque(segment: str) -> str | None:
         head = _unwrap(shlex.split(segment, comments=True))
     except ValueError:
         return None
-    if head and head[0].startswith("$"):
-        return "the command name comes from a variable; the guard cannot see it — run the command plainly"
     try:
         raw = shlex.split(segment, comments=True)
     except ValueError:
         raw = []
+    if head and _EXPANSION.search(head[0]) and head[0] not in ("[", "[[") and _may_name_git(head[0]):
+        return "the command name comes from a shell expansion; the guard cannot see it — run the command plainly"
+    if any(_EXPANSION.search(t) and " " not in t and _EXPANSION_SYNTAX.sub("", t).startswith("git") for t in raw):
+        return "a shell expansion could build `git` here; the guard cannot see it — run the git command plainly"
     if shapes.env_config(raw):
         return shapes.env_config(raw)
     if raw and raw[0] == "env" and any(a in _ENV_SPLIT or a.startswith("--split-string=") for a in raw[1:]) \
@@ -285,9 +301,24 @@ def _opaque(segment: str) -> str | None:
     return None
 
 
+def _may_name_git(word: str) -> bool:
+    """Whether a command word built by expansion could be ``git``.
+
+    With the expansion removed (a ``${X:-default}`` kept as its default), a name
+    that starts with ``git`` or whose letters appear in ``git`` in order (empty
+    included) could be git (``${G}``, ``git${IFS}stash``, ``g{i,}t``, ``gi?``,
+    ``g${X}t``); ``$HOME/bin/pytest`` and ``${PYTHON:-python}`` cannot. A command
+    substitution's output is unknowable.
+    """
+    name = _EXPANSION_SYNTAX.sub("", _DEFAULT.sub(r"\1", word)).rsplit("/", 1)[-1]
+    rest = iter("git")
+    in_order = all(c in rest for c in name)   # a subsequence of "git": the expansion may fill the gaps
+    return bool(_UNBALANCED.search(word)) or "`" in word or name.startswith("git") or in_order
+
+
 def classify(command: str) -> str | None:
     """The first destructive segment's reason, else ``None``."""
-    for seg in split_segments(command.strip()):
+    for seg in split_segments(shapes.inline_git_vars(command).strip()):
         reason = classify_segment(seg)
         if reason:
             return reason
@@ -299,11 +330,13 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
 
     With ``tree_only`` only sessions in **this** working tree count: a session
     in another linked worktree is not moved by a checkout here. Repo-wide
-    operations (stash, rebase, force-push) count every session.
+    operations (stash, rebase, force-push) count every session. A record that
+    will not load counts too: the guard cannot tell it is not a live peer.
     """
     here = Path(repo_root).resolve()
     others = [s.agent for s in list_sessions(repo_root)
               if s.agent != agent and not (tree_only and s.worktree and Path(s.worktree).resolve() != here)]
+    others += [f"{p} (unreadable; fix or delete it)" for p in unreadable_records(repo_root)]
     try:
         from specy_road.worker_process import wrapper_alive
         from specy_road.worker_state import list_records

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from specy_road.digest import DEFAULT_OUTPUT as ROADMAP_CONTEXT
 from specy_road.git_subprocess import (
     current_branch_name,
     git_ok,
@@ -20,6 +21,7 @@ PUBLISH_PATHSPECS: tuple[str, ...] = (
     "constitution/",
     "vision.md",
     "roadmap.md",
+    ROADMAP_CONTEXT,
 )
 
 _MAX_MESSAGE_LEN = 500
@@ -34,7 +36,7 @@ def path_in_publish_scope(rel: str) -> bool:
     r = _norm_rel(rel)
     if not r or r.endswith("/"):
         return False
-    if r in ("vision.md", "roadmap.md"):
+    if r in ("vision.md", "roadmap.md", ROADMAP_CONTEXT):
         return True
     for prefix in ("roadmap/", "planning/", "constitution/"):
         if r.startswith(prefix):

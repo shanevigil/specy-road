@@ -27,7 +27,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS
-from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
+from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
 
 SKILLS_REL = Path(".agents/skills")
 #: Packs that read ``.agents/skills`` through a symlink elsewhere.
@@ -88,12 +88,13 @@ def is_link_path(rel: str) -> bool:
     return any(Path(rel).parent == d for d in LINK_DEST.values())
 
 
-def ensure_link(
+def ensure_link(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     repo_root: Path, agent: str, name: str, *, dry_run: bool = False, repair: bool = True, owned: bool = False,
 ) -> str:
     """Create or repair the symlink for ``name``; copy the skill when symlinks fail.
 
-    Returns ``created`` / ``updated`` / ``unchanged`` / ``copied`` / ``skipped (not ours)``.
+    Returns ``created`` / ``updated`` / ``unchanged`` / ``copied`` / ``skipped (not ours)``,
+    or ``REFUSED`` when the link's directory is a symlink out of the repository.
     ``repair`` is permission to replace what is at the path (``--force``, or a
     refresh); ``owned`` is whether the manifest records the path as the kit's.
     Replacement authority comes from the manifest: with no record, whatever is
@@ -104,6 +105,8 @@ def ensure_link(
     rel = link_rel(agent, name)
     assert rel is not None
     link = repo_root / rel
+    if resolves_outside(repo_root, link.parent):
+        return REFUSED
     target = link_target(agent, name)
     canonical = (repo_root / SKILLS_REL / stem(name)).resolve()
     if link.is_symlink() and os.readlink(link) == target:
@@ -192,6 +195,9 @@ def install_stubs(
         rel_file = skill_rel(name) if skills else rel_dest / name
         dest_file = repo_root / rel_file
         ours = str(rel_file) in owned
+        if resolves_outside(repo_root, dest_file):
+            skipped.append(f"{rel_file} ({REFUSED})")
+            continue
         if dest_file.is_file() and not (force and (ours or _is_generated(dest_file, name, skills=skills))):
             skipped.append(str(rel_file) if not force else f"{rel_file} (not ours: no manifest record and not a specyrd stub; --force refused)")
             if skills and not ours:

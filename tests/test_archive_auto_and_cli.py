@@ -169,10 +169,18 @@ def test_cli_archive_list_show_restore_round_trip(repo: Path) -> None:
     assert json.loads(_cli(repo, "list-archives", "--json").stdout)["records"] == []
 
 
-def test_cli_reexports_roadmap_md(repo: Path) -> None:
-    """A stale roadmap.md would fail `export --check` in the adopter's CI."""
+def test_cli_archive_and_restore_regenerate_both_generated_files(repo: Path) -> None:
+    """A stale roadmap.md or roadmap-context.md would fail the adopter's CI."""
     assert _cli(repo, "archive", "M0.1").returncode == 0
     assert _cli(repo, "export", "--check").returncode == 0
+    assert _cli(repo, "digest", "--check").returncode == 0
+
+    archive_id = json.loads(_cli(repo, "list-archives", "--json").stdout)["records"][0][
+        "archive_id"
+    ]
+    assert _cli(repo, "restore-archive", archive_id).returncode == 0
+    assert _cli(repo, "export", "--check").returncode == 0
+    assert _cli(repo, "digest", "--check").returncode == 0
 
 
 def test_cli_reports_an_unknown_archive_id(repo: Path) -> None:

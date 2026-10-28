@@ -10,7 +10,9 @@ from typing import Any
 
 from specy_road.bundled_scripts.roadmap_gui_settings_tokens import (
     _decode_tokens_in_struct,
+    mask_secrets,
     obfuscate_block,
+    restore_secrets,
 )
 from specy_road.bundled_scripts.roadmap_gui_settings_scope import (
     blank_llm_base as _blank_llm_base,
@@ -222,7 +224,14 @@ def _overlay_diff(eff: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
             out[k] = eff[k] if k in eff else ""
     return out
 
+def with_stored_secrets(repo_root: Path, name: str, block: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Settings ``block`` from the page with each masked credential replaced by the stored one."""
+    if block is None:   # PUT /api/settings from a client that does not manage research
+        return None
+    return restore_secrets(name, block, effective_settings_for_repo(repo_root)[name])
+
 def settings_api_payload(repo_root: Path) -> dict[str, Any]:
+    """The Settings page's view: every credential masked (``SECRET_MASK``), never sent in clear."""
     from specy_road.bundled_scripts.pm_gui_git_remote_verify import get_git_remote_tested_ok
 
     struct = _read_settings_file_struct_with_git_migration(repo_root)
@@ -237,16 +246,16 @@ def settings_api_payload(repo_root: Path) -> dict[str, Any]:
         "repo_root": str(repo_root.resolve()),
         "inherit_llm": proj["inherit_llm"],
         "inherit_pm_gui": proj["inherit_pm_gui"],
-        "llm": eff["llm"],
-        "git_remote": eff["git_remote"],
+        "llm": mask_secrets("llm", eff["llm"]),
+        "git_remote": mask_secrets("git_remote", eff["git_remote"]),
         "pm_gui": eff["pm_gui"],
-        "research": eff["research"],
+        "research": mask_secrets("research", eff["research"]),
         "git_remote_tested_ok": get_git_remote_tested_ok(repo_root),
-        "global_llm": g_llm,
-        "global_git_remote": g_git,
+        "global_llm": mask_secrets("llm", g_llm),
+        "global_git_remote": mask_secrets("git_remote", g_git),
         "global_pm_gui": g_pm,
-        "project_llm": proj["llm"],
-        "project_git_remote": proj["git_remote"],
+        "project_llm": mask_secrets("llm", proj["llm"]),
+        "project_git_remote": mask_secrets("git_remote", proj["git_remote"]),
         "project_pm_gui": proj["pm_gui"],
     }
 

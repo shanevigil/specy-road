@@ -97,6 +97,8 @@ def test_publish_roadmap_commits_and_push_fails_without_remote(
     _git(tmp_git_repo, "commit", "-m", "r")
 
     (tmp_git_repo / "roadmap" / "chunk.json").write_text("[]\n", encoding="utf-8")
+    # The digest is generated and committed like roadmap.md (`specy-road digest`).
+    (tmp_git_repo / "roadmap-context.md").write_text("# ctx\n", encoding="utf-8")
     with pytest.raises(RuntimeError, match="upstream|push"):
         publish_roadmap(tmp_git_repo, "roadmap: test publish")
     # Commit runs before push; push fails without remote/upstream.
@@ -109,6 +111,14 @@ def test_publish_roadmap_commits_and_push_fails_without_remote(
         check=False,
     )
     assert r.stdout.strip() == "roadmap: test publish"
+    shown = subprocess.run(
+        ["git", "show", "--name-only", "--pretty="],
+        cwd=tmp_git_repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "roadmap-context.md" in shown.stdout.split()
 
 
 def test_publish_status_dict_api(tmp_git_repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

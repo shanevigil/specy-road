@@ -88,18 +88,44 @@ roster:
     roles: [executor, reviewer]
     harness: claude-code            # claude-code | codex | cursor | generic
     billing_route: claude_subscription   # a label, recorded on the worker
-    # Optional: your own launch command. {prompt} is the prompt file path;
-    # {session} is the native session id and makes the same command serve
-    # `message` / `resume`. Without it, the default command is used.
+    # Optional: your own command. {prompt} is the prompt file path; {session}
+    # is the native session id. A command that names {session} serves launch
+    # AND `message` / `resume` (the same line, run again with the recorded id);
+    # one without it is used for launch only, and resumes run the default
+    # command with the default's permissions. No channels.cli: the default
+    # command (Claude: --session-id on launch, --resume on resume).
     # channels:
     #   (a placeholder must be a whole argument, bare or in one pair of quotes —
     #   `--session-id={session}` and `"prefix <prompt>"` are refused; `< {prompt}` feeds the file on stdin)
-    #   cli: "claude -p --output-format stream-json --verbose --dangerously-skip-permissions --session-id {session} < {prompt}"
+    #   cli: "/abs/path/claude-worker.sh {session} {prompt}"   # the wrapper below
 policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
-**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want. The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
+**Claude and `{session}`.** Claude Code refuses `--session-id` for a session
+that already exists ("Session ID … is already in use", exit 1), so a
+`channels.cli` of the form `claude -p … --session-id {session} < {prompt}`
+launches fine and then fails every `message` / `resume`, closing the worker as
+`failed`. No single `claude` command line serves both. Either keep the default
+command, or point `channels.cli` at a small wrapper that resumes when the
+session exists:
+
+```sh
+#!/bin/sh
+# claude-worker.sh <session> <prompt file>: start the session, or resume it.
+sid=$1 prompt=$2
+set -- -p --output-format stream-json --verbose --dangerously-skip-permissions --model claude-opus-5-5
+if ls "$HOME"/.claude/projects/*/"$sid".jsonl >/dev/null 2>&1; then
+  exec claude "$@" --resume "$sid" < "$prompt"
+fi
+exec claude "$@" --session-id "$sid" < "$prompt"
+```
+
+It looks for Claude Code's own transcript of the session (checked on Claude
+Code 2.1.312; re-check after upgrading), and `exec` keeps `claude` itself as
+the worker's harness process.
+
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
 
 ## The loop
 
@@ -110,12 +136,14 @@ specy-road worker sync --ack           # once you have acted on the events
 ```
 
 `delegate` runs **after pickup**: the leaf must hold a registry claim with a
-branch (`do-next-available-task --under M2.3`). It writes the executor prompt
+branch (`do-next-available-task --under M2.3`). It builds the executor prompt
 (`work/prompt-M2.3-executor-<model>.md`, the same text `specy-road prompt`
 writes), chooses the worktree — this checkout when it has the claim's branch
 checked out, otherwise a linked worktree at `work/.worktrees/<codename>` —
-hashes the prompt as the worker's `contract_hash`, launches the harness
-detached, and returns the worker id. Delegating the same leaf again returns
+refuses that worktree while it has uncommitted changes other than the leaf's own untracked bookkeeping (`work/brief-<ID>.md`, `work/implementation-summary-<ID>.md`, its prompts, and `work/reviews/`, `.workers/`, `.sessions/`, `.worktrees/`), or while `git status` cannot read it (it names
+them: the worker would edit the same files, and `reconcile` could not tell its
+edits from yours; commit or stash them first; nothing is written then), writes the prompt, hashes it as the
+worker's `contract_hash`, launches the harness detached, and returns the worker id. Delegating the same leaf again returns
 the existing worker; more than `max_workers` active is refused; `--op-id`
 makes a retried call answer from its first result (an op id is bound to its
 kind, target and arguments — for `message --file`, the file's text — so a
@@ -138,10 +166,10 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
-| `terminate W` | SIGTERM the recorded process group (wrapper, harness and children), SIGKILL after 5 s, and confirm the group is gone — also when the wrapper itself already died; state `terminated`. The turn is lost. |
+| `terminate W` | SIGTERM the recorded process group (wrapper, harness and children), SIGKILL after 5 s, and confirm the group is gone — also when the wrapper itself already died, while the harness still matches its start time and the verified wrapper or harness is still in the recorded group; state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker, and for an id that is not the harness's own shape (a UUID for Claude Code and Codex; shell-safe characters for all). |
-| `reconcile W` | Paths changed since the checkpoint (paths already dirty when `delegate` ran are the coordinator's and are left out), and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
+| `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. The leaf's brief, summary and prompts, the toolkit's state under `work/`, and `roadmap/registry.yaml` never count; any other `work/` file does. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human
@@ -166,10 +194,21 @@ coordinators sending at once launch one turn, and a second `reclaim` finds
 the lease already returned. `terminate` signals only a pid whose command line
 names this worker's wrapper (resolved repo root, worker id and the spawn's
 random token as whole arguments); when `ps` cannot say, it refuses rather than
-signal a stranger. When the wrapper is gone but the harness pid (with its
-recorded start time) or another member of the recorded process group is
-alive, `terminate` signals that group instead. On an adopted (`native`) record it closes the record and
+signal a stranger. When the wrapper is gone, `terminate` signals the group
+only while the harness pid is alive with its recorded start time; a group
+with members but neither identity is refused (a group id can be reused):
+kill this worker's processes in it by hand, then run `terminate` again. On an adopted (`native`) record it closes the record and
 says the session was not signalled.
+
+**Processes outside the group.** The recorded group covers the wrapper, the
+harness and what the harness forks directly, not what it puts in a group of
+its own. Claude Code runs each Bash-tool command in its own process group: on
+SIGTERM (what `terminate` sends first) claude stops those commands itself, but
+after a SIGKILL — `terminate`'s escalation after 5 s, `kill -9` of the harness
+or the group, a crash — whatever the tool was running (a test suite, a server)
+keeps running with ppid 1, and no `worker` command sees it. Stop workers with
+`terminate` rather than `kill -9`; after any SIGKILL, list what still runs in
+the worker's worktree (`lsof -d cwd | grep <worktree>`) and kill it by hand.
 
 `reclaim` always returns the worker to `idle`, even one that was
 `completed`: the coordinator re-verifies READY against the branch after a
@@ -275,4 +314,9 @@ must not edit files in that leaf's touch zones while the worker runs — the
 presence guard (`session guard`) already refuses the git operations that
 would collide. Finishing the leaf is still `finish-this-task` from the
 leaf's branch after the gate; `terminate` the idle worker afterwards so its
-record closes and the slot frees.
+record closes and the slot frees. From a linked worktree with
+`on_complete: merge`, finish cannot check the integration branch out while
+the coordinator's checkout holds it, so it merges and pushes **in that
+checkout** instead. That checkout must have no uncommitted changes to tracked
+files (untracked files are fine): otherwise finish refuses before its
+bookkeeping commit and names the checkout to commit or stash in.

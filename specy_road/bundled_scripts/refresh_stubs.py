@@ -37,7 +37,7 @@ from specy_road.runtime_paths import (
     prefix_within,
     recorded_project_root,
 )
-from specy_road.managed_block import UNCHANGED
+from specy_road.managed_block import REFUSED, UNCHANGED, resolves_outside
 from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill, skill_rel
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
@@ -104,6 +104,9 @@ def _write_if_changed(
     if content is None:
         return True
     dest = repo_root / rel
+    if resolves_outside(repo_root, dest):
+        written.append(f"{rel} ({REFUSED})")
+        return False
     if not owned and dest.exists():
         written.append(f"{rel} (skipped (not ours))")
         return False
@@ -287,6 +290,13 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _resolve_root(args.repo_root)
+    if not _load_manifest(root).get("agents"):
+        # The stub pack is optional; the documented upgrade runs this anyway.
+        print(
+            f"nothing to refresh: no specyrd stub pack is installed ({root}). "
+            "Optional — add one with: specyrd init --ai cursor|claude-code|codex|generic"
+        )
+        return
     try:
         written, orphans = refresh_stubs(root, dry_run=args.dry_run)
     except ValueError as e:

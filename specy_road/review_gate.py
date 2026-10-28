@@ -11,14 +11,16 @@ reports. A review record counts only when all of these hold:
 * its model is rostered with the ``reviewer`` role, or is the substitute in an
   active substitution covering this node — its family always comes from the
   roster, never from the file;
+* that model's roster ``may_process`` includes the node's sensitivity, as
+  ``orchestrate plan`` and ``prompt`` require;
 * it attests a fresh session when policy requires one.
 
 Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
 integration branch** (its remote-tracking ref when present), and the gate is on
 when either that branch or the working tree turns it on: a feature branch
 cannot lower its own bar. Which branch that is comes from the committed
-``git-workflow.yaml``, and a branch that cannot be found fails closed
-(:func:`policy_source`).
+``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo
+with no remote), and a branch that cannot be found fails closed (:func:`policy_source`).
 
 The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_required`` — counted by distinct family when
@@ -35,6 +37,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
 from specy_road.orchestration_config import (
     effective_config,
     family_of,
@@ -51,31 +54,8 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
     verify,
 )
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
-from specy_road.review_policy_ref import committed_yaml as _committed_yaml, trusted_integration_ref
+from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
-
-
-def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
-    """``(ref, error)``: the integration branch ref that review policy is read from.
-
-    The branch name and remote come from ``roadmap/git-workflow.yaml`` **as
-    committed at HEAD** — never from the working tree or the
-    ``SPECY_ROAD_INTEGRATION_BRANCH`` / ``SPECY_ROAD_REMOTE`` variables, which an
-    agent can change without a trace. When that branch cannot be found the
-    result is an error, not a fall back to the working tree: the gate fails
-    closed. ``(None, None)`` only outside git, where the working tree is all
-    there is.
-
-    The name is a trust anchor a feature commit can rewrite, so the branch it
-    names must name itself too, and with a remote configured only the
-    remote-tracking ref is read (:mod:`review_policy_ref`).
-    """
-    if not full_sha(repo_root, "HEAD"):
-        return None, None
-    gw = _committed_yaml(repo_root, "HEAD", "roadmap/git-workflow.yaml")
-    ib = str(gw.get("integration_branch") or "main")
-    remote = str(gw.get("remote") or "origin")
-    return trusted_integration_ref(repo_root, remote, ib)
 
 
 def review_required(repo_root: Path) -> bool:
@@ -196,9 +176,9 @@ def rerun_problem(policy: dict[str, Any], data: dict[str, Any]) -> str | None:
 
 
 def _eligibility(
-    config: dict[str, Any], node_id: str, review: ReviewFile, today: date | None
+    config: dict[str, Any], node: dict[str, Any], review: ReviewFile, today: date | None
 ) -> tuple[CountedReview | None, str | None]:
-    model = review.data["model"]
+    model, node_id = review.data["model"], node["id"]
     sub = None
     if not is_rostered_reviewer(config, model):
         sub = substitute_for(config, node_id, model, today)
@@ -207,6 +187,10 @@ def _eligibility(
                 f"model {model!r} is not a rostered reviewer and no active substitution "
                 f"covers {node_id} (roadmap/orchestration.yaml)"
             )
+    entry = roster_entry(config, model) or {}
+    if not may_handle(entry, node_sensitivity(node)):
+        return None, (f"{node_id} is {node_sensitivity(node)!r} and {model!r} may process only "
+                      f"{entry_may_process(entry)} (roster may_process)")
     if config["policy"].get("reviewer_fresh_session", True) and not review.data.get("fresh_session"):
         return None, "policy requires a fresh reviewer session (fresh_session: true)"
     why = (rerun_problem(config["policy"], review.data) or notes_problem(review.data, review.body)
@@ -261,7 +245,7 @@ def evaluate_gate(
         if not same_commit(repo_root, review.data["commit"], result.commit):
             result.stale.append(review)
             continue
-        counted, why = _eligibility(config, node["id"], review, today)
+        counted, why = _eligibility(config, node, review, today)
         if counted is None:
             result.ineligible.append((review, why or "not eligible"))
         else:
@@ -269,17 +253,19 @@ def evaluate_gate(
     return result
 
 
-def human_approval_completes(repo_root: Path, gate: GateResult, sign_key: Path | None = None) -> bool:
+def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, Any],
+                             sign_key: Path | None = None) -> bool:
     """Whether one interactive human approval would satisfy the policy.
 
-    True only when ``human`` is a rostered reviewer, nothing blocks, the
-    config loads, the human's family is the one approval still missing, and —
-    under ``signed_reviews`` — a key was given and the roster has its public key.
+    True only when ``human`` is a rostered reviewer that may process the node's
+    sensitivity, nothing blocks, the config loads, the human's family is the one
+    approval still missing, and — under ``signed_reviews`` — a key was given and
+    the roster has its public key.
     """
     if gate.config_error or gate.commit is None or gate.blocks:
         return False
     config = gate.config
-    if not is_rostered_reviewer(config, HUMAN):
+    if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):
         return False
     has_key = bool((roster_entry(config, HUMAN) or {}).get("public_key"))
     if config["policy"].get("signed_reviews") and (sign_key is None or not has_key):

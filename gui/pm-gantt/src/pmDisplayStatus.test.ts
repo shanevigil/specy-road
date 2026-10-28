@@ -141,26 +141,32 @@ describe("pmOutlineDisplayStatus", () => {
 
 describe("pmPlanningTitleReadOnlyFromRow", () => {
   it("locks for in-progress display without checkout", () => {
-    expect(pmPlanningTitleReadOnlyFromRow(false, "In Progress", "In Progress")).toBe(
+    expect(pmPlanningTitleReadOnlyFromRow(false, "In Progress", "In Progress", "task")).toBe(
       true,
     );
   });
 
   it("locks for MR Pending outline label", () => {
     expect(
-      pmPlanningTitleReadOnlyFromRow(false, "In Progress", "MR Pending"),
+      pmPlanningTitleReadOnlyFromRow(false, "In Progress", "MR Pending", "task"),
     ).toBe(true);
   });
 
   it("allows editing when MR Rejected and roadmap status is not In Progress", () => {
     expect(
-      pmPlanningTitleReadOnlyFromRow(false, "Not Started", "MR Rejected"),
+      pmPlanningTitleReadOnlyFromRow(false, "Not Started", "MR Rejected", "task"),
+    ).toBe(false);
+  });
+
+  it("never locks a gate the PM set to In Progress (gates are not claimed)", () => {
+    expect(
+      pmPlanningTitleReadOnlyFromRow(false, "In Progress", "In Progress", "gate"),
     ).toBe(false);
   });
 
   it("locks when outline shows MR Merged", () => {
     expect(
-      pmPlanningTitleReadOnlyFromRow(false, "In Progress", "MR Merged"),
+      pmPlanningTitleReadOnlyFromRow(false, "In Progress", "MR Merged", "task"),
     ).toBe(true);
   });
 });
