@@ -45,7 +45,7 @@ def _blob(repo_root: Path, sha: str, rel: str) -> str | None:
     mode = git_text(["ls-tree", sha, "--", rel], repo_root) or ""
     if not mode or mode.startswith("120000"):
         return None
-    return git_stdout(["show", f"{sha}:{rel}"], repo_root)
+    return git_stdout(["show", f"{sha}:./{rel}"], repo_root)   # ./ = project-root relative (nested layout)
 
 
 def _pinned_at(repo_root: Path, sha: str, rel: str, ref: str) -> Profile:

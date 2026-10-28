@@ -43,6 +43,12 @@ body. Keep section bodies focused; link to PRs for detail.
   `risks`, `touch_zones`, `dependencies`) now appends one item each; a
   repeated scalar key is an error; `--set` has help text; `validate` warns
   on an open node whose criterion contains `|`.
+- In the nested layout (project under `sr/`), every read of a file *as
+  committed on a ref* — the review policy and roster from the integration
+  branch, pinned model profiles, the packet's committed summary, the roadmap
+  at a ref — resolved the path from the git root and silently found nothing:
+  routing offered only the human reviewer and the gate ran on defaults. The
+  reads now resolve from the project root.
 - `do-next-available-task` and `mark-implementation-reviewed` no longer stash
   `work/` around the registry commit. The stash stack is shared by every
   session in a checkout: files another session wrote under `work/` during a
