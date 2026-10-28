@@ -330,21 +330,25 @@ def set_lease(repo_root: Path, rec: WorkerRecord, holder: str) -> None:
     mutate(repo_root, rec, lambda r: setattr(r, "lease", {"holder": holder, "since": _now()}))
 
 
-def dirty_paths(worktree: Path) -> list[str]:
-    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human,
-    and what ``delegate`` refuses to launch over."""
+def status_entries(worktree: Path) -> list[tuple[str, str]]:
+    """``(XY, path)`` per tracked-modified or untracked (``??``) path: what ``delegate`` refuses to launch over."""
     # ``-z`` on the raw output: ``git_text`` strips the leading space of a `` M path`` line.
     r = run(["status", "--porcelain", "--untracked-files=all", "-z"], worktree)
     if not r.ok:
         return []
-    out: set[str] = set()
+    out: list[tuple[str, str]] = []
     fields = iter(r.out.split("\0"))
     for entry in fields:
         if len(entry) > 3:
-            out.add(entry[3:])
+            out.append((entry[:2], entry[3:]))
             if entry[0] in "RC":
                 next(fields, None)   # a rename carries the old path as the next field
-    return sorted(out)
+    return out
+
+
+def dirty_paths(worktree: Path) -> list[str]:
+    """Tracked-modified and untracked paths right now: what a reclaim must not blame on the human."""
+    return sorted({p for _xy, p in status_entries(worktree)})
 
 
 def take_checkpoint(repo_root: Path, rec: WorkerRecord, native_turn: str | None = None) -> dict[str, Any]:

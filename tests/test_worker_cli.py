@@ -205,9 +205,13 @@ def test_reconcile_flags_a_touch_zone_breach(tmp_path: Path, capsys) -> None:
     assert _cli("worker", "reconcile", "w-0001", "--json", "--repo-root", str(repo)) == 0
     assert json.loads(capsys.readouterr().out)["delta"]["needs_reconcile"] is False
     (repo / "README.md").write_text("outside\n")
+    (repo / "work" / "notes.md").write_text("under work/, but not the leaf's bookkeeping\n")
+    git(repo, "add", "-f", "work/notes.md")
+    git(repo, "commit", "-qm", "worker notes")
     assert _cli("worker", "reconcile", "w-0001", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
-    assert "OUTSIDE touch zones: README.md" in out and "needs_reconcile=True" in out
+    assert "OUTSIDE touch zones: README.md" in out and "OUTSIDE touch zones: work/notes.md" in out
+    assert "needs_reconcile=True" in out
     assert "brief-M1.1" not in out
     assert ws.FLAG_RECONCILE in ws.load_record(repo, "w-0001").flags
 
