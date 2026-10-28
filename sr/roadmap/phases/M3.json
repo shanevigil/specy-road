@@ -244,7 +244,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.8_upgrade-and-validate-checks_9834a43e-0495-4d25-ba3e-d41d54d22e0d.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Upgrade and validate report drift and migrations plainly",
       "touch_zones": [
         "specy_road/bundled_scripts/refresh_stubs.py",
