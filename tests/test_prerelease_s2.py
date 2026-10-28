@@ -75,6 +75,12 @@ def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeyp
     assert "new commits need review" in capsys.readouterr().err
     assert git(bare, "rev-parse", "dev") == landed_before   # nothing pushed
     git(repo, "reset", "-q", "--hard", finished)
+    (repo / "src" / "amended.py").write_text("x = 3\n")   # amended into the finish commit itself
+    git(repo, "add", "src/amended.py")
+    git(repo, "commit", "-q", "--amend", "--no-edit")
+    assert _finish(repo) == 1
+    assert "new commits need review" in capsys.readouterr().err
+    git(repo, "reset", "-q", "--hard", finished)
     assert _finish(repo) == 0
     assert "[ok] merged feature/rm-thing into dev and pushed to origin" in capsys.readouterr().out
     git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", "feature/rm-thing"), "dev")

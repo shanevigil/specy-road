@@ -117,6 +117,10 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
         raise SystemExit(1)
 
 
+# What finish-this-task's bookkeeping commit writes; anything else in that commit was never reviewed.
+_FINISH_WRITES = ("roadmap/", "roadmap.md", "roadmap-context.md", "work/", "planning/")
+
+
 def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
     doc = read_registry_at_ref(repo, ref, 30.0) or {}
     entries = doc.get("entries") or []
@@ -130,7 +134,9 @@ def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoR
     row -- is landed: a commit added after it was never reviewed or checked.
     """
     codename = codename_from_branch(branch)
-    if _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
+    _ok, changed = git_ok(["diff", "--name-only", f"{branch}^", branch], repo)
+    stray = [p for p in changed.splitlines() if not p.startswith(_FINISH_WRITES)]
+    if stray or _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
         print(
             f"error: {branch} has moved past its finish-this-task commit; new commits "
             "need review before they land. Re-pick the leaf or open a new leaf for them.",

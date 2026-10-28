@@ -114,9 +114,9 @@ must also name the same remote as `HEAD`'s; in a repo with no remote, from the c
 working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are ignored. The named branch
 must name itself in its own committed copy, and with remotes only `refs/remotes/<remote>/<branch>` is
 read. If any of this is missing, unfetched or disagrees, the gate fails closed (on, and nothing passes
-it). A remote whose default branch the feature author can push to is outside this protection. Change policy on the integration branch; an edit on
-a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that
-touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
+it). Outside this protection: a remote whose default branch the feature author can push to, and anyone who can run git in the
+finishing clone (they can retarget `refs/remotes/<remote>/HEAD`); unsigned, the gate is cooperative attestation. Change policy on the integration branch; an edit on
+a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
 
 ## Choosing and prompting models
 

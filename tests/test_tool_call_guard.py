@@ -82,6 +82,7 @@ from specy_road.bundled_scripts import session_cli
     ("$X stash", "shell expansion"),
     ("g{i,}t stash", "shell expansion"),
     ("G=git; case x in x) ${G} stash;; esac", "stash stack is shared"),
+    ("X=i; g${X}t stash", "shell expansion"),
 ])
 def test_destructive_commands_are_classified(command: str, fragment: str) -> None:
     reason = g.classify(command)
