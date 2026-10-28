@@ -104,6 +104,10 @@ pip install -r requirements-ci.txt
 
 Then run `pip-audit` (see [contributor-guide.md](contributor-guide.md#supply-chain--dependency-audits)).
 
+**Gate tools outside the lock.** The lean-code gate tools (`ruff`, `pylint` in `validate.yml`;
+`mutmut`, `coverage` in `mutation.yml`) are exact-pinned in the workflows, installed after
+`pip-audit`, and are not in `requirements-ci.txt`, so their transitive dependencies are neither locked nor audited.
+
 ## Reporting discipline: repo-scoped first
 
 When reporting Python audit results, separate findings into two buckets:

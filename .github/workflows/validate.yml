@@ -10,6 +10,12 @@ on:
     branches: [main, dev]
   workflow_call:
 
+# Read-only token: checkout, audits, artifact upload and tests need no write.
+# release-publish.yml calls this workflow; a called workflow may only narrow
+# the caller's grant.
+permissions:
+  contents: read
+
 jobs:
   roadmap:
     runs-on: ubuntu-latest
