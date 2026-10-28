@@ -31,7 +31,7 @@ def test_packet_flags_paths_outside_touch_zones(tmp_path: Path) -> None:
     assert "- `docs/x.md`  **← outside touch zones**" in text
     assert "1 path(s) outside the touch zones" in text
     assert f"- `roadmap/registry.yaml`{rp.BOOKKEEPING_MARK}\n" in text
-    assert rp.BOOKKEEPING_NOTE in text and "implementation_review: approved" not in text
+    assert rp.BOOKKEEPING_NOTE in text and "+  implementation_review: approved" in text   # shown, labelled
 
 
 def test_packet_reviews_branch_tip_without_switching(tmp_path: Path) -> None:
