@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -121,6 +122,23 @@ def test_the_committed_profile_is_used_when_the_tree_matches_or_lacks_it(tmp_pat
     assert prof.ok and prof.cli()
     text, p, err = build_prompt(repo, "M1.1", role="executor", model="opus")
     assert err is None and "## Model notes" in text
+
+
+def test_a_profile_cli_does_not_replace_a_named_harness_default(tmp_path: Path, monkeypatch) -> None:
+    # Sandbox runbook §0 (2026-10-27): a profiled claude-code entry launched `claude -p '<prompt>'`.
+    repo = _repo(tmp_path, ROSTER.replace("family: anthropic", "family: anthropic\n    harness: claude-code"))
+    bin_dir, argv = tmp_path / "bin", tmp_path / "argv"
+    bin_dir.mkdir()
+    (bin_dir / "claude").write_text(f'#!/bin/sh\necho "$@" > {argv}\ncat > /dev/null\n')
+    (bin_dir / "claude").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
+    ops.delegate(repo, "M1.1", "opus")
+    for _ in range(100):
+        if argv.is_file() and argv.read_text():
+            break
+        time.sleep(0.1)
+    args = argv.read_text().split()
+    assert "stream-json" in args and "--session-id" in args and args[args.index("--model") + 1] == "claude-opus-5-5"
 
 
 # --- B6 ----------------------------------------------------------------------------
