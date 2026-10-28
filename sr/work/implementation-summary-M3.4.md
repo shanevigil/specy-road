@@ -22,7 +22,13 @@ Brainstorm prompts no longer anchor on the roadmap or open with a cold questionn
 - **A6:** `start` prints a warning to stderr when the current branch is the integration branch (from `resolve_integration_defaults`), suggesting `git checkout -b chore/brainstorm-<slug>`. It still proceeds.
 - **A7:** `next_step()` gives the follow-up command, always with `--slug`. The order is round → `next-round` / `recommend` → `evidence` then `verify` → triage (`list --by cluster`, accept/reject/park) → `promote --dry-run` / `promote` → `export && digest`, then `close`.
   - Printed by `start`, `next-round`, `recommend`, `evidence`, `verify`, `accept`/`reject`/`park` and `promote`.
-  - In-pass commands the agent repeats (`add-idea`, `add-evidence`, `revise`, `frame`, `list`) print no hint. A hint on each of 40 `add-idea` calls would be noise; I read "every command" as every pass command.
+  - **Review round 2 (gpt-5.6-sol-high blocked on A7):** every other successful command now prints a step too. In round 1 I had left out the in-pass commands; the reviewer read "every command" literally, and so do the docs.
+    - `frame`, `add-idea`, `add-evidence`, `revise` and `list` print the step for the pass the session is in. `stage(session)` works that out from what the session records: mode, sources still unverified, triage decisions, promoted ideas.
+    - `list --json` prints the hint to stderr, so stdout stays parseable JSON.
+    - `promote --dry-run` prints `next: … promote --slug <slug> to apply`, replacing "Re-run without --dry-run".
+    - `sessions` points at `list --slug SLUG`, or at `start --topic` when there are no sessions.
+    - `close` ends with an explicit terminal line: `done: nothing follows for this session; …`.
+    - `promote` with nothing accepted already named `accept`, and is unchanged.
 
 ## Changes
 
@@ -32,8 +38,9 @@ Brainstorm prompts no longer anchor on the roadmap or open with a cold questionn
 - `specy_road/bundled_scripts/brainstorm_cli_v2.py`:
   - per-pass names in `write_round_prompts`, with shard writing split into `_write_shard_prompts`;
   - the shard rewrite in `frame`;
-  - `next_step`, `integration_branch_warning`, and hints in `next-round`, `evidence`, `verify` and `park`.
-- `specy_road/bundled_scripts/brainstorm_cli.py`: the warning, `count`, and hints in `start`, `recommend`, triage and `promote`.
+  - `next_step`, `integration_branch_warning`, and hints in `next-round`, `evidence`, `verify` and `park`;
+  - round 2: `stage`, the `dry-run` key in `next_step`, and hints in `frame` and `add-evidence`.
+- `specy_road/bundled_scripts/brainstorm_cli.py`: the warning, `count`, and hints in `start`, `recommend`, triage and `promote`. Round 2 adds hints in `add-idea`, `list`, `revise`, `sessions`, `close` and `promote --dry-run`. `cmd_list` now uses one exit path so the hint prints whichever way the rows are grouped.
 - `specy_road/bundled_scripts/brainstorm_cli_args_v2.py`: `--panel` and `--allocation` help.
 - `specy_road/bundled_scripts/brainstorm_close.py`: `PROMPT_PASS_RE` and `_prompt_names`. The other-session guard now asks whether the name matches any other open session's pattern (it used to check whether the stem equals another slug).
 - Docs:
@@ -62,12 +69,13 @@ Final touch zones: the brief's list plus the three paths the coordinator added (
 
 ## Verification
 
-- `python -m pytest -q`: 2245 passed, 2 skipped.
+- `python -m pytest -q`: 2245 passed, 2 skipped (round 1); 2246 passed, 2 skipped (round 2).
 - `ruff check specy_road tests scripts`: all checks passed.
 - `python specy_road/bundled_scripts/validate_file_limits.py`: OK.
 - `python scripts/check_clones.py --pylint <scratch venv pylint 4.1.3>`: 12 current, 12 baselined, 0 new.
 - `python scripts/check_test_private_imports.py`: 118 current, 118 baselined, 0 new.
 - Dogfood fixture: `validate_roadmap.py`, `export_roadmap_md.py --check` and `specy-road digest --check` all OK.
+- Round 2 reran ruff, file limits, clones (12/12/0) and private imports (118/118/0); all clean. I did not rerun the fixture checks: the fixture is untouched since round 1.
 - Manual: `start --panel 2 --count 8` then `frame --allocation "s1: …"` on a fixture copy. Shard 1 shows the cell and the frame and asks for at least 4 ideas.
 
 ## Walkthrough
@@ -91,6 +99,11 @@ Final touch zones: the brief's list plus the three paths the coordinator added (
 - Digest-line branch in `_governance_lines`: omit `roadmap-context.md` when absent (A5).
 - `integration_branch_warning` (brainstorm_cli_v2.py): A6. It reuses `resolve_integration_defaults` and `current_branch_name`; no new git helper.
 - `next_step` (brainstorm_cli_v2.py) and its calls in 8 commands: A7.
+- Round 2, for A7 on every command:
+  - `stage` (brainstorm_cli_v2.py): the pass a session is in, so in-pass commands print the right step without each one tracking state. It reuses `pending` and `pending_ideas`.
+  - The `dry-run` key in `next_step`: the step after `promote --dry-run`.
+  - Hint lines in `frame`, `add-idea`, `add-evidence`, `revise`, `list`, `sessions`, `close` and `promote --dry-run`. `sessions` and `close` have no single open session, so they print fixed text.
+  - Branch in `cmd_list` (`--json`): the hint goes to stderr so stdout stays JSON.
 - Mocks: none. One `monkeypatch.delenv("SPECY_ROAD_INTEGRATION_BRANCH")` so the runner's env cannot pick the branch.
 - Tests (tests/test_brainstorm_prompt_fixes.py):
   - `test_skill_and_managed_block_say_to_start_before_reading_the_digest`: A1.
@@ -99,6 +112,7 @@ Final touch zones: the brief's list plus the three paths the coordinator added (
   - `test_each_pass_keeps_its_own_prompt_and_names_the_next_command`: A4 and A7 in one walk-through, since both need the same command sequence.
   - `test_prompts_omit_the_digest_line_when_there_is_no_digest`: A5.
   - `test_start_warns_on_the_integration_branch_only`: A6, on a real `git init` copy.
+  - `test_in_pass_and_session_commands_name_the_step_too` (round 2): A7 for `frame`, `add-idea`, `list`, `list --json`, `revise`, `add-evidence`, `promote --dry-run`, `sessions` (with and without sessions) and `close`. It also checks that `list --json` stdout still parses.
 - Test in tests/test_brainstorm_cli.py: `test_close_leaves_a_name_another_open_session_could_own`. It covers the other-session guard, which had no test.
 - Extended tests:
   - `test_close_moves_the_session_and_its_prompts_and_nothing_else` now covers the per-pass and legacy names.
