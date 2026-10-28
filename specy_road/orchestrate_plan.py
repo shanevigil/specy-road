@@ -146,14 +146,21 @@ def _usable(c: Candidate, sensitivity: str, today: date | None) -> bool:
     return is_available(c.entry, today) and may_handle(c.entry, sensitivity)
 
 
+def _valid(pool: list[Candidate], a: Assignment) -> list[Candidate]:
+    """The pool without invalid profiles, each reported once: `prompt` would refuse them."""
+    bad = [c for c in pool if c.profile is not None and not c.profile.ok]
+    for c in bad:
+        why = f"{c.id}: its profile is invalid ({'; '.join(c.profile.errors)}); fix it or drop the entry"
+        if why not in a.problems:
+            a.problems.append(why)
+    return [c for c in pool if c not in bad]
+
+
 def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None) -> None:
     pool = [c for c in cands if "executor" in (c.entry.get("roles") or []) and _usable(c, a.sensitivity, today)]
     if a.eligibility != ANY:
         pool = [c for c in pool if str(c.entry.get("class") or "") == a.eligibility]
-    for c in pool:
-        if c.profile is not None and not c.profile.ok:
-            a.problems.append(f"{c.id}: its profile is invalid ({'; '.join(c.profile.errors)}); fix it or drop the entry")
-    capable = [c for c in pool if c.profile is None or (c.profile.ok and c.score("executor") >= MIN_EXECUTOR_SCORE)]
+    capable = [c for c in _valid(pool, a) if c.profile is None or c.score("executor") >= MIN_EXECUTOR_SCORE]
     capable.sort(key=lambda c: (c.cost if c.cost is not None else float("inf"), -c.score("executor")))
     if not capable:
         need = f"may_process containing {a.sensitivity!r}"
@@ -170,9 +177,9 @@ def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any
     required = int(policy["reviewers_required"])
     distinct = bool(policy["reviewers_distinct_families"])
     substitutes = {s.get("use") for s in active_substitutions(config, a.node_id, today)}
-    pool = [c for c in cands
-            if ("reviewer" in (c.entry.get("roles") or []) or c.id in substitutes)
-            and _usable(c, a.sensitivity, today) and c.id != a.executor]
+    pool = _valid([c for c in cands
+                   if ("reviewer" in (c.entry.get("roles") or []) or c.id in substitutes)
+                   and _usable(c, a.sensitivity, today) and c.id != a.executor], a)
     pool.sort(key=lambda c: (-c.score("reviewer"), c.cost if c.cost is not None else float("inf")))
     seen: set[str] = set()
     for c in pool:
@@ -190,7 +197,8 @@ def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any
 
 
 def _pick_coordinator(cands: list[Candidate], a: Assignment, today: date | None) -> None:
-    pool = [c for c in cands if "coordinator" in (c.entry.get("roles") or []) and _usable(c, a.sensitivity, today)]
+    pool = _valid([c for c in cands if "coordinator" in (c.entry.get("roles") or [])
+                   and _usable(c, a.sensitivity, today)], a)
     pool.sort(key=lambda c: -c.score("coordinator"))
     if pool:
         a.coordinator = pool[0].id

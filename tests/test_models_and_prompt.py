@@ -205,16 +205,18 @@ def test_prompt_cli_channel_refuses_without_placeholder(tmp_path: Path, capsys) 
     assert "no {prompt} (the prompt file path) or <prompt>" in capsys.readouterr().err
 
 
-def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, capsys, monkeypatch) -> None:
-    """Shipped profiles write ``claude -p "<prompt>"``: the text goes in, quoted."""
+def test_prompt_cli_channel_accepts_the_profiles_prompt_form(tmp_path: Path, capfd, monkeypatch) -> None:
+    """Shipped profiles write ``claude -p "<prompt>"``: the text goes in, quoted (and is not logged)."""
     repo = _repo(tmp_path)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', '  cli: printf %s "<prompt>" | wc -c'))
     _commit_profile(repo)
     assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "executor", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
-    err = capsys.readouterr().err
-    assert "running: printf %s '" in err and "<prompt>" not in err.split("running:")[1].split("\n")[0]
+    out, err = capfd.readouterr()
+    sent = (repo / "work" / "prompt-M1.1-executor-opus.md").read_bytes()
+    assert out.split()[-1] == str(len(sent))   # wc -c counted the whole prompt text, not its path
+    assert 'running: printf %s "<prompt>"' in err and sent.decode()[:40] not in err
 
 
 # --- refresh-profiles ---------------------------------------------------------

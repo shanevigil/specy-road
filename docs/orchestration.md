@@ -106,17 +106,17 @@ duplicate roster ids and a substitute that is not in the roster.
 
 **The gate reads this file from the integration branch** — its remote-tracking ref when there is
 one, else the local branch — not from the branch under review, so a feature branch cannot lower its
-own bar. The same goes for `require_implementation_review_before_finish`: the gate is on when either
-the integration branch or the working tree turns it on. Which branch is the integration branch comes
-from `roadmap/git-workflow.yaml` as committed at `HEAD`; the working tree and the
-`SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` variables are ignored here. That name is a
-trust anchor a feature commit can rewrite, so the branch it names must name itself in its own
-committed `git-workflow.yaml`, and with a remote configured only `refs/remotes/<remote>/<branch>` is
-read: redirecting policy needs push rights to a branch the remote must protect. If the branch is
-missing, the names disagree, or the remote branch is not fetched, the gate fails closed (on, and
-nothing passes it). Change policy on the integration branch; an edit on a feature branch is ignored
-by the gate, flagged in the review packet, and, like any commit that touches more than
-`roadmap/registry.yaml`, makes that branch's reviews stale.
+own bar; the gate is also on when either that branch or the working tree sets
+`require_implementation_review_before_finish`. The branch's name comes from `roadmap/git-workflow.yaml`
+as committed on the remote's default branch (`refs/remotes/<remote>/HEAD`, which `git clone` sets and
+`git remote set-head <remote> --auto` restores) when that carries the file, else at `HEAD`, whose copy
+also names the remote; the working tree and `SPECY_ROAD_INTEGRATION_BRANCH` / `SPECY_ROAD_REMOTE` are
+ignored. A feature commit can rewrite `HEAD`'s copy, so the named branch must name itself in its own
+committed copy, and in a repo with remotes only `refs/remotes/<remote>/<branch>` of a configured remote
+is read. If the branch is missing or unfetched, the names disagree, or the remote is not configured,
+the gate fails closed (on, and nothing passes it). Change policy on the integration branch; an edit on
+a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that
+touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
 
 ## Choosing and prompting models
 
@@ -236,8 +236,8 @@ review record only when:
   merge counts as new work, including `git merge -s ours`, whose tree equals
   its first parent's; commits that touch only `roadmap/registry.yaml` are
   skipped, so claim bookkeeping does not;
-- its model is a rostered reviewer, or the substitute in an active substitution
-  that covers this node, and its family comes from the roster;
+- its model is a rostered reviewer, or the substitute in an active substitution that covers this
+  node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
 - no other record from the same model already counts — one vote per model, and
   a block from any of a model's records wins;
 - it attests a fresh session when policy requires one.

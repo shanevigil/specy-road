@@ -277,9 +277,14 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if why:
         print(f"error: the cli has {why}: {cli}", file=sys.stderr)
         return 1
-    cmd = substitute_prompt(cli, prompt_path)
-    print(f"running: {cmd}", file=sys.stderr)
-    return subprocess.run(cmd, shell=True, cwd=root, check=False).returncode
+    # The template, not the expansion: "<prompt>" would echo the whole brief.
+    print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
+    try:
+        return subprocess.run(substitute_prompt(cli, prompt_path), shell=True, cwd=root, check=False).returncode
+    except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
+        print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
+              'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
+        return 1
 
 
 def main(argv: list[str] | None = None) -> None:

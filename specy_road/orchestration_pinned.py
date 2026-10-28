@@ -1,7 +1,7 @@
 """The roster and profiles as the integration branch has them: what prompts, plans and workers must route by.
 
 The review gate reads ``roadmap/orchestration.yaml`` from the integration
-branch (``review_gate.policy_source``), never from the working tree an agent
+branch (``review_policy_ref.policy_source``), never from the working tree an agent
 can edit without a trace. Routing has to read the same file: a working-tree
 roster could widen ``may_process`` on an outside model, add a ``channels.cli``
 or ``preflight`` command, or name a reviewer the gate will later refuse.
@@ -28,7 +28,7 @@ from specy_road.model_profiles import (
     profile_rel_problem,
 )
 from specy_road.orchestration_config import effective_config
-from specy_road.review_gate import policy_source
+from specy_road.review_policy_ref import policy_source
 from specy_road.review_target import full_sha
 
 
