@@ -33,12 +33,18 @@ role_fit:
 ## Failure modes
 - Issues fewer parallel tool calls than Fable 5, sometimes one tool per turn | trigger: long-running agent loops | mitigation in prompt: state explicitly which independent reads or checks may run in parallel [S3]
 - Quality not monotonic in effort: one third-party composite peaked at medium effort, below Fable 5's best | trigger: high effort settings | mitigation in prompt: benchmark medium and high on your own tasks before defaulting to high [S3]
+## Code and test tendencies
+- Opus 4.5 and 4.6 tend to over-engineer: extra files, unnecessary abstractions, flexibility that was not requested; Anthropic's own prompting guidance, live page read 2026-10-27 (researched 2026-10-27 from the lean-code reports, not human-verified) [S8]
+- Opus 5 verifies its own work unprompted; self-check instructions cause over-verification (Anthropic prompting best practices, read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S8]
+- Claude Code PRs measured largest and deepest in the field: median 495 changed lines vs 52 human, nesting depth 4 vs 3, highest branch density; n=459, task mix confounded (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S9]
+- Strong test oracles: Claude Code is among the agents with the strongest assertion signals in field PRs (Banik et al., 2026-06; researched 2026-10-27 from the lean-code reports, not human-verified) [S10]
 ## Prompting rules
 - Use Opus 5.5 first; escalate to Fable 5.1 only when Opus 5.5 at higher effort fails your evals [S1]
 - Do not use forced tool use; it returns an error [S1]
 - Do not edit earlier turns; edits invalidate thinking blocks [S1]
 - Use turn-scoped system messages (beta) for per-turn instructions instead of rewriting the system prompt [S1]
 - Follow the model-specific guide "Prompting Claude Fable 5.1" for long-horizon work (not read in this research) [S1]
+- Name the smallest behaviour-complete change and forbid extra files, abstractions, fallbacks and validation inside boundaries; this family's measured risk is diff size and depth, not weak tests [S8, S9]
 ## Change from previous version
 - improved: cache read $1.00 to $0.25 per MTok; input/output unchanged [S1, S5]
 - improved: Terminal-Bench 4.0 42.0 to 55.8 percent [S3]
@@ -55,3 +61,6 @@ role_fit:
 - S5: Anthropic's Claude Fable 5.1 and Mythos 5.1 arrive with a 75% cost reduction for Fable cache reads, VentureBeat, 2026-09-01, https://venturebeat.com/technology/anthropics-claude-fable-5-1-and-mythos-5-1-arrive-with-a-75-cost-reduction-for-fable-cache-reads, independent (claude run)
 - S6: AA Agentic Index Leaderboard, BenchLM, 2026-10-10, https://benchlm.ai/benchmarks/aaagenticindex, independent (claude run)
 - S7: Introducing Claude Fable 5.1 and Claude Mythos 5.1, Anthropic, 2026-09-01, https://www.anthropic.com/claude-fable-and-mythos-5-1, primary (claude run)
+- S8: Claude prompting best practices (over-engineering and self-check notes), Anthropic, accessed 2026-10-27, https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, primary (lean-code reports)
+- S9: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
+- S10: All Smoke, No Alarm: Oracle Signals in Agent-Authored Test Code, Banik, Chowdhury and Shamim, arXiv 2606.18168, 2026-06, https://arxiv.org/html/2606.18168v1, independent (lean-code reports)

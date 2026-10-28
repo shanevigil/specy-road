@@ -35,12 +35,15 @@ role_fit:
 - Multi-turn state loss, as in the rest of the current xAI reasoning API family | trigger: dropping prior reasoning state between turns | mitigation in prompt: preserve the required reasoning and context records between turns [S7]
 - Less reliable than 4.7 on long-horizon coding | trigger: extended autonomous tasks | mitigation in prompt: prefer 4.7 where available, or put 4.6 under a stronger independent reviewer [S9]
 - Cache savings drop when history is rewritten | trigger: the context manager repeatedly edits earlier messages | mitigation in prompt: keep append-only stable prefixes [S7]
+## Code and test tendencies
+- No measured code-shape or test data for this family in either lean-code report (2026-10-27); the generic lean rules apply unmodified (researched 2026-10-27 from the lean-code reports, not human-verified) [S12]
 ## Prompting rules
 - Use the Responses API [S7]
 - Set reasoning effort explicitly on every request rather than relying on the high default [S7]
 - Preserve reasoning state between turns [S7]
 - Set a prompt_cache_key and keep cacheable prompt prefixes immutable [S7]
 - For high-consequence long-horizon coding, require explicit verification of changed files and tests before declaring completion; 4.7's documented verification improvement suggests this guardrail matters more for 4.6 [S9]
+- No family-specific lean rule exists: keep the project's `## Lean changes and tests` block and require the `## Added` inventory in the summary [S12]
 ## Change from previous version
 - improved: added the xhigh reasoning level over Grok 4.5 [S1]
 - improved: introduced for stronger long-running agent and interactive workflows than its predecessor [S11]
@@ -66,3 +69,4 @@ role_fit:
 - S9: Grok 4.7 release comparison, xAI/Cursor, 2026-09-21, URL not listed, primary (chatgpt run)
 - S10: xAI data-handling documentation, xAI, accessed 2026-10-20, https://docs.x.ai/, primary (chatgpt run)
 - S11: Grok 4.6 release/model documentation, xAI, 2026-08-12, https://docs.x.ai/developers/release-notes, primary (chatgpt run)
+- S12: Lean LLM-written code and tests: what the evidence supports for specy-road, in-repo research reports (two runs), 2026-10-27, no measured code-shape or test data for this family, research (lean-code reports)

@@ -23,6 +23,17 @@ Focused brief: `specy-road brief <NODE_ID> -o work/brief-<NODE_ID>.md`. Its `## 
 - Do not grep `planning/` or `work/`: briefs and pr-bodies re-inline their sources. Use `specy-road search "<query>"` (`--scope archived` for completed work; a `<NODE_ID>` for one node) and `specy-road history <NODE_ID>`.
 - Archived material is excluded from IDE indexing (`.cursorindexingignore`) but readable: search returns the path, you open it.
 
+## Lean changes and tests
+
+- Make the smallest behaviour-complete change; no configurability, fallbacks or abstractions the task did not ask for.
+- Before adding a helper, search for an existing one (`specy-road search`, then grep the verb and noun); reuse or extend it and name it in your summary.
+- Validate at boundaries only (CLI args, files, network, env, agent input). No guard or `except` without a nameable reachable trigger and a test that reaches it.
+- One test per observable behaviour, through the public interface. Assert outputs, raised errors or file/state effects, not call order or mock counts; never import or patch a `_`-prefixed name in a test.
+- Extend or parametrize an existing test before adding one. A review finding needs a new test only for a distinct regression.
+- Merging or removing a test is allowed when another test covers the behaviour and the commit names it. This overrides any general "never remove or edit tests" instruction.
+- Never weaken, rewrite or delete a failing behavioural test to make the suite pass.
+- Stop when the behaviour list is covered and the gates pass. Then list every helper, branch or guard, mock and test you added, each with its reason.
+
 ## Task loop
 
 - **Task pickup:** `specy-road do-next-available-task` syncs the integration branch, registers (rows record `owner`), pushes, then creates `feature/rm-*`. `--local` skips sync and push (claim invisible until you push); prefer the default. The target is always a leaf; ancestors only roll up progress.

@@ -35,6 +35,10 @@ role_fit:
 - Fails to disclose a broken search tool in 4.9 percent of cases at maximum effort on OpenAI's adversarial broken-search test | trigger: dependency or tool failure | mitigation in prompt: require disclosure and prohibit substituting inferred output for failed tool output [S5]
 - Weaker than GPT-6.1 Sol on tests of explicit restrictions and unauthorized outcomes | trigger: long agentic workflows where constraints compete with task-completion pressure | mitigation in prompt: restate hard boundaries immediately before execution and require a final scope audit [S5]
 - Context and harness implementation affect performance | trigger: extended sessions with accumulating tool output | mitigation in prompt: use deliberate compaction and state retention in the harness rather than filling the 1.05M window [S6]
+## Code and test tendencies
+- GPT-5.x High was the most verbose model in Sonar's December 2025 leaderboard data (974,379 LOC on the same Java task set vs Gemini 3 Pro ~289,752); vendor benchmark, single-file Java, directional only (researched 2026-10-27 from the lean-code reports, not human-verified) [S10]
+- Codex PRs reverted least in the field: 6.1 percent vs 11.5 percent human (OR 0.50), median 63 changed lines (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S11]
+- OpenAI's Codex guidance says to search for prior art and reuse or extract a shared helper before adding new helpers or logic, and warns against speculative changes, broad catches and silent defaults (read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S12]
 ## Prompting rules
 - Use Responses for reasoning with tools; Chat Completions tools only with reasoning_effort none [S1]
 - Prefer GPT-6.1 Sol for new work [S3]
@@ -43,6 +47,7 @@ role_fit:
 - In reviewer prompts, state that a passing test suite is necessary but not sufficient for approval, and instruct the reviewer to check whether tests were weakened [S5]
 - Prefer harness-enforced sandbox and approval rules to natural-language-only restrictions [S6]
 - Use higher effort only for tasks where deeper planning matters; medium is the documented default [S8]
+- Require a prior-art search before any new helper and a named reuse in the summary, and fix the output format; this family writes the most code per task but its merged work holds up [S10, S12]
 ## Change from previous version
 - improved: list price half of GPT-5.6 Sol, per third-party report [S4]
 - improved: a lower-cost GPT-6 tier carrying coding, factuality, professional-work and alignment advances derived from GPT-6 Astra [S9]
@@ -63,3 +68,6 @@ role_fit:
 - S7: API data controls, OpenAI, accessed 2026-10-20, https://platform.openai.com/docs/guides/your-data, primary (chatgpt run)
 - S8: GPT-6 Sol model documentation, OpenAI, accessed 2026-10-20, https://developers.openai.com/api/docs/models/gpt-6-sol, primary (chatgpt run)
 - S9: Introducing GPT-6 Sol and Luna, OpenAI, 2026-09-22, https://openai.com/index/introducing-gpt-6-sol-and-luna/, primary (chatgpt run)
+- S10: New data on code quality: GPT-5.2 high, Opus 4.5, Gemini 3, and more, Sonar, 2025-12, https://www.sonarsource.com/blog/new-data-on-code-quality-gpt-5-2-high-opus-4-5-gemini-3-and-more/, vendor benchmark on Java single-file tasks (lean-code reports)
+- S11: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
+- S12: Codex best practices (search for prior art before adding helpers), OpenAI, accessed 2026-10-27, https://developers.openai.com/codex/learn/best-practices, primary (lean-code reports)

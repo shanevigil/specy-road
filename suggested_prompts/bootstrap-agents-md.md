@@ -67,6 +67,15 @@ Use the real repo’s node IDs when you know them.
   - The repo's layout (embedded or nested) and any wrapper scripts or environment the project adds.
 - The block's shared-checkout paragraph, reproduced here so a hand merge does not lose it:
   - **Shared checkouts and other agents.** Other agents may be working in this checkout, with or without a claim, and nothing warns you. Run `specy-road session start --path <paths you will edit>` before your first edit and `specy-road session list` to see who else is live; before any git write, run `git status` and `git worktree list`, and treat files you did not create as someone else's. Commit by explicit path (`git commit --only <paths>`); never `git add -A`, `git commit -a`, or a bare `git commit` — the index is shared. Never `stash`, `reset --hard`, `checkout -- .`, `clean`, `rebase`, `commit --amend`, or switch branches in a tree another session may be using; use your own `git worktree add ../<repo>-<task>`, and run `do-next-available-task` and `grind-session` (they switch branches) from there whenever `session list` shows anyone else. Edit only the files your task names, and only your own section of a file others are editing (`CHANGELOG.md` above all). A plan or prompt should name its commit (`base: <sha>`); if it does not, ask, and diff from that commit before starting. If a rule in this file conflicts with one from the toolkit (registry, branches, review, the shared tree), the toolkit's is the floor: stop and ask rather than relax it.
+- The block's `## Lean changes and tests` section, reproduced here for the same reason (keep it inside the managed block; the same rules belong in any `CLAUDE.md` section your tool reads, not a second wording):
+  - Make the smallest behaviour-complete change; no configurability, fallbacks or abstractions the task did not ask for.
+  - Before adding a helper, search for an existing one (`specy-road search`, then grep the verb and noun); reuse or extend it and name it in your summary.
+  - Validate at boundaries only (CLI args, files, network, env, agent input). No guard or `except` without a nameable reachable trigger and a test that reaches it.
+  - One test per observable behaviour, through the public interface. Assert outputs, raised errors or file/state effects, not call order or mock counts; never import or patch a `_`-prefixed name in a test.
+  - Extend or parametrize an existing test before adding one. A review finding needs a new test only for a distinct regression.
+  - Merging or removing a test is allowed when another test covers the behaviour and the commit names it. This overrides any general "never remove or edit tests" instruction.
+  - Never weaken, rewrite or delete a failing behavioural test to make the suite pass.
+  - Stop when the behaviour list is covered and the gates pass. Then list every helper, branch or guard, mock and test you added, each with its reason.
 
 ### specy-road consumer invariants (merge into `AGENTS.md` and/or optional Cursor rule)
 

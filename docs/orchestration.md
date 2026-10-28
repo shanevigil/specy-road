@@ -21,16 +21,14 @@
 
 **Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
 
-specy-road separates three roles around a roadmap leaf and prescribes how work
-passes between them — not **which** agent, IDE, or vendor fills a role: a
-human, Claude Code, Cursor, Codex, or a local model all fit.
+specy-road separates three roles around a roadmap leaf and prescribes how work passes
+between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit.
 
 - **Coordinator** — picks the leaf, creates the branch or worktree, assembles the
   review packet, closes the review gate, finishes the leaf, and changes roadmap status.
 - **Executor** — reads the brief, changes only the leaf's touch zones, runs the
   verifiers, commits, writes a hand-off file, and **stops**.
-- **Reviewer** — reads the review packet and nothing else, in a fresh session,
-  and records approve or block.
+- **Reviewer** — reads the review packet and nothing else, in a fresh session, and records approve or block.
 
 ## The flow
 
@@ -122,9 +120,8 @@ by the gate, flagged in the review packet, and, like any commit that touches mor
 
 ## Choosing and prompting models
 
-Model profiles, `specy-road models`, `specy-road prompt`, and `specy-road orchestrate plan`
-are documented in [orchestration-models.md](orchestration-models.md). Launching a leaf on
-another harness and following it from this chat (`specy-road worker`) is in [orchestration-workers.md](orchestration-workers.md).
+Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](orchestration-models.md);
+`specy-road worker` (a leaf on another harness): [orchestration-workers.md](orchestration-workers.md).
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
@@ -174,7 +171,12 @@ it out**, so a coordinator in a checkout shared with executors never switches
 branches. The branch is the local one, else `<remote>/<branch>` (run
 `git fetch` first when the executor worked in another clone); when neither
 exists, the command fails rather than review something else. The summary is read
-as committed at the reviewed commit; a working-tree or missing one is labelled so. Changes to `roadmap/orchestration.yaml` or
+as committed at the reviewed commit; a working-tree or missing one is labelled so, and one
+without the `## Added` inventory the executor prompt asks for (helpers, guards, mocks and
+tests, each with a reason) is noted, not failed. The reviewer prompt (`specy-road prompt
+--role reviewer`) adds an excess checklist — tests pinning internals, unreachable defence,
+duplicated logic, overlapping tests — that needs a caller trace or the covering test as
+evidence and never recommends removing error handling without one. Changes to `roadmap/orchestration.yaml` or
 `roadmap/git-workflow.yaml` are flagged. `--ref` reviews a different branch or
 commit, and exits 1 when it does not resolve.
 
@@ -317,13 +319,11 @@ specy-road grind-session --on-complete merge --implement-mode hook \
 `review record` refuses notes whose verdict disagrees with `--verdict`, so a
 blocking reviewer fails the hook and stops the loop (exit `4`).
 
-From an IDE agent, use **step mode** instead
-([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)).
-The agent session is the coordinator: it runs `grind-session --step pickup`, hands the
-prompt to a fresh executor sub-agent, has a **different** fresh sub-agent of a rostered
-reviewer model read `PACKET.md` and file `review record`, runs
-`mark-implementation-reviewed --yes` (its shell is not a TTY), then runs
-`grind-session --step finish`. Anything that modifies files runs before the review, since a
+From an IDE agent, use **step mode** ([grind-session.md](grind-session.md#driving-the-loop-from-an-ide-agent-step-mode)):
+the agent session is the coordinator; it runs `grind-session --step pickup`, hands the prompt to a
+fresh executor sub-agent, has a **different** fresh sub-agent of a rostered reviewer model read
+`PACKET.md` and file `review record`, runs `mark-implementation-reviewed --yes` (its shell is not a
+TTY), then `grind-session --step finish`. Anything that modifies files runs before the review, since a
 later commit makes it stale. Under the default human-only roster the agent cannot close the gate; it stops and asks the human to approve in a terminal.
 
 ## Presence: `specy-road session`

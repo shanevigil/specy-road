@@ -37,6 +37,11 @@ role_fit:
 - Returns an error when thinking is disabled at xhigh or max | trigger: combining maximum effort with disabled thinking | mitigation in prompt: use adaptive thinking at those levels [S11]
 - Over-verifies or does more testing and work than a narrow task requires | trigger: small, well-scoped fixes without explicit scope limits | mitigation in prompt: specify exactly what must be verified and prohibit unrelated refactors or cleanup [S15]
 - Writes longer responses than needed | trigger: no output-size instruction | mitigation in prompt: request concise progress and output and a fixed final-report format [S15]
+## Code and test tendencies
+- Opus 4.5 and 4.6 tend to over-engineer: extra files, unnecessary abstractions, flexibility that was not requested; Anthropic's own prompting guidance, live page read 2026-10-27 (researched 2026-10-27 from the lean-code reports, not human-verified) [S16]
+- Opus 5 verifies its own work unprompted; self-check instructions cause over-verification (Anthropic prompting best practices, read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S16]
+- Claude Code PRs measured largest and deepest in the field: median 495 changed lines vs 52 human, nesting depth 4 vs 3, highest branch density; n=459, task mix confounded (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S17]
+- Strong test oracles: Claude Code is among the agents with the strongest assertion signals in field PRs (Banik et al., 2026-06; researched 2026-10-27 from the lean-code reports, not human-verified) [S18]
 ## Prompting rules
 - Default effort is high; set effort explicitly per task type, and use xhigh or max for extended coding only when the extra cost is justified [S1, S2, S11]
 - When thinking is disabled, include the vendor's combined instruction and remove rules telling the model not to think [S7]
@@ -45,6 +50,7 @@ role_fit:
 - Put ordered workflows in numbered steps and role and context in clearly separated prompt regions [S12]
 - Give subagents narrow, non-overlapping responsibilities rather than unbounded delegation [S15]
 - Plan migration: Anthropic marks the model legacy and recommends Opus 5.5 [S1]
+- Name the smallest behaviour-complete change and forbid extra files, abstractions, fallbacks and validation inside boundaries; this family's measured risk is diff size and depth, not weak tests; for this version also omit self-check instructions, which cause over-verification [S16, S17]
 ## Change from previous version
 - unchanged: price $5/$25, same as Opus 4.8 [S3]
 - improved: effort ladder extended to max (Opus 4.8 topped out at xhigh), per a third-party summary [S2]
@@ -74,3 +80,6 @@ role_fit:
 - S13: Anthropic privacy documentation, Anthropic, accessed 2026-10-20, https://privacy.claude.com/, primary (chatgpt run)
 - S14: Claude Opus 5.5 overview, Anthropic, 2026-09-22, https://platform.claude.com/docs/en/models/opus-5-5/overview, primary (chatgpt run)
 - S15: Prompting Claude Opus 5, Anthropic Claude Platform Docs, accessed 2026-10-20, URL not given in ChatGPT report, primary (chatgpt run)
+- S16: Claude prompting best practices (over-engineering and self-check notes), Anthropic, accessed 2026-10-27, https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, primary (lean-code reports)
+- S17: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
+- S18: All Smoke, No Alarm: Oracle Signals in Agent-Authored Test Code, Banik, Chowdhury and Shamim, arXiv 2606.18168, 2026-06, https://arxiv.org/html/2606.18168v1, independent (lean-code reports)

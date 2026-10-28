@@ -45,6 +45,11 @@ role_fit:
 - Returns an error on forced tool use | trigger: a harness that forces tool selection, which worked on Opus 5 | mitigation in prompt: let the model select tools under explicit task constraints instead of forcing a tool [S1]
 - Spends excess reasoning and cost at high settings | trigger: carrying Opus 5's high, xhigh or max setting forward without a new sweep | mitigation in prompt: start at medium, measure on task-specific evals, raise only when quality improves enough to justify it [S2]
 - Thinking blocks are tied to the model and conversation | trigger: splicing or reusing reasoning state across model changes or unrelated sessions | mitigation in prompt: keep model and conversation boundaries intact in the orchestrator [S1]
+## Code and test tendencies
+- Opus 4.5 and 4.6 tend to over-engineer: extra files, unnecessary abstractions, flexibility that was not requested; Anthropic's own prompting guidance, live page read 2026-10-27 (researched 2026-10-27 from the lean-code reports, not human-verified) [S15]
+- Opus 5 verifies its own work unprompted; self-check instructions cause over-verification (Anthropic prompting best practices, read 2026-10-27; researched 2026-10-27 from the lean-code reports, not human-verified) [S15]
+- Claude Code PRs measured largest and deepest in the field: median 495 changed lines vs 52 human, nesting depth 4 vs 3, highest branch density; n=459, task mix confounded (Kraishan, 2026-09-12; researched 2026-10-27 from the lean-code reports, not human-verified) [S16]
+- Strong test oracles: Claude Code is among the agents with the strongest assertion signals in field PRs (Banik et al., 2026-06; researched 2026-10-27 from the lean-code reports, not human-verified) [S17]
 ## Prompting rules
 - Set effort explicitly; start at medium and test other levels on your own evals rather than reusing Opus 5's default high [S2, S11]
 - Use low for simple or high-volume subagents, high for difficult coding or reasoning, and reserve xhigh and max for long-horizon work where evals show a benefit [S11]
@@ -58,6 +63,7 @@ role_fit:
 - Put the role in the system message; use numbered instructions when sequence matters [S12]
 - Separate context, constraints, examples and task content with XML tags or clearly separated Markdown sections; do not mix delimiters inconsistently [S12]
 - For long-document tasks, place source material before the final query and instructions [S12]
+- Name the smallest behaviour-complete change and forbid extra files, abstractions, fallbacks and validation inside boundaries; this family's measured risk is diff size and depth, not weak tests [S15, S16]
 ## Change from previous version
 - improved: price $5/$25 to $4/$20 per MTok; cache read $0.50 to $0.20 [S1, S3, S6, S14]
 - improved: output speed more than 30 percent faster; fewer tokens per task [S2]
@@ -87,3 +93,6 @@ role_fit:
 - S12: Claude prompting best practices, Anthropic, accessed 2026-10-20, https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview, primary (chatgpt run)
 - S13: Anthropic commercial and API privacy and retention documentation, Anthropic, accessed 2026-10-20, https://privacy.claude.com/, primary (chatgpt run)
 - S14: Claude Opus 5 overview, Anthropic, 2026-07-24, https://platform.claude.com/docs/en/models/opus-5/overview, primary (chatgpt run)
+- S15: Claude prompting best practices (over-engineering and self-check notes), Anthropic, accessed 2026-10-27, https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices, primary (lean-code reports)
+- S16: Not All Agents Are Equal: Code Quality and Post-Merge Maintenance Across Five Autonomous Coding Agents in the Wild, Kraishan, arXiv 2609.17598, 2026-09-12, https://arxiv.org/html/2609.17598, independent (lean-code reports)
+- S17: All Smoke, No Alarm: Oracle Signals in Agent-Authored Test Code, Banik, Chowdhury and Shamim, arXiv 2606.18168, 2026-06, https://arxiv.org/html/2606.18168v1, independent (lean-code reports)

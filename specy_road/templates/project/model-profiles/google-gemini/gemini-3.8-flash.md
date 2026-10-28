@@ -36,12 +36,15 @@ role_fit:
 - minimal thinking is unsupported and returns an error | trigger: a generic orchestrator maps a "minimal" effort level to every vendor | mitigation in prompt: map the lowest neutral effort to low [S3]
 - Deprecated Gemini sampling and prefill patterns cause invalid or ineffective requests | trigger: old Gemini configuration copied forward | mitigation in prompt: remove deprecated sampling parameters and prefilled model turns [S3]
 - Peak-load 503 UNAVAILABLE errors and slowdowns on the Gemini 3.8 Flash High serving pool, acknowledged by Google, during reported 16:00 to 22:00 UTC periods in September 2026 | trigger: high concurrent demand | mitigation in prompt: in the orchestrator, retry idempotent operations with bounded exponential backoff and support model fallback [S8]
+## Code and test tendencies
+- Gemini 3 Pro was the most concise model in Sonar's December 2025 data (~289,752 LOC) but had the highest control-flow error rate (200 per MLOC); vendor benchmark, single-file Java, directional only (researched 2026-10-27 from the lean-code reports, not human-verified) [S11]
 ## Prompting rules
 - Map effort only to low, medium or high; never send minimal [S3]
 - Remove temperature, top_p, top_k, candidate_count and prefilled model-turn assumptions when migrating old Gemini prompts and integrations [S3]
 - Use consistent XML or Markdown structure and state hard constraints explicitly [S6]
 - Put large repository or context material before the final instruction in long-context prompts [S6]
 - For cheap execution start at medium; raise to high only where the task's own evaluation shows improvement [S3]
+- Conciseness is not the risk here: require a test that reaches every new branch and loop exit, and have the reviewer re-run the verifier rather than read the control flow [S11]
 ## Change from previous version
 - changed: Google replaced Gemini 3.7 Flash with 3.8 Flash and routes the deprecated 3.7 stable endpoint to 3.8; a community report says 3.6 Flash is also being retired [S4, S2]
 - improved: Google targets long-horizon software engineering and autonomous agent workflows with this version [S3]
@@ -66,3 +69,4 @@ role_fit:
 - S8: Gemini 3.8 Flash capacity incident discussion with Google response, Google AI Developers Forum, 2026-09-29, https://discuss.ai.google.dev/t/issue-report-severe-slowdowns-and-frequent-503-errors-on-gemini-flash-3-8-during-specific-hours-are-server-resources-being-intentionally-throttled/184984, community (chatgpt run)
 - S9: LMArena Text/Multi-turn dataset, Arena data via BenchLeader, data 2026-10-19, https://www.benchleader.com/benchmarks/lmarena_text, independent (chatgpt run)
 - S10: Gemini 4 Argon model documentation, Google, 2026-10-13, https://ai.google.dev/gemini-api/docs/models/gemini-4-argon, primary (chatgpt run)
+- S11: New data on code quality: GPT-5.2 high, Opus 4.5, Gemini 3, and more, Sonar, 2025-12, https://www.sonarsource.com/blog/new-data-on-code-quality-gpt-5-2-high-opus-4-5-gemini-3-and-more/, vendor benchmark on Java single-file tasks (lean-code reports)

@@ -30,6 +30,17 @@ For the consumer-repo contract and registry, read [`docs/git-workflow.md`](docs/
 
 If this repository ran **`specyrd init`**, you may have skills under `.agents/skills/<name>/SKILL.md` (with `.claude/skills/` symlinks for Claude Code, or a flat stub directory for `--ai generic`; `.cursor/commands/` and `.claude/commands/` only in repos initialised before 0.3.0) — they delegate to `specy-road` / bundled scripts.
 
+## Lean changes and tests
+
+- Make the smallest behaviour-complete change; no configurability, fallbacks or abstractions the task did not ask for.
+- Before adding a helper, search for an existing one (`specy-road search`, then grep the verb and noun); reuse or extend it and name it in your summary.
+- Validate at boundaries only (CLI args, files, network, env, agent input). No guard or `except` without a nameable reachable trigger and a test that reaches it.
+- One test per observable behaviour, through the public interface. Assert outputs, raised errors or file/state effects, not call order or mock counts; never import or patch a `_`-prefixed name in a test.
+- Extend or parametrize an existing test before adding one. A review finding needs a new test only for a distinct regression.
+- Merging or removing a test is allowed when another test covers the behaviour and the commit names it. This overrides any general "never remove or edit tests" instruction.
+- Never weaken, rewrite or delete a failing behavioural test to make the suite pass.
+- Stop when the behaviour list is covered and the gates pass. Then list every helper, branch or guard, mock and test you added, each with its reason.
+
 ## Version numbers (human-owned)
 
 Do **not** choose, bump, or retarget a toolkit version unless the user has stated the exact number in this conversation. That includes `pyproject.toml` `project.version`, `CHANGELOG.md` `## [v…]` headings, git tags, `WIP/improvements-x-y-z` names, and `chore/release-v*` branches.

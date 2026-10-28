@@ -34,11 +34,14 @@ role_fit:
 - This checkpoint cannot be requested reproducibly through today's deepseek-flash alias | trigger: regression testing against the September version | mitigation in prompt: use a self-hosted pinned open-weight checkpoint; do not use the mutable hosted alias for historical A/B tests [S1, S5]
 - Generic effort-name mismatch can change the intended reasoning level | trigger: sending medium or xhigh from a vendor-neutral enum | mitigation in prompt: normalize to DeepSeek's none, low, high, or max levels [S4]
 - Lower long-horizon coding results than 1017 | trigger: complex terminal or repository tasks | mitigation in prompt: use 1017 unless historical reproducibility requires this checkpoint [S1]
+## Code and test tendencies
+- No measured code-shape or test data for this family in either lean-code report (2026-10-27); the generic lean rules apply unmodified (researched 2026-10-27 from the lean-code reports, not human-verified) [S8]
 ## Prompting rules
 - Select the reasoning level explicitly; do not rely on effort names meaning the same thing across vendors [S4]
 - Put hard constraints in the system message and the concrete task in the user message [S4]
 - Under Claude Code, set the DeepSeek base URL, model, and subagent variables explicitly [S3]
 - For historical evaluation, pin the open-weight artifact, not the hosted deepseek-flash alias [S1, S5]
+- No family-specific lean rule exists: keep the project's `## Lean changes and tests` block and require the `## Added` inventory in the summary [S8]
 ## Change from previous version
 - improved: introduced the V4.1 architecture with native visual understanding and much lower KV-cache requirements than the prior generation [S5]
 - improved: lower API pricing at launch [S5]
@@ -56,3 +59,4 @@ role_fit:
 - S5: DeepSeek-V4.1-Flash: Smarter, Faster, More Efficient, DeepSeek, 2026-09-10, https://api-docs.deepseek.com/news/news260910/, primary (chatgpt run)
 - S6: source not listed in ChatGPT report (cited as S45) (chatgpt run)
 - S7: source not listed in ChatGPT report (cited as S46) (chatgpt run)
+- S8: Lean LLM-written code and tests: what the evidence supports for specy-road, in-repo research reports (two runs), 2026-10-27, no measured code-shape or test data for this family, research (lean-code reports)

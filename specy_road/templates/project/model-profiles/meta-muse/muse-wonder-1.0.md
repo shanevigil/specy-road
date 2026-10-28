@@ -31,8 +31,11 @@ role_fit:
 - Artificial Analysis Intelligence Index v4.3 score 52 at max effort (Wonder Full 56) [S4] (confidence: medium)\[9\]
 ## Failure modes
 - unknown: no failure mode met the inclusion bar
+## Code and test tendencies
+- No measured code-shape or test data for this family in either lean-code report (2026-10-27); the generic lean rules apply unmodified (researched 2026-10-27 from the lean-code reports, not human-verified) [S6]
 ## Prompting rules
 - unknown: no vendor prompting guide was read
+- No family-specific lean rule exists: keep the project's `## Lean changes and tests` block and require the `## Added` inventory in the summary [S6]
 ## Change from previous version
 - improved: AA index 52 vs 48 for Muse Spark 1.3 [S4]
 - regressed: price $4/$20 vs $1.25/$4.25 for Spark 1.3 [S2]
@@ -45,3 +48,4 @@ role_fit:
 - S3: Meta Launches Muse Wonder and Muse Wonder Full, MarkTechPost, 2026-10-13, https://www.marktechpost.com/2026/10/13/meta-muse-wonder-muse-wonder-full-release/, independent (claude run)
 - S4: Meta launches Muse Wonder and Wonder Full for AI agents, TestingCatalog, 2026-10, https://www.testingcatalog.com/meta-launches-muse-wonder-and-wonder-full-for-ai-agents/, community (claude run)
 - S5: Which AI is best right now? Daily AI Leaderboard, collectivebrain, 2026-10-23, https://collectivebrain.de/en/ai-leaderboard/, independent (claude run)
+- S6: Lean LLM-written code and tests: what the evidence supports for specy-road, in-repo research reports (two runs), 2026-10-27, no measured code-shape or test data for this family, research (lean-code reports)

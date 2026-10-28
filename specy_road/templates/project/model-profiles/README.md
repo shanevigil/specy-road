@@ -41,6 +41,10 @@ How the profiles were merged:
   the lower run's score unless the other run had clearly stronger evidence, and
   its reason shows both, e.g. `(claude 4, chatgpt 5)`.
 - Body sections are the union of both runs.
+- Each profile also carries a `## Code and test tendencies` section — measured or
+  vendor-documented habits in code volume, defensive code and tests, dated
+  2026-10-27 from two lean-code research reports and, like everything else here,
+  not human-verified — and one prompting rule that counters them.
 - Every conflict is listed under the profile's **Open questions** as
   `Watch out — reports differ:` with both values. They are also collected in
   [Watch out for](#watch-out-for-conflicting-reports) below.

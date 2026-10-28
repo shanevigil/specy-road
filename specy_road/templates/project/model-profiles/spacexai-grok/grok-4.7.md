@@ -37,6 +37,8 @@ role_fit:
 - Multi-turn quality and context continuity degrade when encrypted reasoning items are not returned | trigger: stateless Responses clients discard reasoning.encrypted_content | mitigation in prompt: pass encrypted reasoning back unchanged, or use previous_response_id with stored state [S6]
 - Prompt-cache hit rate collapses when earlier messages are edited, removed or reordered | trigger: the orchestrator rewrites history every turn | mitigation in prompt: use a stable prompt_cache_key and append-only history [S6]
 - Long-context requests cost much more | trigger: prompt reaches 200K tokens or more | mitigation in prompt: compact or summarize stable context instead of sending the whole repository history every turn [S10, S7]
+## Code and test tendencies
+- No measured code-shape or test data for this family in either lean-code report (2026-10-27); the generic lean rules apply unmodified (researched 2026-10-27 from the lean-code reports, not human-verified) [S12]
 ## Prompting rules
 - Use the Responses API; xAI's best-practices guide recommends it over Chat Completions, which the Claude run reports as deprecated [S6]
 - Send encrypted reasoning content back unchanged on every turn [S6]
@@ -46,6 +48,7 @@ role_fit:
 - Use temperature 0.7 and top_p 0.95 [S6]
 - Prefer streaming and allow at least 900 seconds per request, longer for long-running evals [S6]
 - Keep prompts under 200K tokens where possible; above that the whole request bills at $4/$12 [S7]
+- No family-specific lean rule exists: keep the project's `## Lean changes and tests` block and require the `## Added` inventory in the summary [S12]
 ## Change from previous version
 - improved: CursorBench 4.0 from about 40.4 percent (Grok 4.6 High) to 46.3 percent (Grok 4.7 xhigh) [S9]
 - improved: Terminal-Bench 4.0 from 20.3 percent to 38.0 percent in the published comparison [S10]
@@ -73,3 +76,4 @@ role_fit:
 - S9: CursorBench 4.0, Cursor, accessed 2026-10-20, https://cursor.com/cursorbench, independent (chatgpt run)
 - S10: xAI Release Notes / Grok 4.7 release, xAI/SpaceXAI, 2026-09-21, https://docs.x.ai/developers/release-notes, primary (chatgpt run)
 - S11: xAI API privacy/data-handling documentation, xAI, accessed 2026-10-20, https://docs.x.ai/, primary (chatgpt run)
+- S12: Lean LLM-written code and tests: what the evidence supports for specy-road, in-repo research reports (two runs), 2026-10-27, no measured code-shape or test data for this family, research (lean-code reports)
