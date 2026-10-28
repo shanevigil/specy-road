@@ -81,6 +81,15 @@ def test_a_repo_without_a_stub_pack_still_gets_the_managed_blocks(tmp_path: Path
     assert refresh_stubs(tmp_path) == ([], [])
 
 
+def test_a_manifest_without_packs_reports_no_stub_skew(tmp_path: Path) -> None:
+    """0.2.x `init project` recorded its version with no pack; validate nagged for refresh-stubs forever."""
+    manifest = tmp_path / ".specyrd" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(json.dumps({"specyrd_version": OLD_VERSION, "project_root": "."}), encoding="utf-8")
+
+    assert stubs_are_stale(tmp_path) is None
+
+
 def test_a_repo_without_a_stub_pack_uses_the_given_project_root(tmp_path: Path) -> None:
     """No manifest records the nested root, so the caller's project root places AGENTS.md."""
     (tmp_path / "sr").mkdir()

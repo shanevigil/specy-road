@@ -18,6 +18,9 @@ body. Keep section bodies focused; link to PRs for detail.
   telling the operator to run it. It now re-applies the managed blocks in
   `AGENTS.md`, `.gitignore` and `.cursorindexingignore`, says no pack is
   installed, and still creates no manifest.
+- `validate` no longer warns that IDE stubs lag the installed version in a
+  repo that has no stub pack (0.2.x `init project` recorded a version with
+  no pack, so the warning could never clear).
 - `validate`'s missing-`AGENTS.md`-section warning no longer offers
   `init project --force`, which overwrites the roadmap scaffold.
 - `.specyrd/cache/` ignores itself (a `.gitignore` of `*` inside it), so the

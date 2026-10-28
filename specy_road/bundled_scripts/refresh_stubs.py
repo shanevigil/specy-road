@@ -245,7 +245,12 @@ def stubs_are_stale(start: Path) -> str | None:
     checkout = git_root(start) or start
     if not (checkout / MANIFEST_REL).is_file():
         return None
-    recorded = str(_load_manifest(checkout).get("specyrd_version") or "")
+    manifest = _load_manifest(checkout)
+    if not manifest.get("agents"):
+        # `init project` records project_root (and the version) with no pack:
+        # no stubs, so no skew, and refresh-stubs has no version to bump.
+        return None
+    recorded = str(manifest.get("specyrd_version") or "")
     return recorded if recorded and recorded != __version__ else None
 
 
