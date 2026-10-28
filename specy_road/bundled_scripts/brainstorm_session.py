@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import re
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,8 @@ from specy_road.bundled_scripts.brainstorm_fields import (
     parse_extra,
 )
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
+from specy_road.history_cache import CACHE_DIR
+from specy_road.worker_lock import _lock_file
 
 SESSION_VERSION = 2
 #: v1 files (no rounds, URL-only evidence) read as-is and are written back as v2.
@@ -370,3 +373,22 @@ def set_status(session: BrainstormSession, idea_id: str, status: str) -> Idea:
         )
     idea.status = status
     return idea
+
+
+@contextmanager
+def session_lock(root: Path):
+    """The repo's brainstorm lock: hold it around every load-mutate-write of a session.
+
+    Panel shards run ``add-idea`` in parallel, and the PM GUI writes the same
+    files; without one lock around load, ``B<n>`` allocation and write, two take
+    the same id and the last writer drops the other's idea. The lock file lives
+    in the ignored ``.specyrd/cache/`` so it never shows up as an untracked file.
+    """
+    lock = root / CACHE_DIR / "brainstorm.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with lock.open("a+") as f:
+        unlock = _lock_file(f)
+        try:
+            yield
+        finally:
+            unlock()

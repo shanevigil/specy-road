@@ -7,6 +7,7 @@ put it past the per-function line cap.
 
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     add_idea,
     list_slugs,
     read_session,
+    session_lock,
     session_path,
     set_status,
     slugify,
@@ -76,6 +78,15 @@ def _saved(root: Path, session: BrainstormSession) -> dict[str, Any]:
     return _payload(session)
 
 
+def _locked(route):
+    """Hold the brainstorm lock for the whole route: its load, change and write are one step."""
+    @functools.wraps(route)
+    def run(*args, **kwargs):
+        with session_lock(get_repo_root()):
+            return route(*args, **kwargs)
+    return run
+
+
 def _bad_request(e: BrainstormError) -> HTTPException:
     return HTTPException(status_code=400, detail=str(e))
 
@@ -88,6 +99,7 @@ def _api_session_get(slug: str = Query(...)) -> dict[str, Any]:
     return _payload(_load(get_repo_root(), slug))
 
 
+@_locked
 def _api_session_post(body: BrainstormSessionBody) -> dict[str, Any]:
     root = get_repo_root()
     slug = (body.slug or "").strip() or slugify(body.topic or "")
@@ -151,6 +163,14 @@ def _record_ideas(
     """
     if not ideas:
         return _payload(session)
+    with session_lock(root):
+        # Reloaded under the lock: the chat turn ran without it, and panel shards
+        # or another tab may have added ideas in the meantime.
+        session = _load(root, session.slug)
+        return _add_ideas_and_save(root, session, ideas)
+
+
+def _add_ideas_and_save(root: Path, session: BrainstormSession, ideas: list[dict[str, Any]]) -> dict[str, Any]:
     for idea in ideas:
         try:
             add_idea(
@@ -166,6 +186,7 @@ def _record_ideas(
     return _saved(root, session)
 
 
+@_locked
 def _api_idea(body: BrainstormIdeaBody) -> dict[str, Any]:
     root = get_repo_root()
     session = _load(root, body.slug)
@@ -213,6 +234,7 @@ def _apply_triage(session: BrainstormSession, body: BrainstormTriageBody) -> Non
         idea.status = "revised"
 
 
+@_locked
 def _api_triage(body: BrainstormTriageBody) -> dict[str, Any]:
     root = get_repo_root()
     session = _load(root, body.slug)
@@ -223,6 +245,7 @@ def _api_triage(body: BrainstormTriageBody) -> dict[str, Any]:
     return _saved(root, session)
 
 
+@_locked
 def _api_promote(body: BrainstormPromoteBody) -> dict[str, Any]:
     root = get_repo_root()
     session = _load(root, body.slug)

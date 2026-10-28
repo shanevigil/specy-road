@@ -9,12 +9,14 @@ degrades rather than failing when research is unconfigured.
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, script_subprocess_env
 from tests.test_brainstorm_chat import REPLY_WITH_IDEAS
 
 RESEARCH_ON = {
@@ -340,3 +342,23 @@ def test_converging_does_not_quietly_add_ideas(
     assert r.json()["session"]["ideas"] == []
 
 
+
+
+def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
+    api_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pre-release review: the chat route saved the session it loaded before the LLM call, dropping a shard's idea."""
+    import specy_road.bundled_scripts.brainstorm_chat as mod
+
+    slug = _session(api_client)["slug"]
+
+    def reply(*_a, **_k) -> str:
+        subprocess.run([sys.executable, "-m", "specy_road.cli", "brainstorm", "add-idea", "--slug", slug,
+                        "--title", "From a panel shard"], env=script_subprocess_env(), check=True, capture_output=True)
+        return "IDEA: From the chat"
+
+    monkeypatch.setattr(mod, "complete_chat", reply)
+    r = api_client.post("/api/brainstorm/chat", json={"slug": slug, "messages": [{"role": "user", "content": "go"}],
+                                                      "llm": {}}, headers=_headers(api_client))
+    assert r.status_code == 200, r.text
+    assert sorted(i["title"] for i in r.json()["session"]["ideas"]) == ["From a panel shard", "From the chat"]
