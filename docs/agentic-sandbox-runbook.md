@@ -20,8 +20,8 @@
 
 **Read further for:**
 - CLIs, apps and the evidence file → "0. Prerequisites"
-- `specyrd init` skills on each harness → "1. Scaffold and skills (every harness)"
-- the gate, stale reviews and signed records → "2. Review gate and signed reviews"
+- `specyrd init` skills on each harness, upgrading from 0.2.3 → "1. Scaffold and skills (every harness)"
+- the gate, stale reviews, signed records, lean prompts and reviewer restraint → "2. Review gate and signed reviews"
 - `session guard` hooks → "3. Presence and the tool-call guard"
 - roster, prompts and sensitivity → "4. Models, prompts, plan"
 - delegate, handoff, hook and process-tree faults → "5. Workers (the 0.3.1 headline)"
@@ -80,6 +80,17 @@ In the Notes app:
    line from it), not a lookalike community skill.
 4. Edit a stub, run `specy-road refresh-stubs`: only managed files change;
    a pre-0.3 `.claude/commands/*.md` is named for removal, not deleted.
+5. **Upgrade from the last release.** In a scratch repo, scaffold with
+   `specy-road==0.2.3` from PyPI in its own venv (`init project`, `specyrd
+   init --ai claude-code`), commit, then switch to the candidate venv:
+   `refresh-stubs` gives a managed `AGENTS.md` block with a `## Lean changes
+   and tests` section and leaves every line outside the markers unchanged;
+   `refresh-schemas` and `refresh-profiles` add what is missing;
+   `refresh-profiles --force <path>` brings a profile's `## Code and test
+   tendencies`; with the CHANGELOG's `.gitignore` lines added, `validate`
+   exits 0.
+6. `add-node` two phases with titles: `manifest.json` `includes` lists them in
+   creation order, and each planning sheet is named from its title.
 
 ## 2. Review gate and signed reviews
 
@@ -109,9 +120,24 @@ has no host to open that PR on.
 7. Policy from the branch under review must not count: lower
    `reviewers_required` on the feature branch only; the gate still reads the
    integration branch's file.
+8. **Lean prompts on real models.** `prompt <ID> --role executor` asks for an
+   `## Added` inventory and `--role reviewer` carries the excess checklist.
+   For each harness's executor (here and in §5), record whether its
+   implementation summary ends with `## Added` listing each helper, guard,
+   mock and test with a reason. Delete that section from one summary:
+   `review-packet` prints a one-line note and still writes the packet.
+9. **Reviewer restraint.** Make the leaf's change include one boundary check
+   with a reachable trigger and a test (for example, reject an empty title
+   from the CLI) and one guard with no reachable trigger. Review it in a
+   fresh session of each other family.
 
-Pass: steps 4–7 behave exactly as stated; `finish-this-task` lands with the
-registry row removed.
+Pass: steps 4–7 and the prompt and packet checks in 8 behave exactly as
+stated, and in 9 no reviewer recommends removing the boundary check, and
+every excess finding cites a caller trace or the covering test;
+`finish-this-task` lands with the registry row removed. Record per model
+whether the `## Added` inventory was written and whether the unreachable
+guard was flagged: a miss is PASS-WITH-NOTE, evidence on whether the lean
+rules change model behaviour, not a FAIL.
 
 ## 3. Presence and the tool-call guard
 
@@ -145,20 +171,27 @@ registry row removed.
 3. A leaf with `sensitivity: restricted` and a roster entry whose
    `may_process` lacks it: `prompt` refuses; `orchestrate plan` names only
    eligible models and exits 1 when none qualifies.
+4. `models show <id>` prints the profile's dated `## Code and test
+   tendencies`, and `prompt --role executor --model <id>` carries that
+   family's counter-rule.
 
 ## 5. Workers (the 0.3.1 headline)
 
 Roster three entries with `harness: claude-code`, `codex`, `cursor`,
-executor role, `max_workers: 2`. Claim two leaves. From the coordinator chat
-(any harness):
+executor role, each with `profile:` pointing at its scaffolded profile as
+the roster guide recommends, `max_workers: 2`. Claim two leaves. From the
+coordinator chat (any harness):
 
 1. **Delegate returns first.** `worker delegate <ID1> --model <claude id>`
    prints a worker id in under two seconds; the chat stays usable; `worker
    list` shows `running` with a pid; `worker sync` later shows
    `started`, `output`, `turn_completed` and a `completion` event; the
    record's `provider_session_id` equals the session id in `<id>.log`.
-   Repeat on `codex` and `cursor`. Record which plan or key each drew on as
-   `billing_route`.
+   `ps -ww -o command= -p <harness pid>` shows the harness's default command
+   (JSON output, the profile's `api_id` as the model), not the profile's
+   `access.cli`. Repeat on `codex` and `cursor`; a profile whose `api_id` is
+   `unknown` needs `channels.cli` (PASS-WITH-NOTE). Record which plan or key
+   each drew on as `billing_route`.
 2. **Permission stop.** With the default command, note whether the Claude
    worker stops at a shell permission (`acceptEdits`). If it does, set
    `channels.cli` on the roster entry and delegate again. Pass: the worker
