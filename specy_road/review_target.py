@@ -24,6 +24,7 @@ from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.runtime_paths import project_prefix
 
 REGISTRY_REL = "roadmap/registry.yaml"
 
@@ -116,12 +117,15 @@ def reviewed_commit(repo_root: Path, ref: str, base: str | None) -> str | None:
     tip = full_sha(repo_root, ref)
     if not tip:
         return None
+    # git names changed paths from the repository root; the registry sits
+    # under the project prefix in the nested layout.
+    registry = project_prefix(repo_root) + REGISTRY_REL
     span = [f"{base}..{tip}"] if base else ["-n", "20", tip]
     shas = (git_text(["log", "--first-parent", "--format=%H", *span], repo_root) or "").split()
     for sha in shas:
         # Any merge is new work, even one whose tree equals its first parent:
         # `git merge -s ours` changes nothing here yet decides what lands.
-        if full_sha(repo_root, f"{sha}^2") or _changed_by(repo_root, sha) not in ([], [REGISTRY_REL]):
+        if full_sha(repo_root, f"{sha}^2") or _changed_by(repo_root, sha) not in ([], [registry]):
             return sha
     return tip
 
