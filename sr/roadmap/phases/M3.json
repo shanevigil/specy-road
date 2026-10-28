@@ -122,7 +122,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.4_brainstorm-prompt-fixes_07daa56a-7dff-4444-9b72-f2bf7cde7451.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_prompt.py",
