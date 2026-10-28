@@ -37,6 +37,8 @@ section before copying a CLI line into production.
   profile's prompting rules and failure-mode mitigations, repeats the touch
   zones at the end for models that drift from scope, then embeds the brief
   (executor, coordinator) or the review packet (reviewer, which must exist).
+  The executor is told to end its summary with an `## Added` inventory and the
+  reviewer gets the excess checklist ([orchestration.md](orchestration.md#packetmd--what-a-reviewer-reads)).
   `--channel cli` runs the profile's `access.cli` (or the roster entry's
   `channels.cli`) after substituting one placeholder: `{prompt}` becomes the
   quoted **path** of the prompt file, `<prompt>` (the shipped profiles' form)

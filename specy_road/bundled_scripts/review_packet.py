@@ -18,6 +18,7 @@ describes is printed at the top; a review record must name that commit.
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -44,6 +45,11 @@ ASSERTED = "_Asserted by the executor at the reviewed commit; a claim to check, 
 ASSERTED_WORKING_TREE = ("_Asserted by the executor; read from the working tree, **not committed at the "
                          "reviewed commit**. A claim to check, not evidence._")
 SUMMARY_MISSING = "_Not provided: no summary at the reviewed commit or in the working tree._"
+# The executor prompt asks the summary to end with an `## Added` inventory (helpers, guards,
+# mocks, tests, each with a reason). Its absence is noted, never fatal.
+NO_INVENTORY = ("_No `Added` inventory in the summary: helpers, guards, mocks and tests added are not "
+                "listed; inventory the diff's additions yourself._")
+_INVENTORY = re.compile(r"(?im)^(?:#+\s*added\b|\*\*added\b|added:)")
 RENDERED = "_Rendered from the roadmap at the working tree._"
 
 
@@ -92,11 +98,13 @@ def _summary(root: Path, t: ReviewTarget) -> list[str]:
     rel = f"work/implementation-summary-{t.node_id}.md"
     out = ["## Implementation summary", ""]
     text = git_stdout(["show", f"{t.commit}:{rel}"], root) if t.commit else None
-    if text is not None:
-        return out + [ASSERTED, "", text.rstrip(), ""]
-    if (root / rel).is_file():
-        return out + [ASSERTED_WORKING_TREE, "", (root / rel).read_text(encoding="utf-8").rstrip(), ""]
-    return out + [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""]
+    label = ASSERTED
+    if text is None and (root / rel).is_file():
+        text, label = (root / rel).read_text(encoding="utf-8"), ASSERTED_WORKING_TREE
+    if text is None:
+        return out + [SUMMARY_MISSING, "", f"_(missing: `{rel}`)_", ""]
+    note = [] if _INVENTORY.search(text) else [NO_INVENTORY, ""]
+    return out + [label, "", text.rstrip(), ""] + note
 
 
 def _changed(root: Path, t: ReviewTarget) -> tuple[list[str], list[str]]:
