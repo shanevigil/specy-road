@@ -4,18 +4,22 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.finish_land_integration import integration_worktree
 from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
     remove_on_complete_session,
 )
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
 from specy_road.bundled_scripts.repo_ops import current_branch, git_capture, git_run
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
@@ -56,10 +60,16 @@ def _dirty_entries(ignore_untracked: set[str]) -> list[str]:
         if not line.strip():
             continue
         status, _, path = line[:2], line[2], line[3:]
-        if status == "??" and path in ignore_untracked:
+        # Another leaf's untracked toolkit bookkeeping survives the checkout and is not
+        # this abort's business (§5 re-check F-R3); anything else untracked still blocks.
+        if status == "??" and (path in ignore_untracked or _OTHER_BOOKKEEPING.match(path)):
             continue
         blocking.append(line)
     return blocking
+
+
+_OTHER_BOOKKEEPING = re.compile(
+    r"work/((brief|implementation-summary)-[^/]+\.md|prompt-[^/]+\.md|(reviews|\.workers|\.sessions|\.worktrees)/)")
 
 
 def _assert_working_tree_clean(ignore_untracked: set[str] | None = None) -> None:
@@ -233,6 +243,52 @@ def _exit_if_unpushed_commits_without_force(
     raise SystemExit(1)
 
 
+def _registers_only(commit: str, codename: str) -> bool:
+    """True when ``commit``'s registry is its parent's plus this claim's row, nothing else.
+
+    Compared parsed: pickup rewrites the file, dropping comments and restyling.
+    """
+    empty = {"version": 1, "entries": []}
+    after = read_registry_at_ref(ROOT, commit, 30.0) or empty
+    before = read_registry_at_ref(ROOT, f"{commit}^", 30.0) or empty
+    entries = after.get("entries") or []
+    rest = [e for e in entries if not (isinstance(e, dict) and e.get("codename") == codename)]
+    return len(entries) - len(rest) == 1 and (
+        {**after, "entries": rest} == {**before, "entries": before.get("entries") or []}
+    )
+
+
+def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str) -> bool:
+    """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's registration.
+
+    That is a ``--local`` pickup: the claim never reached the remote, so there is
+    nothing to deregister there. The commit must carry the registration subject,
+    change only the registry, and change it only by adding this claim's row, as
+    pickup's commit does, so abort never resets away a commit amended to carry
+    other work.
+    """
+    ahead = git_capture(ROOT, "rev-list", f"{remote}/{base}..{ref}").split()
+    if len(ahead) != 1:
+        return False
+    subject = git_capture(ROOT, "log", "-1", "--format=%s", ahead[0])
+    paths = git_capture(ROOT, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]).splitlines()
+    own = registration_commit_message(codename, include_ci_skip=False)
+    return (
+        subject.startswith(own)
+        and paths == [registry_path(ROOT).relative_to(ROOT).as_posix()]
+        and _registers_only(ahead[0], codename)
+    )
+
+
+def _drop_local_registration(remote: str, base: str) -> None:
+    git_run(ROOT, "checkout", base)
+    git_run(ROOT, "reset", "--hard", f"{remote}/{base}")
+    print(
+        f"[ok] the claim was never pushed (--local pickup): dropped its registration "
+        f"commit from local {base}; nothing pushed"
+    )
+
+
 def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None:
     reg = read_registry(registry_path(ROOT))
     entries = reg.get("entries") or []
@@ -254,6 +310,18 @@ def _remove_registry_row_and_push(remote: str, base: str, codename: str) -> None
     git_run(ROOT, "commit", "-m", f"chore(rm-{codename}): abort task pickup")
     print(f"-> git push {remote} {base}")
     git_run(ROOT, "push", remote, base)
+
+
+def _exit_if_base_checked_out_elsewhere(base: str, branch: str) -> None:
+    """Abort moves this checkout to ``base``; git refuses while another worktree holds it."""
+    holder = integration_worktree(ROOT, base)
+    if holder is None:
+        return
+    print(f"error: '{base}' is checked out in {holder}, and abort-task-pickup needs it here.", file=sys.stderr)
+    print("  For a delegated leaf: `specy-road worker terminate <W>`; then, in that checkout:", file=sys.stderr)
+    print(f"  `git worktree remove {ROOT}`, `git checkout {branch}`, and `specy-road abort-task-pickup`.",
+          file=sys.stderr)
+    raise SystemExit(1)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -280,15 +348,21 @@ def main(argv: list[str] | None = None) -> None:
     )
     node_id = entry["node_id"]
     _assert_working_tree_clean(_pickup_artifact_rel_paths(node_id))
+    _exit_if_base_checked_out_elsewhere(base, branch)
 
     git_run(ROOT, "fetch", remote)
-    ahead = _count_commits_ahead_of_remote_base(remote, base)
-    _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
+    local_claim = all(
+        _only_own_registration_ahead(remote, base, codename, ref) for ref in ("HEAD", base)
+    )
+    if local_claim:
+        _drop_local_registration(remote, base)
+    else:
+        ahead = _count_commits_ahead_of_remote_base(remote, base)
+        _exit_if_unpushed_commits_without_force(remote, base, ahead, args.force)
+        _sync_integration_branch_ff(remote, base)
+        _remove_registry_row_and_push(remote, base, codename)
 
-    _sync_integration_branch_ff(remote, base)
-    _remove_registry_row_and_push(remote, base, codename)
-
-    _delete_feature_branch(branch, force=args.force)
+    _delete_feature_branch(branch, force=args.force or local_claim)
     _remove_pickup_work_files(node_id, force=args.force)
 
     print(f"\n[ok] pickup aborted; on branch {current_branch(ROOT)}")

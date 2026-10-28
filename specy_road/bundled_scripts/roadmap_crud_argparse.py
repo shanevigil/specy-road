@@ -74,8 +74,8 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         "--codename",
         default=None,
         help=(
-            "Kebab-case codename. Optional: if omitted for a task, validate "
-            "auto-derives one from --title (collisions get a short suffix)."
+            "Kebab-case codename. Optional: if omitted, it is derived from "
+            "--title for every new node (collisions get a short suffix)."
         ),
     )
     sp.add_argument("--status", default="Not Started")
@@ -92,6 +92,15 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
     )
     sp.add_argument("--touch-zone", action="append", default=[])
     sp.add_argument("--dependency", action="append", default=[])
+    sp.add_argument("--sensitivity", default=None, help="Data-sensitivity class (default public); see roadmap/orchestration.yaml may_process")
+    sp.add_argument("--executor-eligibility", dest="executor_eligibility", default=None, help="any (default) or a roster class tag such as senior")
+    sp.add_argument(
+        "--sibling-order",
+        dest="sibling_order",
+        type=int,
+        default=None,
+        help="Position among siblings (default: after the current last sibling).",
+    )
     sp.set_defaults(func=cmd_add)
 
 

@@ -878,6 +878,7 @@ export default function App() {
       Boolean(gitCheckoutById[selectedId]),
       base,
       outline,
+      byId[selectedId]?.type,
     );
   }, [
     selectedId,
@@ -1702,6 +1703,7 @@ export default function App() {
                 Boolean(gitCheckoutById[nodeId]),
                 emBaseStatus,
                 emOutlineStatus,
+                emNode.type,
               );
               const passThrough = editStackVisibleIds.length > 1;
               return (

@@ -19,7 +19,7 @@ from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive, plan_summary
 from specy_road.archive_restore import restore_archive
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
+from specy_road.generated_files import regenerate_generated_files
 
 DEFAULT_AUTO_DAYS = 90
 
@@ -41,7 +41,7 @@ def cmd_archive(ns: argparse.Namespace) -> int:
         print("\n(dry run — nothing written)")
         return 0
     rec = archive_node(root, ns.node_id, force=ns.force)
-    reexport_roadmap_md(root)
+    regenerate_generated_files(root)
     print(
         f"[ok] archived {rec['root_node_id']} "
         f"({len(rec['node_keys'])} node(s)) as {rec['archive_id']}"
@@ -82,7 +82,7 @@ def _cmd_archive_auto(root: Path, ns: argparse.Namespace) -> int:
         rec = archive_node(root, node_id)
         print(f"[ok] archived {node_id} as {rec['archive_id']} (complete since {done})")
     if not ns.dry_run:
-        reexport_roadmap_md(root)
+        regenerate_generated_files(root)
     elif candidates:
         print("\n(dry run — nothing written)")
     return 0
@@ -157,7 +157,7 @@ def cmd_restore(ns: argparse.Namespace) -> int:
         print("\n(dry run — nothing written)")
         return 0
     out = restore_archive(root, ns.archive_id)
-    reexport_roadmap_md(root)
+    regenerate_generated_files(root)
     print(
         f"[ok] restored {out['archive_id']}: {out['nodes']} node(s) -> "
         + ", ".join(out["chunks"])

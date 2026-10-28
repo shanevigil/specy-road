@@ -14,6 +14,10 @@ from specy_road.bundled_scripts.brainstorm_promote import (
     DEFAULT_PROMOTE_TYPE,
     PROMOTABLE_TYPES,
 )
+from specy_road.bundled_scripts.brainstorm_cli_args_v2 import (
+    add_start_v2_options,
+    add_v2_subcommands,
+)
 from specy_road.bundled_scripts.brainstorm_session import (
     IDEA_KINDS,
     IDEA_STATUSES,
@@ -23,8 +27,9 @@ from specy_road.runtime_paths import add_repo_root_arg
 
 _DESCRIPTION = (
     "Brainstorm roadmap ideas with an agent, then promote the ones you keep. "
-    "Two modes: `start` diverges (quantity, Socratic questioning, research) "
-    "and `recommend` converges (clustering and ranking). Both write a prompt "
+    "Two modes: `start` diverges (Socratic questioning, then quantity; no "
+    "research in round 1, `next-round` opens it) and `recommend` converges "
+    "(clustering and ranking). Both write a prompt "
     "under work/ for your agent to run; ideas land in "
     "work/brainstorm-<slug>.yaml, which is tracked."
 )
@@ -65,6 +70,7 @@ def _add_start(sub) -> None:
         help="Minimum ideas to ask for (default: 20). Raise it to push the "
         "agent past its first, safest set.",
     )
+    add_start_v2_options(p)
     _add_slug(p)
 
 
@@ -91,6 +97,12 @@ def _add_add_idea(sub) -> None:
         metavar="URL",
         help="Source that produced the idea. Repeatable.",
     )
+    p.add_argument("--origin", default=None, metavar="H/M/LENS/ROUND[/SHARD]",
+                   help="Where the idea came from: harness/model/lens/round[/shard].")
+    p.add_argument("--hypothesis", default=None, metavar="TEXT",
+                   help="If we do this, <metric> moves because <reason>.")
+    p.add_argument("--assumption", action="append", default=None, metavar="TEXT",
+                   help="Something that must be true for the idea to matter. Repeatable.")
     _add_slug(p)
 
 
@@ -103,6 +115,11 @@ def _add_list(sub) -> None:
         help="Show only ideas in this state.",
     )
     p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    p.add_argument("--by", default=None, choices=("cluster",),
+                   help="Group the listing (cluster-first triage).")
+    p.add_argument("--show-verdicts", action="store_true",
+                   help="Show the agent's recommendation column (hidden by default so it "
+                        "does not steer the triage).")
     _add_slug(p)
 
     s = sub.add_parser("sessions", help="list every open brainstorm session")
@@ -113,6 +130,8 @@ def _add_triage(sub) -> None:
     for name, verb in (("accept", "keep"), ("reject", "discard")):
         p = sub.add_parser(name, help=f"{verb} one or more ideas")
         p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
+        p.add_argument("--reason", default=None, metavar="TEXT",
+                       help="Why (required for reject; recorded as the decision).")
         _add_slug(p)
 
     p = sub.add_parser("revise", help="edit an idea, or record a recommendation")
@@ -128,6 +147,14 @@ def _add_triage(sub) -> None:
         help="The agent's verdict. Passing only this leaves the idea's "
         "triage status alone, so accept/reject stays the PM's call.",
     )
+    p.add_argument("--why", default=None, metavar="TEXT",
+                   help="The verdict's reasoning (cite a constitution clause, a source, or an overlap). "
+                        "Unlike --rationale it does not edit the idea or mark it revised.")
+    p.add_argument("--cluster", default=None, metavar="CID", help="Cluster id from the converge pass.")
+    p.add_argument("--overlap", action="append", default=None, metavar="NODE_ID:RELATION",
+                   help="Existing node this overlaps and how (repeatable).")
+    p.add_argument("--critic", action="append", default=None, metavar="ROLE: TEXT",
+                   help="A critic's strongest objection, e.g. 'feasibility: ...' (repeatable).")
     _add_slug(p)
 
 
@@ -168,6 +195,7 @@ def build_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:
     _add_list(sub)
     _add_triage(sub)
     _add_converge(sub)
+    add_v2_subcommands(sub)
     for name, fn in handlers.items():
         sub.choices[name].set_defaults(func=fn)
     return p

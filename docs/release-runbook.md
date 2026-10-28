@@ -1,26 +1,37 @@
 # Release runbook (canonical)
 
+## Agent quickstart
+
+**Use this doc when:** the user asks to publish a specy-road RC or final release, or a release workflow failed and you need the recovery step.
+**Not for:** day-to-day branching and PR conventions ([`contributor-guide.md`](contributor-guide.md)) or installing an RC as a consumer ([`install-and-usage.md`](install-and-usage.md#install-a-release-candidate-testpypi)).
+
+**Must know without reading on:**
+- The user chooses the version (step 2.2); never bump, tag or name a release branch without the exact number in this conversation.
+- Two flows: RC `vX.Y.Z-rcN` → TestPyPI, final `vX.Y.Z` → PyPI; `pyproject.toml` must read `X.Y.ZrcN` / `X.Y.Z` (PEP 440, no dash) and match the tag — `python scripts/check_release_version.py vX.Y.Z[-rcN]` must print `ok:`.
+- Branch `chore/release-vX-Y-Z[-rcN]`, PR to `main` titled `release: vX.Y.Z[-rcN]` (leading `v` mandatory), CHANGELOG heading `## [vX.Y.Z[-rcN]] - YYYY-MM-DD`.
+- Every release also writes or updates the `## specy-road X.Y.Z` section of `docs/whats-new.md` and points the README's **What's new** line at it (step 2.5a, "A.2 Author the release commit").
+- The user owns the tag re-push when `RELEASE_TAG_TOKEN` is unset (footgun ④), the `pypi` environment approval on finals (footgun ⑨), and the live-on-index confirmation; the agent prints the commands and waits.
+- Back-merge `main → dev` is mandatory for finals.
+
+**Read further for:**
+- RC or final, and the verbatim strings CI checks → "0. Decision tree (1 minute)", "1. Quick-reference command catalogue"
+- who does which step → "2. Agent vs human matrix"
+- the pre-release checks branch, harness review pass, three-app testing → "3. Mandatory pre-release checks branch (before `chore/release-*`)"
+- step by step → "A. RC release to TestPyPI", "B. Final release to PyPI"
+- a failed job, and the README cleanup after a final → "6. Recovery" (If something goes wrong), "7. After the release: README cleanup (final only)"
+- the local gate commands and what else to keep in sync → "8. Pre-release verification gate (always run, locally and in CI)", "9. Where this runbook lives in the docs graph"
+
+**Related:** [`contributor-guide.md`](contributor-guide.md), [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md), [`install-and-usage.md`](install-and-usage.md), [`../AGENTS.md`](../AGENTS.md).
+
 > **Audience:** maintainers and the autonomous coding agent. This is the
 > single source of truth for cutting any `specy-road` release. The
 > [contributor guide](contributor-guide.md) defers here for release
 > mechanics; the AI rules under [`.cursor/rules/`](../.cursor/rules/)
 > cite this doc.
 
-This file describes the **two release flows** end-to-end:
-
-- **A. RC (release candidate) → TestPyPI.** Tag form `vX.Y.Z-rcN`,
-  routed by [`release-publish.yml`](../.github/workflows/release-publish.yml)
-  to **TestPyPI**.
-- **B. Final release → PyPI.** Tag form `vX.Y.Z` (no suffix), routed
-  to **PyPI**.
-
 Both flows share the same step shape; the differences are pulled out
-explicitly in each section.
-
-The "what blew up last time" footguns are baked in as inline
-**recovery callouts**, so the next operator does not re-discover them.
-
----
+explicitly in each section. The "what blew up last time" footguns are baked
+in as inline **recovery callouts**, so the next operator does not re-discover them.
 
 ## 0. Decision tree (1 minute)
 
@@ -39,8 +50,6 @@ TestPyPI vs PyPI from `vX.Y.Z-…` vs `vX.Y.Z`. **The version inside
 `pyproject.toml` MUST match the tag** (the `check_release_version.py`
 gate refuses the publish otherwise — this is a feature; do not
 weaken it).
-
----
 
 ## 1. Quick-reference command catalogue
 
@@ -69,8 +78,6 @@ The branch-name pattern `chore/...` is also load-bearing: it
 satisfies the **[issue-link exemption](../.github/workflows/pr-conventions.yml)**
 in `pr-conventions.yml`, so the release PR does not need a `Refs #N`
 line in the body.
-
----
 
 ## 2. Agent vs human matrix
 
@@ -104,6 +111,7 @@ not a mechanical gate.
 | 2.3 | Cut `chore/release-vX-Y-Z[-rcN]` branch | agent | naming is load-bearing. |
 | 2.4 | Bump `pyproject.toml` `project.version` to PEP 440 form | agent | exact format matters. |
 | 2.5 | Add `## [vX.Y.Z[-rcN]] - YYYY-MM-DD` to `CHANGELOG.md` | agent | uses today's UTC date. |
+| 2.5a | Write or update `## specy-road X.Y.Z` in `docs/whats-new.md`; point the README's **What's new** line at it | agent drafts, **user** approves the wording | the curated, user-facing page; the CHANGELOG stays the full record. See "What's new" in A.2. |
 | 2.6 | Run `python scripts/check_release_version.py vX.Y.Z[-rcN]` locally | agent | must print `ok:`. |
 | 2.7 | Run gate suite (validate, export --check, file-limits, pytest, gui-pm-gantt build, pip-audit, npm audit) | agent | identical to CI. |
 | 2.8 | Commit, push branch, open PR to `main` titled `release: vX.Y.Z[-rcN]` | agent | uses `ManagePullRequest` or `gh`. |
@@ -119,13 +127,15 @@ not a mechanical gate.
 | 2.17 | Cleanup: delete the `chore/release-...` branch + any `cursor/...` session aliases | agent | leave only `main`, `dev`, and active feature branches. |
 | 2.18 | **Confirm the release is live** (final: PyPI page; RC: TestPyPI page) | **user** | the agent reports the URLs and waits for the user's "looks good" before signing off. |
 
----
-
 ## 3. Mandatory pre-release checks branch (before `chore/release-*`)
 
 Before cutting **any** RC or final release branch, prove the current
 candidate line is ready from a user's point of view. This is a
 release-readiness branch, not the release branch.
+
+**0.3 line:** also play out [`agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md)
+(workers, brainstorm v2, signed reviews, skills on real harnesses) and
+attach its evidence file before §3.1.
 
 ### 3.1 Branch order
 
@@ -147,12 +157,11 @@ release-readiness branch, not the release branch.
    git push -u origin WIP/pre-release-checks
    ```
 
-3. **Before creating any fix branches**, run the
-   [`suggested_prompts/`](../suggested_prompts/) cleanup and compliance
-   prompts against the delta from the previous release tag to this
-   candidate branch. The prompt pass is first because it marshals the
-   agent to review what changed since the last release against the
-   repository's documented standards.
+3. **Before creating any fix branches**, run the harness's built-in
+   review, cleanup and security skills (§3.2) against the delta from the
+   previous release tag to this candidate branch. The review pass is
+   first because it marshals the agent to review what changed since the
+   last release against the repository's documented standards.
 
 4. If the prompt pass finds issues, create short-lived branches from
    `WIP/pre-release-checks` (for example
@@ -177,12 +186,14 @@ evidence in the release notes/PR body and delete
 `WIP/pre-release-checks`. Do **not** cut the release branch until this
 branch is green or explicitly closed as no-op.
 
-### 3.2 Prompt-driven cleanup and compliance pass
+### 3.2 Harness-native cleanup and compliance pass
 
-Run the prompts docs-first exactly as instructed in:
-
-- [`suggested_prompts/compliance_prompts.md`](../suggested_prompts/compliance_prompts.md)
-- [`suggested_prompts/cleanup_prompts.md`](../suggested_prompts/cleanup_prompts.md)
+specy-road no longer ships generic review prompts. Use the coding harness's
+built-in review, simplification and security-review skills (see
+[`suggested_prompts/README.md`](../suggested_prompts/README.md)), pointed at
+the repository's documented standards (`constitution/`, `constraints/README.md`,
+`docs/supply-chain-security.md`) and at the delta below. The roadmap-specific
+review contract stays in [`orchestration.md`](orchestration.md).
 
 Use the previous release tag as the baseline:
 
@@ -205,23 +216,22 @@ Baseline rule:
   post-RC changes, then also skim the latest-final-to-HEAD summary so
   the final release notes still cover the whole train.
 
-At minimum, apply these prompt sections to the changed code/docs:
+At minimum, cover these checks on the changed code/docs:
 
-- **Architecture & Vision Compliance**
-- **Scoped Code Review** against the previous release tag
-- **Test Coverage Gap Audit**
-- **Dependency Audit** and **Security Audit** when dependencies,
-  packaging, subprocess behavior, path handling, GUI/API surfaces, or
-  release workflows changed
-- **Pre-Release Gate Check**
-- From cleanup prompts: **File & Function Size Enforcement**,
-  **Documentation Hygiene**, and **Dead Code Cleanup**
+- **Architecture and vision compliance** against `constitution/`
+- **Scoped code review** against the previous release tag
+- **Test coverage gaps**
+- **Dependency and security review** when dependencies, packaging,
+  subprocess behavior, path handling, GUI/API surfaces, or release
+  workflows changed
+- **Pre-release gate check** (the deterministic gates in §8)
+- **File and function size**, **documentation hygiene**, and **dead code**
 
 Every FAIL is a release blocker. A WARNING must either be fixed or
-explicitly accepted in the release notes/PR body with rationale. Use
-the command substitutions documented in the prompt files for this
-toolkit (roadmap validation/export/file-limits, `pytest`, PM Gantt
-lint/test/build when `gui/pm-gantt/` changed, and supply-chain audits).
+explicitly accepted in the release notes/PR body with rationale. The
+toolkit's deterministic gates are roadmap validation/export/file-limits,
+`pytest`, PM Gantt lint/test/build when `gui/pm-gantt/` changed, and the
+supply-chain audits.
 
 ### 3.3 Three-app user-testing harness
 
@@ -293,8 +303,6 @@ selected node IDs, GUI screenshots or recordings when GUI behavior was
 changed, and the final pass/fail result for each app. Remove disposable
 apps after the release unless the user explicitly asks to keep them for
 inspection.
-
----
 
 ## A. RC release to TestPyPI
 
@@ -378,6 +386,32 @@ release-publish.yml. Smoke install:
 
 - ...
 ```
+
+#### What's new
+
+`docs/whats-new.md` is the curated page for adopters deciding whether to
+upgrade; `CHANGELOG.md` stays the exhaustive record (create the file on
+first use with a header saying so). Newest first, one section per
+published version `X.Y.Z`, patches included: its first RC writes it, and
+later RCs and the final update that same section. Write what users can now do, not
+which module changed; leave refactors, test counts and review rounds to
+the CHANGELOG. Each section, in order:
+
+- `## specy-road 0.2.0`: version only, so the anchor `#specy-road-020`
+  holds from first RC to final.
+- A status line: `*Release candidate v0.2.0-rc1, YYYY-MM-DD (TestPyPI).*`,
+  at the final `*Released YYYY-MM-DD.*`; then one paragraph on what the
+  release is about and who should upgrade.
+- `### Highlights`: 3–7 bullets, each a bold phrase, what users can now
+  do, and a link to its doc.
+- One `###` per feature area: why it matters and one command that runs.
+- `### Upgrading from 0.1.x`: breaking changes and removals first, each
+  with its fix, then adopter commands (`refresh-stubs`, …).
+- A closing link to the release's CHANGELOG heading. About 150 lines in all.
+
+The README carries one line under its tagline (add it if missing,
+repoint it each release):
+`**What's new:** [specy-road 0.2.0](docs/whats-new.md#specy-road-020) — <summary>.`
 
 Local pre-flight (mirrors what CI will run):
 
@@ -500,8 +534,6 @@ git merge --no-ff origin/main -m "chore: back-merge main (v0.2.0-rc1 release com
 git push origin dev
 ```
 
----
-
 ## B. Final release to PyPI
 
 Same shape as Section A. Differences:
@@ -546,6 +578,9 @@ last RC and this final.
 
 - ...
 ```
+
+What's new (A.2): set the status line to `*Released YYYY-MM-DD.*`, fold
+in post-RC changes, and point the CHANGELOG link at the final's heading.
 
 Branch + PR:
 
@@ -600,8 +635,6 @@ git push origin dev
 Then delete the `chore/release-v0-2-0` branch and any `cursor/*`
 session aliases. The remote should be back to `main` + `dev` +
 active feature branches only.
-
----
 
 ## 6. Recovery: "If something goes wrong"
 
@@ -798,8 +831,6 @@ done
 The agent does this automatically at the end of every release per the
 matrix step 2.17.
 
----
-
 ## 7. After the release: README cleanup (final only)
 
 For a final release, `release-publish.yml`'s `followup-readme-cleanup`
@@ -822,8 +853,6 @@ opens it manually using the step-summary command.
 > branch-protection rule rejects direct pushes, and a dedicated
 > release-marker PR for a doc-only line is overkill — wait for the
 > next legitimate release to carry the change forward.
-
----
 
 ## 8. Pre-release verification gate (always run, locally and in CI)
 
@@ -852,8 +881,6 @@ byte-for-byte against `specy_road/pm_gantt_static/`; if `git status`
 shows changes after the build, **commit them** as part of the release
 PR (the bundle ships inside the wheel).
 
----
-
 ## 9. Where this runbook lives in the docs graph
 
 | Doc | Role |
@@ -866,6 +893,7 @@ PR (the bundle ships inside the wheel).
 | [`.github/workflows/release-publish.yml`](../.github/workflows/release-publish.yml) | does the actual publish; this runbook documents its inputs |
 | [`scripts/check_release_version.py`](../scripts/check_release_version.py) | the version-vs-tag gate; this runbook documents what it checks |
 | [`scripts/post_release_readme_cleanup.py`](../scripts/post_release_readme_cleanup.py) | does the README cleanup; this runbook documents §7 |
+| `docs/whats-new.md` | curated per-release highlights and upgrade steps, linked from the README; written at step 2.5a |
 
 If you change any of these files, audit this runbook for staleness
 in the same PR.

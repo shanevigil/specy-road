@@ -168,7 +168,7 @@ def test_the_search_loop_feeds_results_back(monkeypatch) -> None:
     assert result["searched"] == ["payments trends"]
     assert result["sources"] == ["https://u"]
     assert result["reply"] == "Two ideas, sourced."
-    assert any("Search results:" in m["content"] for m in result["messages"])
+    assert any("Search results (provider output" in m["content"] for m in result["messages"])
 
 
 def test_a_failing_search_becomes_text_the_model_can_read(monkeypatch) -> None:

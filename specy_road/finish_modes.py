@@ -5,9 +5,16 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import NoReturn
 
-from specy_road.finish_land_integration import land_merge_feature_into_integration
+from specy_road.finish_land_deterministic import codename_from_branch
+from specy_road.finish_land_integration import (
+    integration_worktree_problem,
+    land_merge_feature_into_integration,
+)
+from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 
 
 def print_finish_tail(
@@ -88,6 +95,67 @@ def print_pr_gated_state(
     )
 
 
+def merge_landing_failed(ib: str, err_msg: str) -> NoReturn:
+    """Exit 1 after a failed merge landing, naming the re-run that retries it."""
+    print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
+    print(
+        "\n--on-complete merge cannot fall back to PR instructions. "
+        "Fix the integration branch (see error above), then run "
+        "`specy-road finish-this-task --on-complete merge` again on this "
+        "branch: the bookkeeping is already committed, so it retries only "
+        "the landing. Or rerun with --on-complete pr to open a PR instead.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def merge_landing_preflight(repo: Path, ib: str) -> None:
+    """Exit 1 before the bookkeeping commit when the merge could not land."""
+    problem = integration_worktree_problem(repo, ib)
+    if problem is not None:
+        print(f"error: cannot land merge to {ib}: {problem}", file=sys.stderr)
+        raise SystemExit(1)
+
+
+# What finish-this-task's bookkeeping commit writes; anything else in that commit was never reviewed.
+_FINISH_WRITES = ("roadmap/", "roadmap.md", "roadmap-context.md", "work/", "planning/")
+
+
+def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
+    doc = read_registry_at_ref(repo, ref, 30.0) or {}
+    entries = doc.get("entries") or []
+    return any(isinstance(e, dict) and e.get("codename") == codename for e in entries)
+
+
+def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
+    """Land a branch whose finish bookkeeping is committed but whose merge failed.
+
+    Only the finish commit itself -- the tip that removed this leaf's registry
+    row -- is landed: a commit added after it was never reviewed or checked.
+    """
+    codename = codename_from_branch(branch)
+    _ok, changed = git_ok(["diff", "--name-only", f"{branch}^", branch], repo)
+    stray = [p for p in changed.splitlines() if not p.startswith(_FINISH_WRITES)]
+    if stray or _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
+        print(
+            f"error: {branch} has moved past its finish-this-task commit; new commits "
+            "need review before they land. Re-pick the leaf or open a new leaf for them.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    git_ok(["fetch", "-q", remote, ib], repo)
+    if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
+        print(f"\n[ok] {branch} is already merged into {ib} on {remote}; nothing to do")
+        raise SystemExit(0)
+    ok, err_msg = land_merge_feature_into_integration(
+        repo, remote=remote, integration_branch=ib, feature_branch=branch,
+    )
+    if not ok:
+        merge_landing_failed(ib, err_msg)
+    print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
+    raise SystemExit(0)
+
+
 def apply_on_complete_mode(
     repo: Path,
     args: argparse.Namespace,
@@ -130,23 +198,15 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
+    if on_mode == "merge":
+        # F-012: --on-complete merge means MERGE. Do NOT print PR
+        # instructions as a fallback — that's exactly the bug being fixed.
+        merge_landing_failed(ib, err_msg)
+
     print(
         f"\nerror: could not land merge to {ib}: {err_msg}",
         file=sys.stderr,
     )
-    if on_mode == "merge":
-        # F-012: --on-complete merge means MERGE. Do NOT print PR
-        # instructions as a fallback — that's exactly the bug being fixed.
-        # Exit hard so the user investigates the integration-branch issue.
-        print(
-            "\n--on-complete merge cannot fall back to PR instructions. "
-            "Fix the integration branch (see error above) and re-run, or "
-            "rerun finish-this-task with --on-complete pr if you intend to "
-            "open a PR instead.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
     # on_mode == "auto": fall back to PR tail only here.
     print(
         "\n(auto) Merge to integration failed — use PR/MR or fix locally "

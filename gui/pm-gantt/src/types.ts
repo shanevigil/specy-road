@@ -201,10 +201,10 @@ export type BrainstormIdea = {
   id: string;
   title: string;
   rationale: string;
-  kind: "feature" | "capability" | "risk" | "research" | "experiment";
+  kind: "feature" | "capability" | "risk" | "research" | "experiment" | "refactor" | "platform";
   effort: string;
   evidence: string[];
-  status: "proposed" | "accepted" | "rejected" | "revised";
+  status: "proposed" | "accepted" | "rejected" | "revised" | "parked";
   recommendation: "strong" | "consider" | "park" | null;
   /** Set once the idea has landed in the graph; it can no longer be triaged. */
   promoted_node_key: string | null;
@@ -221,6 +221,14 @@ export type BrainstormSession = {
   topic: string;
   under: string | null;
   mode: "brainstorm" | "roadmap";
+  /** Session v2: which diverge round is current, the lens profile, shard count, the agreed frame and allocation grid. */
+  round: number;
+  /** Diverge rounds planned at `start --rounds`; `round` may exceed it once the PM goes past the plan. */
+  rounds: number;
+  profile: "product" | "technical";
+  panel: number;
+  frame: Record<string, string>;
+  allocation: string;
   ideas: BrainstormIdea[];
   pending_promotion: string[];
 };

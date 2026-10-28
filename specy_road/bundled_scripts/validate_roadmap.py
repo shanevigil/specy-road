@@ -14,8 +14,10 @@ from specy_road.bundled_scripts.refresh_stubs import warn_if_stubs_stale
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
+from specy_road.agents_md_block import warn_if_agents_md_block_stale
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.orchestration_config import load_orchestration_config
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
@@ -69,6 +71,18 @@ def validate_git_workflow_contract(root: Path) -> None:
         raise SystemExit(1)
 
 
+def validate_orchestration_contract(root: Path) -> None:
+    """Validate ``roadmap/orchestration.yaml`` if present.
+
+    A missing file is not a warning: it means the default review policy
+    (one reviewer, any family), which is the scaffolded template's content.
+    """
+    _data, err = load_orchestration_config(root)
+    if err:
+        print(err, file=sys.stderr)
+        raise SystemExit(1)
+
+
 def validate_at(
     root: Path,
     *,
@@ -90,8 +104,10 @@ def validate_at(
     validate_roadmap_line_limits(root)
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
+    validate_orchestration_contract(root)
     warn_if_schemas_stale(root)
     warn_if_stubs_stale(root)
+    warn_if_agents_md_block_stale(root)
     warn_if_generated_files_ignored(root)
 
     if auto_heal:

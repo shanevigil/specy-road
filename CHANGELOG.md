@@ -11,6 +11,577 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+## [v0.3.1-rc1] - 2026-10-28
+
+First prerelease for v0.3.1. Routed to TestPyPI by
+release-publish.yml. Smoke install:
+
+    pip install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                specy-road==0.3.1rc1
+
+**Read *Breaking* before upgrading**: the review gate changes how
+`mark-implementation-reviewed` and `finish-this-task` behave. Existing
+adopters run `specy-road refresh-stubs`, `refresh-schemas` and
+`refresh-profiles`, and add the `work/` paths listed below to `.gitignore`.
+The user-facing summary is [`docs/whats-new.md`](docs/whats-new.md#specy-road-031).
+
+Model-aware orchestration, slice 1: review and hand-off core. Design:
+[`docs/design-notes/v0-3-0-orchestration-slices.md`](docs/design-notes/v0-3-0-orchestration-slices.md);
+reference: [`docs/orchestration.md`](docs/orchestration.md) and
+[`docs/orchestration-models.md`](docs/orchestration-models.md).
+
+### Breaking
+
+- **`mark-implementation-reviewed` enforces a review gate.** With
+  `require_implementation_review_before_finish: true`, it now needs review
+  records under `work/reviews/<NODE_ID>/` that satisfy `roadmap/orchestration.yaml`
+  at the commit under review. Under the default policy (one reviewer, `human`
+  rostered) the interactive **approve** files the human review and closes the
+  gate in one step, as before. **`--yes` never creates a review**: without a
+  satisfying record it now exits 1. Unattended loops that called
+  `mark-implementation-reviewed --yes` from the implement hook must record an
+  independent review first (`specy-road review record`), or turn the gate off.
+- **`finish-this-task` re-checks the review gate at the current commit.** An
+  `approved` registry row no longer covers work committed after approval.
+  A row approved under 0.2.x with no review record needs a fresh
+  `mark-implementation-reviewed` before it can finish.
+- **The review policy comes from the integration branch.** The gate reads
+  `roadmap/orchestration.yaml` — and treats the gate as on when
+  `require_implementation_review_before_finish` is on — from the integration
+  branch (remote-tracking ref first), so a feature branch cannot lower its own
+  bar. Change policy on the integration branch. The integration branch's name
+  is read from `git-workflow.yaml` as committed on the remote's default branch
+  (`refs/remotes/<remote>/HEAD`; run `git remote set-head <remote> --auto` if
+  it is missing) — at `HEAD` only in a repo with no remote, and never from the
+  working tree or `SPECY_ROAD_INTEGRATION_BRANCH`. A missing default-branch
+  ref, a remote name that is not configured or differs from the default
+  branch's, or an integration branch that cannot be found fails closed: the
+  gate counts as on, and nothing passes it. Reviewers, the human included, count only on
+  nodes their roster `may_process` covers.
+- **`review record` is stricter.** It refuses `--model human` (a human approves
+  only through the interactive menu), refuses models that are not in the roster,
+  and no longer takes `--family`: a reviewer's family always comes from the
+  roster. A substitution's `use` must be a roster entry.
+
+### Added
+
+- `roadmap/orchestration.yaml`: roster (models and humans, with family and
+  roles), review policy (`reviewers_required`, `reviewers_distinct_families`,
+  `reviewer_fresh_session`), and recorded reviewer substitutions with optional
+  `expires`. Scaffolded by `init project`; a missing file means the default
+  policy. `validate` fails on a file that is present but invalid.
+- `specy-road review-packet <NODE_ID>` writes `work/reviews/<NODE_ID>/PACKET.md`:
+  brief, implementation summary, changed paths with touch-zone breaches
+  flagged, diff, and verifier output. It reads the registered branch without
+  checking it out.
+- `specy-road review record` validates a reviewer's notes (a result per
+  acceptance id, findings by category, fresh-session / not-the-author /
+  not-the-coordinator attestations), fills the family from the roster, labels
+  same-family reviews, and refuses a review of a stale commit.
+- `specy-road handoff status [<NODE_ID>] [--json]` reports READY hand-offs,
+  review records, and whether review policy is met.
+- `brief` renders the node's `goal` and its `acceptance` criteria numbered
+  `A1..An`.
+- The gate commit carries one `Reviewed-by: <model> (<family>) approve <commit>`
+  trailer per counted approval.
+- `specyrd` stubs: `/specyrd-review-packet`, `/specyrd-review-record`,
+  `/specyrd-handoff-status`.
+- `specy-road models list|show|stale`: the roster with each model's profile and
+  role scores; one profile's fields and a body section; profiles whose research
+  is older than 180 days, superseded, or served under a moving alias (exit 1
+  when a rostered one is).
+- `specy-road prompt <NODE_ID> --model <id> --role coordinator|executor|reviewer`
+  writes `work/prompt-<NODE_ID>-<role>-<model>.md`: a precondition check, the
+  role's preamble (executor boundary, packet-only review, coordinator rules),
+  the model profile's prompting rules and failure-mode guards applied
+  mechanically, then the brief or the review packet. `--channel cli` runs the
+  profile's `access.cli`. Stub: `/specyrd-prompt`.
+- **Signed review records.** A roster entry may carry `public_key` (an OpenSSH
+  public key line); `review record --sign-key <private key>` signs the record
+  with `ssh-keygen -Y sign` (namespace `specy-road-review`), and the gate
+  verifies it. With `policy.signed_reviews: true` an unsigned record does not
+  count; a present signature is verified regardless, so a tampered record
+  never counts: the signature covers the front matter, which carries
+  `notes_sha256` of the Markdown notes below it. `mark-implementation-reviewed --sign-key` signs the interactive
+  human approval. Needs OpenSSH 8.1+; no new Python dependency.
+- **Workers: `specy-road worker`** (slice 7, design:
+  [`docs/design-notes/v0-3-1-worker-orchestration.md`](docs/design-notes/v0-3-1-worker-orchestration.md);
+  reference: [`docs/orchestration-workers.md`](docs/orchestration-workers.md)).
+  `worker delegate <ID> --model <roster id>` launches a claimed leaf's
+  executor on the model's roster `harness` (`claude-code`, `codex`, `cursor`,
+  or `generic` = the profile's `access.cli`) as a detached process and
+  returns a worker id at once; `worker sync [--ack]` is what a coordinator
+  calls at the start of every turn; `list|status|events|open`, `message`
+  (resumes the native session with a follow-up), `resume`, `terminate`,
+  `handoff` / `reclaim` (lease the worker to a human, print the native resume
+  command, record what they did as an `intervention` with a new
+  `instruction_epoch`), `adopt` (observe a session the user started),
+  `reconcile` (changed paths vs touch zones, `needs_reconcile`; an
+  unbuildable prompt counts as a contract change),
+  `interrupt` (declared unsupported by the one-shot CLI adapters, exit 2,
+  never emulated), `--op-id` idempotency on the lifecycle commands (a
+  pending op is a crash marker to inspect, not an automatic retry), and
+  `worker hook --format claude-code|codex|cursor` as the prompt-submit hook
+  that witnesses a human's prompts to a worker session. State is files under
+  `work/.workers/` (record, sequenced event log, ops outbox; package-owned
+  `worker-record` / `worker-event` schemas), always in the main worktree;
+  linked worktrees go under `work/.worktrees/`. Roster entries gain `harness`,
+  `billing_route` and a `{session}` placeholder for `channels.cli`; policy
+  gains `max_workers` (default 2). `handoff status` lists active workers; the
+  `/specyrd-orchestrate` skill is rewritten around `delegate` and `sync`.
+  **Existing adopters:** add `work/.workers/` and `work/.worktrees/` to
+  `.gitignore`.
+- After an independent review of the worker layer: records are written
+  atomically under one lock (the wrapper no longer writes a stale copy back;
+  two `delegate`s on one leaf launch one harness); `terminate` signals the
+  wrapper's process group, so the harness and its children stop; a reused pid
+  is not mistaken for a live wrapper; an `--op-id` names one operation;
+  an earlier attempt's READY does not complete a new worker; the harness
+  gets the caller's `PYTHONPATH` back; the Claude prompt travels on stdin;
+  `channels.cli` with `{session}` gets a fresh id on launch; profiles'
+  `<prompt>` form works for `generic` and `prompt --channel cli`; `prompt
+  --role executor` honours `executor_eligibility`; the guard catches
+  multi-line, quoted, wrapped (`sh -c`, `command`, `env`, `sudo`), absolute
+  and aliased git commands, refuses unparseable ones that mention git, and
+  counts workers running in the checkout; `specyrd init` never deletes a
+  skill directory it did not write; `brainstorm verify` checks every
+  redirect hop; the GUI accepts `parked`, `refactor` and `platform`.
+- **Brainstorm v2** (design:
+  [`docs/design-notes/v0-3-1-brainstorm-v2.md`](docs/design-notes/v0-3-1-brainstorm-v2.md);
+  reference: [`docs/brainstorming.md`](docs/brainstorming.md)). Diverge runs
+  in rounds: round 1 frames (two more Socratic questions, assertions
+  neutralised into questions, `brainstorm frame`), plans an allocation grid
+  of lenses × directions with a diversity operator per cell, and generates
+  as prose concept cards — without the roadmap inventory or research, both
+  of which anchor; `next-round` regenerates against the visible pool with
+  low-typicality and unoccupied-region cues and opens research.
+  `--profile technical` swaps the lens set for developer roadmaps; `--panel N`
+  writes independent shard prompts. New evidence pass: `evidence`,
+  `add-evidence` (verbatim quote, claim, stance, tool, date) and `verify`,
+  which lists URLs and asks before the CLI's only network call, recording
+  `retrieved | not-found | blocked`. Converge names overlap relations, plays
+  three independent critics, and requires cited verdicts (`revise --cluster
+  --overlap --critic`). Triage: `list --by cluster` (verdicts hidden unless
+  `--show-verdicts`), `reject --reason` required, `park --revisit-when`;
+  decisions recorded on the idea. `add-idea --origin --hypothesis
+  --assumption`; kinds `refactor`, `platform`. Promote carries sources with
+  their verification state, hypothesis, assumptions and the cluster's
+  rejected siblings into the sheet. Session file version 2 (v1 still reads).
+- Node fields `sensitivity` (default `public`) and `executor_eligibility`
+  (default `any`, else a roster `class` tag), settable with `add-node` and
+  `edit-node --set`. **Existing adopters:** run `specy-road refresh-schemas`
+  once, or `validate` rejects nodes that set them.
+- `specy-road orchestrate plan [PARENT]`: per ready leaf, which roster model
+  should coordinate, execute, and review — from the leaf's sensitivity and
+  executor eligibility, roster `may_process`, `class`, and `unavailable_until`,
+  profile cost and role scores, and the review policy. Exit 1 when a leaf
+  cannot be staffed. `prompt` enforces the same routing: it refuses a model
+  that may not process the leaf or is unavailable, states a
+  `subagent_family_lock`, and runs the roster `preflight` before `--channel cli`.
+- `init project` scaffolds `model-profiles/` (16 profiles and the roster guide)
+  into the adopter's repo; roster entries point at them with `profile:`.
+  `specy-road refresh-profiles` adds missing ones to a repo scaffolded earlier
+  without overwriting edited copies (`--force <path>` for one).
+- [`model-profiles/`](specy_road/templates/project/model-profiles/README.md), scaffolded by
+  `init project` into the adopter's repo: a canonical guide to
+  choosing models for coordinator, executor, and reviewer roles. It has one
+  schema-2 profile per model, merged from a ChatGPT and a Claude research run;
+  where the runs disagree, both values are listed as points to watch.
+- `policy.reviewer_reruns_required` in `roadmap/orchestration.yaml` (default
+  `false`): when on, an approving review whose `commands_rerun` is empty does
+  not count, and `review record` refuses to file it. A block is never
+  affected, and the interactive human approval is exempt. The schema ships in
+  the package, so no `refresh-schemas` is needed.
+- `grind-session --step pickup|finish` lets an IDE agent session (Claude Code,
+  Cursor) drive the loop itself. Each step runs one phase and exits: pickup
+  resumes this clone's open claim before claiming a new leaf, and finish runs
+  `--pre-finish-cmd` and `finish-this-task` on the checked-out claim. Usage
+  limits are left to the agent harness (Claude Code's *Continue automatically
+  at usage limit*). The `specyrd-grind-session` command now carries the
+  step-mode protocol, including the review gate; hook mode stays the terminal
+  path.
+
+### Fixed
+
+- Found while setting up the real-harness sandbox: `add-node` appends a new
+  phase's chunk to `manifest.json` `includes` in creation order (it was
+  slotted after the first phase); every new node, not only tasks, gets a
+  codename from its title, so a new phase or milestone no longer gets an
+  `<id>_unnamed_…` planning sheet; `models stale` names the family for a
+  profile with `track: none` instead of "a newer none release"; `specyrd
+  init` no longer says "already initialized" on its first run after `init
+  project`, and its `--role` help lists the stubs from the install table.
+- `grind-session --implement-mode hook` with the Claude CLI: the hook's output
+  now streams to stderr line by line instead of appearing in one lump after
+  exit, so a long run and the wait before a limit message no longer look like
+  silence. The macOS banner on a limit wait fires for the first time: it was
+  built with single-quoted strings, which AppleScript rejects, and the error
+  was swallowed. The session id for `--resume` is found for repos whose path
+  contains `.` or `_`; the transcript-directory lookup mapped only `/`.
+
+### Changed
+
+- Docs: `pm-llm-review.md`, `pm-gui-brainstorm.md`, `supply-chain-security.md`,
+  `git-workflow.md`, `roadmap-history.md`, `agent-search.md`,
+  `orchestration-workers.md`, `agentic-sandbox-runbook.md`, `archiving.md` and
+  `brainstorming.md` open with an `## Agent quickstart` block (when to use the
+  doc, the invariants and commands to know without reading on, and which `##`
+  section answers what), since agents route from the top of a file and read a
+  window rather than the whole doc. `docs/design-notes/README.md` indexes every
+  design note as live design, historical triage or verbatim reference, so a
+  closed triage or an outside proposal is not read as a current instruction.
+  `suggested_prompts/bootstrap-agents-md.md` Phase 2 now lists
+  `roadmap-context.md` and `docs/supply-chain-security.md` in the load order,
+  matching the managed `AGENTS.md` block.
+- Removed the generic `suggested_prompts/cleanup_prompts.md`,
+  `compliance_prompts.md` and `features_changes_debuging_prompts.md`, and
+  `docs/optional-agent-review-prompts.md`, in favour of the coding harness's
+  built-in review, cleanup and security skills; `suggested_prompts/README.md`
+  now indexes the four kept adoption prompts and points generic passes at the
+  harness and roadmap review at `docs/orchestration.md`.
+- Docs: the toolkit's own `constitution/purpose.md` and `principles.md` now
+  state what the 0.3 line is opinionated about — review contract and role
+  separation, no model or search calls from the CLI, harness-native adapters
+  (no daemon, no MCP server), the agent advises and the human decides, use
+  the harness's tools and augment them, docs win and smallest change — while
+  still leaving IDE, agent and model open. `docs/philosophy-and-scope.md`
+  gains the matching bullet.
+- The managed specy-road section in a consumer's `AGENTS.md` shrank from 83
+  lines / 9.2 KB to 39 lines / 6.0 KB with no rule dropped: imperative bullets
+  instead of explanation, since every always-injected instruction file costs
+  context on every turn (Codex truncates the `AGENTS.md` chain at 32 KiB).
+  Adopters run `specy-road refresh-stubs`; `validate` warns until they do.
+- Every `specyrd-*` skill description now states what the command does and
+  when an agent should invoke it, since harnesses route on the description
+  alone; "when to use" text moved out of skill bodies, and each body opens
+  with the command.
+- The gate counts one vote per model (a block from any of a model's records
+  wins), checks each record's `node_id`, compares commits through git rather
+  than by string prefix, and treats every merge commit — `-s ours` included —
+  as new work.
+- `work/reviews/` resolves to the main worktree, so executors and the gate in
+  linked worktrees share one hand-off directory.
+- `review-packet` and `handoff status` fall back to `<remote>/<branch>` when the
+  registered branch is not local, and fail instead of reviewing `HEAD` when it is
+  missing. `--ref` that does not resolve exits 1. The packet reads the
+  implementation summary at the reviewed commit, no longer flags tracked `work/`
+  files, and flags edits to `roadmap/orchestration.yaml` / `git-workflow.yaml`.
+- `handoff status` exits 1 for a named node it cannot resolve and reports
+  leftover directories as `unclaimed`.
+- `orchestration.yaml` validation rejects duplicate roster ids, an empty
+  substitution `scope`, and a substitution without `expires_when` or `expires`;
+  a substitution does not count before its `decided` date.
+- `commit` / `base` in hand-off files are read exactly as written, so YAML cannot
+  retype a SHA as an octal or hex number.
+- Without a TTY, `mark-implementation-reviewed` again requires `--yes`.
+- New scaffolds ship `work/handoff-ready.template.md` and
+  `work/review-record.template.md`; the pickup prompt points at them.
+- New scaffolds gitignore `work/reviews/`.
+- `do-next-available-task --local` registers and branches without fetching,
+  merging, or pushing, for offline work or a private spike; the claim stays
+  invisible to peers until that checkout pushes the integration branch. Every
+  claim row now records `owner` (`--owner`, else `git config user.name`), so a
+  peer can see who holds it. `add-node` sets `sibling_order` after the parent's
+  last sibling (`--sibling-order N` to place it); an unset value sorted as `0`
+  and jumped the pickup queue (proposal §3.4, §5).
+- **`specyrd init` writes skills, one file per command, read by every harness.**
+  `.agents/skills/<name>/SKILL.md` is read natively by Cursor and Codex; the
+  `claude-code` pack adds a symlink per skill under `.claude/skills/` (a copy
+  where symlinks are unavailable). New `--ai codex`. `--ai generic` is
+  unchanged. **Existing adopters:** `specy-road refresh-stubs` writes the
+  skills, lists the old `.cursor/commands/` or `.claude/commands/` stubs, and
+  prints the `rm` to remove them so each `/specyrd-…` entry exists once.
+- `/specyrd-orchestrate`: the coordinator's loop — `orchestrate plan`, one
+  pickup and one fresh executor prompt per leaf, `handoff status` polling,
+  fresh reviewer sessions, the gate, finish — with the never-review-your-own-
+  fix and stop-on-breach rules (proposal §4.3). Installed for the pm and dev
+  roles.
+- `specy-road session guard`: denies a shell command that is destructive in a
+  shared checkout (stash, hard reset, branch switch, `checkout -- …`,
+  `restore .`, `clean -f`, rebase, amend, force push, `add -A`, `commit -a`)
+  while another session is live. `--format` selects a harness's hook
+  protocol — `claude-code`, `codex`, `cursor`, each verified against its docs
+  and run as a subprocess in the test suite — and `--print-config` prints the
+  project-level snippet. An internal error answers as a deny: the guard never
+  fails open quietly.
+- `specy-road session start|touch|end|list|check`: presence records under
+  `work/.sessions/` for work that is not a registry claim. `handoff status`
+  lists live sessions (its `--json` output is now `{sessions, workers, nodes}`
+  since slice 7),
+  pickup warns when a live session's paths overlap the leaf's touch zones, and
+  `session check` exits 1 when staged paths overlap another live session's —
+  a pre-commit guard. New scaffolds gitignore `work/.sessions/`.
+- **`AGENTS.md` is now a managed block, not a scaffold file.** `init project`
+  writes the specy-road rules inside `<!-- >>> specy-road managed block <<< -->`
+  markers: a fresh repo gets a file with the block, and a repo with its own
+  `AGENTS.md` gets the block appended with nothing else touched (before, that
+  repo got no specy-road guidance at all). `--force` and `refresh-stubs`
+  rewrite only the block; `validate` warns when it is missing or from another
+  version. The block opens with a precedence rule: toolkit rules on the
+  registry, branches, review, and a shared tree are a floor that project
+  rules may add to but not relax; on conflict an agent stops and asks.
+  **Existing adopters:** run `specy-road refresh-stubs` to get the section.
+- The scaffold `AGENTS.md`, the `CLAUDE.md` managed block, and
+  `suggested_prompts/bootstrap-agents-md.md` carry the shared-checkout rules
+  (explicit-path commits, no branch switches or stashes in a shared tree,
+  `base: <sha>` on prompts, toolkit rules as the floor). Design:
+  `docs/design-notes/agent-guidance-and-shared-checkouts.md`. **Existing adopters:** add
+  `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
+- The pickup prompt tells the executor to write a READY hand-off and not to
+  review or approve its own work.
+- **Lean code and tests.** The managed `AGENTS.md` block, the toolkit's own
+  `AGENTS.md` and the bootstrap prompt gain a `## Lean changes and tests`
+  section: smallest behaviour-complete change, search before adding a helper,
+  validation at boundaries only with a reachable trigger and a test per
+  guard, one test per behaviour through the public interface, extend before
+  add, merging an overlapping test when the commit names the one that covers
+  it, never weakening a failing test, and an inventory of additions at the
+  end. Principle 9 carries the two test rules. The reviewer preamble gains an
+  excess checklist (test pins internals, unreachable defence, duplicated
+  logic, overlapping test; each needs a caller trace or the covering test,
+  and error handling is never removed without a completed caller trace); the
+  executor preamble asks for an `## Added` inventory, and `review-packet`
+  notes a summary without one. Each model profile gains dated
+  `## Code and test tendencies` with one counter-rule per family. CI and
+  pre-commit gain three gates against committed baselines (ruff C901 at
+  complexity 10, new pylint clone pairs, test imports of private names);
+  `.github/workflows/mutation.yml` runs mutmut weekly and reports per-module
+  scores, failing only once `constraints/mutation-baseline.json` exists.
+  [`docs/design-notes/lean-code-census.md`](docs/design-notes/lean-code-census.md)
+  measures the suite against these rules: overlap and coupling are real but
+  modest, and the gap is untested boundary validation, not dead guards.
+  **Existing adopters:** run `specy-road refresh-stubs` (the managed block
+  grew from 39 to 50 lines); `refresh-profiles --force <path>` replaces an
+  unedited profile to get its new section.
+- **Seventh review round (at 7cc4fd8):** a Cursor worker on a profile whose
+  `api_id` is `unknown` (the shipped Composer profiles) launched with
+  `--model unknown`; the harness's default model is used instead, on every
+  adapter; the Composer 2.5 profile now names its Cursor CLI slug
+  (`composer-2.5`, from `agent --list-models`), so `refresh-profiles --force`
+  it to run that model rather than Cursor's default. A nested phase added with `add-node` keeps its place after its
+  parent's chunk (only a top-level phase is appended). `add-node --help`
+  says every new node's codename comes from `--title`. Every published
+  version gets its own What's new section in the release runbook.
+- **Pre-release review (GPT Sol through Cursor, at eaa8b74) and three-app
+  test:** every finding reproduced before the fix. The review policy's
+  integration branch is named by the remote's default branch, and an
+  unconfigured remote fails closed (see Breaking); the gate counts a reviewer
+  — the human included — only on nodes its `may_process` covers, and the
+  approval is not offered otherwise. `worker delegate` refuses a worktree
+  with uncommitted changes other than the leaf's own untracked bookkeeping,
+  or whose `git status` cannot be read (they could be overwritten and were
+  hidden from `reconcile`); `terminate` signals a process group only when the
+  wrapper or harness is verified and still in that group. `finish-this-task`
+  in merge mode lands from a worker's worktree by merging in the worktree that
+  holds the integration branch (refusing first if it is dirty or unreadable),
+  and a re-run retries a failed landing only while the branch tip is still the
+  finish commit (anything later needs review). `abort-task-pickup` refuses
+  cleanly when another worktree holds the base (a delegated leaf), names the
+  release steps, and ignores other leaves' untracked bookkeeping; a `--local`
+  abort requires the exact claim transition. Prompts name their commit
+  (`base: <sha>`), and review packets show registry edits in the diff,
+  labelled. Known limitations in rc1: under unsigned policy the gate is
+  cooperative attestation (someone who can run git in the finishing clone can
+  retarget what it reads); a registry-only commit at the branch tip is not in
+  the packet; the guard refuses `echo git stash` while a peer is live. Session records are
+  written atomically and an unreadable one counts as a live peer; the guard
+  sees commands behind `if`/`then`/`while`/`do`/`!`/`case` and `-exec`, refuses
+  a command name built by expansion (`git${IFS}stash`), and refuses
+  `git rm -f` and tree-wide `git rm`. Brainstorm commands and the GUI
+  routes share one session lock (parallel panel shards no longer drop ideas;
+  a GUI chat turn reloads before saving; `verify` fetches outside the lock). `init project`, `refresh-stubs` and
+  `specyrd init` refuse to write through a symlink that leads outside the
+  repository. `orchestrate plan` skips invalid profiles for every role, and
+  `prompt --channel cli` neither echoes the prompt nor crashes on one too
+  large for argv. Three-app test: renumbering keeps an M1-based project
+  M1-based (the first move used to shift every id to M0 and rename every
+  sheet); GUI Publish includes `roadmap-context.md`; a gate never locks in the
+  GUI; `archive`/`restore-archive` regenerate both generated files;
+  `refresh-stubs` with no stub pack is a no-op; aborting a `--local` pickup
+  drops the claim without pushing. Sandbox §2 and §6 on real harnesses:
+  the reviewer's clean-tree precondition ignores only the toolkit's work/
+  bookkeeping (brief, summary, reviews) and the prompt names the packet's
+  path; re-running `finish-this-task` after a failed merge landing retries
+  the landing; the executor commits its implementation summary, and one
+  left uncommitted is kept under `work/reviews/<ID>/` instead of deleted;
+  reviewers start no presence session; review packets label registry
+  bookkeeping and leave it out of the diff;
+  panel shards no longer overwrite the session's allocation; `brainstorm
+  verify` matches quotes across inline tags and punctuation; round-1 and
+  shard prompts say not to open the roadmap even where AGENTS.md says read it
+  first; later rounds restate the agreed frame; the GUI hides verdicts until
+  asked, as the CLI does; the PM GUI never sends saved secrets (LLM key,
+  Git token, research key) back to the page. Sandbox §7: `grind-session
+  --plan` waves include leaves that depend on a milestone; the pickup prompt
+  asks for the `## Added` inventory and explicit-path commits. Maintainer gates: C901 baseline
+  is per function, the private-import gate resolves module aliases, CI tools
+  are exact-pinned with read-only tokens.
+- **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
+  reproduced before the fix. Guard: env-supplied git config
+  (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and
+  dynamic git verbs fail closed; non-object hook payloads and shell events
+  without a command deny; broad commit/add pathspecs (`.`, `:/`, globs) are
+  refused; the Claude hook no longer emits `permissionDecision: allow` (the
+  harness's own policy applies). Workers: READY completion is a content
+  checkpoint, not an mtime; the record keeps the harness pid, process group
+  and a start token, a dead wrapper with a live harness keeps its leaf and
+  `terminate` kills the group; launch payloads travel in a 0600 file (no
+  `ARG_MAX`); pid verification needs the repo root and token as whole
+  arguments; resume, reclaim, reconcile and completion check the branch
+  actually checked out; parsed output is `worker_suggestion`, not `system`;
+  session ids are shell-quoted and vendor-shaped; placeholders must be whole
+  tokens (no `$(…)` from prompt text); `message --op-id` binds the text;
+  the hook matches harness and id without waiting on a busy lock; dead
+  wrappers are reaped on any leaf by `sync` and `delegate`; pre-delegation
+  dirt is the coordinator's; reclaim moves the record in one write.
+  Policy: the integration branch must name itself and is read from the
+  remote-tracking ref when a remote exists; profiles load from that same
+  pinned ref; `may_process: []` denies everything; `refresh-profiles`
+  refuses symlinked destinations; `validate` uses the gate's own policy
+  source; malformed profiles and dates are errors, not crashes. Review
+  evidence: renames and copies count on both sides; a READY naming another
+  node or branch is misfiled; signed records bind `notes_sha256`; a
+  mismatched signer identity is rejected; a wrong human `--sign-key` writes
+  nothing; packet summaries say committed, working-tree or missing.
+  Brainstorm: diverge prompts carry a write allow-list; the GUI payload
+  carries `rounds`; GUI convergence is documented as advisory; malformed
+  overlap, URL and stance fail at the boundary. Skills: `--force` replaces
+  only manifest-owned or verbatim stubs, a declined skill gets no link,
+  multi-pack manifests keep shared skills. Docs: the human-approval
+  exception stated in the quickstart and constitution, `review-node` named
+  as the model-calling exception, `acceptEdits` wording, grind waves are
+  per-leaf, the AGENTS block says pickup and finish change the registry,
+  the bootstrap prompt merges the block verbatim.
+- **Cloud pre-release run (Linux, at 9f3b9df):** `ps -o command=` without a
+  terminal is cut at 80 columns by procps, so a live wrapper with a normal
+  repo path looked dead: a second `delegate` launched a duplicate harness and
+  `terminate` closed the record without signalling the group. Fixed with
+  `ps -ww`. A SIGKILLed harness reports `137` where `/bin/sh` is dash (it
+  forks under `sh -c`) and `-9` where it is bash; the worker ends `failed`
+  either way, and the test and runbook say so.
+- **Sandbox runbook setup (local, at de6a641):** a roster entry with
+  `profile:` on `claude-code`, `codex` or `cursor` launched the profile's
+  plain `access.cli` instead of the harness's default command, so the
+  worker had no JSON events, no session id and no `--model`, and `sync`,
+  `message`, `resume` and `handoff` could not work. The profile's command
+  now stands in only for `generic`; `channels.cli` still overrides any
+  harness.
+- **Sandbox runbook on real harnesses (local, 2026-10-28):** codex-cli
+  0.165 rejects `--ask-for-approval` on `codex exec`, and `exec resume`
+  also rejects `--sandbox` and `-C`, so every `codex` worker failed at
+  launch. Launch and resume now set `-c sandbox_mode=workspace-write -c
+  approval_policy=never`, and the GPT Sol profiles' `access.cli` does the
+  same. **Existing adopters:** `refresh-profiles --force
+  model-profiles/openai-gpt/<id>.md` for each GPT profile you have not
+  edited.
+  The same runs found: Cursor runs `.claude/settings.json` hooks with its
+  shell tool named `Shell`, which the `claude-code` guard format let
+  through, so a checkout guarded only for Claude Code was unguarded under
+  Cursor (now denied; checked live); `session guard` and `worker hook`
+  `--print-config` print pure JSON on stdout (caveats on stderr), so the
+  output pastes whole; `digest` no longer lists a re-added dependency as
+  removed; `prompt` on an unclaimed leaf points at pickup instead of a
+  `--ref` it does not take; `refresh-stubs --dry-run` names each shared
+  skill once.
+- **Fourth review round (Gemini + GPT Sol at bc3ef9c):** `reconcile`
+  judges touch zones over the worker's lifetime (`started_head`), not only
+  since the last checkpoint; a READY must be at the worktree's HEAD;
+  `prompt`, `orchestrate plan`, `models` and `worker` read the roster from
+  the integration branch like the gate (`orchestration_pinned`); the guard
+  follows `env -S`, nested `$(…)`, attached `-C<dir>`, `--git-dir`, long
+  wrapper options, `timeout`, `xargs` fed from stdin and the repo's configured
+  git aliases, and a non-string hook command is a deny; `message` / `handoff`
+  close a crashed wrapper first; a skipped skill gets no link and a foreign
+  skill directory is never removed without `--force`; a nested project's
+  `AGENTS.md` is reported with its prefix; `--rounds` is recorded and
+  `next-round` warns past it; a session file whose slug disagrees is refused;
+  a malformed `channels.cli` raises instead of falling back to the vendor
+  default; event sequences are repaired from the log after a crash;
+  Windows gets `msvcrt` locking and a platform with no lock refuses; `adopt`
+  is one transaction; hook prompts are stored whole; `brainstorm verify`
+  connects to the address it checked (SNI and certificate checking kept),
+  closing the DNS-rebinding gap; round one no longer points at the roadmap
+  digest; an invalid configured profile is a staffing error; the reclaim
+  diff names paths that were already dirty at hand-off; `terminate` on an
+  adopted record says the session was not signalled. Docs: evidence after
+  converge, Cursor print-mode permissions, "by default" syncs, reclaim
+  returns to `idle` on purpose.
+- **Third independent review (GPT Sol):** a `completed` worker still owns its
+  leaf and slot (`delegate` returns it; `terminate` frees it); every worker
+  transition is one locked transaction; the guard refuses shell functions,
+  variable command names and interpreter one-liners that mention git, counts
+  `git -C` / `--work-tree` against every session, and denies a bare `git
+  commit` (use `--only <paths>`); a prompt placeholder must be a whole
+  argument; the default session id is `<user>-s<session id>` and `touch`
+  keeps the paths; a skipped skill file or foreign link is never adopted into
+  the manifest or overwritten; a stale `work/.worktrees/<codename>` is
+  refused; the GUI payload carries the v2 session fields and a GUI reject or
+  park needs a reason; `--op-id` binds its arguments; `--sign-key` without a
+  roster `public_key`, or with the wrong key, is an error before anything is
+  written; a dead wrapper frees its leaf and a spawn failure marks the record
+  `failed`; `terminate` signals only a verified wrapper pid and closes an
+  adopted record without signalling; READY must be on the worker's branch;
+  a profile path cannot escape the repo; `--harness` cannot override the
+  roster; a plan with no eligible coordinator reports it; search results
+  reach the GUI model inside an untrusted-data delimiter; the verifier's byte
+  cap blocks instead of truncating; `reclaim` keeps hook prompts verbatim.
+  Documented limits: the event log is authoritative, not authenticated; the
+  verifier's host check is open to DNS rebinding (TLS narrows it).
+- **Second independent review (Gemini):** `substitute_prompt` replaces its
+  placeholders in one pass (a prompt containing `<prompt>` could close the
+  shell quoting); the session id chosen up front survives `spawn`; `message`
+  / `resume` / `handoff` accept `completed` workers and refuse only `failed`
+  / `terminated`; a READY is judged against the current turn and its
+  `node_id`; `delegate` copies the brief into a linked worktree and runs the
+  roster `preflight`; `--op-id` is bound to its target; `handoff` refuses a
+  closed worker; `adopt` refuses a duplicate; the hook records prompts only
+  under a human lease and `reclaim` reads by line; `reviews_root` redirects
+  only linked worktrees and keeps a nested project's prefix; the guard scopes
+  tree-only commands to the caller's worktree, skips the calling worker and
+  dead pids, and catches `checkout -f`, `restore <path>`, `{ …; }`, `eval`,
+  `$(…)`; malformed hook stdin denies; `prompt` accepts a substitute
+  reviewer, honours `channels.cli`, and checks the coordinator's
+  `may_process` before pickup, as `orchestrate plan` now does; Codex
+  `resume` keeps the sandbox flags and stdin; `brainstorm add-evidence`
+  requires `--quote` and `verify` never marks a quote-less source
+  `retrieved`; `100.64/10` is off-host; accepting a rejected idea clears
+  the stale decision; `mark-implementation-reviewed --sign-key` reports a
+  signing failure; `refresh-stubs` lists dangling skill links as orphans,
+  refreshes `CLAUDE.md` only where it exists, and reports a user's own skill
+  directory as skipped; `models show` prints `harness/model`; the Grok and
+  Composer profiles carry a real `<prompt>` placeholder.
+- `handoff status` lists a READY whose verifier exited non-zero, or that
+  records no `verify` entry, as a problem under the node, and `review-packet`
+  marks both in its verifier section. The node's state does not change: the
+  exit codes are the executor's own claim, and a reviewer judges them.
+- `review-packet` labels each section's provenance — computed from git,
+  asserted by the executor, or run now — and its header names the policy
+  source (integration-branch ref and SHA, or the error that makes the gate
+  fail closed) and the generation date and `HEAD`. The reviewer prompt says
+  executor-asserted sections are claims to weigh against the diff.
+- With `require_implementation_review_before_finish` on, `validate` warns on
+  each open actionable leaf that has no `acceptance` (at most ten lines): a
+  review of it records no per-criterion result, so it attests nothing
+  criterion by criterion. The exit code is unchanged; with the gate off it
+  stays silent.
+- The contributor guide documents independent review rounds (prompt, report
+  shape, where findings land); the agentic sandbox runbook adds fault
+  injection on the worker process tree and requires negative evidence.
+  Triage: `docs/design-notes/sre-for-ai-triage.md`.
+- Docs: `contributor-guide`, `install-and-usage`, `dev-workflow`,
+  `pm-workflow`, `roadmap-authoring`, `orchestration`, `grind-session`,
+  `release-runbook` and `optional-ai-tooling-patterns` open with an
+  **Agent quickstart** block (when to use the doc, what to know without
+  reading on, which `##` section answers what) so an agent previewing the
+  top of a file can route from it; room was made by dropping horizontal
+  rules, navigation lines the block now carries and a duplicated `export`
+  block, with no rule or command removed. `optional-ai-tooling-patterns`
+  now says what the CLI installs itself (skills, the `CLAUDE.md` and
+  `AGENTS.md` managed blocks), that hook snippets come from
+  `--print-config`, and that no MCP server ships.
+
+
 ## [v0.2.3] - 2026-09-09
 
 Stable **v0.2.3** on **PyPI**. Promotes the work validated in `v0.2.3-rc1`,

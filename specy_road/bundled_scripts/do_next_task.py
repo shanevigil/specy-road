@@ -47,6 +47,7 @@ from specy_road.do_next_milestone_pickup import (
     resolve_milestone_parent_filter as _resolve_milestone_parent_filter,
 )
 from specy_road.git_workflow_config import (
+    git_config_user_name,
     merge_request_requires_manual_approval,
     on_complete_from_git_workflow,
     require_implementation_review_before_finish,
@@ -56,7 +57,7 @@ from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.validate_roadmap import validate_at
-from specy_road.bundled_scripts.repo_ops import current_branch, git_run, sync_integration_branch
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
@@ -107,17 +108,25 @@ def _resync_and_select(
     base: str,
     remote: str,
     parent_filter,
+    *,
+    sync: bool = True,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
-    """Sync integration branch, recompute availability, exit if empty."""
-    sync_integration_branch(
-        ROOT,
-        base,
-        remote,
-        retry_hint="retry do-next-available-task",
-        clean_tree_detail=(
-            "Integration-branch sync and creating a new feature branch need a clean tree."
-        ),
-    )
+    """Sync integration branch, recompute availability, exit if empty.
+
+    ``sync=False`` (``--local``) skips only the fetch and merge.
+    """
+    if sync:
+        sync_integration_branch(
+            ROOT,
+            base,
+            remote,
+            retry_hint="retry do-next-available-task",
+            clean_tree_detail=(
+                "Integration-branch sync and creating a new feature branch need a clean tree."
+            ),
+        )
+    else:
+        assert_working_tree_clean(ROOT, "A local pickup still commits the claim on the integration branch.")
     reg = read_registry(registry_path(ROOT))
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
@@ -205,6 +214,7 @@ def _register_and_commit(
     commit_message: str,
     *,
     impl_review_gate: bool,
+    owner: str | None = None,
 ) -> None:
     _do_register_and_commit(
         registry_path=registry_path(ROOT),
@@ -214,6 +224,7 @@ def _register_and_commit(
         reg=reg,
         commit_message=commit_message,
         impl_review_gate=impl_review_gate,
+        owner=owner,
     )
 
 
@@ -269,10 +280,11 @@ def _finalize_pickup(
     push_registry: bool,
     include_ci_skip: bool,
     on_complete: str,
+    owner: str | None = None,
 ) -> None:
     node_id = node["id"]
     codename = node["codename"]
-    print_pickup_header(node, branch)
+    print_pickup_header(node, branch, ROOT)
 
     brief_path = _write_brief(node, nodes)
     reg = read_registry(registry_path(ROOT))
@@ -283,6 +295,7 @@ def _finalize_pickup(
     _register_and_commit(
         node, branch, reg, commit_msg,
         impl_review_gate=require_implementation_review_before_finish(ROOT),
+        owner=owner,
     )
     print("registered in roadmap/registry.yaml on integration branch (committed)")
 
@@ -355,13 +368,16 @@ def main(argv: list[str] | None = None) -> None:
 
     parent_filter = _resolve_milestone_parent_filter(ROOT / "work", args)
     _validate_or_exit()
-    _check_pre_sync_availability(base, remote, parent_filter)
+    if args.local:
+        print("local pickup: no fetch, no push (see the footer)", file=sys.stderr)
+    else:
+        _check_pre_sync_availability(base, remote, parent_filter)
     # F-011: stash any in-progress work/ changes so the integration-branch
     # registry commit is clean; restore onto the new feature branch.
     stashed = _stash_work_dir_changes()
     try:
         nodes, reg, available, integration_statuses = _resync_and_select(
-            base, remote, parent_filter
+            base, remote, parent_filter, sync=not args.local
         )
         _assert_current_branch_equals(base)
         node = _pick_node(args, nodes, reg, available, integration_statuses)
@@ -369,8 +385,9 @@ def main(argv: list[str] | None = None) -> None:
         on_complete = prompt_on_complete(ROOT, args.on_complete)
         _finalize_pickup(
             node, nodes, branch,
-            base=base, remote=remote, push_registry=True,
+            base=base, remote=remote, push_registry=not args.local,
             include_ci_skip=include_ci_skip, on_complete=on_complete,
+            owner=args.owner or git_config_user_name(ROOT),
         )
     finally:
         _restore_work_dir_changes(stashed)

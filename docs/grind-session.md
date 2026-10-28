@@ -1,16 +1,31 @@
 # Agent-driven loop: `specy-road grind-session`
 
+## Agent quickstart
+
+**Use this doc when:** you run or supervise `specy-road grind-session` — planning waves for sub-agents, driving the loop from a terminal or an IDE chat, or reading its exit codes and events.
+**Not for:** the single-leaf primitives it shells out to ([`dev-workflow.md`](dev-workflow.md)) or the review gate itself ([`orchestration.md`](orchestration.md)).
+
+**Must know without reading on:**
+- It orchestrates approved commands only: it never implements code and never edits `roadmap/registry.yaml`; every cycle shells out to `specy-road do-next-available-task` and `specy-road finish-this-task`.
+- Run it with `--on-complete merge` (or `auto`); it exits 1 when the effective mode is `pr`. `--plan` is read-only and always allowed.
+- Plan first: `specy-road grind-session --plan --json`; dispatch `parallel_batches[0]` only, and never a node under `blocked` or `gated`.
+- From an IDE chat use step mode — `specy-road grind-session --step pickup --json --on-complete merge`, implement, `specy-road grind-session --step finish --json`; hook mode (`--implement-mode hook --implement-cmd '…'`) needs a real terminal.
+- Exit `3` is a dependency or gate block that needs a human; exit `6` means this worktree already holds a claim (`--resume-in-flight`).
+
+**Read further for:**
+- which mode fits your situation → "When to use it"
+- `ready`/`blocked`/`waves`, plan versus pickup, the JSON shape → "Planner first: `--plan`"
+- the cycle, in-flight claims, `why-blocked`, implement modes, step mode, Claude usage limits, the pre-finish hook, cleanup, hook-run requirements → "The loop"
+- flags, codes and JSONL events → "Stop conditions", "Exit codes", "JSON events (`--json`)"
+- yamllint and milestone rollup branches → "Registry / pre-commit (yamllint) compatibility", "Relationship to milestone sessions"
+
+**Related:** [`dev-workflow.md`](dev-workflow.md), [`orchestration.md`](orchestration.md), [`orchestration-workers.md`](orchestration-workers.md).
+
 `grind-session` orchestrates the **task loop** over many leaves so a human or a
 coding agent does not have to re-invoke pickup/finish by hand. It also exposes a
 **read-only planner** (`--plan`) that tells an orchestrator what is ready, what
 is blocked, and how work parallelizes — so sub-agent orchestration can dispatch
 independent work safely and skip waves whose dependencies are not met yet.
-
-> **It orchestrates approved commands — it does not implement code and never
-> edits `roadmap/registry.yaml` itself.** Every cycle shells out to
-> `specy-road do-next-available-task` and `specy-road finish-this-task`. Use the
-> approved commands; do not hand-edit the registry. See
-> [dev-workflow.md](dev-workflow.md) for the underlying primitives.
 
 ## When to use it
 
@@ -18,6 +33,7 @@ independent work safely and skip waves whose dependencies are not met yet.
 | --- | --- |
 | Plan sub-agent batches / see what is ready vs blocked | `grind-session --plan [--json]` |
 | One agent grinds many leaves autonomously | `grind-session --implement-mode hook --implement-cmd …` |
+| An IDE agent session (Claude Code, Cursor) drives the loop itself | `grind-session --step pickup`, implement, `grind-session --step finish` |
 | A human drives the loop, implementing between cycles | `grind-session` (manual mode, default) |
 | One integration PR for a whole milestone subtree | `start-milestone-session` + `--milestone-subtree` (see dev-workflow.md) |
 
@@ -31,8 +47,6 @@ mode before the first pickup and exits 1 if it is `pr` — including the case
 where nothing declared a mode at all and `pr` came from the built-in default.
 Set it once in `roadmap/git-workflow.yaml` (`on_complete: merge`) or pass
 `--on-complete merge` per run. `--plan` is read-only and always allowed.
-
----
 
 ## Planner first: `--plan`
 
@@ -54,8 +68,11 @@ classification plus a dependency **wave** layout. No git, no pickup.
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
 - **`active`** — leaves already claimed in the registry or marked *In Progress*
   (in flight; do **not** re-dispatch).
-- **`waves`** — all schedulable leaves layered by dependency depth. Wave `k`
-  unlocks only when **every** leaf in waves `< k` is `Complete`.
+- **`waves`** — all schedulable leaves layered by dependency depth: a leaf sits
+  in wave `k` when its own unmet dependencies all sit in waves `< k` (for a
+  phase or milestone dependency, all of its unfinished leaves do). The wave
+  number is a reading aid, not a barrier — a leaf becomes pickable when **its
+  own** dependencies are `Complete`, whatever else its wave's predecessors hold.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
   **in parallel right now**, in the order pickup will claim them (the same order
   as `ready`). `waves` stay sorted by id, because they are the dependency
@@ -95,7 +112,7 @@ error. A worked example — `M10.3, M10.4` are ready, `M10.5` depends on both, a
 
 **Dispatch now (parallel, in pickup order):** M10.3, M10.4  — 2 independent leaf/leaves, all dependencies satisfied, listed in the order the loop will claim them.
 
-**Later waves (do NOT start until every leaf in the prior wave is Complete):**
+**Later waves (a leaf starts once its own dependencies are Complete; wave = dependency depth):**
 - wave 1: M10.5
 - wave 2: M11.1
 ```
@@ -104,9 +121,15 @@ Recommended orchestration prompt:
 
 > Run `specy-road grind-session --plan --json`. Spawn one sub-agent per node in
 > `parallel_batches[0]` (they are independent — run them concurrently). Do **not**
-> start any node in a later wave until every node in the previous wave is
-> `Complete`. Re-run the planner after each wave to pick up the next batch.
+> start a node until every id in its `waiting_on` is `Complete`; nodes in later
+> waves become ready one by one as their own dependencies finish. Re-run the
+> planner after each completion to pick up the next batch.
 > Never start a node listed under `blocked`/`gated`; gates require a human.
+
+To run a leaf on a *different* harness than the one you are in (a Codex
+worker from a Cursor chat, say) and read its events back next turn, use
+`specy-road worker delegate` after pickup — see
+[orchestration-workers.md](orchestration-workers.md).
 
 This is the fix for the common failure where an orchestrator spawns a sub-agent
 for `M11.1` while `M10.5` is still in flight: the planner shows `M11.1` in a
@@ -139,8 +162,6 @@ dispatched until `M10.5` completes.
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
-
----
 
 ## The loop
 
@@ -194,6 +215,14 @@ registered to a branch that **exists in this clone** qualify — a claim held by
 another lane reaches `active` through the shared registry or an *In Progress*
 status, and resuming one would put two implementers on the same node.
 
+A resumed cycle **always runs `--implement-cmd` again**, even when the work is
+done and only the review gate stopped finish (exit `1`, or `4` from the pre-finish
+hook). A new commit from that run makes earlier READY files and reviews stale.
+To finish without re-implementing, use step mode: `--step pickup` (checks out the
+claim, never implements) if HEAD is not on it, then `grind-session --step finish
+--json --on-complete merge --pre-finish-cmd '<review, then mark-implementation-reviewed --yes>'`.
+Then restart the hook loop without `--resume-in-flight`.
+
 ### Asking about one node (`why-blocked`, `list-gates`)
 
 `--plan` answers for the whole session; these two answer narrower questions
@@ -230,6 +259,46 @@ gate is defined, because a phase is routinely held by a gate defined elsewhere.
 - **`hook`**: runs `--implement-cmd` per cycle (autonomous). The command receives
   env vars: `SPECY_ROAD_NODE_ID`, `SPECY_ROAD_BRANCH`, `SPECY_ROAD_BRIEF`,
   `SPECY_ROAD_PROMPT`, `SPECY_ROAD_REPO_ROOT`. A non-zero exit stops the session.
+
+### Driving the loop from an IDE agent (step mode)
+
+Hook mode needs a process that runs the whole session, which an IDE chat pane
+is not. `--step` turns the loop inside out: the agent session is the
+coordinator, and each call runs one phase and exits.
+
+```bash
+specy-road grind-session --step pickup --json --on-complete merge   # -> picked | resumed
+# implement work/prompt-<ID>.md (a fresh sub-agent per leaf), verify, review
+specy-road grind-session --step finish --json --until M7.6         # -> finished [+ stopped]
+```
+
+| Step | Does | Exit |
+| --- | --- | --- |
+| `pickup` | resumes this clone's open claim (`resumed`), else claims the next ready leaf (`picked`); never implements | `0`; `1` resume failed; `5` pickup failed; `3` / `2` nothing pickable |
+| `finish` | `--pre-finish-cmd` then `finish-this-task` on the checked-out `feature/rm-*` claim; `stopped until_reached` when it was `--until` | `0`; `4` pre-finish failed; `1` finish failed, or HEAD is not a claim (`hook_failed phase=locate_claim`) |
+
+Pickup checks for an open claim **before** a ready leaf, the reverse of the
+loop, so re-running it after an interruption lands on the same leaf instead of
+stacking a second claim. Ownership still needs a registry row and a local
+branch. Finish decides the claim by the current branch alone, so several open
+claims are never ambiguous.
+
+Step mode rejects `--implement-mode hook`, `--implement-cmd`, `--plan` and
+`--delete-merged-branches`. `--max-leaves` and `--max-cycles` do not apply:
+the agent decides when to stop. With the review gate on, the agent files an
+independent review and runs `mark-implementation-reviewed --yes` between
+implement and finish; see [orchestration.md](orchestration.md#unattended-loops).
+Any step that modifies files runs **before** review, because a later commit
+makes the reviews stale, so `--pre-finish-cmd` here should only check.
+
+**Usage limits** are the agent harness's to handle. Claude Code 2.1.234+ waits
+out a limit in an interactive session and carries on when *Continue
+automatically at usage limit* is on. Sub-agents in flight are lost, so re-run
+`--step pickup` (it reports `resumed`) and start a fresh executor. Cursor and
+Codex have no auto-continue; re-run pickup when the chat resumes. In-session
+schedulers such as `/loop` stop with the session and are blocked by the same
+limit, so they can poll but cannot restart one. The installed
+`specyrd-grind-session` command carries the full protocol for the agent.
 
 ### Pre-finish hook
 
@@ -291,9 +360,10 @@ If your plan's limit resets on an **8-hour** cadence, the 6h default ceiling
 stops the run rather than waiting the extra two hours. Pass
 `--max-limit-wait-hours 9`.
 
-**Run it in a terminal, not in an IDE agent pane.** An unattended grind needs a
-process that can be waited on and resumed; a chat panel cannot be. The machine
-also has to stay awake for the wait — use `caffeinate`, and `tmux` if you detach.
+**Run hook mode in a terminal, not in an IDE agent pane.** It needs a process
+that can be waited on and resumed; a chat panel cannot be. The machine also has
+to stay awake for the wait — use `caffeinate`, and `tmux` if you detach. From
+an IDE agent, use [step mode](#driving-the-loop-from-an-ide-agent-step-mode).
 
 If you are on Claude Code 2.1.234 or later with *"Continue automatically at usage
 limit"* enabled, Claude may ride out the limit itself and exit 0. That is fine:
@@ -330,9 +400,14 @@ For an unattended loop to keep cycling:
   blocked.
 - **Implementation review gate.** If `roadmap/git-workflow.yaml` sets
   `require_implementation_review_before_finish: true`, `finish-this-task` requires
-  a recorded review. For a fully autonomous loop either set it to `false`, or have
-  your `--implement-cmd` write `work/implementation-summary-<NODE_ID>.md` and run
-  `specy-road mark-implementation-reviewed --yes` before the loop calls finish.
+  a recorded review, and `mark-implementation-reviewed --yes` no longer approves
+  on its own: it needs review records that satisfy `roadmap/orchestration.yaml`
+  (the gate trusts each record's self-attested `authored_fix` / `is_coordinator`
+  flags, so run the reviewer as a separate session).
+  For a fully autonomous loop either set the flag to `false`, or have a
+  `--pre-finish-cmd` run an independent reviewer, file its verdict with
+  `specy-road review record`, then run `specy-road mark-implementation-reviewed
+  --yes` — see [orchestration.md](orchestration.md#unattended-loops).
 
 ### Examples
 
@@ -347,8 +422,6 @@ specy-road grind-session \
 # Human-in-the-loop: pick one leaf, implement, then `touch work/.session-ready`.
 specy-road grind-session --max-leaves 1 --on-complete merge
 ```
-
----
 
 ## Stop conditions
 
@@ -365,7 +438,7 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | Code | Meaning |
 | --- | --- |
 | `0` | Ended normally (bound reached, or no actionable work left) |
-| `1` | Generic failure — implement hook or `finish-this-task` failed, or the resolved `on_complete` was `pr` and the loop refused to start |
+| `1` | Generic failure — implement hook or `finish-this-task` failed, the resolved `on_complete` was `pr` and the loop refused to start, or `--step finish` found no claim on the current branch |
 | `2` | No actionable leaves at start |
 | `3` | Blocked on a dependency or gate — human action required |
 | `4` | `--pre-finish-cmd` failed |
@@ -377,7 +450,9 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 One JSON object per line. `event` is one of: `plan`, `picked`, `resumed`,
 `implementing`, `pre_finish`, `finished`, `blocked`, `in_flight`, `hook_failed`,
 `stopped`, `cleanup`, `usage_limited`, `implementer_vanished`. Every event carries
-`ts`, UTC to the second, right after `event`.
+`ts`, UTC to the second, right after `event`. `hook_failed` names a `phase`:
+`pickup`, `resume`, `implement`, `pre_finish`, `finish`, or `locate_claim`
+(`--step finish` off a claim branch).
 
 **stdout is only JSON.** In `--json` mode the sub-commands' own output — the pickup
 banner, the finish log, git — is redirected to **stderr**, so the stream stays
@@ -393,8 +468,6 @@ parseable as JSONL. Redirect stderr to a file if you want to keep it.
 {"event":"implementer_vanished","ts":"2026-09-06T12:12:00Z","node_id":"M10.2","rc":137,"attempt":1,"max_retries":2,"retry_in_seconds":30}
 {"event":"cleanup","ts":"2026-09-06T12:31:22Z","integration_branch":"dev","remote":"origin","checked_out":true,"deleted_local":["feature/rm-vault-mcp-secrets"],"deleted_remote":["feature/rm-vault-mcp-secrets"],"failed":[],"warnings":[],"hint":null}
 ```
-
----
 
 ## Registry / pre-commit (yamllint) compatibility
 
@@ -412,8 +485,6 @@ rules:
 
 If you add other YAML to the same hook, keep `roadmap/registry.yaml` writes going
 through `specy-road` (do not hand-edit) so the indentation stays consistent.
-
----
 
 ## Relationship to milestone sessions
 

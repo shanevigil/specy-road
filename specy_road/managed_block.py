@@ -70,6 +70,16 @@ CREATED = "created"
 UPDATED = "updated"
 UNCHANGED = "unchanged"
 FAILED = "failed"
+REFUSED = "refused: a symlink leads outside the repository"
+
+
+def resolves_outside(root: Path, path: Path) -> bool:
+    """``path``, or a directory above it, is a symlink out of ``root`` (dangling links included).
+
+    A link out of the checkout points at someone else's file, so specy-road
+    refuses to write through it rather than following it.
+    """
+    return not path.resolve().is_relative_to(root.resolve())
 
 
 def render_block(
@@ -110,7 +120,8 @@ def apply_managed_block(
 
     Creates the file when missing, replaces the block when present, and leaves
     every other line exactly as it was. Never raises: an unwritable path costs
-    the block, not the command that asked for it.
+    the block, not the command that asked for it, and a symlink out of the
+    file's directory is :data:`REFUSED`, not followed.
 
     With ``dry_run`` the outcome is computed and nothing is written, so
     ``specyrd init --dry-run`` can report the same line it would report for
@@ -137,6 +148,8 @@ def apply_managed_block(
 
 
 def _write(path: Path, text: str, outcome: str, dry_run: bool = False) -> str:
+    if resolves_outside(path.parent, path):   # a managed file sits directly in the root its caller named
+        return REFUSED
     if dry_run:
         return outcome
     try:

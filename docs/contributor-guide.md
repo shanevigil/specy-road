@@ -1,9 +1,26 @@
 # specy-road contributor guide
 
-This guide is for **toolkit contributors** — people who hack on the
-`specy-road` source itself. End users (consumers of the toolkit in their
-own application repos) should read
-[install-and-usage.md](install-and-usage.md) instead.
+## Agent quickstart
+
+**Use this doc when:** you change the `specy-road` toolkit itself — package, tests, workflows or the PM Gantt SPA — and need the contribution rules and local gate commands.
+**Not for:** using specy-road in an application repo ([`install-and-usage.md`](install-and-usage.md)) or cutting a release ([`release-runbook.md`](release-runbook.md)).
+
+**Must know without reading on:**
+- Feature work targets `dev`; `main` takes release-marker PRs only. Branch names must match `^(feature|fix|chore)/[a-z0-9]+(-[a-z0-9]+)*$`, and non-`chore/` PRs need a `Closes #N` / `Fixes #N` / `Refs #N` line.
+- Local CI parity before pushing: `pytest -q`, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`, `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`, `specy-road file-limits`.
+- After React/TypeScript changes, from `gui/pm-gantt/`: `npm ci && npm run lint && npm test && npm run build`.
+- Never run `specy-road init project` with no path in this repo; scaffold into `/tmp/specy-consumer-sandbox` or `playground/`.
+- Malicious code (supply-chain tampering, exfiltration, weakening the gates) means closure, a ban and a report; the maintainer may close any PR.
+
+**Read further for:**
+- issue links, exemptions, the malicious-code policy → "Project stewardship"
+- branch names, release pointers, Trusted Publisher setup, review rounds → "Branching, tagging, and release process"
+- the exact gate commands → "Local CI parity"
+- building the SPA, updating a clone, hooks, IDE stubs → "PM Gantt UI: build and install", "Updating an editable clone", "Pre-commit hook", "IDE command stubs (`specyrd`)"
+- pip and npm audits → "Supply-chain & dependency audits"
+- a safe scaffold target and further reading → "Trying `init project` safely", "Pointers to deeper docs"
+
+**Related:** [`release-runbook.md`](release-runbook.md), [`supply-chain-security.md`](supply-chain-security.md), [`architecture.md`](architecture.md), [`pm-gui.md`](pm-gui.md).
 
 > The link from README to this guide will only be added **post-release**
 > (per F-001 / F-002). Until then, open this file directly from the
@@ -103,6 +120,10 @@ exempt. Roadmap-driven `feature/rm-<codename>` branches created by
 
 ### Releases — see the canonical runbook
 
+For the 0.3 line, the real-harness checks in
+**[`docs/agentic-sandbox-runbook.md`](agentic-sandbox-runbook.md)** must
+pass before an rc is cut; the release runbook's §3.3 harness is its baseline.
+
 Cutting a release (RC or final) is documented end-to-end in
 **[`docs/release-runbook.md`](release-runbook.md)** — the canonical
 playbook for both humans and the autonomous coding agent. The runbook
@@ -151,6 +172,36 @@ The release workflow accepts a `workflow_dispatch` trigger with
 does NOT publish or create a release. Useful when refactoring the
 workflow itself.
 
+### Independent review rounds
+
+Before a release line is promoted, it is reviewed by models from **other
+families** than the one that wrote it. A round is a **fresh session**, given
+a prompt (never this repo's chat history) that pins:
+
+- the SHA and range under review (`git fetch`, `git checkout <sha>`,
+  `git log --oneline <from>..<sha>`);
+- the read order: design notes, then reference docs, then `CHANGELOG.md`
+  `[Unreleased]`, then the code;
+- the earlier rounds' test files, so the reviewer checks each fix for
+  completeness instead of re-reporting it;
+- the standing constraints: no model or search API call from the CLI, no
+  MCP server, no daemon, version numbers human-owned, no redesign of a
+  taken decision (each design note lists its decisions).
+
+The reviewer commits nothing. It reports **blockers**, **findings**,
+**questions** and **verified** guarantees, each with file:line and a
+reproduction (a shell transcript or a pytest it ran).
+
+Findings land as one regression test per finding in
+`tests/test_review_round<N>_<family>.py` (`tests/test_worker_review_round<N>.py`
+for the worker layer; fixtures in `tests/review_repo_helpers.py`), one
+CHANGELOG `[Unreleased]` bullet "**<Nth> independent review (<model>):**"
+listing the fixes, an edit to the design note wherever a claim changed, and
+a stated limit in the reference doc wherever a finding is accepted rather
+than fixed. A fix restarts the round at the new SHA. The rounds' origin and
+the evidence discipline behind them:
+[design-notes/sre-for-ai-triage.md](design-notes/sre-for-ai-triage.md).
+
 ---
 
 ## Local CI parity
@@ -183,6 +234,29 @@ The CI workflow ([`.github/workflows/validate.yml`](../.github/workflows/validat
 runs an extended pipeline including dependency audits and a PM bundle size
 budget. Locally this is optional unless you changed dependencies or the SPA
 bundle.
+
+### Lean-code gates
+
+CI also runs three cheap gates that fail only on **regressions** against a
+committed baseline (`pip install ruff==0.17.3 pylint==4.1.3` locally):
+
+| Gate | Command | Checks | Baseline |
+| --- | --- | --- | --- |
+| Complexity | `ruff check specy_road tests scripts` | McCabe `C901`, max 10, every function not marked | A `# noqa: C901` on each of the 23 functions over the limit on 2026-10-28; delete a marker once its function is simplified |
+| Duplication | `python scripts/check_clones.py` | new pylint `R0801` clone pairs (6+ similar lines, imports/docstrings/signatures ignored) in `specy_road/` | `constraints/clone-baseline.json`; `--update-baseline` only for deliberate duplication |
+| Private imports | `python scripts/check_test_private_imports.py` | new `_private` specy_road names imported, attribute-accessed (also through import aliases such as `wp._x`) or monkeypatched from `tests/` | `constraints/test-private-imports-baseline.txt`; `--update-baseline` only when a public API is impossible |
+
+Each script prints stale baseline entries so baselines shrink over time.
+
+**Mutation testing is report-only.** [`mutation.yml`](../.github/workflows/mutation.yml)
+runs `mutmut` weekly (or on dispatch) and publishes a per-module score table
+via `scripts/mutation_report.py`. It fails only when `constraints/mutation-baseline.json`
+exists and a module drops more than 2 points; there is no global floor. Seed or
+refresh the baseline from a full run's artifact: `python scripts/mutation_report.py
+mutmut-results.txt --write-baseline constraints/mutation-baseline.json`.
+
+There is deliberately **no tests-per-module cap**: test count is not a defect
+proxy, and the mutation report shows which tests earn their keep.
 
 ---
 

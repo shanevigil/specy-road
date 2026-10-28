@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/worker-record.schema.json",
+  "title": "specy-road worker record",
+  "description": "work/.workers/<worker-id>.yaml: one launched (or adopted) worker session on a vendor harness, owned by the coordinator's checkout. The event log beside it (<worker-id>.events.jsonl) is authoritative for what happened; this record is the current state.",
+  "type": "object",
+  "required": [
+    "worker_id", "node_id", "harness", "model", "worktree", "state", "lease",
+    "instruction_epoch", "attempt", "last_event_seq", "created", "updated"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "worker_id": { "type": "string", "pattern": "^w-[0-9]{4,}$" },
+    "node_id": { "type": "string", "minLength": 1 },
+    "harness": { "enum": ["claude-code", "codex", "cursor", "generic"], "description": "Which vendor harness runs the worker. Distinct from model: a Claude model under Cursor's agent is a cursor worker." },
+    "model": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Roster id of the model the harness was asked for. Not what the harness reported; see events." },
+    "provider_session_id": { "type": ["string", "null"], "description": "The harness's own session/thread/chat id, once known; what resume and handoff use." },
+    "worktree": { "type": "string", "minLength": 1 },
+    "branch": { "type": ["string", "null"] },
+    "pid": { "type": ["integer", "null"], "description": "The detached wrapper process, while it runs." },
+    "wrapper_token": { "type": ["string", "null"], "description": "Random token placed in the wrapper's argv at spawn; a pid is the wrapper only when its command line carries this token, the worker id and the repo root." },
+    "pgid": { "type": ["integer", "null"], "description": "The wrapper's process group (the wrapper is a session leader, so this is its pid). terminate signals the group and confirms it is gone; a record whose wrapper died but whose group lives is not freed." },
+    "harness_pid": { "type": ["integer", "null"], "description": "The harness child the wrapper started, while it runs." },
+    "harness_start": { "type": ["string", "null"], "description": "The harness's process start time (ps -o lstart=); with harness_pid, an identity a reused pid cannot share." },
+    "state": { "enum": ["starting", "running", "idle", "needs_input", "interrupted", "failed", "completed", "handed_off", "terminated"] },
+    "flags": {
+      "type": "array", "uniqueItems": true,
+      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive"] }
+    },
+    "lease": {
+      "type": "object", "required": ["holder", "since"], "additionalProperties": false,
+      "properties": {
+        "holder": { "enum": ["broker", "human", "native", "none"], "description": "The single writer. broker = specy-road sends turns; human = handed off to a person's native session; native = adopted, observe only." },
+        "since": { "type": "string", "minLength": 1 }
+      }
+    },
+    "instruction_epoch": { "type": "integer", "minimum": 0, "description": "Incremented by every recorded human intervention." },
+    "contract_hash": { "type": ["string", "null"], "description": "Hash of the leaf's brief when the worker was delegated; a reconcile compares against the current one." },
+    "started_head": { "type": ["string", "null"], "description": "The worktree's HEAD when the worker was created; a reconcile judges touch-zone breaches from here, whatever later checkpoints say." },
+    "checkpoint": {
+      "type": ["object", "null"], "required": ["git_head", "at"], "additionalProperties": false,
+      "properties": {
+        "git_head": { "type": ["string", "null"] },
+        "native_turn": { "type": ["string", "null"] },
+        "at": { "type": "string", "minLength": 1 },
+        "interventions_seen": { "type": "integer", "minimum": 0, "description": "Hook-recorded prompt lines that predate this hand-off." },
+        "dirty_paths": { "type": "array", "items": { "type": "string" }, "description": "Paths already modified or untracked at the checkpoint; not the human's doing." }
+      }
+    },
+    "attempt": { "type": "integer", "minimum": 1, "description": "Nth worker delegated for this leaf; <node_id>:<attempt> is the idempotency key." },
+    "billing_route": { "type": ["string", "null"] },
+    "last_event_seq": { "type": "integer", "minimum": 0 },
+    "created": { "type": "string", "minLength": 1 },
+    "updated": { "type": "string", "minLength": 1 }
+  }
+}

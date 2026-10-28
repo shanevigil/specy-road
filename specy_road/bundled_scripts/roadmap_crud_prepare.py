@@ -61,12 +61,14 @@ def derive_codename_with_collision_suffix(
 
 
 def ensure_codename_for_new_node(root: Path, node: dict) -> None:
-    """F-006: give a new task a codename from its title, before it is written.
+    """F-006: give a new node a codename from its title, before it is written.
 
-    Downstream pickup and registry logic need one. Deriving it here keeps every
-    add path (CLI and PM GUI) producing complete nodes.
+    Downstream pickup and registry logic need one, and the planning sheet's
+    slug comes from it — the same derivation ``edit-node --set title=…`` runs.
+    Deriving it here keeps every add path (CLI and PM GUI) producing complete
+    nodes instead of ``<id>_unnamed_…`` sheets.
     """
-    if node.get("type") != "task" or node.get("codename"):
+    if node.get("codename"):
         return
     existing = {
         n.get("codename") for n in load_roadmap(root)["nodes"] if n.get("codename")
@@ -82,3 +84,17 @@ def ensure_codename_for_new_node(root: Path, node: dict) -> None:
         f"{derived!r} from title (see validate for collision rules)",
         file=sys.stderr,
     )
+
+
+def next_sibling_order(root: Path, parent_id: object, explicit: int | None) -> int:
+    """``explicit`` when given, else one past the parent's highest ``sibling_order``.
+
+    An unset value sorts as ``0`` (``roadmap_layout.sibling_sort_key``), so a
+    node added without one jumped ahead of every ordered sibling — straight to
+    the front of the pickup queue. Appending is the behaviour a PM expects.
+    """
+    if explicit is not None:
+        return int(explicit)
+    siblings = [n for n in load_roadmap(root)["nodes"] if n.get("parent_id") == parent_id]
+    orders = [n["sibling_order"] for n in siblings if isinstance(n.get("sibling_order"), int)]
+    return (max(orders) + 1) if orders else (len(siblings) + 1 if siblings else 1)

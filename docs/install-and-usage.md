@@ -1,8 +1,25 @@
 # Install and use specy-road
 
-This is the **end-user** install and everyday usage guide. For toolkit-
-contributor topics (branching, tagging, PR workflow, release gating, npm
-build, supply-chain audits) see [contributor-guide.md](contributor-guide.md).
+## Agent quickstart
+
+**Use this doc when:** you install specy-road, scaffold or upgrade a consumer project, or need the everyday PM, developer and GUI command sequences.
+**Not for:** toolkit-contributor topics — branching, PR workflow, npm build, audits ([`contributor-guide.md`](contributor-guide.md)) — or the detail behind each workflow ([`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md)).
+
+**Must know without reading on:**
+- Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); an RC pins an exact version from TestPyPI with `--extra-index-url https://pypi.org/simple/`.
+- New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
+- After `pip install -U specy-road`: `specy-road refresh-schemas`, `refresh-profiles`, `refresh-stubs` (each takes `--dry-run`); never `init project --force` for that.
+- Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
+- Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
+
+**Read further for:**
+- prerequisites, PyPI, TestPyPI RCs, `uv pip`, source checkout → "Requirements", "Install", "Install from source (toolkit contributors)"
+- what `init project` writes and the upgrade commands → "Initialize a new consumer project"
+- command sequences → "Everyday workflow (PM)", "Everyday workflow (DEV / coding agent)", "Everyday workflow (GUI)"
+- what a brief contains → "Brief generation"
+- audits and the release pointers → "Optional dependency audit (consumer projects)", "Contributing & release process"
+
+**Related:** [`contributor-guide.md`](contributor-guide.md), [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`supply-chain-security.md`](supply-chain-security.md).
 
 ---
 
@@ -42,11 +59,11 @@ version and keep real PyPI as an extra index so dependencies still resolve:
 ```bash
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            "specy-road==0.2.3rc1"
+            "specy-road==0.3.1rc1"
 ```
 
 **`--pre` is not needed when you pin an exact prerelease.** A specifier that
-names the prerelease itself (`==0.2.3rc1`) already permits it. Add `--pre` only
+names the prerelease itself (`==0.3.1rc1`) already permits it. Add `--pre` only
 when you are asking for *whatever the latest prerelease is* — an unpinned
 install, or `pip index versions specy-road`, both of which hide prereleases
 without it.
@@ -59,7 +76,7 @@ RC — so it reports `No solution found`:
 uv pip install --index-url https://test.pypi.org/simple/ \
                --extra-index-url https://pypi.org/simple/ \
                --index-strategy unsafe-best-match \
-               "specy-road==0.2.3rc1"
+               "specy-road==0.3.1rc1"
 ```
 
 That default is uv's protection against dependency-confusion attacks, and
@@ -127,7 +144,9 @@ specy-road export
 ```
 
 `init project` writes `.gitignore`, `roadmap/`, `planning/`, `constitution/`,
-`constraints/`, `shared/`, `schemas/`, `work/`, `vision.md`, and `AGENTS.md`.
+`constraints/`, `shared/`, `schemas/`, `work/`, `model-profiles/`, `vision.md`, and a
+specy-road section in `AGENTS.md` (a managed block: an `AGENTS.md` you already
+have keeps everything outside the markers).
 It refuses to overwrite an existing scaffold unless you pass `--force`.
 Preview without writing: `--dry-run`.
 
@@ -142,6 +161,7 @@ on every upgrade: they are idempotent, they report what they would change with
 pip install -U specy-road
 
 specy-road refresh-schemas --dry-run   # then without --dry-run
+specy-road refresh-profiles --dry-run  # model-profiles/ this version ships that you lack
 specy-road refresh-stubs    --dry-run   # then without --dry-run
 ```
 
@@ -152,16 +172,22 @@ current CLI legitimately produces (for example `type: gate` nodes, or the
 `specy-road validate` warns when it notices this. The command touches
 `schemas/` and nothing else.
 
-**`refresh-stubs` — the IDE stubs from `specyrd init`.** Command stubs under
-`.claude/commands/` or `.cursor/commands/`, plus `.specyrd/README.md`. It
+**`refresh-stubs` — the skills from `specyrd init`.** One skill per command
+under `.agents/skills/<name>/SKILL.md`, read natively by Cursor and Codex and
+through a symlink per skill under `.claude/skills/` by Claude Code (or a flat
+directory for `--ai generic`), plus `.specyrd/README.md`. It
 rewrites exactly the paths `.specyrd/manifest.json` records as managed, installs
 stubs that shipped since you initialized (`v0.2.1` added `specyrd-search`,
 `specyrd-digest` and `specyrd-history`), re-applies the managed blocks in
 `.gitignore`, `.cursorindexingignore` and `CLAUDE.md`, and bumps the recorded
-`specyrd_version`. `specy-road validate` warns while the manifest lags.
+`specyrd_version`. `specy-road validate` warns while the manifest lags. In a
+repo with no stub pack installed it prints `nothing to refresh` and exits 0.
 
 Stubs this version no longer installs for your recorded `--role` are **listed,
-not deleted** — they are yours to remove.
+not deleted** — they are yours to remove. A repo initialised before 0.3.0 has
+its commands under `.cursor/commands/` or `.claude/commands/`; `refresh-stubs`
+writes the skills, lists those old files, and prints the `rm` that removes
+them, so each `/specyrd-…` entry exists once.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
 every scaffold file, including `roadmap/manifest.json` and your phase chunks.
@@ -207,6 +233,8 @@ Run all of these with `--repo-root /path/to/consumer/repo` if your shell is
 not already inside the consumer repo (for example when you're working in
 the toolkit clone and pointing at `playground/`).
 
+Shape the roadmap before authoring it: `specy-road brainstorm start --topic "…" --under <ID>`, hand the prompt to your agent, `next-round`, `recommend`, `evidence` + `verify`, then `accept` / `reject --reason` / `park` and `promote` ([brainstorming.md](brainstorming.md)).
+
 ---
 
 ## Everyday workflow (DEV / coding agent)
@@ -219,8 +247,16 @@ specy-road do-next-available-task
 # Implement the task on feature/rm-<codename>, then write the summary:
 $EDITOR work/implementation-summary-<NODE_ID>.md
 
-# Human review of the summary — gate before finish:
+# Review gate before finish: reviewers read the packet and record verdicts
+# (docs/orchestration.md); under the default policy one interactive human
+# approval here is enough.
+specy-road review-packet <NODE_ID>
 specy-road mark-implementation-reviewed
+
+# Coordinating from a chat: hand a claimed leaf to a session on another
+# harness and read its events back next turn (docs/orchestration-workers.md).
+specy-road worker delegate <NODE_ID> --model <roster id>
+specy-road worker sync --ack
 
 # Land the work. on_complete=pr opens a PR; on_complete=merge merges
 # locally and pushes the integration branch (no PR needed).
@@ -278,7 +314,9 @@ covers only what's needed to install and start it.
 ## Brief generation
 
 `specy-road brief <NODE_ID>` produces a comprehensive **work-packet brief**
-(F-004): node metadata, ancestor context chain, every relevant planning
+(F-004): node metadata with the node's `goal` and its `acceptance` criteria
+numbered `A1..An` (review records cite those ids), ancestor context chain,
+every relevant planning
 sheet inlined, `shared/README.md` plus only the shared contracts the
 planning chain cites under `## References` (the rest are listed as paths;
 `--all-contracts` restores full inlining), a git-derived history section

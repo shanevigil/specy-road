@@ -91,12 +91,22 @@ def test_the_diverge_prompt_opens_with_socratic_questions(repo: Path) -> None:
     assert "Who exactly is served, and who is deliberately not?" in text
 
 
-def test_the_diverge_prompt_sends_the_agent_to_its_search_tool(repo: Path) -> None:
+def test_round_one_defers_research_and_round_two_opens_it(repo: Path) -> None:
+    """Early search results and the roadmap inventory both anchor the model
+    (design note B3), so round 1 generates without them and round 2 opens research."""
     _start(repo)
 
     text = _prompt(repo)
-    assert "Use your web search tool" in text
-    assert "--evidence" in text
+    assert "Do not research yet and do not read the roadmap" in text
+    assert "web search" not in text.split("## Step 3")[1].split("## Record")[0]
+    _run(repo, "add-idea", "--title", "One")
+    assert _run(repo, "next-round").returncode == 0
+
+    text = _prompt(repo)
+    assert "Round 2 — add only what is outside the pool" in text
+    assert "- B1 One" in text
+    assert "use your web search" in text and "--evidence" in text
+    assert "probability a typical PM would propose it" in text
 
 
 def test_the_diverge_prompt_points_at_the_ide_agents_own_tools(repo: Path) -> None:
@@ -108,9 +118,14 @@ def test_the_diverge_prompt_points_at_the_ide_agents_own_tools(repo: Path) -> No
     assert "specy-road calls no model and no search API from the CLI" in text
 
 
-def test_the_prompt_lists_the_existing_roadmap(repo: Path) -> None:
-    """Ideas that restate committed work waste the PM's triage."""
+def test_the_roadmap_inventory_moves_to_the_converge_prompt(repo: Path) -> None:
+    """Ideas that restate committed work waste the PM's triage — but the
+    inventory shown before generation anchors the model, so overlap is
+    checked at converge, where it is needed."""
     _start(repo)
+    assert "`M0.1`" not in _prompt(repo)
+    _run(repo, "add-idea", "--title", "One")
+    _run(repo, "recommend")
 
     text = _prompt(repo)
     assert "Do not propose work that is already on the roadmap" in text
@@ -268,5 +283,5 @@ def test_reopening_a_session_keeps_its_ideas(repo: Path) -> None:
 
     r = _start(repo)
 
-    assert "(1 ideas)" in r.stdout
+    assert "(1 ideas, round 1 of 2" in r.stdout
     assert json.loads(_run(repo, "list", "--json").stdout)["mode"] == "brainstorm"

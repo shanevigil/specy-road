@@ -1,0 +1,43 @@
+# Who may coordinate, execute, and review leaves, and what the implementation
+# review gate requires. See docs/orchestration.md.
+# A missing file means exactly the defaults below.
+
+version: 1
+# A review counts toward the gate only when its model is listed here with the
+# reviewer role (or is the substitute in an active substitution below).
+# Add each model you review with, e.g.:
+#   - id: claude-opus-5.5
+#     family: anthropic
+#     roles: [reviewer, executor]
+#     harness: claude-code               # what `worker delegate` launches it on
+#     public_key: ssh-ed25519 AAAA...   # for signed_reviews
+roster:
+  - id: human
+    family: human
+    roles: [coordinator, reviewer]
+policy:
+  # Approving review records at the branch HEAD that mark-implementation-reviewed
+  # needs. Raise to 2 and set reviewers_distinct_families: true for independent
+  # review by two model families.
+  reviewers_required: 1
+  reviewers_distinct_families: false
+  reviewer_fresh_session: true
+  # true: a review counts only when signed with the reviewer's key and the
+  # roster entry has its public_key (ssh-keygen -Y; see docs/orchestration.md).
+  signed_reviews: false
+  # true: an approval counts only when its commands_rerun lists a command the
+  # reviewer re-ran (the interactive human approval is exempt). A model: human
+  # record is trusted as written unless signed_reviews is on, so under unsigned
+  # policy this is cooperative attestation, not enforcement.
+  reviewer_reruns_required: false
+  # Most workers `specy-road worker delegate` keeps running at once.
+  max_workers: 2
+# Recorded decisions to let a named substitute review while the usual reviewer
+# is unavailable, e.g.:
+#   - slot: reviewer-openai
+#     use: gpt-6-astra
+#     scope: [M2.3, M2.5]
+#     decided: 2026-01-15
+#     expires_when: 'gpt-5.6-sol has capacity'
+#     expires: 2026-03-01
+substitutions: []

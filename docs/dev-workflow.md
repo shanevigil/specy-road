@@ -1,10 +1,25 @@
 # Dev workflow: executing roadmap items
 
-This document is for the developer (or coding agent) who picks up `Agentic-led` work,
-implements it against contracts, and merges back.
+## Agent quickstart
 
-For end-user install + everyday usage see [install-and-usage.md](install-and-usage.md). For toolkit-contributor topics (pre-commit hook, IDE stubs, branching/tagging/release) see [contributor-guide.md](contributor-guide.md).
-For the PM authoring guide see [pm-workflow.md](pm-workflow.md).
+**Use this doc when:** you are the developer or coding agent picking up, implementing, reviewing or finishing one roadmap leaf.
+**Not for:** authoring the roadmap ([`pm-workflow.md`](pm-workflow.md)), the registry and branch contract itself ([`git-workflow.md`](git-workflow.md)), or install and toolkit-contributor topics ([`install-and-usage.md`](install-and-usage.md), [`contributor-guide.md`](contributor-guide.md)).
+
+**Must know without reading on:**
+- Run every command from the repo root on a clean tree. `specy-road do-next-available-task` syncs the integration branch, commits and pushes `roadmap/registry.yaml` there, then creates `feature/rm-<codename>` (`--interactive` to pick by number, `--under <NODE_ID>` to scope); undo with `specy-road abort-task-pickup`.
+- Finish in this order: write `work/implementation-summary-<NODE_ID>.md`; reviewers use `specy-road review-packet <NODE_ID>` and `specy-road review record`; then `specy-road mark-implementation-reviewed` (`--yes` never creates a review); then `specy-road finish-this-task` (`--push` optional; `--on-complete pr|merge|auto`).
+- Pickup is leaf-only, in outline order after `status: Blocked` and MR-rejected; `execution_milestone` is advisory and only a `type: gate` dependency holds work back.
+- Never hand-edit `roadmap/registry.yaml` — the one exception is the documented manual claim path below (`/specyrd-claim`: add your own row on the integration branch, validate, commit, push) — and never fill a missing `shared/` contract yourself: that is a planning gap — stop and flag it to the PM.
+
+**Read further for:**
+- every terminal and slash command, and what pickup commits, pushes and refuses → "Quick reference", "Agents and registration", "Your role in the system"
+- automated and manual start, rollup branches, `grind-session`, abort, finish steps → "The task loop"
+- `feature/rm-<codename>` naming, fixes after merge, reopening a node → "Branch model", "After merge: fix, refactor, or hardening", "Re-doing or re-opening a roadmap item"
+- what CI gates versus what a review session does → "Senior or maintainer review", "CI gates vs optional session review", "Optional: quality and compliance passes"
+- how to read the brief and prompt → "Reading the task's planning sheet"
+- parallel agents, worktrees, hard dependencies → "Multi-agent coordination"
+
+**Related:** [`git-workflow.md`](git-workflow.md), [`orchestration.md`](orchestration.md), [`grind-session.md`](grind-session.md), [`roadmap-authoring.md`](roadmap-authoring.md).
 
 Canonical model: **execute leaves, contextualize with ancestors, roll up progress upward**.
 
@@ -20,7 +35,8 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 specy-road do-next-available-task   # sync, brief, register leaf claim on base, push base, branch, prompt
 specy-road abort-task-pickup        # undo pickup: deregister on base, push base, delete local feature/rm-*, clean work/
 
-specy-road mark-implementation-reviewed  # human gate: after work/implementation-summary-<NODE_ID>.md
+specy-road mark-implementation-reviewed  # review gate; reviews via review-packet / review record / handoff status (orchestration.md)
+specy-road worker delegate <NODE_ID> --model <roster id>   # after pickup: run the leaf on another harness; `worker sync` reads back (orchestration-workers.md)
 specy-road finish-this-task         # complete, validate, export, digest, commit, PR hint (--push optional)
 specy-road validate                 # validate merged roadmap graph + registry
 specy-road brief <NODE_ID>          # manual: generate brief for a specific node
@@ -43,7 +59,6 @@ specy-road grind-session --plan --json        # read-only: ready/blocked/waves (
 specy-road grind-session --until M7.6 --on-complete merge --implement-mode hook --implement-cmd '…'
 ```
 
-
 ```text
 # IDE slash commands (after specyrd init --role dev)
 /specyrd-do-next-task   — automated start
@@ -57,11 +72,9 @@ specy-road grind-session --until M7.6 --on-complete merge --implement-mode hook 
 
 ## Agents and registration
 
-**Always:** Run **`specy-road do-next-available-task`** from the repo root. The command **syncs** the integration branch (`git fetch`, checkout, `merge --ff-only`), **commits** `roadmap/registry.yaml` there, **pushes** it to the remote, then creates **`feature/rm-<codename>`** — so teammates and the PM Gantt see the claim after `git pull` / fetch on that branch. There is **no** `--no-sync` or `--no-push-registry`; if push fails, fix auth/network and retry so the claim reaches **`remote/<integration-branch>`**.
+**Always:** Run **`specy-road do-next-available-task`** from the repo root. The command **syncs** the integration branch (`git fetch`, checkout, `merge --ff-only`), **commits** `roadmap/registry.yaml` there, **pushes** it to the remote, then creates **`feature/rm-<codename>`** — so teammates and the PM Gantt see the claim after `git pull` / fetch on that branch. **`--local`** skips the fetch, merge and push and leaves the claim committed only in this checkout — for offline work or a private spike; push the integration branch when the team should see it. Every claim row records **`owner`** (`--owner`, else `git config user.name`). There is no other `--no-sync` or `--no-push-registry`; if push fails, fix auth/network and retry so the claim reaches **`remote/<integration-branch>`**.
 
 See **`specy-road do-next-available-task --help`** and the IDE stub from **`specyrd init`** (e.g. **`/specyrd-do-next-task`**).
-
----
 
 ## Your role in the system
 
@@ -75,8 +88,6 @@ If you reach an `agentic` task whose planning sheet leaves what to build open, o
 whose `## References` cite a contract that does not resolve to a real file —
 **stop**. Flag it to the PM. A missing contract is a planning gap, not something
 to fill during implementation.
-
----
 
 ## The task loop
 
@@ -94,17 +105,10 @@ Your working tree must be **clean**. The tool runs `git fetch`, checks out the i
 
 Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_approval`** reminds the CLI that MRs need human approval; align with your team’s process before merging.
 
-**Terminal:**
-
 ```bash
 specy-road do-next-available-task
 # optional: specy-road do-next-available-task --base dev --remote origin --interactive
-```
-
-**IDE slash command** (after `specyrd init --ai <ide> --role dev`):
-
-```text
-/specyrd-do-next-task
+# IDE slash command (after `specyrd init --ai <ide> --role dev`): /specyrd-do-next-task
 ```
 
 Open the generated `work/prompt-<NODE_ID>.md` in your agent. Plan, implement, commit incrementally.
@@ -147,19 +151,14 @@ If you picked up a task with **`do-next-available-task`** and decide **not** to 
 
 The command **`git fetch`**es, verifies your branch matches **`roadmap/registry.yaml`**, refuses if your feature branch has **commits not on the remote integration branch** (unless **`--force`**), then **`git checkout`** the integration branch, **`git merge --ff-only`** to **`remote/<integration-branch>`**, removes your registry row, **commits** that change on the integration branch, and **`git push`** — so the team sees the claim released the same way pickup published it. It deletes the local **`feature/rm-<codename>`** branch and removes **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/.on-complete-<NODE_ID>.yaml`**. With **`--force`**, it also deletes **`work/implementation-summary-<NODE_ID>.md`** if present.
 
-If the registry row is already gone after syncing (someone else cleaned up), the command exits with an error; remove the local branch and work files manually. For the opposite case — a row whose **`feature/rm-*`** branch no longer exists anywhere, so `abort-task-pickup` cannot run at all — use **`specy-road registry-prune`** to list such rows and **`--remove <CODENAME>`** to drop one (it commits on the integration branch and pushes). See [git-workflow.md](git-workflow.md).
+After a **`--local`** pickup the claim never reached the remote: when the only commit ahead of **`remote/<integration-branch>`** (on the feature branch and on the local integration branch) is that claim's own registration commit — its subject, no change but `roadmap/registry.yaml`, and no registry change but adding this claim's row (compared as parsed YAML, so pickup's rewrite of comments and layout does not count) — abort resets the local integration branch to **`remote/<integration-branch>`**, which drops the registration, deletes the feature branch and pushes nothing. If you committed work on top, or amended other changes into that commit (including edits to other claims), it refuses as above.
 
-**Terminal:**
+If the registry row is already gone after syncing (someone else cleaned up), the command exits with an error; remove the local branch and work files manually. For the opposite case — a row whose **`feature/rm-*`** branch no longer exists anywhere, so `abort-task-pickup` cannot run at all — use **`specy-road registry-prune`** to list such rows and **`--remove <CODENAME>`** to drop one (it commits on the integration branch and pushes). See [git-workflow.md](git-workflow.md).
 
 ```bash
 specy-road abort-task-pickup
 # optional: specy-road abort-task-pickup --base dev --remote origin --force
-```
-
-**IDE slash command** (after `specyrd init --ai <ide> --role dev`):
-
-```text
-/specyrd-abort-task-pickup
+# IDE slash command (after `specyrd init --ai <ide> --role dev`): /specyrd-abort-task-pickup
 ```
 
 ### Start: manual path
@@ -199,8 +198,8 @@ Run from the feature branch when implementation is complete.
 
 If **`roadmap/git-workflow.yaml`** sets **`require_implementation_review_before_finish: true`** (default in new `specy-road init project` scaffolds), use this order:
 
-1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**). Use `work/implementation-summary.template.md` as a starting point.
-2. **Review** — the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary, offers an interactive menu (walkthrough / approve / quit), commits **`implementation_review: approved`** in `roadmap/registry.yaml`, then you run **`specy-road finish-this-task`**. Non-interactive approval: `specy-road mark-implementation-reviewed --yes`. Emergency without a summary file: `--allow-missing-summary` (loud warning).
+1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**) and commit it on the feature branch: it is what reviewers judge, and finish removes it from `work/`. Use `work/implementation-summary.template.md` as a starting point.
+2. **Review** — reviewers read **`specy-road review-packet <NODE_ID>`** and file verdicts with **`specy-road review record`** (see [orchestration.md](orchestration.md)). Then the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary (only its path under `--yes`) and the review policy status, and commits **`implementation_review: approved`** in `roadmap/registry.yaml` once the recorded reviews satisfy `roadmap/orchestration.yaml` at the current commit. Under the default policy (one reviewer, `human` rostered) the interactive menu's **approve** files the human review and closes the gate in one step. **`--yes` never creates a review**: it only commits an approval the recorded reviews already earned. Emergency without a summary file: `--allow-missing-summary` (loud warning).
 3. **Close the task** — same as below.
 
 If that flag is **false** or omitted, skip step 2 and run `finish-this-task` when work is done (registry rows omit `implementation_review`).
@@ -209,7 +208,7 @@ If that flag is **false** or omitted, skip step 2 and run `finish-this-task` whe
 
 ```bash
 specy-road mark-implementation-reviewed
-# optional: specy-road mark-implementation-reviewed --yes
+# optional: specy-road mark-implementation-reviewed --yes   # only when reviews are already recorded
 #          specy-road mark-implementation-reviewed --allow-missing-summary   # emergency only
 
 specy-road finish-this-task
@@ -235,14 +234,12 @@ specy-road finish-this-task
 3. Update the node `status` to `Complete` in the roadmap chunk file.
 4. Remove the registry entry.
 5. Run `specy-road validate`, `specy-road export` and `specy-road digest`.
-6. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked).
+6. Unless **`--no-cleanup-work`** is passed or **`cleanup_work_artifacts_on_finish`** is **`false`** in `roadmap/git-workflow.yaml`, remove **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** if they exist (stage deletions when those paths are tracked). A summary that was never committed is copied to `work/reviews/<NODE_ID>/` first, beside the reviews that read it — only a regular file inside the repo: a symlinked summary (or one under a symlinked `work/` leading outside the repo) is skipped with a warning; commit it on the feature branch to keep it in history.
 7. Commit the bookkeeping changes on the feature branch.
 8. If **`--push`** was passed, push the feature branch.
-9. If **`on_complete`** is **`pr`**, print `git push` (if needed) and **`gh pr create`**-style guidance for a **PR/MR** to the integration branch. If **`merge`** or **`auto`**, merge the feature branch into the integration branch locally and push the integration branch, or exit with **merge pending** and PR/MR hints on failure (**`auto`** falls back to those hints).
+9. If **`on_complete`** is **`pr`**, print `git push` (if needed) and **`gh pr create`**-style guidance for a **PR/MR** to the integration branch. If **`merge`** or **`auto`**, merge the feature branch into the integration branch locally and push the integration branch, or exit with **merge pending** and PR/MR hints on failure (**`auto`** falls back to those hints). A failed **`merge`** landing exits 1 with the bookkeeping already committed: fix the cause, then run **`finish-this-task --on-complete merge`** again on the feature branch, which retries only the landing — and only while the branch tip is still that bookkeeping commit; a commit added after it was never reviewed, so the retry refuses it (re-pick the leaf, or put the change in a new leaf). When another worktree has the integration branch checked out (a leaf finished from `worker delegate`'s linked worktree while the coordinator's checkout holds `main`), the merge and push run in that worktree, which must have no uncommitted changes to tracked files and a readable `git status`; with **`merge`**, finish checks that before step 7 and refuses, naming the worktree. Untracked files there are left alone, except untracked (including ignored) copies of `roadmap.md` and `roadmap-context.md`: the landing regenerates those in that worktree, overwriting them.
 
 Merge when CI is green and your team’s MR policy is satisfied (or after a successful local integration merge when your workflow uses **`merge`** / **`auto`**).
-
----
 
 ## Branch model
 
@@ -265,8 +262,6 @@ branches from ad-hoc `fix/<slug>` or `feature/<slug>` branches.
 Non-roadmap work (hotfixes, tooling) uses `fix/<slug>` without the `rm-` prefix and
 does not touch `registry.yaml`.
 
----
-
 ## After merge: fix, refactor, or hardening
 
 Merged work can still need correction (bugs), standards cleanup, or a maintainer-led
@@ -285,8 +280,6 @@ registration on the integration branch per [git-workflow.md](git-workflow.md).
 Git mechanics for “undoing” a merge on a shared branch are covered in
 [git-workflow.md](git-workflow.md#correcting-merged-work-revert-vs-follow-up) (revert PR
 vs follow-up branch — avoid `git reset --force` on shared history).
-
----
 
 ## Re-doing or re-opening a roadmap item
 
@@ -312,8 +305,6 @@ rollup branch is proven merged (`specy-road reconcile-milestone-status`). If a s
 `edit-node` command; it never fails, because the rollup is what every reader *and*
 dependency satisfaction use. `--no-phase-status-warn` is deprecated and ignored.
 
----
-
 ## Senior or maintainer review
 
 Code review, refactors, and hardening PRs are a normal **human** layer on top of
@@ -321,8 +312,6 @@ contracts and CI. They are **not** a substitute for green CI or a second “PM s
 gate — see [pm-workflow.md](pm-workflow.md). A maintainer may open a `fix/` branch after
 merge to bring code up to standards without a new roadmap node; that stays lightweight
 and out of `registry.yaml` unless the PM tracks it.
-
----
 
 ## CI gates vs optional session review
 
@@ -335,7 +324,9 @@ repo’s canonical place) so humans and agents run what CI runs.
 coverage-gap reports) are **judgment-heavy** and context-heavy. Use them **before** or
 **after** merge as needed; they complement CI rather than replacing it. Do not assume
 every repo will run LLM-style audits inside the pipeline — reserve CI for what can be
-enforced mechanically.
+enforced mechanically. For this toolkit, the regression-only lean-code gates (complexity,
+new clones, private imports in tests) are listed in
+[`docs/contributor-guide.md`](contributor-guide.md#lean-code-gates).
 
 ```mermaid
 flowchart LR
@@ -353,16 +344,11 @@ flowchart LR
   session --> followup[Optional_follow_up_PRs]
 ```
 
----
+## Optional: quality and compliance passes
 
-## Optional: quality and compliance prompts
-
-For **copy-paste prompts** (architecture compliance, scoped code review, test coverage audit,
-dependency audit, security audit, pre-release checklist) that stay project-agnostic — with
-placeholders for your lint/test/scan commands — see
-[optional-agent-review-prompts.md](optional-agent-review-prompts.md), which are optional.
-
----
+For generic review, cleanup, security and audit passes use your coding harness's built-in
+skills; specy-road's roadmap-specific review contract (`review-packet`, `review record`, the
+review gate) is documented in [orchestration.md](orchestration.md).
 
 ## Reading the task's planning sheet
 
@@ -382,8 +368,6 @@ explicit **prohibitions**; if yours does not, the task is still implementable,
 but say so when you finish.
 
 **Upstream context comes pre-inlined.** Read `## 6. Dependency context (intent of upstream work)` in the brief for each effective dependency's `## Intent` block (or `## Why this gate exists` for upstream gates). You should rarely need to open a dependency's planning sheet directly — the brief already carries what the PM declared as that dep's intent.
-
----
 
 ## Multi-agent coordination
 

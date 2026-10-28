@@ -137,7 +137,7 @@ def roadmap_fingerprint(root: Path, base: int | None = None) -> int:
     return h
 
 
-def iter_pm_gui_extra_fingerprint_files(root: Path) -> list[Path]:
+def iter_pm_gui_extra_fingerprint_files(root: Path) -> list[Path]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Paths whose edits should invalidate the PM GUI mutation token (planning, vision, constitution, shared)."""
     root = root.resolve()
     out: list[Path] = []

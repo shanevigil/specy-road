@@ -1,5 +1,27 @@
 # Dependency and supply-chain verification
 
+## Agent quickstart
+
+**Use this doc when:** changing a Python or npm dependency, running or reporting an audit, or reviewing a Dependabot PR in this toolkit repo.
+**Not for:** the exact local audit commands — [`contributor-guide.md`](contributor-guide.md#supply-chain--dependency-audits).
+
+**Must know without reading on:**
+- Do not auto-upgrade or replace a dependency; humans merge after review.
+- After editing dependencies in `pyproject.toml`, regenerate the lock: `pip-compile requirements-ci.in -o requirements-ci.txt`. A single security pin to the lowest fixed version is the one allowed hand edit.
+- Report `pip-audit -r requirements-ci.txt` results separately from unscoped host findings; never mix them in one severity list.
+- Prefer official registries; flag git URLs, floating versions and install-time scripts.
+
+**Read further for:**
+- which surfaces CI audits → "Scope"
+- audit steps, sources and rules → "Policy"
+- CI vs local vs periodic review → "What is automated vs manual"
+- the lock file and when to recompile → "Frozen Python resolution (maintainers)"
+- auditing the optional extras → "Optional extras audit procedure (`review`, `gui`, `gui-next`)"
+- how to write up a finding → "Finding report template"
+- the calendar review → "Quarterly manual checklist (supplemental)"
+
+**Related:** [`contributor-guide.md`](contributor-guide.md), [`install-and-usage.md`](install-and-usage.md), [`../README.md`](../README.md).
+
 This document describes how the **specy-road** toolkit repository approaches dependency risk: what is automated in CI, what maintainers run locally, and what requires human review. It applies to **Python** (this package and its dev dependencies) and **npm** (the PM Gantt UI under `gui/pm-gantt/`).
 
 ## Scope
@@ -81,6 +103,10 @@ pip install -r requirements-ci.txt
 ```
 
 Then run `pip-audit` (see [contributor-guide.md](contributor-guide.md#supply-chain--dependency-audits)).
+
+**Gate tools outside the lock.** The lean-code gate tools (`ruff`, `pylint` in `validate.yml`;
+`mutmut`, `coverage` in `mutation.yml`) are exact-pinned in the workflows, installed after
+`pip-audit`, and are not in `requirements-ci.txt`, so their transitive dependencies are neither locked nor audited.
 
 ## Reporting discipline: repo-scoped first
 

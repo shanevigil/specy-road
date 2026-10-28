@@ -12,15 +12,26 @@ them exactly and to resist the instinct to be helpful by filtering early.
 
 ## The one rule that matters
 
-There are two modes and they are **not** to be combined:
+There are separate passes and they are **not** to be combined:
 
-1. **Diverge** — generate volume. Do not rank, cluster, sequence, estimate, or
-   merge similar ideas. Weak and obvious ideas belong in this pass.
+1. **Diverge** (in rounds) — generate volume. Do not rank, cluster, sequence,
+   estimate, or merge similar ideas. Weak and obvious ideas belong here.
 2. **Converge** — assess what exists. Do not add new ideas.
+3. **Evidence** — source the shortlist with verbatim quotes. Do not add ideas.
 
 If you generate and filter in the same pass you will return five safe ideas
 instead of forty, and the session will have been worth nothing. The commands
 below enforce the split; do not shortcut them.
+
+## What you may write
+
+Until the PM runs `promote`, a brainstorm changes **only the session file**,
+and only through `specy-road brainstorm frame`, `add-idea`, `add-evidence`
+and `revise`. Do **not** edit code, tests or configuration (not even to try
+an idea), and do not touch `planning/`, `roadmap/`, `roadmap/registry.yaml`,
+`shared/` or `constitution/`; do not write under `work/` except through
+those commands. Proposals are not nodes, sheets or claims until the PM
+promotes them.
 
 ## Phase 1 — open the session
 
@@ -31,8 +42,8 @@ specy-road brainstorm start --topic "[TOPIC]" --under [ANCHOR] --count 30
 ```
 
 This prints the path to `work/brainstorm-<slug>-prompt.md`. **Read that file
-and follow it.** It is generated against the current roadmap, so it already
-knows what exists and what the constitution says.
+and follow it.** It points at the constitution; it deliberately does not show
+you the roadmap or ask for research in round 1, because both anchor you.
 
 ## Phase 2 — interrogate before generating
 
@@ -40,31 +51,36 @@ The prompt opens with Socratic questions about the topic. Ask the PM these and
 **wait for answers**. Do not skip to ideas because you can think of some — a
 brainstorm aimed at the wrong question produces confident, useless volume.
 
-Summarise what you heard in two or three sentences and get agreement before
-generating.
+Rewrite the PM's assertions as questions, summarise what you heard, get
+agreement, and record it with `specy-road brainstorm frame --answer key=…`.
 
-## Phase 3 — generate and research
+## Phase 3 — plan, then generate
 
-Work through the divergence lenses the prompt lists (SCAMPER, analogous
-domains, inversion, pre-mortem, constraint removal, 10x/0.1x) rather than
-free-associating. Each should produce several ideas.
-
-Use **your own web search tool**. Look for what comparable products shipped
-recently, what users complain about in public, what changed in the underlying
-technology, and what regulation or platform change is coming. Cite what you
-find — an idea with a source survives triage, an unsourced claim about a
-competitor does not.
-
-Record every idea as you go, one command each:
+Write the allocation grid the prompt asks for (lenses × directions, a quota
+and a diversity operator per cell) and record it with
+`brainstorm frame --allocation "…"`. Then generate a cell at a time as prose
+concept cards, make each idea bolder and more different, and only then record:
 
 ```bash
 specy-road brainstorm add-idea --title "…" --rationale "…" \
-  --kind feature --effort M --evidence "https://…"
+  --kind feature --effort M --origin <harness>/<model>/<lens>/1
 ```
 
 Stop when you have cleared the count. Report the total and hand back to the
 PM. **Do not run `accept`, `reject`, or `promote`** — triage is the PM's
 decision, not yours.
+
+## Phase 3b — later rounds, when the PM asks
+
+```bash
+specy-road brainstorm next-round --count 15
+```
+
+Read the new prompt: the pool so far and the rule to add only what is outside
+it. From this round you may use **your own web search tool** as a source of
+ideas — what comparable products shipped, what users complain about in
+public, what changed in the technology, what regulation is coming — citing
+URLs with `--evidence`.
 
 ## Phase 4 — converge, when the PM asks
 
@@ -73,12 +89,14 @@ specy-road brainstorm recommend
 ```
 
 Read the new prompt. Cluster near-duplicates, flag overlaps with existing
-roadmap nodes by display id, assess each idea against
-`constitution/purpose.md` and `constitution/principles.md` rather than your own
-taste, and record one verdict per idea:
+roadmap nodes by display id and relation, play the three independent critics
+it names, assess each idea against `constitution/purpose.md` and
+`constitution/principles.md` rather than your own taste, and record one
+verdict per idea whose rationale cites a clause, a source, or an overlap:
 
 ```bash
-specy-road brainstorm revise B1 --recommendation strong --rationale "…"
+specy-road brainstorm revise B1 --cluster C1 --overlap M3.1:adjacent \
+  --critic "feasibility: …" --recommendation strong --why "…"
 ```
 
 Verdicts are `strong`, `consider`, `park`. Passing only `--recommendation`
@@ -86,6 +104,22 @@ leaves the triage status alone, which is correct — you advise, the PM decides.
 
 Finish with a short written summary: the strongest three, the clusters you
 merged, and **which part of the problem got no ideas**.
+
+## Phase 4b — evidence, when the PM asks
+
+```bash
+specy-road brainstorm evidence
+```
+
+For each shortlisted idea find one to three sources and one disconfirming
+search, with the strongest research tool this session exposes. Record each
+with a **verbatim quote**:
+
+```bash
+specy-road brainstorm add-evidence B4 --url "…" --quote "…" --supports "…" --stance for --tool "…"
+```
+
+The PM runs `specy-road brainstorm verify`; do not run it yourself.
 
 ## Phase 5 — promote (only when the PM says to)
 
@@ -123,4 +157,7 @@ specy-road digest --check
   chunks and manifest atomically; hand edits break that.
 - **Do not register brainstormed work in `roadmap/registry.yaml`.** The
   registry is for active claims on work being implemented, not for proposals.
+- **Do not implement an idea during the session.** No code, test, config,
+  `planning/` or `shared/` edits until the PM has promoted it and assigned
+  the work through the normal roadmap flow.
 - **Do not promote ideas the PM has not accepted.**

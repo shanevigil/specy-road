@@ -287,7 +287,7 @@ def test_run_validation_requires_implementation_review_when_gate_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "specy_road.bundled_scripts.validate_roadmap_checks.require_implementation_review_before_finish",
+        "specy_road.bundled_scripts.validate_roadmap_checks.review_required",
         lambda _r: True,
     )
     roadmap = load_roadmap(DOGFOOD)
@@ -310,7 +310,7 @@ def test_run_validation_accepts_implementation_review_pending_when_gate_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "specy_road.bundled_scripts.validate_roadmap_checks.require_implementation_review_before_finish",
+        "specy_road.bundled_scripts.validate_roadmap_checks.review_required",
         lambda _r: True,
     )
     roadmap = load_roadmap(DOGFOOD)

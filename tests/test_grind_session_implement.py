@@ -251,3 +251,50 @@ def test_no_claude_directory_means_no_session_id(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(gsi.Path, "home", classmethod(lambda _cls: tmp_path))
 
     assert gsi.latest_session_id(Path("/repo")) is None
+
+
+# --- hook-path bugs found during the grind-session --step work -----------------
+
+def test_the_session_id_matches_paths_with_dots_and_underscores(tmp_path, monkeypatch) -> None:
+    """Claude Code replaces every non-alphanumeric path character, not only '/'."""
+    repo = Path("/Users/x/my_app.v2")
+    projects = tmp_path / ".claude" / "projects"
+    mine = projects / "-Users-x-my-app-v2"
+    mine.mkdir(parents=True)
+    (mine / "found.jsonl").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(gsi.Path, "home", classmethod(lambda _cls: tmp_path))
+
+    assert gsi.latest_session_id(repo) == "found"
+
+
+def test_the_banner_is_valid_applescript(monkeypatch) -> None:
+    """`!r` single-quoted the strings; AppleScript only has double-quoted literals."""
+    seen: list[list[str]] = []
+    monkeypatch.setattr(gsi.subprocess, "run", lambda args, **_k: seen.append(args))
+
+    gsi._notify('Limit "hit"', "resets 3:45pm \\ ok")
+
+    script = seen[0][2]
+    assert script == 'display notification "resets 3:45pm \\\\ ok" with title "Limit \\"hit\\""'
+    assert "'" not in script
+
+
+def test_hook_output_streams_while_the_hook_runs(monkeypatch, tmp_path) -> None:
+    """A line reaches stderr before the hook exits, not in one lump afterwards."""
+    import io
+    import time
+
+    stamps: list[tuple[float, str]] = []
+
+    class Recorder(io.StringIO):
+        def write(self, text: str) -> int:
+            stamps.append((time.monotonic(), text))
+            return len(text)
+
+    monkeypatch.setattr(gsi.sys, "stderr", Recorder())
+    code, output = gsi._run_capturing("echo first; sleep 0.6; echo second", {}, tmp_path)
+
+    assert code == 0 and output == "first\nsecond\n"
+    first = next(t for t, s in stamps if "first" in s)
+    second = next(t for t, s in stamps if "second" in s)
+    assert second - first > 0.3

@@ -58,7 +58,7 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
     # orchestrator can see the whole plan and NOT spawn a later wave early.
     if len(plan.waves) > 1:
         lines.append(
-            "**Later waves (do NOT start until every leaf in the prior wave is Complete):**"
+            "**Later waves (a leaf starts once its own dependencies are Complete; wave = dependency depth):**"
         )
         for w in plan.waves[1:]:
             lines.append(f"- wave {w.index}: {_fmt(w.node_ids)}")

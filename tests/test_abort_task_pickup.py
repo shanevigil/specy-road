@@ -79,6 +79,8 @@ def test_abort_refuses_non_feature_branch(
 def test_abort_refuses_ahead_of_remote_without_force(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
+    # A pushed claim: nothing ahead of origin is a local-only registration.
+    monkeypatch.setattr(atp, "git_capture", lambda *_a, **_k: "")
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "current_branch", lambda _root: "feature/rm-x")
     monkeypatch.setattr(
@@ -130,6 +132,8 @@ def test_abort_pickup_git_order(monkeypatch: pytest.MonkeyPatch, tmp_path) -> No
         encoding="utf-8",
     )
 
+    # A pushed claim: nothing ahead of origin is a local-only registration.
+    monkeypatch.setattr(atp, "git_capture", lambda *_a, **_k: "")
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "current_branch", fake_branch)
     monkeypatch.setattr(
@@ -185,6 +189,8 @@ def test_abort_allows_ahead_with_force(monkeypatch: pytest.MonkeyPatch, tmp_path
         encoding="utf-8",
     )
 
+    # A pushed claim: nothing ahead of origin is a local-only registration.
+    monkeypatch.setattr(atp, "git_capture", lambda *_a, **_k: "")
     monkeypatch.setattr(atp, "_dirty_entries", lambda *_a, **_k: [])
     monkeypatch.setattr(atp, "current_branch", fake_branch)
     monkeypatch.setattr(

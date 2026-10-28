@@ -37,6 +37,9 @@ SESSION_ARTIFACT_GLOBS = (
     "work/pr-body-*.md",
     "work/.on-complete-*.yaml",
     "work/.milestone-session.yaml",
+    # Review hand-offs; PACKET.md inlines the brief and the whole diff.
+    "work/reviews/**/*.md",
+    "work/.sessions/*.yaml",
     # Archived roadmap material. Getting finished work to stop counting against
     # line limits is a large part of why archiving exists — a scaffold's
     # `**/*.md` glob would otherwise keep flagging planning sheets for
@@ -290,7 +293,7 @@ def _overlay_suffix(limits: ResolvedLimits) -> str:
     return ""
 
 
-def run_file_limits_scan(
+def run_file_limits_scan(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     root: Path,
     cfg: dict,
     *,

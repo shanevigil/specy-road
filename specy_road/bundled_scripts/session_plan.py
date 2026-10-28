@@ -11,8 +11,9 @@ sub-agent work without trial-and-error pickup:
 * ``blocked``  — unmet effective dependencies; each carries ``waiting_on``
   (display ids) and a ``reason`` (``dependency`` or ``gate``).
 * ``active``   — already claimed (registry) or status *In Progress* (in flight).
-* ``waves``    — leaves layered by dependency depth; wave *k* unlocks only once
-  every leaf in waves ``< k`` is Complete. This is what lets an orchestrator
+* ``waves``    — leaves layered by dependency depth; a leaf in wave *k* is
+  ready once its own dependencies are Complete (they all sit in waves ``< k``;
+  the rest of those waves need not be). This is what lets an orchestrator
   avoid spawning a sub-agent for a not-yet-ready wave (e.g. ``M11.1`` while
   ``M10.5`` is still in flight).
 * ``parallel_batches`` — per wave, the subset that is *ready and unclaimed*,
@@ -34,7 +35,7 @@ from specy_road.bundled_scripts.do_next_available import (
 )
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
 from specy_road.milestone_subtree import subtree_node_ids
-from specy_road.milestone_subtree import structural_leaf_ids
+from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
 from specy_road.node_kinds import is_gate
 
 
@@ -249,27 +250,29 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
         for n in nodes
         if n.get("node_key") and n["id"] in schedulable
     }
-    complete_keys = {k for k, st in statuses_by_key.items() if st == "complete"}
+    # Per unmet dependency key, its leaves (the node itself, or a container's
+    # descendants) that are not Complete; the dep resolves once all are placed.
+    unmet_keys = {
+        d
+        for nid in schedulable
+        for d in eff.get(id_to_key.get(nid), set())
+        if statuses_by_key.get(d, "") != "complete"
+    }
+    incomplete = {n["id"] for n in nodes if _status(n) != "complete"}
+    open_leaves = {
+        d: leaf_ids_under_parent(key_to_id[d], nodes) & incomplete
+        for d in unmet_keys
+    }
 
     assigned: dict[str, int] = {}
     remaining = set(schedulable)
     wave_idx = 0
     while remaining:
-        # node_keys of leaves already placed in an earlier wave.
-        placed_keys = {
-            id_to_key[i] for i in assigned if i in id_to_key
-        }
-        resolved_now = complete_keys | placed_keys
         layer = []
         for nid in remaining:
-            nk = id_to_key.get(nid)
-            unmet = [
-                d
-                for d in eff.get(nk, set())
-                if statuses_by_key.get(d, "") != "complete"
-            ] if nk else []
+            unmet = eff.get(id_to_key.get(nid), set()) & unmet_keys
             # Schedulable iff every unmet dep is resolved by an earlier wave.
-            if all(d in resolved_now for d in unmet):
+            if all(open_leaves[d] <= assigned.keys() for d in unmet):
                 layer.append(nid)
         if not layer:
             break  # remaining depend on unschedulable nodes (gate/external)

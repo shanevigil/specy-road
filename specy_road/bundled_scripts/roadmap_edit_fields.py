@@ -35,6 +35,8 @@ EDIT_WHITELIST = frozenset({
     "execution_milestone",
     "parallel_tracks",
     "sibling_order",
+    "sensitivity",
+    "executor_eligibility",
     "notes",
     "goal",
     "dependencies",
@@ -224,7 +226,7 @@ def _set_roadmap_status(node: dict, raw_val: str) -> None:
     node["status"] = v
 
 
-def _apply_scalar_top_level(
+def _apply_scalar_top_level(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     node: dict,
     key: str,
     raw_val: str,
@@ -252,6 +254,8 @@ def _apply_scalar_top_level(
             raise ValueError(
                 f"parallel_tracks must be an integer, got {raw_val!r}",
             ) from e
+    elif key in ("sensitivity", "executor_eligibility"):
+        _set_routing_tag(node, key, raw_val)
     elif key == "sibling_order":
         try:
             node["sibling_order"] = int(raw_val.strip())
@@ -284,6 +288,20 @@ def _apply_decision(node: dict, sub: str, raw_val: str) -> None:
         dec["status"] = raw_val
     else:
         dec[sub] = raw_val
+
+
+_ROUTING_TAG = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def _set_routing_tag(node: dict, key: str, raw_val: str) -> None:
+    """``sensitivity`` / ``executor_eligibility``: one tag, or empty to clear (= default)."""
+    val = raw_val.strip()
+    if not val:
+        node.pop(key, None)
+        return
+    if not _ROUTING_TAG.match(val):
+        raise ValueError(f"{key} must be a single tag (letters, digits, '.', '_', '-'), got {raw_val!r}")
+    node[key] = val
 
 
 def apply_set(

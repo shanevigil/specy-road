@@ -1,12 +1,28 @@
 # PM workflow: roadmap, dashboard, and day-to-day use
 
+## Agent quickstart
+
+**Use this doc when:** you are a product manager, program lead or tech lead (or an agent acting for one) keeping the roadmap, the dashboard and the execution runway current.
+**Not for:** implementing a leaf ([`dev-workflow.md`](dev-workflow.md)), chunk and manifest rules ([`roadmap-authoring.md`](roadmap-authoring.md)), deciding what belongs on the roadmap ([`brainstorming.md`](brainstorming.md)), or machine setup ([`install-and-usage.md`](install-and-usage.md)).
+
+**Must know without reading on:**
+- The source of truth is the JSON chunks listed in `roadmap/manifest.json`; `roadmap.md` is a generated index — never edit it by hand, run `specy-road export`.
+- Do not hand-edit `roadmap/registry.yaml`: it is the developers' claim overlay, and a gate's `node_id` must never appear in it.
+- Session start: `specy-road sync`; after edits: `specy-road validate`, then `specy-road export`; commit as `chore(roadmap): …`. Put `--repo-root DIR` **before** the command when the project is not the current folder.
+- Dashboard: `specy-road init gui --install-gui` once per machine, then `specy-road gui` (default `http://127.0.0.1:8765/`).
+- Resolve every `type: gate` decision before developers reach it; setting the gate `Complete` releases the work downstream.
+
+**Read further for:**
+- the files, the constitution step, the node `type` glossary, Python, clone, WSL → "What you are working with", "Before you start"
+- installing and upgrading the dashboard → "Install the PM dashboard (one-time)"
+- gates, which tree the GUI edits, concurrency, colors, Dev column, monitoring claims, LLM review → "Open and use the roadmap dashboard"
+- `gui-settings.json`, global vs per-repo, LLM environment variables → "Optional dashboard settings (sidebar → Settings)"
+- the command table, `sync` flags, terminal LLM review, copy-paste commands → "Command line: when and what to run", "Quick reference (copy-paste)"
+- runway depth, human gates, monitoring, tags, contracts → "Your role in the system", "Runway maintenance (ongoing)", "Human-gate decisions", "Monitoring execution (not approving PRs)", "Human-led vs agentic (short guide)", "Writing implementable contracts"
+
+**Related:** [`dev-workflow.md`](dev-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`pm-gui.md`](pm-gui.md), [`pm-llm-review.md`](pm-llm-review.md).
+
 This guide is for **product managers, program leads, and tech leads** who shape what gets built and in what order. You do not need to be a developer; you need a copy of the project on your machine and a way to run a few commands (or use the visual dashboard).
-
-Developers follow [dev-workflow.md](dev-workflow.md). First-time machine setup (Python, git clone, optional IDE stubs) is in [install-and-usage.md](install-and-usage.md). Deciding **what belongs on the roadmap** in the first place has its own guide: [brainstorming.md](brainstorming.md).
-
-What ships for the browser dashboard (FastAPI, static build, package layout): [pm-gui.md](pm-gui.md).
-
----
 
 ## What you are working with
 
@@ -46,8 +62,6 @@ Roadmap nodes keep stable machine `type` values for validation. In everyday term
 | `task` | Sub-feature or work item under a milestone |
 | `gate` | PM-only approval hold (planning sheet, not dev pickup); see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate) |
 
----
-
 ## Before you start
 
 1. **Python 3.11+** installed ([python.org](https://www.python.org/downloads/) or your IT-provided install).
@@ -55,8 +69,6 @@ Roadmap nodes keep stable machine `type` values for validation. In everyday term
 3. A **terminal** open **in that folder** (the project root — where you see `roadmap/`, `AGENTS.md`, and your app sources).
 
 **Windows users:** If you use **WSL**, open a Linux terminal, `cd` to the project there, and run all commands below inside WSL. Then open the Gantt PM UI in your normal browser at the URL printed when you run `specy-road gui` (by default `http://127.0.0.1:8765/`).
-
----
 
 ## Install the PM dashboard (one-time)
 
@@ -84,8 +96,6 @@ specy-road gui
 If the Python stack is corrupted, use **`specy-road init gui --reinstall-gui`**. To upgrade Python deps **without** running npm (faster), use **`specy-road init gui --install-gui --skip-npm-build`**. To **only** rebuild the frontend, **`specy-road init gui --build-gui`** (requires Node.js).
 
 For a full developer install (tests, editable package), see [contributor-guide.md](contributor-guide.md).
-
----
 
 ## Open and use the roadmap dashboard
 
@@ -196,8 +206,6 @@ Configure credentials in **Settings** (gear area in the sidebar) under the **LLM
 
 For a **PM-oriented walkthrough** of what is sent to the model, how the diff and merge buttons work, and token-related notes, see **[pm-llm-review.md](pm-llm-review.md)**.
 
----
-
 ## Optional dashboard settings (sidebar → Settings)
 
 Settings are stored on **your** computer only, not in the repo:
@@ -223,7 +231,7 @@ In **Settings**, use **This repository** toggles:
 | **LLM**        | API keys and model for the optional reviewer (OpenAI, Azure OpenAI, Anthropic Claude, or a compatible OpenAI-style API). **Test LLM** checks the connection. Changes save automatically with simple obfuscation (not encryption).                                                                  |
 | **Git remote** | Optional. If you add a **GitHub** or **GitLab** token and repository name, the dashboard can try to show open **pull/merge requests** for branches that appear in the registry. If you skip this, you still see registry info. |
 
-**Security note (saved secrets):** Values you save for LLM keys and the Git remote token are written to `gui-settings.json` with Base64 encoding (a `__b64__:` prefix) so they are not stored as raw plaintext in the file. That is **obfuscation, not encryption**: anyone who can read the file—local users with access to your home directory, backups, folder sync, or compromised tooling on the same machine—can recover the secret. Treat the file like a credential; prefer **environment variables** or org-approved secret storage if your policy needs stronger guarantees (pre-set env vars still override empty saved fields).
+**Security note (saved secrets):** Values you save for LLM keys and the Git remote token are written to `gui-settings.json` with Base64 encoding (a `__b64__:` prefix) so they are not stored as raw plaintext in the file. That is **obfuscation, not encryption**: anyone who can read the file—local users with access to your home directory, backups, folder sync, or compromised tooling on the same machine—can recover the secret. Treat the file like a credential; prefer **environment variables** or org-approved secret storage if your policy needs stronger guarantees (pre-set env vars still override empty saved fields). The server never sends saved secrets back to the page: Settings shows them as `********`, and saving that mask keeps the stored value.
 
 If your company already set **environment variables** for the CLI reviewer, those still work and usually override empty fields in the saved file.
 
@@ -236,14 +244,11 @@ If your company already set **environment variables** for the CLI reviewer, thos
 
 Do not commit API keys into the repository. Review any data-handling policy before sending content to an external model.
 
----
-
 ## Command line: when and what to run
 
 Use the terminal in the **repo root**. The main program is `**specy-road`** followed by a **command**.
 
 ### Commands you will use most
-
 
 | Command                                            | In plain English                                                                                                                            |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -265,7 +270,6 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
 | `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
 | `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
-
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.
 
@@ -299,14 +303,11 @@ specy-road review-node M0.1.1 -o work/review-M0.1.1.md
 
 Same environment variables as in the dashboard LLM section.
 
----
-
 ## Your role in the system
 
 Agentic development moves fast. Your job is **not** to approve every pull request — it is to **stay ahead** so developers and agents are never blocked waiting for a contract, decision, or node.
 
 **Target horizon:** keep enough ready-to-execute `agentic` nodes ahead of the team. Rough rule: `(tasks per day per developer) × (number of developers)` nodes deep.
-
 
 | You own                                        | You hand off entirely                  |
 | ---------------------------------------------- | -------------------------------------- |
@@ -315,9 +316,6 @@ Agentic development moves fast. Your job is **not** to approve every pull reques
 | Shared contracts under `shared/`               | CI failures                            |
 | Maintaining the execution runway               | Registry housekeeping during execution |
 | Stakeholder views via export                   | Code review                            |
-
-
----
 
 ## Runway maintenance (ongoing)
 
@@ -341,8 +339,6 @@ archive <NODE_ID>` moves a finished subtree into `roadmap/archive/`, reversibly
 and without breaking live dependencies on it; `specy-road archive --auto`
 sweeps everything complete for 90+ days. See [Archiving](archiving.md).
 
----
-
 ## Human-gate decisions
 
 Resolve these **before** developers reach them:
@@ -351,18 +347,13 @@ Resolve these **before** developers reach them:
 2. Record the outcome in the node’s `decision` block and, if needed, an ADR under `docs/adr/` and updates under `shared/`.
 3. Set the task status to `Complete`, then validate, export and digest.
 
----
-
 ## Monitoring execution (not approving PRs)
 
 - `**roadmap/registry.yaml`** — Who claimed what and which areas of the repo are “in use.” Stale entries may mean a blocked branch; check with the developer.
 - `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths, and about a touch zone on an open node that matches nothing on disk.
 - `**specy-road export**` and `**roadmap.md**` — Stakeholder-friendly snapshot of status.
 
----
-
 ## Human-led vs agentic (short guide)
-
 
 | Situation                           | Tag                          |
 | ----------------------------------- | ---------------------------- |
@@ -371,16 +362,11 @@ Resolve these **before** developers reach them:
 | Implement from a complete spec      | `agentic`                    |
 | CI-verifiable generation            | `agentic`                    |
 
-
 Set `execution_milestone` on the parent to the dominant mode (`Human-led`, `Agentic-led`, or `Mixed`). Full rules: [roadmap-authoring.md](roadmap-authoring.md#rules-for-authoring-sub-tasks).
-
----
 
 ## Writing implementable contracts
 
 Before marking work ready, the `shared/` contract should answer: **what** is produced, **inputs/outputs**, **constraints**, and **success criteria**. If not, keep the task `Not Started` and note the gap under `risks`. See [Spec crosswalk](roadmap-authoring.md#spec-crosswalk).
-
----
 
 ## Quick reference (copy-paste)
 

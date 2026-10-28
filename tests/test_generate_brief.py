@@ -231,3 +231,34 @@ def test_render_brief_history_reports_archived_work_in_the_subtree(tmp_path) -> 
     assert "Related work that left the live roadmap" in text
     assert "M0.1 archived" in text
     assert "specy-road show-archive M0.1-" in text
+
+
+def test_render_brief_shows_goal_and_numbered_acceptance() -> None:
+    """Review records cite A1..An, so the brief must number acceptance."""
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    node = dict(by_id["M0.2"])
+    node["goal"] = "Validator runs on every push."
+    node["acceptance"] = ["CI fails on a bad chunk", "CI passes on dogfood"]
+    by_id["M0.2"] = node
+    text = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD, include_history=False)
+    section1 = text.split("## 2. Ancestor context chain")[0]
+    assert "### Goal\n\nValidator runs on every push." in section1
+    assert "- **A1:** CI fails on a bad chunk" in section1
+    assert "- **A2:** CI passes on dogfood" in section1
+
+
+def test_render_brief_says_when_goal_and_acceptance_are_missing() -> None:
+    nodes = gb.load_nodes(DOGFOOD)
+    by_id = gb.index(nodes)
+    text = gb.render_brief("M0.2", by_id, repo_root=DOGFOOD, include_history=False)
+    assert "_(no `goal` set on this node)_" in text
+    assert "_(no `acceptance` set on this node" in text
+    assert "**A1:**" not in text
+
+
+def test_acceptance_ids_skip_blank_entries() -> None:
+    from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+
+    assert acceptance_ids({"acceptance": ["x", "  ", "y"]}) == ["A1", "A2"]
+    assert acceptance_ids({}) == []

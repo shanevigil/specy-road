@@ -66,10 +66,22 @@
           "type": "integer",
           "description": "Sort order among nodes with the same parent_id (lower first). Defaults to 0 when omitted."
         },
+        "sensitivity": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "description": "Data-sensitivity class of this node's inputs (default public). A model may execute or review it only when the class is in its roster may_process (roadmap/orchestration.yaml); specy-road prompt and orchestrate plan enforce it."
+        },
+        "executor_eligibility": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "description": "Which executors may take this node: any (default) or a roster class tag such as senior; orchestrate plan assigns only a matching executor."
+        },
         "notes": { "type": "string" },
         "planning_dir": {
           "type": ["string", "null"],
-          "description": "Repo-relative path to a single feature sheet under planning/, e.g. planning/M1.1_slug_<node_key>.md; required for types vision, phase, milestone, and task (enforced in validate_roadmap.py). See planning/README.md."
+          "description": "Repo-relative path to a single Markdown planning sheet under planning/, e.g. planning/M1.1_slug_<node_key>.md; required for types vision, phase, milestone, task, and gate (enforced in validate_roadmap.py). Gate nodes use the gate planning scaffold; other types use the feature-sheet scaffold. See planning/README.md."
         },
         "goal": {
           "type": "string",

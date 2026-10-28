@@ -89,16 +89,23 @@ def _run_capturing(cmd: str, env: dict, repo_root: Path) -> tuple[int, str]:
 
     stderr, never stdout: in ``--json`` mode stdout is the event stream, and the
     whole point of capturing is that we have to read what Claude said.
+
+    Streamed line by line as the hook writes it. ``subprocess.run`` held the
+    whole transcript until exit, so a long Claude run — and the wait before a
+    limit message — looked like silence from the terminal.
     """
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         cmd, shell=True, cwd=repo_root, env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
     )
-    output = proc.stdout or ""
-    if output:
-        sys.stderr.write(output)
+    chunks: list[str] = []
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        chunks.append(line)
+        sys.stderr.write(line)
         sys.stderr.flush()
-    return proc.returncode, output
+    proc.stdout.close()
+    return proc.wait(), "".join(chunks)
 
 
 #: Leading whitespace plus one shell word: quoted runs, backslash escapes, or
@@ -144,6 +151,11 @@ def seconds_until(
     return max(0.0, (reset_at - current).total_seconds() + grace)
 
 
+def _project_dir_name(path: str) -> str:
+    """The ``~/.claude/projects`` directory name for ``path``, normalised."""
+    return re.sub(r"[^A-Za-z0-9]", "-", path).strip("-")
+
+
 def latest_session_id(repo_root: Path) -> str | None:
     """Newest Claude transcript for this repo, when Claude printed no id.
 
@@ -154,10 +166,14 @@ def latest_session_id(repo_root: Path) -> str | None:
     root = Path.home() / ".claude" / "projects"
     if not root.is_dir():
         return None
-    wanted = str(repo_root).replace("/", "-")
+    # Claude Code replaces every non-alphanumeric character in the path, not
+    # only "/": ``/Users/x/my_app.v2`` becomes ``-Users-x-my-app-v2``. Mapping
+    # only "/" meant a repo with "." or "_" in its path never matched, and the
+    # resume path then stopped with "no session id".
+    wanted = _project_dir_name(str(repo_root))
     dirs = [
         d for d in root.iterdir()
-        if d.is_dir() and d.name.strip("-") == wanted.strip("-")
+        if d.is_dir() and _project_dir_name(d.name) == wanted
     ]
     transcripts = [t for d in dirs for t in d.glob("*.jsonl")]
     if not transcripts:
@@ -185,12 +201,23 @@ def _fail(message: str) -> int:
     return 1
 
 
+def _applescript_str(text: str) -> str:
+    """An AppleScript string literal: double quotes, with ``\\`` and ``"`` escaped."""
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def _notify(title: str, message: str) -> None:
-    """Best-effort macOS banner. A missing osascript is not an error."""
+    """Best-effort macOS banner. A missing osascript is not an error.
+
+    The strings used to be built with ``!r``, which single-quotes them;
+    AppleScript has no single-quoted literal, so every call errored — quietly,
+    because the error is deliberately swallowed — and no banner ever showed.
+    """
     try:
         subprocess.run(
             ["osascript", "-e",
-             f"display notification {message!r} with title {title!r}"],
+             f"display notification {_applescript_str(message)} "
+             f"with title {_applescript_str(title)}"],
             capture_output=True, check=False, timeout=10,
         )
     except (OSError, subprocess.SubprocessError):

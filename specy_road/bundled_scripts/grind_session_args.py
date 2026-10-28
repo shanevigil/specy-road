@@ -17,6 +17,16 @@ def _add_mode_and_stop_args(p: argparse.ArgumentParser) -> None:
             "waves + parallel batches) and exit 0. No git, no pickup."
         ),
     )
+    p.add_argument(
+        "--step", choices=("pickup", "finish"), default=None,
+        help=(
+            "Run one phase and exit, for an agent that drives the loop and\n"
+            "implements between phases itself. pickup: resume this clone's open\n"
+            "claim, else pick the next ready leaf (writes work/brief and\n"
+            "work/prompt). finish: optional --pre-finish-cmd, then\n"
+            "finish-this-task on the checked-out feature/rm-* branch."
+        ),
+    )
     p.add_argument("--until", default=None, metavar="NODE_ID",
                    help="Stop after successfully finishing this node id (inclusive).")
     p.add_argument(
@@ -136,6 +146,18 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                         "stdout carries only JSON; sub-command output goes to stderr.")
 
 
+def _reject_step_conflicts(p: argparse.ArgumentParser, ns) -> None:
+    """Step mode runs no implement hook and no cleanup; never let a caller think so."""
+    for flag, present in (
+        ("--plan", ns.plan),
+        ("--implement-mode hook", ns.implement_mode == "hook"),
+        ("--implement-cmd", ns.implement_cmd is not None),
+        ("--delete-merged-branches", ns.delete_merged_branches),
+    ):
+        if present:
+            p.error(f"--step cannot be combined with {flag}")
+
+
 def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="specy-road grind-session",
@@ -150,7 +172,9 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     _add_implement_limit_args(p)
     _add_passthrough_args(p)
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
-    if ns.implement_mode == "hook" and not ns.implement_cmd and not ns.plan:
+    if ns.step:
+        _reject_step_conflicts(p, ns)
+    elif ns.implement_mode == "hook" and not ns.implement_cmd and not ns.plan:
         p.error("--implement-mode hook requires --implement-cmd")
     for name in (
         "max_limit_waits",

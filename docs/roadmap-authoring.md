@@ -1,5 +1,27 @@
 # Roadmap authoring: JSON manifest and chunk files
 
+## Agent quickstart
+
+**Use this doc when:** you add, edit, move or renumber roadmap nodes, or need the field rules for `roadmap/manifest.json` and its JSON chunks.
+**Not for:** the PM's day-to-day loop and dashboard ([`pm-workflow.md`](pm-workflow.md)) or claiming and finishing leaves ([`dev-workflow.md`](dev-workflow.md)).
+
+**Must know without reading on:**
+- Identity is `node_key` (UUID, immutable); `dependencies` list other nodes' `node_key` values, never display ids. Display `id` may be renumbered; never recycle a `node_key`.
+- `roadmap.md` is generated: edit chunks, then `specy-road export` (`--check` in CI); `specy-road validate` is the gate after every edit.
+- Prefer `specy-road add-node` / `edit-node` / `set-dependencies` to hand-editing chunks: routing picks the chunk, and `specy-road rebalance-chunks` fixes one over the 500-line cap.
+- Every `vision`, `phase`, `milestone`, `task` and `gate` node needs `planning_dir` → `planning/<id>_<slug>_<node_key>.md`; contracts are cited in that sheet's `## References`, not in the JSON.
+- A `type: gate` node is a leaf-only hold: never picked up, never in `roadmap/registry.yaml`, and it blocks its dependents until `Complete`.
+
+**Read further for:**
+- where the graph lives, what each `type` means, manifest, chunk shape, the line cap, routing → "Source of truth", "Roadmap layers", "JSON chunks (`.json`)"
+- `parent_id`, `sibling_order`, renumbering, planning-file renames → "Reordering and reparenting"
+- every field, gates, decision blocks → "Node fields reference"
+- `execution_milestone` and sub-task tagging → "Execution type tagging"
+- the five questions a sheet answers, `## References`, vendor-neutral wording, spec types → "Writing implementable `agentic` tasks", "Stack-agnostic task language", "Spec crosswalk"
+- registry etiquette, the PM edit steps, export, CRUD, brief → "Multi-agent coordination", "PM editing workflow", "Generated index (`roadmap.md`)", "Tooling", "Registry and brief"
+
+**Related:** [`pm-workflow.md`](pm-workflow.md), [`dev-workflow.md`](dev-workflow.md), [`archiving.md`](archiving.md), [`git-workflow.md`](git-workflow.md).
+
 ## Source of truth
 
 **Canonical for a specy-road project:** the roadmap graph under that project's `roadmap/`. In this toolkit repository, the examples and links point at the dogfood **test fixture** under [`tests/fixtures/specy_road_dogfood/roadmap/`](../tests/fixtures/specy_road_dogfood/roadmap/); consumer projects keep the same structure at their own repo root. The entry file is **required**: [`roadmap/manifest.json`](../tests/fixtures/specy_road_dogfood/roadmap/manifest.json) with `version` and `includes` — an ordered list of **JSON** chunk paths relative to `roadmap/`. Each chunk file holds a `nodes` array (or a single-node shape accepted by the loader); see [JSON chunks](#json-chunks-json).
@@ -18,8 +40,6 @@ The schema uses small enums; this is how they usually map to product thinking:
 | `vision` | Program-level narrative when you use that layer. |
 
 Dependencies and `parallel_tracks` express what can run in parallel vs what must wait — not the `includes` order alone.
-
----
 
 ## Roadmap layers
 
@@ -51,8 +71,6 @@ flowchart TB
 | **Parallel tracks / dependencies** | (node fields) | Concurrent vs. sequenced work — set `parallel_tracks` and `dependencies`. |
 | **Sub-tasks** | `task` (depth 3) | Checklist granularity. **Immutable** IDs. |
 | **Fourth-level** | `task` (depth 4) | Additive only; same immutability rules as sub-tasks. |
-
----
 
 ## JSON chunks (`.json`)
 
@@ -107,8 +125,6 @@ Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth p
 
 **Milestone-lock interaction.** Both `specy-road add-node` and `specy-road rebalance-chunks` honor the milestone subtree lock added in v0.1.0. Adding a child under a parent that lives inside an `active` or `pending_mr` milestone subtree is refused (it would be a silent scope expansion on a live rollout). `rebalance-chunks` refuses with exit 1 when ANY milestone is in-flight (the cross-chunk reorganization is functionally a mutation under any locked subtree, and would also confuse the PM Gantt's optimistic-concurrency fingerprint). Both errors point at `specy-road reconcile-milestone-status --apply`. Close the milestone after delivery, then retry.
 
----
-
 ## Reordering and reparenting
 
 ### Single source of truth: identity vs on-disk layout
@@ -119,6 +135,7 @@ Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth p
 | What must `dependencies` reference? | Other nodes’ **`node_key`** values (not display `id`). |
 | What do humans and the CLI type for `brief`, registry, branch context? | Display **`id`** (`M…`) and [`registry.yaml`](../tests/fixtures/specy_road_dogfood/roadmap/registry.yaml) `node_id` — must match the node’s current **`id`**. |
 | Where does “tree order” for siblings live? | **`parent_id`** + **`sibling_order`** (outline tools and renumbering use these; siblings sort by `(sibling_order, id)`). Prefer **unique consecutive `sibling_order`** per parent so tie-breaks do not depend on display `id` strings. |
+| What `sibling_order` does a new node get? | **`add-node`** appends it after the parent's current last sibling (an unset value sorts as `0`, which used to jump the queue); `--sibling-order N` places it explicitly. |
 | What encodes the planning file path? | **`planning_dir`** → `planning/<id>_<slug>_<node_key>.md` — the **display `id`** appears in the filename; when `id` changes, update `planning_dir` and rename the file (see below). |
 
 **Disk layout:** Chunk file placement and `manifest.json` **`includes`** order only affect how the merged **`nodes` array** is built. They do **not** change `node_key` or dependency edges by themselves.
@@ -126,7 +143,7 @@ Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth p
 ### Supported workflow
 
 1. **Reparent or reorder** via the PM UI or `specy-road` CRUD by editing **`parent_id`** and **`sibling_order`**. Do **not** mint new `node_key` values or rewrite **`dependencies`** unless you are splitting/merging nodes or intentionally changing gates.
-2. **Renumber display ids** when needed using outline renumber (e.g. full-tree rewrite from tree shape). Stable **`node_key`** and **`dependencies`** (UUID lists) stay the same; display **`id`** values update.
+2. **Renumber display ids** when needed using outline renumber (e.g. full-tree rewrite from tree shape). Stable **`node_key`** and **`dependencies`** (UUID lists) stay the same; display **`id`** values update. Roots keep the project's numbering base: a roadmap with a root `M0` renumbers from `M0`, any other (such as the `init project` scaffold) from `M1`.
 3. **Planning sheets:** After **`id`** or codename changes, ensure each node’s **`planning_dir`** matches the canonical pattern (see [`planning_filename_for_node`](../specy_road/bundled_scripts/planning_artifacts.py)). Outline operations in this kit call [`sync_planning_artifacts`](../specy_road/bundled_scripts/sync_planning_artifacts.py) to rewrite paths and rename files under `planning/`. You can also use `specy-road scaffold-planning` for new sheets. Manual edits should end with `specy-road validate`.
 4. **Registry:** Active entries must use the current display **`id`** in **`node_id`**. If you renumber **`id`**, update open claims or `specy-road validate` will fail with an unknown `node_id`.
 5. **Validate:** Run `specy-road validate` — it checks unique `id`/`node_key`, valid parents and dependency keys, DAG (no cycles), planning paths and filenames, and registry references.
@@ -142,8 +159,6 @@ Suppose milestone **A** has display id **`M4.1`**, stable **`node_key` K**, and 
 ### Refactor and Git ergonomics
 
 Prefer **one logical change per commit** (graph edit + `sync_planning_artifacts` + `registry.yaml` fixes if needed) so reviewers see intent. `specy-road validate` is the gate for orphan planning files and filename mismatches. Optional: CRUD and [`rename_planning_file_if_path_changed`](../specy_road/bundled_scripts/planning_rename.py) paths perform on-disk renames when updating nodes manually.
-
----
 
 ## Node fields reference
 
@@ -188,6 +203,8 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
 | `acceptance` | List of observable acceptance criteria. |
+| `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
+| `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
 | `risks` | List of known risks or blockers to surface during planning. |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
@@ -215,8 +232,6 @@ decision:
 ```
 
 Rendered in exported phase markdown as `> Decision pending` or `> Decided (date) — ref`.
-
----
 
 ## Execution type tagging
 
@@ -248,8 +263,6 @@ Milestone-level (`execution_milestone`) reflects the dominant work type for the 
 
 **After (separated — do this):** `human-gate` Decide overlap semantics and record decision → `agentic` Implement the rule per spec → `human` Acceptance review.
 
----
-
 ## Writing implementable `agentic` tasks
 
 An agent can implement without clarifying questions; every ambiguous noun resolves to an entity, spec section, endpoint, or constraint.
@@ -277,22 +290,21 @@ Worth adding when they apply: an observable **success signal**, and any
 **Do not paraphrase upstream dependencies in this task's planning sheet.** `specy-road brief` carries `## 6. Dependency context (intent of upstream work)` with each effective dependency's `## Intent` block (or the gate equivalent) inlined verbatim. Restating that prose in `## Intent` or `## Approach` here just creates drift. Say *what must exist* (cited by codename or display id) under `## References`, and reserve your sheet's `## Intent` for **this** task's own outcome. Add a one-line clarification under `## Approach` only when something specific to *this* task is not covered by the dep's own intent (an integration seam, a contract version, a sequencing constraint), citing the dep by display id.
 
 **Example (JSON node excerpt).** The detail lives in the sheet at
-`planning_dir`; the node stays small:
+`planning_dir`; the node stays small. The dependency is M1.1's `node_key`:
 
 ```json
 {
   "id": "M1.2.3",
+  "node_key": "3f2a9c1e-7b4d-4e8a-9c2f-5d1e6a7b8c90",
   "parent_id": "M1.2",
   "type": "task",
   "title": "Auto-save for entry form",
   "codename": "entry-autosave",
   "status": "Not Started",
-  "dependencies": ["M1.1"],
-  "planning_dir": "planning/M1.2.3-entry-autosave.md"
+  "dependencies": ["b2c3d4e5-f6a7-4890-b123-456789abcdef"],
+  "planning_dir": "planning/M1.2.3_entry-autosave_3f2a9c1e-7b4d-4e8a-9c2f-5d1e6a7b8c90.md"
 }
 ```
-
----
 
 ## Stack-agnostic task language
 
@@ -311,8 +323,6 @@ Tasks state **what** and **to what contract** — not which framework, cloud SDK
 
 **Architecture-phase exception:** Decision blocks *may* name concrete options (e.g. framework A vs B) — that is the decision venue. After a decision lands in an ADR, later milestone tasks use functional roles, not product names.
 
----
-
 ## Spec crosswalk
 
 Specs are produced before broad implementation and consumed in later milestones. Paths are typically under **`shared/`** or **`docs/`** in the repository.
@@ -327,8 +337,6 @@ Specs are produced before broad implementation and consumed in later milestones.
 | **RBAC matrix** | Roles × permissions × claims | Auth and access-control work |
 
 If an `agentic` task cannot cite at least one of these, the spec may be missing — write or reference it before the task is marked ready.
-
----
 
 ## Multi-agent coordination
 
@@ -348,8 +356,6 @@ Multiple developers and multiple agents per developer are assumed.
 - **Dependent** milestones (`dependencies` field) are not parallel without explicit sign-off.
 - Registry overlap warnings (`specy-road validate`) surface potential conflicts before file collisions occur.
 
----
-
 ## PM editing workflow
 
 1. Read your project's `vision.md` for invariants before editing.
@@ -359,29 +365,18 @@ Multiple developers and multiple agents per developer are assumed.
 5. Use `decision` blocks for architectural forks; link ADRs in `adr_ref` when they exist.
 6. Tag sub-tasks; split mixed types; align milestone `execution_milestone` with the dominant work type.
 
----
-
 ## Generated index (`roadmap.md`)
 
 - [`roadmap.md`](../tests/fixtures/specy_road_dogfood/roadmap.md) — **generated** index table with **Gate** column. Do not edit by hand.
 
 Chunk files under [`roadmap/phases/`](../tests/fixtures/specy_road_dogfood/roadmap/phases/) are **source** (`.json` graph chunks).
 
-Regenerate the index after editing chunks:
+Regenerate the index after editing chunks, and check that the committed index matches the merged graph (e.g. in CI):
 
 ```bash
 specy-road export
-# or directly:
-specy-road export
-```
-
-Check that the committed index matches the merged graph (e.g. in CI):
-
-```bash
 specy-road export --check
 ```
-
----
 
 ## Tooling
 

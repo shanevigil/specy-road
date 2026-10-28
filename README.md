@@ -2,6 +2,8 @@
 
 **One roadmap for the whole team**—so product, engineering, and coding agents share the same plan.
 
+**What's new:** [specy-road 0.3.1](docs/whats-new.md#specy-road-031) — coordinate several coding agents on one roadmap, with a review gate before work lands.
+
 ## What it is
 
 **specy-road** is a toolkit for keeping priorities, written specs, and implementation work aligned. It fits teams that use AI-assisted editors (for example Claude or Cursor) together with product-led planning. Your team maintains a **roadmap** in the repository: what matters, in what order, and what depends on what. A small command-line tool checks that the roadmap is consistent, publishes a readable index, and can build **briefs**—focused packets of context for a single task—so nobody has to reread the entire project to know what to do next.
@@ -25,7 +27,7 @@ Install the CLI (**Python 3.11+**) and **git**, then follow **[Install](#install
 ### For PMs
 
 1. Prefer **`specy-road gui`** for the dashboard, or edit `roadmap/` and `planning/` directly ([docs/pm-gui.md](docs/pm-gui.md)).
-2. Shape what goes on the roadmap with **`specy-road brainstorm`** — diverge with an agent, then promote what you keep ([docs/brainstorming.md](docs/brainstorming.md)).
+2. Shape what goes on the roadmap with **`specy-road brainstorm`** — diverge in rounds with an agent, gather quote-anchored evidence, converge with critics, then promote what you keep ([docs/brainstorming.md](docs/brainstorming.md)).
 3. Run **`specy-road export`** and **`specy-road validate`** before you commit.
 
 More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review** in the Gantt UI: [docs/pm-llm-review.md](docs/pm-llm-review.md).
@@ -35,7 +37,8 @@ More detail: [docs/pm-workflow.md](docs/pm-workflow.md). Optional **LLM Review**
 1. Pick up work with **`specy-road do-next-available-task`**, or **`specy-road brief <NODE_ID>`** for a specific node ([docs/dev-workflow.md](docs/dev-workflow.md)).
 2. Finish with **`specy-road finish-this-task`**, then land changes with your team’s PR process ([docs/git-workflow.md](docs/git-workflow.md)).
 3. Run many leaves (or plan sub-agent batches) with **`specy-road grind-session`** — orchestrates pickup→implement→finish, and **`--plan`** reports ready/blocked leaves and dependency waves ([docs/grind-session.md](docs/grind-session.md)).
-4. When something will not start, ask **`specy-road why-blocked <NODE_ID>`** for the transitive chain of unmet dependencies, or **`specy-road list-gates`** for the gates still holding work back ([docs/grind-session.md](docs/grind-session.md#asking-about-one-node-why-blocked-list-gates)).
+4. Hand a leaf to a session on another harness with **`specy-road worker delegate`** and read what happened with **`worker sync`** at the start of your next turn; reviews stay files bound to a commit, counted by the review gate ([docs/orchestration-workers.md](docs/orchestration-workers.md), [docs/orchestration.md](docs/orchestration.md)).
+5. When something will not start, ask **`specy-road why-blocked <NODE_ID>`** for the transitive chain of unmet dependencies, or **`specy-road list-gates`** for the gates still holding work back ([docs/grind-session.md](docs/grind-session.md#asking-about-one-node-why-blocked-list-gates)).
 
 ## Install
 
@@ -64,7 +67,7 @@ Consumer **`init project`**, `roadmap/git-workflow.yaml`, optional **`specyrd`**
 
 Typical path in an **application** repository after `specy-road init project`: roadmap and planning for direction and detail; validation, export, and briefs for engineering and agents; registry and branches for safe parallel work. Maintainers working on **this** toolkit follow [AGENTS.md](AGENTS.md), [docs/toolkit-development.md](docs/toolkit-development.md), and [docs/contributor-guide.md](docs/contributor-guide.md).
 
-1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, and `AGENTS.md`. Pass a subfolder — `specy-road init project sr` — to keep the whole tree out of the coding root; the layout is recorded in `.specyrd/manifest.json` so every command and the PM GUI resolve it without a flag. See [docs/pm-workflow.md](docs/pm-workflow.md).
+1. **Bootstrap** — `specy-road init project` (once per repo) creates `constitution/`, `roadmap/`, `shared/`, `constraints/`, `schemas/`, `planning/`, `work/`, `model-profiles/`, and a managed specy-road section in `AGENTS.md`. Pass a subfolder — `specy-road init project sr` — to keep the whole tree out of the coding root; the layout is recorded in `.specyrd/manifest.json` so every command and the PM GUI resolve it without a flag. See [docs/pm-workflow.md](docs/pm-workflow.md).
 2. **Author** — Edit JSON chunks under `roadmap/` (listed in `manifest.json`). See [docs/roadmap-authoring.md](docs/roadmap-authoring.md).
 3. **Validate** — `specy-road validate` (resolves the project from the recorded layout, `SPECY_ROAD_REPO_ROOT`, or the working directory; `--repo-root` overrides).
 4. **Publish views** — `specy-road export` regenerates `roadmap.md` from the merged graph.
@@ -81,13 +84,17 @@ Typical path in an **application** repository after `specy-road init project`: r
 | [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md) | What the kit promises and what it leaves to you |
 | [docs/architecture.md](docs/architecture.md) | End-to-end flow: manifest, chunks, validation, briefs |
 | [docs/roadmap-authoring.md](docs/roadmap-authoring.md) | JSON chunks, manifest order, generated `roadmap.md` |
-| [docs/brainstorming.md](docs/brainstorming.md) | Diverge/converge idea generation with an agent (`brainstorm`), then promote to nodes |
-| [docs/pm-gui-brainstorm.md](docs/pm-gui-brainstorm.md) | The same flow in the browser: chat panel, idea triage, Bing search settings |
+| [docs/brainstorming.md](docs/brainstorming.md) | Roadmap brainstorming with an agent (`brainstorm`): diverge in rounds, evidence pass with `verify`, converge with critics, cluster-first triage, promote to nodes |
+| [docs/pm-gui-brainstorm.md](docs/pm-gui-brainstorm.md) | The same flow in the browser: chat panel, idea triage, search-provider settings |
 | [docs/archiving.md](docs/archiving.md) | Move completed subtrees out of the live roadmap (`archive`, `restore-archive`) |
 | [docs/agent-search.md](docs/agent-search.md) | Generated agent context (`digest`) and ranked corpus search (`search`) |
 | [docs/roadmap-history.md](docs/roadmap-history.md) | Per-node timelines derived from git (`history`) |
 | [docs/git-workflow.md](docs/git-workflow.md) | Consumer workflow contract (`git-workflow.yaml`), branches, registry, merge-back |
+| [docs/orchestration.md](docs/orchestration.md) | Coordinator / executor / reviewer roles, review hand-offs (`review-packet`, `review record`, `handoff status`), the review gate, signed reviews, presence (`session`) and the tool-call guard |
+| [docs/orchestration-models.md](docs/orchestration-models.md) | Choosing and prompting models: profiles, `models`, `prompt`, `orchestrate plan` |
+| [docs/orchestration-workers.md](docs/orchestration-workers.md) | Workers on other harnesses: `worker delegate|sync|message|handoff|reclaim`, leases, intervention hooks |
 | [docs/grind-session.md](docs/grind-session.md) | Agent-driven loop + read-only planner (`grind-session`): waves, exit codes, JSON events |
+| [docs/agentic-sandbox-runbook.md](docs/agentic-sandbox-runbook.md) | Real-harness checks (workers, brainstorm, gate, skills) that must pass before an rc of the 0.3 line |
 | [docs/toolkit-development.md](docs/toolkit-development.md) | Short maintainer notes (this repo vs consumer contract) |
 | [docs/optional-ai-tooling-patterns.md](docs/optional-ai-tooling-patterns.md) | Optional patterns (CLAUDE.md, Cursor rules, MCP) for app repos |
 | [suggested_prompts/](suggested_prompts/) | Adoption prompts (clone this repo; not shipped on PyPI) |
