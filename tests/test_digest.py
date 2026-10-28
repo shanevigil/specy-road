@@ -102,6 +102,11 @@ def test_removed_dependencies_are_reported_from_git_history(repo: Path) -> None:
     assert "`M0.2` stopped depending on `M0.3" in text
     assert m03_key not in text  # resolved to a readable label, not a raw key
 
+    edit_node(repo, "M0.2", dependencies=[m03_key])
+    commit(repo, "M0.2 depends on M0.3 again")
+    clear_memo()
+    assert "Dependencies that were removed" not in headings(render_digest(repo))
+
 
 def test_archived_work_is_reported_with_the_command_to_reach_it(repo: Path) -> None:
     from specy_road.archive_ops import archive_node

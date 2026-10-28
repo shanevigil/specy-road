@@ -9,12 +9,14 @@ degrades rather than failing when research is unconfigured.
 from __future__ import annotations
 
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 from starlette.testclient import TestClient
 
-from tests.helpers import DOGFOOD
+from tests.helpers import DOGFOOD, script_subprocess_env
 from tests.test_brainstorm_chat import REPLY_WITH_IDEAS
 
 RESEARCH_ON = {
@@ -254,12 +256,16 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
     monkeypatch.setattr(m, "SETTINGS_DIR", tmp_path / "cfg")
     monkeypatch.setattr(m, "SETTINGS_PATH", tmp_path / "cfg" / "gui-settings.json")
 
+    import os
+
+    import specy_road.bundled_scripts.brainstorm_chat as mod
+
     r = api_client.put(
         "/api/settings",
         json={
             "inherit_llm": True,
-            "llm": {},
-            "git_remote": {},
+            "llm": {"backend": "anthropic", "anthropic_api_key": "llm-secret"},
+            "git_remote": {"repo": "o/r", "token": "git-secret"},
             "pm_gui": {},
             "research": {**RESEARCH_ON, "api_key": "secret-key"},
         },
@@ -269,9 +275,29 @@ def test_research_settings_round_trip_and_obfuscate_the_key(
     raw = json.loads((tmp_path / "cfg" / "gui-settings.json").read_text())
     assert raw["global"]["research"]["api_key"].startswith("__b64__:")
     assert "secret-key" not in raw["global"]["research"]["api_key"]
-    assert api_client.get("/api/settings").json()["research"]["api_key"] == (
-        "secret-key"
-    )
+    # The page never receives a credential: GET masks every one of them.
+    page = api_client.get("/api/settings").json()
+    assert not {"llm-secret", "git-secret", "secret-key"} & set(json.dumps(page).split('"'))
+    assert page["llm"]["anthropic_api_key"] == page["research"]["api_key"] == "********"
+    # Sending the mask back means "the stored one": saving keeps the secrets...
+    r = api_client.put("/api/settings", json={k: page[k] for k in (
+        "inherit_llm", "llm", "git_remote", "pm_gui", "research")})
+    assert r.status_code == 200, r.text
+    raw = json.loads((tmp_path / "cfg" / "gui-settings.json").read_text())
+    assert "secret-key" not in json.dumps(raw)
+    eff = m.effective_settings_for_repo(Path(os.environ["SPECY_ROAD_REPO_ROOT"]))
+    assert (eff["llm"]["anthropic_api_key"], eff["git_remote"]["token"],
+            eff["research"]["api_key"]) == ("llm-secret", "git-secret", "secret-key")
+    # ...and a chat sent with the page's masked settings uses the stored key.
+    monkeypatch.delenv("SPECY_ROAD_ANTHROPIC_API_KEY", raising=False)
+    used = []
+    monkeypatch.setattr(mod, "complete_chat", lambda *_a, **_k: used.append(
+        os.environ.get("SPECY_ROAD_ANTHROPIC_API_KEY")) or "ok")
+    slug = _session(api_client)["slug"]
+    r = api_client.post("/api/brainstorm/chat", headers=_headers(api_client), json={
+        "slug": slug, "messages": [{"role": "user", "content": "go"}], "llm": page["llm"]})
+    assert r.status_code == 200, r.text
+    assert used == ["llm-secret"]
 
 
 def test_testing_an_unconfigured_endpoint_is_a_400(api_client: TestClient) -> None:
@@ -340,3 +366,23 @@ def test_converging_does_not_quietly_add_ideas(
     assert r.json()["session"]["ideas"] == []
 
 
+
+
+def test_a_chat_turn_keeps_ideas_written_while_the_model_was_thinking(
+    api_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pre-release review: the chat route saved the session it loaded before the LLM call, dropping a shard's idea."""
+    import specy_road.bundled_scripts.brainstorm_chat as mod
+
+    slug = _session(api_client)["slug"]
+
+    def reply(*_a, **_k) -> str:
+        subprocess.run([sys.executable, "-m", "specy_road.cli", "brainstorm", "add-idea", "--slug", slug,
+                        "--title", "From a panel shard"], env=script_subprocess_env(), check=True, capture_output=True)
+        return "IDEA: From the chat"
+
+    monkeypatch.setattr(mod, "complete_chat", reply)
+    r = api_client.post("/api/brainstorm/chat", json={"slug": slug, "messages": [{"role": "user", "content": "go"}],
+                                                      "llm": {}}, headers=_headers(api_client))
+    assert r.status_code == 200, r.text
+    assert sorted(i["title"] for i in r.json()["session"]["ideas"]) == ["From a panel shard", "From the chat"]

@@ -5,6 +5,7 @@ export type IdeaCounts = {
   accepted: number;
   rejected: number;
   revised: number;
+  parked: number;
   promoted: number;
 };
 
@@ -14,6 +15,7 @@ export function ideaCounts(ideas: BrainstormIdea[]): IdeaCounts {
     accepted: 0,
     rejected: 0,
     revised: 0,
+    parked: 0,
     promoted: 0,
   };
   for (const i of ideas) {
@@ -43,13 +45,18 @@ export function recommendationRank(rec: string | null): number {
 }
 
 /**
- * Triage order: what the model argued hardest for, first.
+ * Triage order. With verdicts shown, what the model argued hardest for comes
+ * first; hidden (the default, as in the CLI's `list`), capture order, so the
+ * verdicts do not steer the PM.
  *
  * Ideas already promoted sink to the bottom — they are done, and leaving them
  * interleaved makes the list look like there is more to decide than there is.
  * Ties keep insertion order so ids stay readable.
  */
-export function sortIdeasForTriage(ideas: BrainstormIdea[]): BrainstormIdea[] {
+export function sortIdeasForTriage(
+  ideas: BrainstormIdea[],
+  showVerdicts: boolean,
+): BrainstormIdea[] {
   return ideas
     .map((idea, index) => ({ idea, index }))
     .sort((a, b) => {
@@ -57,6 +64,7 @@ export function sortIdeasForTriage(ideas: BrainstormIdea[]): BrainstormIdea[] {
         Number(Boolean(a.idea.promoted_node_key)) -
         Number(Boolean(b.idea.promoted_node_key));
       if (promoted !== 0) return promoted;
+      if (!showVerdicts) return a.index - b.index;
       const rank =
         recommendationRank(a.idea.recommendation) -
         recommendationRank(b.idea.recommendation);

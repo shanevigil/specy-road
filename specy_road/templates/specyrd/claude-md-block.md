@@ -9,7 +9,7 @@ the markers around this section is yours.
 
 1. `{{PROJECT_PREFIX}}roadmap-context.md` — the generated current-state summary
    (`specy-road digest`). Far smaller than the corpus it stands in for, and
-   always current. Read it before anything else.
+   always current. Read it before anything else — except a `work/brainstorm-*` prompt: open that first.
 2. `{{PROJECT_PREFIX}}AGENTS.md` — load order and coordination rules.
 
 Then, for a roadmap-linked task, keep context small:
@@ -46,17 +46,16 @@ specy-road brief <NODE_ID> -o {{PROJECT_PREFIX}}work/brief-<NODE_ID>.md
 - **Docs win.** If instructions conflict, prefer tracked repo docs over chat
   history.
 - **No scope creep.** Don't refactor unrelated code "for cleanliness".
-- **Search before adding.** Use `specy-road search "<query>"` — it covers
-  planning sheets, shared contracts, roadmap nodes, implementation summaries and
-  archived work, ranked and deduplicated. Grepping `planning/` or `work/`
-  directly returns the same passage many times, because briefs and PR bodies
-  re-inline their sources.
+- **Search before adding.** Use `specy-road search "<query>"` (ranked,
+  deduplicated; `--scope archived` for completed work), not a grep of
+  `planning/` or `work/`.
+- **Other agents share this checkout.** Check `git status` and
+  `git worktree list` before any git write; commit by explicit path, never
+  `-A`/`-a`; no stash, reset, or branch switches here — use your own
+  worktree. Full rule in `{{PROJECT_PREFIX}}AGENTS.md`.
 - **Roadmap-linked implementation.** Register the claim on the integration
   branch, then work on `feature/rm-<codename>`. The branch name comes from the
   node's `codename`; don't rename a node's title mid-flight.
-
-Archived roadmap material is excluded from IDE indexing on purpose. Reach it
-with `specy-road search "<query>" --scope archived`.
 
 ### Common commands
 

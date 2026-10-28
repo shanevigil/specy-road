@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_available import blocked_pick_notice
@@ -19,13 +20,24 @@ from specy_road.bundled_scripts.planning_artifacts import (
 _LEAF_EXCERPT_MAX_LINES = 80
 
 
-def print_pickup_header(node: dict, branch: str) -> None:
-    """Announce the claimed leaf, naming its status when it is Blocked."""
+def print_pickup_header(node: dict, branch: str, repo_root: Path | None = None) -> None:
+    """Announce the claimed leaf, naming its status when it is Blocked.
+
+    Also warns when another live agent session (``work/.sessions/``) has
+    recorded paths inside this leaf's touch zones — unclaimed work the registry
+    cannot see.
+    """
     print(f"\n[{node['id']}] {node.get('title', '')}")
     notice = blocked_pick_notice(node)
     if notice:
         print(notice)
     print(f"implementation branch: {branch}\n")
+    zones = [z for z in (node.get("touch_zones") or []) if isinstance(z, str)]
+    if repo_root is not None and zones:
+        from specy_road.session_presence import conflicts, warn_lines
+
+        for line in warn_lines(conflicts(repo_root, zones), what=f"{node['id']}'s touch zones"):
+            print(line, file=sys.stderr)
 
 _GOVERNANCE_FILES: tuple[tuple[str, str], ...] = (
     ("constitution/purpose.md", "Purpose"),
@@ -201,8 +213,10 @@ def _finish_instruction_lines(
         ),
         "2. Stay within the declared touch zones.",
         (
-            "3. Commit incrementally — the pre-commit hook validates "
-            "on every commit."
+            "3. Run the verifier and tests the brief names. Commit incrementally "
+            "by explicit path (`git commit --only <paths>`), never `-A`, `-a`, "
+            "or a bare `git commit`. If this repo has a pre-commit hook, it "
+            "also checks each commit."
         ),
     ]
     oc_lines = _on_complete_hint_lines(on_complete)
@@ -212,16 +226,28 @@ def _finish_instruction_lines(
                 f"4. When implementation is complete, write "
                 f"`work/implementation-summary-{node_id}.md` with sections "
                 "**Summary**, **Changes**, **Verification**, and optional "
-                "**## Walkthrough** (numbered steps for the reviewer)."
+                "**## Walkthrough** (numbered steps for the reviewer), ending with "
+                "an `## Added` inventory: every helper, branch or guard, mock and "
+                "test you added, one line each with its reason (`none` under a "
+                "heading is fine), and commit it on the feature branch by explicit "
+                "path: reviewers judge it, and finish removes it from `work/`."
             ),
             (
-                "5. Hand off for human review. The developer runs "
-                "`specy-road mark-implementation-reviewed` (reads the summary; "
-                "optional walkthrough menu), then `specy-road finish-this-task`."
+                "5. Hand off for review: write "
+                f"`work/reviews/{node_id}/READY-<your roster id>.md` (the `id` of "
+                "your entry in `roadmap/orchestration.yaml`) from "
+                "`work/handoff-ready.template.md` (branch, commit, base, changed_paths, "
+                "verify), then stop. Reviewers read "
+                f"`specy-road review-packet {node_id}` and file verdicts with "
+                "`specy-road review record` (from `work/review-record.template.md`); "
+                "then the developer runs "
+                "`specy-road mark-implementation-reviewed` and "
+                "`specy-road finish-this-task`."
             ),
             (
-                "**Do not** run `finish-this-task` yourself until review is "
-                "recorded — the registry must show implementation review approved."
+                "**Do not** review or approve your own work, and do not run "
+                "`mark-implementation-reviewed` or `finish-this-task` yourself — "
+                "the review gate needs a recorded review of your final commit."
             ),
         ]
     return base + oc_lines + [

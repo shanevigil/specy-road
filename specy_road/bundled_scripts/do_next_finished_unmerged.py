@@ -66,7 +66,7 @@ def node_complete_on_ref(repo_root: Path, ref: str, node_id: str) -> bool:
     return matched is not None and (matched.get("status") or "").lower() == "complete"
 
 
-def finished_unmerged_ids(
+def finished_unmerged_ids(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     candidates: list[dict],
     *,
     repo_root: Path,

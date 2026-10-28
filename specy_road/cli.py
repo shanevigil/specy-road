@@ -31,6 +31,8 @@ _SCRIPTS = {
     "abort-task-pickup": "abort_task_pickup.py",
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
+    "review-packet": "review_packet.py",
+    "prompt": "role_prompt.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",
     "start-milestone-session": "start_milestone_session.py",
@@ -39,6 +41,7 @@ _SCRIPTS = {
     "sync": "pm_sync.py",
     "rebalance-chunks": "roadmap_rebalance.py",
     "refresh-schemas": "refresh_schemas.py",
+    "refresh-profiles": "refresh_profiles.py",
     "refresh-stubs": "refresh_stubs.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
@@ -54,6 +57,12 @@ _FORWARDED = {
     "brainstorm": "brainstorm_cli.py",
     "why-blocked": "roadmap_query_cli.py",
     "list-gates": "roadmap_query_cli.py",
+    "handoff": "review_cli.py",
+    "models": "models_cli.py",
+    "orchestrate": "orchestrate_cli.py",
+    "session": "session_cli.py",
+    "review": "review_cli.py",
+    "worker": "worker_cli.py",
 }
 
 _CRUD_COMMANDS = (

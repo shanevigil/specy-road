@@ -18,6 +18,17 @@ work/pr-body-*.md
 work/.milestone-session.yaml
 work/brainstorm-*-prompt.md
 
+# Review hand-offs (READY-*, REVIEW-*, PACKET.md; see docs/orchestration.md).
+# A review binds to the commit it read, so committing the review would move the
+# branch past that commit. The approving reviews are recorded as Reviewed-by
+# trailers on the mark-implementation-reviewed commit instead.
+work/reviews/
+# Agent presence records (specy-road session); per checkout, never shared via git.
+work/.sessions/
+# Worker records, event logs and linked worktrees (specy-road worker).
+work/.workers/
+work/.worktrees/
+
 # Derived indexes for `specy-road history` and `specy-road search`. Rebuilt
 # from git and the working tree on demand, so they are never committed;
 # .specyrd/manifest.json stays tracked.

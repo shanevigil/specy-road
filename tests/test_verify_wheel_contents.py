@@ -18,6 +18,10 @@ COMPLETE_WHEEL = {
     "specy_road/templates/project/.gitignore": "work/prompt-*.md\n",
     "specy_road/templates/project/work/.gitkeep": "",
     "specy_road/schemas/archive.schema.json": "{}",
+    "specy_road/schemas/handoff.schema.json": "{}",
+    "specy_road/schemas/review-record.schema.json": "{}",
+    "specy_road/templates/project/model-profiles/README.md": "# profiles",
+    "specy_road/templates/project/model-profiles/anthropic-claude/claude-opus-5-5.md": "---\n---\n",
 }
 
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { canTriage, sortIdeasForTriage } from "../brainstormIdeas";
 import type { BrainstormIdea } from "../types";
 
@@ -14,14 +15,16 @@ function RecommendationChip({ value }: { value: string | null }) {
   );
 }
 
-function IdeaRow({ idea, busy, onTriage }: { idea: BrainstormIdea } & Omit<Props, "ideas">) {
+type RowProps = { idea: BrainstormIdea; showVerdicts: boolean } & Omit<Props, "ideas">;
+
+function IdeaRow({ idea, showVerdicts, busy, onTriage }: RowProps) {
   const editable = canTriage(idea);
   return (
     <li className={`brainstorm-idea brainstorm-idea--${idea.status}`}>
       <div className="brainstorm-idea-head">
         <span className="brainstorm-idea-id">{idea.id}</span>
         <span className="brainstorm-idea-title">{idea.title}</span>
-        <RecommendationChip value={idea.recommendation} />
+        {showVerdicts ? <RecommendationChip value={idea.recommendation} /> : null}
         <span className="brainstorm-idea-kind">{idea.kind}</span>
         {idea.effort ? (
           <span className="brainstorm-idea-kind">{idea.effort}</span>
@@ -80,6 +83,8 @@ function IdeaRow({ idea, busy, onTriage }: { idea: BrainstormIdea } & Omit<Props
 }
 
 export function BrainstormIdeaList({ ideas, busy, onTriage }: Props) {
+  // Hidden by default, as in the CLI's `list`, so verdicts do not steer triage.
+  const [showVerdicts, setShowVerdicts] = useState(false);
   if (ideas.length === 0) {
     return (
       <p className="outline-meta">
@@ -88,10 +93,26 @@ export function BrainstormIdeaList({ ideas, busy, onTriage }: Props) {
     );
   }
   return (
-    <ul className="brainstorm-idea-list">
-      {sortIdeasForTriage(ideas).map((idea) => (
-        <IdeaRow key={idea.id} idea={idea} busy={busy} onTriage={onTriage} />
-      ))}
-    </ul>
+    <>
+      <label className="brainstorm-verdict-toggle">
+        <input
+          type="checkbox"
+          checked={showVerdicts}
+          onChange={(e) => setShowVerdicts(e.target.checked)}
+        />{" "}
+        Show verdicts (strongest first)
+      </label>
+      <ul className="brainstorm-idea-list">
+        {sortIdeasForTriage(ideas, showVerdicts).map((idea) => (
+          <IdeaRow
+            key={idea.id}
+            idea={idea}
+            showVerdicts={showVerdicts}
+            busy={busy}
+            onTriage={onTriage}
+          />
+        ))}
+      </ul>
+    </>
   );
 }

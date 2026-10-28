@@ -16,7 +16,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from specy_road.digest import DEFAULT_OUTPUT
+from specy_road.digest import DEFAULT_OUTPUT, render_digest
 from specy_road.git_subprocess import run as git_run
 
 #: Repo-root-relative names that are generated and committed.
@@ -94,3 +94,17 @@ def warn_if_generated_files_ignored(root: Path) -> list[str]:
             file=sys.stderr,
         )
     return hits
+
+
+def regenerate_generated_files(root: Path) -> None:
+    """Re-render both :data:`GENERATED_COMMITTED` files from the graph on disk.
+
+    For commands that change the graph and leave the tree to be committed as is
+    (archive, restore-archive), so ``export --check`` and ``digest --check``
+    pass without a separate ``export`` and ``digest`` run.
+    """
+    # Imported here: export_roadmap_md imports this module.
+    from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
+
+    reexport_roadmap_md(root)
+    (root / DEFAULT_OUTPUT).write_text(render_digest(root), encoding="utf-8")

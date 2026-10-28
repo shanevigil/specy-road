@@ -1,5 +1,28 @@
 # Brainstorm panel (PM GUI)
 
+## Agent quickstart
+
+**Use this doc when:** setting up or explaining the **Brainstorm** panel in `specy-road gui`, including its web-search providers.
+**Not for:** the CLI passes, the session format and promotion — [`brainstorming.md`](brainstorming.md).
+
+**Must know without reading on:**
+- The panel needs a working LLM backend in Settings; use **Test LLM** first. Web search is optional and off by default.
+- Research settings are global, not per repository; a private or plain-`http` search endpoint is refused unless **Self-hosted endpoint** is on.
+- Ideas are captured only in Brainstorm mode; Roadmap mode judges and may not add ideas. The human accepts, rejects and promotes.
+- The Ideas list shows ideas and triage state, verdicts only behind **Show verdicts**; clusters, critics, quotes and verification states are CLI-only (`brainstorm list --by cluster`).
+- Roadmap mode is **advisory only**: its verdicts, clusters and overlaps stay in the chat and are not written to the session. Apply the ones you keep with the CLI's `specy-road brainstorm revise`.
+- Panel and CLI share `work/brainstorm-<slug>.yaml`; after promoting run `specy-road export && specy-road digest`.
+
+**Read further for:**
+- what must be configured first → "Before you start"
+- providers, endpoints, self-hosting and the `SEARCH:` loop → "Turning on web search"
+- tiling, minimising and the composer → "The window"
+- start, generate, converge, triage, promote → "Using the panel"
+- rounds, shards, evidence and `verify` (CLI only) → "What the panel does not do yet"
+- fingerprints and what is durable → "Notes"
+
+**Related:** [`brainstorming.md`](brainstorming.md), [`pm-gui.md`](pm-gui.md), [`pm-llm-review.md`](pm-llm-review.md).
+
 The browser version of [`specy-road brainstorm`](brainstorming.md). Same two
 modes, same session file, same promotion path — the difference is that the
 model runs against the backend configured in **Settings** instead of the agent
@@ -27,7 +50,7 @@ than invent sources.
 | Enabled | Whether the assistant may search at all |
 | Provider | Which back end to call — see the table below |
 | Endpoint | Leave blank to use the provider's default; SearXNG has none, so fill it in |
-| API key | Obfuscated at rest like the LLM and git credentials |
+| API key | Obfuscated at rest like the LLM and git credentials, and like them never sent back to the page (shown as `********`; leave it to keep the stored key) |
 | Self-hosted endpoint | Permits a private or localhost address. Off by default — see below |
 | Results per search | Capped at 20 |
 
@@ -108,10 +131,26 @@ eight lines. **Enter** sends and **Shift+Enter** starts a new line.
 3. **Switch to Roadmap mode** when you have enough. The assistant is given the
    convergent prompt instead — clustering, overlap detection, and a `strong` /
    `consider` / `park` verdict per idea. It is told not to add new ideas.
-4. **Triage** in the Ideas list. Accept, Reject, and Undo per row. Ideas are
-   ordered by the model's verdict, strongest first; ideas already promoted sink
-   to the bottom and lose their buttons, because they are roadmap nodes now and
-   the node is what you edit.
+   **This pass is advisory only.** What it says stays in the chat: the panel
+   does not parse verdicts, clusters, overlaps or critics out of the reply,
+   and nothing is written to the session. To keep a verdict, apply it with
+   the CLI against the same session file:
+
+   ```bash
+   specy-road brainstorm revise B1 --cluster C1 --overlap M3.1:adjacent \
+     --critic "feasibility: …" --recommendation strong --why "…"
+   ```
+
+4. **Triage** in the Ideas list. Each row shows the id, title, kind,
+   effort, rationale, evidence URLs and status, with Accept, Reject, and
+   Undo. Verdicts are hidden by default, as in the CLI's `list`, so they do
+   not steer you; **Show verdicts** adds the `strong` / `consider` / `park`
+   badge from `revise` and sorts strongest first. Otherwise ideas keep their
+   capture order. Ideas already promoted sink to the bottom and lose their
+   buttons, because they are roadmap nodes now and the node is what you edit.
+   The list does not show clusters, critics, overlaps, quotes or verification
+   states; read those with `specy-road brainstorm list --by cluster` and the
+   session file.
 5. **Preview promotion**, then **Promote**. Preview shows the display ids that
    would be created and writes nothing.
 
@@ -122,6 +161,18 @@ when it lands. Afterwards, regenerate the derived files:
 ```bash
 specy-road export && specy-road digest
 ```
+
+## What the panel does not do yet
+
+The CLI's round model (`next-round`), shards, the evidence pass and `verify`
+are not panel buttons yet. The panel's Brainstorm mode runs the round-1
+prompt, so it plans and generates without the roadmap inventory; Roadmap mode
+runs the same converge prompt the CLI writes (clusters, overlap relations,
+critics) but records none of its output — verdicts are advisory, and
+`specy-road brainstorm revise` is how they reach the session. The panel does
+show the round the session is in (`round N of M`, from `start --rounds`).
+Use the CLI against the same session for the rest; the session file is
+shared.
 
 ## Notes
 

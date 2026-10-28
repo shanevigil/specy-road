@@ -1,0 +1,91 @@
+{
+  "generated": "2026-10-27",
+  "tool": "pylint duplicate-code (R0801)",
+  "min_similarity_lines": 6,
+  "clones": [
+    {
+      "modules": [
+        "specy_road.bundled_scripts.abort_task_pickup",
+        "specy_road.bundled_scripts.do_next_task"
+      ],
+      "lines": 10
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.abort_task_pickup",
+        "specy_road.bundled_scripts.registry_prune"
+      ],
+      "lines": 12
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.brainstorm_chat",
+        "specy_road.bundled_scripts.review_node"
+      ],
+      "lines": 9
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.do_next_task_args",
+        "specy_road.bundled_scripts.pm_sync"
+      ],
+      "lines": 12
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.finish_task",
+        "specy_road.bundled_scripts.mark_implementation_reviewed"
+      ],
+      "lines": 9
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.pm_sync",
+        "specy_road.bundled_scripts.start_milestone_session"
+      ],
+      "lines": 11
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.refresh_schemas",
+        "specy_road.bundled_scripts.refresh_stubs"
+      ],
+      "lines": 10
+    },
+    {
+      "modules": [
+        "specy_road.bundled_scripts.roadmap_chunk_router_pick",
+        "specy_road.bundled_scripts.roadmap_chunk_utils"
+      ],
+      "lines": 7
+    },
+    {
+      "modules": [
+        "specy_road.milestone_session",
+        "specy_road.on_complete_session"
+      ],
+      "lines": 26
+    },
+    {
+      "modules": [
+        "specy_road.model_profiles",
+        "specy_road.review_files"
+      ],
+      "lines": 19
+    },
+    {
+      "modules": [
+        "specy_road.review_files",
+        "specy_road.worker_state"
+      ],
+      "lines": 15
+    },
+    {
+      "modules": [
+        "specy_road.worker_lock",
+        "specy_road.worker_witness"
+      ],
+      "lines": 8
+    }
+  ]
+}

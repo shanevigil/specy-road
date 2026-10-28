@@ -19,16 +19,10 @@ from specy_road.archive_index import find_record, index_records, load_archive_in
 from specy_road.archive_ops import archive_node, auto_archive_candidates
 from specy_road.archive_plan import plan_archive, plan_summary
 from specy_road.archive_restore import restore_archive
+from specy_road.generated_files import regenerate_generated_files
 from specy_road.gui_app_helpers import get_repo_root
 from specy_road.pm_gui_concurrency import require_pm_gui_write_header
 from specy_road.registry_yaml import read_registry, registry_path
-
-def _reexport_roadmap_md(root: Path) -> None:
-    """Keep ``roadmap.md`` in step so the repo does not drift into a failing CI."""
-
-    from specy_road.bundled_scripts.export_roadmap_md import reexport_roadmap_md
-
-    reexport_roadmap_md(root)
 
 
 DEFAULT_AUTO_DAYS = 90
@@ -203,7 +197,7 @@ def _api_archive_create(
             rec = deepen_archive(root, rec["archive_id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    _reexport_roadmap_md(root)
+    regenerate_generated_files(root)
     return rec
 
 
@@ -225,7 +219,7 @@ def _api_archive_auto(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
     if archived:
-        _reexport_roadmap_md(root)
+        regenerate_generated_files(root)
     return {"dry_run": False, "archived": archived}
 
 
@@ -248,7 +242,7 @@ def _api_archive_restore(
         out = restore_archive(root, archive_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    _reexport_roadmap_md(root)
+    regenerate_generated_files(root)
     return out
 
 

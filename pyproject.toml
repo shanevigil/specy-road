@@ -78,3 +78,15 @@ specy_road = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+# Lean-code gate (docs/contributor-guide.md, "Lean-code gates"). Only the
+# complexity rule is selected on purpose: the ruff default set is not clean on
+# this tree and is out of scope for this gate.
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["C901"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10

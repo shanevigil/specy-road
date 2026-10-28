@@ -12,12 +12,12 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load
 from specy_road.git_workflow_config import (
     ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
-    require_implementation_review_before_finish,
     resolve_integration_defaults,
     resolve_on_complete,
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_implementation_check import implementation_or_exit
+from specy_road.review_gate import gate_holds_at_head_or_exit, review_required
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
@@ -26,7 +26,7 @@ from specy_road.finish_work_artifacts import (
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
-from specy_road.finish_modes import apply_on_complete_mode
+from specy_road.finish_modes import apply_on_complete_mode, merge_landing_preflight
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -66,9 +66,9 @@ def _save_registry(doc: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_context(branch: str) -> tuple[str, dict, dict, list[dict]]:
+def _resolve_context(branch: str, on_complete: str | None = None) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
-    return resolve_feature_rm_registry_context_for_finish(ROOT, branch)
+    return resolve_feature_rm_registry_context_for_finish(ROOT, branch, on_complete)
 
 
 def _update_chunk_status(node_id: str) -> list[str]:
@@ -185,11 +185,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def _impl_review_or_exit(entry: dict, node_id: str) -> None:
-    if not require_implementation_review_before_finish(ROOT):
+def _impl_review_or_exit(entry: dict, node: dict) -> None:
+    node_id = node["id"]
+    if not review_required(ROOT):
         return
     if entry.get("implementation_review") == "approved":
-        return
+        return gate_holds_at_head_or_exit(ROOT, node)
     print(
         "error: implementation review is required before finish-this-task.",
         file=sys.stderr,
@@ -197,7 +198,8 @@ def _impl_review_or_exit(entry: dict, node_id: str) -> None:
     print(
         "  Run: specy-road mark-implementation-reviewed "
         "(after work/implementation-summary-"
-        f"{node_id}.md is written and you reviewed it).",
+        f"{node_id}.md is written and a review is recorded — "
+        f"see specy-road handoff status {node_id}).",
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -205,7 +207,7 @@ def _impl_review_or_exit(entry: dict, node_id: str) -> None:
 
 def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
-    codename, reg, entry, nodes = _resolve_context(branch)
+    codename, reg, entry, nodes = _resolve_context(branch, args.on_complete)
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
     work_dir = ROOT / "work"
@@ -216,7 +218,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
     )
-    _impl_review_or_exit(entry, node_id)
+    _impl_review_or_exit(entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT, explicit_base=None, explicit_remote=None,
     )
@@ -225,6 +227,8 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
         remote=gw_remote, integration_branch=ib,
         allow_empty=args.allow_empty_implementation,
     )
+    if on_mode == "merge":
+        merge_landing_preflight(ROOT, ib)
     print(f"Finishing [{node_id}] {node.get('title', '')}")
     print(f"Branch:   {branch}")
     print(f"on_complete: {on_mode}\n")

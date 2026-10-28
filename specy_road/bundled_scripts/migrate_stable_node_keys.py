@@ -30,7 +30,7 @@ def deterministic_key(display_id: str) -> str:
     return str(uuid.uuid5(NS, f"specy-road/migrate/{display_id}"))
 
 
-def migrate_chunk(path: Path, id_to_key: dict[str, str]) -> bool:
+def migrate_chunk(path: Path, id_to_key: dict[str, str]) -> bool:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     nodes = load_json_chunk(path)
     changed = False
     for n in nodes:
@@ -65,7 +65,7 @@ def migrate_chunk(path: Path, id_to_key: dict[str, str]) -> bool:
     return changed
 
 
-def main() -> None:
+def main() -> None:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     parser = argparse.ArgumentParser(description=__doc__)
     add_repo_root_arg(parser)
     args = parser.parse_args()

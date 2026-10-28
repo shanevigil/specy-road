@@ -33,6 +33,12 @@ def test_write_agent_prompt_includes_leaf_execution_contract(
             "node_key": "22222222-2222-4222-8222-222222222222",
         },
     ]
+    (repo_root / "roadmap").mkdir()
+    (repo_root / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\n"
+        "require_implementation_review_before_finish: true\n",
+        encoding="utf-8",
+    )
     out = dnp.write_agent_prompt(
         nodes[1],
         nodes,
@@ -46,3 +52,8 @@ def test_write_agent_prompt_includes_leaf_execution_contract(
     assert "**Execution Target (leaf):** `M1.1`" in text
     assert "## Ancestor Context Chain" in text
     assert "## Derived Rollup Semantics" in text
+    # Same rules as `prompt --role executor`; no unconditional hook claim.
+    assert "ending with an `## Added` inventory" in text
+    assert "`git commit --only <paths>`), never `-A`, `-a`" in text
+    assert "If this repo has a pre-commit hook" in text
+    assert "the pre-commit hook validates" not in text

@@ -61,7 +61,7 @@ def _logs_append(logs: list[str], msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
-def _heal_one_chunk(
+def _heal_one_chunk(  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     chunk_path: Path,
     existing_codenames: set[str],
     logs: list[str],

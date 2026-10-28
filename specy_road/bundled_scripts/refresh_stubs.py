@@ -28,7 +28,8 @@ import sys
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agent_guide_block import apply_guide_and_report
+from specy_road.agent_guide_block import AGENT_GUIDE, apply_guide_and_report
+from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.agent_ignores import apply_and_report
 from specy_road.runtime_paths import (
     add_repo_root_arg,
@@ -36,6 +37,8 @@ from specy_road.runtime_paths import (
     prefix_within,
     recorded_project_root,
 )
+from specy_road.managed_block import REFUSED, UNCHANGED, resolves_outside
+from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill, skill_rel
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
     COMMAND_FILES,
@@ -72,25 +75,76 @@ def _dest_dir(agent: str, recorded: list[str]) -> Path | None:
 def _content_for(rel: str) -> str | None:
     if rel == README_REL:
         return _read_dot_specyrd_readme()
-    name = Path(rel).name
-    if name in COMMAND_FILES:
-        return _read_template(name)
+    path = Path(rel)
+    if path.name == "SKILL.md" and f"{path.parent.name}.md" in COMMAND_FILES:
+        return render_skill(f"{path.parent.name}.md")
+    if path.name in COMMAND_FILES:
+        return _read_template(path.name)
     return None
 
 
 def _write_if_changed(
-    repo_root: Path, rel: str, *, dry_run: bool, written: list[str]
-) -> None:
+    repo_root: Path, rel: str, *, dry_run: bool, written: list[str], agent: str = "generic",
+    owned: bool = True,
+) -> bool:
+    """Rewrite one managed path. Returns whether the path is the pack's after this call.
+
+    A path the manifest never owned that already exists on disk is the
+    consumer's: it is left alone and reported, not adopted.
+    """
+    if is_link_path(rel):
+        outcome = ensure_link(repo_root, agent, f"{Path(rel).name}.md", dry_run=dry_run, repair=owned, owned=owned)
+        if outcome == SKIPPED:
+            written.append(f"{rel} ({outcome})")
+            return False
+        if outcome != UNCHANGED:
+            written.append(f"{rel} ({outcome})")
+        return True
     content = _content_for(rel)
     if content is None:
-        return
+        return True
     dest = repo_root / rel
+    if resolves_outside(repo_root, dest):
+        written.append(f"{rel} ({REFUSED})")
+        return False
+    if not owned and dest.exists():
+        written.append(f"{rel} (skipped (not ours))")
+        return False
     if dest.is_file() and dest.read_text(encoding="utf-8") == content:
-        return
+        return True
     if not dry_run:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(content, encoding="utf-8")
     written.append(rel)
+    return True
+
+
+def _refresh_pack(
+    repo_root: Path, agent: str, current: list[str], all_recorded: set[str], *, dry_run: bool, written: list[str],
+) -> list[str]:
+    """Rewrite one pack's managed paths; return the ones that are the kit's afterwards.
+
+    A link is only ever made to a canonical skill the kit owns: when the
+    canonical ``SKILL.md`` is skipped as someone else's, its link is skipped
+    too, rather than exposing (and recording) content the kit declined to own.
+    """
+    ours: list[str] = []
+    declined: set[str] = set()
+    for rel in current:
+        if is_link_path(rel) and str(skill_rel(f"{Path(rel).name}.md")) in declined:
+            written.append(f"{rel} ({SKIPPED})")
+            continue
+        owned = rel in all_recorded or rel.startswith(".specyrd/")
+        if _write_if_changed(repo_root, rel, dry_run=dry_run, written=written, agent=agent, owned=owned):
+            ours.append(rel)
+        else:
+            declined.add(rel)
+    return ours
+
+
+def _old_command_stub(rel: str) -> bool:
+    """A pre-0.3.0 harness command stub (not a `generic` pack's own commands dir)."""
+    return rel.startswith((".cursor/commands/", ".claude/commands/"))
 
 
 def _orphans(recorded: list[str], current: list[str], repo_root: Path) -> list[str]:
@@ -99,8 +153,13 @@ def _orphans(recorded: list[str], current: list[str], repo_root: Path) -> list[s
     return sorted(
         rel
         for rel in recorded
-        if rel not in wanted and (repo_root / rel).is_file()
+        if rel not in wanted and _on_disk(repo_root / rel)
     )
+
+
+def _on_disk(path: Path) -> bool:
+    """A file, a directory, or a symlink — dangling included: a skill link whose target went is still an orphan."""
+    return path.is_file() or path.is_dir() or path.is_symlink()
 
 
 def refresh_stubs(
@@ -122,27 +181,35 @@ def refresh_stubs(
     orphans: list[str] = []
     role = manifest.get("role")
 
+    # Ownership is the kit's, not one pack's: a skill file another recorded
+    # pack wrote is ours to refresh and to link.
+    all_recorded = {p for paths in agents.values() for p in paths if isinstance(p, str)}
     for agent in sorted(agents):
         recorded = [p for p in agents[agent] if isinstance(p, str)]
         rel_dest = _dest_dir(agent, recorded)
         if rel_dest is None:
             continue
-        current = managed_paths(rel_dest, _stub_set(role), agent=agent)
-        for rel in current:
-            _write_if_changed(repo_root, rel, dry_run=dry_run, written=written)
+        current = _refresh_pack(repo_root, agent, managed_paths(rel_dest, _stub_set(role), agent=agent),
+                                all_recorded, dry_run=dry_run, written=written)
+        all_recorded.update(current)   # what this pack just wrote is the kit's for the packs after it
         orphans.extend(_orphans(recorded, current, repo_root))
-        apply_guide_and_report(
-            repo_root, prefix, written, agent=agent, dry_run=dry_run
-        )
+        # Refresh the block in a CLAUDE.md the consumer has; never create the
+        # file (`specyrd init` does that only with --write-claude-md).
+        if (repo_root / AGENT_GUIDE).is_file():
+            apply_guide_and_report(
+                repo_root, prefix, written, agent=agent, dry_run=dry_run
+            )
         if not dry_run:
             agents[agent] = current
 
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    apply_agents_and_report(repo_root / prefix if prefix else repo_root, written, dry_run=dry_run, prefix=prefix)
 
     if not dry_run:
         manifest["agents"] = agents
         _save_manifest(repo_root, manifest)
-    return written, sorted(set(orphans))
+    # A dry run writes nothing, so every pack sharing a skill reports it again.
+    return list(dict.fromkeys(written)), sorted(set(orphans))
 
 
 def stubs_are_stale(start: Path) -> str | None:
@@ -193,6 +260,13 @@ def _report(written: list[str], orphans: list[str], *, dry_run: bool) -> None:
         print("\nNo longer installed for this role, left on disk for you to remove:")
         for rel in orphans:
             print(f"  {rel}")
+        if any(_old_command_stub(rel) for rel in orphans):
+            print(
+                "\nThe */commands/ files are the pre-0.3.0 command stubs. The same commands are now\n"
+                "skills under .agents/skills/ (one file read by Cursor, Codex, and Claude Code), so\n"
+                "delete the old stubs to avoid two /specyrd-… entries:\n  rm "
+                + " ".join(rel for rel in orphans if _old_command_stub(rel))
+            )
     if dry_run:
         print("\n(dry-run; no files written)")
         return
@@ -216,6 +290,13 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     root = _resolve_root(args.repo_root)
+    if not _load_manifest(root).get("agents"):
+        # The stub pack is optional; the documented upgrade runs this anyway.
+        print(
+            f"nothing to refresh: no specyrd stub pack is installed ({root}). "
+            "Optional — add one with: specyrd init --ai cursor|claude-code|codex|generic"
+        )
+        return
     try:
         written, orphans = refresh_stubs(root, dry_run=args.dry_run)
     except ValueError as e:

@@ -149,10 +149,14 @@ def _section_dropped_dependencies(
     a decision someone already made, and it is invisible in the current graph
     precisely because it was removed.
     """
-    events = _history_events(root, kinds={"dep_removed"})
+    by_key = _key_to_node(nodes)
+    # An edge re-added since its removal is live again, not dropped.
+    events = [
+        e for e in _history_events(root, kinds={"dep_removed"})
+        if e.get("from") not in (by_key.get(e.get("node_key")) or {}).get("dependencies", [])
+    ]
     if not events:
         return []
-    by_key = _key_to_node(nodes)
     out = [
         "## Dependencies that were removed",
         "",

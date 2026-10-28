@@ -6,10 +6,14 @@ Session notes and generated briefs can live here. The roadmap graph and `shared/
 specy-road brief M1.1 -o work/brief-M1.1.md
 ```
 
-When `roadmap/git-workflow.yaml` sets `require_implementation_review_before_finish: true`, the implementer (or agent) writes **`work/implementation-summary-<NODE_ID>.md`** before human review. Copy `implementation-summary.template.md` as a starting point. The developer then runs `specy-road mark-implementation-reviewed`, then `specy-road finish-this-task`.
+When `roadmap/git-workflow.yaml` sets `require_implementation_review_before_finish: true`, the implementer (or agent) writes **`work/implementation-summary-<NODE_ID>.md`** before review. Copy `implementation-summary.template.md` as a starting point. Review hand-offs live under **`work/reviews/<NODE_ID>/`** (gitignored): the executor's `READY-<agent>.md` (copy `handoff-ready.template.md`), the `PACKET.md` reviewers read (`specy-road review-packet`), and one `REVIEW-<model>.md` per reviewer (`specy-road review record`, from `review-record.template.md`). The developer then runs `specy-road mark-implementation-reviewed`, then `specy-road finish-this-task`. See `docs/orchestration.md` in the specy-road repository.
 
 By default, **`finish-this-task`** removes **`work/brief-<NODE_ID>.md`**, **`work/prompt-<NODE_ID>.md`**, and **`work/implementation-summary-<NODE_ID>.md`** after validate/export/digest (staging deletion if those paths are tracked). Durable design stays in **`planning/`** and cited **`shared/`** contracts. Use **`--no-cleanup-work`** or **`cleanup_work_artifacts_on_finish: false`** in `roadmap/git-workflow.yaml` to keep those three.
 
 Two files do not follow that switch. **`work/.on-complete-<NODE_ID>.yaml`** is internal handoff state rather than a document, so it always goes. **`work/pr-body-<NODE_ID>.md`** always stays: it is the snapshot the printed `gh pr create --body-file` command reads, and nothing tells `finish-this-task` when the PR was opened. Both are gitignored by the scaffold, and `specy-road file-limits` skips every file in this list.
+
+**Brainstorm sessions** live here too: `work/brainstorm-<slug>.yaml` is tracked (ideas, frame, clusters, evidence, decisions); the prompts beside it (`…-prompt.md`, `…-sN-prompt.md`, `…-evidence-prompt.md`) are regenerated and gitignored.
+
+**Agent coordination state** (all gitignored, always in the main worktree): `work/.sessions/<agent>.yaml` presence records (`specy-road session`), `work/.workers/` worker records, event logs and the ops outbox (`specy-road worker`), and `work/.worktrees/` for leaves a worker runs in a linked worktree.
 
 Add a `.gitkeep` or tune `.gitignore` for what should stay local vs checked in.

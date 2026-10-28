@@ -66,6 +66,18 @@
           "type": "integer",
           "description": "Sort order among nodes with the same parent_id (lower first). Defaults to 0 when omitted."
         },
+        "sensitivity": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "description": "Data-sensitivity class of this node's inputs (default public). A model may execute or review it only when the class is in its roster may_process (roadmap/orchestration.yaml); specy-road prompt and orchestrate plan enforce it."
+        },
+        "executor_eligibility": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "description": "Which executors may take this node: any (default) or a roster class tag such as senior; orchestrate plan assigns only a matching executor."
+        },
         "notes": { "type": "string" },
         "planning_dir": {
           "type": ["string", "null"],

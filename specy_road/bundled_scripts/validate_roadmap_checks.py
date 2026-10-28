@@ -10,9 +10,10 @@ from jsonschema import Draft202012Validator
 
 from specy_road.bundled_scripts.planning_artifacts import collect_planning_artifact_errors
 from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
-from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.review_gate import review_required
 from specy_road.runtime_paths import default_user_repo_root
 
+from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_missing
 from specy_road.bundled_scripts.validate_touch_zones import warn_touch_zones_match_nothing
 from specy_road.bundled_scripts.validate_roadmap_gates import validate_gates
 from specy_road.node_kinds import is_gate
@@ -333,7 +334,9 @@ def run_validation(
 
     id_set = set(ids)
     id_to_type = {n["id"]: n.get("type") for n in nodes}
-    gate = require_implementation_review_before_finish(r)
+    # The gate's own resolution (integration branch OR working tree, fail closed),
+    # so a feature-tree edit cannot silence this check or the acceptance warning.
+    gate = review_required(r)
     allowed_review = frozenset({"pending", "approved"})
     for e in registry.get("entries") or []:
         nid = e.get("node_id")
@@ -364,6 +367,7 @@ def run_validation(
 
     warn_stale_parent_status(nodes)
     warn_touch_zones_match_nothing(nodes, r)
+    warn_acceptance_missing(nodes, gate)
     if registry.get("entries") and not no_overlap_warn:
         touch_zone_overlap(registry["entries"])
 

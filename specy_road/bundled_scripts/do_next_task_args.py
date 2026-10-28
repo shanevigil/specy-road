@@ -30,6 +30,26 @@ humans reading the roadmap. It does NOT gate pickup.
 """
 
 
+def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
+    """``--local`` and ``--owner``: who can see a claim, and who holds it (proposal §3.4)."""
+    p.add_argument(
+        "--local",
+        action="store_true",
+        help=(
+            "Register the claim in this checkout only: no fetch, no merge, no push. "
+            "The row is still committed on the integration branch locally, so finish, "
+            "abort and the review gate work; push that branch when you want the team "
+            "to see the claim. Peers cannot see a local claim until then."
+        ),
+    )
+    p.add_argument(
+        "--owner",
+        default=None,
+        metavar="NAME",
+        help="Who holds the claim, written to the registry row (default: git config user.name).",
+    )
+
+
 def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -66,6 +86,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
         ),
     )
+    _add_claim_visibility_args(p)
     add_repo_root_arg(p)
     p.add_argument(
         "--on-complete",

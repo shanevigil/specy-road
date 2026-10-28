@@ -129,7 +129,7 @@ class BrainstormIdeaBody(BaseModel):
     rationale: str | None = None
     kind: str = Field(
         default="feature",
-        pattern="^(feature|capability|risk|research|experiment)$",
+        pattern="^(feature|capability|risk|research|experiment|refactor|platform)$",
     )
     effort: str | None = None
     evidence: list[str] | None = None
@@ -140,19 +140,20 @@ class BrainstormTriageBody(BaseModel):
     idea_id: str
     status: str | None = Field(
         default=None,
-        pattern="^(proposed|accepted|rejected|revised)$",
+        pattern="^(proposed|accepted|rejected|revised|parked)$",
     )
     title: str | None = None
     rationale: str | None = None
     kind: str | None = Field(
         default=None,
-        pattern="^(feature|capability|risk|research|experiment)$",
+        pattern="^(feature|capability|risk|research|experiment|refactor|platform)$",
     )
     effort: str | None = None
     recommendation: str | None = Field(
         default=None,
         pattern="^(strong|consider|park)$",
     )
+    reason: str | None = None   # required for rejected / parked, as the CLI requires --reason
 
 
 class BrainstormPromoteBody(BaseModel):

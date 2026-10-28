@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/handoff.schema.json",
+  "title": "specy-road READY hand-off",
+  "description": "YAML front matter of work/reviews/<NODE_ID>/READY-<agent>.md: an executor's statement that its implementation is committed and ready for review.",
+  "type": "object",
+  "required": ["node_id", "agent", "branch", "commit", "base", "changed_paths"],
+  "additionalProperties": false,
+  "properties": {
+    "node_id": { "type": "string", "minLength": 1, "description": "Must be the node whose work/reviews/<NODE_ID>/ directory holds the file; a READY naming another node is invalid there." },
+    "agent": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$", "description": "Executor model id (roster id when rostered)." },
+    "branch": { "type": "string", "minLength": 1, "description": "The node's registered branch; a READY naming another branch is invalid for the node." },
+    "commit": { "$ref": "#/$defs/sha", "description": "Implementation commit the executor stopped at." },
+    "base": { "$ref": "#/$defs/sha", "description": "Commit the implementation branched from." },
+    "changed_paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Every path the executor changed, repo-relative."
+    },
+    "verify": {
+      "type": "array",
+      "description": "Verifier and test commands the executor ran, with exit status and the tail of their output.",
+      "items": {
+        "type": "object",
+        "required": ["cmd", "exit"],
+        "additionalProperties": false,
+        "properties": {
+          "cmd": { "type": "string", "minLength": 1 },
+          "exit": { "type": "integer" },
+          "tail": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+  }
+}

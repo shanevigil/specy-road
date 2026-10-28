@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 
 from specy_road.finish_work_artifacts import (
@@ -23,22 +24,37 @@ def test_work_artifact_rel_paths() -> None:
     )
 
 
-def test_cleanup_work_artifacts_removes_untracked_files(tmp_path) -> None:
-    (tmp_path / "work").mkdir(parents=True)
+def test_cleanup_work_artifacts_removes_untracked_files(tmp_path, capsys) -> None:
+    root, outside = tmp_path / "app", tmp_path / "outside"
+    (root / "work").mkdir(parents=True)
     for name in (
         "brief-M1.1.md",
         "prompt-M1.1.md",
         "implementation-summary-M1.1.md",
     ):
-        (tmp_path / "work" / name).write_text("x", encoding="utf-8")
-    tracked = cleanup_work_artifacts(tmp_path, "M1.1")
+        (root / "work" / name).write_text("x", encoding="utf-8")
+    tracked = cleanup_work_artifacts(root, "M1.1")
     assert tracked == []
     for name in (
         "brief-M1.1.md",
         "prompt-M1.1.md",
         "implementation-summary-M1.1.md",
     ):
-        assert not (tmp_path / "work" / name).is_file()
+        assert not (root / "work" / name).is_file()
+    # never committed, so the reviewed summary survives beside the reviews
+    kept = root / "work" / "reviews" / "M1.1" / "implementation-summary-M1.1.md"
+    assert kept.read_text(encoding="utf-8") == "x"
+    kept.unlink()
+    # a summary reached through a symlink -- the file, or work/ itself -- is never copied
+    outside.mkdir()
+    (outside / "implementation-summary-M1.1.md").write_text("secret", encoding="utf-8")
+    (root / "work" / "implementation-summary-M1.1.md").symlink_to(outside / "implementation-summary-M1.1.md")
+    cleanup_work_artifacts(root, "M1.1")
+    assert "not copying" in capsys.readouterr().err and not kept.exists()
+    shutil.rmtree(root / "work")
+    (root / "work").symlink_to(outside)
+    cleanup_work_artifacts(root, "M1.1")
+    assert "not copying" in capsys.readouterr().err and not (outside / "reviews").exists()
 
 
 def test_cleanup_work_artifacts_tracked_paths_returned(tmp_path) -> None:
