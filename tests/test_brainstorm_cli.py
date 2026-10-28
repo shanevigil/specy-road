@@ -41,8 +41,8 @@ def _start(repo: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     return _run(repo, "start", "--topic", "How do we expand payments?", *extra)
 
 
-def _prompt(repo: Path) -> str:
-    path = repo / "work" / "brainstorm-how-do-we-expand-payments-prompt.md"
+def _prompt(repo: Path, pass_name: str = "r1") -> str:
+    path = repo / "work" / f"brainstorm-how-do-we-expand-payments-{pass_name}-prompt.md"
     return path.read_text(encoding="utf-8")
 
 
@@ -51,7 +51,7 @@ def test_start_writes_a_session_and_a_prompt(repo: Path) -> None:
 
     assert r.returncode == 0, r.stderr
     assert (repo / "work" / "brainstorm-how-do-we-expand-payments.yaml").is_file()
-    assert (repo / "work" / "brainstorm-how-do-we-expand-payments-prompt.md").is_file()
+    assert (repo / "work" / "brainstorm-how-do-we-expand-payments-r1-prompt.md").is_file()
 
 
 def test_the_slug_falls_out_of_the_topic(repo: Path) -> None:
@@ -88,8 +88,8 @@ def test_the_diverge_prompt_opens_with_socratic_questions(repo: Path) -> None:
     _start(repo)
 
     text = _prompt(repo)
-    assert "interrogate the question before answering it" in text
-    assert "Who exactly is served, and who is deliberately not?" in text
+    assert "frame the question before answering it" in text
+    assert "`served` (required) — Who exactly is served, and who is deliberately not?" in text
 
 
 def test_round_one_defers_research_and_round_two_opens_it(repo: Path) -> None:
@@ -103,7 +103,7 @@ def test_round_one_defers_research_and_round_two_opens_it(repo: Path) -> None:
     _run(repo, "add-idea", "--title", "One")
     assert _run(repo, "next-round").returncode == 0
 
-    text = _prompt(repo)
+    text = _prompt(repo, "r2")
     assert "Round 2 — add only what is outside the pool" in text
     assert "- B1 One" in text
     assert "use your web search" in text and "--evidence" in text
@@ -128,7 +128,7 @@ def test_the_roadmap_inventory_moves_to_the_converge_prompt(repo: Path) -> None:
     _run(repo, "add-idea", "--title", "One")
     _run(repo, "recommend")
 
-    text = _prompt(repo)
+    text = _prompt(repo, "recommend")
     assert "Do not propose work that is already on the roadmap" in text
     assert "`M0.1`" in text
 
@@ -225,7 +225,7 @@ def test_the_converge_prompt_asks_for_judgement_not_ideas(repo: Path) -> None:
     _run(repo, "add-idea", "--title", "Stored payment vault")
     _run(repo, "recommend")
 
-    text = _prompt(repo)
+    text = _prompt(repo, "recommend")
     assert "you must not add new ideas" in text
     assert "Cluster near-duplicates" in text
     assert "**B1** (proposed, feature) — Stored payment vault" in text
@@ -313,18 +313,37 @@ def test_close_moves_the_session_and_its_prompts_and_nothing_else(repo: Path) ->
     _seed(repo, "a")
     _seed(repo, "ab")
     work = repo / "work"
-    (work / "brainstorm-a-s1-prompt.md").write_text("shard", encoding="utf-8")
+    # One prompt per pass, plus the bare and -sN names older versions wrote.
+    for tag in ("-r2", "-r1-s1", "-recommend", "-evidence", "", "-s1"):
+        (work / f"brainstorm-a{tag}-prompt.md").write_text("prompt", encoding="utf-8")
 
     r = _run(repo, "close", "--slug", "a")
 
     assert r.returncode == 0, r.stderr
     closed = work / "brainstorm-closed"
     assert sorted(p.name for p in closed.iterdir()) == [
-        "brainstorm-a-prompt.md", "brainstorm-a-s1-prompt.md", "brainstorm-a.yaml"]
+        "brainstorm-a-evidence-prompt.md", "brainstorm-a-prompt.md", "brainstorm-a-r1-prompt.md",
+        "brainstorm-a-r1-s1-prompt.md", "brainstorm-a-r2-prompt.md", "brainstorm-a-recommend-prompt.md",
+        "brainstorm-a-s1-prompt.md", "brainstorm-a.yaml"]
     assert "moved work/brainstorm-a.yaml -> work/brainstorm-closed/brainstorm-a.yaml" in r.stdout
-    assert (work / "brainstorm-ab.yaml").is_file() and (work / "brainstorm-ab-prompt.md").is_file()
+    assert (work / "brainstorm-ab.yaml").is_file() and (work / "brainstorm-ab-r1-prompt.md").is_file()
     assert resolve_slug(repo, None) == "ab"   # the closed session no longer counts as open
     assert json.loads(_run(repo, "list", "--json").stdout)["slug"] == "ab"
+
+
+def test_close_leaves_a_name_another_open_session_could_own(repo: Path) -> None:
+    """`a-s1` is a valid slug: its prompts, and the legacy name it shares with `a`'s shard 1, stay."""
+    _seed(repo, "a")
+    _seed(repo, "a-s1")
+    work = repo / "work"
+    (work / "brainstorm-a-s1-prompt.md").write_text("legacy", encoding="utf-8")
+
+    assert _run(repo, "close", "--slug", "a").returncode == 0
+
+    assert sorted(p.name for p in (work / "brainstorm-closed").iterdir()) == [
+        "brainstorm-a-r1-prompt.md", "brainstorm-a.yaml"]
+    for name in ("brainstorm-a-s1.yaml", "brainstorm-a-s1-r1-prompt.md", "brainstorm-a-s1-prompt.md"):
+        assert (work / name).is_file(), name
 
 
 def test_close_refuses_a_missing_session_and_an_existing_destination(repo: Path) -> None:

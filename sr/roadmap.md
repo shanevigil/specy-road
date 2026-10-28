@@ -17,7 +17,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.1` | Refuse to pick up leaves whose planning sheet is still a placeholder | task | Agentic-led | Complete |
 | `M3.2` | handoff status reports review records without a claim | task | Agentic-led | Complete |
 | `M3.3` | Document the canonical chunk key order and offer a deliberate normalisation | task | Agentic-led | Complete |
-| `M3.4` | Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers | task | Agentic-led | Not Started |
+| `M3.4` | Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers | task | Agentic-led | Complete |
 | `M3.5` | Converge and evidence passes that cannot silently skip work | task | Agentic-led | Not Started |
 | `M3.6` | Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept | task | Agentic-led | Not Started |
 | `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Not Started |

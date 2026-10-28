@@ -54,8 +54,8 @@ def _start(repo: Path, *extra: str) -> tuple[int, str, str]:
     return _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1", *extra)
 
 
-def _prompt(repo: Path, suffix: str = "") -> str:
-    return (repo / "work" / f"brainstorm-{SLUG}{suffix}-prompt.md").read_text(encoding="utf-8")
+def _prompt(repo: Path, pass_name: str = "r1") -> str:
+    return (repo / "work" / f"brainstorm-{SLUG}-{pass_name}-prompt.md").read_text(encoding="utf-8")
 
 
 def _session(repo: Path) -> BrainstormSession:
@@ -74,7 +74,7 @@ def test_evidence_prompt_covers_the_shortlist_only(repo: Path) -> None:
     _cli(repo, "revise", "B2", "--recommendation", "park")
     code, out, _ = _cli(repo, "evidence")
     assert code == 0 and "1 idea(s)" in out
-    text = _prompt(repo, "-evidence")
+    text = _prompt(repo, "evidence")
     assert "**B1** One" in text and "B2" not in text.split("## Ideas")[1].split("## Record")[0]
     assert "verbatim quote" in text and "disconfirm" in text
     assert "Never claim to have used a named research product" in text

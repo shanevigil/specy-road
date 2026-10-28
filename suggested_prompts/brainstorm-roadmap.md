@@ -35,24 +35,35 @@ promotes them.
 
 ## Phase 1 — open the session
 
+Run this **before reading anything else** — not `roadmap-context.md`, not the
+roadmap, not `planning/`, even if AGENTS.md says to read the digest first.
 From the repository root:
 
 ```bash
 specy-road brainstorm start --topic "[TOPIC]" --under [ANCHOR] --count 30
 ```
 
-This prints the path to `work/brainstorm-<slug>-prompt.md`. **Read that file
+This prints the path to `work/brainstorm-<slug>-r1-prompt.md`. **Read that file
 and follow it.** It points at the constitution; it deliberately does not show
-you the roadmap or ask for research in round 1, because both anchor you.
+you the roadmap or ask for research in round 1, because both anchor you. If
+`start` warns that you are on the integration branch, brainstorm on the
+`chore/brainstorm-<slug>` branch it suggests. Every command prints the next
+step.
 
-## Phase 2 — interrogate before generating
+## Phase 2 — frame before generating
 
-The prompt opens with Socratic questions about the topic. Ask the PM these and
-**wait for answers**. Do not skip to ideas because you can think of some — a
-brainstorm aimed at the wrong question produces confident, useless volume.
+The prompt lists the frame keys (outcome, served, not-the-question,
+assumed-vs-known are required; metric, deadline, budget and the rest are
+optional). Do not hand the PM a questionnaire: **propose an answer** to each
+from what they already said, mark the ones their words cover `assumed`, and
+show the whole proposed frame in one message for them to correct. Ask only
+about a required key you could not propose. Do not skip framing because you
+can think of ideas — a brainstorm aimed at the wrong question produces
+confident, useless volume.
 
-Rewrite the PM's assertions as questions, summarise what you heard, get
-agreement, and record it with `specy-road brainstorm frame --answer key=…`.
+Rewrite the PM's assertions as questions, then record the frame with
+`specy-road brainstorm frame --answer key=…` (prefix an unconfirmed answer
+with `assumed:`).
 
 ## Phase 3 — plan, then generate
 

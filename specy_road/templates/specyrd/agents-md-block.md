@@ -7,7 +7,7 @@ and ask a human which applies; do not pick one.
 
 ### Load order
 
-0. `roadmap-context.md` (`specy-road digest`) — read it before crawling `planning/` or `work/` (a `work/brainstorm-*` prompt: open it first; round 1 and panel shards must not read the roadmap)
+0. `roadmap-context.md` (`specy-road digest`) — read it before crawling `planning/` or `work/` (brainstorming: run `brainstorm start` before reading this or anything else, then open its `work/brainstorm-*` prompt; round 1 and panel shards must not read the roadmap)
 1. `constitution/purpose.md`
 2. `constitution/principles.md`
 3. `constraints/README.md`

@@ -31,8 +31,9 @@ def add_start_v2_options(p: argparse.ArgumentParser) -> None:
                    help="Lens set: product (default) or technical (failure modes, "
                         "operability, migration, debt, dependency risk, platform).")
     p.add_argument("--panel", type=int, default=None, metavar="N",
-                   help="Also write N independent shard prompts (work/brainstorm-<slug>-sN-prompt.md) "
-                        "for sub-agents or other harnesses to run without seeing each other.")
+                   help="Also write N independent shard prompts (work/brainstorm-<slug>-r1-sN-prompt.md) "
+                        "for sub-agents or other harnesses to run without seeing each other; "
+                        "`frame` rewrites them with the frame and each shard's `sN:` allocation cell.")
 
 
 def add_v2_subcommands(sub) -> None:
@@ -44,7 +45,8 @@ def add_v2_subcommands(sub) -> None:
     p = sub.add_parser("frame", help="record the agreed frame or the allocation grid")
     p.add_argument("--answer", action="append", default=[], metavar="KEY=TEXT",
                    help="One agreed answer, e.g. outcome=... (repeatable).")
-    p.add_argument("--allocation", default=None, metavar="TEXT", help="The allocation grid as text.")
+    p.add_argument("--allocation", default=None, metavar="TEXT",
+                   help="The allocation grid as text. With --panel, a line `sN: <cell>` gives shard N its cell.")
     _slug(p)
 
     p = sub.add_parser("evidence", help="write the evidence prompt for shortlisted ideas")
