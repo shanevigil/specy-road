@@ -156,8 +156,9 @@ only (an `additionalContext` note, which is how it warns when a command
 would be refused if another session were live) and never an `allow`, so
 Claude's own permission policy still applies to the call. Any other exit code lets the
 call proceed, so the guard exits 2 on an internal error rather than fail
-open. Hooks run in `claude -p`; `claude --bare` skips every hook; whether
-`bypassPermissions` runs `PreToolUse` hooks is not stated. Export
+open. Hooks run in `claude -p`; `claude --bare` skips every hook; a sandbox
+run (2026-10-28) saw the hook fire and block under
+`claude -p --dangerously-skip-permissions` (`bypassPermissions`). Export
 `SPECY_ROAD_AGENT_ID` in the session so the guard knows which presence record
 is its own.
 
@@ -168,7 +169,11 @@ the documented allow, and Codex marks a hook failed on keys it does not
 support, so the guard's allows are silent there. Project hooks load only
 when the project's `.codex/` layer is trusted, and each hook definition
 must be trusted in `/hooks` (or run with `--dangerously-bypass-hook-trust`).
-Hooks fire under `codex exec`; the IDE extension is unverified.
+Codex skips an untrusted hook silently, with nothing in the output, so a
+headless run looks guarded when it is not. Hooks fire under `codex exec`; a
+sandbox run (2026-10-28) saw the guard block under
+`--dangerously-bypass-approvals-and-sandbox` too. The IDE extension is
+unverified.
 
 **Cursor** (verified against the hooks docs, 2026-10): a
 `beforeShellExecution` hook in `.cursor/hooks.json`. The command arrives as
