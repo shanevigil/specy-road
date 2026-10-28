@@ -202,7 +202,7 @@ def _profile_lines(prof: Profile | None, role: str, zones: list[str]) -> list[st
     return out
 
 
-def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[str, Profile | None, str | None]:
+def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[str, Profile | None, str | None]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """``(text, profile, error)``."""
     config, err = pinned_config(root)
     if err:

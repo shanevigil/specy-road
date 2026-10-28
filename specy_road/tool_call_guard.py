@@ -135,7 +135,7 @@ def _unwrap(tokens: list[str]) -> list[str]:
     return [t.rstrip(")") if t.endswith(")") and t != ")" else t for t in out if t not in (")", "}")]
 
 
-def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:
+def _git_subcommand(tokens: list[str]) -> tuple[str | None, list[str]]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """``(subcommand, its args)`` for a ``git …`` token list, else ``(None, [])``.
 
     ``/usr/bin/git`` counts as ``git``; a ``-c alias.<name>=<cmd>`` whose
@@ -183,7 +183,7 @@ def _short_flags(args: list[str]) -> str:
     return "".join(a[1:] for a in args if a.startswith("-") and not a.startswith("--") and len(a) > 1)
 
 
-def classify_segment(segment: str) -> str | None:
+def classify_segment(segment: str) -> str | None:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """The reason a single command is destructive in a shared tree, else ``None``.
 
     A segment that will not parse but mentions ``git`` is treated as

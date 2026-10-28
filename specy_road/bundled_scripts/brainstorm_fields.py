@@ -73,7 +73,7 @@ def source_record(url: str, *, quote: str = "", supports: str = "", stance: str 
     return {k: v for k, v in rec.items() if v not in ("", None)}
 
 
-def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:
+def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """The v2 fields from a loaded idea mapping, validated, defaults filled."""
     out = {k: (list(v) if isinstance(v, list) else v) for k, v in EXTRA_DEFAULTS.items()}
     origin = raw.get("origin")

@@ -61,7 +61,7 @@ def parse_openai_chat_throughput_limits() -> tuple[int | None, int | None]:
     return rpm, tpm
 
 
-def estimate_openai_chat_request_tokens(**kwargs: object) -> int:
+def estimate_openai_chat_request_tokens(**kwargs: object) -> int:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Rough token estimate from chat completion kwargs (no logging)."""
     parts: list[str] = []
     m = kwargs.get("model")
