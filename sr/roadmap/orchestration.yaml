@@ -12,21 +12,21 @@ roster:
     harness: claude-code
     billing_route: claude_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road-agent-guidance/sr/tools/claude-worker.sh {session} {prompt}"
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/claude-worker.sh {session} {prompt}"
   - id: grok-4.7-high
     family: xai
     roles: [reviewer]
     harness: cursor
     billing_route: cursor_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road-agent-guidance/sr/tools/cursor-review.sh grok-4.7-high \"<prompt>\""
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh grok-4.7-high \"<prompt>\""
   - id: gpt-5.6-sol-high
     family: openai
     roles: [reviewer]
     harness: cursor
     billing_route: cursor_subscription
     channels:
-      cli: "/Users/savigil/WORKSPACE/specy-road-agent-guidance/sr/tools/cursor-review.sh gpt-5.6-sol-high \"<prompt>\""
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh gpt-5.6-sol-high \"<prompt>\""
 policy:
   reviewers_required: 2
   reviewers_distinct_families: true

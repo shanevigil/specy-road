@@ -2,4 +2,4 @@
 # specy-road from the WIP/improvements-0-3-1 checkout (the toolkit's own integration line).
 # Workers and reviewers put this directory first on PATH so bookkeeping commands run the
 # line under development rather than whatever version the shell has installed.
-PYTHONPATH=/Users/savigil/WORKSPACE/specy-road-agent-guidance exec /Users/savigil/WORKSPACE/specy-road/.venv/bin/python -m specy_road.cli "$@"
+PYTHONPATH=/Users/savigil/WORKSPACE/specy-road exec /Users/savigil/WORKSPACE/specy-road/.venv/bin/python -m specy_road.cli "$@"
