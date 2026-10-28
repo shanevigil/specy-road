@@ -140,7 +140,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
-| `terminate W` | SIGTERM the recorded process group (wrapper, harness and children), SIGKILL after 5 s, and confirm the group is gone — also when the wrapper itself already died; state `terminated`. The turn is lost. |
+| `terminate W` | SIGTERM the recorded process group (wrapper, harness and children), SIGKILL after 5 s, and confirm the group is gone — also when the wrapper itself already died, while the harness still matches its start time; state `terminated`. The turn is lost. |
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker, and for an id that is not the harness's own shape (a UUID for Claude Code and Codex; shell-safe characters for all). |
 | `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. |
@@ -168,9 +168,10 @@ coordinators sending at once launch one turn, and a second `reclaim` finds
 the lease already returned. `terminate` signals only a pid whose command line
 names this worker's wrapper (resolved repo root, worker id and the spawn's
 random token as whole arguments); when `ps` cannot say, it refuses rather than
-signal a stranger. When the wrapper is gone but the harness pid (with its
-recorded start time) or another member of the recorded process group is
-alive, `terminate` signals that group instead. On an adopted (`native`) record it closes the record and
+signal a stranger. When the wrapper is gone, `terminate` signals the group
+only while the harness pid is alive with its recorded start time; a group
+with members but neither identity is refused (a group id can be reused):
+kill this worker's processes in it by hand, then run `terminate` again. On an adopted (`native`) record it closes the record and
 says the session was not signalled.
 
 `reclaim` always returns the worker to `idle`, even one that was
