@@ -1,4 +1,4 @@
-"""Which git ref the review policy and roster are read from (``review_gate.policy_source``).
+"""Which git ref the review policy and roster are read from (:func:`policy_source`).
 
 The integration branch *name* comes from ``roadmap/git-workflow.yaml`` as
 committed on the remote's default branch (``refs/remotes/<remote>/HEAD``) when
@@ -28,6 +28,7 @@ import yaml
 
 from specy_road.finish_implementation_check import base_ref
 from specy_road.git_subprocess import git_stdout, git_text
+from specy_road.review_target import full_sha
 
 WORKFLOW_REL = "roadmap/git-workflow.yaml"
 
@@ -88,3 +89,24 @@ def trusted_integration_ref(repo_root: Path, remote: str, ib: str, where: str) -
             f"or {ib!r} is not the integration branch"
         )
     return ref, None
+
+
+def policy_source(repo_root: Path) -> tuple[str | None, str | None]:
+    """``(ref, error)``: the integration branch ref that review policy is read from.
+
+    The remote comes from ``roadmap/git-workflow.yaml`` **as committed at
+    HEAD**, and the branch name from the copy committed on the remote's default
+    branch (``refs/remotes/<remote>/HEAD``) when there is one, else from HEAD's —
+    never from the working tree or the ``SPECY_ROAD_INTEGRATION_BRANCH`` /
+    ``SPECY_ROAD_REMOTE`` variables, which an agent can change without a trace.
+    When that branch cannot be found the result is an error, not a fall back to
+    the working tree: the gate fails closed. ``(None, None)`` only outside git,
+    where the working tree is all there is.
+
+    HEAD's copy is a trust anchor a feature commit can rewrite, so the branch
+    named must name itself too, and with a remote configured only the
+    remote-tracking ref is read (:func:`trusted_integration_ref`).
+    """
+    if not full_sha(repo_root, "HEAD"):
+        return None, None
+    return trusted_integration_ref(repo_root, *integration_name(repo_root))

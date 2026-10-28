@@ -236,8 +236,8 @@ review record only when:
   merge counts as new work, including `git merge -s ours`, whose tree equals
   its first parent's; commits that touch only `roadmap/registry.yaml` are
   skipped, so claim bookkeeping does not;
-- its model is a rostered reviewer, or the substitute in an active substitution
-  that covers this node, and its family comes from the roster;
+- its model is a rostered reviewer, or the substitute in an active substitution that covers this
+  node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
 - no other record from the same model already counts — one vote per model, and
   a block from any of a model's records wins;
 - it attests a fresh session when policy requires one.
