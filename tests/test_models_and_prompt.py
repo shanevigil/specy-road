@@ -162,6 +162,8 @@ def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
     assert "Sections the packet marks as executor-asserted are claims" in text
     assert "- **Commit under review:** `abc`" in text
     assert "# Work-packet brief" not in text
+    # gitignored, so a glob tool may not list it: the prompt names the exact file to open
+    assert f"absolute: `{d / PACKET_NAME}`" in text and f"directly (`ls {d / PACKET_NAME}`)" in text
 
 
 def test_prompt_refuses_unrostered_model_and_wrong_role(tmp_path: Path) -> None:

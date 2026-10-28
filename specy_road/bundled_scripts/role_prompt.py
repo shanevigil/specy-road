@@ -81,10 +81,19 @@ _EXCESS_CHECKLIST = (
 )
 
 
-def _precondition(role: str, node_id: str, t) -> list[str]:
+# specy-road's own files under work/: the brief (pickup), the summary (executor) and the review
+# hand-offs are never committed before review, so a plain `git status` always lists them.
+_DIRTY_CHECK = ("git status --porcelain --untracked-files=all -- . ':(exclude)work/brief-*.md' "
+                "':(exclude)work/implementation-summary-*.md' ':(exclude)work/reviews/'")
+
+
+def _precondition(role: str, node_id: str, t, packet: Path) -> list[str]:
     branch = t.entry.get("branch") if t.entry else None
+    found = []
     if role == "reviewer":
-        need = f"`work/reviews/{node_id}/{PACKET_NAME}`"
+        need = f"`work/reviews/{node_id}/{PACKET_NAME}` (absolute: `{packet}`)"
+        found = ["The packet is gitignored, so file-search and glob tools may not list it: open that "
+                 f"absolute path directly (`ls {packet}`).", ""]
     elif role == "executor":
         need = f"`work/brief-{node_id}.md`, and the branch `{branch or 'feature/rm-<codename>'}` checked out"
     else:
@@ -92,9 +101,12 @@ def _precondition(role: str, node_id: str, t) -> list[str]:
     return [
         "## Precondition",
         "",
-        f"If {need} does not exist, or `git status --porcelain` shows changes you did not make, "
-        f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop.",
+        f"If {need} does not exist, or `{_DIRTY_CHECK}` lists changes you did not make, "
+        f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
+        "only specy-road's bookkeeping (`work/brief-*.md`, `work/implementation-summary-*.md`, "
+        "`work/reviews/`); any other change, tracked or untracked, counts.",
         "",
+        *found,
     ]
 
 
@@ -240,7 +252,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     zones = list(t.touch_zones) if t else []
     lines = [f"# {role.title()} prompt: `{node_id}` for `{model}`", ""]
     if t:
-        lines += _precondition(role, node_id, t)
+        lines += _precondition(role, node_id, t, reviews_dir(root, node_id) / PACKET_NAME)
     if role == "executor":
         lines += _executor_preamble(node_id, zones, entry.get("subagent_family_lock"), reviews_dir(root, node_id))
     elif role == "reviewer":
