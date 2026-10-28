@@ -305,7 +305,9 @@ In the Notes app, with a real agent on two harnesses (one run each):
    verification state, hypothesis, and an "Alternative considered" line
    from the cluster.
 8. **GUI.** `specy-road gui`; open the Brainstorm panel on the same session:
-   ideas and clusters show; Brainstorm mode produces round-1 prompt
+   the ideas show with their triage state, verdicts only after **Show
+   verdicts** (clusters, critics, quotes and verification states are
+   CLI-only, `list --by cluster`); Brainstorm mode produces round-1 prompt
    behaviour (no node inventory); Roadmap mode converges. Pass: the panel
    and CLI agree on the session file.
 

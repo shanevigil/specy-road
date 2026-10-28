@@ -9,6 +9,7 @@
 - The panel needs a working LLM backend in Settings; use **Test LLM** first. Web search is optional and off by default.
 - Research settings are global, not per repository; a private or plain-`http` search endpoint is refused unless **Self-hosted endpoint** is on.
 - Ideas are captured only in Brainstorm mode; Roadmap mode judges and may not add ideas. The human accepts, rejects and promotes.
+- The Ideas list shows ideas and triage state, verdicts only behind **Show verdicts**; clusters, critics, quotes and verification states are CLI-only (`brainstorm list --by cluster`).
 - Roadmap mode is **advisory only**: its verdicts, clusters and overlaps stay in the chat and are not written to the session. Apply the ones you keep with the CLI's `specy-road brainstorm revise`.
 - Panel and CLI share `work/brainstorm-<slug>.yaml`; after promoting run `specy-road export && specy-road digest`.
 
@@ -140,11 +141,16 @@ eight lines. **Enter** sends and **Shift+Enter** starts a new line.
      --critic "feasibility: …" --recommendation strong --why "…"
    ```
 
-4. **Triage** in the Ideas list. Accept, Reject, and Undo per row. Ideas with
-   a recorded recommendation (from `revise`) sort first, strongest first;
-   the rest keep their capture order. Ideas already promoted sink to the
-   bottom and lose their buttons, because they are roadmap nodes now and the
-   node is what you edit.
+4. **Triage** in the Ideas list. Each row shows the id, title, kind,
+   effort, rationale, evidence URLs and status, with Accept, Reject, and
+   Undo. Verdicts are hidden by default, as in the CLI's `list`, so they do
+   not steer you; **Show verdicts** adds the `strong` / `consider` / `park`
+   badge from `revise` and sorts strongest first. Otherwise ideas keep their
+   capture order. Ideas already promoted sink to the bottom and lose their
+   buttons, because they are roadmap nodes now and the node is what you edit.
+   The list does not show clusters, critics, overlaps, quotes or verification
+   states; read those with `specy-road brainstorm list --by cluster` and the
+   session file.
 5. **Preview promotion**, then **Promote**. Preview shows the display ids that
    would be created and writes nothing.
 
