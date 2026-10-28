@@ -202,8 +202,10 @@ coordinator chat (any harness):
    each drew on as `billing_route`.
 2. **Permission stop.** With the default command, note whether the Claude
    worker stops at a shell permission (`acceptEdits`). If it does, set
-   `channels.cli` on the roster entry and delegate again. Pass: the worker
-   reaches `idle`/`completed` with a READY file.
+   `channels.cli` on the roster entry to the create-or-resume wrapper in
+   orchestration-workers.md ("Roster setup"; a bare `claude …
+   --session-id {session}` line fails every later `message`) and delegate
+   again. Pass: the worker reaches `idle`/`completed` with a READY file.
 3. **Cap and idempotency.** A third `delegate` is refused by `max_workers`;
    re-running `delegate <ID1>` returns the same worker id; `--op-id` replay
    returns the first result without a second launch.
