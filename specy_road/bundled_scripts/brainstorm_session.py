@@ -12,6 +12,7 @@ than by a ``schemas/*.json``. Nothing outside the brainstorm modules reads it.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -337,14 +338,13 @@ def read_session(root: Path, slug: str) -> BrainstormSession:
 def write_session(root: Path, session: BrainstormSession) -> Path:
     path = session_path(root, session.slug)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        yaml.dump(
-            session.to_dict(),
-            f,
-            default_flow_style=False,
-            allow_unicode=True,
-            sort_keys=False,
-        )
+    # Temp file + replace: a panel shard reading mid-write sees the old or the new session, never half.
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(
+        yaml.dump(session.to_dict(), default_flow_style=False, allow_unicode=True, sort_keys=False),
+        encoding="utf-8",
+    )
+    os.replace(tmp, path)
     return path
 
 
