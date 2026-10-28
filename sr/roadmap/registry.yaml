@@ -1,22 +1,5 @@
 version: 1
 entries:
-  - codename: upgrade-and-validate-checks
-    node_id: M3.8
-    branch: feature/rm-upgrade-and-validate-checks
-    touch_zones:
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/bundled_scripts/upgrade.py
-      - specy_road/agents_md_block.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/bundled_scripts/validate_roadmap_checks.py
-      - specy_road/bundled_scripts/roadmap_edit_fields.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - docs/install-and-usage.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: handoff-local-records
     node_id: M3.2
     branch: feature/rm-handoff-local-records

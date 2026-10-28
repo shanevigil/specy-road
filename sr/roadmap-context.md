@@ -21,7 +21,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.5` Converge and evidence passes that cannot silently skip work `brainstorm-converge-checks` — task — **Not Started**
   - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Not Started**
   - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
-  - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Not Started**
+  - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Complete**
   - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Not Started**
   - `M3.10` Worker hand-off, reconcile and finish report what actually happened `worker-reconcile-and-status` — task — **Not Started**
   - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Not Started**
@@ -51,7 +51,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 Do not pick these up.
 
-- `M3.8` on `feature/rm-upgrade-and-validate-checks` since 2026-10-28
+- `M3.2` on `feature/rm-handoff-local-records` since 2026-10-28
+- `M3.3` on `feature/rm-chunk-key-order` since 2026-10-28
 
 ## Reaching the detail behind this
 

@@ -304,6 +304,10 @@ def _report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
 def _report(written: list[str], orphans: list[str], *, dry_run: bool, pruned: bool = False,
             footer: bool = True) -> None:
     verb = "would write" if dry_run else "wrote"
+    old_stubs = [rel for rel in orphans if _old_command_stub(rel)]
+    if dry_run and old_stubs:
+        skills = len({Path(rel).stem for rel in old_stubs})
+        print(f"migration: {len(old_stubs)} command stubs (*/commands/) become {skills} skills under .agents/skills/")
     for rel in written:
         print(f"{verb} {rel}")
     if orphans:

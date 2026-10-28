@@ -13,7 +13,7 @@ def test_specy_road_version_flag() -> None:
     """B4: the first thing anyone types when filing a bug or pinning an image."""
     from specy_road import __version__
 
-    for flag in ("--version", "-V"):
+    for flag in ("--version", "-V", "version"):
         r = subprocess.run(
             [sys.executable, "-m", "specy_road.cli", flag],
             cwd=REPO,

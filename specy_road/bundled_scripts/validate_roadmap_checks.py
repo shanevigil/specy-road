@@ -208,7 +208,7 @@ def validate_required_planning_dirs(nodes: list[dict]) -> None:
 
 
 def warn_stale_parent_status(nodes: list[dict]) -> None:
-    """Warn when a parent's own ``status`` disagrees with its computed rollup.
+    """Warn when a parent's own ``status`` disagrees with its rollup on being Complete.
 
     Not fatal: the rollup is authoritative for readers and for dependency
     satisfaction, so a stale field cannot stall a grind. It is still worth
@@ -216,13 +216,16 @@ def warn_stale_parent_status(nodes: list[dict]) -> None:
     and a reviewer reading the file would draw the wrong conclusion. Repos that
     drifted before ``finish-this-task`` learned to close rolled-up ancestors see
     this until they run the printed command.
+
+    Only Complete versus not Complete counts: an In Progress parent whose leaves
+    have not started is an honest status, and the rollup is coarser than it.
     """
     for n in nodes:
         rollup = n.get("rollup_status")
         own = n.get("status")
         if not isinstance(rollup, str) or not isinstance(own, str):
             continue
-        if rollup == own:
+        if (own == "Complete") == (rollup == "Complete"):
             continue
         nid = n.get("id", "?")
         print(

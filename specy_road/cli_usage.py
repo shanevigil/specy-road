@@ -9,7 +9,7 @@ from __future__ import annotations
 USAGE_TEXT = (
     "Usage: specy-road <command> [args...]\n"
     "\n"
-    "  --version, -V        — print the installed specy-road version\n"
+    "  version, --version, -V — print the installed specy-road version\n"
     "\n"
     "Authoring / validation:\n"
     "  validate             — validate merged roadmap graph and registry\n"

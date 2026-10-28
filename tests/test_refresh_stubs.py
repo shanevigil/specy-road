@@ -16,6 +16,7 @@ import pytest
 
 from specy_road import __version__
 from specy_road.bundled_scripts.refresh_stubs import (
+    main,
     refresh_stubs,
     stubs_are_stale,
     warn_if_stubs_stale,
@@ -195,3 +196,16 @@ def test_validate_warns_once_while_the_stubs_lag(
 
 def test_a_repo_with_no_specyrd_stubs_never_warns(tmp_path: Path) -> None:
     assert stubs_are_stale(tmp_path) is None
+
+
+def test_a_dry_run_summarises_the_migration_in_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+
+    main(["--dry-run", "--repo-root", str(root)])
+
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("migration:")]
+    n = len(OLD_DEV_STUBS)
+    assert lines == [f"migration: {n} command stubs (*/commands/) become {n} skills under .agents/skills/"]
+

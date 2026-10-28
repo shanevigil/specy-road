@@ -5,21 +5,24 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import re
 import sys
 from pathlib import Path
 
 import yaml
 
+from specy_road import __version__
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
-from specy_road.bundled_scripts.refresh_stubs import warn_if_stubs_stale
+from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL, warn_if_stubs_stale
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
-from specy_road.agents_md_block import warn_if_agents_md_block_stale
+from specy_road.agents_md_block import warn_if_agents_md_block_stale, warn_missing_load_order_paths
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.orchestration_config import load_orchestration_config
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
+from specy_road.specyrd_init import _load_manifest
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
     load_schema,
@@ -37,6 +40,7 @@ from specy_road.bundled_scripts.validate_self_heal import auto_heal_roadmap
 
 __all__ = [
     "cycle_check",
+    "pinned_version",
     "run_validation",
     "validate_at",
     "validate_codenames",
@@ -45,8 +49,47 @@ __all__ = [
     "validate_unique_title_slugs",
     "validate_unique_titles",
     "warn_stale_parent_status",
+    "warn_if_pin_differs",
     "warn_touch_zones_match_nothing",
 ]
+
+
+_REQUIREMENT_PIN = re.compile(r"^\s*specy[-_.]road\s*(?:\[[^\]]*\])?\s*==\s*([^\s;#,]+)", re.IGNORECASE)
+
+
+def pinned_version(start: Path) -> tuple[str, str] | None:
+    """``(version, where declared)`` for the specy-road this checkout pins, or None.
+
+    A ``pin`` in ``.specyrd/manifest.json`` wins; otherwise the first
+    ``specy-road==`` line in a ``requirements*.txt`` at the checkout root.
+    """
+    checkout = git_root(start) or start
+    pin = _load_manifest(checkout).get("pin")
+    if isinstance(pin, str) and pin.strip():
+        return pin.strip(), str(MANIFEST_REL)
+    for req in sorted(checkout.glob("requirements*.txt")):
+        try:
+            lines = req.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for line in lines:
+            m = _REQUIREMENT_PIN.match(line)
+            if m:
+                return m.group(1), req.name
+    return None
+
+
+def warn_if_pin_differs(start: Path) -> None:
+    """One non-fatal line when the running specy-road is not the version the repo pins."""
+    found = pinned_version(start)
+    if found is None or found[0] == __version__:
+        return
+    pin, where = found
+    print(
+        f"specy-road: warning — this repo pins specy-road {pin} ({where}) but {__version__} "
+        f"is running. If the upgrade is deliberate, update the pin; otherwise install {pin}.",
+        file=sys.stderr,
+    )
 
 
 def validate_git_workflow_contract(root: Path) -> None:
@@ -108,9 +151,11 @@ def validate_at(
     discover_manifest_path(root)
     validate_git_workflow_contract(root)
     validate_orchestration_contract(root)
+    warn_if_pin_differs(root)
     warn_if_schemas_stale(root)
     warn_if_stubs_stale(root)
     warn_if_agents_md_block_stale(root)
+    warn_missing_load_order_paths(root)
     warn_if_generated_files_ignored(root)
 
     if auto_heal:
@@ -149,8 +194,8 @@ def main() -> None:
         "--no-phase-status-warn",
         action="store_true",
         help=(
-            "Deprecated. Ignored. Parent status that disagrees with the F-013 "
-            "rollup is reported as a warning again (it never fails validation), "
+            "Deprecated. Ignored. A parent status that disagrees with the F-013 "
+            "rollup on Complete is reported as a warning (it never fails validation), "
             "because the authored chunk value is what a reviewer reads."
         ),
     )

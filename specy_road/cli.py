@@ -297,7 +297,7 @@ def main(argv: list[str] | None = None) -> None:
     if not argv or argv[0] in ("-h", "--help"):
         print(USAGE_TEXT)
         raise SystemExit(0)
-    if argv[0] in ("--version", "-V"):
+    if argv[0] in ("--version", "-V", "version"):
         from specy_road import __version__
 
         print(f"specy-road {__version__}")

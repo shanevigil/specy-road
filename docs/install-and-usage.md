@@ -8,7 +8,7 @@
 **Must know without reading on:**
 - Python 3.11+ and git with a configured remote are required; there is no offline mode. `pip install specy-road` (extras: `[gui-next]`, `[review]`); an RC pins an exact version from TestPyPI with `--extra-index-url https://pypi.org/simple/`.
 - New project: `specy-road init project`, set `integration_branch` / `remote` in `roadmap/git-workflow.yaml`, then `specy-road validate` and `specy-road export`.
-- After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
+- After `pip install -U specy-road`: `specy-road upgrade --prune` (runs `refresh-schemas`, `refresh-profiles`, copies missing load-order docs, `refresh-stubs`, then `validate`; `--dry-run` first); never `init project --force` for that.
 - Add `--repo-root /path/to/consumer/repo` to every command run from outside the consumer repo.
 - Dev loop: `specy-road do-next-available-task` → implement → `review-packet` + `mark-implementation-reviewed` → `specy-road finish-this-task --on-complete merge|pr`.
 
@@ -98,9 +98,7 @@ Then verify what you actually got:
 specy-road --version
 ```
 
-RCs are for evaluation. Pin a final release for day-to-day work, and expect an
-RC to warn that IDE stubs and JSON schemas were written by an older version —
-`specy-road upgrade` clears those once your team accepts the new pin.
+RCs are for evaluation: pin a final release for day-to-day work. `specy-road validate` warns once when the running version is not the one your repo pins (`"pin": "<version>"` in `.specyrd/manifest.json`, else the first `specy-road==<version>` line in a `requirements*.txt` at the checkout root), so an accidental upgrade is not mistaken for a deliberate one. Expect an RC to warn too that IDE stubs and JSON schemas were written by an older version: once your team accepts the new version, update the pin and run `specy-road upgrade`.
 
 ## Install from source (toolkit contributors)
 
@@ -162,14 +160,15 @@ specy-road upgrade --dry-run      # what each refresh would write
 specy-road upgrade --prune        # write, delete stubs this version dropped, validate
 ```
 
-`upgrade` runs `refresh-schemas`, `refresh-profiles` and `refresh-stubs` in
-that order, then `validate` and `digest --check`, and ends with what is left for
-you: review the diff, commit the new untracked files, and run `specy-road
-digest` if the digest is missing or out of date (not `specy-road sync`, which
-also fast-forwards your integration branch from the remote). It exits non-zero
-only when `validate` fails. Each refresh is also a command of its own; all
-three are idempotent, take `--dry-run`, and never touch the roadmap, planning
-sheets, or anything outside a managed block.
+`upgrade` runs `refresh-schemas`, `refresh-profiles`, a copy of each shipped doc
+the `AGENTS.md` load order names that you lack, and `refresh-stubs`, in that
+order, then `validate` and `digest --check`, and ends with what is left for you:
+review the diff, commit the new untracked files, and run `specy-road digest` if
+the digest is missing or out of date (not `specy-road sync`, which also
+fast-forwards your integration branch from the remote). It exits non-zero only
+when `validate` fails. Each refresh is also a command of its own; all three are
+idempotent, take `--dry-run`, and never touch the roadmap, planning sheets, or
+anything outside a managed block.
 
 **`refresh-schemas` — `schemas/`.** `init project` copies the JSON schemas in
 once, so a repo scaffolded against an older version can reject output the
@@ -208,11 +207,12 @@ warning) can gate CI next to `export --check` and `digest --check`.
   and `.claude/commands/specyrd-*.md`; 0.3 installs one skill per command under
   `.agents/skills/`, which Cursor, Codex and Claude Code all read. Until the old
   files are gone each `/specyrd-…` command appears twice: `upgrade --prune`
-  (or `refresh-stubs --prune`) removes them.
+  (or `refresh-stubs --prune`) removes them; `--dry-run` counts them first.
 - **`AGENTS.md` has a managed block.** `refresh-stubs` inserts it, with or
   without a stub pack; your own text outside the markers stays. If your
   `AGENTS.md` repeats a load order of its own, trim it to what is specific to
-  your project: the block carries the toolkit's.
+  your project: the block carries the toolkit's. `validate` names any file its
+  load order lists that you lack.
 - **New files:** `schemas/orchestration.schema.json`, `model-profiles/`, and
   the skills are untracked after the upgrade; add them.
 - **Text outside the managed blocks** (your `CLAUDE.md`, docs pinning a version

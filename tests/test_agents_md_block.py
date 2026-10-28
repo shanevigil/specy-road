@@ -15,6 +15,7 @@ from specy_road.agents_md_block import (
     apply_agents_md_block,
     render_agents_lines,
     warn_if_agents_md_block_stale,
+    warn_missing_load_order_paths,
 )
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.init_project import run_init_project
@@ -87,7 +88,21 @@ def test_validate_warning_states(tmp_path: Path, capsys) -> None:
     p = tmp_path / AGENTS_MD
     p.write_text(p.read_text(encoding="utf-8").replace("floor", "ceiling"), encoding="utf-8")
     warn_if_agents_md_block_stale(tmp_path)
-    assert "from another version" in capsys.readouterr().err
+    assert f"differs from what specy-road {__version__} writes" in capsys.readouterr().err
+
+
+def test_validate_names_load_order_files_the_project_lacks(tmp_path: Path, capsys) -> None:
+    """rc1: the load order sent agents to docs/supply-chain-security.md in repos that never had it."""
+    run_init_project(tmp_path)
+    warn_missing_load_order_paths(tmp_path)
+    assert capsys.readouterr().err == ""
+
+    (tmp_path / "docs" / "supply-chain-security.md").unlink()
+    (tmp_path / "shared" / "README.md").unlink()
+    warn_missing_load_order_paths(tmp_path)
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1
+    assert "names docs/supply-chain-security.md, shared/README.md, which do not exist" in err
 
 
 def test_refresh_stubs_reapplies_the_block(tmp_path: Path) -> None:
