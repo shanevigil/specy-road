@@ -369,9 +369,15 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   sheet); GUI Publish includes `roadmap-context.md`; a gate never locks in the
   GUI; `archive`/`restore-archive` regenerate both generated files;
   `refresh-stubs` with no stub pack is a no-op; aborting a `--local` pickup
-  drops the claim without pushing. Maintainer gates: C901 baseline is
-  per function, the private-import gate resolves module aliases, CI tools are
-  exact-pinned with read-only tokens.
+  drops the claim without pushing. Sandbox §2 and §6 on real harnesses:
+  panel shards no longer overwrite the session's allocation; `brainstorm
+  verify` matches quotes across inline tags and punctuation; round-1 and
+  shard prompts say not to open the roadmap even where AGENTS.md says read it
+  first; later rounds restate the agreed frame; the GUI hides verdicts until
+  asked, as the CLI does; the PM GUI never sends saved secrets (LLM key,
+  Git token, research key) back to the page. Maintainer gates: C901 baseline
+  is per function, the private-import gate resolves module aliases, CI tools
+  are exact-pinned with read-only tokens.
 - **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
   reproduced before the fix. Guard: env-supplied git config
   (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and
