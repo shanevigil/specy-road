@@ -199,6 +199,9 @@ Stubs this version no longer installs for your recorded `--role` are
 manifest recorded as the kit's, so `--prune` deletes exactly the list shown
 (and a directory it leaves empty).
 
+Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any
+warning) can gate CI next to `export --check` and `digest --check`.
+
 #### Upgrading from 0.2.x
 
 - **Commands became skills.** 0.2.x installed `.cursor/commands/specyrd-*.md`
@@ -212,9 +215,8 @@ manifest recorded as the kit's, so `--prune` deletes exactly the list shown
   your project: the block carries the toolkit's.
 - **New files:** `schemas/orchestration.schema.json`, `model-profiles/`, and
   the skills are untracked after the upgrade; add them.
-- **Text outside the managed blocks** (your `CLAUDE.md`, docs that pin a
-  version or name `.cursor/commands/`) is yours, so `upgrade` leaves it; search
-  for the old version.
+- **Text outside the managed blocks** (your `CLAUDE.md`, docs pinning a version
+  or naming `.cursor/commands/`) is yours: search it for the old version.
 
 **Neither `--force` is the tool for this.** `init project --force` overwrites
 every scaffold file, including `roadmap/manifest.json` and your phase chunks

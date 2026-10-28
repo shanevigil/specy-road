@@ -59,6 +59,8 @@ body. Keep section bodies focused; link to PRs for detail.
 - `refresh-stubs --prune` deletes the stubs the manifest recorded that this
   version no longer installs (the pre-0.3.0 `.cursor/commands/specyrd-*.md`
   and `.claude/commands/specyrd-*.md`) instead of leaving an `rm` to copy.
+- `specy-road validate --strict` exits 1 when validation passes with
+  warnings or self-heal notes, for CI once an upgrade window closes.
 
 ## [v0.3.1-rc1] - 2026-10-28
 

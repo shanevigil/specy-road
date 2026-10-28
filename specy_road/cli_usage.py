@@ -13,6 +13,7 @@ USAGE_TEXT = (
     "\n"
     "Authoring / validation:\n"
     "  validate             — validate merged roadmap graph and registry\n"
+    "    (optional: --strict to exit 1 on warnings, e.g. in CI)\n"
     "  brief <NODE_ID>      — generate focused brief for a node\n"
     "    (inlines shared/ contracts cited in the chain's `## References`;\n"
     "     --all-contracts inlines every shared/**/*.md instead)\n"
