@@ -38,10 +38,11 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   bar. Change policy on the integration branch. The integration branch's name
   is read from `git-workflow.yaml` as committed on the remote's default branch
   (`refs/remotes/<remote>/HEAD`; run `git remote set-head <remote> --auto` if
-  it is missing), else at `HEAD` — never the working tree or
-  `SPECY_ROAD_INTEGRATION_BRANCH`. A remote name that is not configured, or an
-  integration branch that cannot be found, fails closed: the gate counts as
-  on, and nothing passes it. Reviewers, the human included, count only on
+  it is missing) — at `HEAD` only in a repo with no remote, and never from the
+  working tree or `SPECY_ROAD_INTEGRATION_BRANCH`. A missing default-branch
+  ref, a remote name that is not configured or differs from the default
+  branch's, or an integration branch that cannot be found fails closed: the
+  gate counts as on, and nothing passes it. Reviewers, the human included, count only on
   nodes their roster `may_process` covers.
 - **`review record` is stricter.** It refuses `--model human` (a human approves
   only through the interactive menu), refuses models that are not in the roster,

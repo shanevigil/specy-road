@@ -19,8 +19,8 @@ Policy is read from ``roadmap/orchestration.yaml`` **as committed on the
 integration branch** (its remote-tracking ref when present), and the gate is on
 when either that branch or the working tree turns it on: a feature branch
 cannot lower its own bar. Which branch that is comes from the committed
-``git-workflow.yaml`` on the remote's default branch, else at HEAD, and a
-branch that cannot be found fails closed (:func:`policy_source`).
+``git-workflow.yaml`` on the remote's default branch (at HEAD only in a repo
+with no remote), and a branch that cannot be found fails closed (:func:`policy_source`).
 
 The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_required`` — counted by distinct family when
