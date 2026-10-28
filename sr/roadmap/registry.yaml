@@ -1,16 +1,5 @@
 version: 1
 entries:
-  - codename: handoff-local-records
-    node_id: M3.2
-    branch: feature/rm-handoff-local-records
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_target.py
-      - docs/orchestration.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: chunk-key-order
     node_id: M3.3
     branch: feature/rm-chunk-key-order

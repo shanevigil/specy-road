@@ -15,7 +15,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M2.2` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**
 - `M3` 0.3.1 pre-final fixes from rc1 feedback `pre-final-fixes` — phase — **Not Started**
   - `M3.1` Refuse to pick up leaves whose planning sheet is still a placeholder `unauthored-leaf-guard` — task — **Complete**
-  - `M3.2` handoff status reports review records without a claim `handoff-local-records` — task — **Not Started**
+  - `M3.2` handoff status reports review records without a claim `handoff-local-records` — task — **Complete**
   - `M3.3` Document the canonical chunk key order and offer a deliberate normalisation `chunk-key-order` — task — **Not Started**
   - `M3.4` Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers `brainstorm-prompt-fixes` — task — **Not Started**
   - `M3.5` Converge and evidence passes that cannot silently skip work `brainstorm-converge-checks` — task — **Not Started**
@@ -51,7 +51,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 Do not pick these up.
 
-- `M3.2` on `feature/rm-handoff-local-records` since 2026-10-28
 - `M3.3` on `feature/rm-chunk-key-order` since 2026-10-28
 - `M3.4` on `feature/rm-brainstorm-prompt-fixes` since 2026-10-28
 
