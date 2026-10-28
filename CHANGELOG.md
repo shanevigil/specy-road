@@ -302,6 +302,27 @@ reference: [`docs/orchestration.md`](docs/orchestration.md) and
   `work/reviews/` to `.gitignore`, and run `specy-road refresh-stubs`.
 - The pickup prompt tells the executor to write a READY hand-off and not to
   review or approve its own work.
+- **Lean code and tests.** The managed `AGENTS.md` block, the toolkit's own
+  `AGENTS.md` and the bootstrap prompt gain a `## Lean changes and tests`
+  section: smallest behaviour-complete change, search before adding a helper,
+  validation at boundaries only with a reachable trigger and a test per
+  guard, one test per behaviour through the public interface, extend before
+  add, merging an overlapping test when the commit names the one that covers
+  it, never weakening a failing test, and an inventory of additions at the
+  end. Principle 9 carries the two test rules. The reviewer preamble gains an
+  excess checklist (test pins internals, unreachable defence, duplicated
+  logic, overlapping test; each needs a caller trace or the covering test,
+  and error handling is never removed without a completed caller trace); the
+  executor preamble asks for an `## Added` inventory, and `review-packet`
+  notes a summary without one. Each model profile gains dated
+  `## Code and test tendencies` with one counter-rule per family. CI and
+  pre-commit gain three gates against committed baselines (ruff C901 at
+  complexity 10, new pylint clone pairs, test imports of private names);
+  `.github/workflows/mutation.yml` runs mutmut weekly and reports per-module
+  scores, failing only once `constraints/mutation-baseline.json` exists.
+  **Existing adopters:** run `specy-road refresh-stubs` (the managed block
+  grew from 39 to 50 lines); `refresh-profiles --force <path>` replaces an
+  unedited profile to get its new section.
 - **Sixth review round (GPT Sol + Gemini at 9f3b9df):** every finding
   reproduced before the fix. Guard: env-supplied git config
   (`GIT_CONFIG_*`, `--config-env`), quoted `eval`, process substitution and
