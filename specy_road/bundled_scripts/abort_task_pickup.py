@@ -10,6 +10,7 @@ from pathlib import Path
 
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.registry_yaml import read_registry, registry_path, write_registry
 from specy_road.on_complete_session import (
     on_complete_session_path,
@@ -234,13 +235,29 @@ def _exit_if_unpushed_commits_without_force(
     raise SystemExit(1)
 
 
+def _registers_only(commit: str, codename: str) -> bool:
+    """True when ``commit``'s registry is its parent's plus this claim's row, nothing else.
+
+    Compared parsed: pickup rewrites the file, dropping comments and restyling.
+    """
+    empty = {"version": 1, "entries": []}
+    after = read_registry_at_ref(ROOT, commit, 30.0) or empty
+    before = read_registry_at_ref(ROOT, f"{commit}^", 30.0) or empty
+    entries = after.get("entries") or []
+    rest = [e for e in entries if not (isinstance(e, dict) and e.get("codename") == codename)]
+    return len(entries) - len(rest) == 1 and (
+        {**after, "entries": rest} == {**before, "entries": before.get("entries") or []}
+    )
+
+
 def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str) -> bool:
     """True when the one commit on ``ref`` missing from ``remote/base`` is this claim's registration.
 
     That is a ``--local`` pickup: the claim never reached the remote, so there is
-    nothing to deregister there. The commit must carry the registration subject
-    *and* change only the registry, as pickup's commit does, so abort never
-    resets away a commit amended to carry other work.
+    nothing to deregister there. The commit must carry the registration subject,
+    change only the registry, and change it only by adding this claim's row, as
+    pickup's commit does, so abort never resets away a commit amended to carry
+    other work.
     """
     ahead = git_capture(ROOT, "rev-list", f"{remote}/{base}..{ref}").split()
     if len(ahead) != 1:
@@ -248,7 +265,11 @@ def _only_own_registration_ahead(remote: str, base: str, codename: str, ref: str
     subject = git_capture(ROOT, "log", "-1", "--format=%s", ahead[0])
     paths = git_capture(ROOT, "diff-tree", "--no-commit-id", "--name-only", "-r", ahead[0]).splitlines()
     own = registration_commit_message(codename, include_ci_skip=False)
-    return subject.startswith(own) and paths == [registry_path(ROOT).relative_to(ROOT).as_posix()]
+    return (
+        subject.startswith(own)
+        and paths == [registry_path(ROOT).relative_to(ROOT).as_posix()]
+        and _registers_only(ahead[0], codename)
+    )
 
 
 def _drop_local_registration(remote: str, base: str) -> None:

@@ -66,6 +66,12 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     remote, app = tmp_path / "remote.git", tmp_path / "app"
     _git(tmp_path, "init", "-q", "--bare", str(remote))
     _scaffold(app)
+    assert _cli(app, "add-node", "--id", "M1.2", "--type", "task", "--title", "Other",
+                "--parent-id", "M1").returncode == 0
+    reg = app / "roadmap" / "registry.yaml"   # a teammate's claim, already on the remote
+    reg.write_text(reg.read_text().replace("entries: []", (
+        "entries:\n  - {codename: other, node_id: M1.2, branch: feature/rm-other, touch_zones: [],"
+        " started: '2026-10-01', owner: Pat, implementation_review: pending}")))
     _git(app, "config", "user.email", "t@example.com")
     _git(app, "config", "user.name", "T")
     _git(app, "checkout", "-q", "-b", "main")
@@ -85,6 +91,13 @@ def test_abort_of_a_local_pickup_drops_the_claim_without_pushing(tmp_path: Path)
     refused = _cli(app, "abort-task-pickup")
     assert refused.returncode == 1 and "commits that are not on origin/main" in refused.stderr
     assert _git(app, "rev-parse", "HEAD") == amended and (app / "src" / "work.py").is_file()
+    _git(app, "reset", "-q", "--hard", registration)
+    # the registration commit amended to also change the teammate's claim: refused, change kept
+    reg.write_text(reg.read_text().replace("owner: Pat", "owner: Mallory"))
+    _git(app, "commit", "-q", "-a", "--amend", "--no-edit")
+    refused = _cli(app, "abort-task-pickup")
+    assert refused.returncode == 1 and "commits that are not on origin/main" in refused.stderr
+    assert "owner: Mallory" in reg.read_text()
     _git(app, "reset", "-q", "--hard", registration)
 
     r = _cli(app, "abort-task-pickup")
