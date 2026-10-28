@@ -334,3 +334,25 @@ def test_landing_runs_in_the_holders_project_root(layout: tuple[Path, Path]) -> 
     top, project = layout
     holder = top.parent / "holder"
     assert holder_project_root(project, holder) == holder / project.relative_to(top)
+
+
+def test_packet_boundary_reads_changed_paths_relative_to_the_project(layout: tuple[Path, Path]) -> None:
+    """The implementation summary under the project's work/ is bookkeeping, not a boundary breach,
+    in both layouts; git reports it as `sr/work/...` when nested."""
+    from specy_road.bundled_scripts.review_packet import changed_paths_section
+    from specy_road.review_target import ReviewTarget
+
+    top, project = layout
+    base = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    (project / "work").mkdir(exist_ok=True)
+    (project / "work" / "implementation-summary-M1.md").write_text("done\n", encoding="utf-8")
+    _git(top, "add", "-A")
+    _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "summary")
+    tip = subprocess.run(["git", "-C", str(top), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+    node = {"id": "M1", "touch_zones": ["src/"]}
+    target = ReviewTarget(node=node, nodes=[node], entry=None, ref="HEAD", commit=tip, base_ref=None, base=base)
+
+    paths, lines = changed_paths_section(project, target)
+
+    assert paths == ["work/implementation-summary-M1.md"]
+    assert "outside touch zones" not in "\n".join(lines)

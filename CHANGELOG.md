@@ -49,6 +49,10 @@ body. Keep section bodies focused; link to PRs for detail.
   refused each approval; the deterministic merge of bookkeeping files and
   the integration-registry reads had the same blind spot. All use the
   project prefix now.
+- The review packet compared git's repository-root paths with project-relative
+  bookkeeping and policy paths, so in the nested layout the implementation
+  summary was flagged as a touch-zone breach; paths are rebased to the
+  project first.
 - `finish-this-task` from a linked worktree lands in the checkout that holds
   the integration branch; in the nested layout it ran at that checkout's git
   root, so the deterministic resolution of `registry.yaml` and the generated
