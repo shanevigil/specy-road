@@ -23,6 +23,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
   - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Not Started**
   - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Not Started**
+  - `M3.10` Worker hand-off, reconcile and finish report what actually happened `worker-reconcile-and-status` — task — **Not Started**
+  - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Not Started**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
   - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**

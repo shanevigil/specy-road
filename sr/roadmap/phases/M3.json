@@ -301,6 +301,72 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The claude-code adapter passes --add-dir for the main checkout's work/reviews/<ID> when launching in a linked worktree, so an executor under acceptEdits can write its READY hand-off; other adapters document the equivalent",
+        "worker reconcile treats a directory touch zone (schemas/) as covering its files, and does not report the brief as changed when a fresh render is byte-identical to the delegated copy",
+        "handoff status labels the executor's recorded verify results as executor-reported, distinct from a reviewer's re-run",
+        "worker sync shows the full final message of a completion that has no READY file",
+        "finish-this-task in merge mode states, before acting, that it will push the integration branch and how many commits that includes beyond this leaf's; --help says merge mode pushes"
+      ],
+      "codename": "worker-reconcile-and-status",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "A delegated worker can hand off from a linked worktree, reconcile reports only real deviations, and finish says what it will push before pushing.",
+      "id": "M3.10",
+      "node_key": "f9993116-dffd-4c79-b484-0e9b6837b147",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.10_worker-reconcile-and-status_f9993116-dffd-4c79-b484-0e9b6837b147.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Worker hand-off, reconcile and finish report what actually happened",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/finish_land_integration.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry may name `launch_model` separately from `id`, or a profile may list `aliases`, so gpt-5.6-sol-high style ids resolve to one profile and `prompt` carries its notes",
+        "`review-packet -o` also writes the canonical work/reviews/<ID>/PACKET.md, or `prompt --role reviewer` says the packet must be at that path",
+        "The reviewer prompt's precondition names the checkout to check (the worktree with the leaf branch) and ignores coordinator bookkeeping under work/",
+        "`session end <id>` (or `session takeover`) retires a stale session owned by the same user",
+        "The cursor adapter's default launch passes --trust, verified on a fresh worktree"
+      ],
+      "codename": "roster-profiles-and-packet-path",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "A harness model id that carries an effort suffix still finds its profile, a packet written elsewhere is explained, and a coordinator can retire its own dead session.",
+      "id": "M3.11",
+      "node_key": "0c1fbd53-6a24-446d-9940-1620f01f7993",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.11_roster-profiles-and-packet-path_0c1fbd53-6a24-446d-9940-1620f01f7993.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "Roster ids with effort suffixes, packet path, stale sessions",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/orchestration_pinned.py",
+        "specy_road/model_profiles.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/session_cli.py",
+        "specy_road/session_presence.py",
+        "specy_road/worker_adapters.py",
+        "docs/orchestration-models.md",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

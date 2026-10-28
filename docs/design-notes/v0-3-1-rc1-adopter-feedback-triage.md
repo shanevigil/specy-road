@@ -54,6 +54,16 @@ and data are deliberately not recorded here.
 | `orchestrate plan` reports "needs a rostered executor with may_process…" when the roster is not on the integration branch yet | Misleading message | Name the ref the roster was read from, and say when the local file is absent there or differs; `validate` warns the same |
 | `worker sync` does not flag a gap in event sequence numbers | Gap | Report gaps |
 | `session start --path a b` fails; `--path` must be repeated | Wording | Accept several values or say to repeat the flag |
+| A worker in a linked worktree under the default permission mode cannot write its READY hand-off, which lives in the main checkout; the adapter passes no `--add-dir` | Defect | `--add-dir` for the hand-off directory on launch |
+| `worker reconcile` reports files under a directory touch zone as outside it, and reports the brief as changed when a re-render is identical | Defect | Reuse the packet's boundary match; compare content |
+| `handoff status` presents the executor's recorded verify exits as if re-run | Wording | Label as executor-reported |
+| `worker sync` truncates a completion's final message, which is where a missing READY is explained | Gap | Show the full message when READY is absent |
+| Merge-mode finish pushes the integration branch, including unrelated local commits, with no notice and `--help` suggesting `--push` is needed | Gap | State what will be pushed before acting; document |
+| Harness model ids with effort suffixes cannot match a profile, so reviewer prompts carry no model notes | Gap | `launch_model` on the roster entry or profile `aliases` |
+| `review-packet -o` writes only the given path; `prompt --role reviewer` then reports no packet | Wording / gap | Write the canonical copy too, or say the packet must be at the default path |
+| The reviewer precondition does not say which checkout to check; coordinator bookkeeping in the main checkout makes it report "not landed" | Wording | Name the leaf's worktree; ignore `work/` bookkeeping |
+| A stale session of the same user can only be warned about | Gap | `session end <id>` / takeover |
+| The cursor adapter's default launch omits `--trust`; untested whether a fresh worktree stalls | Check | Verify; add if needed |
 | `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
 | `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |
 | Widening a claimed node's touch zones with `edit-node` leaves the registry claim's copy stale, and the packet boundary and finish check read the claim's copy first; no command updates a live claim | Gap (found dogfooding) | `edit-node --set touch_zones` on a claimed node also updates its registry entry, or a `claim update` command |

@@ -23,6 +23,7 @@
       "codename": "rc2-closeout-docs",
       "dependencies": [
         "07daa56a-7dff-4444-9b72-f2bf7cde7451",
+        "0c1fbd53-6a24-446d-9940-1620f01f7993",
         "1296cce5-a445-4edc-80b0-14c22e8da22f",
         "2a9def0a-45e8-4fa5-8f06-02e426749f85",
         "40829e1f-f1d9-4368-a53f-ee8f27cd2566",
@@ -43,6 +44,7 @@
         "e6871451-eb23-42bb-8877-9228bb521193",
         "e94029df-277a-47a3-a4fb-16036d6c9d0e",
         "f3e2008b-1cb2-4f0f-92c3-05864482d958",
+        "f9993116-dffd-4c79-b484-0e9b6837b147",
         "fed16291-24ba-47dd-a301-300e59ece353"
       ],
       "execution_milestone": "Agentic-led",
