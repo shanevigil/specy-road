@@ -204,19 +204,19 @@ def kill_group(rec: WorkerRecord, repo_root: Path | None = None, *, grace: float
     Signals only a group whose identity is confirmed: a live wrapper must
     verify by command line and token, otherwise the harness pid must match
     its recorded start time. Membership alone is not identity: once the
-    group is gone its id can be a new session leader's (pre-release review).
+    group is gone its id can be a new session leader's (pre-release review),
+    and the verified process must be in the recorded group now (re-review N3).
     """
     if wrapper_alive(rec, repo_root) and not wrapper_verified(rec, repo_root):
         raise WorkerError(f"pid {rec.pid} cannot be verified as {rec.worker_id}'s wrapper (ps unavailable or "
                           "another command line); refusing to signal it")
-    if not (wrapper_verified(rec, repo_root) or _harness_verified(rec)):
+    verified = rec.pid if wrapper_verified(rec, repo_root) else rec.harness_pid if _harness_verified(rec) else None
+    pgid = os.getpgid(int(verified)) if verified else None
+    if pgid is None or pgid != (rec.pgid or pgid):
         raise WorkerError(f"{rec.worker_id}: neither its wrapper (by token) nor its harness pid {rec.harness_pid or '-'} "
-                          f"(by start time) is alive, so process group {rec.pgid} may be another program's now; "
-                          f"refusing to signal it. Check `ps -A -o pid,pgid,lstart,command`, kill what in group "
-                          f"{rec.pgid} is this worker's by hand, then run `worker terminate {rec.worker_id}` again")
-    pgid = rec.pgid or (os.getpgid(int(rec.pid)) if rec.pid and _exists(rec.pid) else None)
-    if not pgid:
-        return
+                          f"(by start time) is alive in process group {rec.pgid}, so that group may be another "
+                          f"program's now; refusing to signal it. Check `ps -A -o pid,pgid,lstart,command`, kill what "
+                          f"in group {rec.pgid} is this worker's by hand, then run `worker terminate {rec.worker_id}` again")
     for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 2.0)):
         try:
             os.killpg(pgid, sig)
