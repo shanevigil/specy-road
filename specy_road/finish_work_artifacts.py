@@ -97,6 +97,10 @@ def _keep_untracked_summary(root_r: Path, node_id: str) -> None:
     src = root_r / rel
     if not src.is_file() or is_git_tracked(root_r, rel):
         return
+    if src.is_symlink() or not src.resolve().is_relative_to(root_r):
+        print(f"[warn] {rel} is a symlink or resolves outside the repo; not copying "
+              "it to work/reviews/", file=sys.stderr)
+        return
     dst = reviews_dir(root_r, node_id) / src.name
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)

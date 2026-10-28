@@ -7,12 +7,14 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
+from specy_road.finish_land_deterministic import codename_from_branch
 from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
 )
 from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 
 
 def print_finish_tail(
@@ -115,8 +117,26 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
         raise SystemExit(1)
 
 
+def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
+    doc = read_registry_at_ref(repo, ref, 30.0) or {}
+    entries = doc.get("entries") or []
+    return any(isinstance(e, dict) and e.get("codename") == codename for e in entries)
+
+
 def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
-    """Land a branch whose finish bookkeeping is committed but whose merge failed."""
+    """Land a branch whose finish bookkeeping is committed but whose merge failed.
+
+    Only the finish commit itself -- the tip that removed this leaf's registry
+    row -- is landed: a commit added after it was never reviewed or checked.
+    """
+    codename = codename_from_branch(branch)
+    if _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
+        print(
+            f"error: {branch} has moved past its finish-this-task commit; new commits "
+            "need review before they land. Re-pick the leaf or open a new leaf for them.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     git_ok(["fetch", "-q", remote, ib], repo)
     if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
         print(f"\n[ok] {branch} is already merged into {ib} on {remote}; nothing to do")

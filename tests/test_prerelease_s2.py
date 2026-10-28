@@ -68,6 +68,13 @@ def test_rerunning_finish_retries_a_failed_merge_landing(tmp_path: Path, monkeyp
     assert _finish(repo) == 1
     assert "run `specy-road finish-this-task --on-complete merge` again" in capsys.readouterr().err
     hook.unlink()
+    finished = git(repo, "rev-parse", "HEAD")
+    commit_file(repo, "src/late.py", "x = 2\n", "after review")   # never reviewed
+    landed_before = git(bare, "rev-parse", "dev")
+    assert _finish(repo) == 1
+    assert "new commits need review" in capsys.readouterr().err
+    assert git(bare, "rev-parse", "dev") == landed_before   # nothing pushed
+    git(repo, "reset", "-q", "--hard", finished)
     assert _finish(repo) == 0
     assert "[ok] merged feature/rm-thing into dev and pushed to origin" in capsys.readouterr().out
     git(bare, "merge-base", "--is-ancestor", git(repo, "rev-parse", "feature/rm-thing"), "dev")
