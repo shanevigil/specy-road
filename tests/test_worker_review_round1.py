@@ -167,6 +167,21 @@ def test_a_bad_output_line_does_not_kill_the_wrapper(tmp_path: Path) -> None:
     assert [e.type for e in ws.events_since(repo, rec.worker_id)][-1] == "completion"
 
 
+def test_a_wrapper_with_a_long_command_line_is_still_recognised(tmp_path: Path) -> None:
+    deep = tmp_path / ("d" * 120) / "r"
+    p = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)", "specy_road.worker_runner", str(deep), "w-0042", "{}"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(50):
+            if "w-0042" in (wr._cmdline(p.pid) or ""):
+                break
+            time.sleep(0.1)
+        assert wr.pid_alive(p.pid, "w-0042") and wr.pid_verified(p.pid, "w-0042")
+    finally:
+        p.kill()
+        p.wait()
+
+
 def test_pid_alive_ignores_a_reused_pid(monkeypatch) -> None:
     me = os.getpid()                       # alive, but not a wrapper
     assert not wr.pid_alive(me)

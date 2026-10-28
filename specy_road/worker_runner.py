@@ -39,9 +39,13 @@ def log_path(repo_root: Path, worker_id: str) -> Path:
 
 
 def _cmdline(pid: int) -> str | None:
-    """The process's command line via ``ps``, or ``None`` when ``ps`` cannot say."""
+    """The process's command line via ``ps``, or ``None`` when ``ps`` cannot say.
+
+    ``-ww``: without a terminal procps cuts the line at 80 columns, which drops
+    the worker id after any realistic repo path.
+    """
     try:
-        r = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True, text=True,
+        r = subprocess.run(["ps", "-ww", "-o", "command=", "-p", str(pid)], capture_output=True, text=True,
                            check=False, timeout=5)
     except (OSError, subprocess.SubprocessError):
         return None
