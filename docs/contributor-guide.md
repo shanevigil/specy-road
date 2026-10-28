@@ -235,6 +235,29 @@ runs an extended pipeline including dependency audits and a PM bundle size
 budget. Locally this is optional unless you changed dependencies or the SPA
 bundle.
 
+### Lean-code gates
+
+CI also runs three cheap gates that fail only on **regressions** against a
+committed baseline (`pip install ruff==0.17.3 pylint==4.1.3` locally):
+
+| Gate | Command | Checks | Baseline |
+| --- | --- | --- | --- |
+| Complexity | `ruff check specy_road tests scripts` | McCabe `C901`, max 10, new code anywhere | `[tool.ruff.lint.per-file-ignores]` in `pyproject.toml`; delete a file's entry once its functions are simplified |
+| Duplication | `python scripts/check_clones.py` | new pylint `R0801` clone pairs (6+ similar lines, imports/docstrings/signatures ignored) in `specy_road/` | `constraints/clone-baseline.json`; `--update-baseline` only for deliberate duplication |
+| Private imports | `python scripts/check_test_private_imports.py` | new `_private` specy_road names imported, attribute-accessed or monkeypatched from `tests/` | `constraints/test-private-imports-baseline.txt`; `--update-baseline` only when a public API is impossible |
+
+Each script prints stale baseline entries so baselines shrink over time.
+
+**Mutation testing is report-only.** [`mutation.yml`](../.github/workflows/mutation.yml)
+runs `mutmut` weekly (or on dispatch) and publishes a per-module score table
+via `scripts/mutation_report.py`. It fails only when `constraints/mutation-baseline.json`
+exists and a module drops more than 2 points; there is no global floor. Seed or
+refresh the baseline from a full run's artifact: `python scripts/mutation_report.py
+mutmut-results.txt --write-baseline constraints/mutation-baseline.json`.
+
+There is deliberately **no tests-per-module cap**: test count is not a defect
+proxy, and the mutation report shows which tests earn their keep.
+
 ---
 
 ## PM Gantt UI: build and install

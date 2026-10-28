@@ -1,0 +1,59 @@
+name: Mutation report
+
+# Report-only (not a PR gate): weekly mutmut run over specy_road with a
+# per-module score table. The only failure condition is a module dropping
+# more than 2 points below constraints/mutation-baseline.json, and only when
+# that file exists. See docs/contributor-guide.md, "Lean-code gates".
+on:
+  schedule:
+    - cron: "17 3 * * 1"  # Mondays 03:17 UTC
+  workflow_dispatch:
+
+jobs:
+  mutmut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      # mutmut 3.8.0's pytest harness reads Item._nodeid, which pytest 9.2
+      # removed; it works with the pytest pinned in requirements-ci.txt (9.1.1).
+      # Re-verify with a workflow_dispatch run before bumping either pin.
+      - name: Install package, test deps and mutmut
+        run: |
+          pip install -r requirements-ci.txt
+          pip install mutmut==3.8.0 coverage
+      - name: Write mutmut config (setup.cfg is read when pyproject has no [tool.mutmut])
+        run: |
+          cat > setup.cfg <<'CFG'
+          [mutmut]
+          source_paths=specy_road
+          mutate_only_covered_lines=true
+          CFG
+      - name: Run mutmut (capped; partial results still get reported)
+        timeout-minutes: 75
+        continue-on-error: true
+        run: mutmut run
+      - name: Collect results
+        if: always()
+        run: mutmut results --all true > mutmut-results.txt && wc -l mutmut-results.txt
+      - name: Per-module score table (fails only on a >2 point drop vs committed baseline)
+        if: always()
+        run: |
+          python scripts/mutation_report.py mutmut-results.txt \
+            --baseline constraints/mutation-baseline.json \
+            --output mutation-report.md | tee mutation-report.log
+          echo "## Mutation score by module" >> "$GITHUB_STEP_SUMMARY"
+          cat mutation-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mutation-report
+          path: |
+            mutation-report.md
+            mutation-report.log
+            mutmut-results.txt
+          if-no-files-found: ignore

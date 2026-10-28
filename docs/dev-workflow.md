@@ -322,7 +322,9 @@ repo’s canonical place) so humans and agents run what CI runs.
 coverage-gap reports) are **judgment-heavy** and context-heavy. Use them **before** or
 **after** merge as needed; they complement CI rather than replacing it. Do not assume
 every repo will run LLM-style audits inside the pipeline — reserve CI for what can be
-enforced mechanically.
+enforced mechanically. For this toolkit, the regression-only lean-code gates (complexity,
+new clones, private imports in tests) are listed in
+[`docs/contributor-guide.md`](contributor-guide.md#lean-code-gates).
 
 ```mermaid
 flowchart LR

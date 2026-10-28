@@ -21,3 +21,21 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: lean-complexity
+        name: lean-code gate - complexity (ruff C901)
+        entry: ruff check specy_road tests scripts
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: lean-clones
+        name: lean-code gate - new clone pairs (pylint R0801)
+        entry: python scripts/check_clones.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: lean-test-private-imports
+        name: lean-code gate - private imports in tests
+        entry: python scripts/check_test_private_imports.py
+        language: system
+        pass_filenames: false
+        always_run: true
