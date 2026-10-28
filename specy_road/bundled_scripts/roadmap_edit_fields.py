@@ -81,6 +81,28 @@ def _nonempty_lines(raw: str) -> list[str]:
     return [ln.strip() for ln in raw.splitlines() if ln.strip()]
 
 
+#: Keys whose value is a list: repeating ``--set key=…`` appends one item each.
+LIST_KEYS = ("acceptance", "risks", "touch_zones", "dependencies")
+
+
+def merge_set_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Fold repeated list keys into one newline-joined value; refuse a repeated scalar key.
+
+    Shells make a newline awkward to type, so ``--set acceptance=a --set
+    acceptance=b`` is how a list is written on the command line; ``a|b`` is one
+    criterion that happens to contain a pipe.
+    """
+    merged: dict[str, str] = {}
+    for key, val in pairs:
+        if key not in merged:
+            merged[key] = val
+        elif key in LIST_KEYS:
+            merged[key] = f"{merged[key]}\n{val}"
+        else:
+            raise ValueError(f"--set {key}= given twice; only {', '.join(LIST_KEYS)} take one --set per item")
+    return list(merged.items())
+
+
 def _set_type(node: dict, raw_val: str) -> None:
     if raw_val not in NODE_TYPES:
         raise ValueError(f"type must be one of: {sorted(NODE_TYPES)}")

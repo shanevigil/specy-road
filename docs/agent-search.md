@@ -75,8 +75,9 @@ because a stale digest is worse than none: an agent will believe it.
 
 `specy-road finish-this-task` regenerates it and stages it in the bookkeeping
 commit, next to `roadmap.md`, so the CI gate is one you pass by working normally.
-`specy-road sync` regenerates both files too, but commits nothing — review and
-commit them yourself. If the file is gitignored, `specy-road validate` says so:
+`specy-road sync` regenerates both files too, after fast-forwarding the
+integration branch from the remote, and commits nothing — review and commit them
+yourself. To refresh only the files, run `specy-road export` and `specy-road digest`. If the file is gitignored, `specy-road validate` says so:
 it is generated **and** committed, so a rule that hides it leaves CI looking at
 nothing.
 

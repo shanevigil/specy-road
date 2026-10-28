@@ -512,3 +512,23 @@ def test_edit_node_cli_still_derives_a_title_derived_codename(tmp_path: Path) ->
     assert "codename kept" not in r.stderr
     shown = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
     assert '"codename": "renamed-one-task"' in shown.stdout
+
+
+def test_edit_node_cli_repeated_list_key_appends_items(tmp_path: Path) -> None:
+    """rc1 feedback: `acceptance=a|b` was believed to set two criteria; it sets one."""
+    _fixture_repo(tmp_path)
+
+    r = _edit(tmp_path, "--set", "acceptance=Saves offline", "--set", "acceptance=Syncs | merges")
+
+    assert r.returncode == 0, r.stderr
+    shown = _run_crud(tmp_path, "--repo-root", str(tmp_path), "show-node", "M99.1")
+    assert json.loads(shown.stdout[shown.stdout.index("{"):])["acceptance"] == ["Saves offline", "Syncs | merges"]
+
+
+def test_edit_node_cli_refuses_a_repeated_scalar_key(tmp_path: Path) -> None:
+    _fixture_repo(tmp_path)
+
+    r = _edit(tmp_path, "--set", "title=One", "--set", "title=Two")
+
+    assert r.returncode == 1
+    assert "given twice" in r.stderr

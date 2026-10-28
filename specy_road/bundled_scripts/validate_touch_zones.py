@@ -123,6 +123,8 @@ def warn_touch_zones_match_nothing(nodes: list[dict], root: Path) -> None:
         print(f"  {nid}: {', '.join(repr(z) for z in zones)}", file=sys.stderr)
     print(
         "  Zones are paths or globs relative to the project root. Fix one with: "
-        "specy-road edit-node <NODE_ID> --set touch_zones=<paths>",
+        "specy-road edit-node <NODE_ID> --set touch_zones=<paths>\n"
+        "  For work not started yet, list only paths that exist today (its planning "
+        "sheet, the directories it will change) and widen the zones as it lands.",
         file=sys.stderr,
     )

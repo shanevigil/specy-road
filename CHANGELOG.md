@@ -34,6 +34,21 @@ body. Keep section bodies focused; link to PRs for detail.
   `work/brainstorm-*-prompt.md`), which upgraders had to add by hand.
 - `suggested_prompts/bootstrap-agents-md.md` no longer asks for a second load
   order around the managed block, which already carries one.
+- `edit-node --set acceptance=a|b` stored one criterion while adopters
+  believed it set two. Repeating `--set` for a list field (`acceptance`,
+  `risks`, `touch_zones`, `dependencies`) now appends one item each; a
+  repeated scalar key is an error; `--set` has help text; `validate` warns
+  on an open node whose criterion contains `|`.
+- The touch-zone warning says what to do for work not started yet (list the
+  paths that exist today, widen as the work lands); `roadmap-authoring.md`
+  documents both list syntaxes.
+- Skills and the `AGENTS.md` block cited `docs/*.md` files that exist only in
+  the toolkit (e.g. `docs/brainstorming.md`). They now render as links to the
+  toolkit's GitHub docs at the installed version's tag (`main` for dev
+  builds); `docs/supply-chain-security.md`, which `init project` ships, stays
+  local. A test fails if a template cites a doc that does not exist.
+- Docs no longer offer `specy-road sync` as a way to refresh `roadmap.md` or
+  the digest without saying it fast-forwards the integration branch first.
 
 ### Added (rc1 upgrade feedback)
 

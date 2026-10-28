@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import (
     HTML_COMMENT,
     UNCHANGED,
@@ -40,7 +41,7 @@ _H1 = "# Agents — load order\n"
 
 
 def render_agents_lines() -> list[str]:
-    text = _TEMPLATE.read_text(encoding="utf-8").replace("{{SPECYRD_VERSION}}", __version__)
+    text = link_toolkit_docs(_TEMPLATE.read_text(encoding="utf-8").replace("{{SPECYRD_VERSION}}", __version__))
     return text.rstrip("\n").splitlines()
 
 
