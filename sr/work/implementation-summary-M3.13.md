@@ -60,7 +60,17 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - `_node_status` `problems` keeps both sides: the trial-merge problem first, then WIP's `_executor_verify_problems(ready)` in place of `verify_problems(ready)`. The `trial_merge` field and its render line sit beside WIP's new `commands_rerun` review line. Everything else merged automatically.
 - **Inherited failure, not touched (outside M3.13's zones):** `specy-road file-limits` and `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo` fail on `specy_road/bundled_scripts/worker_cli.py` (408 lines) and `specy_road/worker_adapters.py` (430 lines). Both are byte-identical to WIP's `e61f1b2`, and the roadmap gives the fix to M3.16 ("brings two worker modules back under the file cap").
 
+## Merge with WIP (065e4cc, after M3.11 landed) and the `--base` fix
+
+- **Merge (`5a0235c`):** the only conflict was `tests/test_review_packet.py`. M3.11's `-o` copy assertions stay at the end of `test_main_writes_packet_file`. This leaf's trial-merge packet test follows, then M3.11's `--base` test. `review_packet.py` merged automatically.
+- **Fix (`26d9905`):** M3.11's `review-packet --base <ref>` replaces `ReviewTarget.base_ref` to move the diff range. After the merge, the packet's `Trial merge` line followed it, so it could say "up to date with" an arbitrary ref while mark and finish check the integration branch. `build_packet` now keeps the integration ref from before `--base` and passes it to `_header` and `_trial_merge_line`. The diff range is unchanged.
+- `test_packet_reports_trial_merge_with_integration_branch` now also builds each case with `--base` at the branch tip. With the integration ref taken after `--base` (the auto-merged behaviour), all three cases fail.
+- **Inherited failures, not touched (outside M3.13's zones):** the file-limits failure above, plus `tests/test_unauthored_leaf_guard.py::test_validate_notes_complete_leaves_still_on_the_scaffold[False/True]`. There `validate` now prints two `notice:` lines (the scaffold notice and the orchestration-starter notice) where the test expects one. Both cases fail the same way in a clean worktree at WIP's `065e4cc`, and this branch's diff against `065e4cc` touches no validate code.
+- WIP is 1 commit past `065e4cc`. A trial merge against it is clean, so I did not merge again.
+
 ## Verification
+
+- At `26d9905`: full `pytest -q -p no:cacheprovider -rf` gave 2420 passed, 2 skipped and 3 failed (all inherited, listed above). `tests/test_review_packet.py` gave 12 passed, and `ruff check specy_road tests` passed.
 
 - After the e61f1b2 merge: full `pytest -q -p no:cacheprovider -rf` gave 2418 passed, 2 skipped and 1 failed (the inherited file-limits test above). The focused and `handoff status` test files gave 188 passed, and `ruff check specy_road tests` passed.
 - Round 3: full `pytest -q -p no:cacheprovider -rf` at `e47c4c0` gave 2402 passed and 2 skipped. The focused files gave 117 passed, and the other `handoff status` and docs tests (`review_hardening`, `review_evidence`, `worker_cli`, `session_presence`, `review_signing`, `review_round6_evidence`, the docs tests) gave 86 passed. `specy-road file-limits` was OK, `ruff check specy_road tests` passed, and `git diff --check` was clean.
@@ -87,14 +97,14 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - `review_gate.is_trial_merge_bookkeeping` (round 1): exact-file and whole-directory matching (Sol, A2).
 - `review_gate.TrialMerge` / `trial_merge`: shared by the packet, `handoff status`, mark and finish so all four agree. The `None` branch covers no integration ref or git unable to answer, so callers say nothing. The outside-project branch (round 1) makes a path that does not rebase a code conflict.
 - `review_gate.trial_merge_or_exit`: A2's refusal, shared by mark and finish.
-- `review_packet._trial_merge_line`: A1's packet report (up to date / clean / bookkeeping-only / code conflict).
+- `review_packet._trial_merge_line`: A1's packet report (up to date / clean / bookkeeping-only / code conflict). After the 065e4cc merge, it takes `(ref, integration_ref)`, and `build_packet` captures `integration_ref` before `--base`, so `--base` cannot move the trial merge.
 - `review_cli._node_status` `merge_problem`: A1's `handoff status` report.
 - Guard in mark `main` and finish `_resolve_main_context`: A2, placed before any write.
 - `tests/review_repo_helpers.advance_dev`, `TRIAL_MERGES`, `diverge`: build the three trial-merge cases on the shared review repo.
 - `tests/test_git_subprocess.py::test_merge_conflicts_is_in_memory_and_names_conflicted_paths`: clean, conflicted, unknown-ref and non-repository results; the working tree is untouched.
 - `tests/test_review_gate.py::test_trial_merge_bookkeeping_is_exact_files_and_whole_directories` (round 1): `roadmap.md` and `roadmap/notes.yaml` are allowed; `roadmap.md.backup`, `workshop/a.py` and a file named `work` block.
 - `tests/test_project_layouts.py::test_trial_merge_classifies_conflicts_relative_to_the_project` (round 1, embedded and nested): when nested, a git-root `roadmap/x.json` conflict blocks as `../roadmap/x.json` and `sr/roadmap/registry.yaml` stays bookkeeping; when embedded, both are bookkeeping.
-- `tests/test_review_packet.py::test_packet_reports_trial_merge_with_integration_branch` (clean / bookkeeping / code): A1 packet.
+- `tests/test_review_packet.py::test_packet_reports_trial_merge_with_integration_branch` (clean / bookkeeping / code): A1 packet. It is extended (not a new test) to also build with `--base` at the branch tip.
 - `review_cli._node_status` `trial_merge` field and its `_render` line (round 3): A1's report of every conflicted file, including a bookkeeping-only conflict, labelled as not blocking (Sol). `_unclaimed` sets `trial_merge: None` so every node has the same JSON keys.
 - `tests/test_review_cli.py::test_status_reports_a_trial_merge_conflict` (clean / bookkeeping / code): A1 handoff status. Round 3 renamed it from `..._code_conflict` and extended it to assert the JSON `trial_merge` field and the text line in every case.
 - `tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_while_a_trial_merge_conflicts_on_code` (clean / bookkeeping / code): A2/A3 for mark; registry and HEAD unchanged when refused.
