@@ -72,6 +72,8 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
     assert unregistered_commands("specy-road frob M1.2") == ["specy-road frob"]
     assert unregistered_commands("- the specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands("Use the specy-road frob command.") == ["specy-road frob"]
+    assert unregistered_commands("Use the specy-road frob subcommand.") == ["specy-road frob"]
     assert unregistered_commands("specy-road validate --strict") == []
 
 

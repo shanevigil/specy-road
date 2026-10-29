@@ -211,7 +211,9 @@ all, every, each, its, our, your, their, own, of, with, in, for, from, about
 ("the specy-road toolkit is" and "other specy-road formats" do not warn). A
 code span, a fenced block, a list item, or a run verb (run, exec, execute,
 invoke, uvx) still warns after one of those words (`Run specy-road project now.`
-and `- the specy-road frob` warn).
+and `- the specy-road frob` warn). A token followed by the word command or
+subcommand warns even inside a noun phrase (`Use the specy-road frob command.`
+warns).
 
 #### Upgrading from 0.2.x
 

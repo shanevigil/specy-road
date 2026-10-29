@@ -141,8 +141,17 @@ def _heading_title(line: str, start: int) -> bool:
     return first is None or first.group(0).lower() not in _RUN_VERB
 
 
+def _followed_by_command_word(line: str, start: int) -> bool:
+    """True when the token is immediately followed by ``command`` or ``subcommand``."""
+    match = _MENTION.match(line, start)
+    if match is None:
+        return False
+    word = re.match(r"[ \t]*([A-Za-z]+)", line[match.end():])
+    return word is not None and word.group(1).lower() in {"command", "subcommand"}
+
+
 def _reports(line: str, start: int, *, code: bool) -> bool:
-    if code or _list_command(line, start):
+    if code or _list_command(line, start) or _followed_by_command_word(line, start):
         return True
     words = _preceding_words(line, start)
     immediate = words[-1] if words else ""
@@ -157,8 +166,9 @@ def _reports(line: str, start: int, *, code: bool) -> bool:
 def _command_mentions(text: str):
     """Each ``specy-road`` / ``specyrd`` token of command shape that is an instruction.
 
-    Prose preceded by a noun-phrase word (:data:`_NOUN_PHRASE`) is skipped. Code,
-    a fenced block, a list item, and a run verb are not.
+    Prose preceded by a noun-phrase word (:data:`_NOUN_PHRASE`) is skipped, unless
+    the token is followed by ``command`` or ``subcommand``. Code, a fenced block,
+    a list item, and a run verb are not skipped.
     """
     in_fence = False
     for line in text.splitlines():
@@ -189,8 +199,10 @@ def unregistered_commands(text: str) -> list[str]:
     (``the specy-road toolkit is``, ``other specy-road formats``). A code span,
     a fenced block, a list item (``- the specy-road frob``), or a run verb
     (run, exec, execute, invoke, uvx) is still a command after one of those
-    words. An ATX heading is a title, not an instruction, unless it opens with
-    the tool or a run verb.
+    words. A token followed by the word ``command`` or ``subcommand`` is still a
+    command inside that noun phrase (``Use the specy-road frob command.``). An
+    ATX heading is a title, not an instruction, unless it opens with the tool
+    or a run verb.
     """
     specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
     registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}
