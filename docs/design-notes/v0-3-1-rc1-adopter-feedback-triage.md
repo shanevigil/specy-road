@@ -75,6 +75,10 @@ and data are deliberately not recorded here.
 | `prompt --role reviewer` and `worker delegate` need a registry claim, so a Complete node cannot get a second-family review through the dispatch layer (`review record --ref` works) | Gap | `prompt --ref` without a claim |
 | `review-packet` at the merge base yields an empty diff with no explanation | Gap | Warn; `--base <ref>` |
 | With no `roadmap/orchestration.yaml`, the default policy applies silently | Gap | One `validate` notice |
+| `prompt --role reviewer` does not accept `--ref` while `review-packet` and `review record` do, so the read-only step is the most restricted one and a second-family review of an unclaimed node needs a manual workaround | Defect | `prompt` takes `--ref` like the other review commands |
+| `handoff status` exits 1 both for "gate not met" and "no claim, cannot determine"; a polling script cannot tell them apart | Defect | Exit 0 with `state: complete_no_claim` for a Complete node, 1 for not met, 2 for undeterminable; the state is in `--json` |
+| No read-only way to list a node's filed review records and gate evaluation once it is Complete (re-running `review record` re-validates and prints the gate as a side effect) | Gap | `review list <ID> [--ref]` |
+| With no `roadmap/orchestration.yaml` there is only a notice; a correct file had to be built from the JSON schema | Gap | `init project` writes a commented starter; `validate --generate-orchestration` writes it when missing |
 | The cursor adapter's default launch omits `--trust`; untested whether a fresh worktree stalls | Check | Verify; add if needed |
 | `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
 | `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |

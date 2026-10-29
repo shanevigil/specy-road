@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "prompt --role reviewer accepts --ref <branch or commit> exactly as review-packet and review record do, so a reviewer prompt for a node without a registry claim (including a Complete node) is generated without a workaround",
+        "handoff status exits 0 when the node is Complete with no claim and reports state complete_no_claim (text and --json); exit 1 means the gate is not met; a distinct exit code (2) means the gate cannot be determined, and the JSON state field names which",
+        "specy-road review list <ID> [--ref] is read-only: it prints the filed review records with verdict, commit and family, then the current gate evaluation, and never re-validates or writes",
+        "init project writes a minimal valid roadmap/orchestration.yaml starter (commented, one human and one executor entry, default policy) and validate --generate-orchestration writes the same file when none exists, replacing the silent default with an editable file"
+      ],
+      "codename": "read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.15",
+      "node_key": "106e6277-f3ec-46b6-939f-9a213b27c38f",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.15_read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter_106e6277-f3ec-46b6-939f-9a213b27c38f.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "specy_road/review_target.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/init_project.py",
+        "specy_road/cli_init_argparse.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/templates/project/roadmap/",
+        "specy_road/templates/specyrd/commands/",
+        "docs/orchestration.md",
+        "docs/pm-llm-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}
