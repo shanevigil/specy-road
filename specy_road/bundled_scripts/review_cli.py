@@ -80,6 +80,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
+        "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
+                        "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
         "problems": merge_problem + gate.problems() + (verify_problems(ready) if ready else []),
     }
 
@@ -95,6 +97,9 @@ def _render(st: dict[str, Any]) -> list[str]:
     for r in st["reviews"]:
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){' [signed]' if r['signed'] else ''}")
     lines.append(f"  policy: {st['policy']}")
+    if tm := st["trial_merge"]:
+        kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
+        lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
     lines += [f"  - {p}" for p in st["problems"]]
     return lines
 
@@ -128,6 +133,7 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
         ],
         "policy": "not evaluated: no claim names the commit under review",
         "policy_met": False,
+        "trial_merge": None,
         "problems": [hint] + [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in reviews if not r.ok],
     }
 
