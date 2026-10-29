@@ -45,7 +45,7 @@ entries:
       - docs/dev-workflow.md
       - tests/
       - specy_road/templates/project/schemas/git-workflow.schema.json
-      - sr/schemas/git-workflow.schema.json
+      - schemas/git-workflow.schema.json
       - tests/fixtures/specy_road_dogfood/schemas/
       - specy_road/bundled_scripts/do_next_task.py
       - specy_road/bundled_scripts/session_plan.py
