@@ -10,8 +10,10 @@ sub-agent for work whose dependencies are unmet.
 from __future__ import annotations
 
 from dataclasses import asdict
+from typing import TYPE_CHECKING
 
-from specy_road.bundled_scripts.session_plan import SessionPlan
+if TYPE_CHECKING:  # annotations only: session_plan re-exports session_plan_to_dict from here
+    from specy_road.bundled_scripts.session_plan import SessionPlan
 
 
 def _fmt(ids) -> str:

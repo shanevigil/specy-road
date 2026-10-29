@@ -173,8 +173,7 @@ def test_do_next_still_offers_a_leaf_whose_dependency_was_archived(
 
 def test_grind_session_waves_still_schedule_it(repo: Path) -> None:
     """A whole grind run would stall if archived deps counted as unmet."""
-    from specy_road.bundled_scripts.session_plan import compute_session_plan
-    from specy_road.bundled_scripts.session_plan_render import session_plan_to_dict
+    from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
 
     archive_node(repo, "M0.3")
     plan = session_plan_to_dict(
