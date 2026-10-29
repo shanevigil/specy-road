@@ -422,7 +422,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.14_brainstorm-promote-inherits-execution-milestone-from-the-anchor_9ea6aab2-3241-428e-81a7-fc329d4ae8ba.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "brainstorm promote inherits execution_milestone from the anchor",
       "touch_zones": [
         "specy_road/brainstorm_promote.py",

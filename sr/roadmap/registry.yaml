@@ -100,15 +100,3 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-promote-inherits-execution-milestone-from-the-anchor
-    node_id: M4.14
-    branch: feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor
-    touch_zones:
-      - specy_road/brainstorm_promote.py
-      - specy_road/brainstorm_cli.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T07:46:12+00:00'
