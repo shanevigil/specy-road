@@ -14,6 +14,7 @@ commit: "the packet's 'Commit under review'"
 acceptance: {A1: pass, A2: pass}
 findings: {correctness: [], regression: [], boundary: [], test_integrity: []}
 commands_rerun: []
+# verify_pre_existing: [pytest -q tests/foo.py]   # optional: READY verifiers already failing on the integration branch
 required_changes: []
 fresh_session: true
 authored_fix: false

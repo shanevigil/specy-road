@@ -30,8 +30,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.14` | finish-this-task and pickup detect a planning sheet that is still the scaffold | task | Agentic-led | Complete |
 | `M3.15` | Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter | task | Agentic-led | Complete |
 | `M3.16` | Bring worker_cli and worker_adapters back under the 400-line cap | task | Agentic-led | Complete |
-| `M3.17` | A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch | task | Agentic-led | Not Started |
-| `M3.18` | Bring role_prompt under the file cap and clear the ruff complexity error | task | Agentic-led | Not Started |
+| `M3.17` | A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch | task | Agentic-led | Complete |
+| `M3.18` | Bring role_prompt under the file cap and clear the ruff complexity error | task | Agentic-led | Complete |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |

@@ -11,38 +11,16 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
-    node_id: M3.17
-    branch: feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
-    touch_zones:
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/templates/project/work/review-record.template.md
-      - specy_road/review_gate.py
-      - specy_road/review_files.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/schemas/
-      - specy_road/templates/specyrd/
-      - docs/orchestration.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
-    node_id: M3.18
-    branch: feature/rm-bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - specy_road/bundled_scripts/validate_stale_mentions.py
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
   - codename: promote-node-quality
     node_id: M3.7
     branch: feature/rm-promote-node-quality
     touch_zones:
+      - specy_road/bundled_scripts/roadmap_chunk_router.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_crud_prepare.py
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_fields.py
+      - specy_road/bundled_scripts/brainstorm_session.py
       - specy_road/bundled_scripts/brainstorm_promote.py
       - specy_road/bundled_scripts/brainstorm_cli_args.py
       - specy_road/bundled_scripts/roadmap_edit_fields.py

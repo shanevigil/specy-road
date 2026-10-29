@@ -281,6 +281,29 @@ def _inside_span(index: int, spans: list[tuple[int, int, str]]) -> bool:
     return any(start <= index < end for start, end, _ in spans)
 
 
+def _mentions_in_fenced_line(lineno: int, line: str):
+    for tool, name in _MENTION.findall(line):
+        yield lineno, tool, name
+
+
+def _mentions_on_open_line(lineno: int, line: str):
+    spans = _code_spans(line)
+    for span_start, _, content in spans:
+        parsed = _span_command_token(line, span_start, content)
+        if parsed is not None:
+            product_start, tool, token = parsed
+            if _reports(line, product_start):
+                yield lineno, tool, token
+        else:
+            for tool, name in _MENTION.findall(content):
+                yield lineno, tool, name
+    for match in _MENTION.finditer(line):
+        if _inside_span(match.start(), spans):
+            continue
+        if _reports(line, match.start()):
+            yield lineno, match.group(1), match.group(2)
+
+
 def _command_mentions(lines: list[tuple[int, str]]):
     open_fence: tuple[str, int] | None = None
     for lineno, line in lines:
@@ -288,28 +311,13 @@ def _command_mentions(lines: list[tuple[int, str]]):
             if _fence_closes(line, open_fence):
                 open_fence = None
                 continue
-            for tool, name in _MENTION.findall(line):
-                yield lineno, tool, name
+            yield from _mentions_in_fenced_line(lineno, line)
             continue
         marker = _fence_marker(line)
         if marker is not None and not _opening_is_code_span(line):
             open_fence = (marker[0], marker[1])
             continue
-        spans = _code_spans(line)
-        for span_start, _, content in spans:
-            parsed = _span_command_token(line, span_start, content)
-            if parsed is not None:
-                product_start, tool, token = parsed
-                if _reports(line, product_start):
-                    yield lineno, tool, token
-            else:
-                for tool, name in _MENTION.findall(content):
-                    yield lineno, tool, name
-        for match in _MENTION.finditer(line):
-            if _inside_span(match.start(), spans):
-                continue
-            if _reports(line, match.start()):
-                yield lineno, match.group(1), match.group(2)
+        yield from _mentions_on_open_line(lineno, line)
 
 
 def _occurrences(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
