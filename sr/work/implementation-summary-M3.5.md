@@ -23,7 +23,8 @@ Two files outside the zones still use the old wording. I left them unedited beca
 
 ## Verification
 
-- `pytest`: 2401 passed, 2 skipped, 1 failed. The failure is `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo`, because `specy_road/bundled_scripts/worker_cli.py` (408 lines) and `specy_road/worker_adapters.py` (430 lines) are over the 400-line cap. Both are untouched here and are the same size at the base `76433b5`.
+- `pytest tests/test_brainstorm_v2.py tests/test_brainstorm_verify.py tests/test_brainstorm_cli.py -q`: 55 passed (composer-2.5 executor re-check).
+- Full `pytest`: 2401 passed, 2 skipped, 1 failed. The failure is `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo`, because `specy_road/bundled_scripts/worker_cli.py` (408 lines) and `specy_road/worker_adapters.py` (430 lines) are over the 400-line cap. Both are untouched here and are the same size at the base `76433b5`.
 - `specy-road file-limits` reports the same two files and nothing else. `brainstorm_cli.py` is 365 lines.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
