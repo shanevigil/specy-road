@@ -189,6 +189,29 @@ def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
     return any(isinstance(e, dict) and e.get("codename") == codename for e in entries)
 
 
+def refuse_unless_finish_tip(repo: Path, branch: str) -> None:
+    """Exit 1 unless ``branch``'s tip is the finish bookkeeping commit.
+
+    A commit added after it was never reviewed. The tip must be the commit
+    that removed this leaf's registry row, and that commit must change only
+    paths finish itself writes.
+    """
+    codename = codename_from_branch(branch)
+    moved = (
+        stray_finish_paths(repo, branch)
+        or _holds_claim_row(repo, branch, codename)
+        or not _holds_claim_row(repo, f"{branch}^", codename)
+    )
+    if not moved:
+        return
+    print(
+        f"error: {branch} has moved past its finish-this-task commit; new commits "
+        "need review before they land. Re-pick the leaf or open a new leaf for them.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
 def retry_merge_landing(
     repo: Path, *, branch: str, ib: str, remote: str, delete_branch: bool = False,
 ) -> NoReturn:
@@ -199,15 +222,7 @@ def retry_merge_landing(
     ``--delete-branch`` on this re-run still deletes the branch once it is on
     ``remote/ib``, including when an earlier run already got it there.
     """
-    codename = codename_from_branch(branch)
-    stray = stray_finish_paths(repo, branch)
-    if stray or _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
-        print(
-            f"error: {branch} has moved past its finish-this-task commit; new commits "
-            "need review before they land. Re-pick the leaf or open a new leaf for them.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
+    refuse_unless_finish_tip(repo, branch)
     git_ok(["fetch", "-q", remote, ib], repo)
     if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
         done = "" if delete_branch else "; nothing to do"

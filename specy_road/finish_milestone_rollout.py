@@ -15,7 +15,7 @@ from specy_road.milestone_rollup_git import (
 from specy_road.milestone_chunk_io import maybe_promote_milestone_to_pending_mr
 from specy_road.milestone_session import MilestoneSession, milestone_session_path, read_milestone_session
 from specy_road.milestone_subtree import subtree_node_ids
-from specy_road.finish_modes import delete_landed_branch
+from specy_road.finish_modes import delete_landed_branch, refuse_unless_finish_tip
 from specy_road.on_complete_session import remove_on_complete_session
 
 
@@ -98,20 +98,29 @@ def rollup_session_applies(
 
 
 def retry_milestone_rollup_landing(
-    repo: Path, *, node_id: str, branch: str, delete_branch: bool,
+    repo: Path,
+    *,
+    node_id: str,
+    branch: str,
+    delete_branch: bool,
+    no_milestone_rollup: bool = False,
 ) -> bool:
     """Re-land a leaf whose bookkeeping is committed and whose rollup session remains.
 
-    False when no session owns this leaf, so the caller retries an integration
-    merge instead. True after the rollup landing, having deleted the leaf when
-    asked; the caller then stops.
+    False when no session owns this leaf, or ``--no-milestone-rollup`` was
+    passed, so the caller retries an integration merge instead. Only the finish
+    bookkeeping commit is landed. True after the rollup landing, having deleted
+    the leaf when asked; the caller then stops.
     """
     from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
+    if no_milestone_rollup:
+        return False
     ms = read_milestone_session(milestone_session_path(repo / "work"))
     nodes = load_roadmap(repo)["nodes"]
     if ms is None or node_id not in subtree_node_ids(ms.parent_node_id, nodes):
         return False
+    refuse_unless_finish_tip(repo, branch)
     print(f"[info] {node_id} is already Complete on {branch}; landing it on {ms.rollup_branch}.")
     land_milestone_rollup(
         repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,

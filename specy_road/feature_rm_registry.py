@@ -99,6 +99,7 @@ def report_finish_already_done_on_branch(
     on_complete: str | None = None,
     *,
     delete_branch: bool = False,
+    no_milestone_rollup: bool = False,
 ) -> None:
     """Explain a repeat ``finish-this-task`` after bookkeeping already committed.
 
@@ -118,6 +119,7 @@ def report_finish_already_done_on_branch(
     node_id = node["id"]
     if retry_milestone_rollup_landing(
         repo_root, node_id=node_id, branch=branch, delete_branch=delete_branch,
+        no_milestone_rollup=no_milestone_rollup,
     ):
         raise SystemExit(0)
     ib, remote, _ = resolve_integration_defaults(
@@ -148,6 +150,7 @@ def resolve_feature_rm_registry_context_for_finish(
     on_complete: str | None = None,
     *,
     delete_branch: bool = False,
+    no_milestone_rollup: bool = False,
 ) -> _Context:
     """Like :func:`resolve_feature_rm_registry_context`, with a repeat-finish hint."""
     if branch.startswith("feature/rm-"):
@@ -157,5 +160,6 @@ def resolve_feature_rm_registry_context_for_finish(
             if finish_already_done_on_branch(repo_root, branch):
                 report_finish_already_done_on_branch(
                     repo_root, branch, on_complete, delete_branch=delete_branch,
+                    no_milestone_rollup=no_milestone_rollup,
                 )
     return resolve_feature_rm_registry_context(repo_root, branch)
