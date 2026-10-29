@@ -94,7 +94,10 @@ def test_rca_prompt_carries_history_diffs_and_protocol(tmp_path: Path) -> None:
     assert "- **A1:** a.py exists" in text   # the brief, with acceptance
     assert "### Round 1:" in text and "### Round 3:" in text
     assert "#### opus (anthropic): block, fails A1" in text and "> round 2: the heading case" in text
-    assert "+r = 3" in text   # the diff round 3 answered
+    assert "+r = 1" in text and "+r = 3" in text   # full diff of every round, including the first
+    assert "the full diff is in the review packet" not in text
+    assert "a valid record clears the escalation" in text and "an invalid one is listed as a problem" in text
+    assert "reports an invalid record" not in text
 
 
 def test_rca_prompt_refuses_when_not_escalated_and_for_a_party(tmp_path: Path) -> None:
@@ -148,6 +151,39 @@ def test_rca_record_validates_and_resolves_the_escalation(tmp_path: Path, capsys
     assert "escalated" not in out
     _block_round(repo, 4)
     assert _status(repo, capsys)[1]["state"] == "blocked"   # counting restarts after the analysis
+
+
+def test_two_spellings_of_one_commit_are_one_round(tmp_path: Path, capsys) -> None:
+    """A short SHA and the full id are one commit, and the later record wins."""
+    repo = make_review_repo(tmp_path, orchestration=ROSTER)
+    first = git(repo, "rev-parse", "HEAD")
+    second = commit_file(repo, "src/b.py", "b\n", "b")
+    third = commit_file(repo, "src/c.py", "c\n", "c")
+    hist = reviews_dir(repo, "M1.1") / "history"
+    hist.mkdir(parents=True)
+
+    def put(name: str, commit: str, **kw) -> None:
+        (hist / name).write_text(review_text(commit, model="opus", **kw))
+
+    put("1.md", first, verdict="block", a1="fail")
+    put("2.md", second[:12], verdict="approve", a1="pass")   # earlier spelling of the second commit
+    put("3.md", second, verdict="block", a1="fail")          # later spelling is the one that counts
+    put("4.md", third, verdict="block", a1="fail")
+    st = _status(repo, capsys)[1]
+    assert st["state"] == "escalated" and st["escalation"]["round"] == 3
+    assert st["escalation"]["acceptance_ids"] == ["A1"]
+
+
+def test_design_note_attributes_each_report() -> None:
+    text = (Path(__file__).resolve().parents[1] / "docs" / "design-notes" / "review-loop-rca.md").read_text()
+    agree, differ = text.split("## Where the two reports agree", 1)[1].split("Where they differ", 1)
+    assert "this note is wrong" not in text and "Both cite" not in agree
+    assert "three strikes" in agree and "2–3" in agree
+    assert "The Claude report cites" in agree and "Debugging Decay Index" in agree and "8.9%" in agree
+    assert "self-critique" not in agree
+    folded = " ".join(differ.split())
+    assert "self-reflection" in folded and "calls debate untried" in folded
+    assert "no debate and no self-critique" in folded
 
 
 def test_reviewer_prompt_says_the_loop_is_escalated_until_an_rca_exists(tmp_path: Path) -> None:

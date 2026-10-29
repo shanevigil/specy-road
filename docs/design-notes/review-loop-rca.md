@@ -5,8 +5,7 @@
 **Sources:** two research runs on the same prompt, kept untracked under the
 maintainer's `work/research-reports/`: `openai-review-loop-rca.md` (the
 "OpenAI report") and `claude-review-loop-rca.md` (the "Claude report"). This
-note is what was adopted from them; where the code and this note disagree, the
-code wins and this note is wrong.
+note is what was adopted from them, and the remaining criteria follow it.
 
 ## The problem
 
@@ -24,11 +23,12 @@ Trying harder in the same loop does not help. The fix is to stop, diagnose
 ## Where the two reports agree
 
 - **Trigger on repetition, not on effort.** Both recommend pausing after **3
-  consecutive rounds blocked on the same acceptance id**. Both cite the "three
-  strikes" practice: Google's flaky-test rule (fail 3 times in a row), the
-  Debugging Decay Index (most debugging value is in the first 2–3 attempts),
-  and the Claude Code team's 3-round review cap, which cut PRs needing 5+
-  rounds from 8.9% to 1.5%.
+  consecutive rounds blocked on the same acceptance id**. The OpenAI report
+  calls that a "three strikes" rule and notes that CI retries flaky tests 2–3
+  times. The Claude report cites Google's flaky-test rule (report a failure
+  only after it fails 3 times in a row), the Debugging Decay Index (most
+  debugging value is in the first 2–3 attempts), and the Claude Code team's
+  3-round review cap, which cut PRs needing 5+ rounds from 8.9% to 1.5%.
 - **A total-rounds backstop.** The OpenAI report puts it at about 5 rounds; the
   Claude report keeps one as a hard stop (at 6, behind earlier triggers this
   note defers).
@@ -42,13 +42,15 @@ Trying harder in the same loop does not help. The fix is to stop, diagnose
   **bounded rewrite of the criterion** when the cause is the specification.
 - **A machine-readable record** of trigger, classification, confidence,
   evidence and recommended action, so the next step is mechanical.
-- **No debate and no self-critique loops.** Debate adds little over voting;
-  intrinsic self-correction lowers accuracy. A tool check decides disputes.
 
-Where they differ, this note follows the Claude report on *how the analyst
-sees the history*: positions side by side in one prompt (models cave to a
-follow-up challenge more readily than to both positions at once), rather than
-the OpenAI report's "findings without verdicts".
+Where they differ, this note follows the Claude report on two points. *How the
+analyst sees the history*: positions side by side in one prompt (models cave to
+a follow-up challenge more readily than to both positions at once), rather than
+the OpenAI report's "findings without verdicts". *How the analyst works*: no
+debate and no self-critique loop. The Claude report finds that voting captures
+what debate adds and that intrinsic self-correction lowers accuracy, so a tool
+check decides disputes. The OpenAI report instead ranks self-reflection plus
+search (BESTER) first, and calls debate untried.
 
 ## Adopted: triggers and signals
 
@@ -56,8 +58,9 @@ The loop's history is every review record filed for the leaf, in filing
 order. `specy-road review record` keeps a copy of each record it files under
 `work/reviews/<ID>/history/` (the top-level `REVIEW-<model>.md` is overwritten
 each round; the gate still reads only those). A **round** is one reviewed
-commit; a round **blocks on** acceptance id `A<n>` when a blocking record at
-that commit marks `A<n>: fail` (latest record per model at that commit).
+commit object: a short SHA and the full id of that commit are the same round,
+and the latest record per model there counts. A round **blocks on** acceptance
+id `A<n>` when that record marks `A<n>: fail`.
 
 | Trigger | Rule | Policy key (default) |
 | --- | --- | --- |

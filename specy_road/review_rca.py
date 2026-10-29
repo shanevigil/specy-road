@@ -27,7 +27,7 @@ from specy_road.review_files import (
     reviews_dir,
 )
 from specy_road.review_policy_ref import policy_source
-from specy_road.review_target import ReviewTarget
+from specy_road.review_target import ReviewTarget, full_sha
 
 CLASSES = ("specification", "implementation", "test", "reviewer", "environment", "hard_problem")
 ACTIONS = ("amend_criterion", "split_leaf", "continue_with_class_fix", "restart_executor_fresh",
@@ -74,10 +74,17 @@ class LoopState:
 
 
 def review_rounds(repo_root: Path, node_id: str) -> list[Round]:
+    """One round per commit object; the latest record per model at it counts.
+
+    Records may quote a short SHA or the full id (the schema allows 7–40 hex
+    chars). ``full_sha`` folds those onto one key; a commit git cannot resolve
+    keeps its raw string.
+    """
     by_commit: dict[str, dict[str, ReviewFile]] = {}
     for r in list_review_history(repo_root, node_id):
         if r.ok and r.data.get("node_id") == node_id:
-            by_commit.setdefault(r.data["commit"], {})[r.data["model"]] = r
+            key = full_sha(repo_root, r.data["commit"]) or r.data["commit"]
+            by_commit.setdefault(key, {})[r.data["model"]] = r
     return [Round(c, list(m.values())) for c, m in by_commit.items()]
 
 
@@ -188,14 +195,15 @@ def rca_preamble(repo_root: Path, node_id: str, model: str, esc: Escalation) -> 
         "roadmap.",
         f"5. Write the record to `{out}` (gitignored; open the absolute path) in this shape, validated against "
         "specy-road's `rca-record` schema, then run "
-        f"`specy-road handoff status {node_id}`: it reports an invalid record. Stop.",
+        f"`specy-road handoff status {node_id}`: a valid record clears the escalation, and an invalid one is "
+        "listed as a problem. Stop.",
         "",
         *_skeleton(node_id, model, esc),
     ]
 
 
-def _diff(repo_root: Path, a: str | None, b: str, stat: bool) -> list[str]:
-    text = (git_stdout(["diff", *(["--stat"] if stat else []), a, b], repo_root) or "") if a else ""
+def _diff(repo_root: Path, a: str | None, b: str) -> list[str]:
+    text = (git_stdout(["diff", a, b], repo_root) or "") if a else ""
     if not text.strip():
         return ["_(empty, or git could not produce it)_", ""]
     ticks = "````" if "```" in text else "```"
@@ -224,8 +232,7 @@ def rca_evidence(repo_root: Path, t: ReviewTarget, loop: LoopState) -> list[str]
         out += [f"### Round {i}: `{rnd.commit[:12]}`", ""]
         for r in rnd.records:
             out += _record_lines(r)
-        label = "changes since the base (stat; the full diff is in the review packet)" if i == 1 \
-            else f"what round {i} changed after round {i - 1}'s review"
-        out += [f"**Diff: {label}**", ""] + _diff(repo_root, prev, rnd.commit, stat=i == 1)
+        label = "changes since the base" if i == 1 else f"what round {i} changed after round {i - 1}'s review"
+        out += [f"**Diff: {label}**", ""] + _diff(repo_root, prev, rnd.commit)
         prev = rnd.commit
     return out

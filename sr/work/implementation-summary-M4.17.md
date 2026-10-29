@@ -1,6 +1,13 @@
 # Implementation summary: M4.17 — review-loop escalation and root-cause analysis
 
-Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the touch zones). Implementation commit: `59cbc54`.
+Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the touch zones). Implementation commit: `59cbc54`. Round 1 (`REVIEW-grok-4.7-high.md` on `b5dfa48`) is fixed in the commit that adds this revision of the summary.
+
+## Round 1
+
+- The design note no longer attributes Google's flake rule, the Debugging Decay Index, or the Claude Code 8.9%→1.5% result to both reports: those are the Claude report's, and the OpenAI report's own wording ("three strikes", CI retries flaky tests 2–3 times) is what the note states. "No debate and no self-critique" moved out of the agreement list; the note follows the Claude report there, against the OpenAI report's self-reflection ranking. The sentence that said the note is wrong wherever it disagrees with the code is gone.
+- `rca_preamble` step 5 now says a valid record clears the escalation and an invalid one is listed as a problem.
+- Every round's diff in the RCA prompt is a full `git diff`, including round 1. The prompt no longer claims the full diff is in the review packet.
+- `review_rounds` keys a round by `full_sha` when the commit resolves, and by the raw string when it does not, so a short SHA and the full id of one commit are one round and the later record per model wins. The note's round definition says the same.
 
 ## Acceptance
 
@@ -36,7 +43,7 @@ Left alone, outside the zones:
 
 ## Verification
 
-- `pytest tests/test_review_rca.py tests/test_review_cli.py`: 18 passed.
+- `pytest tests/test_review_rca.py tests/test_review_cli.py`: 20 passed after the round-1 fixes (`test_review_rca.py` alone: 8 passed).
 - Full `pytest`: 2395 passed, 2 skipped, 1 failed. The failure is `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo`, on `specy_road/bundled_scripts/worker_cli.py` (408 lines) and `specy_road/worker_adapters.py` (430 lines). Both were already over at base `73f7b23` and this branch does not touch them.
 - `specy-road file-limits`: only those two pre-existing failures. `docs/orchestration.md` stays at 399 lines.
 - `ruff check` on the changed Python files: clean.
@@ -47,7 +54,7 @@ Left alone, outside the zones:
 - `review_files.archive_review`: keeps every filed record, because `REVIEW-<model>.md` is overwritten each round.
 - `review_files.list_review_history`: reads that history, oldest first.
 - `review_files.list_rcas`: loads `RCA-*.md` with schema and `node_id` checks.
-- `review_rca.Round`, `Escalation`, `LoopState`, `review_rounds`, `escalation`, `loop_state`: round grouping and trigger detection (A2, A4).
+- `review_rca.Round`, `Escalation`, `LoopState`, `review_rounds`, `escalation`, `loop_state`: round grouping and trigger detection (A2, A4). `review_rounds` keys by `full_sha` so two spellings of one commit are one round (round 1).
 - `review_rca.escalated_note`: the reviewer-prompt section (A4).
 - `review_rca.rca_parties`: excludes the leaf's executor and reviewers as analysts (research: independence).
 - `review_rca.rca_preamble`, `_skeleton`, `rca_evidence`, `_record_lines`, `_diff`: the RCA prompt body (A3).
@@ -72,4 +79,7 @@ Left alone, outside the zones:
 - `test_rca_prompt_refuses_when_not_escalated_and_for_a_party`: the two refusals (A3).
 - `test_rca_record_validates_and_resolves_the_escalation`: invalid records (missing rewrite, round beyond history), a valid record resolving the trigger, `review list` output, and counting restarting (A4).
 - `test_reviewer_prompt_says_the_loop_is_escalated_until_an_rca_exists` (A4).
+- `test_two_spellings_of_one_commit_are_one_round`: a short SHA and the full id are one round, and the later record is the one that counts (round 1).
+- `test_design_note_attributes_each_report`: the fold attributes the flake rule, the Debugging Decay Index and the 8.9% result to the Claude report, states the OpenAI report's threshold wording, and keeps "no debate" out of the agreement list (round 1, A1).
+- Extended `test_rca_prompt_carries_history_diffs_and_protocol`: round 1's diff is full (`+r = 1`), and step 5 says a valid record clears the escalation (round 1, A3).
 - Changed: in `tests/test_review_cli.py::test_review_list_prints_records_and_the_gate_and_writes_nothing`, the writes-nothing snapshot now walks the reviews directory recursively. `review record` now creates `history/`, which `read_text` on the directory could not read; the check is stricter, not weaker.
