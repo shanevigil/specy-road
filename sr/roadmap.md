@@ -23,7 +23,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Not Started |
 | `M3.8` | Upgrade and validate report drift and migrations plainly | task | Agentic-led | Complete |
 | `M3.9` | Worker and session CLI: resume permissions, roster provenance, event gaps | task | Agentic-led | Complete |
-| `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Not Started |
+| `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Complete |
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Not Started |
 | `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Complete |
 | `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |

@@ -329,7 +329,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.10_worker-reconcile-and-status_f9993116-dffd-4c79-b484-0e9b6837b147.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker hand-off, reconcile and finish report what actually happened",
       "touch_zones": [
         "specy_road/worker_adapters.py",
