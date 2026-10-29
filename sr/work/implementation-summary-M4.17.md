@@ -1,6 +1,10 @@
 # Implementation summary: M4.17 — review-loop escalation and root-cause analysis
 
-Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the touch zones). Feature commits: `59cbc54` (implementation), `9d4bd562` (round-1 review fixes and this summary). Executor hand-off: `composer-2.5`.
+Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the touch zones). Feature commits: `59cbc54` (implementation), `9d4bd562` (round-1 review fixes), plus follow-up commits on this branch. Executor hand-off: `composer-2.5`.
+
+## Round 2 (REVIEW-gpt-5.6-sol-high.md)
+
+- `loop_state` now semantically validates each schema-valid RCA before it advances `resolved`: it replays `escalation` on the history prefix through `trigger.round` (with `resolved` from earlier valid records only) and requires matching `trigger.rule` and `acceptance_ids`, plus a rostered independent analyst (`is_rostered_reviewer` or active substitution, and not in `rca_parties`). A mismatched or non-independent record stays invalid and leaves escalation active (A4, A5).
 
 ## Round 1
 
@@ -21,7 +25,7 @@ Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the tou
   - The prompt asks for one of the six classes, evidence for and against each class, a counterfactual, a check where one settles the question, and the cheapest action. For a `specification` cause it also asks for a bounded rewrite of the criterion and a disposition for each past finding.
   - It refuses when the loop is not escalated. It also refuses a model that implemented the leaf (a READY `agent`) or reviewed it, as the research recommends.
 - **A4** — The analyst writes `work/reviews/<ID>/RCA-<round>.md`, validated against `specy_road/schemas/rca-record.schema.json`. A specification cause requires `criterion_rewrite`, and a `trigger.round` beyond the history makes the record invalid.
-  - An invalid record is listed as a problem and resolves nothing. A valid one resolves every round up to its `trigger.round`, and counting starts again after it.
+  - Schema validation is not enough: the record's trigger must match the escalation replayed at that round, and its `model` must be a rostered reviewer (or substitute) who did not implement or review the leaf. Otherwise it is listed as a problem and resolves nothing. A valid record resolves every round up to its `trigger.round`, and counting starts again after it.
   - Until one exists, reviewer prompts include a "Loop escalated" section.
 - **A5** — Thresholds, signals, protocol and record follow the design note. No tracked research prompt or register entry exists in this checkout; the reports are only at the untracked absolute paths, so the note is the tracked record.
 
@@ -43,7 +47,7 @@ Left alone, outside the zones:
 
 ## Verification
 
-- `pytest tests/test_review_rca.py tests/test_review_cli.py`: 20 passed after the round-1 fixes (`test_review_rca.py` alone: 8 passed).
+- `pytest tests/test_review_rca.py tests/test_review_cli.py`: 21 passed (round 2 adds trigger/independence validation).
 - Full `pytest`: 2395 passed, 2 skipped, 1 failed. The failure is `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo`, on `specy_road/bundled_scripts/worker_cli.py` (408 lines) and `specy_road/worker_adapters.py` (430 lines). Both were already over at base `73f7b23` and this branch does not touch them.
 - `specy-road file-limits`: only those two pre-existing failures. `docs/orchestration.md` stays at 399 lines.
 - `ruff check` on the changed Python files: clean.
@@ -54,7 +58,8 @@ Left alone, outside the zones:
 - `review_files.archive_review`: keeps every filed record, because `REVIEW-<model>.md` is overwritten each round.
 - `review_files.list_review_history`: reads that history, oldest first.
 - `review_files.list_rcas`: loads `RCA-*.md` with schema and `node_id` checks.
-- `review_rca.Round`, `Escalation`, `LoopState`, `review_rounds`, `escalation`, `loop_state`: round grouping and trigger detection (A2, A4). `review_rounds` keys by `full_sha` so two spellings of one commit are one round (round 1).
+- `review_rca._trigger_ids`, `_rca_semantic_errors`: replay the escalation at `trigger.round` and enforce analyst independence when consuming an RCA file (round 2, A4, A5).
+- `review_rca.Round`, `Escalation`, `LoopState`, `review_rounds`, `escalation`, `loop_state`: round grouping and trigger detection (A2, A4). `review_rounds` keys by `full_sha` so two spellings of one commit are one round (round 1). `loop_state` applies semantic RCA checks in trigger-round order before advancing `resolved` (round 2).
 - `review_rca.escalated_note`: the reviewer-prompt section (A4).
 - `review_rca.rca_parties`: excludes the leaf's executor and reviewers as analysts (research: independence).
 - `review_rca.rca_preamble`, `_skeleton`, `rca_evidence`, `_record_lines`, `_diff`: the RCA prompt body (A3).
@@ -65,6 +70,7 @@ Left alone, outside the zones:
 - `escalated` state in `_node_status`, only when the gate has not passed (A3).
 - `build_prompt` refuses `rca` when the loop is not escalated, and refuses a model that is a party. Both are reached by `test_rca_prompt_refuses_when_not_escalated_and_for_a_party`.
 - `loop_state` marks an RCA record invalid when its `trigger.round` exceeds the history (agent input), so a bogus round cannot silence escalation. Reached by `test_rca_record_validates_and_resolves_the_escalation`.
+- `loop_state` rejects RCAs whose trigger does not replay the active escalation or whose `model` is not an independent rostered analyst (round 2). Reached by `test_mismatched_or_non_independent_rca_keeps_escalation`.
 - `_diff` falls back to "empty, or git could not produce it" when git output is empty (subprocess boundary, as in the review packet).
 - The schema's `if`/`then` requires `criterion_rewrite` for a specification cause (A3, A4).
 - `review list` prints the escalation only when the gate has not passed, consistent with `handoff status`.
@@ -78,6 +84,7 @@ Left alone, outside the zones:
 - `test_rca_prompt_carries_history_diffs_and_protocol`: prompt content (A3).
 - `test_rca_prompt_refuses_when_not_escalated_and_for_a_party`: the two refusals (A3).
 - `test_rca_record_validates_and_resolves_the_escalation`: invalid records (missing rewrite, round beyond history), a valid record resolving the trigger, `review list` output, and counting restarting (A4).
+- `test_mismatched_or_non_independent_rca_keeps_escalation`: wrong trigger or party on a schema-valid RCA leaves escalation active (round 2, A4, A5).
 - `test_reviewer_prompt_says_the_loop_is_escalated_until_an_rca_exists` (A4).
 - `test_two_spellings_of_one_commit_are_one_round`: a short SHA and the full id are one round, and the later record is the one that counts (round 1).
 - `test_design_note_attributes_each_report`: the fold attributes the flake rule, the Debugging Decay Index and the 8.9% result to the Claude report, states the OpenAI report's threshold wording, and keeps "no debate" out of the agreement list (round 1, A1).

@@ -17,7 +17,11 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.git_subprocess import git_stdout
-from specy_road.orchestration_config import effective_config
+from specy_road.orchestration_config import (
+    effective_config,
+    is_rostered_reviewer,
+    substitute_for,
+)
 from specy_road.review_files import (
     RCA_PREFIX,
     ReviewFile,
@@ -92,6 +96,43 @@ def _id_key(aid: str) -> int:
     return int(aid[1:])
 
 
+def _trigger_ids(ids: list[str] | None) -> list[str]:
+    return sorted(ids or [], key=_id_key)
+
+
+def _rca_semantic_errors(
+    repo_root: Path,
+    node_id: str,
+    data: dict[str, Any],
+    rounds: list[Round],
+    policy: dict[str, Any],
+    config: dict[str, Any],
+    resolved: int,
+) -> list[str]:
+    """Whether an RCA record matches the escalation it claims and an independent analyst filed it."""
+    errs: list[str] = []
+    trig = data["trigger"]
+    rnd = int(trig["round"])
+    if rnd > len(rounds):
+        return [f"trigger.round is {rnd}, but the history has {len(rounds)} round(s)"]
+    esc = escalation(rounds[:rnd], policy, resolved)
+    if esc is None:
+        errs.append("trigger does not match an escalation active at that round")
+        return errs
+    if trig["rule"] != esc.rule:
+        errs.append(f"trigger.rule is {trig['rule']!r}, expected {esc.rule!r} for that round")
+    if _trigger_ids(trig.get("acceptance_ids")) != esc.acceptance_ids:
+        errs.append(f"trigger.acceptance_ids {trig.get('acceptance_ids')!r} do not match "
+                    f"escalation {esc.acceptance_ids!r}")
+    model = data["model"]
+    parties = rca_parties(repo_root, node_id, LoopState(rounds, [], None))
+    if model in parties:
+        errs.append(f"model {model!r} implemented or reviewed this leaf and may not file an RCA")
+    elif not is_rostered_reviewer(config, model) and substitute_for(config, node_id, model) is None:
+        errs.append(f"model {model!r} is not a rostered reviewer for this leaf")
+    return errs
+
+
 def escalation(rounds: list[Round], policy: dict[str, Any], resolved: int = 0) -> Escalation | None:
     window = rounds[resolved:]
     same = int(policy["escalate_same_acceptance_blocks"])
@@ -106,14 +147,17 @@ def escalation(rounds: list[Round], policy: dict[str, Any], resolved: int = 0) -
 
 
 def loop_state(repo_root: Path, node_id: str) -> LoopState:
-    policy = effective_config(repo_root, policy_source(repo_root)[0])[0]["policy"]
+    config, _ = effective_config(repo_root, policy_source(repo_root)[0])
+    policy = config["policy"]
     rounds = review_rounds(repo_root, node_id)
     rcas = list_rcas(repo_root, node_id)
-    for r in rcas:
-        if r.ok and r.data["trigger"]["round"] > len(rounds):
-            r.errors.append(f"trigger.round is {r.data['trigger']['round']}, but the history has "
-                            f"{len(rounds)} round(s)")
-    resolved = max((r.data["trigger"]["round"] for r in rcas if r.ok), default=0)
+    resolved = 0
+    for r in sorted(rcas, key=lambda x: int((x.data.get("trigger") or {}).get("round") or 0)):
+        if not r.ok:
+            continue
+        r.errors.extend(_rca_semantic_errors(repo_root, node_id, r.data, rounds, policy, config, resolved))
+        if r.ok:
+            resolved = max(resolved, int(r.data["trigger"]["round"]))
     return LoopState(rounds, rcas, escalation(rounds, policy, resolved))
 
 

@@ -153,6 +153,30 @@ def test_rca_record_validates_and_resolves_the_escalation(tmp_path: Path, capsys
     assert _status(repo, capsys)[1]["state"] == "blocked"   # counting restarts after the analysis
 
 
+def test_mismatched_or_non_independent_rca_keeps_escalation(tmp_path: Path, capsys) -> None:
+    """Schema-valid records that name the wrong trigger or a party must not resolve the loop."""
+    repo = _escalated_repo(tmp_path)
+    path = reviews_dir(repo, "M1.1") / "RCA-3.md"
+    path.write_text("---\n" + yaml.safe_dump({
+        "node_id": "M1.1", "model": "opus", "date": "2026-10-29",
+        "trigger": {"rule": "review_rounds", "acceptance_ids": [], "round": 3},
+        "classification": {"primary": "specification", "confidence": 0.8},
+        "evidence": [{"kind": "finding", "ref": "round 2/opus", "supports": "primary", "note": "x"}],
+        "recommended_action": {"type": "amend_criterion", "instructions": "x", "requires_human_approval": True},
+        "criterion_rewrite": {
+            "acceptance_id": "A1", "original_text": "a.py exists", "proposed_text": "src/a.py exists",
+            "finding_disposition": [{"finding": "round 2/opus", "label": "out_of_scope_now"}]},
+    }, sort_keys=False) + "---\nreasoning\n")
+    code, st = _status(repo, capsys)
+    assert code == 1 and st["state"] == "escalated" and st["escalation"]["rule"] == "same_acceptance"
+    problems = " ".join(st["problems"])
+    assert "RCA-3.md: invalid" in problems and "trigger.rule" in problems
+    assert "implemented or reviewed" in problems or "review_rounds" in problems
+    path.unlink()
+    _rca(repo)
+    assert _status(repo, capsys)[1]["state"] == "blocked"
+
+
 def test_two_spellings_of_one_commit_are_one_round(tmp_path: Path, capsys) -> None:
     """A short SHA and the full id are one commit, and the later record wins."""
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
