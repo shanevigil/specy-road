@@ -63,16 +63,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: context-regression-set
-    node_id: M5.5
-    branch: feature/rm-context-regression-set
-    touch_zones:
-      - docs/agentic-sandbox-runbook.md
-      - docs/
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: project-setup
     node_id: M1.1
     branch: feature/rm-project-setup
