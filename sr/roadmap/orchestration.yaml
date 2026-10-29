@@ -25,6 +25,22 @@ roster:
     billing_route: cursor_subscription
     channels:
       cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh grok-4.7-high \"<prompt>\""
+  - id: gpt-6.1-sol
+    family: openai
+    roles: [reviewer]
+    harness: codex
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/codex-review.sh gpt-6.1-sol \"<prompt>\""
+  - id: cursor-grok-4.6-high
+    family: xai
+    roles: [reviewer]
+    harness: cursor
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh cursor-grok-4.6-high \"<prompt>\""
+  - id: composer-2.5
+    family: cursor
+    roles: [executor]
+    harness: cursor
   - id: gpt-5.6-sol-high
     family: openai
     roles: [reviewer]
