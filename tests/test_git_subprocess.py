@@ -69,4 +69,5 @@ def test_merge_conflicts_is_in_memory_and_names_conflicted_paths(tmp_path: Path)
     advance_dev(repo, "src/a.py", "print('dev')\n")
     assert merge_conflicts(repo, "feature/rm-thing", "dev") == ["src/a.py"]
     assert merge_conflicts(repo, "feature/rm-thing", "no-such-ref") is None
+    assert merge_conflicts(tmp_path, "feature/rm-thing", "dev") is None   # not a repository
     assert git(repo, "status", "--porcelain") == ""   # no checkout, index or working-tree change

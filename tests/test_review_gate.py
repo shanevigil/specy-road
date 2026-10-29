@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+import pytest
+
+from tests.review_repo_helpers import NODE, advance_dev, commit_file, git, make_review_repo, review_text
 
 from specy_road.review_files import reviews_dir
-from specy_road.review_gate import evaluate_gate
+from specy_road.review_gate import evaluate_gate, trial_merge
 
 TWO_FAMILIES = """version: 1
 roster:
@@ -129,3 +131,16 @@ def test_broken_orchestration_config_fails_closed(tmp_path: Path) -> None:
     g = _gate(repo)
     assert not g.passed
     assert g.config_error
+
+
+@pytest.mark.parametrize(("rel", "blocks"), [
+    ("roadmap.md", False), ("roadmap/notes.yaml", False),
+    ("roadmap.md.backup", True), ("workshop/a.py", True), ("work", True),
+])
+def test_trial_merge_bookkeeping_is_exact_files_and_whole_directories(tmp_path: Path, rel: str, blocks: bool) -> None:
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, rel, "feature side\n", "feature")
+    advance_dev(repo, rel, "dev side\n")
+    tm = trial_merge(repo, "feature/rm-thing", "dev")
+    assert tm.conflicts == [rel]
+    assert tm.code_conflicts == ([rel] if blocks else [])

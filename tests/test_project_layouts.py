@@ -356,3 +356,34 @@ def test_packet_boundary_reads_changed_paths_relative_to_the_project(layout: tup
 
     assert paths == ["work/implementation-summary-M1.md"]
     assert "outside touch zones" not in "\n".join(lines)
+
+
+
+def test_trial_merge_classifies_conflicts_relative_to_the_project(layout: tuple[Path, Path]) -> None:
+    """When nested, a git-root `roadmap/x.json` is outside the project, so its conflict blocks;
+    `sr/roadmap/registry.yaml` is the project's registry and stays bookkeeping."""
+    from specy_road.review_gate import trial_merge
+
+    top, project = layout
+    reg = project / "roadmap" / "registry.yaml"
+    seed = reg.read_text(encoding="utf-8")
+
+    def commit_side(side: str) -> None:
+        reg.write_text(seed + f"# {side}\n", encoding="utf-8")
+        (top / "roadmap").mkdir(exist_ok=True)
+        (top / "roadmap" / "x.json").write_text(f'"{side}"\n', encoding="utf-8")
+        _git(top, "add", "-A")
+        _git(top, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", side)
+
+    _git(top, "checkout", "-q", "-b", "feature/rm-x")
+    commit_side("feature")
+    _git(top, "checkout", "-q", "main")
+    commit_side("main")
+    _git(top, "checkout", "-q", "feature/rm-x")
+
+    tm = trial_merge(project, "HEAD", "main")
+    if top == project:   # embedded: both paths are the project's own bookkeeping
+        assert tm.conflicts == ["roadmap/registry.yaml", "roadmap/x.json"] and tm.code_conflicts == []
+    else:
+        assert tm.conflicts == ["../roadmap/x.json", "roadmap/registry.yaml"]
+        assert tm.code_conflicts == ["../roadmap/x.json"]

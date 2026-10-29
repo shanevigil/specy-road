@@ -175,7 +175,9 @@ def merge_conflicts(repo_root: Path, ours: str, theirs: str) -> list[str] | None
     older than 2.38), which callers treat as "say nothing". Paths are named
     from the repository root.
     """
-    r = run(["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", ours, theirs], repo_root)
+    # merge-tree names paths relative to the working directory, so run it at the top level.
+    top = git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root   # not a repo: merge-tree fails below
+    r = run(["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", ours, theirs], Path(top))
     # Both outcomes print the merged tree id first; an unknown ref also exits 1, with nothing on stdout.
     fields = r.out.split("\0")
     if r.code not in (0, 1) or not fields[0].strip():

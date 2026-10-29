@@ -354,28 +354,26 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     raise SystemExit(1)
 
 
-#: Bookkeeping every leaf touches: a trial-merge conflict only here stops neither review nor finish.
-TRIAL_MERGE_BOOKKEEPING = ("work/", "roadmap/", "roadmap.md", "roadmap-context.md", "planning/")
+#: Project-relative bookkeeping, where a trial-merge conflict blocks nothing; ``x/`` covers below x, a file only itself.
+TRIAL_MERGE_BOOKKEEPING = ("work/", "roadmap/", "planning/", "roadmap.md", "roadmap-context.md")
+
+
+def is_trial_merge_bookkeeping(project_path: str) -> bool:
+    return any(project_path.startswith(b) if b.endswith("/") else project_path == b for b in TRIAL_MERGE_BOOKKEEPING)
 
 
 @dataclass(frozen=True)
 class TrialMerge:
-    """Merging the integration branch into a branch, done in memory."""
-
+    """Merging the integration branch into a branch, done in memory; ``problem()`` says why review waits."""
     base_ref: str
     behind: int
-    conflicts: list[str]   # project-relative; a path outside the project keeps its repository name
-
-    @property
-    def code_conflicts(self) -> list[str]:
-        return [p for p in self.conflicts if not p.startswith(TRIAL_MERGE_BOOKKEEPING)]
+    conflicts: list[str]        # project-relative; outside the project, ``../``-relative
+    code_conflicts: list[str]   # the ones that block: not bookkeeping, or outside the project
 
     def problem(self) -> str | None:
-        """Why review should wait, or ``None`` when nothing but bookkeeping conflicts."""
-        if not self.code_conflicts:
-            return None
         return (f"{self.base_ref} is {self.behind} commit(s) ahead and a trial merge conflicts on "
-                f"{', '.join(self.code_conflicts)}: merge it into this branch and resolve before review")
+                f"{', '.join(self.code_conflicts)}: merge it into this branch and resolve before review"
+                ) if self.code_conflicts else None
 
 
 def trial_merge(repo_root: Path, ref: str, integration_ref: str | None) -> TrialMerge | None:
@@ -385,7 +383,10 @@ def trial_merge(repo_root: Path, ref: str, integration_ref: str | None) -> Trial
     if integration_ref is None or behind is None or conflicts is None:
         return None
     prefix = project_prefix(repo_root)
-    return TrialMerge(integration_ref, behind, [rebase_to_project(p, prefix) or p for p in conflicts])
+    rebased = {p: rebase_to_project(p, prefix) for p in conflicts}   # None: outside the project
+    named = {p: r if r is not None else "../" * prefix.count("/") + p for p, r in rebased.items()}
+    code = [named[p] for p, r in rebased.items() if r is None or not is_trial_merge_bookkeeping(r)]
+    return TrialMerge(integration_ref, behind, list(named.values()), code)
 
 
 def trial_merge_or_exit(repo_root: Path) -> None:
@@ -395,6 +396,5 @@ def trial_merge_or_exit(repo_root: Path) -> None:
     if tm is None or tm.problem() is None:
         return
     print(f"error: {tm.problem()}.", file=sys.stderr)
-    print(f"  Run `git merge {tm.base_ref}`, resolve, commit, and have the result reviewed. Conflicts "
-          f"only under {', '.join(TRIAL_MERGE_BOOKKEEPING)} do not block.", file=sys.stderr)
+    print(f"  Run `git merge {tm.base_ref}`, resolve, commit, and have the result reviewed.", file=sys.stderr)
     raise SystemExit(1)
