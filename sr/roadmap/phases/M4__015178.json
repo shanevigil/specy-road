@@ -18,7 +18,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.17_review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking_01517858-1959-47e2-97ce-951e486d9aca.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review-loop escalation: a root-cause analysis runs when reviews keep blocking",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",

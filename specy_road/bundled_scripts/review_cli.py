@@ -6,11 +6,14 @@
 review record, and whether the review policy is met at the commit under
 review. Records with no registry claim are listed without a commit unless
 ``--ref`` names one. Given one node it exits 0 when the gate is met or the node
-is Complete, 1 when it is not met, and 2 when it cannot be determined.
+is Complete, 1 when it is not met, and 2 when it cannot be determined. A leaf
+whose review loop is not converging and has no root-cause analysis for it is
+``escalated`` (exit 1), with the trigger named (``review_rca``).
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
-``REVIEW-<model>.md`` beside the READY file. ``review list`` prints the filed
-records and the gate evaluation and writes nothing.
+``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
+``review list`` prints the filed records, any RCA records, the escalation and
+the gate evaluation, and writes nothing.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import (
     HUMAN,
+    archive_review,
     latest_ready,
     list_ready,
     list_reviews,
@@ -36,6 +40,7 @@ from specy_road.review_files import (
     verify_problems,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
+from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -62,9 +67,12 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     branch = (t.entry or {}).get("branch")
     ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
+    loop = loop_state(root, node_id)
+    escalated = loop.escalation is not None and not gate.passed
     return {
         "node_id": node_id,
-        "state": _state(root, t, gate, ready_commit),
+        "state": "escalated" if escalated else _state(root, t, gate, ready_commit),
+        "escalation": loop.escalation.to_dict() if escalated else None,
         "ref": t.ref,
         "commit": gate.commit,
         "ready": [
@@ -79,7 +87,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": gate.problems() + (_executor_verify_problems(ready) if ready else []),
+        "problems": (gate.problems() + (_executor_verify_problems(ready) if ready else [])
+                     + loop.problems()),
     }
 
 
@@ -97,8 +106,25 @@ def _render(st: dict[str, Any]) -> list[str]:
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
                      f"{' [signed]' if r['signed'] else ''}{extra}")
     lines.append(f"  policy: {st['policy']}")
+    if st.get("escalation"):
+        lines.append(_escalation_line(st["node_id"], st["escalation"]["describe"]))
     lines += [f"  - {p}" for p in st["problems"]]
     return lines
+
+
+def _escalation_line(node_id: str, describe: str) -> str:
+    return (f"  escalated: {describe}; next, a root-cause analysis: "
+            f"`specy-road prompt {node_id} --role rca --model <reviewer that has not reviewed it>`")
+
+
+def _print_rcas(loop: LoopState) -> None:
+    for r in loop.rcas:
+        if r.ok:
+            c, a = r.data["classification"], r.data["recommended_action"]
+            print(f"{r.path.name}: {c['primary']} ({c['confidence']}) by {r.data['model']}, through round "
+                  f"{r.data['trigger']['round']} — {a['type']}")
+    for p in loop.problems():
+        print(p)
 
 
 def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
@@ -254,7 +280,9 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     data["family"] = entry["family"]
     dest = review_path(root, ns.node_id, ns.model)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(render_front_matter(data, rec["body"]), encoding="utf-8")
+    text = render_front_matter(data, rec["body"])
+    dest.write_text(text, encoding="utf-8")
+    archive_review(root, ns.node_id, ns.model, text)
     print(f"Wrote {dest}")
     after = evaluate_gate(root, t.node, t.commit)
     if after.distinct_families:
@@ -267,7 +295,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
 
 
 def cmd_review_list(ns: argparse.Namespace) -> int:
-    """Filed records, then the gate at the commit under review; reads only."""
+    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
     root = resolve_repo_root(ns)
     try:
         t = resolve_target(root, ns.node_id, ns.ref)
@@ -283,14 +311,18 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
               f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
               + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}"))
+    loop = loop_state(root, ns.node_id)
+    _print_rcas(loop)
     if t is None:
         print("gate: not evaluated — no registry claim names the commit under review; "
               "pass --ref <branch or commit>")
-        return 0
-    gate = evaluate_gate(root, t.node, t.commit)
-    print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
-    for p in gate.problems():
-        print(f"  - {p}")
+    else:
+        gate = evaluate_gate(root, t.node, t.commit)
+        print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
+        for p in gate.problems():
+            print(f"  - {p}")
+    if loop.escalation and (t is None or not gate.passed):
+        print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0
 
 

@@ -48,7 +48,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Not Started**
   - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Not Started**
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Not Started**
-  - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Not Started**
+  - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
   - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
@@ -83,7 +83,6 @@ Do not pick these up.
 - `M3.17` on `feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` since 2026-10-29
 - `M3.5` on `feature/rm-brainstorm-converge-checks` since 2026-10-29
 - `M4.14` on `feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor` since 2026-10-29
-- `M4.17` on `feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` since 2026-10-28
 
 ## Reaching the detail behind this
 

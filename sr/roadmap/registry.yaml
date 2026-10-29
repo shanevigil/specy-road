@@ -28,28 +28,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
-    node_id: M4.17
-    branch: feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/schemas/
-      - specy_road/orchestration_config.py
-      - specy_road/templates/project/roadmap/
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - specy_road/review_files.py
-      - specy_road/review_rca.py
-      - specy_road/templates/project/schemas/
-      - schemas/
-      - specy_road/templates/specyrd/commands/
-      - docs/orchestration.md
-      - docs/pm-llm-review.md
-      - tests/
-      - docs/design-notes/review-loop-rca.md
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: brainstorm-converge-checks
     node_id: M3.5
     branch: feature/rm-brainstorm-converge-checks
