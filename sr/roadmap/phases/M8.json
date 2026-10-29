@@ -1,0 +1,175 @@
+{
+  "nodes": [
+    {
+      "codename": "harness-compatibility",
+      "dependencies": [],
+      "id": "M8",
+      "node_key": "dc1820b2-ecf3-46f1-9f0d-2da0b88080d2",
+      "planning_dir": "planning/M8_harness-compatibility_dc1820b2-ecf3-46f1-9f0d-2da0b88080d2.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "Harness compatibility",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "A tracked harness-facts fixture (one record per harness: version, headless command, session flags, permission example, instruction files and size guidance, skill dirs, hooks, autonomous git actions and switches, model families, quota behaviour, evidence with labels) validates against a schema",
+        "refresh-profiles renders model-profiles/ and the executor command templates from the fixture; hand edits to rendered files are reported as drift",
+        "A version-bump diff of --version, --help and inventories is classified before a refresh is accepted; a new identifier containing plan, memory, task, todo, worktree, branch, commit, push, pr, background, delegate, cloud, schedule, review, resume, fork or autopilot fails the diff until it is assigned a relationship"
+      ],
+      "codename": "harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M8.1",
+      "node_key": "d78a68ac-55a4-449c-9b00-97d0840a6afe",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.1_harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps_d78a68ac-55a4-449c-9b00-97d0840a6afe.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/",
+        "specy_road/bundled_scripts/refresh_profiles.py",
+        "specy_road/harness_facts.py",
+        "specy_road/templates/project/schemas/",
+        "schemas/",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Claude Code launches pass an explicit permission mode and allowed tools, no permission prompts, and the retry watchdog with a capped usage-limit wait; a worker stopped by a usage limit enters a paused-by-limit state that worker resume picks up after the reset",
+        "Codex launches use exec --json with the workspace-write sandbox, both memory switches off and a per-profile CODEX_HOME; Cursor launches create the chat first and pass --force --trust and never -w",
+        "After every turn the adapter checks the event stream for permission denials, failed turns and api retries, and the git state (HEAD, branch, stash list, porcelain) for anything beyond the expected files; a finding flags the worker and is shown by worker sync, regardless of exit code"
+      ],
+      "codename": "worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check",
+      "dependencies": [
+        "d78a68ac-55a4-449c-9b00-97d0840a6afe"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M8.2",
+      "node_key": "f4d6efe0-4286-44f8-a36e-d30947c401d6",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.2_worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check_f4d6efe0-4286-44f8-a36e-d30947c401d6.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "Worker adapters harden the launch and run a deterministic post-run check",
+      "touch_zones": [
+        "specy_road/worker_runner.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_adapters/",
+        "specy_road/orchestration_config.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The reviewer prompt asks for a final JSON object matching the review-record schema (Claude --json-schema, Codex --output-schema, Antigravity --json-schema; plain final-message JSON elsewhere) and the adapter writes work/reviews/<ID>/REVIEW-<model>.md from it",
+        "A reviewer run that writes any file other than its notes is reported as a review failure",
+        "A malformed or missing structured output is reported as a rerun request, never recorded as a verdict"
+      ],
+      "codename": "reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output",
+      "dependencies": [
+        "d78a68ac-55a4-449c-9b00-97d0840a6afe"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M8.3",
+      "node_key": "2278f4ad-6118-44da-bca8-39d904afee8d",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.3_reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output_2278f4ad-6118-44da-bca8-39d904afee8d.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "Reviewer runs are read-only and specy-road writes the review record from structured output",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/review_files.py",
+        "specy_road/review_record_write.py",
+        "specy_road/templates/specyrd/",
+        "docs/pm-llm-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specyrd init writes skills to .agents/skills plus .claude/skills only; upgrade --prune removes the .cursor and .codex copies; validate warns when a mirrored copy still exists",
+        "The context meter counts, per harness, every file it injects: Cursor AGENTS.md, CLAUDE.md and .cursor/rules; Copilot AGENTS.md, .claude/CLAUDE.md and .github/copilot-instructions.md; Codex the 32 KiB chain, with a note when a global AGENTS.override.md exists"
+      ],
+      "codename": "ship-skills-once-and-meter-every-file-each-harness-injects",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M8.4",
+      "node_key": "13ff1345-ca8e-4dd7-bf51-59dccbd9ecec",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.4_ship-skills-once-and-meter-every-file-each-harness-injects_13ff1345-ca8e-4dd7-bf51-59dccbd9ecec.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "Ship skills once and meter every file each harness injects",
+      "touch_zones": [
+        "specy_road/specyrd_init.py",
+        "specy_road/bundled_scripts/refresh_stubs.py",
+        "specy_road/bundled_scripts/upgrade.py",
+        "specy_road/context_meter.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/templates/specyrd/",
+        "docs/install-and-usage.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specyrd init ships checked-in hook files that deny git commit, git push and gh pr for reviewer roles and push, gh pr, worktree and cloud commands for executors, for Claude Code and Codex (documented blocking hooks) and Cursor (reported)",
+        "Every model profile lists the harness features to avoid with the exact switch (memory off, no plan mode, no worktree or cloud features) and the launch template applies them"
+      ],
+      "codename": "guard-hooks-per-harness-and-avoid-lists-in-every-model-profile",
+      "dependencies": [
+        "d78a68ac-55a4-449c-9b00-97d0840a6afe"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M8.5",
+      "node_key": "459f8613-65b1-46f4-8ffb-6d7bad56874d",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.5_guard-hooks-per-harness-and-avoid-lists-in-every-model-profile_459f8613-65b1-46f4-8ffb-6d7bad56874d.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "Guard hooks per harness and avoid lists in every model profile",
+      "touch_zones": [
+        "specy_road/templates/specyrd/hooks/",
+        "specy_road/specyrd_init.py",
+        "specy_road/templates/project/model-profiles/",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The verification guide from the research (versions and help, denial behaviour and exit codes, commit-when-asked from a nested subdirectory, create and resume by id from a sibling worktree, instruction sentinels versus the meter, Cursor -p with and without --force, Claude usage-limit events with the watchdog, forbidden-commit hook test, sibling-worktree concurrency) is run in a scratch repository and its results recorded with dates",
+        "Every unverified label in the harness facts fixture is replaced by a runtime result or an explicit still-unknown"
+      ],
+      "codename": "runtime-verification-of-the-harness-facts-against-installed-binaries",
+      "dependencies": [],
+      "execution_milestone": "Human-led",
+      "id": "M8.7",
+      "node_key": "431d31bb-d8bd-4b7f-8259-66c9c756be94",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.7_runtime-verification-of-the-harness-facts-against-installed-binaries_431d31bb-d8bd-4b7f-8259-66c9c756be94.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Runtime verification of the harness facts against installed binaries",
+      "touch_zones": [
+        "research/",
+        "specy_road/templates/project/model-profiles/",
+        "docs/"
+      ],
+      "type": "task"
+    }
+  ]
+}
