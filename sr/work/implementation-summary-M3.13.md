@@ -4,7 +4,7 @@
 
 Before reviewers run and before finish, the toolkit trial-merges the integration branch into the leaf's branch. It uses `git merge-tree --write-tree`, which merges in memory with no checkout, index or working-tree change.
 
-- **A1:** `review-packet` adds a `Trial merge` line to the packet header. It says whether the branch is up to date, merges cleanly, conflicts only on bookkeeping, or conflicts on code. For a code conflict it names the files and adds a bold **Stop** line telling the executor to merge and resolve before review. `handoff status` (text and `--json`) puts the same conflict message first in the node's `problems`.
+- **A1:** `review-packet` adds a `Trial merge` line to the packet header. It says whether the branch is up to date, merges cleanly, conflicts only on bookkeeping, or conflicts on code. For a code conflict it names the files and adds a bold **Stop** line telling the executor to merge and resolve before review. `handoff status` (text and `--json`) puts the same conflict message first in the node's `problems`. For any conflict, it also carries a `trial_merge` entry naming every conflicted file, and the text output labels a bookkeeping-only conflict as not blocking.
 - **A2:** `mark-implementation-reviewed` and `finish-this-task` exit 1 while a trial merge of `HEAD` conflicts on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md`. The error names the files and the `git merge <ref>` to run. mark checks before the summary is shown, a human approves, or `REVIEW-human.md` is written. finish checks before the review-gate check and before any status, registry or bookkeeping write.
 - **A3:** Tests cover a clean trial merge, a bookkeeping-only conflict (allowed) and a code conflict (refused). They run through the packet, `handoff status`, `mark-implementation-reviewed --yes` and `finish-this-task`, plus the git helper.
 
@@ -46,8 +46,16 @@ Both reviewers approved `ead181e`. WIP then moved 48 commits ahead, and this lea
 - The two inherited failures from the previous merge are fixed on WIP (`4d5775c` and others), so every gate now exits 0.
 - WIP has since moved 2 more commits (`86b476e`: a roadmap chunk and `sr/tools/*.sh`). A trial merge against it is clean, so I did not merge again.
 
+## Review round 3 (Sol, at a89f6d6): A1 block, fixed
+
+- **Finding:** `handoff status` added only `TrialMerge.problem()`. That is `None` for a bookkeeping-only conflict, so neither the text nor the JSON named the conflict or its files. The old status test asserted that omission.
+- **Fix (`e47c4c0`, `review_cli.py` only):** the node status now has `trial_merge`, which is `null` when the branch merges cleanly, is up to date, or git cannot answer. Otherwise it is `{ref, behind, conflicts, blocking}`: `conflicts` lists every conflicted path and `blocking` the non-bookkeeping ones. The text renders one line, `trial merge with <ref>: conflicts on <every path>`, ending in `(bookkeeping only, which does not block)` when `blocking` is empty. A code conflict still adds its blocking message to `problems`, and mark and finish are unchanged. So a bookkeeping-only conflict is reported and still allowed. `_unclaimed` sets `trial_merge: null` so every node in the JSON has the same keys. `review_gate.py` is at the 400-line cap, so the change stays in the CLI.
+- `docs/dev-workflow.md` review step 2 now says a bookkeeping-only conflict is reported too, and labelled as not blocking. `docs/orchestration.md` already says `handoff status` reports the trial merge.
+- **Mutation check:** against the committed `review_cli.py` from `a89f6d6`, all three cases of the extended test fail.
+
 ## Verification
 
+- Round 3: full `pytest -q -p no:cacheprovider -rf` at `e47c4c0` gave 2402 passed and 2 skipped. The focused files gave 117 passed, and the other `handoff status` and docs tests (`review_hardening`, `review_evidence`, `worker_cli`, `session_presence`, `review_signing`, `review_round6_evidence`, the docs tests) gave 86 passed. `specy-road file-limits` was OK, `ruff check specy_road tests` passed, and `git diff --check` was clean.
 - After the ce4225e merge: full `pytest -q -p no:cacheprovider -rf` gave 2402 passed and 2 skipped. The focused files (`review_packet`, `review_cli`, `mark_implementation_reviewed_gate`, `finish_task_commands`, `git_subprocess`, `review_gate`, `finish_bookkeeping_wiring`, `project_layouts`) gave 117 passed. `specy-road file-limits` was OK, `ruff check specy_road tests` passed, and `git diff --check` was clean.
 - After the 6bcfeb8 merge: full `pytest` 2365 passed, 2 skipped, 1 failed. The failure is the inherited M4.10 test above.
 - After the merge, the focused tests for both leaves (this leaf's files plus `test_branch_cleanup`, `test_rollup_branch_cleanup` and the `test_finish_*` files): 182 passed, 1 failed (the same inherited test).
@@ -79,7 +87,8 @@ Both reviewers approved `ead181e`. WIP then moved 48 commits ahead, and this lea
 - `tests/test_review_gate.py::test_trial_merge_bookkeeping_is_exact_files_and_whole_directories` (round 1): `roadmap.md` and `roadmap/notes.yaml` are allowed; `roadmap.md.backup`, `workshop/a.py` and a file named `work` block.
 - `tests/test_project_layouts.py::test_trial_merge_classifies_conflicts_relative_to_the_project` (round 1, embedded and nested): when nested, a git-root `roadmap/x.json` conflict blocks as `../roadmap/x.json` and `sr/roadmap/registry.yaml` stays bookkeeping; when embedded, both are bookkeeping.
 - `tests/test_review_packet.py::test_packet_reports_trial_merge_with_integration_branch` (clean / bookkeeping / code): A1 packet.
-- `tests/test_review_cli.py::test_status_reports_a_trial_merge_code_conflict` (clean / bookkeeping / code): A1 handoff status.
+- `review_cli._node_status` `trial_merge` field and its `_render` line (round 3): A1's report of every conflicted file, including a bookkeeping-only conflict, labelled as not blocking (Sol). `_unclaimed` sets `trial_merge: None` so every node has the same JSON keys.
+- `tests/test_review_cli.py::test_status_reports_a_trial_merge_conflict` (clean / bookkeeping / code): A1 handoff status. Round 3 renamed it from `..._code_conflict` and extended it to assert the JSON `trial_merge` field and the text line in every case.
 - `tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_while_a_trial_merge_conflicts_on_code` (clean / bookkeeping / code): A2/A3 for mark; registry and HEAD unchanged when refused.
 - `tests/test_finish_task_commands.py::test_finish_refuses_while_a_trial_merge_conflicts_on_code` (bookkeeping / code): A2/A3 for finish. A code conflict refuses first; a bookkeeping conflict gets past it to the review gate; HEAD and the tree are unchanged.
 - Mocks: none.
