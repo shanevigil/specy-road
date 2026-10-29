@@ -1,13 +1,10 @@
 """Function line spans for TypeScript and JavaScript sources (``file-limits``).
 
-The stdlib has no TS/JS parser, so this masks out comments, strings, template
-literals and regex literals, then balances brackets on what is left. It
-measures three forms: ``function`` declarations, arrow functions bound by
-``const`` / ``let`` / ``var``, and class methods (computed, string and number
-names and arrow-valued class fields included). A concise arrow body runs to its terminating ``;``, ``,`` or
-closing bracket, or to a line break the next line does not continue. A
-function inside a class or another function is named ``Outer.inner``, as the
-Python report does.
+Masks comments, strings, templates and regexes, then balances brackets. It
+measures ``function`` declarations, ``const`` / ``let`` / ``var`` arrows and
+class methods. ``.jsx`` / ``.tsx`` JSX text is blanked first, so ``<p>Don't</p>``
+does not open a string. Out of scope (see ``docs/file-limits.md``): non-ASCII
+identifiers, and a bodiless overload that has no terminating semicolon.
 """
 
 from __future__ import annotations
@@ -381,6 +378,10 @@ def _spans(s: str, src: str) -> tuple[list[tuple[int, int, str]], list[tuple[int
 def js_function_metrics(path: Path) -> list[tuple[str, int, int]]:
     """Qualified name, first line and line span for each TS/JS function in ``path``."""
     src = path.read_text(encoding="utf-8", errors="replace")
+    if path.suffix in {".jsx", ".tsx"}:
+        from specy_road.file_limits_jsx import blank_jsx_text
+
+        src = blank_jsx_text(src)
     s = mask_source(src)
     funcs, classes = _spans(s, src)
     line_starts = [0, *(m.end() for m in re.finditer("\n", s))]

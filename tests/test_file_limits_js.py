@@ -60,6 +60,8 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
         ("generic_class.ts", [("Store.find", 2, 6)]),
         # Every declarator of one statement, past plain values, annotations and patterns.
         ("declarators.ts", [("clamp", 1, 5), ("twice", 7, 1), ("reset", 7, 3)]),
+        # An apostrophe or quote in JSX text is not a string; the following function stays separate.
+        ("jsx_text.tsx", [("Greeting", 1, 5), ("next", 6, 2), ("after", 8, 3)]),
         # Braces inside strings, nested template literals and comments are ignored.
         ("literals.mjs", [("render", 5, 5), ("after", 10, 3)]),
         # Braces inside regex literals are ignored; a `/` after an operand is a division.
@@ -103,6 +105,8 @@ def test_scan_reports_over_cap_js_function_with_line(tmp_path: Path, suffix: str
         ("generic_class.ts", "generic_class.ts:2 function `Store.find` 6 lines"),
         # An arrow after the first declarator: `const limit = 10, clamp = (x) => {`.
         ("declarators.ts", "declarators.ts:1 function `clamp` 5 lines"),
+        # `<p>Don't say "hello` must not hide the `}` on that line or swallow `next`.
+        ("jsx_text.tsx", "jsx_text.tsx:1 function `Greeting` 5 lines"),
     ],
 )
 def test_scan_measures_concise_arrows_regexes_and_divisions(
