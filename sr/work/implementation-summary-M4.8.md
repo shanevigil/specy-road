@@ -1,20 +1,8 @@
 # Implementation summary for M4.8
 
-## Status: stopped at A4, not ready for review
+## Scope
 
-A1–A3 are implemented, tested and committed, one commit each. A4 needs files outside the touch zones, so per the executor prompt I stopped there. I did not write a READY file.
-
-**A4 needs these paths, all outside the zones:**
-
-- `specy_road/bundled_scripts/finish_task.py`: the `--delete-branch` flag.
-- `specy_road/finish_modes.py`: delete the branch locally and on the remote after `--on-complete merge` lands.
-- `specy_road/cli.py`: register a new `branches` command.
-- A new module for `branches prune`, e.g. `specy_road/bundled_scripts/branches_cli.py`.
-- Docs for both, probably `docs/git-workflow.md`, plus the `specyrd-finish` skill template if it lists flags.
-
-**Proposed zone change:** add those paths to M4.8, or move A4 to its own leaf. A4 is unrelated to A1–A3.
-
-`refresh-stubs` is documented in `docs/install-and-usage.md`, which is also outside the zones. That doc does not mention `--diff` yet.
+M4.8 covers A1–A3. A4 (branch cleanup after finish: `finish-this-task --delete-branch` and `specy-road branches prune`) was moved to its own leaf, M4.10, by the maintainer's decision, because it needs files outside these touch zones. This branch does not touch A4.
 
 ## Summary
 
@@ -33,22 +21,25 @@ A1–A3 are implemented, tested and committed, one commit each. A4 needs files o
 
 ## Changes
 
-- `specy_road/bundled_scripts/roadmap_crud_ops.py`: `cmd_list` builds the filtered rows first, then prints JSON or the table. The file stays within the 400-line cap.
-- `specy_road/bundled_scripts/roadmap_crud_argparse.py`: `--json` (`dest="as_json"`) on `list-nodes`.
-- `specy_road/bundled_scripts/refresh_stubs.py`: `--diff`, `_prefix`, `_block_previews` and `_print_diffs`.
-  - To stay within the 400-line cap, the existing argparse calls in `main` are reflowed onto fewer lines. Their behaviour is unchanged.
-- `specy_road/bundled_scripts/roadmap_move_node.py`: `_rewrite_touch_zones`, called from `move_node` and from `_stage_registry_ids`. The CLI message and description now mention the zone rewrite.
-- `docs/pm-workflow.md`: the `list-nodes` row mentions `--json`.
+One commit per acceptance item, plus one for the docs:
+
+- `2ee658d` A1: `specy_road/bundled_scripts/roadmap_crud_ops.py` (`cmd_list` builds the filtered rows first, then prints JSON or the table; the file stays within the 400-line cap), `specy_road/bundled_scripts/roadmap_crud_argparse.py` (`--json`, `dest="as_json"`), and the `list-nodes` row in `docs/pm-workflow.md`.
+- `8499981` A2: `specy_road/bundled_scripts/refresh_stubs.py`: `--diff`, `_prefix`, `_block_previews` and `_print_diffs`. To stay within the 400-line cap, the existing argparse calls in `main` are reflowed onto fewer lines. Their behaviour is unchanged.
+- `531d923` A3: `specy_road/bundled_scripts/roadmap_move_node.py`: `_rewrite_touch_zones`, called from `move_node` and from `_stage_registry_ids`. The CLI message and description now mention the zone rewrite.
+- `3480f8b` docs: a `refresh-stubs --diff` row in the command table of `docs/pm-workflow.md`, linking to the upgrade section of `docs/install-and-usage.md`.
+  - `docs/install-and-usage.md` is where `refresh-stubs` is documented, but it is already at the 400-line cap. Even a one-clause addition reflowed into an existing paragraph adds a line, so I left it unchanged.
 - Tests: `tests/test_roadmap_crud.py`, `tests/test_refresh_stubs.py`, `tests/test_move_node_cli.py`.
 
-**Touch zones:** A1–A3 needed only the listed zones. A4 needs the paths listed above.
+**Final touch zones:** the listed zones were accurate for A1–A3. All changed paths are inside them.
 
 ## Verification
 
 - `ruff check specy_road tests scripts`: all checks passed.
 - `specy-road file-limits`: OK.
-- `pytest` (full suite): 2256 passed, 2 skipped, 2 failed. Both failures are in `tests/test_review_round6_evidence.py` and fail with `AttributeError: module 'specy_road.bundled_scripts.review_packet' has no attribute '_changed'`. Neither that test nor `review_packet.py` is touched on this branch, so the failures predate it.
-- Manual checks:
+- `specy-road validate`, `export --check` and `digest --check` against the dogfood fixture: OK.
+- `pytest tests/test_roadmap_crud.py tests/test_refresh_stubs.py tests/test_move_node_cli.py`: 49 passed.
+- Full `pytest`: 2256 passed, 2 skipped, 2 failed. Both failures are in `tests/test_review_round6_evidence.py` (`test_committed_rename_into_the_zone_is_reported_on_both_sides`, `test_rename_out_of_the_zone_keeps_the_source_inside_it`), with `AttributeError: module 'specy_road.bundled_scripts.review_packet' has no attribute '_changed'`. They predate this branch: base commit `03f81a7` moved `review_packet` to `specy_road.git_changed_paths.diff_paths`, and this branch touches neither file.
+- Manual checks (previous worker):
   - `list-nodes --json` and `--json --status Complete` on a copy of the dogfood fixture.
   - `refresh-stubs --diff` on a pre-0.3.0-style repo: diffs printed, and the repo was byte-for-byte unchanged afterwards.
 
@@ -62,6 +53,7 @@ A1–A3 are implemented, tested and committed, one commit each. A4 needs files o
 - `refresh_stubs` `--diff` argument and the `dry_run = args.dry_run or args.diff` line: A2 flag. The diff is a preview and writes nothing.
 - `roadmap_move_node._rewrite_touch_zones`: A3, whole-segment rewrite over nodes and over registry entries.
 - `_stage_registry_ids` calls it on claim entries: a claim's stale zone copy would otherwise strand the zones at finish.
+- Docs row for `refresh-stubs --diff` in `docs/pm-workflow.md`: A2 needs to be discoverable, and `install-and-usage.md` has no room under the cap.
 - Test `test_list_nodes_json_is_the_full_untruncated_list`: A1. Long title, fields, chunk, `--status`.
 - Test `test_diff_previews_skills_and_managed_blocks_without_writing`: A2. Diffs present, links reported, nothing written.
 - Test `test_the_diff_is_what_a_refresh_then_writes`: A2. Diff "+" lines equal what a real refresh writes.
