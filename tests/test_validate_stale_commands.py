@@ -21,8 +21,10 @@ AGENTS_MD = """# Our agents guide
 
 The specy-road toolkit coordinates work; run `specy-road validate` and `specy-road grind`.
 Then specy-road frob.
-- specy-road listed --flag
-The specy-road toolkit is how this repo coordinates; use specy-road to coordinate.
+- specy-road frob --flag
+Please run specy-road does-not-exist.
+the specy-road toolkit is how this repo coordinates; use specy-road to coordinate.
+specy-road validate
 
 ```bash
 $ specy-road nope --flag && specy-road brief M1
@@ -52,7 +54,8 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     assert lines == [
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road grind`, {tail} use `specy-road grind-session`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road frob`, {tail} see `specy-road --help`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road listed`, {tail} see `specy-road --help`.",
+        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road does-not-exist`, {tail} "
+        "see `specy-road --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road nope`, {tail} see `specy-road --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specyrd refresh`, {tail} see `specyrd --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road pm-sync`, {tail} use `specy-road sync`.",
@@ -61,10 +64,12 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     ]
 
 
-def test_prose_and_list_mentions_are_warnings_and_a_noun_phrase_is_not() -> None:
-    assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
-    assert unregistered_commands("- specy-road frob --flag") == ["specy-road frob"]
-    assert unregistered_commands("specy-road toolkit is how work is coordinated.") == []
+def test_a_command_after_any_prefix_is_a_warning_and_a_noun_phrase_is_not() -> None:
+    assert unregistered_commands("run `specy-road does-not-exist`") == ["specy-road does-not-exist"]
+    assert unregistered_commands("Run with uv: `uv run specy-road does-not-exist`.") == ["specy-road does-not-exist"]
+    assert unregistered_commands("> specy-road does-not-exist --flag") == ["specy-road does-not-exist"]
+    assert unregistered_commands("the specy-road toolkit is") == []
+    assert unregistered_commands("specy-road validate") == []
 
 
 @pytest.mark.parametrize(("old", "new"), REPLACED_COMMANDS.items())
