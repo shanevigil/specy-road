@@ -11,22 +11,3 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: promote-node-quality
-    node_id: M3.7
-    branch: feature/rm-promote-node-quality
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_chunk_router.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/roadmap_crud_prepare.py
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_fields.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/roadmap_edit_fields.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T09:27:55+00:00'

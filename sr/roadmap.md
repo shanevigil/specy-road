@@ -13,14 +13,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M2` | Outcome record pilot | phase | — | Not Started |
 | `M2.1` | List shipped nodes with no result after N days | milestone | Agentic-led | Not Started |
 | `M2.2` | Store a pointer and a human verdict for outcomes, never the metric itself | milestone | Agentic-led | Not Started |
-| `M3` | 0.3.1 pre-final fixes from rc1 feedback | phase | — | Not Started |
+| `M3` | 0.3.1 pre-final fixes from rc1 feedback | phase | — | Complete |
 | `M3.1` | Refuse to pick up leaves whose planning sheet is still a placeholder | task | Agentic-led | Complete |
 | `M3.2` | handoff status reports review records without a claim | task | Agentic-led | Complete |
 | `M3.3` | Document the canonical chunk key order and offer a deliberate normalisation | task | Agentic-led | Complete |
 | `M3.4` | Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers | task | Agentic-led | Complete |
 | `M3.5` | Converge and evidence passes that cannot silently skip work | task | Agentic-led | Complete |
 | `M3.6` | Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept | task | Agentic-led | Complete |
-| `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Not Started |
+| `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Complete |
 | `M3.8` | Upgrade and validate report drift and migrations plainly | task | Agentic-led | Complete |
 | `M3.9` | Worker and session CLI: resume permissions, roster provenance, event gaps | task | Agentic-led | Complete |
 | `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Complete |
