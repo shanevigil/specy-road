@@ -107,6 +107,8 @@ and data are deliberately not recorded here.
 | The `file-limits` function cap still only covers Python, so it reports OK while a TypeScript function is far over the cap (open since 0.1.4rc3); extend the check to TS/JS |
 | A `doctor` command: merged or stale `feature/rm-*` branches (local and remote), stale worktrees, registry rows without a branch, toolkit stashes — detected by ancestry and, when history was rewritten, by patch content; dry-run by default |
 | `brainstorm promote` leaves inherit `execution_milestone` from the anchor instead of needing `--set` on every node |
+| A session-overlap warning names the other session and branch but not its worktree, nor whether that copy has uncommitted or unmerged edits to the path (the warning was the useful signal that a later merge would conflict) | Gap | Name the worktree and branch and the other copy's edit state; keep reporting the user's own other worktrees, labelled |
+| Nothing reports how many review rounds a leaf took or how long; adopters had no baseline for whether multiple blocking rounds were normal. Review recipes also left detached worktrees behind with no step that removes them | Gap | `handoff status` and `review list` show rounds and elapsed time; docs say two or more rounds is normal; `doctor` lists detached worktrees |
 
 ## Not acted on
 

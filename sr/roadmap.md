@@ -44,6 +44,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.12` | file-limits function-length check covers TypeScript and JavaScript | task | Agentic-led | Not Started |
 | `M4.13` | specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes | task | Agentic-led | Not Started |
 | `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Not Started |
+| `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Not Started |
+| `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Not Started |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Not Started |
