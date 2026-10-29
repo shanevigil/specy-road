@@ -53,8 +53,16 @@ Both reviewers approved `ead181e`. WIP then moved 48 commits ahead, and this lea
 - `docs/dev-workflow.md` review step 2 now says a bookkeeping-only conflict is reported too, and labelled as not blocking. `docs/orchestration.md` already says `handoff status` reports the trial merge.
 - **Mutation check:** against the committed `review_cli.py` from `a89f6d6`, all three cases of the extended test fail.
 
+## Merge with WIP (e61f1b2, after worker-reconcile-and-status landed)
+
+After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundled_scripts/review_cli.py`, so I merged before hand-off (`0dc622d`). The commit message names `29e2469`, the worker-reconcile commit behind the conflict. The WIP tip it actually merged is `e61f1b2`.
+
+- `_node_status` `problems` keeps both sides: the trial-merge problem first, then WIP's `_executor_verify_problems(ready)` in place of `verify_problems(ready)`. The `trial_merge` field and its render line sit beside WIP's new `commands_rerun` review line. Everything else merged automatically.
+- **Inherited failure, not touched (outside M3.13's zones):** `specy-road file-limits` and `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo` fail on `specy_road/bundled_scripts/worker_cli.py` (408 lines) and `specy_road/worker_adapters.py` (430 lines). Both are byte-identical to WIP's `e61f1b2`, and the roadmap gives the fix to M3.16 ("brings two worker modules back under the file cap").
+
 ## Verification
 
+- After the e61f1b2 merge: full `pytest -q -p no:cacheprovider -rf` gave 2418 passed, 2 skipped and 1 failed (the inherited file-limits test above). The focused and `handoff status` test files gave 188 passed, and `ruff check specy_road tests` passed.
 - Round 3: full `pytest -q -p no:cacheprovider -rf` at `e47c4c0` gave 2402 passed and 2 skipped. The focused files gave 117 passed, and the other `handoff status` and docs tests (`review_hardening`, `review_evidence`, `worker_cli`, `session_presence`, `review_signing`, `review_round6_evidence`, the docs tests) gave 86 passed. `specy-road file-limits` was OK, `ruff check specy_road tests` passed, and `git diff --check` was clean.
 - After the ce4225e merge: full `pytest -q -p no:cacheprovider -rf` gave 2402 passed and 2 skipped. The focused files (`review_packet`, `review_cli`, `mark_implementation_reviewed_gate`, `finish_task_commands`, `git_subprocess`, `review_gate`, `finish_bookkeeping_wiring`, `project_layouts`) gave 117 passed. `specy-road file-limits` was OK, `ruff check specy_road tests` passed, and `git diff --check` was clean.
 - After the 6bcfeb8 merge: full `pytest` 2365 passed, 2 skipped, 1 failed. The failure is the inherited M4.10 test above.
