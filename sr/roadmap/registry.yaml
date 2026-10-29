@@ -69,3 +69,14 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: project-setup
+    node_id: M1.1
+    branch: feature/rm-project-setup
+    touch_zones:
+      - constitution/
+      - vision.md
+      - roadmap/
+      - planning/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
