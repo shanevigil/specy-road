@@ -217,17 +217,19 @@ def cmd_add(args: object) -> None:
 
 def append_node_to_chunk(
     root: Path, chunk_arg: str | None, node: dict, *, validate: bool = True,
+    max_words: int | None = None,
 ) -> Path:
     """Append ``node`` to a chunk (``chunk_arg`` is a hint); auto-route on overflow.
 
     Atomic: the planning sheet is staged with the chunk and manifest so a
     validation failure rolls all three back. ``validate=False`` skips the
     post-write check so a batch can validate once after every node is written.
+    ``max_words`` caps auto-derived codenames on this write.
     """
     from specy_road.bundled_scripts.roadmap_chunk_router import write_with_routing
 
     heal_before_mutation(root)
-    ensure_codename_for_new_node(root, node)
+    ensure_codename_for_new_node(root, node, max_words=max_words)
     parent_id_raw = node.get("parent_id")
     parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
     planned_sheet = plan_planning_sheet_for_new_node(root, node)

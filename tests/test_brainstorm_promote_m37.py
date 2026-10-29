@@ -75,6 +75,16 @@ def test_promote_derives_codename_from_the_first_four_title_words(repo: Path) ->
     assert _by_id(repo)[node_id]["codename"] == "-".join(words[:PROMOTE_CODENAME_MAX_WORDS])
 
 
+def test_promote_caps_codename_when_the_title_starts_with_punctuation(repo: Path) -> None:
+    s = BrainstormSession(slug="pay", topic="t", under="M1")
+    idea = add_idea(s, title="!!! ??? ... --- Five Six Seven Eight Nine Ten")
+    idea.status = "accepted"
+
+    node_id = promote_session(repo, s)[0].node_id
+
+    assert _by_id(repo)[node_id]["codename"] == "five-six-seven-eight"
+
+
 def test_revise_codename_on_the_idea_wins_over_title_derivation(repo: Path) -> None:
     s = BrainstormSession(slug="pay", topic="t", under="M1")
     idea = add_idea(s, title="Some Long Title That Would Slug Longer")

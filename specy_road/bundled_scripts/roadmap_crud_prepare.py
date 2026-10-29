@@ -65,13 +65,16 @@ def derive_codename_with_collision_suffix(
     return cand
 
 
-def ensure_codename_for_new_node(root: Path, node: dict) -> None:
+def ensure_codename_for_new_node(
+    root: Path, node: dict, *, max_words: int | None = None
+) -> None:
     """F-006: give a new node a codename from its title, before it is written.
 
     Downstream pickup and registry logic need one, and the planning sheet's
     slug comes from it — the same derivation ``edit-node --set title=…`` runs.
     Deriving it here keeps every add path (CLI and PM GUI) producing complete
-    nodes instead of ``<id>_unnamed_…`` sheets.
+    nodes instead of ``<id>_unnamed_…`` sheets. ``max_words`` is passed through
+    to derivation so promote cannot fall back to an uncapped slug.
     """
     if node.get("codename"):
         return
@@ -79,7 +82,10 @@ def ensure_codename_for_new_node(root: Path, node: dict) -> None:
         n.get("codename") for n in load_roadmap(root)["nodes"] if n.get("codename")
     }
     derived = derive_codename_with_collision_suffix(
-        str(node.get("title") or ""), str(node.get("node_key") or ""), existing
+        str(node.get("title") or ""),
+        str(node.get("node_key") or ""),
+        existing,
+        max_words=max_words,
     )
     if not derived:
         return

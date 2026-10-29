@@ -19,7 +19,7 @@ Registered zones covered promote, argparse, `title_to_codename`, docs, and tests
 ## Behaviour
 
 - **A1:** each node is `append_node_to_chunk(..., validate=False)`; `run_validate_raise` once after the batch so pin/schema warnings print once.
-- **A2:** `derive_codename_with_collision_suffix(..., max_words=4)` calls `title_to_codename`; `revise --codename` on the idea wins.
+- **A2:** `derive_codename_with_collision_suffix(..., max_words=4)` calls `title_to_codename` (punctuation-only tokens do not count toward the cap); `append_node_to_chunk(..., max_words=4)` so the add-node heal cannot uncap; `revise --codename` on the idea wins.
 - **A3:** `goal` from `idea.hypothesis`; every CLI `accept` (including without `--reason`) records `decision.seq`; promote sorts by seq then timestamp; `sibling_order` from `next_sibling_order` so later batches append.
 - **A4:** `_report_promoted_missing_fields` prints one stderr line listing node ids missing `acceptance` or `touch_zones`.
 
@@ -30,7 +30,7 @@ pytest tests/test_brainstorm_promote.py tests/test_brainstorm_promote_m37.py tes
 specy-road file-limits
 ```
 
-`file-limits` still reports `role_prompt.py` 407/400; that overage is unchanged from base `7fe50b87`. This leaf's files are under cap (`brainstorm_promote.py` 378, `promote_session` 70).
+`specy-road file-limits` is re-run after the WIP merge (M3.18 split `role_prompt.py`). This leaf's files stay under cap.
 
 ## Added
 
@@ -43,7 +43,10 @@ specy-road file-limits
 - `_accept_order_key` — sort pending ideas by that sequence, then timestamp, then id.
 - `_promote_codename` — honor idea `codename` or derive with word cap and collision suffix.
 - `_report_promoted_missing_fields` — one stderr list after a successful batch promote.
-- `title_to_codename(..., max_words=)` — optional word cap in the shared slug helper.
+- `title_to_codename(..., max_words=)` — cap counts only tokens that contribute slug fragments.
+- `append_node_to_chunk` / `ensure_codename_for_new_node(..., max_words=)` — keep the promote cap on the add-node heal path.
+- `test_promote_caps_codename_when_the_title_starts_with_punctuation` — public write-path four-word cap after punctuation.
+- `test_title_to_codename_skips_punctuation_tokens_when_capping` — helper-level skip of empty tokens.
 - `test_promote_prints_pin_warnings_once_for_a_multi_node_batch` — public A1 (pin warning once, no mock count).
 - `test_write_with_routing_skip_validate_still_writes` — skip-validate writes even when validate would raise.
 - `test_cli_accept_without_reason_preserves_accept_order` — public CLI accept order without `--reason`.

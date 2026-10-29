@@ -364,7 +364,10 @@ def promote_session(
             chunk = "(not written)"
             order += 1
         else:
-            chunk_path = append_node_to_chunk(root, None, node, validate=False)
+            chunk_path = append_node_to_chunk(
+                root, None, node, validate=False,
+                max_words=PROMOTE_CODENAME_MAX_WORDS,
+            )
             seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
             idea.promoted_node_key = node["node_key"]
             write_session(root, session)
