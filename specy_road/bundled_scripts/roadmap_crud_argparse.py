@@ -38,6 +38,12 @@ def _p_list(sub: argparse._SubParsersAction) -> None:
             + ", ".join(sorted(ROADMAP_NODE_STATUSES))
         ),
     )
+    sp.add_argument(
+        "--json",
+        dest="as_json",
+        action="store_true",
+        help="Print a JSON array of full node objects (titles untruncated), each with its chunk path",
+    )
     sp.set_defaults(func=cmd_list)
 
 

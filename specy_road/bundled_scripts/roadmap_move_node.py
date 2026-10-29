@@ -106,17 +106,47 @@ def _stage_planning_moves(
             plan.stage_delete(src)
 
 
+def _rewrite_touch_zones(items: list, renamed: dict[str, str]) -> bool:
+    """Replace every touch-zone path segment equal to a renumbered display id.
+
+    A zone such as ``docs/M1.2/`` names the node by position, so a renumber
+    would leave it pointing at whatever now sits at ``M1.2``. Only whole
+    segments match: ``M1.2`` in ``docs/M1.2.1/`` or ``M1.2-notes`` is left
+    alone. Each segment is looked up once in the old -> new map, so chains
+    (``M1.3`` -> ``M1.2`` -> ``M1.1``) resolve to the node the zone named.
+    Returns whether anything changed.
+    """
+    changed = False
+    for item in items:
+        zones = item.get("touch_zones") if isinstance(item, dict) else None
+        if not isinstance(zones, list):
+            continue
+        new = [
+            "/".join(renamed.get(seg, seg) for seg in z.split("/")) if isinstance(z, str) else z
+            for z in zones
+        ]
+        if new != zones:
+            item["touch_zones"] = new
+            changed = True
+    return changed
+
+
 def _stage_registry_ids(
     plan: AtomicWritePlan, root: Path, old_to_new: dict[str, str]
 ) -> None:
-    """Stage the registry rewrite so claims still point at the moved nodes."""
+    """Stage the registry rewrite so claims still point at the moved nodes.
+
+    A claim carries its own copy of the node's touch zones, which the finish
+    check reads first, so those segments are rewritten too.
+    """
     path = registry_path(root)
     if not old_to_new or not path.is_file():
         return
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or not isinstance(data.get("entries"), list):
         return
-    changed = False
+    renamed = {o: n for o, n in old_to_new.items() if o != n}
+    changed = _rewrite_touch_zones(data["entries"], renamed)
     for entry in data["entries"]:
         if not isinstance(entry, dict):
             continue
@@ -161,6 +191,7 @@ def move_node(
     _detach_reindex_old_parent(nodes, by_id, moved.get("parent_id"), old_id)
     _attach_at_index(nodes, by_id, moved, old_id, new_parent_id, new_index)
     old_to_new = renumber_display_ids_inplace(nodes)
+    _rewrite_touch_zones(nodes, {o: n for o, n in old_to_new.items() if o != n})
     sheet_moves = plan_planning_artifact_moves(nodes)
 
     plan = AtomicWritePlan(root)
@@ -217,7 +248,8 @@ def cmd_move(args: argparse.Namespace) -> None:
     for old, new in sorted(renamed.items()):
         print(f"  {old} -> {new}")
     print(
-        "\nPlanning sheets and roadmap/registry.yaml were updated to match. "
+        "\nPlanning sheets, touch-zone path segments equal to an old id, and "
+        "roadmap/registry.yaml were updated to match. "
         "Any feature/rm-* branch keeps its codename; only ids moved."
     )
 
@@ -227,8 +259,9 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road move-node",
         description=(
             "Re-parent a node and its subtree, renumbering display ids across "
-            "the roadmap. Renames planning sheets and updates registry claims "
-            "in the same transaction."
+            "the roadmap. Renames planning sheets, rewrites touch-zone path "
+            "segments equal to an old id, and updates registry claims in the "
+            "same transaction."
         ),
     )
     p.add_argument("node_id", metavar="NODE_ID", help="The node to move (e.g. M1.2).")
