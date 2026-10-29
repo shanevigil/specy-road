@@ -106,6 +106,7 @@ entries:
     node_id: M3.5
     branch: feature/rm-brainstorm-converge-checks
     touch_zones:
+      - specy_road/bundled_scripts/brainstorm_fields.py
       - specy_road/bundled_scripts/brainstorm_cli.py
       - specy_road/bundled_scripts/brainstorm_cli_args.py
       - specy_road/bundled_scripts/brainstorm_cli_v2.py
