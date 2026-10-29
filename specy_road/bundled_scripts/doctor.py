@@ -35,16 +35,19 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
-from specy_road.bundled_scripts.branches_cli import _branches, _live_branches
+from specy_road.bundled_scripts.branches_cli import (
+    feature_branches,
+    fetch_integration,
+    live_branches,
+)
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
-from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_code, git_text, local_branch_exists
-from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_checked, git_code, git_text
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 
-TOOLKIT_STASH = re.compile(r"^(?:WIP on|On) [^:]+: specy-road: ")
+TOOLKIT_STASH = re.compile(r"^On [^:]+: specy-road: ")
 # commit-tree needs an identity, and a CI runner may have none configured.
 _PROBE_IDENT = ["-c", "user.name=specy-road", "-c", "user.email=doctor@specy-road.invalid"]
 SAME_PATCH = "merged (same patch content)"
@@ -81,15 +84,14 @@ def merged_how(root: Path, ref: str, target: str) -> str | None:
     if _all_upstream(root, target, ref):
         return SAME_PATCH
     base = git_text(["merge-base", target, ref], root)
-    tree = git_text(["rev-parse", f"{ref}^{{tree}}"], root)
-    if base and tree:
-        # The whole branch as one commit on its merge base: what a squash lands.
-        squash = git_text(
-            [*_PROBE_IDENT, "commit-tree", tree, "-p", base, "-m", "doctor squash probe"], root
-        )
-        if squash and _all_upstream(root, target, squash):
-            return SAME_PATCH
-    return None
+    if base is None:   # an orphan branch shares no history with target
+        return None
+    # The whole branch as one commit on its merge base: what a squash lands.
+    squash = git_checked(
+        [*_PROBE_IDENT, "commit-tree", f"{ref}^{{tree}}", "-p", base, "-m", "doctor squash probe"],
+        root,
+    )
+    return SAME_PATCH if _all_upstream(root, target, squash) else None
 
 
 def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
@@ -106,7 +108,7 @@ def _branch_reason(ctx: _Ctx, ref: str, branch: str) -> tuple[str, bool]:
     how = merged_how(ctx.root, ref, ctx.target)
     if how:
         return how, True
-    ahead = git_text(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root) or "?"
+    ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
     node_id = ctx.complete.get(branch.removeprefix("feature/rm-"))
     why = f"leaf {node_id} Complete" if node_id else "claim gone"
     return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks", False
@@ -133,7 +135,7 @@ def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], set[str]]:
     found: list[Finding] = []
     merged_local: set[str] = set()
     for prefix, where in (("refs/heads/", "local"), (f"refs/remotes/{ctx.remote}/", ctx.remote)):
-        for b in _branches(ctx.root, prefix):
+        for b in feature_branches(ctx.root, prefix):
             if b in ctx.live:
                 continue
             reason, merged = _branch_reason(ctx, prefix + b, b)
@@ -168,8 +170,6 @@ def _worktree_reason(ctx: _Ctx, wt: dict[str, str], merged_local: set[str]) -> s
         if head and merged_into(ctx.root, head, ctx.target):
             return f"branch gone: detached at {head[:12]}, which {ctx.target} contains"
         return None
-    if not local_branch_exists(ctx.root, branch):
-        return f"branch {branch} is gone"
     if branch in merged_local:
         return f"branch {branch} is merged"
     return None
@@ -181,10 +181,7 @@ def _ignored_note(path: Path) -> str:
         return ""
     out = git_text(["status", "--porcelain", "--ignored"], path) or ""
     ignored = [line[3:] for line in out.splitlines() if line.startswith("!! ")]
-    if not ignored:
-        return ""
-    more = f" and {len(ignored) - 3} more" if len(ignored) > 3 else ""
-    return f"; removing it deletes ignored {', '.join(ignored[:3])}{more}"
+    return f"; removing it deletes ignored {', '.join(ignored)}" if ignored else ""
 
 
 def _remove_worktree(root: Path, path: str) -> str | None:
@@ -193,7 +190,7 @@ def _remove_worktree(root: Path, path: str) -> str | None:
 
 
 def _worktree_findings(ctx: _Ctx, merged_local: set[str]) -> list[Finding]:
-    here = Path(git_text(["rev-parse", "--show-toplevel"], ctx.root) or ctx.root).resolve()
+    here = Path(git_checked(["rev-parse", "--show-toplevel"], ctx.root)).resolve()
     found = []
     for wt in _worktrees(ctx.root)[1:]:   # the first is the main worktree
         path = wt["worktree"]
@@ -223,14 +220,12 @@ def _registry_findings(ctx: _Ctx) -> list[Finding]:
     reg = read_registry_at_ref(ctx.root, ctx.target, DEFAULT_TIMEOUT) or {}
     return [
         Finding(
-            "registry", str(e.get("codename")),
-            f"node {e.get('node_id', '?')}: {e.get('branch')} is in neither this clone "
-            f"nor {ctx.remote}",
-            partial(_prune_row, ctx, str(e.get("codename"))),
-            f"removed registry row {e.get('codename')} on {ctx.target}",
+            "registry", e["codename"],
+            f"node {e['node_id']}: {e['branch']} is in neither this clone nor {ctx.remote}",
+            partial(_prune_row, ctx, e["codename"]),
+            f"removed registry row {e['codename']} on {ctx.target}",
         )
         for e in detect_stale_claims(repo_root=ctx.root, reg=reg, remote=ctx.remote)
-        if e.get("codename")
     ]
 
 
@@ -311,23 +306,13 @@ def _fix(sections: list[tuple[str, str, list[Finding]]], yes: bool) -> int:
 
 def _context(ns: argparse.Namespace) -> _Ctx | None:
     root = resolve_repo_root(ns)
-    base, remote, warns = resolve_integration_defaults(
-        root, explicit_base=ns.base, explicit_remote=ns.remote
-    )
-    for w in warns:
-        print(f"warning: {w}", file=sys.stderr)
-    code, out = git_code(["fetch", "--prune", remote], root)
-    if code != 0:
-        print(
-            f"error: git fetch --prune {remote} failed: {out}\n"
-            f"  Merged means contained in {remote}/{base}, and a stale copy of "
-            "it would misreport. Fix the remote, then re-run.",
-            file=sys.stderr,
-        )
+    fetched = fetch_integration(root, ns)
+    if fetched is None:
         return None
+    base, remote = fetched
     target = f"{remote}/{base}"
     nodes = load_roadmap_nodes_at_ref(root, target)
-    live = _live_branches(root, target)
+    live = live_branches(root, target)
     if nodes is None or live is None:
         print(f"error: could not read the roadmap at {target}. Not listing anything.",
               file=sys.stderr)

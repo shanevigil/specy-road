@@ -82,6 +82,9 @@ def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-missing"), "feature/rm-squash")
     shutil.rmtree(tmp_path / "wt-missing")
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-thing"), "feature/rm-thing")
+    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-wip"), "feature/rm-open")
+    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-locked"), "dev")
+    git(repo, "worktree", "lock", str(tmp_path / "wt-locked"))
 
     for msg in (TOOLKIT_STASH, "mine"):
         (repo / "work").mkdir(exist_ok=True)
@@ -98,6 +101,7 @@ LISTED_LOCAL = {
     "feature/rm-open": "claim gone, not merged: 1 commit(s) origin/dev lacks",
 }
 KEPT = ("feature/rm-thing", "feature/rm-roll")
+KEPT_WORKTREES = ("wt-thing", "wt-wip", "wt-locked")
 
 
 def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> None:
@@ -112,10 +116,11 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
     assert "origin    feature/rm-gone  — merged" in out
     for branch in KEPT:
         assert branch not in out.split("Worktrees")[0]
-    assert "wt-done  — branch feature/rm-done is merged; removing it deletes ignored work/reviews/" in out
+    assert "wt-done  — branch feature/rm-done is merged; removing it deletes ignored work/" in out
     assert "wt-detached  — branch gone: detached at" in out
     assert "wt-missing  — directory missing" in out
-    assert "wt-thing" not in out
+    for name in KEPT_WORKTREES:
+        assert name not in out
     assert "ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin" in out
     assert TOOLKIT_STASH in out
     assert ": mine" not in out
@@ -148,7 +153,8 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
         assert any(line.startswith("[ok] removed worktree ") and line.endswith(name)
                    for line in out.splitlines())
         assert name not in git(repo, "worktree", "list")
-    assert "wt-thing" in git(repo, "worktree", "list")
+    for name in KEPT_WORKTREES:
+        assert name in git(repo, "worktree", "list")
     assert "[ok] removed registry row ghost on origin/dev" in out
     assert "ghost" not in git(bare, "show", "dev:roadmap/registry.yaml")
     assert "[ok] dropped stash" in out
@@ -193,15 +199,42 @@ def test_fix_without_an_answer_stops_before_removing(doctor_repo, capsys, monkey
     assert _has(repo, "refs/heads/feature/rm-done")
 
 
-def test_a_branch_moved_after_listing_is_not_deleted(doctor_repo) -> None:
+def test_fix_leaves_what_changed_after_listing(doctor_repo, capsys, monkeypatch) -> None:
+    """Another session moves a branch (here and on the remote) and drops the stash mid-fix."""
+    repo, bare = doctor_repo
+    stash = git(repo, "rev-parse", "stash@{1}")   # the toolkit's; "mine" is on top
+    moved_to = git(repo, "rev-parse", "feature/rm-done")
+
+    def answer(prompt: str) -> str:
+        kind = prompt.split()[4]
+        if kind == "branch":
+            git(repo, "branch", "-f", "feature/rm-open", "feature/rm-done")
+            git(repo, "push", "-q", "-f", "origin", "feature/rm-done:feature/rm-open")
+        if kind == "stash":
+            git(repo, "stash", "drop", "-q", "stash@{1}")
+        return "y"
+
+    monkeypatch.setattr("builtins.input", answer)
+
+    assert _exit(["--fix", "--repo-root", str(repo)]) == 1
+
+    out, err = capsys.readouterr()
+    assert "[warn] local feature/rm-open: moved since it was listed; left alone" in err
+    assert "[warn] origin feature/rm-open: left on origin." in err
+    assert f"[warn] {stash[:12]}: no longer on the stash stack" in err
+    assert git(repo, "rev-parse", "feature/rm-open") == moved_to
+    assert git(bare, "rev-parse", "feature/rm-open") == moved_to
+    assert "[ok] deleted local branch feature/rm-finished" in out
+
+
+def test_doctor_never_lists_the_worktree_it_runs_in(doctor_repo, capsys) -> None:
     repo, _bare = doctor_repo
-    listed = git(repo, "rev-parse", "feature/rm-open")
-    git(repo, "branch", "-f", "feature/rm-open", "feature/rm-done")
 
-    failure = doctor._delete_local(repo, "feature/rm-open", listed)
+    assert _exit(["--repo-root", str(repo.parent / "wt-detached")]) == 0
 
-    assert failure == "moved since it was listed; left alone"
-    assert _has(repo, "refs/heads/feature/rm-open")
+    out = capsys.readouterr().out
+    assert "wt-detached" not in out
+    assert "wt-done  — branch feature/rm-done is merged" in out
 
 
 def test_merged_how_needs_the_patch_upstream_not_just_the_files(tmp_path: Path) -> None:
@@ -210,16 +243,27 @@ def test_merged_how_needs_the_patch_upstream_not_just_the_files(tmp_path: Path) 
     git(repo, "checkout", "-q", "dev")
     _branch_with_commits(repo, "feature/rm-x", "src/x.py")
     commit_file(repo, "src/x.py", "something else\n", "different content, same path")
+    git(repo, "checkout", "-q", "--orphan", "feature/rm-orphan")
+    commit_file(repo, "src/x.py", "something else\n", "same file, no shared history")
+    git(repo, "checkout", "-q", "dev")
 
     assert doctor.merged_how(repo, "feature/rm-x", "dev") is None
+    assert doctor.merged_how(repo, "feature/rm-orphan", "dev") is None
     assert doctor.merged_how(repo, "feature/rm-thing", "feature/rm-thing") == "merged"
 
 
-def test_doctor_refuses_without_a_fresh_fetch(doctor_repo, capsys) -> None:
-    repo, bare = doctor_repo
-    git(repo, "remote", "set-url", "origin", str(bare.parent / "missing.git"))
+@pytest.mark.parametrize("git_args, doctor_args, error", [
+    (["remote", "set-url", "origin", "missing.git"], [], "git fetch --prune origin failed"),
+    (None, ["--base", "nope"], "could not read the roadmap at origin/nope"),
+], ids=["fetch fails", "no roadmap on the base"])
+def test_doctor_refuses_without_a_fresh_roadmap(
+    doctor_repo, capsys, git_args, doctor_args, error
+) -> None:
+    repo, _bare = doctor_repo
+    if git_args:
+        git(repo, *git_args)
 
-    assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 1
+    assert _exit(["--fix", "--yes", *doctor_args, "--repo-root", str(repo)]) == 1
 
-    assert "git fetch --prune origin failed" in capsys.readouterr().err
+    assert error in capsys.readouterr().err
     assert _has(repo, "refs/heads/feature/rm-done")
