@@ -415,6 +415,34 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet and handoff status report when the branch is behind the integration branch and a trial merge (git merge-tree) would conflict, naming the files, so the executor merges and resolves before reviewers run",
+        "mark-implementation-reviewed and finish-this-task refuse while a trial merge conflicts on any non-bookkeeping path, before writing any bookkeeping commit",
+        "Tests cover a clean trial merge, a bookkeeping-only conflict (allowed), and a code conflict (refused)"
+      ],
+      "codename": "a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.13",
+      "node_key": "6ef93230-aa7f-44d7-9138-4e7aef301c0e",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.13_a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish_6ef93230-aa7f-44d7-9138-4e7aef301c0e.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "A trial merge with the integration branch runs before review and before finish",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/finish_land_integration.py",
+        "specy_road/git_subprocess.py",
+        "docs/orchestration.md",
+        "docs/dev-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

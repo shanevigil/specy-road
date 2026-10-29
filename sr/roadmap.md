@@ -26,6 +26,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Not Started |
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Not Started |
 | `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Not Started |
+| `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |
