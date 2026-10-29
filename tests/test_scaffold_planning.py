@@ -4,11 +4,11 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.scaffold_planning import scaffold_planning_for_node
 
-from tests.test_roadmap_crud import _fixture_repo
+from tests.test_roadmap_crud import crud_fixture_repo
 
 
 def test_scaffold_restores_missing_planning_file(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     nk991 = "10000000-0000-4000-8000-000000009902"
     rel = f"planning/M99.1_one_{nk991}.md"
     p = tmp_path / rel

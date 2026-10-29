@@ -305,7 +305,8 @@
         "specy_road/bundled_scripts/role_prompt.py",
         "specy_road/bundled_scripts/generate_brief.py",
         "specy_road/worker_reconcile.py",
-        "specy_road/bundled_scripts/worker_cli.py"
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py"
       ],
       "type": "task"
     },
@@ -315,7 +316,8 @@
         "worker reconcile treats a directory touch zone (schemas/) as covering its files, and does not report the brief as changed when a fresh render is byte-identical to the delegated copy",
         "handoff status labels the executor's recorded verify results as executor-reported, distinct from a reviewer's re-run",
         "worker sync shows the full final message of a completion that has no READY file",
-        "finish-this-task in merge mode states, before acting, that it will push the integration branch and how many commits that includes beyond this leaf's; --help says merge mode pushes"
+        "finish-this-task in merge mode states, before acting, that it will push the integration branch and how many commits that includes beyond this leaf's; --help says merge mode pushes",
+        "When a worker exits with an error, worker sync and worker list show the harness's final message (for example a usage-limit refusal), not only the exit code"
       ],
       "codename": "worker-reconcile-and-status",
       "dependencies": [],

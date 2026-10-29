@@ -11,9 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.agent_guide_block import render_guide_lines
+from specy_road.agents_md_block import render_agents_lines
 
 REPO = Path(__file__).resolve().parent.parent
-AGENTS = REPO / "specy_road" / "templates" / "specyrd" / "agents-md-block.md"
+AGENTS = "\n".join(render_agents_lines())
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 
 _SENTENCES = (
@@ -25,15 +26,13 @@ _SENTENCES = (
 
 
 def test_scaffold_agents_md_carries_the_full_rule() -> None:
-    text = AGENTS.read_text(encoding="utf-8")
     for s in _SENTENCES:
-        assert s in text, s
+        assert s in AGENTS, s
 
 
 def test_bootstrap_prompt_carries_the_same_rule() -> None:
-    agents = AGENTS.read_text(encoding="utf-8")
-    start = agents.index("**Shared checkouts and other agents.**")
-    rule = agents[start:agents.index("\n\n", start)]
+    start = AGENTS.index("**Shared checkouts and other agents.**")
+    rule = AGENTS[start:AGENTS.index("\n\n", start)]
     assert rule in PROMPT.read_text(encoding="utf-8")
 
 

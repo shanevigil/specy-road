@@ -32,11 +32,12 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Not Started |
 | `M4.5` | Repository files as evidence; null results; quotes on research-born ideas | task | Agentic-led | Not Started |
 | `M4.6` | Lenses from the frame and a ranked node list in the recommend prompt | task | Agentic-led | Not Started |
-| `M4.7` | Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies | task | Agentic-led | Not Started |
+| `M4.7` | Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies | task | Agentic-led | Complete |
 | `M4.8` | list-nodes --json, refresh-stubs --diff, move-node zone rewrite | task | Agentic-led | Not Started |
 | `M4.9` | Opt-in auto-pick ordering by execution milestone | task | Agentic-led | Not Started |
+| `M4.10` | Clean up merged feature branches after finish | task | Agentic-led | Not Started |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
-| `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Not Started |
+| `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Not Started |
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Not Started |
 | `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Not Started |

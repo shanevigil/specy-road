@@ -211,7 +211,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.7_graph-apply_d1ffe271-ef17-495a-90de-74a35990666e.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
@@ -229,8 +229,7 @@
       "acceptance": [
         "`list-nodes --json` emits the full node list without title truncation",
         "`refresh-stubs --diff` shows the managed-block and skill changes before writing",
-        "move-node rewrites touch-zone path segments that equal the old display id",
-        "`finish-this-task` in merge mode can delete the merged feature branch locally and on the remote (`--delete-branch`), and `specy-road branches prune` lists or deletes merged feature/rm-* branches"
+        "move-node rewrites touch-zone path segments that equal the old display id"
       ],
       "codename": "graph-listing-and-moves",
       "dependencies": [],
@@ -275,6 +274,45 @@
         "specy_road/bundled_scripts/session_plan_render.py",
         "specy_road/git_workflow_config.py",
         "docs/dev-workflow.md",
+        "tests/",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "schemas/git-workflow.schema.json",
+        "tests/fixtures/specy_road_dogfood/schemas/",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/bundled_scripts/grind_session_step.py",
+        "docs/grind-session.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`finish-this-task --delete-branch` in merge mode deletes the merged feature branch locally and on the remote after the merge, and says so",
+        "`specy-road branches prune [--delete]` lists merged feature/rm-* branches locally and on the remote, and deletes them only with --delete",
+        "docs/git-workflow.md and the specyrd-finish skill describe both"
+      ],
+      "codename": "branch-cleanup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "Merged feature branches stop accumulating locally and on the remote.",
+      "id": "M4.10",
+      "node_key": "34da74ce-0529-4465-ba64-ded0310e2814",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.10_branch-cleanup_34da74ce-0529-4465-ba64-ded0310e2814.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Clean up merged feature branches after finish",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/finish_modes.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/bundled_scripts/",
+        "docs/git-workflow.md",
+        "specy_road/templates/specyrd/commands/specyrd-finish.md",
         "tests/"
       ],
       "type": "task"

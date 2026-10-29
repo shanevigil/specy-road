@@ -77,6 +77,7 @@ _CRUD_COMMANDS = (
     "set-dependencies",
     "add-dependency",
     "remove-dependency",
+    "apply",
 )
 
 _ARCHIVE_COMMANDS = (

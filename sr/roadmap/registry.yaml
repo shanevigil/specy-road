@@ -17,21 +17,7 @@ entries:
       - specy_road/bundled_scripts/generate_brief.py
       - specy_road/worker_reconcile.py
       - specy_road/bundled_scripts/worker_cli.py
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
-  - codename: graph-apply
-    node_id: M4.7
-    branch: feature/rm-graph-apply
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/roadmap_crud_dependency_ops.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - docs/roadmap-authoring.md
-      - tests/
+      - specy_road/bundled_scripts/orchestrate_cli.py
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
@@ -57,6 +43,54 @@ entries:
       - specy_road/bundled_scripts/session_plan_render.py
       - specy_road/git_workflow_config.py
       - docs/dev-workflow.md
+      - tests/
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - schemas/git-workflow.schema.json
+      - tests/fixtures/specy_road_dogfood/schemas/
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_git.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/bundled_scripts/grind_session_step.py
+      - docs/grind-session.md
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: stale-command-check
+    node_id: M5.2
+    branch: feature/rm-stale-command-check
+    touch_zones:
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/cli.py
+      - specy_road/managed_block.py
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: context-budget-meter
+    node_id: M5.3
+    branch: feature/rm-context-budget-meter
+    touch_zones:
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - specy_road/agents_md_block.py
+      - specy_road/agent_guide_block.py
+      - docs/install-and-usage.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: branch-cleanup
+    node_id: M4.10
+    branch: feature/rm-branch-cleanup
+    touch_zones:
+      - specy_road/bundled_scripts/finish_task.py
+      - specy_road/finish_modes.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/bundled_scripts/
+      - docs/git-workflow.md
+      - specy_road/templates/specyrd/commands/specyrd-finish.md
       - tests/
     started: '2026-10-28'
     owner: savigil
