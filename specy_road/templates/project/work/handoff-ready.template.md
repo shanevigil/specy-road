@@ -11,5 +11,9 @@ base: "SHA your branch started from (git merge-base <integration> HEAD)"
 changed_paths: [src/example.py]
 verify:
   - {cmd: "the verifier or test command you ran", exit: 0, tail: "last lines of its output"}
+# When a criterion can be met only by deleting, skipping or weakening a test, or
+# by raising a baseline or cap, stop and list it here instead of making that change:
+# blocked_on:
+#   - {acceptance: A1, reason: "why the criterion is blocked"}
 ---
 Optional notes for the coordinator: anything you could not finish, and why.

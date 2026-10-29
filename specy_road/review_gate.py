@@ -64,6 +64,7 @@ from specy_road.review_files import (
     latest_ready,
     list_reviews,
     verifier_gate_problems,
+    executor_blocked_gate_problems,
 )
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
@@ -265,8 +266,11 @@ def evaluate_gate(
             result.ineligible.append((review, why or "not eligible"))
         else:
             _count(result, counted)
-    ready = latest_ready(repo_root, node["id"], branch)
-    result.verifier_problems = verifier_gate_problems(ready, result.approvals)
+    ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))
+    result.verifier_problems = (
+        verifier_gate_problems(ready, result.approvals)
+        + executor_blocked_gate_problems(ready)
+    )
     return result
 
 

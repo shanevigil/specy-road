@@ -30,9 +30,23 @@
           "tail": { "type": "string" }
         }
       }
+    },
+    "blocked_on": {
+      "type": "array",
+      "description": "Acceptance criteria the executor could not meet without weakening tests or raising a baseline or cap.",
+      "items": {
+        "type": "object",
+        "required": ["acceptance", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "acceptance": { "$ref": "#/$defs/acceptanceId" },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   },
   "$defs": {
-    "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+    "acceptanceId": { "type": "string", "pattern": "^A[1-9][0-9]*$" }
   }
 }
