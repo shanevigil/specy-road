@@ -25,8 +25,13 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
             "declaration.ts",
             [("overloaded", 4, 3), ("load", 8, 6), ("ids", 15, 4), ("shape", 20, 3)],
         ),
-        # Typed bindings, `<T,>` generics and `(…)` JSX bodies; expression bodies and calls are not measured.
-        ("arrow.tsx", [("Badge", 3, 5), ("usePick", 9, 3), ("parse", 13, 3)]),
+        # Typed bindings, `<T,>` generics, `(…)` JSX and concise bodies; a call is not a function.
+        ("arrow.tsx", [("Badge", 3, 5), ("usePick", 9, 3), ("parse", 13, 3), ("twice", 17, 1)]),
+        # Concise bodies run on through continued lines and stop at the statement's end.
+        (
+            "concise_arrow.ts",
+            [("total", 1, 6), ("curried", 8, 3), ("label", 11, 1), ("after", 12, 3)],
+        ),
         # Modifiers, accessors, private names, arrow fields; abstract signatures have no body.
         (
             "class_methods.ts",
@@ -41,6 +46,9 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
         ),
         # Braces inside strings, nested template literals and comments are ignored.
         ("literals.mjs", [("render", 5, 5), ("after", 10, 3)]),
+        # Braces inside regex literals are ignored; a `/` after an operand is a division.
+        ("regex.js", [("strip", 1, 5), ("next", 7, 3)]),
+        ("division.js", [("layout", 1, 5), ("next", 7, 3)]),
         (
             "legacy.js",
             [("Legacy", 1, 3), ("greet", 5, 3), ("double", 9, 3), ("Modern.greet", 14, 3)],
@@ -64,6 +72,26 @@ def test_scan_reports_over_cap_js_function_with_line(tmp_path: Path, suffix: str
     assert err.getvalue() == (
         f"file-limits: widget{suffix}:1 function `Widget` 10 lines (max 4 per function)\n"
     )
+
+
+@pytest.mark.parametrize(
+    ("fixture", "report"),
+    [
+        # A long concise-body arrow is measured to the end of its expression.
+        ("concise_arrow.ts", "concise_arrow.ts:1 function `total` 6 lines"),
+        # `/\}+$/` and `/[{]/` must not end or extend `strip`.
+        ("regex.js", "regex.js:1 function `strip` 5 lines"),
+        # Read as a regex, `/ 2 }; const r = height /` would hide a `}` and swallow `next`.
+        ("division.js", "division.js:1 function `layout` 5 lines"),
+    ],
+)
+def test_scan_measures_concise_arrows_regexes_and_divisions(
+    tmp_path: Path, fixture: str, report: str
+) -> None:
+    shutil.copy(FIXTURES / fixture, tmp_path / fixture)
+    err = io.StringIO()
+    assert run_file_limits_scan(tmp_path, _cfg(fixture), err=err) is True
+    assert err.getvalue() == f"file-limits: {report} (max 4 per function)\n"
 
 
 def test_js_function_hard_alert(tmp_path: Path) -> None:

@@ -1,12 +1,13 @@
 """Function line spans for TypeScript and JavaScript sources (``file-limits``).
 
-The stdlib has no TS/JS parser, so this masks out comments, strings and
-template literals, then balances brackets on what is left. It measures three
-forms: ``function`` declarations, arrow functions bound by ``const`` / ``let``
-/ ``var``, and class methods (arrow-valued class fields included). A function
-inside a class or another function is named ``Outer.inner``, as the Python
-report does. Regex literals are not masked, so one holding an unpaired quote
-or bracket can throw a span off.
+The stdlib has no TS/JS parser, so this masks out comments, strings, template
+literals and regex literals, then balances brackets on what is left. It
+measures three forms: ``function`` declarations, arrow functions bound by
+``const`` / ``let`` / ``var``, and class methods (arrow-valued class fields
+included). A concise arrow body runs to its terminating ``;``, ``,`` or
+closing bracket, or to a line break the next line does not continue. A
+function inside a class or another function is named ``Outer.inner``, as the
+Python report does.
 """
 
 from __future__ import annotations
@@ -28,7 +29,20 @@ _MEMBER_RE = re.compile(
     rf"|accessor|get|set)\s+)*(?:\*\s*)?(#?{_IDENT})\s*\??\s*"
 )
 _ASYNC_RE = re.compile(r"async\b\s*")
-_LITERAL_START_RE = re.compile(r"//|/\*|['\"`]")
+_LITERAL_START_RE = re.compile(r"[/'\"`]")
+# A `/` starts a regex after these, not a division. `<` is left out so a JSX
+# closing tag (`</div>`) is not read as one.
+_REGEX_AFTER = frozenset("(,=:[!&|?{};+-*%>~^")
+_REGEX_AFTER_WORDS = frozenset(
+    {"return", "typeof", "instanceof", "case", "do", "else", "in", "of", "new",
+     "delete", "void", "throw", "yield", "await"}
+)
+_TRAILING_WORD_RE = re.compile(r"[\w$]+$")
+_REGEX_FLAGS_RE = re.compile(r"[A-Za-z]*")
+# A concise arrow body goes on past a line break when the line ends with, or
+# the next one starts with, one of these.
+_CONTINUES_AFTER = frozenset("=+-*/%&|^!~<>?:,.")
+_CONTINUES_BEFORE = frozenset("=+-*/%&|^<>?:.")
 _BRACKET_RE = re.compile(r"[()\[\]{}]")
 _WS_RE = re.compile(r"\s*")
 _NOT_NEWLINE_RE = re.compile(r"[^\n]")
@@ -106,14 +120,66 @@ def _expr_end(src: str, i: int) -> int:
     return len(src)
 
 
+def _regex_allowed(src: str, prev: int, i: int) -> bool:
+    """Whether the ``/`` at ``i`` opens a regex, ``prev`` being the last significant code index."""
+    if _ch(src, i + 1) == ">":  # `/>` closes a JSX tag
+        return False
+    if prev < 0 or "\n" in src[prev:i] or src[prev] in _REGEX_AFTER:
+        return True
+    word = _TRAILING_WORD_RE.search(src, max(0, prev - 11), prev + 1)
+    return word is not None and word.group() in _REGEX_AFTER_WORDS
+
+
+def _regex_end(src: str, i: int) -> int | None:
+    """End of the regex literal at ``i`` (flags included); None if the line ends first."""
+    j = i + 1
+    in_class = False
+    while j < len(src):
+        c = src[j]
+        if c == "\\":
+            j += 2
+            continue
+        if c == "\n":
+            return None
+        if in_class:
+            in_class = c != "]"
+        elif c == "[":
+            in_class = True
+        elif c == "/":
+            return _REGEX_FLAGS_RE.match(src, j + 1).end()
+        j += 1
+    return None
+
+
 def mask_source(src: str) -> str:
-    """``src`` with comments, strings and template literals blanked, newlines kept."""
+    """``src`` with comments blanked and strings, templates and regexes reduced to ``"``.
+
+    Every literal keeps its length and newlines, so offsets and line numbers
+    still match ``src``.
+    """
     out: list[str] = []
     i = 0
+    prev = -1  # last significant code index; comments do not count
     while (m := _LITERAL_START_RE.search(src, i)) is not None:
-        out.append(src[i : m.start()])
-        i = _literal_end(src, m.start())
-        out.append(_NOT_NEWLINE_RE.sub(" ", src[m.start() : i]))
+        start = m.start()
+        code = src[i:start]
+        if code.strip():
+            prev = i + len(code.rstrip()) - 1
+        out.append(code)
+        end = _literal_end(src, start)
+        if end is None and _regex_allowed(src, prev, start):
+            end = _regex_end(src, start)
+        if end is None:  # a division
+            out.append("/")
+            prev, i = start, start + 1
+            continue
+        blank = _NOT_NEWLINE_RE.sub(" ", src[start:end])
+        if not src.startswith(("//", "/*"), start):
+            # A `"` stands in for the literal, so it still reads as an operand.
+            blank = '"' + blank[1:]
+            prev = end - 1
+        out.append(blank)
+        i = end
     out.append(src[i:])
     return "".join(out)
 
@@ -184,7 +250,7 @@ def _decl_body(s: str, j: int) -> int | None:
 
 
 def _arrow_body(s: str, j: int) -> int | None:
-    """The ``{`` or ``(`` opening an arrow function's body, if the value at ``j`` is one."""
+    """Where an arrow function's body starts, if the value at ``j`` is one."""
     j = _ws(s, j)
     if m := _ASYNC_RE.match(s, j):
         j = m.end()
@@ -202,7 +268,30 @@ def _arrow_body(s: str, j: int) -> int | None:
     if not s.startswith("=>", j):
         return None
     j = _ws(s, j + 2)
-    return j if _ch(s, j) in ("{", "(") else None
+    return j if j < len(s) else None
+
+
+def _body_end(s: str, j: int) -> int:
+    """Index of the last character of the function body starting at ``j``."""
+    if s[j] == "{":
+        return _close(s, j)
+    last = j
+    while j < len(s):
+        c = s[j]
+        if c in _OPEN:
+            last = j = _close(s, j)
+        elif c in ";,)]}":
+            break
+        elif c == "\n":
+            k = _ws(s, j)
+            if _ch(s, last) not in _CONTINUES_AFTER and _ch(s, k) not in _CONTINUES_BEFORE:
+                break
+            j = k
+            continue
+        elif not c.isspace():
+            last = j
+        j += 1
+    return min(last, len(s) - 1)
 
 
 def _class_members(s: str, j: int, close: int) -> list[tuple[int, int, str]]:
@@ -225,7 +314,7 @@ def _class_members(s: str, j: int, close: int) -> list[tuple[int, int, str]]:
         if body is None:
             j = k
             continue
-        end = _close(s, body)
+        end = _body_end(s, body)
         found.append((m.start(), end, m.group(1)))
         j = end + 1
     return found
@@ -246,7 +335,7 @@ def _spans(s: str) -> tuple[list[tuple[int, int, str]], list[tuple[int, int, str
             j = _type_end(s, j + 1, "=")
         body = _arrow_body(s, j + 1) if j is not None and _ch(s, j) == "=" else None
         if body is not None:
-            funcs.append((m.start(), _close(s, body), m.group(1)))
+            funcs.append((m.start(), _body_end(s, body), m.group(1)))
     for m in _CLASS_RE.finditer(s):
         close = _close(s, m.end() - 1)
         if m.group(1):
