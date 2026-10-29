@@ -104,6 +104,8 @@ class _Harness:
 
         def fake_git(git_args, repo_root):
             self.git_calls.append(list(git_args))
+            if git_args[0] == "rev-parse":
+                return 0, "a" * 40
             return self.git_rc.get(git_args[0], 0), ""
 
         monkeypatch.setattr(gsc, "git_code", fake_git)

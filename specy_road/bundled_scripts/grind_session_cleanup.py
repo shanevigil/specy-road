@@ -50,7 +50,12 @@ def delete_local_branch(repo_root: Path, branch: str, base: str) -> dict | None:
 def delete_remote_branch(
     repo_root: Path, branch: str, base: str, remote: str
 ) -> dict | None:
-    """``git push --delete`` once ``base`` contains ``remote/branch``. Returns the failure, or ``None``."""
+    """Delete ``remote/branch`` only while it is still the tip ``base`` contains.
+
+    The delete is leased to that tip (``--force-with-lease=<ref>:<sha>``), so a
+    push that lands after the check is refused and the branch stays. Returns
+    the failure, or ``None``.
+    """
     # The local check says our copy is merged; it says nothing about theirs.
     # Someone else pushing to the same feature branch after our merge would
     # lose that commit, and a deleted remote branch is not recoverable here.
@@ -64,9 +69,23 @@ def delete_remote_branch(
                 "left on the remote. Delete it yourself once you have checked it."
             ),
         }
-    code, out = git_code(["push", remote, "--delete", branch], repo_root)
+    code, sha = git_code(["rev-parse", tracking], repo_root)
+    if code != 0 or not sha:
+        return {
+            "branch": branch,
+            "step": "push_delete",
+            "message": f"could not read {tracking}; left on the remote",
+        }
+    code, out = git_code(
+        ["push", remote, f"--force-with-lease=refs/heads/{branch}:{sha}", "--delete", branch],
+        repo_root,
+    )
     if code != 0:
-        return {"branch": branch, "step": "push_delete", "message": out}
+        return {
+            "branch": branch,
+            "step": "push_delete",
+            "message": f"{tracking} at {sha} was not deleted; left on the remote. {out}",
+        }
     return None
 
 

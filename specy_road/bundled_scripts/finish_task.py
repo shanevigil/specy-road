@@ -70,9 +70,13 @@ def _save_registry(doc: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_context(branch: str, on_complete: str | None = None) -> tuple[str, dict, dict, list[dict]]:
+def _resolve_context(
+    branch: str, on_complete: str | None = None, *, delete_branch: bool = False,
+) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
-    return resolve_feature_rm_registry_context_for_finish(ROOT, branch, on_complete)
+    return resolve_feature_rm_registry_context_for_finish(
+        ROOT, branch, on_complete, delete_branch=delete_branch,
+    )
 
 
 def _update_chunk_status(node_id: str) -> list[str]:
@@ -134,7 +138,9 @@ def _impl_review_or_exit(entry: dict, node: dict) -> None:
 
 def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
-    codename, reg, entry, nodes = _resolve_context(branch, args.on_complete)
+    codename, reg, entry, nodes = _resolve_context(
+        branch, args.on_complete, delete_branch=args.delete_branch,
+    )
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
     work_dir = ROOT / "work"

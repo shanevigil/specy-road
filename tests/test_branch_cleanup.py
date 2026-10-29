@@ -15,6 +15,7 @@ import pytest
 
 from specy_road import cli
 from specy_road.bundled_scripts import branches_cli, finish_task
+from specy_road.bundled_scripts.grind_session_cleanup import delete_remote_branch
 from tests.helpers import REPO
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 
@@ -85,6 +86,30 @@ def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
     else:
         assert f"[ok] deleted local branch {BR}; this checkout is now on dev" in out
         assert git(repo, "branch", "--show-current") == "dev"
+
+
+def test_a_retried_landing_deletes_the_branch(tmp_path: Path, monkeypatch, capsys) -> None:
+    """The bookkeeping commit already exists; the re-run only lands, and still deletes."""
+    repo, bare = _merge_mode_repo(tmp_path, monkeypatch)
+    hook = bare / "hooks" / "pre-receive"
+    hook.write_text("#!/bin/sh\nexit 1\n")
+    hook.chmod(0o755)
+
+    assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(repo)]) == 1
+
+    err = capsys.readouterr().err
+    assert "finish-this-task --on-complete merge --delete-branch" in err
+    assert _has_branch(repo, f"refs/heads/{BR}")
+    assert _has_branch(bare, f"refs/heads/{BR}")
+    hook.unlink()
+
+    assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(repo)]) == 0
+
+    out = capsys.readouterr().out
+    assert f"[ok] merged {BR} into dev and pushed to origin" in out
+    assert f"[ok] deleted {BR} on origin" in out
+    assert not _has_branch(repo, f"refs/heads/{BR}")
+    assert not _has_branch(bare, f"refs/heads/{BR}")
 
 
 def test_finish_delete_branch_is_refused_under_pr_before_any_bookkeeping(
@@ -181,6 +206,30 @@ def test_prune_delete_reports_a_refused_delete_and_exits_1(prune_repo, capsys) -
     assert "[warn] feature/rm-done:" in capsys.readouterr().err
     assert _has_branch(repo, "refs/heads/feature/rm-done")
     assert not _has_branch(bare, "refs/heads/feature/rm-done")
+
+
+def test_a_moved_remote_tip_is_not_deleted(prune_repo, tmp_path: Path) -> None:
+    """The merged check saw the old tip; a push before the delete must survive it.
+
+    finish and prune both delete through ``delete_remote_branch``, which leases
+    the delete to that tip.
+    """
+    repo, bare = prune_repo
+    branch = "feature/rm-done"
+    checked = git(repo, "rev-parse", f"origin/{branch}")
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", "-b", branch, str(bare), str(other))
+    git(other, "config", "user.email", "t@e.com")
+    git(other, "config", "user.name", "T")
+    commit_file(other, "src/later.py", "y\n", "after the check")
+    git(other, "push", "-q", "origin", branch)
+
+    failure = delete_remote_branch(repo, branch, "origin/dev", "origin")
+
+    assert failure is not None and failure["step"] == "push_delete"
+    assert "stale info" in failure["message"]
+    assert git(bare, "rev-parse", branch) != checked
+    assert _has_branch(bare, f"refs/heads/{branch}")
 
 
 def test_prune_refuses_without_a_fresh_fetch(prune_repo, capsys) -> None:

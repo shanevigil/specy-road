@@ -98,15 +98,18 @@ def print_pr_gated_state(
     )
 
 
-def merge_landing_failed(ib: str, err_msg: str) -> NoReturn:
+def merge_landing_failed(ib: str, err_msg: str, *, delete_branch: bool = False) -> NoReturn:
     """Exit 1 after a failed merge landing, naming the re-run that retries it."""
+    again = "specy-road finish-this-task --on-complete merge"
+    if delete_branch:
+        again += " --delete-branch"
     print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
     print(
         "\n--on-complete merge cannot fall back to PR instructions. "
-        "Fix the integration branch (see error above), then run "
-        "`specy-road finish-this-task --on-complete merge` again on this "
-        "branch: the bookkeeping is already committed, so it retries only "
-        "the landing. Or rerun with --on-complete pr to open a PR instead.",
+        f"Fix the integration branch (see error above), then run `{again}` "
+        "again on this branch: the bookkeeping is already committed, so it "
+        "retries only the landing. Or rerun with --on-complete pr to open a "
+        "PR instead.",
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -176,11 +179,15 @@ def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
     return any(isinstance(e, dict) and e.get("codename") == codename for e in entries)
 
 
-def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
+def retry_merge_landing(
+    repo: Path, *, branch: str, ib: str, remote: str, delete_branch: bool = False,
+) -> NoReturn:
     """Land a branch whose finish bookkeeping is committed but whose merge failed.
 
     Only the finish commit itself -- the tip that removed this leaf's registry
     row -- is landed: a commit added after it was never reviewed or checked.
+    ``--delete-branch`` on this re-run still deletes the branch once it is on
+    ``remote/ib``, including when an earlier run already got it there.
     """
     codename = codename_from_branch(branch)
     stray = stray_finish_paths(repo, branch)
@@ -193,14 +200,19 @@ def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoR
         raise SystemExit(1)
     git_ok(["fetch", "-q", remote, ib], repo)
     if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
-        print(f"\n[ok] {branch} is already merged into {ib} on {remote}; nothing to do")
+        done = "" if delete_branch else "; nothing to do"
+        print(f"\n[ok] {branch} is already merged into {ib} on {remote}{done}")
+        if delete_branch:
+            delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
         raise SystemExit(0)
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
     )
     if not ok:
-        merge_landing_failed(ib, err_msg)
+        merge_landing_failed(ib, err_msg, delete_branch=delete_branch)
     print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
+    if delete_branch:
+        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
     raise SystemExit(0)
 
 
@@ -251,7 +263,7 @@ def apply_on_complete_mode(
     if on_mode == "merge":
         # F-012: --on-complete merge means MERGE. Do NOT print PR
         # instructions as a fallback — that's exactly the bug being fixed.
-        merge_landing_failed(ib, err_msg)
+        merge_landing_failed(ib, err_msg, delete_branch=args.delete_branch)
 
     print(
         f"\nerror: could not land merge to {ib}: {err_msg}",

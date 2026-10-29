@@ -39,8 +39,11 @@ The touch zones in the brief are accurate; every changed path is inside them.
 
 ## Notes for reviewers
 
-- **Known gap, re-run after a failed landing:** when a merge landing fails, `finish-this-task` is re-run to retry it (`retry_merge_landing`, reached from `feature_rm_registry.report_finish_already_done_on_branch`). That path does not see `--delete-branch` and does not delete the branch. Covering it would mean threading the flag through `feature_rm_registry.py`, which is outside the touch zones. On that path the branch can be deleted afterwards with `branches prune --delete`.
-- **Known gap, milestone rollup:** on the milestone rollup path (`try_milestone_rollup_finish`), the leaf merges into the rollup branch rather than the integration branch, and `--delete-branch` is not applied. Nothing is printed about it.
+Review round 1 (Sol, at e7ba8af) is addressed on this branch.
+
+- **Retry applies `--delete-branch`.** A re-run in merge mode enters `retry_merge_landing` and used to return without deleting. The flag now travels with the re-run's CLI args: `finish_task._resolve_context` → `resolve_feature_rm_registry_context_for_finish` → `report_finish_already_done_on_branch` → `retry_merge_landing`. After the landing (and when the branch is already on the remote), the same `delete_landed_branch` runs. The failure message names the re-run with `--delete-branch` included, so the command it prints is the one that deletes. The on-complete session file is not where this retry reads its options: that sidecar is removed in the bookkeeping commit, before the landing is attempted, and the retry already passes `session=None`. `feature_rm_registry.py` is outside the original touch zones; the review required the flag to cross that call, and there is no other caller.
+- **Remote delete is leased to the checked tip.** `delete_remote_branch` (used by finish, `branches prune`, and grind's `--delete-merged-branches`) now runs `git push <remote> --force-with-lease=refs/heads/<branch>:<sha> --delete <branch>`, where `<sha>` is the remote-tracking tip that passed the merged check. A push that lands in between is rejected (`stale info`); the branch stays and the failure is reported. A branch that was never pushed is still skipped, before any lease.
+- **Known gap, milestone rollup:** on the milestone rollup path (`try_milestone_rollup_finish`), the leaf merges into the rollup branch rather than the integration branch, and `--delete-branch` is not applied. Nothing is printed about it. Unchanged from round 1; the review did not ask for it.
 - **Local deletes in prune:** prune uses `git branch -d`, the same as grind. git also requires `HEAD`, or the branch's upstream, to contain the branch, so the docs and `--help` say to run prune from the up-to-date integration branch. A refusal is reported per branch, and the command exits 1.
 - **Shared file:** `specy_road/cli.py` is also in a live session on `feature/rm-stale-command-check`. My change there is one added line in `_FORWARDED`.
 
@@ -72,3 +75,16 @@ The touch zones in the brief are accurate; every changed path is inside them.
   - `test_prune_delete_reports_a_refused_delete_and_exits_1`;
   - `test_prune_refuses_without_a_fresh_fetch`.
 - Assertion in `tests/test_cli.py::test_specy_road_finish_this_task_help`: `--delete-branch` appears in `--help`.
+
+### Review round 1
+
+- `retry_merge_landing(..., delete_branch=False)`: the re-run deletes once the branch is on the remote, including when an earlier run already landed it.
+- Branch in `retry_merge_landing` for an already-merged branch: deletes when the flag is set, and keeps the old "nothing to do" line when it is not. Reached by the existing re-run test without the flag, and by `test_a_retried_landing_deletes_the_branch` for the landing that had failed.
+- `merge_landing_failed(..., delete_branch=False)`: the printed re-run command includes `--delete-branch` when this run passed it. Reached by the same test (the hook-rejected first run).
+- `delete_branch` parameter on `report_finish_already_done_on_branch`, `resolve_feature_rm_registry_context_for_finish`, and `_resolve_context`: carries the CLI flag into the retry. The session file is not used; it is already gone.
+- Lease in `delete_remote_branch`: `rev-parse` of the remote-tracking tip, then `git push --force-with-lease=refs/heads/<branch>:<sha> --delete`. A non-zero push, including a stale lease, is a failure and the branch stays. Reached by `test_a_moved_remote_tip_is_not_deleted`.
+- Guard in `delete_remote_branch` when `rev-parse` fails: refuse the delete rather than lease an empty tip.
+- `tests/test_grind_session.py` harness: `rev-parse` returns a sha, so the grind cleanup tests still reach the push. Reason: the lease needs the tip the mock used to leave empty.
+- Assertion in `tests/test_grind_session_cleanup.py::test_with_push_it_also_deletes_the_remote_branch`: the push argv is now the leased form.
+- `test_a_retried_landing_deletes_the_branch`: a rejected landing, then the same command with `--delete-branch`, deletes locally and on the remote.
+- `test_a_moved_remote_tip_is_not_deleted`: the remote branch moved after the merged check; the lease refuses and the new tip is still there. finish and prune both delete through this function.
