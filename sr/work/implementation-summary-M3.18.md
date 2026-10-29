@@ -10,44 +10,44 @@ Bring `role_prompt.py` and `review_gate.py` under the 400-line file cap and clea
 - `specy_road/bundled_scripts/role_prompt_rca.py` (new)
 - `specy_road/bundled_scripts/validate_stale_commands.py`
 - `specy_road/bundled_scripts/validate_stale_mentions.py` — removed in round 1 (circular import)
-- `specy_road/review_gate.py` — added after M3.17 landed (A1 widened)
+- `specy_road/review_gate.py`
 - `specy_road/review_gate_ready.py` (new)
-- `docs/orchestration.md` — round 2 (Sol): full file-limits gate
-- `specy_road/bundled_scripts/brainstorm_cli.py` — round 2 (Sol): full ruff C901 gate
+- `docs/orchestration.md`
+- `docs/orchestration-review.md` (new)
+- `specy_road/bundled_scripts/brainstorm_cli.py`
+- `specy_road/bundled_scripts/brainstorm_cli_revise.py` (new)
 - `tests/` — unchanged; existing tests cover behaviour
 
 ## Changes
 
-**A1 — file cap:** Moved precondition, role preamble, and model profile section builders from `role_prompt.py` into new `role_prompt_rca.py`. `role_prompt.py` is 201 lines.
+**A1 — file cap:** Moved prompt builders into `role_prompt_rca.py` (`role_prompt.py` 201 lines). After M3.17, moved `write_human_approval` and trial-merge helpers into `review_gate_ready.py` (`review_gate.py` 335 lines; one-way re-export).
 
-After merging `origin/WIP/improvements-0-3-1` (M3.17 pushed `review_gate.py` to 420 lines), moved `write_human_approval` and the trial-merge helpers (`TRIAL_MERGE_BOOKKEEPING`, `is_trial_merge_bookkeeping`, `TrialMerge`, `trial_merge`, `trial_merge_or_exit`) into new `review_gate_ready.py`. `review_gate.py` re-exports those names (one-way import; `review_gate_ready` does not import `review_gate`). `review_gate.py` is 335 lines.
+**Round 3:** Moved the whole "The review gate" section (counting rules, signed reviews, `handoff status`, escalation) from `docs/orchestration.md` into `docs/orchestration-review.md` and linked it from the quickstart and a stub heading. `docs/orchestration.md` is 325 lines.
 
-**Round 2 (Sol block):** Joined the Coordinator and Executor wrap lines in `docs/orchestration.md` (402 → 400). No wording change.
+**A2 — C901:** Split `_command_mentions` into `_mentions_in_fenced_line` and `_mentions_on_open_line` in `validate_stale_commands.py`.
 
-**A2 — C901:** Split `_command_mentions` into `_mentions_in_fenced_line` and `_mentions_on_open_line` in `validate_stale_commands.py` so complexity stays under the limit. Scan control flow is unchanged.
+**Round 3:** Moved `cmd_revise` and `_revise_content` / `_revise_why` / `_revise_links` / `_apply_revise` into `brainstorm_cli_revise.py`. `brainstorm_cli` imports `cmd_revise` one way.
 
-**Round 2 (Sol block):** Moved `cmd_revise` body into `_revise_content`, `_revise_why`, `_revise_links`, and `_apply_revise` so C901 is under 10. Control flow is unchanged.
-
-**Round 1 (block):** Removed the import cycle. `validate_stale_mentions.py` is gone; the fence helpers and `_command_mentions` live in `validate_stale_commands.py` only. No `# noqa: E402` import remains.
+**Round 1 (block):** Removed the `validate_stale_mentions` circular import.
 
 ## Verification
 
 - `specy-road file-limits` — exit 0 (`OK: file limits satisfied.`)
 - `ruff check specy_road tests` — exit 0 (`All checks passed!`)
-- `pytest` brainstorm revise modules — 70 passed
-- `python -c 'import specy_road.review_gate_ready'` then `review_gate` — both import cleanly
+- pytest of docs, brainstorm, prompt, and review modules — 130 passed
 
 ## Added
 
-- `role_prompt_rca.py` — moved preamble/precondition/profile builders; reason: file cap on `role_prompt.py`.
-- `_mentions_in_fenced_line` / `_mentions_on_open_line` in `validate_stale_commands.py` — reason: C901 on `_command_mentions`.
-- `review_gate_ready.py` — moved `write_human_approval` and trial-merge helpers; reason: file cap on `review_gate.py` after M3.17.
-- `_revise_content` / `_revise_why` / `_revise_links` / `_apply_revise` in `brainstorm_cli.py` — reason: C901 on `cmd_revise` for the full ruff gate.
+- `role_prompt_rca.py` — moved preamble builders; reason: file cap on `role_prompt.py`.
+- `_mentions_in_fenced_line` / `_mentions_on_open_line` — reason: C901 on `_command_mentions`.
+- `review_gate_ready.py` — moved `write_human_approval` and trial-merge helpers; reason: file cap on `review_gate.py`.
+- `docs/orchestration-review.md` — moved the review-gate section; reason: file cap on `docs/orchestration.md`.
+- `brainstorm_cli_revise.py` — moved `cmd_revise` and its helpers; reason: C901 on `cmd_revise`.
 
 ## Removed (round 1)
 
-- `validate_stale_mentions.py` — reason: circular import with `validate_stale_commands`.
-- trailing `# noqa: E402` import of `_command_mentions` — reason: no longer needed.
+- `validate_stale_mentions.py` — circular import.
+- trailing `# noqa: E402` import of `_command_mentions`.
 
 ## Helpers, branches/guards, mocks, tests
 
