@@ -8,6 +8,7 @@ the finish bookkeeping commit, and ``--no-milestone-rollup`` skips that retry.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -15,8 +16,8 @@ import pytest
 
 from specy_road.bundled_scripts import finish_task
 from specy_road.milestone_session import milestone_session_path, write_milestone_session
-from tests.helpers import REPO
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.helpers import DOGFOOD, REPO
+from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 
 BR = "feature/rm-thing"
 
@@ -37,16 +38,14 @@ def _has_branch(repo: Path, ref: str) -> bool:
     return True
 
 
-def _rollup_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
-    """A leaf under an open milestone, with the rollup branch and a bare origin.
+def _attach_rollup(project: Path, tmp_path: Path) -> Path:
+    """Open milestone, rollup branch, and a bare origin. Return the bare repo.
 
     ``on_complete`` stays ``pr``: the rollup landing is what merges the leaf,
     so ``--delete-branch`` must not be refused the way a plain ``pr`` finish is.
     """
-    monkeypatch.setenv("PYTHONPATH", str(REPO))
-    repo = make_review_repo(tmp_path)
-    git(repo, "checkout", "-q", "dev")
-    chunk = repo / "roadmap" / "phases" / "M1.json"
+    git(project, "checkout", "-q", "dev")
+    chunk = project / "roadmap" / "phases" / "M1.json"
     doc = json.loads(chunk.read_text())
     leaf = doc["nodes"][0]
     leaf["parent_id"] = "M1"
@@ -62,25 +61,70 @@ def _rollup_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
         },
     }
     doc["nodes"] = [parent, leaf]
-    commit_file(repo, "roadmap/phases/M1.json", json.dumps(doc), "parent milestone")
-    commit_file(repo, parent["planning_dir"], "# M1 Roll\n\n## Intent\n\nRoll up.\n", "parent sheet")
-    commit_file(repo, "roadmap/git-workflow.yaml",
+    commit_file(project, "roadmap/phases/M1.json", json.dumps(doc), "parent milestone")
+    commit_file(project, parent["planning_dir"], "# M1 Roll\n\n## Intent\n\nRoll up.\n", "parent sheet")
+    commit_file(project, "roadmap/git-workflow.yaml",
                 "version: 1\nintegration_branch: dev\nremote: origin\non_complete: pr\n",
                 "pr mode")
-    git(repo, "branch", "feature/rm-roll")
-    git(repo, "checkout", "-q", BR)
-    git(repo, "merge", "-q", "--no-edit", "dev")
+    git(project, "branch", "feature/rm-roll")
+    git(project, "checkout", "-q", BR)
+    git(project, "merge", "-q", "--no-edit", "dev")
     write_milestone_session(
-        milestone_session_path(repo / "work"),
+        milestone_session_path(project / "work"),
         parent_node_id="M1", parent_codename="roll",
         integration_branch="dev", remote="origin",
     )
     bare = tmp_path / "remote.git"
-    git(tmp_path, "clone", "-q", "--bare", str(repo), str(bare))
+    source = git(project, "rev-parse", "--show-toplevel")
+    git(tmp_path, "clone", "-q", "--bare", source, str(bare))
     git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
-    git(repo, "remote", "add", "origin", str(bare))
-    git(repo, "fetch", "-q", "origin")
-    return repo, bare
+    git(project, "remote", "add", "origin", str(bare))
+    git(project, "fetch", "-q", "origin")
+    return bare
+
+
+def _rollup_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
+    """A leaf under an open milestone, with the rollup branch and a bare origin."""
+    monkeypatch.setenv("PYTHONPATH", str(REPO))
+    repo = make_review_repo(tmp_path)
+    return repo, _attach_rollup(repo, tmp_path)
+
+
+def _nested_rollup_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path, Path]:
+    """Git root, ``sr/`` project root, and bare origin for the same rollup leaf."""
+    monkeypatch.setenv("PYTHONPATH", str(REPO))
+    top = tmp_path / "checkout"
+    project = top / "sr"
+    (project / "roadmap" / "phases").mkdir(parents=True)
+    git(top, "init", "-q", "-b", "dev")
+    git(top, "config", "user.email", "t@e.com")
+    git(top, "config", "user.name", "T")
+    (top / ".specyrd").mkdir()
+    (top / ".specyrd" / "manifest.json").write_text(
+        json.dumps({"project_root": "sr"}) + "\n", encoding="utf-8",
+    )
+    shutil.copytree(DOGFOOD / "schemas", project / "schemas")
+    rm = project / "roadmap"
+    (rm / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/M1.json"]}), encoding="utf-8",
+    )
+    (rm / "phases" / "M1.json").write_text(json.dumps({"nodes": [NODE]}), encoding="utf-8")
+    sheet = project / NODE["planning_dir"]
+    sheet.parent.mkdir(parents=True)
+    sheet.write_text("# M1.1 Thing\n\n## Intent\n\nDo the thing.\n", encoding="utf-8")
+    (rm / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\n", encoding="utf-8",
+    )
+    (rm / "registry.yaml").write_text(
+        "version: 1\nentries:\n- codename: thing\n  node_id: M1.1\n"
+        f"  branch: {BR}\n  touch_zones: [src]\n  implementation_review: pending\n",
+        encoding="utf-8",
+    )
+    git(top, "add", "-A")
+    git(top, "commit", "-qm", "graph")
+    git(top, "checkout", "-q", "-b", BR)
+    commit_file(project, "src/a.py", "print('a')\n", "impl")
+    return top, project, _attach_rollup(project, tmp_path)
 
 
 def _reject_rollup_push(bare: Path) -> Path:
@@ -171,3 +215,20 @@ def test_a_repeat_finish_with_no_milestone_rollup_does_not_land_the_rollup(
     assert "landing it on feature/rm-roll" not in out
     assert "Do not run finish again" in out
     assert git(bare, "rev-parse", "feature/rm-roll") == remote_rollup
+
+
+def test_a_nested_rollup_finish_stays_on_the_integration_branch(
+    tmp_path: Path, monkeypatch, capsys,
+) -> None:
+    """project_root sr/: this checkout holds the integration branch, so delete must not detach."""
+    top, project, bare = _nested_rollup_repo(tmp_path, monkeypatch)
+
+    assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(project)]) == 0
+
+    out = capsys.readouterr().out
+    assert f"[ok] deleted local branch {BR}; this checkout is now on dev" in out
+    assert "detached" not in out
+    assert not _has_branch(project, f"refs/heads/{BR}")
+    assert not _has_branch(bare, f"refs/heads/{BR}")
+    assert git(top, "symbolic-ref", "HEAD") == "refs/heads/dev"
+    assert git(top, "branch", "--show-current") == "dev"
