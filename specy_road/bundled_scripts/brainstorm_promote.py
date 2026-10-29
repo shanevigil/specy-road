@@ -12,6 +12,7 @@ fail without leaving the graph inconsistent.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,13 +27,17 @@ from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
     planning_artifact_paths,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER
-from specy_road.bundled_scripts.roadmap_crud_ops import (
-    append_node_to_chunk,
-    run_validate_raise,
+from specy_road.bundled_scripts.planning_sheet_bootstrap import (
+    PROMOTE_PLACEHOLDER,
+    plan_planning_sheet_for_new_node,
+)
+from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
+from specy_road.bundled_scripts.roadmap_crud_prepare import (
+    derive_codename_with_collision_suffix,
+    heal_before_mutation,
 )
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
-from specy_road.bundled_scripts.roadmap_edit_fields import EXEC_MILESTONES
+from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 
@@ -40,6 +45,9 @@ from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 PROMOTABLE_TYPES = ("vision", "phase", "milestone", "task")
 
 DEFAULT_PROMOTE_TYPE = "milestone"
+
+#: First N title words when deriving a promoted node's codename from its title.
+PROMOTE_CODENAME_MAX_WORDS = 4
 
 #: Promote kwarg default — inherit ``execution_milestone`` from the anchor.
 INHERIT_EXECUTION_MILESTONE = object()
@@ -145,6 +153,106 @@ def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
     return lines
 
 
+def _accept_order_key(idea: Idea) -> tuple[str, str]:
+    """Sort pending ideas by triage decision time, then stable id."""
+    dec = idea.decision or {}
+    when = dec.get("decided_at") or dec.get("decided_date") or ""
+    return (when, idea.id)
+
+
+def _title_for_promote_codename(title: str) -> str:
+    parts = (title or "").split()
+    if not parts:
+        return title or ""
+    return " ".join(parts[:PROMOTE_CODENAME_MAX_WORDS])
+
+
+def _promote_codename(
+    idea: Idea,
+    existing: set[str],
+    node_key: str,
+) -> str | None:
+    """Idea ``--codename`` on revise wins; else derive from the capped title."""
+    raw = (idea.codename or "").strip()
+    if raw:
+        if not CODENAME_PATTERN.match(raw):
+            raise BrainstormError(
+                f"idea {idea.id} codename {raw!r} is not valid kebab-case"
+            )
+        if raw in existing:
+            raise BrainstormError(
+                f"idea {idea.id} codename {raw!r} already used on the roadmap"
+            )
+        return raw
+    return derive_codename_with_collision_suffix(
+        _title_for_promote_codename(idea.title),
+        node_key,
+        existing,
+    )
+
+
+def _write_promoted_node(root: Path, node: dict, *, validate: bool) -> Path:
+    """Stage one promoted node like ``add-node``, optionally skipping ``validate``."""
+    from specy_road.bundled_scripts.roadmap_chunk_router import (
+        PHASE_ROOT_REASON,
+        default_chunk_for_parent,
+        insert_include_in_manifest,
+        pick_target_chunk,
+        validate_callback,
+    )
+    from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
+    from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
+
+    heal_before_mutation(root)
+    parent_id_raw = node.get("parent_id")
+    parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
+    planned_sheet = plan_planning_sheet_for_new_node(root, node)
+    extra = {planned_sheet[0]: planned_sheet[1]} if planned_sheet else None
+    decision = pick_target_chunk(root, parent_id, None, node)
+    plan = AtomicWritePlan(root=root)
+    plan.stage_chunk(decision.chunk_path, decision.nodes_after)
+    for path, text in (extra or {}).items():
+        plan.stage_text(path, text)
+    if decision.is_new_chunk:
+        manifest_doc = load_manifest_mapping(root)
+        top_level = decision.new_chunk_reason == PHASE_ROOT_REASON and parent_id is None
+        base_for_insert = None if top_level else (
+            default_chunk_for_parent(root, parent_id) or decision.chunk_rel
+        )
+        insert_include_in_manifest(manifest_doc, decision.chunk_rel, base_for_insert)
+        plan.stage_manifest(manifest_doc)
+        print(
+            f"[chunk-router] auto-created chunk roadmap/{decision.chunk_rel} "
+            f"(node {node.get('id')!r} {decision.new_chunk_reason})",
+            file=sys.stderr,
+        )
+    check = validate_callback(root) if validate else (lambda: None)
+    plan.commit(check)
+    return decision.chunk_path
+
+
+def _report_promoted_missing_fields(root: Path, promotions: list[Promotion]) -> None:
+    """One stderr list of promoted nodes still without acceptance or touch zones."""
+    by_id = {n["id"]: n for n in _load_nodes(root)}
+    missing: list[str] = []
+    for promo in promotions:
+        node = by_id.get(promo.node_id)
+        if not isinstance(node, dict):
+            continue
+        acc = node.get("acceptance")
+        tz = node.get("touch_zones")
+        has_acc = isinstance(acc, list) and bool(acc)
+        has_tz = isinstance(tz, list) and bool(tz)
+        if not has_acc or not has_tz:
+            missing.append(promo.node_id)
+    if missing:
+        print(
+            "promoted node(s) still missing acceptance or touch_zones: "
+            + ", ".join(missing),
+            file=sys.stderr,
+        )
+
+
 def _anchor_execution_milestone(nodes: list[dict], parent_id: str | None) -> str | None:
     """The already-validated anchor's advisory execution type, when set."""
     if parent_id is None:
@@ -161,6 +269,7 @@ def _build_node(
     parent_id: str | None,
     node_type: str,
     execution_milestone: str | None = None,
+    sibling_order: int | None = None,
 ) -> dict:
     node = {
         "id": next_child_id(nodes, parent_id),
@@ -171,6 +280,10 @@ def _build_node(
         "status": "Not Started",
         "execution_milestone": execution_milestone,
     }
+    if sibling_order is not None:
+        node["sibling_order"] = sibling_order
+    if idea.hypothesis.strip():
+        node["goal"] = idea.hypothesis.strip()
     return {k: v for k, v in node.items() if v is not None}
 
 
@@ -249,7 +362,7 @@ def promote_session(
         raise BrainstormError(
             f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}"
         )
-    todo = pending_ideas(session)
+    todo = sorted(pending_ideas(session), key=_accept_order_key)
     if not todo:
         return []
     parent_id = under if under is not None else session.under
@@ -268,19 +381,27 @@ def promote_session(
         resolved_em = execution_milestone
 
     out: list[Promotion] = []
-    for idea in todo:
+    existing_codenames = {
+        n.get("codename") for n in nodes if n.get("codename")
+    }
+    for order, idea in enumerate(todo, start=1):
         node = _build_node(
             nodes,
             idea,
             parent_id=parent_id,
             node_type=node_type,
             execution_milestone=resolved_em,
+            sibling_order=order,
         )
+        derived = _promote_codename(idea, existing_codenames, node["node_key"])
+        if derived:
+            node["codename"] = derived
+            existing_codenames.add(derived)
         if dry_run:
             nodes = [*nodes, node]
             chunk = "(not written)"
         else:
-            chunk_path = append_node_to_chunk(root, None, node)
+            chunk_path = _write_promoted_node(root, node, validate=False)
             seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
             idea.promoted_node_key = node["node_key"]
             write_session(root, session)
@@ -298,4 +419,5 @@ def promote_session(
         )
     if not dry_run and out:
         run_validate_raise(root)
+        _report_promoted_missing_fields(root, out)
     return out

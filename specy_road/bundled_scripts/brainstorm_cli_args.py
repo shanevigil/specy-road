@@ -161,6 +161,12 @@ def _add_triage(sub) -> None:
     p.add_argument("--kind", default=None, choices=IDEA_KINDS)
     p.add_argument("--effort", default=None, metavar="SIZE")
     p.add_argument(
+        "--codename",
+        default=None,
+        metavar="SLUG",
+        help="Kebab-case branch slug for promote (overrides title-derived codename).",
+    )
+    p.add_argument(
         "--recommendation",
         default=None,
         choices=RECOMMENDATIONS,

@@ -15,12 +15,20 @@ ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
-def title_to_codename(title: str) -> str:
+def title_to_codename(title: str, *, max_words: int | None = None) -> str:
     """
     Derive a valid kebab-case codename from a human title.
     Returns '' if the title yields nothing valid (caller may omit or clear codename).
+
+    When ``max_words`` is set, only the first that many whitespace-separated words
+    are slugged (``brainstorm promote`` uses this for shorter branch slugs).
     """
-    s = re.sub(r"[^a-z0-9]+", "-", (title or "").lower().strip())
+    text = (title or "").strip()
+    if max_words is not None and max_words > 0:
+        parts = text.split()
+        if parts:
+            text = " ".join(parts[:max_words])
+    s = re.sub(r"[^a-z0-9]+", "-", text.lower())
     s = re.sub(r"-+", "-", s).strip("-")
     if not s or not CODENAME_PATTERN.match(s):
         return ""
