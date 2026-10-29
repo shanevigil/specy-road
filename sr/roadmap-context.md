@@ -13,14 +13,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M2` Outcome record pilot `outcome-record-pilot` — phase — **Not Started**
   - `M2.1` List shipped nodes with no result after N days `list-shipped-nodes-with-no-result-after-n-days` — milestone — **Not Started**
   - `M2.2` Store a pointer and a human verdict for outcomes, never the metric itself `store-a-pointer-and-a-human-verdict-for-outcomes-never-the-metric-itself` — milestone — **Not Started**
-- `M3` 0.3.1 pre-final fixes from rc1 feedback `pre-final-fixes` — phase — **Not Started**
+- `M3` 0.3.1 pre-final fixes from rc1 feedback `pre-final-fixes` — phase — **Complete**
   - `M3.1` Refuse to pick up leaves whose planning sheet is still a placeholder `unauthored-leaf-guard` — task — **Complete**
   - `M3.2` handoff status reports review records without a claim `handoff-local-records` — task — **Complete**
   - `M3.3` Document the canonical chunk key order and offer a deliberate normalisation `chunk-key-order` — task — **Complete**
   - `M3.4` Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers `brainstorm-prompt-fixes` — task — **Complete**
   - `M3.5` Converge and evidence passes that cannot silently skip work `brainstorm-converge-checks` — task — **Complete**
   - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Complete**
-  - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
+  - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Complete**
   - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Complete**
   - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Complete**
   - `M3.10` Worker hand-off, reconcile and finish report what actually happened `worker-reconcile-and-status` — task — **Complete**
@@ -80,7 +80,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M3.7` on `feature/rm-promote-node-quality` since 2026-10-29
 
 ## Reaching the detail behind this
 

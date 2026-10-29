@@ -121,3 +121,19 @@ def test_a_json_looking_list_value_is_noted_and_stored_as_text(value: str, noted
     assert bool(notes) is noted
     if noted:
         assert "--set acceptance=" in notes[0]
+
+
+def test_title_to_codename_honors_max_words() -> None:
+    slug = title_to_codename(
+        "Phase Alpha Long Enough For A Branch Name",
+        max_words=4,
+    )
+    assert slug == "phase-alpha-long-enough"
+
+
+def test_title_to_codename_skips_punctuation_tokens_when_capping() -> None:
+    slug = title_to_codename(
+        "!!! ??? ... --- Five Six Seven Eight Nine Ten",
+        max_words=4,
+    )
+    assert slug == "five-six-seven-eight"

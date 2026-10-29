@@ -187,19 +187,33 @@ def cmd_list(ns: argparse.Namespace) -> int:
     return 0
 
 
+def _next_decision_seq(session: BrainstormSession) -> int:
+    seqs: list[int] = []
+    for idea in session.ideas:
+        raw = (idea.decision or {}).get("seq")
+        try:
+            seqs.append(int(str(raw)))
+        except (TypeError, ValueError):
+            continue
+    return (max(seqs) + 1) if seqs else 1
+
+
 def _triage(ns: argparse.Namespace, status: str) -> int:
     root, session = _load(ns)
     reason = (ns.reason or "").strip()
     if status == "rejected" and not reason:
         raise BrainstormError("reject needs --reason: the record of why is worth more than the reject")
-    from datetime import date
+    from datetime import datetime, timezone
 
     ideas = [set_status(session, ident, status) for ident in ns.idea_id]
+    seq = _next_decision_seq(session)
+    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
     for idea in ideas:
+        dec = {"status": status, "decided_at": now, "seq": str(seq)}
         if reason:
-            idea.decision = {"status": status, "reason": reason, "decided_at": date.today().isoformat()}
-        elif idea.decision and idea.decision.get("status") != status:
-            idea.decision = None   # an earlier reject/park reason does not describe this decision
+            dec["reason"] = reason
+        idea.decision = dec
+        seq += 1
         print(f"[ok] {idea.id} {status}")
     write_session(root, session)
     print(next_step(session, "triage"))

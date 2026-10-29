@@ -314,7 +314,9 @@ objections — is hidden by default so it does not steer you; clusters and
 source counts show first, and `--show-verdicts` adds the rest. `reject` and
 `park` require `--reason`; `accept` may take an optional `--reason`. Both
 decision reasons and `--revisit-when` on `park` are recorded on the idea.
-`revise --why` sets `verdict_why`; `--append-why` adds to it. Editing an idea's
+`revise --why` sets `verdict_why`; `--append-why` adds to it. `revise --codename`
+sets the branch slug `promote` will use instead of deriving one from the title.
+Editing an idea's
 content marks it `revised`. Once an idea has been promoted it can no longer be
 re-triaged: it is a roadmap node, and the node is what you edit. `realize`
 links an idea to a node you created by hand (`promoted_node_key`) after
@@ -329,8 +331,16 @@ specy-road brainstorm promote
 
 Every accepted, not-yet-promoted idea becomes a node through the same path as
 `specy-road add-node`: display id under the anchor, stable `node_key`,
-planning sheet scaffolded, chunk and manifest written in one transaction, and
-`validate` run over the batch.
+planning sheet scaffolded, chunk and manifest written in one transaction. A
+batch defers `validate` until every node in that promote call is on disk, so
+pin/schema warnings and other validate notices print once, not per node.
+
+Promoted nodes get a `goal` from the idea's `--hypothesis` when present,
+`sibling_order` in accept order (every `accept`, including without `--reason`,
+records a sequence; later promote calls append after existing siblings), and a
+`codename` from the first four title words unless `revise --codename` set one.
+After a successful promote, stderr lists any new node ids still missing
+`acceptance` or `touch_zones`.
 
 Before it writes (and on `--dry-run`), `promote` warns for each idea it is
 about to promote on a `strong` verdict that no `matched` source backs — its

@@ -1,17 +1,13 @@
 """Turn accepted brainstorm ideas into roadmap nodes.
 
-The converge step. Everything here routes through the same mutation path as
-``specy-road add-node`` — ``append_node_to_chunk`` stages the chunk, the
-manifest and the planning sheet in one transaction — so a promoted idea is
-indistinguishable from a hand-authored node once it lands.
-
-The sheet is seeded afterwards rather than inside that transaction: the
-scaffold is already valid, and enriching it is a plain markdown edit that can
-fail without leaving the graph inconsistent.
+Promoted ideas use the same add-node write as ``specy-road add-node``. The
+planning sheet is seeded after that write; deferred validation restores the
+batch if the graph is then invalid.
 """
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,19 +16,22 @@ from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     Idea,
     PROMOTABLE_STATUSES,
+    session_path,
     write_session,
 )
 from specy_road.bundled_scripts.planning_artifacts import (
-    normalize_planning_dir,
-    planning_artifact_paths,
+    normalize_planning_dir, planning_artifact_paths,
 )
 from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER
+from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
 from specy_road.bundled_scripts.roadmap_crud_ops import (
-    append_node_to_chunk,
-    run_validate_raise,
+    append_node_to_chunk, run_validate_raise,
+)
+from specy_road.bundled_scripts.roadmap_crud_prepare import (
+    derive_codename_with_collision_suffix, next_sibling_order,
 )
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
-from specy_road.bundled_scripts.roadmap_edit_fields import EXEC_MILESTONES
+from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 
@@ -40,6 +39,9 @@ from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 PROMOTABLE_TYPES = ("vision", "phase", "milestone", "task")
 
 DEFAULT_PROMOTE_TYPE = "milestone"
+
+#: First N title words when deriving a promoted node's codename from its title.
+PROMOTE_CODENAME_MAX_WORDS = 4
 
 #: Promote kwarg default — inherit ``execution_milestone`` from the anchor.
 INHERIT_EXECUTION_MILESTONE = object()
@@ -145,6 +147,62 @@ def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
     return lines
 
 
+def _accept_order_key(idea: Idea) -> tuple[int, str, str]:
+    """Sort pending ideas by accept sequence, then decision time, then id."""
+    dec = idea.decision or {}
+    raw = dec.get("seq")
+    try:
+        seq = int(str(raw)) if raw not in (None, "") else 0
+    except (TypeError, ValueError):
+        seq = 0
+    when = dec.get("decided_at") or dec.get("decided_date") or ""
+    return (seq, when, idea.id)
+
+
+def _promote_codename(
+    idea: Idea,
+    existing: set[str],
+    node_key: str,
+) -> str | None:
+    """Idea ``--codename`` on revise wins; else derive from the capped title."""
+    raw = (idea.codename or "").strip()
+    if raw:
+        if not CODENAME_PATTERN.match(raw):
+            raise BrainstormError(
+                f"idea {idea.id} codename {raw!r} is not valid kebab-case"
+            )
+        if raw in existing:
+            raise BrainstormError(
+                f"idea {idea.id} codename {raw!r} already used on the roadmap"
+            )
+        return raw
+    return derive_codename_with_collision_suffix(
+        idea.title,
+        node_key,
+        existing,
+        max_words=PROMOTE_CODENAME_MAX_WORDS,
+    )
+
+
+def _report_promoted_missing_fields(root: Path, promotions: list[Promotion]) -> None:
+    """One stderr list of promoted nodes still without acceptance or touch zones."""
+    by_id = {n["id"]: n for n in _load_nodes(root)}
+    missing: list[str] = []
+    for promo in promotions:
+        node = by_id.get(promo.node_id)
+        if not isinstance(node, dict):
+            continue
+        if not (isinstance(node.get("acceptance"), list) and node["acceptance"]
+                and isinstance(node.get("touch_zones"), list) and node["touch_zones"]):
+            missing.append(promo.node_id)
+    if missing:
+        print(
+            "promoted node(s) still missing acceptance or touch_zones: "
+            + ", ".join(missing),
+            file=sys.stderr,
+        )
+
+
 def _anchor_execution_milestone(nodes: list[dict], parent_id: str | None) -> str | None:
     """The already-validated anchor's advisory execution type, when set."""
     if parent_id is None:
@@ -154,6 +212,21 @@ def _anchor_execution_milestone(nodes: list[dict], parent_id: str | None) -> str
     return em if em in EXEC_MILESTONES else None
 
 
+def _promote_execution_milestone(
+    nodes: list[dict], parent_id: str | None, execution_milestone: object
+) -> str | None:
+    if execution_milestone is INHERIT_EXECUTION_MILESTONE:
+        return _anchor_execution_milestone(nodes, parent_id)
+    if execution_milestone is None:
+        return None
+    if execution_milestone not in EXEC_MILESTONES:
+        raise BrainstormError(
+            "execution_milestone must be one of "
+            f"{sorted(EXEC_MILESTONES)} (got {execution_milestone!r})"
+        )
+    return execution_milestone
+
+
 def _build_node(
     nodes: list[dict],
     idea: Idea,
@@ -161,6 +234,7 @@ def _build_node(
     parent_id: str | None,
     node_type: str,
     execution_milestone: str | None = None,
+    sibling_order: int | None = None,
 ) -> dict:
     node = {
         "id": next_child_id(nodes, parent_id),
@@ -171,6 +245,10 @@ def _build_node(
         "status": "Not Started",
         "execution_milestone": execution_milestone,
     }
+    if sibling_order is not None:
+        node["sibling_order"] = sibling_order
+    if idea.hypothesis.strip():
+        node["goal"] = idea.hypothesis.strip()
     return {k: v for k, v in node.items() if v is not None}
 
 
@@ -212,17 +290,63 @@ def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
 
 def pending_ideas(session: BrainstormSession) -> list[Idea]:
     """Accepted ideas that have not been promoted yet."""
-    return [
-        i
-        for i in session.ideas
-        if i.status in PROMOTABLE_STATUSES and not i.promoted_node_key
-    ]
+    return [i for i in session.ideas
+            if i.status in PROMOTABLE_STATUSES and not i.promoted_node_key]
 
 
 def unverified_strong(session: BrainstormSession) -> list[Idea]:
     """Ideas about to be promoted on a ``strong`` verdict that no ``matched`` source backs."""
     return [i for i in pending_ideas(session) if i.recommendation == "strong"
             and not any(s["verification"] == "matched" for s in i.sources)]
+
+
+def _promote_ideas(
+    root: Path,
+    session: BrainstormSession,
+    todo: list[Idea],
+    parent_id: str | None,
+    node_type: str,
+    execution_milestone: str | None,
+    nodes: list[dict],
+    dry_run: bool,
+) -> list[Promotion]:
+    """Write each pending idea; routing reads the previous node on disk."""
+    out: list[Promotion] = []
+    existing = {n.get("codename") for n in nodes if n.get("codename")}
+    order = next_sibling_order(root, parent_id, None)
+    for idea in todo:
+        node = _build_node(
+            nodes,
+            idea,
+            parent_id=parent_id,
+            node_type=node_type,
+            execution_milestone=execution_milestone,
+            sibling_order=order,
+        )
+        derived = _promote_codename(idea, existing, node["node_key"])
+        if derived:
+            node["codename"] = derived
+            existing.add(derived)
+        if dry_run:
+            nodes = [*nodes, node]
+            chunk = "(not written)"
+            order += 1
+        else:
+            chunk_path = append_node_to_chunk(
+                root, None, node, validate=False,
+                max_words=PROMOTE_CODENAME_MAX_WORDS,
+            )
+            seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
+            idea.promoted_node_key = node["node_key"]
+            write_session(root, session)
+            chunk = str(chunk_path.relative_to(root))
+            nodes = _load_nodes(root)
+            order = next_sibling_order(root, parent_id, None)
+        out.append(Promotion(
+            idea_id=idea.id, node_id=node["id"], node_key=node["node_key"],
+            title=idea.title, parent_id=parent_id, chunk=chunk,
+        ))
+    return out
 
 
 def promote_session(
@@ -236,66 +360,37 @@ def promote_session(
 ) -> list[Promotion]:
     """Promote every pending accepted idea, newest ids allocated as we go.
 
-    Raises :class:`BrainstormError` before touching the graph when the anchor is
-    unusable, so a bad ``--under`` promotes nothing.
-
-    Each node is its own transaction — the router's choice of chunk depends on
-    what the previous write left on disk, so the batch cannot be one. The
-    session is therefore saved after every node rather than by the caller at the
-    end: if idea three fails, the two already on the graph are recorded as
-    promoted, and re-running promotes the rest instead of duplicating them.
+    Raises :class:`BrainstormError` before touching the graph when the
+    anchor is unusable. Per-idea writes stay routing transactions; deferred
+    validation failure restores nodes, sheets, and session markers.
     """
     if node_type not in PROMOTABLE_TYPES:
         raise BrainstormError(
             f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}"
         )
-    todo = pending_ideas(session)
+    todo = sorted(pending_ideas(session), key=_accept_order_key)
     if not todo:
         return []
     parent_id = under if under is not None else session.under
     nodes = _load_nodes(root)
     _assert_parent(root, nodes, parent_id)
-    if execution_milestone is INHERIT_EXECUTION_MILESTONE:
-        resolved_em = _anchor_execution_milestone(nodes, parent_id)
-    elif execution_milestone is None:
-        resolved_em = None
-    elif execution_milestone not in EXEC_MILESTONES:
-        raise BrainstormError(
-            "execution_milestone must be one of "
-            f"{sorted(EXEC_MILESTONES)} (got {execution_milestone!r})"
-        )
-    else:
-        resolved_em = execution_milestone
-
-    out: list[Promotion] = []
-    for idea in todo:
-        node = _build_node(
-            nodes,
-            idea,
-            parent_id=parent_id,
-            node_type=node_type,
-            execution_milestone=resolved_em,
-        )
-        if dry_run:
-            nodes = [*nodes, node]
-            chunk = "(not written)"
-        else:
-            chunk_path = append_node_to_chunk(root, None, node)
-            seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
-            idea.promoted_node_key = node["node_key"]
-            write_session(root, session)
-            chunk = str(chunk_path.relative_to(root))
-            nodes = _load_nodes(root)
-        out.append(
-            Promotion(
-                idea_id=idea.id,
-                node_id=node["id"],
-                node_key=node["node_key"],
-                title=idea.title,
-                parent_id=parent_id,
-                chunk=chunk,
-            )
-        )
-    if not dry_run and out:
+    resolved_em = _promote_execution_milestone(nodes, parent_id, execution_milestone)
+    snap = None if dry_run else TreeSnapshot(
+        (root / "roadmap", root / "planning"),
+        (session_path(root, session.slug),),
+    )
+    out = _promote_ideas(
+        root, session, todo, parent_id, node_type, resolved_em, nodes, dry_run,
+    )
+    if dry_run or not out:
+        return out
+    try:
         run_validate_raise(root)
+    except BaseException:
+        assert snap is not None
+        snap.restore()
+        for idea in todo:
+            idea.promoted_node_key = None
+        raise
+    _report_promoted_missing_fields(root, out)
     return out

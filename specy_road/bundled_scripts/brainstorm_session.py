@@ -164,6 +164,7 @@ class Idea:
     assumptions: list[str] = field(default_factory=list)
     decision: dict[str, str] | None = None
     verdict_why: str = ""
+    codename: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {

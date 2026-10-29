@@ -8,7 +8,7 @@
       "node_key": "c78073ae-aaa6-4090-8ed4-1990c307c7e3",
       "planning_dir": "planning/M3_pre-final-fixes_c78073ae-aaa6-4090-8ed4-1990c307c7e3.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "0.3.1 pre-final fixes from rc1 feedback",
       "touch_zones": [],
       "type": "phase"
@@ -230,7 +230,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.7_promote-node-quality_f3e2008b-1cb2-4f0f-92c3-05864482d958.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "promote writes usable nodes once, with short codenames",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_promote.py",

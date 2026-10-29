@@ -15,13 +15,23 @@ ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
-def title_to_codename(title: str) -> str:
+def title_to_codename(title: str, *, max_words: int | None = None) -> str:
     """
     Derive a valid kebab-case codename from a human title.
     Returns '' if the title yields nothing valid (caller may omit or clear codename).
+
+    When ``max_words`` is set, keep the first that many tokens that contribute a
+    slug fragment (punctuation-only words are skipped). Promote uses this cap.
     """
-    s = re.sub(r"[^a-z0-9]+", "-", (title or "").lower().strip())
-    s = re.sub(r"-+", "-", s).strip("-")
+    parts: list[str] = []
+    for token in (title or "").split():
+        piece = re.sub(r"[^a-z0-9]+", "-", token.lower()).strip("-")
+        if not piece:
+            continue
+        parts.append(piece)
+        if max_words is not None and max_words > 0 and len(parts) >= max_words:
+            break
+    s = re.sub(r"-+", "-", "-".join(parts)).strip("-")
     if not s or not CODENAME_PATTERN.match(s):
         return ""
     return s

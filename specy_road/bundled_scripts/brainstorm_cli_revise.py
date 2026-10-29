@@ -14,10 +14,10 @@ def _revise_content(idea, ns: argparse.Namespace) -> bool:
     # A recommendation is the agent's advice; only a content edit is a revision,
     # so recording advice must not consume the PM's triage decision.
     content_changed = False
-    for attr in ("title", "rationale", "kind", "effort"):
+    for attr in ("title", "rationale", "kind", "effort", "codename"):
         value = getattr(ns, attr, None)
         if value is not None:
-            setattr(idea, attr, value)
+            setattr(idea, attr, value.strip() if attr == "codename" else value)
             content_changed = True
     return content_changed
 
