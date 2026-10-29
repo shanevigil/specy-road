@@ -18,10 +18,11 @@ _FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 # boundary there. A "_" inside an identifier (foo_specy-road) still blocks.
 _MENTION = re.compile(
     r"(?:(?<![A-Za-z0-9])[*_]+|(?<![\w/.-]))"
-    r"(specy-road|specyrd)[ \t]+(?:[*_]+)?"
-    r"([a-z][a-z0-9-]*)[*_]*"
+    r"(?:[*_]+)?(specy-road|specyrd)(?:[*_]+)?[ \t]+"
+    r"(?:[*_]+)?([a-z][a-z0-9-]*)[*_]*"
 )
 _PLAIN_WORD = re.compile(r"[A-Za-z]+(?:[-'][A-Za-z]+)*")
+_PUNCT_ONLY = re.compile(r"^[\(\)\[\]\{\}.,;:!?…\"'`—–-]+$")
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
 # The product name is a noun phrase when one of these words is the token
 # immediately before it, with only whitespace between ("the specy-road toolkit").
@@ -99,27 +100,48 @@ def _noun_phrase(line: str, start: int) -> bool:
     return before[split_at:].lower() in _NOUN_PHRASE
 
 
-def _next_token(line: str, start: int) -> str:
+
+def _follower_tokens(line: str, start: int):
+    """Each non-whitespace token after the command-shaped name, in order."""
     match = _MENTION.match(line, start)
-    found = re.match(r"[ \t]*(\S+)", line[match.end() :])
-    return "" if found is None else found.group(1)
+    if match is None:
+        return
+    pos = match.end()
+    while True:
+        found = re.match(r"[ \t]*(\S+)", line[pos:])
+        if found is None:
+            return
+        yield found.group(1)
+        pos += found.end()
+
+
+def _strip_prose_punctuation(raw: str) -> str:
+    """Drop prose punctuation and a glued possessive ``'s`` from a follower token."""
+    if re.fullmatch(r"['\u2019]s", raw, re.IGNORECASE):
+        return ""
+    word = raw.strip("()[]{}.,;:!?…\"'`").strip(".")
+    return word
 
 
 def _mandatory_follower(line: str, start: int) -> bool:
     """True for a flag, path, quote, id, or the word command/subcommand."""
-    raw = _next_token(line, start)
-    if not raw:
-        return False
-    if raw[0] in "\"'":
-        return True
-    if re.match(r"-{1,2}[A-Za-z0-9]", raw):
-        return True
-    word = raw.rstrip(".,;:!?)]")
-    if word.lower() in {"command", "subcommand"}:
-        return True
-    if "/" in word or word.startswith(".") or re.search(r"\.[A-Za-z]", word):
-        return True
-    return bool(re.search(r"\d", word))
+    for raw in _follower_tokens(line, start):
+        if _PUNCT_ONLY.match(raw):
+            continue
+        word = _strip_prose_punctuation(raw)
+        if not word:
+            continue
+        if raw[0] in "\"'":
+            return True
+        if re.match(r"-{1,2}[A-Za-z0-9]", raw):
+            return True
+        if word.lower() in {"command", "subcommand"}:
+            return True
+        if "/" in word or word.startswith(".") or re.search(r"\.[A-Za-z]", word):
+            return True
+        if re.search(r"\d", word):
+            return True
+    return False
 
 
 def _plain_follower(line: str, start: int) -> bool:
@@ -130,11 +152,16 @@ def _plain_follower(line: str, start: int) -> bool:
     does not count (``formats (templates...)``). Anything else cancels the
     exclusion (``the specy-road frob @agent``).
     """
-    raw = _next_token(line, start)
-    if not raw:
-        return True
-    word = raw.strip("()[]{}.,;:!?…").strip(".")
-    return _PLAIN_WORD.fullmatch(word) is not None
+    for raw in _follower_tokens(line, start):
+        if _PUNCT_ONLY.match(raw):
+            continue
+        word = _strip_prose_punctuation(raw)
+        if not word:
+            continue
+        if _PLAIN_WORD.fullmatch(word) is not None:
+            return True
+        return False
+    return True
 
 
 def _reports(line: str, start: int) -> bool:
@@ -201,6 +228,17 @@ def _fence_marker(line: str) -> tuple[str, int, int] | None:
     return run[0], len(run), match.end()
 
 
+def _opening_is_code_span(line: str) -> bool:
+    """True when a line-start backtick run closes as an inline code span on that line."""
+    lead = len(line) - len(line.lstrip(" \t"))
+    if lead >= len(line) or line[lead] != "`":
+        return False
+    for start, end, _content in _code_spans(line):
+        if start == lead:
+            return True
+    return False
+
+
 def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
     """True when the line ends an open fence (same char, length >= opener, no info string)."""
     marker = _fence_marker(line)
@@ -224,7 +262,7 @@ def _command_mentions(lines: list[tuple[int, str]]):
                 yield lineno, tool, name
             continue
         marker = _fence_marker(line)
-        if marker is not None:
+        if marker is not None and not _opening_is_code_span(line):
             open_fence = (marker[0], marker[1])
             continue
         spans = _code_spans(line)
@@ -291,10 +329,10 @@ def unregistered_commands(text: str) -> list[str]:
     (``specy-road validate --strict``).
 
     Mandatory contexts are decided first and win over a noun phrase: a code
-    span (a run of N backticks, N >= 1, closed by the next run of exactly N;
-    ``the specy-road frob`` and ```the specy-road frob``` warn, and one
-    backtick inside a longer span does not end it), a fenced block (opened by a
-    run of backticks or tildes and closed only by a line whose fence uses that
+    span (a run of N backticks, N >= 1, closed by the next run of exactly N on
+    the same line; a line-start span such as ```the specy-road frob``` is not
+    treated as a fence opener; code spans that span lines are out of scope),
+    a fenced block (opened by a run of backticks or tildes and closed only by a line whose fence uses that
     same character, is at least as long, and has nothing but whitespace after
     the run, so `` ```bash `` does not close and ``` inside a four-backtick fence
     and ~~~ inside a backtick fence stay inside), a command-led list item (the product name is the
@@ -307,20 +345,14 @@ def unregistered_commands(text: str) -> list[str]:
     special (``# Please specy-road frob`` warns). The only exclusion is a noun
     phrase: the token immediately before the product name, with only whitespace
     and emphasis markers attached to the name between them (``the
-    **specy-road toolkit** is``), is a determiner, possessive, or preposition — the, a, an, this, that,
+    **specy-road toolkit** is``, ``Run **specy-road** frob`` warns via run verb), is a determiner, possessive, or preposition — the, a, an, this, that,
     these, those, other, any, all, every, each, its, our, your, their, own,
     of, with, in, for, from, about — and the token is followed by a plain
     word or nothing. A plain word is letters only; a hyphen or apostrophe
-    inside it is still plain, and prose punctuation around it (parentheses,
-    sentence marks) does not count (``the specy-road toolkit is``, ``other
-    specy-road formats (templates...)``, and a prose bullet such as
-    ``- **Adoption prompts** are kept aligned with other specy-road formats``).
-    Anything else after the token cancels the exclusion (``the specy-road frob
-    @agent`` warns). Emphasis
-    markers attached to the product name or the token are markup
-    (``Run __specy-road frob__ now.`` and ``- __specy-road frob__`` warn). A
-    digit or any other token between the determiner and the name cancels it
-    (``the 2 specy-road frob`` warns).
+    inside it is still plain; prose punctuation, em dashes, and a glued ``'s`` do not count
+    (``the specy-road toolkit.``, ``the specy-road toolkit's design``). Mandatory
+    ``command`` after punctuation still warns (``Use the specy-road frob (command).``).
+    cancels the exclusion (``the specy-road frob @agent`` warns). A digit or any other token between the determiner and the name cancels it (``the 2 specy-road frob`` warns).
     """
     return [
         mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))

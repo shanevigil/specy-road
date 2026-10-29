@@ -158,6 +158,21 @@ a sentence mark) does not cancel it, so `other specy-road formats (templates...)
 repository's `the **specy-road toolkit** (Python package…)` stay quiet. `the specy-road frob
 @agent` reports.
 
+## Review round 13
+
+Both reviewers blocked A1 at `54d4415`. Sol: a line-start one-line code span such as
+`` ```the specy-road frob``` `` was treated as a fence opener; ``Use the specy-road frob
+(command).`` missed mandatory ``command`` because ``(command)`` was not normalized.
+Grok: sentence punctuation and a glued ``'s`` after the token cancelled the noun-phrase
+exclusion; emphasis closing on the product name hid run-verb and command-led mentions
+(``Run **specy-road** frob``). Fixed with ``_opening_is_code_span``, shared
+``_follower_tokens`` / ``_strip_prose_punctuation``, and emphasis allowed on both sides
+of the product name in ``_MENTION``.
+
+Out of scope (amended A1 run-verb clause): ``run all the specy-road frob`` stays quiet.
+A1 names run verbs immediately before the product name, or before one noun-phrase word
+only; a verb farther left on the line is not a mandatory context under the line-based rule.
+
 ## Touch zones
 
 Final list: `specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `tests/`,
@@ -171,7 +186,7 @@ calls `_split`.
 
 - `python -m pytest -q` (after review round 1): 2258 passed, 2 skipped. Not re-run after round 2.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 9): 8 passed.
-- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 12): 8 passed in 0.99s. `specy-road file-limits`: OK.
+- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 13): 8 passed in 0.55s. `specy-road file-limits`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -197,8 +212,9 @@ calls `_split`.
 - Helper `unregistered_commands` (validate_roadmap.py, public): drops registered names and keeps every remaining occurrence. Its docstring states the precedence rule.
 - Helper `warn_unregistered_commands` (validate_roadmap.py, public): one warning per occurrence, with the file line number, wired into `validate_at`.
 - Helper `_backtick_run` / `_code_spans` (validate_roadmap.py): a CommonMark code span, N backticks closed by the next run of N. Replaces `_INLINE_CODE`, which stopped at the next single backtick (A1).
-- Helper `_plain_follower` (validate_stale_commands.py): the noun-phrase exclusion also needs the token followed by nothing or a plain word (letters, hyphen or apostrophe inside). Parentheses and sentence punctuation around that word do not cancel it; `@agent` does (A1, review round 12).
-- Regex `_MENTION` (validate_stale_commands.py): emphasis markers attached to the product name or the token are markup, so `_` directly before the name is not a word boundary (A1, review round 12).
+- Helper `_follower_tokens` / `_strip_prose_punctuation` (validate_stale_commands.py): walk follower tokens after the command name; skip punctuation-only tokens and a glued ``'s``; mandatory and plain checks share normalization (A1, review round 13).
+- Helper `_opening_is_code_span` (validate_stale_commands.py): a line-start backtick run that closes on the same line is scanned as a code span, not a fence opener (A1, review round 13).
+- Regex `_MENTION` (validate_stale_commands.py): emphasis markers attached to the product name or the token are markup, so `_` directly before the name is not a word boundary (A1, review rounds 12–13).
 - Table `REPLACED_COMMANDS` (cli.py): the A2 alias/deprecated-name table, next to the command set it complements.
 - Guard `if not path.is_file(): continue`: most projects have only one of the two files, and the test's tmp git root has no `AGENTS.md`.
 - Guard `except UnicodeDecodeError: continue`: a non-UTF-8 agent file; reached by `test_an_agent_file_that_is_not_utf8_is_skipped`.

@@ -113,6 +113,32 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands("Run __specy-road frob__ now.") == ["specy-road frob"]
     assert unregistered_commands("- __specy-road frob__") == ["specy-road frob"]
     assert unregistered_commands("the specy-road frob @agent") == ["specy-road frob"]
+    assert unregistered_commands("```the specy-road frob```") == ["specy-road frob"]
+    assert unregistered_commands("Use the specy-road frob (command).") == ["specy-road frob"]
+    for quiet in (
+        "the specy-road toolkit.",
+        "the **specy-road toolkit**.",
+        "other specy-road formats, including templates",
+        "the specy-road toolkit, which coordinates work",
+        "the **specy-road toolkit**, which is",
+        "the specy-road toolkit's design",
+        "the specy-road toolkit — a library",
+        "the specy-road toolkit; see docs",
+        "the **specy-road** toolkit is",
+    ):
+        assert unregistered_commands(quiet) == [], quiet
+    for warn in (
+        "Run **specy-road** frob",
+        "Run *specy-road* frob",
+        "Run __specy-road__ frob",
+        "- **specy-road** frob",
+        "- *specy-road* frob",
+        "Use the specy-road frob, --flag",
+        "Use the specy-road frob, M1.2",
+        "Use the specy-road frob, command",
+    ):
+        assert unregistered_commands(warn) == ["specy-road frob"], warn
+    assert unregistered_commands("foo_specy-road frob") == []
     assert unregistered_commands("specy-road validate --strict") == []
     assert unregistered_commands("specy-road frob; specy-road frob") == ["specy-road frob", "specy-road frob"]
 
