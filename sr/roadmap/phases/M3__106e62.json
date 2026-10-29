@@ -48,7 +48,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.16_bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap_cc8f1a03-ae51-4cb5-b142-866eec45eddb.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Bring worker_cli and worker_adapters back under the 400-line cap",
       "touch_zones": [
         "specy_road/bundled_scripts/worker_cli.py",
