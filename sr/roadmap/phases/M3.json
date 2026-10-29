@@ -340,7 +340,8 @@
         "specy_road/finish_land_integration.py",
         "specy_road/bundled_scripts/finish_task.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/finish_task_args.py"
       ],
       "type": "task"
     },

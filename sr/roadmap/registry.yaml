@@ -94,6 +94,7 @@ entries:
     node_id: M3.10
     branch: feature/rm-worker-reconcile-and-status
     touch_zones:
+      - specy_road/bundled_scripts/finish_task_args.py
       - specy_road/worker_adapters.py
       - specy_road/worker_ops.py
       - specy_road/worker_reconcile.py
