@@ -1,6 +1,6 @@
 # Implementation summary: M4.17 — review-loop escalation and root-cause analysis
 
-Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the touch zones). Implementation commit: `59cbc54`. Round 1 (`REVIEW-grok-4.7-high.md` on `b5dfa48`) is fixed in the commit that adds this revision of the summary.
+Base: `73f7b23` (merge of `origin/WIP/improvements-0-3-1`, which widened the touch zones). Feature commits: `59cbc54` (implementation), `9d4bd562` (round-1 review fixes and this summary). Executor hand-off: `composer-2.5`.
 
 ## Round 1
 
