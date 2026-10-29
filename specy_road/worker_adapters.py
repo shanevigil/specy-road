@@ -36,6 +36,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from specy_road.git_subprocess import git_text
 from specy_road.worker_state import HARNESSES
 
 
@@ -167,6 +168,19 @@ def _snip(s: str, n: int = 200) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def linked_worktree(worktree: Path) -> bool:
+    """True when ``worktree`` is a linked checkout, not the repository's main worktree."""
+    common = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], worktree)
+    gitdir = git_text(["rev-parse", "--path-format=absolute", "--git-dir"], worktree)
+    return bool(common and gitdir and Path(common).name == ".git" and Path(gitdir) != Path(common))
+
+
+def _reviews_handoff_dir(repo_root: Path, node_id: str) -> Path:
+    from specy_road.review_files import reviews_dir  # noqa: PLC0415 — keeps adapter import graph small
+
+    return reviews_dir(repo_root, node_id)
+
+
 def _json(line: str) -> dict[str, Any] | None:
     line = line.strip()
     if not line.startswith("{"):
@@ -183,18 +197,23 @@ class Adapter:
     caps = Capabilities(resume=False, interrupt=False, steer=False, handoff=False, events=False,
                         notes="runs the roster/profile cli; output lines become events, nothing else is known")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         why = placeholder_problem(cli)
         if why:
             raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
         self._session_flag_check(cli, {ph for _s, _e, ph, _p in _tokens(cli)})
         return Launch(["sh", "-c", substitute_prompt(cli, prompt_path)])
 
-    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         raise Unsupported(f"{self.harness}: resume is not supported")
 
     def parse(self, line: str) -> Parsed | None:
-        return Parsed("output", _snip(line)) if line.strip() else None
+        raw = line.strip()
+        if not raw:
+            return None
+        return Parsed("output", _snip(raw), detail={"message": raw})
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         raise Unsupported(f"{self.harness}: no native session to hand off")
@@ -241,21 +260,30 @@ class ClaudeCode(Adapter):
                         notes="claude -p stream-json; session id chosen up front; resume = `claude -p --resume`; "
                               "no interrupt short of SIGTERM (turn is lost); hand off with `claude --resume`")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
+    def _add_dir(self, worktree: Path, repo_root: Path | None, node_id: str | None) -> list[str]:
+        if not repo_root or not node_id or not linked_worktree(worktree):
+            return []
+        return ["--add-dir", str(_reviews_handoff_dir(repo_root, node_id))]
+
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         sid = str(uuid.uuid4())
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
         return Launch(["claude", "-p", "--output-format", "stream-json", "--verbose", "--session-id", sid,
-                       *_model_flag("--model", model), "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                       *_model_flag("--model", model), "--permission-mode", "acceptEdits",
+                       *self._add_dir(worktree, repo_root, node_id), STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=sid)
 
-    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
         return Launch(["claude", "-p", "--resume", session_id, "--output-format", "stream-json", "--verbose",
-                       "--permission-mode", "acceptEdits", STDIN_INSTRUCTION],
+                       "--permission-mode", "acceptEdits", *self._add_dir(worktree, repo_root, node_id),
+                       STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:
@@ -271,11 +299,16 @@ class ClaudeCode(Adapter):
             text = " ".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text")
             return Parsed("output", _snip(text) or "(tool use)", sid)
         if t == "result":
+            text = str(d.get("result") or d.get("api_error") or "")
             ok = not d.get("is_error") and d.get("subtype") == "success"
             cost = d.get("total_cost_usd")
-            return Parsed("turn_completed" if ok else "error",
-                          f"{d.get('subtype')}: {_snip(d.get('result') or '')}", sid,
-                          {"cost_usd": cost} if cost is not None else None)
+            summary = (f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error")
+            detail: dict[str, Any] = {}
+            if cost is not None:
+                detail["cost_usd"] = cost
+            if text:
+                detail["message"] = text
+            return Parsed("turn_completed" if ok else "error", summary, sid, detail or None)
         return None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
@@ -292,14 +325,16 @@ class Codex(Adapter):
                         notes="codex exec --json (prompt on stdin); thread id from thread.started; "
                               "resume = `codex exec resume <id> -` (prompt on stdin); hand off with `codex resume`")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
         return Launch(["codex", "exec", "--json", *_model_flag("-m", model), *CODEX_POLICY,
                        "-C", str(worktree), "-"], stdin=_text(prompt_path))
 
-    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
@@ -320,12 +355,15 @@ class Codex(Adapter):
         if t == "item.completed":
             item = d.get("item") or {}
             if item.get("type") == "agent_message":
-                return Parsed("output", _snip(item.get("text") or "") or "(empty message)")
+                text = str(item.get("text") or "")
+                return Parsed("output", _snip(text) or "(empty message)",
+                              detail={"message": text} if text else None)
             return Parsed("output", f"{item.get('type', 'item')} done")
         if t == "turn.completed":
             return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")})
         if t in ("turn.failed", "error"):
-            return Parsed("error", _snip(json.dumps(d.get("error") or d.get("message") or d)))
+            raw = json.dumps(d.get("error") or d.get("message") or d)
+            return Parsed("error", _snip(raw), detail={"message": raw})
         return None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
@@ -339,14 +377,16 @@ class Cursor(Adapter):
                               "has write and shell tools regardless); session id from the first event; resume = `agent -p --resume` "
                               "(print-mode resume with a new prompt is undocumented: verify on your install)")
 
-    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None) -> Launch:
+    def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
         return Launch(["agent", "-p", "--output-format", "stream-json", "--force", *_model_flag("--model", model),
                        "--workspace", str(worktree), _text(prompt_path)])
 
-    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
+    def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
+               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
@@ -368,8 +408,11 @@ class Cursor(Adapter):
         if t == "tool_call":
             return Parsed("output", f"tool call {d.get('subtype', '')}".strip(), sid)
         if t == "result":
+            text = str(d.get("result") or "")
             ok = not d.get("is_error")
-            return Parsed("turn_completed" if ok else "error", f"{d.get('subtype')}: {_snip(d.get('result') or '')}", sid)
+            summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
+            detail = {"message": text} if text else None
+            return Parsed("turn_completed" if ok else "error", summary, sid, detail)
         return None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:

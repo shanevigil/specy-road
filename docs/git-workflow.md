@@ -20,6 +20,7 @@
 - touch zones and worktrees while implementing → "While working"
 - landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
 - deleting merged `feature/rm-*` branches (`finish-this-task --delete-branch`, `branches prune`) → "Deleting merged feature branches"
+- every leftover the loop leaves (branches, worktrees, registry rows, stashes) → "Finding leftovers: `doctor`"
 
 **Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
 
@@ -183,6 +184,22 @@ Both commands delete only a branch the integration branch already contains, and 
 ```bash
 specy-road branches prune            # list only
 specy-road branches prune --delete   # delete locally and on the remote
+```
+
+### Finding leftovers: `doctor`
+
+**`specy-road doctor`** lists everything the task loop can leave behind, after `git fetch --prune`, without changing anything:
+
+- **`feature/rm-*` branches**, local and on the remote, whose leaf is `Complete` on the integration branch (even if its registry row remains, which the row then says), or that nothing claims — the same test as `branches prune`: no registry row (locally or on the integration branch) and not an open milestone rollup. Each row says why: `merged`; `merged (same patch content)`; `leaf <ID> Complete`; or `claim gone`, and an unmerged one says how many commits the integration branch lacks. **Merged** is ancestry first. When that fails, patch content decides: every commit has an equivalent on `<remote>/<integration-branch>` (`git cherry`, which catches a rebase), or the branch's whole diff does (a squash merge). A rewritten landing therefore still counts as merged.
+- **Worktrees** (never the main one, the current one or a locked one) whose directory is missing, whose branch is gone (detached at a commit the integration branch contains, or whose patch it has — the same ancestry-then-patch test as a branch — which is how `finish-this-task --delete-branch` leaves a `worker delegate` worktree), or whose branch is merged, even when the branch itself is kept because it is still claimed and its leaf is not `Complete`. A row names the ignored files (`work/` and so on) that removing the worktree would delete.
+- **Registry rows** on the integration branch whose branch is in neither this clone nor the remote (advisory, as with `registry-prune`: another clone's claim looks the same until it pushes its branch), or whose leaf is `Complete`; that row's branch is listed above and goes first under `--fix`.
+- **Stashes specy-road pushed** (messages starting `specy-road:`; pickup and review used to stash `work/`).
+
+**`--fix`** removes what it listed, asking once per kind (`--yes` skips the questions), and prints each action. It removes worktrees first, then branches (a branch checked out in a kept worktree is not deleted and is reported), then stashes, then registry rows through `registry-prune --remove`, which checks out the integration branch, commits and pushes. A branch is deleted only at the tip that was listed: a local branch that moved is left alone, and the remote delete is leased to that tip. A dropped stash can still be restored with `git stash apply <sha>`, which the report prints, until `git gc`. An unmerged branch is deleted too when you confirm, so read the commit count first. A failed fetch stops `doctor`.
+
+```bash
+specy-road doctor              # list only
+specy-road doctor --fix        # remove, asking once per kind
 ```
 
 ## Correcting merged work: revert vs follow-up

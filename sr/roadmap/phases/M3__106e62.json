@@ -34,6 +34,30 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road file-limits passes on the integration branch: specy_road/bundled_scripts/worker_cli.py and specy_road/worker_adapters.py are each at most 400 lines",
+        "The split moves whole functions into new modules with no behaviour change; the existing worker tests pass unchanged and scripts/check_test_private_imports.py reports no new private imports"
+      ],
+      "codename": "bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.16",
+      "node_key": "cc8f1a03-ae51-4cb5-b142-866eec45eddb",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.16_bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap_cc8f1a03-ae51-4cb5-b142-866eec45eddb.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "Bring worker_cli and worker_adapters back under the 400-line cap",
+      "touch_zones": [
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }

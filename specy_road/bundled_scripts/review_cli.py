@@ -75,14 +75,15 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
-             "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature"))}
+             "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature")),
+             "commands_rerun": list(c.review.data.get("commands_rerun") or [])}
             for c in gate.approvals + gate.blocks
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
                         "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
-        "problems": merge_problem + gate.problems() + (verify_problems(ready) if ready else []),
+        "problems": merge_problem + gate.problems() + (_executor_verify_problems(ready) if ready else []),
     }
 
 
@@ -95,7 +96,10 @@ def _render(st: dict[str, Any]) -> list[str]:
         mark = "ok" if not r["errors"] else "INVALID: " + "; ".join(r["errors"])
         lines.append(f"  {r['file']} ({mark})")
     for r in st["reviews"]:
-        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){' [signed]' if r['signed'] else ''}")
+        rerun = r.get("commands_rerun") or []
+        extra = f"; reviewer re-ran {', '.join(rerun)!r}" if rerun else ""
+        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
+                     f"{' [signed]' if r['signed'] else ''}{extra}")
     lines.append(f"  policy: {st['policy']}")
     if tm := st["trial_merge"]:
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
@@ -176,6 +180,12 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
 
 
 _EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2}
+
+
+def _executor_verify_problems(ready) -> list[str]:
+    """The READY's verify block is what the executor recorded, not a reviewer re-run."""
+    return [p.replace(f"{ready.path.name}:", f"{ready.path.name} (executor-reported):", 1)
+            for p in verify_problems(ready)]
 
 
 def _fail(msg: str, code: int = 1) -> int:

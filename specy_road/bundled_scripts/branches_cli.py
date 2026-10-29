@@ -34,7 +34,7 @@ from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 PATTERN = "feature/rm-*"
 
 
-def _branches(root: Path, prefix: str) -> list[str]:
+def feature_branches(root: Path, prefix: str) -> list[str]:
     out = git_text(["for-each-ref", "--format=%(refname)", prefix + PATTERN], root) or ""
     return [ref.removeprefix(prefix) for ref in out.splitlines()]
 
@@ -57,7 +57,7 @@ def _open_rollups(root: Path, target: str) -> set[str] | None:
     }
 
 
-def _live_branches(root: Path, target: str) -> set[str] | None:
+def live_branches(root: Path, target: str) -> set[str] | None:
     """Branches still in use, or ``None`` when the remote roadmap cannot be read."""
     rollups = _open_rollups(root, target)
     if rollups is None:
@@ -71,7 +71,7 @@ def _live_branches(root: Path, target: str) -> set[str] | None:
 
 def _merged(root: Path, prefix: str, target: str, live: set[str]) -> list[str]:
     return [
-        b for b in _branches(root, prefix)
+        b for b in feature_branches(root, prefix)
         if b not in live and merged_into(root, prefix + b, target)
     ]
 
@@ -95,8 +95,11 @@ def _say(failure: dict | None, done: str) -> int:
     return 1
 
 
-def cmd_prune(ns: argparse.Namespace) -> int:
-    root = resolve_repo_root(ns)
+def fetch_integration(root: Path, ns: argparse.Namespace) -> tuple[str, str] | None:
+    """``(base, remote)`` from ``--base``/``--remote`` or config, after ``git fetch --prune``.
+
+    ``None`` when the fetch failed, which is printed.
+    """
     base, remote, warns = resolve_integration_defaults(
         root, explicit_base=ns.base, explicit_remote=ns.remote
     )
@@ -110,9 +113,18 @@ def cmd_prune(ns: argparse.Namespace) -> int:
             "it could delete work pushed since. Fix the remote, then re-run.",
             file=sys.stderr,
         )
+        return None
+    return base, remote
+
+
+def cmd_prune(ns: argparse.Namespace) -> int:
+    root = resolve_repo_root(ns)
+    fetched = fetch_integration(root, ns)
+    if fetched is None:
         return 1
+    base, remote = fetched
     target = f"{remote}/{base}"
-    live = _live_branches(root, target)
+    live = live_branches(root, target)
     if live is None:
         print(
             f"error: could not read the roadmap at {target}. "
