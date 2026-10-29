@@ -1,6 +1,6 @@
 # Implementation summary: M5.5 `context-regression-set`
 
-Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7eed8`, `70d773a` (review round 1), `8c9efa3` (review round 2), and the review round 3 commit that adds this edit.
+Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7eed8`, `70d773a` (review round 1), `8c9efa3` (review round 2), `e1fc905` (review round 3), and the review round 4 commit that adds this edit.
 
 ## What changed
 
@@ -78,6 +78,19 @@ Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7ee
   `docs/context-regressions.yaml` states no failure rule, so it is
   unchanged. The runbook is 396 lines, under the 400 cap.
 
+## Review round 4 (Sol, at e1fc905)
+
+- **Excess: the render test ran CR6's input twice.** CR6 and CR7 have the
+  same `prompt.command` and `prompt.send`, and the test does not use
+  `setup`, so the CR7 instance repeated CR6 exactly. I chose to deduplicate
+  rather than honour CR7's setup. That setup (claim, render, then abort)
+  only changes what happens after the file is written, so it would add no
+  new input to the render. The parameter list now comes from
+  `_distinct_rendered_prompts()`, the first case per distinct
+  `(command, send)`, and collects as `[CR6]` and `[CR8]`. CR7 is still
+  validated by `test_the_set_validates_and_cites_sources_that_exist`, which
+  checks the whole file against the schema.
+
 ## Cases and where they came from
 
 | Case | Finding | Source |
@@ -110,6 +123,7 @@ under the project root `sr/work/` because `.specyrd/manifest.json` sets
 - `python -m pytest -q -p no:cacheprovider`: 2289 passed, 2 skipped (at `0c7eed8`; not rerun for round 1).
 - Round 2, focused: the same four test files: 35 passed.
 - Round 3, focused: the same four test files: 35 passed.
+- Round 4, focused: the same four test files: 34 passed (one fewer: the duplicate CR7 render instance is gone).
 - `specy-road file-limits`: OK (runbook now 396 lines).
 
 ## Added
@@ -122,5 +136,6 @@ under the project root `sr/work/` because `.specyrd/manifest.json` sets
 - `test_the_schema_refuses_a_broken_set` (parametrized over `_eleven_cases`, `_no_pass_condition`, `_judged_by_the_model`): proves the schema enforces the ten-case cap and the artifact-read pass condition, not just that the current file passes.
 - `{command, send}` prompt branch in `SCHEMA` (round 1, B1): a rendered prompt is a reproducible reference, not prose.
 - `_prompt_from_another_command` case in `test_the_schema_refuses_a_broken_set` (round 1, B1): a mapping must render through `specy-road prompt`.
-- `test_a_rendered_prompt_writes_the_file_it_sends_and_renders_the_same_twice` (round 1, B1), parametrized over CR6, CR7 and CR8: it builds a `make_review_repo` fixture at the command's `--repo-root` under a stand-in git root (the fixture's own `.git` stays in the project directory, so the nesting itself is not exercised), runs the command through `role_prompt.main`, and checks that the `send` file exists and renders the same bytes twice. A stale `send` path or a nondeterministic render fails it. The local `fill` substitutes the placeholders.
+- `test_a_rendered_prompt_writes_the_file_it_sends_and_renders_the_same_twice` (round 1, B1), parametrized over CR6 and CR8 (round 4: one per distinct command and file, CR7 repeating CR6's): it builds a `make_review_repo` fixture at the command's `--repo-root` under a stand-in git root (the fixture's own `.git` stays in the project directory, so the nesting itself is not exercised), runs the command through `role_prompt.main`, and checks that the `send` file exists and renders the same bytes twice. A stale `send` path or a nondeterministic render fails it. The local `fill` substitutes the placeholders.
+- `_distinct_rendered_prompts` helper in the test (round 4): the parameter list without duplicate `(command, send)` pairs.
 - Helpers, guards, mocks: none beyond the above (no mocks; `monkeypatch.chdir` only sets the working directory the runbook names).

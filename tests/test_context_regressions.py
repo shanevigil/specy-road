@@ -65,6 +65,15 @@ def _load() -> dict:
     return yaml.safe_load(CASES.read_text(encoding="utf-8"))
 
 
+def _distinct_rendered_prompts() -> list[dict]:
+    """The first case per distinct (command, send); a later case with the same pair renders the same file."""
+    first: dict[tuple[str, str], dict] = {}
+    for case in _load()["cases"]:
+        if isinstance(case["prompt"], dict):
+            first.setdefault((case["prompt"]["command"], case["prompt"]["send"]), case)
+    return list(first.values())
+
+
 def test_the_set_validates_and_cites_sources_that_exist() -> None:
     data = _load()
     jsonschema.validate(data, SCHEMA)
@@ -99,8 +108,7 @@ def test_the_schema_refuses_a_broken_set(break_it) -> None:
         jsonschema.validate(data, SCHEMA)
 
 
-@pytest.mark.parametrize("case", [c for c in _load()["cases"] if isinstance(c["prompt"], dict)],
-                         ids=lambda c: c["id"])
+@pytest.mark.parametrize("case", _distinct_rendered_prompts(), ids=lambda c: c["id"])
 def test_a_rendered_prompt_writes_the_file_it_sends_and_renders_the_same_twice(
     case: dict, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
