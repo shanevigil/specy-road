@@ -86,6 +86,8 @@ entries:
     node_id: M4.14
     branch: feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor
     touch_zones:
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
       - specy_road/bundled_scripts/brainstorm_promote.py
       - specy_road/brainstorm_promote.py
       - specy_road/brainstorm_cli.py
