@@ -434,7 +434,8 @@
         "specy_road/brainstorm_promote.py",
         "specy_road/brainstorm_cli.py",
         "docs/brainstorming.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brainstorm_promote.py"
       ],
       "type": "task"
     },
