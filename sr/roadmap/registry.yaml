@@ -1,19 +1,5 @@
 version: 1
 entries:
-  - codename: stale-command-check
-    node_id: M5.2
-    branch: feature/rm-stale-command-check
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - AGENTS.md
-      - docs/install-and-usage.md
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/cli.py
-      - specy_road/managed_block.py
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: project-setup
     node_id: M1.1
     branch: feature/rm-project-setup

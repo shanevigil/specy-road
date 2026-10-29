@@ -193,13 +193,13 @@ and bumps the recorded `specyrd_version`. `specy-road validate` warns while the
 manifest lags. In a repo with no stub pack it still re-applies the managed
 blocks, says no pack is installed, and creates no manifest.
 
-Stubs this version no longer installs for your recorded `--role` are
-**listed, not deleted**, unless you pass `--prune`. They are paths the
+Stubs this version no longer installs for your recorded `--role` are **listed, not deleted**, unless you pass `--prune`. They are paths the
 manifest recorded as the kit's, so `--prune` deletes exactly the list shown
 (and a directory it leaves empty).
 
-Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any
-warning) can gate CI next to `export --check` and `digest --check`.
+Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any warning) can gate CI next to `export --check` and `digest --check`.
+
+`validate` also warns once per occurrence, naming the file line (`AGENTS.md:4`), when `AGENTS.md` or `CLAUDE.md` outside the managed block names an unregistered `specy-road` or `specyrd` subcommand. The same name on two lines is two warnings. A registered command never warns (`specy-road validate --strict`). These always warn, and they win over a noun phrase: a code span (a run of N backticks closed by the next run of exactly N), a fenced block, a command-led list item (the product name is the first token after the marker, optionally in code or emphasis, or only a run verb precedes it: `- specy-road frob --x`, `- Run specy-road frob`), a run verb (run, exec, execute, invoke, uvx), and a token followed by a flag, a path, a quoted argument, an id-like argument, or the word command or subcommand. A heading is not special (`# Please specy-road frob` warns). The only exclusion is a noun phrase: the product name is preceded by the, a, an, this, that, these, those, other, any, all, every, each, its, our, your, their, own, of, with, in, for, from, or about, and the token is followed by a plain word or nothing ("the specy-road toolkit is", "other specy-road formats", and a mid-sentence bullet such as "- **Adoption prompts** are kept aligned with other specy-road formats" do not warn). Scanning is line-based and best-effort: inline code spans on one line only; a fence closes only when the closing line uses the same fence character, is at least the opening length, and has nothing but whitespace after the run (" ```bash " does not close). Code spans that span lines are out of scope.
 
 #### Upgrading from 0.2.x
 

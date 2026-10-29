@@ -54,7 +54,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.2_stale-command-check_e94029df-277a-47a3-a4fb-16036d6c9d0e.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "validate flags specy-road commands that do not exist in the consumer's agent files",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",

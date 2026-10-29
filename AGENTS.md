@@ -1,4 +1,4 @@
-# AGENTS — specy-road toolkit repository
+# AGENTS — the specy-road toolkit repository
 
 **This file is for contributors working on the `specy-road` package.** If you are building an **application** with specy-road, use the `AGENTS.md` created by `specy-road init project` in your repo instead.
 

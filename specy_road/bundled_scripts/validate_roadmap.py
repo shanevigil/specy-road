@@ -15,14 +15,24 @@ import yaml
 from specy_road import __version__
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
 from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL, warn_if_stubs_stale
-from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
-from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    discover_manifest_path,
+    load_manifest_mapping,
+)
+from specy_road.bundled_scripts.roadmap_load import (
+    load_roadmap,
+    validate_roadmap_line_limits,
+)
 from specy_road.registry_yaml import registry_path
 from specy_road.agents_md_block import (
     print_injected_context,
     warn_if_agents_md_block_stale,
     warn_if_context_over_limits,
     warn_missing_load_order_paths,
+)
+from specy_road.bundled_scripts.validate_stale_commands import (
+    unregistered_commands,
+    warn_unregistered_commands,
 )
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
@@ -57,13 +67,17 @@ __all__ = [
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",
+    "unregistered_commands",
     "warn_stale_parent_status",
     "warn_if_pin_differs",
     "warn_touch_zones_match_nothing",
+    "warn_unregistered_commands",
 ]
 
 
-_REQUIREMENT_PIN = re.compile(r"^\s*specy[-_.]road\s*(?:\[[^\]]*\])?\s*==\s*([^\s;#,]+)", re.IGNORECASE)
+_REQUIREMENT_PIN = re.compile(
+    r"^\s*specy[-_.]road\s*(?:\[[^\]]*\])?\s*==\s*([^\s;#,]+)", re.IGNORECASE
+)
 
 
 def pinned_version(start: Path) -> tuple[str, str] | None:
@@ -188,6 +202,7 @@ def validate_at(
     warn_if_stubs_stale(root)
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
+    warn_unregistered_commands(root)
     warn_if_context_over_limits(root)
     warn_if_generated_files_ignored(root)
 
@@ -268,9 +283,11 @@ def main() -> None:
             print(NO_ORCHESTRATION_NOTICE)   # stdout: a notice, which --strict does not count
         print_injected_context(root)
     if args.strict and stderr.lines:
-        sys.stdout.flush()   # the OK line first, then why it does not count
-        print(f"FAILED (--strict): validation passed with {stderr.lines} line(s) of warnings above.",
-              file=sys.stderr)
+        sys.stdout.flush()  # the OK line first, then why it does not count
+        print(
+            f"FAILED (--strict): validation passed with {stderr.lines} line(s) of warnings above.",
+            file=sys.stderr,
+        )
         raise SystemExit(1)
 
 
