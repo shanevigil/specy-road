@@ -13,6 +13,7 @@ from tests.review_repo_helpers import NODE, git, make_review_repo
 
 from specy_road import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
+from specy_road.orchestration_pinned import pinned_profile_for_entry
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 REPO = Path(__file__).resolve().parent.parent
@@ -90,10 +91,12 @@ def test_stale_reasons(tmp_path: Path) -> None:
 
 def test_broken_profile_reports_errors(tmp_path: Path) -> None:
     p = tmp_path / "x.md"
-    p.write_text("---\nprofile_schema: 1\nmodel: x\n---\nbody\n")
+    p.write_text("---\nprofile_schema: 1\nmodel: x\naliases: x-high\n---\nbody\n")
     prof = mp.load_profile(p)
     assert not prof.ok
     assert any("expected 2" in e for e in prof.errors) and any("missing `api_id`" in e for e in prof.errors)
+    assert "`aliases` must be a list of model ids" in prof.errors   # a string would match by substring
+    assert prof.for_id("x-high") is None
 
 
 # --- models CLI ---------------------------------------------------------------
@@ -168,6 +171,43 @@ def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
     assert "# Work-packet brief" not in text
     # gitignored, so a glob tool may not list it: the prompt names the exact file to open
     assert f"absolute: `{d / PACKET_NAME}`" in text and f"directly (`ls {d / PACKET_NAME}`)" in text
+    # the leaf's checkout (what the status check leaves out: test_prerelease_s2)
+    assert "in the checkout that has `feature/rm-thing` checked out (`git worktree list` names it" in text
+
+
+def test_an_effort_suffixed_roster_id_finds_its_profile_through_aliases(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    roster = repo / "roadmap" / "orchestration.yaml"
+    roster.write_text(ROSTER + "  - {id: claude-opus-5-5-high, family: anthropic, harness: cursor, roles: [reviewer]}\n")
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    text = prof_path.read_text()
+    prof_path.write_text(text.replace("api_id: claude-opus-5-5\n", "api_id: claude-opus-5-5\naliases: [claude-opus-5-5-high]\n", 1))
+    _commit_profile(repo)
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
+    text, prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="claude-opus-5-5-high")
+    assert err is None and "## Model notes (Claude Opus 5.5" in text and "Effort for review: `high`" in text
+    assert prof.api_id == "claude-opus-5-5-high"   # a worker launches with the id its harness lists
+    assert role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="opus")[1].api_id == "claude-opus-5-5"
+
+
+def test_a_dirty_alias_matched_profile_is_refused(tmp_path: Path) -> None:
+    """A local edit must still be the drift error when the roster id is an alias, not a missing profile."""
+    repo = _repo(tmp_path)
+    (repo / "roadmap" / "orchestration.yaml").write_text(
+        ROSTER + "  - {id: claude-opus-5-5-high, family: anthropic, roles: [reviewer]}\n")
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    prof_path.write_text(prof_path.read_text().replace(
+        "api_id: claude-opus-5-5\n", "api_id: claude-opus-5-5\naliases: [claude-opus-5-5-high]\n", 1))
+    _commit_profile(repo)
+    prof_path.write_text(prof_path.read_text() + "\n")
+    for model in ("claude-opus-5-5-high", "claude-opus-5-5"):
+        found = pinned_profile_for_entry(repo, {"id": model})
+        assert found is not None and not found.ok
+        assert "differs from the copy on the integration branch" in found.errors[0]
+    _text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="reviewer", model="claude-opus-5-5-high")
+    assert err and "differs from the copy on the integration branch" in err and "commit it" in err
 
 
 def test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim(tmp_path: Path) -> None:
@@ -183,6 +223,7 @@ def test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim(tmp_path:
     text = (repo / "work" / "prompt-M1.1-reviewer-opus.md").read_text()
     assert f"base: {git(repo, 'rev-parse', 'feature/rm-thing')}" in text
     assert "--file <notes.md> --ref feature/rm-thing`" in text
+    assert "the checkout that has `feature/rm-thing` checked out" in text   # no claim: the --ref names it
 
 
 def test_prompt_refuses_unrostered_model_and_wrong_role(tmp_path: Path) -> None:

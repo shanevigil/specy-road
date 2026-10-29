@@ -373,24 +373,24 @@ class Codex(Adapter):
 class Cursor(Adapter):
     harness = "cursor"
     caps = Capabilities(resume=True, interrupt=False, steer=False, handoff=True, events=True,
-                        notes="agent -p --force stream-json (--force force-allows every command not denied; print mode "
-                              "has write and shell tools regardless); session id from the first event; resume = `agent -p --resume` "
-                              "(print-mode resume with a new prompt is undocumented: verify on your install)")
+                        notes="agent -p --force --trust stream-json (--force force-allows every command not denied; --trust "
+                              "skips a new worktree's trust prompt; print mode can write and run shell); session id "
+                              "from the first event; resume = `agent -p --resume` (undocumented with a new prompt: verify)")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
-        return Launch(["agent", "-p", "--output-format", "stream-json", "--force", *_model_flag("--model", model),
-                       "--workspace", str(worktree), _text(prompt_path)])
+        return Launch(["agent", "-p", "--output-format", "stream-json", "--force", "--trust",   # new worktree: untrusted
+                       *_model_flag("--model", model), "--workspace", str(worktree), _text(prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
-        return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force",
+        return Launch(["agent", "-p", "--resume", session_id, "--output-format", "stream-json", "--force", "--trust",
                        "--workspace", str(worktree), _text(prompt_path)], session_id=session_id)
 
     def parse(self, line: str) -> Parsed | None:

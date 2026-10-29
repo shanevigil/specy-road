@@ -43,21 +43,28 @@ def test_template_validates_and_matches_defaults(tmp_path: Path) -> None:
     assert data["substitutions"] == []
 
 
-def test_init_writes_the_starter_and_validate_generates_it_when_missing(tmp_path: Path, monkeypatch) -> None:
+def test_init_writes_the_starter_and_validate_generates_it_when_missing(tmp_path: Path, monkeypatch, capsys) -> None:
     from specy_road.bundled_scripts import validate_roadmap
     from specy_road.init_project import run_init_project
 
     assert run_init_project(tmp_path) == 0
     dest = tmp_path / "roadmap" / "orchestration.yaml"
     assert dest.read_text(encoding="utf-8") == TEMPLATE.read_text(encoding="utf-8")
+    dest.unlink()
+    capsys.readouterr()
+    monkeypatch.setattr("sys.argv", ["validate", "--repo-root", str(tmp_path)])
+    validate_roadmap.main()   # absent: one notice, on stdout, that the default policy applies
+    out = capsys.readouterr()
+    assert out.out.count(validate_roadmap.NO_ORCHESTRATION_NOTICE) == 1 and "notice:" not in out.err
+    assert "one reviewer, any family" in validate_roadmap.NO_ORCHESTRATION_NOTICE
     argv = ["validate", "--generate-orchestration", "--repo-root", str(tmp_path)]
     monkeypatch.setattr("sys.argv", argv)
-    dest.unlink()
     validate_roadmap.main()
     assert dest.read_text(encoding="utf-8") == TEMPLATE.read_text(encoding="utf-8")
     dest.write_text("version: 1\n", encoding="utf-8")
     validate_roadmap.main()
     assert dest.read_text(encoding="utf-8") == "version: 1\n"
+    assert validate_roadmap.NO_ORCHESTRATION_NOTICE not in capsys.readouterr().out
 
 
 def test_dogfood_fixture_validates() -> None:

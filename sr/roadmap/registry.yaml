@@ -61,26 +61,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: roster-profiles-and-packet-path
-    node_id: M3.11
-    branch: feature/rm-roster-profiles-and-packet-path
-    touch_zones:
-      - specy_road/orchestration_config.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/model_profiles.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/session_presence.py
-      - specy_road/worker_adapters.py
-      - docs/orchestration-models.md
-      - docs/orchestration.md
-      - tests/
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration-workers.md
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
     node_id: M4.17
     branch: feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
@@ -116,6 +96,18 @@ entries:
       - specy_road/bundled_scripts/brainstorm_verify.py
       - specy_road/bundled_scripts/brainstorm_promote.py
       - docs/brainstorming.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
+  - codename: bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap
+    node_id: M3.16
+    branch: feature/rm-bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap
+    touch_zones:
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/bundled_scripts/worker_cli_render.py
       - tests/
     started: '2026-10-29'
     owner: savigil

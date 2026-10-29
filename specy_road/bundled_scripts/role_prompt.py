@@ -99,14 +99,39 @@ def _where(prefix: str) -> list[str]:
             "git root, so never write them in the git root's own `work/`.", ""]
 
 
+def _reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[str]:
+    """The leaf's own checkout, minus only this leaf's generated review bookkeeping."""
+    branch = (t.entry or {}).get("branch") or t.ref
+    work = f"{prefix}work"
+    check = (
+        "git status --porcelain --untracked-files=all -- ':(top)' "
+        f"':(top,exclude){work}/brief-{node_id}.md' "
+        f"':(top,exclude){work}/implementation-summary-{node_id}.md' "
+        f"':(top,exclude){work}/prompt-{node_id}.md' "
+        f"':(top,exclude){work}/prompt-{node_id}-*.md' "
+        f"':(top,exclude){work}/reviews/{node_id}/'"
+    )
+    return [
+        "## Precondition",
+        "",
+        f"If `work/reviews/{node_id}/{PACKET_NAME}` (absolute: `{packet}`) does not exist, or `{check}` lists "
+        f"changes you did not make, change nothing, reply exactly `{node_id} not landed; waiting`, and stop. Run that command in "
+        f"the checkout that has `{branch}` checked out (`git worktree list` names it; usually the leaf's worktree, "
+        "not the coordinator's main checkout); if none has it, skip it, since the packet names the commit you review. "
+        f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts and "
+        f"`{work}/reviews/{node_id}/` hand-offs; any other change, tracked or untracked, counts.",
+        "",
+        "The packet is gitignored, so file-search and glob tools may not list it: open that "
+        f"absolute path directly (`ls {packet}`).",
+        "",
+    ]
+
+
 def _precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> list[str]:
     branch = t.entry.get("branch") if t.entry else None
-    found = []
     if role == "reviewer":
-        missing = f"`work/reviews/{node_id}/{PACKET_NAME}` (absolute: `{packet}`) does not exist"
-        found = ["The packet is gitignored, so file-search and glob tools may not list it: open that "
-                 f"absolute path directly (`ls {packet}`).", ""]
-    elif role == "executor":
+        return _reviewer_precondition(node_id, t, packet, prefix)
+    if role == "executor":
         missing = (f"`{prefix}work/brief-{node_id}.md` does not exist, or the branch "
                    f"`{branch or 'feature/rm-<codename>'}` is not checked out")
     else:
@@ -120,7 +145,6 @@ def _precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") ->
         f"only specy-road's bookkeeping (`{prefix}work/brief-*.md`, `{prefix}work/implementation-summary-*.md`, "
         f"`{prefix}work/reviews/`); any other change, tracked or untracked, counts.",
         "",
-        *found,
     ]
 
 
