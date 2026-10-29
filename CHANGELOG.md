@@ -11,6 +11,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- `specy-road integrity <NODE_ID>` compares a leaf to its merge base using git
+  objects only and reports removed tests, new skips, lost asserts and pytest
+  config edits; `review-packet` includes the same findings under **Test
+  integrity** after **Changed paths** (`--json` on the CLI).
+
 ## [v0.3.1-rc2] - 2026-10-29
 
 Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path
