@@ -38,6 +38,11 @@ Review round 5 (Sol, at f4a1b0c) found one stale public description:
 
 - **CLI help names TS/JS.** `validate_file_limits.py` passes its module docstring to `ArgumentParser`; that docstring now says the optional function counts cover Python and TS/JS, instead of Python only.
 
+Review round 6 (Sol, at bb2887d) blocked on named arrows:
+
+- **Grouped initializers.** `_arrow_body` now looks inside a `(` before treating it as a parameter list. `((x: number) => { … })` is measured under the `const` name; `(x) => { … }` is unchanged, because `=>` still follows that `(`.
+- **Typed arrow fields.** A `:` after a class member name is skipped with `_type_end` up to `=`, so `onChange: (x: number) => number = (x) => { … }` is `Handler.onChange`, not `Handler.number`.
+
 ## Changes
 
 - `specy_road/file_limits_js.py` (new): the scanner. Round 4 calls `blank_jsx_text` for `.jsx` / `.tsx` (import inside the function, so the JSX module can import this file's literal helpers without a cycle).
@@ -50,7 +55,7 @@ Review round 5 (Sol, at f4a1b0c) found one stale public description:
 - `specy_road/bundled_scripts/validate_file_limits.py`: round 5 updates the generated public help text to name Python and TS/JS function counts.
 - `constraints/file-limits.yaml` and `specy_road/templates/project/constraints/file-limits.yaml`: these policy files now say which languages and forms the function cap covers.
 - `constraints/README.md`, `specy_road/templates/project/constraints/README.md` (round 2) and `tests/fixtures/specy_road_dogfood/constraints/README.md`: the "Python-only" labels are replaced.
-- `tests/fixtures/file_limits_js/`: one fixture per syntax form (`declaration.ts`, `arrow.tsx`, `class_methods.ts`), plus `literals.mjs` for masking. `legacy.js` and `widget.jsx` cover the last two suffixes. Round 1 adds `concise_arrow.ts`, `regex.js` and `division.js`; round 2 adds `generic_class.ts` and `declarators.ts`; round 3 adds `computed_method.ts`; round 4 adds `jsx_text.tsx`.
+- `tests/fixtures/file_limits_js/`: one fixture per syntax form (`declaration.ts`, `arrow.tsx`, `class_methods.ts`), plus `literals.mjs` for masking. `legacy.js` and `widget.jsx` cover the last two suffixes. Round 1 adds `concise_arrow.ts`, `regex.js` and `division.js`; round 2 adds `generic_class.ts` and `declarators.ts`; round 3 adds `computed_method.ts`; round 4 adds `jsx_text.tsx`; round 6 adds `parenthesized.ts` and `typed_field.ts`.
 - `tests/test_file_limits_js.py` (new), plus one assertion added to `tests/test_file_limits_engine.py`.
 
 Final touch zones used: `specy_road/file_limits_engine.py`, `specy_road/file_limits_js.py`, `specy_road/file_limits_jsx.py` (round 4; the scanner was at its 400-line cap, so the JSX blanker is a sibling module rather than an exemption), `constraints/file-limits.yaml`, `specy_road/templates/project/constraints/file-limits.yaml`, `constraints/README.md`, `specy_road/templates/project/constraints/README.md`, `tests/fixtures/specy_road_dogfood/constraints/README.md`, `docs/file-limits.md` (round 4), `tests/`. Not touched: `specy_road/bundled_scripts/validate_file_limits.py` (it already exits non-zero before `OK` when the scan fails).
@@ -73,9 +78,9 @@ The two forms the amended A1 leaves out of the scanner are documented in `docs/f
 
 ## Verification
 
-- `pytest -q tests/test_file_limits_js.py tests/test_file_limits_engine.py tests/test_file_limits_gitignore.py tests/test_validate_file_limits.py`: 45 passed (round 5; 44 in round 4, 42 in round 3, 40 in round 2, 36 in round 1, 30 before that).
+- `pytest -q tests/test_file_limits_js.py tests/test_file_limits_engine.py tests/test_file_limits_gitignore.py tests/test_validate_file_limits.py`: 49 passed (round 6; 45 in round 5, 44 in round 4, 42 in round 3, 40 in round 2, 36 in round 1, 30 before that).
 - `pytest -q` (full suite, round 3 after the computed-name change): 2356 passed, 2 skipped. The string/number-name follow-up touched only `specy_road/file_limits_js.py` and its own test and fixture, so I reran the focused set after it.
-- File caps: `specy_road/file_limits_js.py` is 398 lines (cap 400), `specy_road/file_limits_jsx.py` is 134, and the engine is 379. In round 2 a separate `_class_body` helper took the scanner to 403, so I reused `_type_end` instead of adding an exemption. Round 4 put the JSX blanker in its own module for the same reason.
+- File caps: `specy_road/file_limits_js.py` is 399 lines (cap 400), `specy_road/file_limits_jsx.py` is 134, and the engine is 379. In round 2 a separate `_class_body` helper took the scanner to 403, so I reused `_type_end` instead of adding an exemption. Round 4 put the JSX blanker in its own module for the same reason.
 - Round 4 regression check: the round-3 scanner reports `jsx_text.tsx` as `Greeting` 11 lines containing `Greeting.next` and `Greeting.next.after`. The round-4 scanner reports `Greeting` 5, `next` 2 and `after` 3. `blank_jsx_text` keeps length and newline count. Across `gui/pm-gantt/src` (77 files, 318 functions) the round-3 and round-4 scanners return identical results.
 - Round 3 regression check: the round-2 scanner returns no functions at all for `computed_method.ts`. Across that same GUI tree the round-2 and round-3 scanners agreed.
 - `python specy_road/bundled_scripts/validate_file_limits.py` (this repo): `OK: file limits satisfied.`
@@ -95,6 +100,7 @@ The two forms the amended A1 leaves out of the scanner are documented in `docs/f
 6. Round 3: the computed-name branch in `_class_members` (`m.group(2)`), and the fixture `computed_method.ts`.
 7. Round 4: `blank_jsx_text` in `specy_road/file_limits_jsx.py`, and the fixture `jsx_text.tsx`. The two out-of-scope forms are in `docs/file-limits.md`.
 8. Round 5: the module docstring in `validate_file_limits.py` and `test_file_limits_help_names_ts_js_function_counts`.
+9. Round 6: the grouping check in `_arrow_body` and the `:` skip in `_class_members`. Fixtures are `parenthesized.ts` and `typed_field.ts`.
 
 ## Added
 
@@ -129,6 +135,9 @@ The two forms the amended A1 leaves out of the scanner are documented in `docs/f
   - Round 3: `computed_method.ts` added to `test_js_function_metrics_per_syntax_form`.
   - Round 4: `jsx_text.tsx` added to that test and to `test_scan_measures_concise_arrows_regexes_and_divisions`. The round-3 scanner swallows `next` and `after` into `Greeting`; the assertions name the three spans and Greeting's 5-line report.
 - Round 5: `test_file_limits_help_names_ts_js_function_counts`: runs the public `--help` path and asserts its wrapped description names TS/JS.
+- Round 6: the `(` branch in `_arrow_body` returns an arrow found inside a grouping paren when `=>` does not follow that paren. `(x) =>` still takes the parameter-list path.
+- Round 6: `_class_members` skips a field type with `_type_end(…, "=")` before looking for `=`, so the declared name is kept.
+- Round 6: `parenthesized.ts` and `typed_field.ts` are in the per-form metrics test and in `test_scan_measures_concise_arrows_regexes_and_divisions`. The scan assertions require `wrapped` and `Handler.onChange` over the cap.
 - Round 4: `specy_road/file_limits_jsx.py` `blank_jsx_text`, `_jsx_open`, `_code`, `_jsx_attrs`, `_jsx_kids`, `_jsx_take`: blank JSX text, including text inside an expression's nested element, without moving newlines. `_jsx_open` rejects `<T,>` and `<T extends …>`. The import sits inside `js_function_metrics` so this module can import the literal helpers from `file_limits_js` without a cycle.
 - Round 4: `docs/file-limits.md`: the two forms the amended A1 leaves unscanned.
 - `tests/test_file_limits_engine.py`: one assertion on the exact Python report line, including `:4`.
