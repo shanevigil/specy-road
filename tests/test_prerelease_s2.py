@@ -28,6 +28,7 @@ def test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes(tmp_pa
     (repo / "work").mkdir()
     (repo / "work" / "brief-M1.1.md").write_text("# brief\n")                 # do-next-available-task
     (repo / "work" / "implementation-summary-M1.1.md").write_text("Did it.\n")  # the executor
+    (repo / "work" / "prompt-M1.1-reviewer-rev.md").write_text("# prompt\n")   # the coordinator's
     reviews_dir(repo, "M1.1").mkdir(parents=True)
     (reviews_dir(repo, "M1.1") / PACKET_NAME).write_text("# packet\n")
     text, _prof, err = build_prompt(repo, "M1.1", role="reviewer", model="rev")

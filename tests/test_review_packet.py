@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests.review_repo_helpers import commit_file, git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
@@ -104,3 +106,25 @@ def test_main_writes_packet_file(tmp_path: Path, capsys) -> None:
     out = reviews_dir(repo, "M1.1") / PACKET_NAME
     assert out.is_file()
     assert str(out) in capsys.readouterr().out
+    # -o adds a copy; the canonical path `prompt --role reviewer` reads is still written
+    out.unlink()
+    extra = tmp_path / "elsewhere.md"
+    rp.main(["M1.1", "-o", str(extra), "--repo-root", str(repo)])
+    assert out.read_text() == extra.read_text() and "+print('a')" in extra.read_text()
+    printed = capsys.readouterr().out
+    assert f"Wrote {out}" in printed and f"Wrote {extra}" in printed
+
+
+def test_an_empty_merge_base_diff_is_explained_and_base_sets_the_range(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path)
+    before = git(repo, "rev-parse", "dev")
+    git(repo, "update-ref", "refs/heads/dev", "feature/rm-thing")   # the leaf is already merged
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "_(the diff is empty: `" in text and "`review-packet --base <ref>` sets the diff range" in text
+    assert "warning: the diff is empty" in capsys.readouterr().err
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], base=before)
+    assert f"**Base:** `{before}` (merge base with `{before}`)" in text and "+print('a')" in text
+    assert "warning:" not in capsys.readouterr().err
+    with pytest.raises(SystemExit) as e:
+        rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], base="no-such-ref")
+    assert e.value.code == 1 and "--base 'no-such-ref' does not resolve" in capsys.readouterr().err

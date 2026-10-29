@@ -54,6 +54,9 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     assert "-C" not in xr.argv
     u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
     assert u.argv[:2] == ["agent", "-p"] and "--force" in u.argv and "--workspace" in u.argv
+    # a new worktree is an untrusted workspace: without --trust (or --force) `agent -p` exits 1
+    ur = wa.adapter_for("cursor").resume("c1", p, tmp_path, "m", None)
+    assert "--trust" in u.argv and "--trust" in ur.argv
     assert wa.adapter_for("claude-code").human_resume("sid", tmp_path) == ["claude", "--resume", "sid"]
     assert wa.adapter_for("codex").human_resume("t1", tmp_path) == ["codex", "resume", "t1"]
     assert wa.adapter_for("cursor").human_resume("c1", tmp_path) == ["agent", "--resume", "c1"]

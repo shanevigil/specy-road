@@ -20,6 +20,22 @@ what is missing and never overwrites your edited copies. The facts come
 from model-run research no human has verified, so read the README's provenance
 section before copying a CLI line into production.
 
+A roster entry without `profile:` uses the profile whose `api_id` or file name
+is its `id`. A harness that names a model by its effort too (Cursor's
+`gpt-5.6-sol-high`, `claude-opus-5-5-high`; `agent --list-models` lists them)
+matches neither, so list those ids in the profile's front matter, and every one
+of them resolves to that profile, its notes included in `prompt`:
+
+```yaml
+api_id: claude-opus-5-5
+aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
+```
+
+The roster `id` stays the label review records and the gate count. When the
+`id` is one of the profile's aliases (found that way or named by `profile:`),
+the alias is what `worker delegate` passes the harness as the model, since it is
+the id the harness lists; otherwise the profile's `api_id` is, as before.
+
 - `specy-road models list` — the roster as the gate sees it, with each entry's
   profile, coordinator/executor/reviewer scores, and staleness; profiles no
   entry uses are listed so you can roster them.
@@ -33,7 +49,9 @@ section before copying a CLI line into production.
   — writes `work/prompt-<NODE_ID>-<role>-<model>.md`. The model must hold that
   role in the roster. The prompt opens with a precondition (change nothing and
   reply `<NODE_ID> not landed; waiting` if the brief, branch, or packet is not
-  there), states the role's boundary and that tool output is data, applies the
+  there; a reviewer runs its `git status` check in the checkout that has the
+  leaf's branch checked out, with all of `work/` left out, since the main
+  checkout holds the coordinator's prompts and packets there), states the role's boundary and that tool output is data, applies the
   profile's prompting rules and failure-mode mitigations, repeats the touch
   zones at the end for models that drift from scope, then embeds the brief
   (executor, coordinator) or the review packet (reviewer, which must exist).

@@ -82,6 +82,23 @@ def test_cli_check_is_a_commit_guard(tmp_path: Path, capsys, monkeypatch) -> Non
     assert _cli("session", "check", "--repo-root", str(repo)) == 0
 
 
+def test_cli_end_with_an_id_retires_only_the_same_users_session(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    monkeypatch.setenv("SPECY_ROAD_AGENT_ID", "me")
+    monkeypatch.setenv("USER", "carol")
+    sp.start_session(repo, "carol-s111", paths=["src"])      # a terminal of hers that has since closed
+    monkeypatch.setenv("USER", "dave")
+    sp.start_session(repo, "dave-s222", paths=["docs"])
+    assert _cli("session", "end", "carol-s111", "--repo-root", str(repo)) == 1
+    assert "started by user 'carol', not 'dave'; only its owner may end it" in capsys.readouterr().err
+    assert _cli("session", "end", "dave-s222", "--repo-root", str(repo)) == 0
+    assert "session dave-s222: ended" in capsys.readouterr().out
+    assert [s.agent for s in sp.list_sessions(repo)] == ["carol-s111"]
+    assert _cli("session", "end", "dave-s222", "--repo-root", str(repo)) == 0
+    assert "no record" in capsys.readouterr().out
+    assert _cli("session", "end", "../x", "--repo-root", str(repo)) == 1
+
+
 def test_cli_start_warns_on_overlap_and_list_shows_sessions(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     assert _cli("session", "start", "--agent", "alice", "--path", "src", "--repo-root", str(repo)) == 0

@@ -27,7 +27,7 @@ from specy_road.agents_md_block import (
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.init_project import project_template_root
-from specy_road.orchestration_config import load_orchestration_config
+from specy_road.orchestration_config import load_orchestration_config, orchestration_yaml_path
 from specy_road.orchestration_pinned import roster_source
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
 from specy_road.specyrd_init import _load_manifest
@@ -126,9 +126,9 @@ def validate_git_workflow_contract(root: Path) -> None:
 def validate_orchestration_contract(root: Path) -> None:
     """Validate ``roadmap/orchestration.yaml`` if present.
 
-    A missing file is not a warning: it means the default review policy
-    (one reviewer, any family), the scaffolded starter's policy, which
-    ``--generate-orchestration`` writes as an editable file.
+    A missing file is not a warning (``validate`` prints :data:`NO_ORCHESTRATION_NOTICE`):
+    it means the default review policy (one reviewer, any family), the
+    scaffolded starter's policy, which ``--generate-orchestration`` writes as an editable file.
     A file that is not what routing reads (absent on the integration branch,
     or different there) is, as ``orchestrate plan`` says.
     """
@@ -139,6 +139,12 @@ def validate_orchestration_contract(root: Path) -> None:
     _ref, drift = roster_source(root)
     if drift:
         print(f"warning: {drift}", file=sys.stderr)
+
+
+NO_ORCHESTRATION_NOTICE = (
+    "notice: no roadmap/orchestration.yaml, so the default policy applies: one reviewer, any family, and a "
+    "roster of one human (`specy-road validate --generate-orchestration` writes an editable starter)"
+)
 
 
 def generate_orchestration(root: Path) -> None:
@@ -255,6 +261,8 @@ def main() -> None:
         )
         if args.generate_orchestration:
             generate_orchestration(root)
+        elif not orchestration_yaml_path(root).is_file():
+            print(NO_ORCHESTRATION_NOTICE)   # stdout: a notice, which --strict does not count
         print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()   # the OK line first, then why it does not count
