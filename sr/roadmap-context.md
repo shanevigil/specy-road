@@ -35,6 +35,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.7` Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies `graph-apply` — task — **Not Started**
   - `M4.8` list-nodes --json, refresh-stubs --diff, move-node zone rewrite `graph-listing-and-moves` — task — **Not Started**
   - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Not Started**
+  - `M4.10` Clean up merged feature branches after finish `branch-cleanup` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Not Started**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
@@ -55,6 +56,8 @@ Do not pick these up.
 - `M4.7` on `feature/rm-graph-apply` since 2026-10-28
 - `M4.8` on `feature/rm-graph-listing-and-moves` since 2026-10-28
 - `M4.9` on `feature/rm-pick-ordering` since 2026-10-28
+- `M5.1` on `feature/rm-rule-provenance` since 2026-10-28
+- `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
 
 ## Reaching the detail behind this
 
