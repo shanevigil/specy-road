@@ -24,10 +24,8 @@
 specy-road separates three roles around a roadmap leaf and prescribes how work passes
 between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit.
 
-- **Coordinator** — picks the leaf, creates the branch or worktree, assembles the
-  review packet, closes the review gate, finishes the leaf, and changes roadmap status.
-- **Executor** — reads the brief, changes only the leaf's touch zones, runs the
-  verifiers, commits, writes a hand-off file, and **stops**.
+- **Coordinator** — picks the leaf, creates the branch or worktree, assembles the review packet, closes the review gate, finishes the leaf, and changes roadmap status.
+- **Executor** — reads the brief, changes only the leaf's touch zones, runs the verifiers, commits, writes a hand-off file, and **stops**.
 - **Reviewer** — reads the review packet and nothing else, in a fresh session, and records approve or block.
 
 ## The flow
