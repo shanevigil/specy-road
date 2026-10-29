@@ -19,7 +19,7 @@ from specy_road.bundled_scripts.validate_touch_zones import (
 
 
 def _node(**over) -> dict:
-    base = {"id": "M1.1", "status": "Not Started", "touch_zones": []}
+    base = {"id": "M1.1", "status": "In Progress", "touch_zones": []}
     base.update(over)
     return base
 
@@ -78,9 +78,9 @@ def test_many_drifted_nodes_share_one_header_and_one_fix_line(
 
     assert err.count("warning") == 1
     assert err.count("specy-road edit-node") == 1
-    # One header, one line per node, one line of guidance — nothing per-node
+    # One header, one line per node, two lines of guidance — nothing per-node
     # repeated.
-    assert len(lines) == len(nodes) + 2
+    assert len(lines) == len(nodes) + 3
     for i in range(1, 6):
         assert f"M1.{i}" in err
 
@@ -179,3 +179,23 @@ def test_a_bounded_glob_that_matches_stays_quiet(tmp_path: Path, capsys) -> None
     (tmp_path / "src" / "deep" / "a.py").write_text("x", encoding="utf-8")
 
     assert _warn([_node(touch_zones=["src/**/*.py"])], tmp_path, capsys) == ""
+
+
+def test_a_not_started_node_naming_files_it_will_create_is_quiet(tmp_path: Path, capsys) -> None:
+    """Agents "fixed" this warning on unbuilt work by deleting the zones."""
+    nodes = [_node(status="Not Started", touch_zones=["src/feature/new_module.py"])]
+
+    assert _warn(nodes, tmp_path, capsys) == ""
+
+
+def test_a_started_subtree_is_judged_by_its_rollup(tmp_path: Path, capsys) -> None:
+    nodes = [_node(id="M2", status="Not Started", rollup_status="In Progress", touch_zones=["gone/"])]
+
+    assert "M2" in _warn(nodes, tmp_path, capsys)
+
+
+def test_the_hint_does_not_invite_removing_zones(tmp_path: Path, capsys) -> None:
+    err = _warn([_node(touch_zones=["src/sync/engine.py"])], tmp_path, capsys)
+
+    assert "do not remove zones just to silence this" in err
+    assert "planning sheet" not in err

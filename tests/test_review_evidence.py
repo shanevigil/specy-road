@@ -45,8 +45,10 @@ def _ready(repo: Path, verify: str) -> None:
 
 def _status(repo: Path, capsys) -> dict:
     capsys.readouterr()
-    assert _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
-    return json.loads(capsys.readouterr().out)["nodes"][0]
+    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert code == (0 if st["policy_met"] else 1), st["state"]
+    return st
 
 
 FAILED = "verify:\n  - {cmd: 'false', exit: 1, tail: boom}\n  - {cmd: pytest, exit: 0}\n"
@@ -59,7 +61,7 @@ def test_status_lists_a_failing_verifier(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo, FAILED)
     st = _status(repo, capsys)
-    assert "READY-exec.md: verifier `false` exited 1" in st["problems"]
+    assert "READY-exec.md (executor-reported): verifier `false` exited 1" in st["problems"]
     assert not any("pytest" in p for p in st["problems"])
 
 
@@ -67,7 +69,7 @@ def test_status_lists_missing_verifier_evidence(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo, "")
     st = _status(repo, capsys)
-    assert "READY-exec.md: no verifier evidence recorded (verify is empty)" in st["problems"]
+    assert "READY-exec.md (executor-reported): no verifier evidence recorded (verify is empty)" in st["problems"]
 
 
 def test_a_failing_verifier_does_not_change_state(tmp_path: Path, capsys) -> None:
@@ -100,8 +102,8 @@ RERUNS_ON = ONE_AI + "policy:\n  reviewer_reruns_required: true\n"
 NO_RERUN = "does not count — approved without re-running a command (policy.reviewer_reruns_required)"
 
 
-def _review(repo: Path, model: str = "opus", rerun: list[str] | None = None) -> str:
-    text = review_text(git(repo, "rev-parse", "HEAD"), model=model)
+def _review(repo: Path, model: str = "opus", rerun: list[str] | None = None, verdict: str = "approve") -> str:
+    text = review_text(git(repo, "rev-parse", "HEAD"), model=model, verdict=verdict)
     if rerun:
         text = text.replace("commands_rerun: []", "commands_rerun: " + json.dumps(rerun))
     return text
@@ -112,7 +114,7 @@ def _gate(repo: Path, text: str, model: str = "opus"):
     d.mkdir(parents=True, exist_ok=True)
     (d / f"REVIEW-{model}.md").write_text(text)
     t = resolve_target(repo, "M1.1")
-    return evaluate_gate(repo, t.node, t.commit)
+    return evaluate_gate(repo, t.node, t.commit, branch=(t.entry or {}).get("branch"))
 
 
 def test_reruns_required_rejects_an_approval_without_a_rerun(tmp_path: Path) -> None:
@@ -153,3 +155,59 @@ def test_validate_checks_the_reruns_key_type() -> None:
     assert parse_orchestration_text(RERUNS_ON)[1] is None
     _data, err = parse_orchestration_text(ONE_AI + "policy:\n  reviewer_reruns_required: 'yes'\n")
     assert err and "reviewer_reruns_required" in err
+
+
+# --- M3.17: failing READY verifiers gate unless marked pre-existing ----------------
+
+
+def _review_with_preexisting(repo: Path, *, pre: list[str], verdict: str = "approve") -> str:
+    text = _review(repo, verdict=verdict)
+    block = "verify_pre_existing: " + json.dumps(pre) + "\n"
+    return text.replace("commands_rerun: []\n", "commands_rerun: []\n" + block)
+
+
+def test_failing_verifier_blocks_even_when_reviews_pass(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo, FAILED)
+    assert _gate(repo, _review(repo)).passed is False
+    st = _status(repo, capsys)
+    assert not st["policy_met"]
+    assert any("verifier `false` exited 1" in p for p in st["problems"])
+
+
+def test_pre_existing_marker_on_approve_clears_verifier_block(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo, FAILED)
+    assert _gate(repo, _review_with_preexisting(repo, pre=["false"])).passed
+    st = _status(repo, capsys)
+    assert st["policy_met"]
+    assert not any("verifier `false`" in p for p in st["problems"])
+
+
+def test_pre_existing_marker_on_block_is_ignored(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo, FAILED)
+    text = _review_with_preexisting(repo, pre=["false"], verdict="block")
+    gate = _gate(repo, text)
+    assert not gate.passed
+    assert gate.blocks
+    assert any("verifier `false` exited 1" in p for p in gate.problems())
+
+
+def test_no_ready_file_does_not_add_verifier_problems(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _gate(repo, _review(repo)).passed
+    st = _status(repo, capsys)
+    assert st["policy_met"]
+    assert not any("verifier" in p for p in st["problems"])
+
+
+def test_empty_verify_is_reported_but_does_not_block_with_an_approval(
+    tmp_path: Path, capsys
+) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo, "")
+    assert _gate(repo, _review(repo)).passed
+    st = _status(repo, capsys)
+    assert st["policy_met"]
+    assert "READY-exec.md (executor-reported): no verifier evidence recorded (verify is empty)" in st["problems"]

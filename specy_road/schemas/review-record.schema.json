@@ -35,6 +35,10 @@
       }
     },
     "commands_rerun": { "$ref": "#/$defs/notes", "description": "Commands the reviewer ran independently." },
+    "verify_pre_existing": {
+      "$ref": "#/$defs/notes",
+      "description": "Verifier commands from the READY file that already failed identically on the integration branch; only approving records count, and each failing READY verifier must be named by at least one approving reviewer before the gate can pass."
+    },
     "required_changes": { "$ref": "#/$defs/notes" },
     "fresh_session": { "type": "boolean", "description": "The review ran in a session that saw only the review packet." },
     "authored_fix": { "type": "boolean", "description": "The reviewing session wrote any part of the change under review." },

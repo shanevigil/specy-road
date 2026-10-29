@@ -26,8 +26,14 @@ policy: {reviewers_required: 1}
 def test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path, orchestration=ROSTER)
     (repo / "work").mkdir()
+    tracked = repo / "work" / "README.md"
+    tracked.write_text("# tracked work file\n")
+    git(repo, "add", "work/README.md")
+    git(repo, "commit", "-qm", "tracked work file")
     (repo / "work" / "brief-M1.1.md").write_text("# brief\n")                 # do-next-available-task
     (repo / "work" / "implementation-summary-M1.1.md").write_text("Did it.\n")  # the executor
+    (repo / "work" / "prompt-M1.1.md").write_text("# coordinator prompt\n")
+    (repo / "work" / "prompt-M1.1-reviewer-rev.md").write_text("# prompt\n")   # the coordinator's
     reviews_dir(repo, "M1.1").mkdir(parents=True)
     (reviews_dir(repo, "M1.1") / PACKET_NAME).write_text("# packet\n")
     text, _prof, err = build_prompt(repo, "M1.1", role="reviewer", model="rev")
@@ -38,6 +44,13 @@ def test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes(tmp_pa
         return subprocess.run(check, shell=True, cwd=where, capture_output=True, text=True, check=True).stdout
 
     assert dirty(repo) == ""
+    tracked.write_text("# changed tracked work file\n")
+    assert dirty(repo) == " M work/README.md\n"   # work/ is not wholly hidden
+    tracked.write_text("# tracked work file\n")
+    other_prompt = repo / "work" / "prompt-M1.2.md"
+    other_prompt.write_text("# another leaf\n")
+    assert dirty(repo) == "?? work/prompt-M1.2.md\n"   # only this leaf's prompts are bookkeeping
+    other_prompt.unlink()
     (repo / "src" / "b.py").write_text("x = 1\n")
     assert dirty(repo) == "?? src/b.py\n"
     assert dirty(repo / "work") == "?? src/b.py\n"   # the same from a subdirectory (pathspecs are top-anchored)

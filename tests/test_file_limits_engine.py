@@ -136,6 +136,7 @@ def test_python_function_limit_and_hard_alert(tmp_path: Path) -> None:
     assert "max 5 per function" in msg
     assert "WARNING" in msg
     assert "hard_alerts.max_lines_per_function=3" in msg
+    assert "file-limits: mod.py:4 function `big` 31 lines (max 5 per function)\n" in msg
 
 
 def test_non_python_skips_function_limits(tmp_path: Path) -> None:

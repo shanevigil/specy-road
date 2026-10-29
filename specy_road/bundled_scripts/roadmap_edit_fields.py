@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections.abc import Callable
 from typing import Any
@@ -14,13 +15,23 @@ ID_PATTERN = re.compile(r"^M[0-9]+(\.[0-9]+)*$")
 CODENAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
-def title_to_codename(title: str) -> str:
+def title_to_codename(title: str, *, max_words: int | None = None) -> str:
     """
     Derive a valid kebab-case codename from a human title.
     Returns '' if the title yields nothing valid (caller may omit or clear codename).
+
+    When ``max_words`` is set, keep the first that many tokens that contribute a
+    slug fragment (punctuation-only words are skipped). Promote uses this cap.
     """
-    s = re.sub(r"[^a-z0-9]+", "-", (title or "").lower().strip())
-    s = re.sub(r"-+", "-", s).strip("-")
+    parts: list[str] = []
+    for token in (title or "").split():
+        piece = re.sub(r"[^a-z0-9]+", "-", token.lower()).strip("-")
+        if not piece:
+            continue
+        parts.append(piece)
+        if max_words is not None and max_words > 0 and len(parts) >= max_words:
+            break
+    s = re.sub(r"-+", "-", "-".join(parts)).strip("-")
     if not s or not CODENAME_PATTERN.match(s):
         return ""
     return s
@@ -79,6 +90,35 @@ def _parse_touch_zone_lines(raw: str) -> list[str]:
 
 def _nonempty_lines(raw: str) -> list[str]:
     return [ln.strip() for ln in raw.splitlines() if ln.strip()]
+
+
+#: Keys whose value is a list: repeating ``--set key=…`` appends one item each.
+LIST_KEYS = ("acceptance", "risks", "touch_zones", "dependencies")
+
+
+def merge_set_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Fold repeated list keys into one newline-joined value; refuse a repeated scalar key.
+
+    Shells make a newline awkward to type, so ``--set acceptance=a --set
+    acceptance=b`` is how a list is written on the command line; ``a|b`` is one
+    criterion that happens to contain a pipe.
+    """
+    merged: dict[str, str] = {}
+    for key, val in pairs:
+        if key not in merged:
+            merged[key] = val
+        elif key in LIST_KEYS:
+            merged[key] = f"{merged[key]}\n{val}"
+        else:
+            raise ValueError(f"--set {key}= given twice; only {', '.join(LIST_KEYS)} take one --set per item")
+    return list(merged.items())
+
+
+def _looks_like_json_list(raw: str) -> bool:
+    try:
+        return isinstance(json.loads(raw), list)
+    except ValueError:
+        return False
 
 
 def _set_type(node: dict, raw_val: str) -> None:
@@ -318,6 +358,11 @@ def apply_set(
     if dotted_key not in EDIT_WHITELIST:
         raise ValueError(f"key not allowed for --set: {dotted_key!r}")
     parts = dotted_key.split(".")
+    if dotted_key in LIST_KEYS and notify is not None and _looks_like_json_list(raw_val):
+        notify(
+            f"{dotted_key} value looks like a JSON list; it is read as text, one item per line, "
+            f"not parsed. Give one --set {dotted_key}=… per item."
+        )
     if len(parts) == 1:
         key = parts[0]
         old_title = str(node.get("title") or "")

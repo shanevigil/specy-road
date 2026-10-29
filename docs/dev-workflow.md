@@ -8,7 +8,7 @@
 **Must know without reading on:**
 - Run every command from the repo root on a clean tree. `specy-road do-next-available-task` syncs the integration branch, commits and pushes `roadmap/registry.yaml` there, then creates `feature/rm-<codename>` (`--interactive` to pick by number, `--under <NODE_ID>` to scope); undo with `specy-road abort-task-pickup`.
 - Finish in this order: write `work/implementation-summary-<NODE_ID>.md`; reviewers use `specy-road review-packet <NODE_ID>` and `specy-road review record`; then `specy-road mark-implementation-reviewed` (`--yes` never creates a review); then `specy-road finish-this-task` (`--push` optional; `--on-complete pr|merge|auto`).
-- Pickup is leaf-only, in outline order after `status: Blocked` and MR-rejected; `execution_milestone` is advisory and only a `type: gate` dependency holds work back.
+- Pickup is leaf-only, in outline order after `status: Blocked` and MR-rejected; `execution_milestone` is advisory and only a `type: gate` dependency holds work back (opt-in `--prefer-agentic` reorders by it, never gates).
 - Never hand-edit `roadmap/registry.yaml` — the one exception is the documented manual claim path below (`/specyrd-claim`: add your own row on the integration branch, validate, commit, push) — and never fill a missing `shared/` contract yourself: that is a planning gap — stop and flag it to the PM.
 
 **Read further for:**
@@ -25,7 +25,11 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 
 `do-next-available-task` considers **effective** dependencies (each leaf’s explicit `dependencies` plus prerequisites listed on **ancestors**), matching the PM Gantt. A dependency on a **phase or milestone** is satisfied when that node’s leaf descendants are all `Complete` — the same **F-013 rollup** `roadmap.md` displays — not when its own `status` field says so, so a finished phase never silently blocks the work downstream of it. A **`type: gate`** node is never a pickup target; PMs clear a scoped hold by marking that Gate **Complete** (see [roadmap-authoring.md](roadmap-authoring.md#gate-type-gate)).
 
-**Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism. Outline order is **delivery** order, not the order you would choose to *design* in: to cut a seam first, pick by number with **`--interactive`** or scope with **`--under <NODE_ID>`**. `grind-session --plan` reports dependency **waves**, which is what can run in parallel — not the order auto-pick will walk.
+**Selection order** among eligible leaves: **`status: Blocked` first**, then **MR-rejected**, then everything else in **outline (tree) order** (`specy-road do-next-available-task -h` spells this out). A `Blocked` leaf is *promoted*, not skipped — it is the one most worth unblocking, and pickup prints `status: Blocked` when it hands you one. **`execution_milestone` is advisory**: `Human-led` documents intent but does not gate pickup. An unattended loop that should take agent work first can opt into **`--prefer-agentic`** (or `prefer_agentic_pick_order: true` in `roadmap/git-workflow.yaml`; `--no-prefer-agentic` overrides the file): each tier above is then ordered `Agentic-led`, `Mixed`, unset, `Human-led`, outline order within each. It reorders only — the tiers and which leaves are eligible stay the same — and `grind-session` uses the same setting, so `--plan`'s **Next auto-pick** (printed with its execution milestone) is still the leaf pickup claims. For either “keep this out of the queue” case, a `type: gate` dependency is the only enforcing mechanism. Outline order is **delivery** order, not the order you would choose to *design* in: to cut a seam first, pick by number with **`--interactive`** or scope with **`--under <NODE_ID>`**. `grind-session --plan` reports dependency **waves**, which is what can run in parallel — not the order auto-pick will walk.
+
+**Unauthored leaves are skipped.** A leaf whose planning sheet still carries the text `scaffold-planning` or `brainstorm promote` wrote (an unedited `## Intent` / `## Approach`, or promote's "Rewrite this section once the slice is properly scoped.") **and** whose node has no `acceptance` gives an agent nothing to build from, so pickup skips it and prints why. Write the sheet or set `acceptance` (`specy-road edit-node <ID> --set acceptance=...`), or pass **`--allow-unauthored`** to pick it anyway. `specy-road validate` lists every such open leaf in one block (first ten; **`validate --all`** for all of them), and `grind-session --plan` reports them as `unauthored`.
+
+**A scaffold sheet still has to be written.** `acceptance` alone gets such a leaf picked, but the sheet is still unwritten: pickup prints a `warning: picked <ID>, but <sheet> still has … placeholder` line, and **`finish-this-task` refuses** to close any leaf whose sheet still has that placeholder text, naming the sheet. Write `## Intent` and `## Approach` and commit the sheet on the feature branch, or pass **`--allow-scaffold-planning`** to finish anyway. `specy-road validate` prints one `notice:` on stdout (not a warning, so `--strict` ignores it) counting `Complete` leaves whose sheet is still the scaffold; **`validate --all`** lists them.
 
 ## Quick reference
 
@@ -103,11 +107,14 @@ The CLI keeps the **integration branch** current (from **`roadmap/git-workflow.y
 
 Your working tree must be **clean**. The tool runs `git fetch`, checks out the integration branch, and `git merge --ff-only` to the remote tracking branch. If your local integration branch has diverged, resolve that before retrying. Set **`roadmap/git-workflow.yaml`** to your trunk (e.g. `dev`) or pass **`--base dev`**.
 
+**Baseline gate.** **`--baseline-cmd 'make test'`** (default: **`baseline_cmd`** in `roadmap/git-workflow.yaml`) runs on the integration branch after the sync and before anything is registered. A non-zero exit refuses the pickup, so a red base branch is caught and fixed first instead of being inherited by the leaf, whose implementer would otherwise "fix" unrelated failures against the no-scope-creep rule. **`--baseline-warn`** picks up anyway with a warning; **`--baseline-cmd ''`** skips a configured baseline for one run. It is the start-of-leaf counterpart of grind-session's **`--pre-finish-cmd`**, and like it must only check: a baseline that moves HEAD, switches branch, or leaves changes outside `work/` is refused, naming what moved.
+
 Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_approval`** reminds the CLI that MRs need human approval; align with your team’s process before merging.
 
 ```bash
 specy-road do-next-available-task
 # optional: specy-road do-next-available-task --base dev --remote origin --interactive
+# optional: specy-road do-next-available-task --baseline-cmd 'make test'   # refuse a red base
 # IDE slash command (after `specyrd init --ai <ide> --role dev`): /specyrd-do-next-task
 ```
 
@@ -138,8 +145,8 @@ Do **not** rely on editing the parent milestone’s JSON `status` to “Complete
 
 To run **many** leaf cycles without re-invoking pickup/finish by hand, use
 **`specy-road grind-session`** — it orchestrates the approved primitives
-(`do-next-available-task` → implement → optional `--pre-finish-cmd` →
-`finish-this-task`) until a stop condition, with stable exit codes and `--json`
+(`do-next-available-task` with optional `--baseline-cmd` → implement → optional
+`--pre-finish-cmd` → `finish-this-task`) until a stop condition, with stable exit codes and `--json`
 events, never editing the registry itself. **`--plan [--json]`** is a read-only
 planner reporting ready / blocked / active leaves plus dependency **waves** and
 **parallel batches**. Run it in a **terminal**, not an IDE pane; a **Claude CLI**
@@ -199,7 +206,7 @@ Run from the feature branch when implementation is complete.
 If **`roadmap/git-workflow.yaml`** sets **`require_implementation_review_before_finish: true`** (default in new `specy-road init project` scaffolds), use this order:
 
 1. **Write** `work/implementation-summary-<NODE_ID>.md` (Summary, Changes, Verification, optional **## Walkthrough**) and commit it on the feature branch: it is what reviewers judge, and finish removes it from `work/`. Use `work/implementation-summary.template.md` as a starting point.
-2. **Review** — reviewers read **`specy-road review-packet <NODE_ID>`** and file verdicts with **`specy-road review record`** (see [orchestration.md](orchestration.md)). Then the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary (only its path under `--yes`) and the review policy status, and commits **`implementation_review: approved`** in `roadmap/registry.yaml` once the recorded reviews satisfy `roadmap/orchestration.yaml` at the current commit. Under the default policy (one reviewer, `human` rostered) the interactive menu's **approve** files the human review and closes the gate in one step. **`--yes` never creates a review**: it only commits an approval the recorded reviews already earned. Emergency without a summary file: `--allow-missing-summary` (loud warning).
+2. **Review** — reviewers read **`specy-road review-packet <NODE_ID>`** and file verdicts with **`specy-road review record`** (see [orchestration.md](orchestration.md)). Then the developer runs **`specy-road mark-implementation-reviewed`** on the feature branch. It prints the summary (only its path under `--yes`) and the review policy status, and commits **`implementation_review: approved`** in `roadmap/registry.yaml` once the recorded reviews satisfy `roadmap/orchestration.yaml` at the current commit. Under the default policy (one reviewer, `human` rostered) the interactive menu's **approve** files the human review and closes the gate in one step. **`--yes` never creates a review**: it only commits an approval the recorded reviews already earned. Emergency without a summary file: `--allow-missing-summary` (loud warning). If the integration branch moved on and a trial merge of it into your branch conflicts on code (anything outside `work/`, `roadmap/`, `planning/`, `roadmap.md`, `roadmap-context.md`), the packet and `handoff status` name the files (they report a bookkeeping-only conflict too, labelled as not blocking): `git merge` the integration branch and resolve **before** reviewers run, because `mark-implementation-reviewed` and `finish-this-task` refuse until you do, and the merge commit makes earlier reviews stale.
 3. **Close the task** — same as below.
 
 If that flag is **false** or omitted, skip step 2 and run `finish-this-task` when work is done (registry rows omit `implementation_review`).
@@ -229,7 +236,7 @@ specy-road finish-this-task
 
 `finish-this-task` will:
 
-1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`). If the implementation-review gate is on, the registry must already show **`implementation_review: approved`** (see `mark-implementation-reviewed` above).
+1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`). It refuses while a trial merge of the integration branch conflicts on a non-bookkeeping path, so nothing is written. The node's planning sheet must not still be the scaffold (**`--allow-scaffold-planning`** opts out; see *A scaffold sheet still has to be written* above). If the implementation-review gate is on, the registry must already show **`implementation_review: approved`** (see `mark-implementation-reviewed` above).
 2. Resolve **`on_complete`** (`pr`, `merge`, or `auto`): CLI **`--on-complete`** wins, then **`work/.on-complete-<NODE_ID>.yaml`** from **`do-next-available-task`**, then **`SPECY_ROAD_ON_COMPLETE`**, then **`roadmap/git-workflow.yaml`**, else **`pr`**. See [git-workflow.md](git-workflow.md) (PR and MR are the same idea on different forges).
 3. Update the node `status` to `Complete` in the roadmap chunk file.
 4. Remove the registry entry.
@@ -374,7 +381,7 @@ but say so when you finish.
 When multiple developers or agents are running simultaneously:
 
 - `do-next-available-task` filters out already-claimed nodes — safe to run in parallel; the CLI **pushes the integration branch by default** after registering so others see claims quickly. If two pickups race on push, pull/rebase the integration branch and retry.
-- `specy-road validate` warns on overlapping touch zones between registry entries, and on a zone that matches nothing in the working tree (a zone authored against a file that was never created).
+- `specy-road validate` warns on overlapping touch zones between registry entries, and on a zone of an In Progress or Blocked node that matches nothing in the working tree (a typo or a moved path; Not Started nodes are not checked).
 - **Prefer git worktrees** for parallel agents on one machine — isolated working trees
   on disjoint branches.
 - **Milestone dependencies are hard stops** — In JSON, `dependencies` lists **`node_key` UUIDs**

@@ -16,6 +16,7 @@ import pytest
 
 from specy_road import __version__
 from specy_road.bundled_scripts.refresh_stubs import (
+    main,
     refresh_stubs,
     stubs_are_stale,
     warn_if_stubs_stale,
@@ -66,9 +67,38 @@ def _manifest(root: Path) -> dict:
     )
 
 
-def test_an_uninitialized_repo_is_told_to_run_init(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="specyrd init"):
-        refresh_stubs(tmp_path)
+def test_a_repo_without_a_stub_pack_still_gets_the_managed_blocks(tmp_path: Path) -> None:
+    """The upgrade path for repos that never ran `specyrd init` (rc1 feedback)."""
+    (tmp_path / "AGENTS.md").write_text("# Ours\n", encoding="utf-8")
+
+    written, orphans = refresh_stubs(tmp_path)
+
+    assert "AGENTS.md (updated)" in written
+    assert any(w.startswith(".gitignore") for w in written)
+    assert orphans == []
+    assert "specy-road managed block" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert ".specyrd/cache/" in (tmp_path / ".gitignore").read_text(encoding="utf-8")
+    assert not (tmp_path / ".specyrd" / "manifest.json").exists()
+    assert refresh_stubs(tmp_path) == ([], [])
+
+
+def test_a_manifest_without_packs_reports_no_stub_skew(tmp_path: Path) -> None:
+    """0.2.x `init project` recorded its version with no pack; validate nagged for refresh-stubs forever."""
+    manifest = tmp_path / ".specyrd" / "manifest.json"
+    manifest.parent.mkdir()
+    manifest.write_text(json.dumps({"specyrd_version": OLD_VERSION, "project_root": "."}), encoding="utf-8")
+
+    assert stubs_are_stale(tmp_path) is None
+
+
+def test_a_repo_without_a_stub_pack_uses_the_given_project_root(tmp_path: Path) -> None:
+    """No manifest records the nested root, so the caller's project root places AGENTS.md."""
+    (tmp_path / "sr").mkdir()
+
+    written, _ = refresh_stubs(tmp_path, project=tmp_path / "sr")
+
+    assert "sr/AGENTS.md (updated)" in written   # the H1 is written first, then the block
+    assert not (tmp_path / "AGENTS.md").exists()
 
 
 def test_stubs_shipped_since_the_repo_was_scaffolded_are_added(
@@ -166,3 +196,81 @@ def test_validate_warns_once_while_the_stubs_lag(
 
 def test_a_repo_with_no_specyrd_stubs_never_warns(tmp_path: Path) -> None:
     assert stubs_are_stale(tmp_path) is None
+
+
+def test_a_dry_run_summarises_the_migration_in_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+
+    main(["--dry-run", "--repo-root", str(root)])
+
+    lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.startswith("migration:")]
+    n = len(OLD_DEV_STUBS)
+    assert lines == [f"migration: {n} command stubs (*/commands/) become {n} skills under .agents/skills/"]
+
+
+
+def _diff_sections(out: str) -> dict[str, list[str]]:
+    """``{path: hunk lines}`` from a run of unified diffs."""
+    sections: dict[str, list[str]] = {}
+    current: list[str] = []
+    for line in out.splitlines():
+        if line.startswith("+++ b/"):
+            current = sections.setdefault(line[len("+++ b/"):], [])
+        elif not line.startswith("--- "):
+            current.append(line)
+    return sections
+
+
+def test_diff_previews_skills_and_managed_blocks_without_writing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+
+    main(["--diff", "--repo-root", str(root)])
+    out = capsys.readouterr().out
+
+    sections = _diff_sections(out)
+    assert ".agents/skills/specyrd-search/SKILL.md" in sections
+    assert {"CLAUDE.md", ".gitignore", ".cursorindexingignore", "AGENTS.md"} <= set(sections)
+    assert "--- a/CLAUDE.md" in out and "--- /dev/null" in out
+    assert "would write .claude/skills/specyrd-search (created)" in out   # a link has no text to diff
+    assert "(dry-run; no files written)" in out
+    assert not (root / ".agents").exists()
+    assert (root / "CLAUDE.md").read_text(encoding="utf-8") == CONSUMER_CLAUDE_MD
+    assert not (root / ".gitignore").exists()
+    assert _manifest(root)["specyrd_version"] == OLD_VERSION
+
+
+def test_the_diff_is_what_a_refresh_then_writes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+    main(["--diff", "--repo-root", str(root)])
+    sections = _diff_sections(capsys.readouterr().out)
+
+    refresh_stubs(root)
+
+    def added(rel: str) -> list[str]:
+        return [ln[1:] for ln in sections[rel] if ln.startswith("+")]
+
+    skill = ".agents/skills/specyrd-search/SKILL.md"
+    assert added(skill) == (root / skill).read_text(encoding="utf-8").splitlines()
+    claude = (root / "CLAUDE.md").read_text(encoding="utf-8")
+    assert added("CLAUDE.md") == claude[len(CONSUMER_CLAUDE_MD):].splitlines()
+    assert added(".gitignore") == (root / ".gitignore").read_text(encoding="utf-8").splitlines()
+
+
+def test_diff_on_a_current_repo_shows_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+    refresh_stubs(root)
+    capsys.readouterr()
+
+    main(["--diff", "--repo-root", str(root)])
+    out = capsys.readouterr().out
+
+    assert "+++" not in out
+    assert "already match" in out

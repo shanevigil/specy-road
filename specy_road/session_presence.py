@@ -51,13 +51,14 @@ class Session:
     expires: str
     note: str = ""
     path: Path | None = field(default=None, repr=False)
+    user: str = ""
 
     def is_live(self, now: datetime | None = None) -> bool:
         return _parse(self.expires) > (now or _now())
 
     def to_dict(self) -> dict[str, Any]:
         d = {"agent": self.agent, "branch": self.branch, "worktree": self.worktree, "paths": self.paths,
-             "started": self.started, "touched": self.touched, "expires": self.expires}
+             "started": self.started, "touched": self.touched, "expires": self.expires, "user": self.user}
         if self.note:
             d["note"] = self.note
         return d
@@ -95,12 +96,16 @@ def default_agent_id() -> str:
     env = os.environ.get("SPECY_ROAD_AGENT_ID", "").strip()
     if env and _ID.match(env):
         return env
-    user = re.sub(r"[^A-Za-z0-9._-]", "-", os.environ.get("USER") or "agent")[:20]
     try:
         sid = os.getsid(0)
     except (AttributeError, OSError):   # Windows: no sessions; the process is the best there is
         sid = os.getpid()
-    return f"{user}-s{sid}"
+    return f"{current_user()}-s{sid}"
+
+
+def current_user() -> str:
+    """``$USER`` as an id fragment; a record keeps it, so ``session end <id>`` can tell whose it is."""
+    return re.sub(r"[^A-Za-z0-9._-]", "-", os.environ.get("USER") or "agent")[:20]
 
 
 def load_session(path: Path) -> Session | None:
@@ -117,7 +122,7 @@ def load_session(path: Path) -> Session | None:
     paths = [str(p) for p in raw.get("paths") or [] if str(p).strip()]
     return Session(str(raw["agent"]), raw.get("branch"), raw.get("worktree"), paths,
                    str(raw.get("started", "")), str(raw.get("touched", "")), str(raw.get("expires", "")),
-                   str(raw.get("note") or ""), path)
+                   str(raw.get("note") or ""), path, str(raw.get("user") or ""))
 
 
 def list_sessions(repo_root: Path, *, live_only: bool = True, now: datetime | None = None) -> list[Session]:
@@ -146,7 +151,8 @@ def start_session(repo_root: Path, agent: str, *, paths: list[str] | None, note:
     s = Session(agent, git_text(["branch", "--show-current"], wt) or None, str(wt),
                 sorted({p.strip().strip("/") for p in paths if p.strip()}),
                 old.started if old else now.isoformat(), now.isoformat(),
-                (now + timedelta(hours=ttl_hours)).isoformat(), note or (old.note if old else ""), path)
+                (now + timedelta(hours=ttl_hours)).isoformat(), note or (old.note if old else ""), path,
+                current_user())
     path.parent.mkdir(parents=True, exist_ok=True)
     write_atomic(path, yaml.safe_dump(s.to_dict(), sort_keys=False))   # the guard may be reading it now
     return s

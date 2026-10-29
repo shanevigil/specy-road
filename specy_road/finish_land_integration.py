@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from specy_road.runtime_paths import git_root, project_prefix
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
@@ -48,15 +49,33 @@ def _integration_branch_present(
     return False, ""
 
 
+def holder_project_root(repo: Path, holder: Path) -> Path:
+    """The project root inside ``holder``, another worktree of the same repository.
+
+    ``git worktree list`` names the holder's git root; ``repo`` is this
+    checkout's project root, which in the nested layout sits below its git
+    root. The landing resolves registry and generated files relative to the
+    project root, so it must run there in the holder too.
+    """
+    return holder / project_prefix(repo)
+
+
 def integration_worktree(repo: Path, integration_branch: str) -> Path | None:
-    """Another worktree with ``integration_branch`` checked out, or ``None``."""
+    """Another worktree with ``integration_branch`` checked out, or ``None``.
+
+    ``git worktree list`` names git roots. ``repo`` is the project root, which
+    in the nested layout sits below its git root. Compare those roots: this
+    checkout is not another worktree, so a later delete switches it onto the
+    integration branch instead of detaching.
+    """
+    here = git_root(repo)
     _ok, out = git_ok(["worktree", "list", "--porcelain"], repo)
     path: Path | None = None
     for line in out.splitlines():
         if line.startswith("worktree "):
             path = Path(line[len("worktree "):])
         elif line == f"branch refs/heads/{integration_branch}" and path is not None:
-            return None if path.resolve() == repo.resolve() else path
+            return None if path.resolve() == here else path
     return None
 
 
@@ -117,6 +136,41 @@ def _merge_and_push(
     return True, ""
 
 
+def integration_commits_ahead_of_remote(
+    repo: Path, *, remote: str, integration_branch: str,
+) -> int | None:
+    """How many commits on the local integration branch are not on ``remote/integration_branch``."""
+    local = f"refs/heads/{integration_branch}"
+    tracked = f"refs/remotes/{remote}/{integration_branch}"
+    if not _ref_exists_local(repo, local):
+        return None
+    if not _ref_exists_local(repo, tracked):
+        return None
+    code, out = git_code(["rev-list", "--count", f"{tracked}..{integration_branch}"], repo)
+    if code != 0 or not out.strip().isdigit():
+        return None
+    return int(out.strip())
+
+
+def print_merge_push_notice(
+    repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
+) -> None:
+    """Tell the operator what merge mode will push before it runs."""
+    git_code(["fetch", remote], repo)
+    ahead = integration_commits_ahead_of_remote(repo, remote=remote, integration_branch=integration_branch)
+    print(
+        f"\nMerge mode will merge {feature_branch!r} into {integration_branch!r} "
+        f"and push {remote}/{integration_branch}."
+    )
+    if ahead is None:
+        return
+    word = "commit" if ahead == 1 else "commits"
+    print(
+        f"  {ahead} local {word} on {integration_branch} are not on {remote}/{integration_branch} yet "
+        f"(in addition to this leaf's merge)."
+    )
+
+
 def land_merge_feature_into_integration(
     repo: Path,
     *,
@@ -160,7 +214,7 @@ def land_merge_feature_into_integration(
     holder = integration_worktree(repo, integration_branch)
     if holder is not None:
         return _merge_and_push(
-            holder, remote=remote,
+            holder_project_root(repo, holder), remote=remote,
             integration_branch=integration_branch, feature_branch=feature_branch,
         )
 

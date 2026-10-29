@@ -45,14 +45,17 @@ def test_move_node_keeps_the_scaffold_m1_numbering(tmp_path: Path) -> None:
     assert sheets == ["M1", "M1.1", "M1.2"]
 
 
-def test_refresh_stubs_without_a_stub_pack_is_a_clean_no_op(tmp_path: Path) -> None:
-    """The documented upgrade runs refresh-stubs; the stub pack is optional."""
+def test_refresh_stubs_without_a_stub_pack_still_owns_the_blocks(tmp_path: Path) -> None:
+    """The documented upgrade runs refresh-stubs; the stub pack is optional, the blocks are not."""
     _scaffold(tmp_path)
+    (tmp_path / "AGENTS.md").write_text("# Ours\n", encoding="utf-8")
 
     r = _cli(tmp_path, "refresh-stubs")
 
     assert r.returncode == 0, r.stderr
-    assert "nothing to refresh" in r.stdout
+    assert "no specyrd stub pack installed" in r.stdout
+    assert "AGENTS.md (updated)" in r.stdout
+    assert "specy-road managed block" in (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
 
 
 def _git(root: Path, *args: str) -> str:

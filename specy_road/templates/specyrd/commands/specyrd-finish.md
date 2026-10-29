@@ -24,8 +24,11 @@ This will:
 5. Remove the per-node **`work/`** session files listed above (unless skipped), staging deletions if tracked.
 6. Commit the bookkeeping changes.
 7. Land work per **`on_complete`**: **`pr`** — print `git push` + `gh pr create` (or push first if `--push`); **`merge`** / **`auto`** — merge the feature branch into the integration branch locally and push, or exit **merge pending** with PR/MR hints (**`auto`** falls back on failure).
+8. With **`--delete-branch`**, once the merge lands: delete the feature branch locally and on the remote, saying so (checks out the integration branch first, or detaches at it when another worktree holds it). A re-run after a failed landing still deletes, so pass the flag again — the error names that command. A milestone rollup finish deletes the leaf the same way once it has merged into the rollup branch, including on a re-run that lands that rollup. That re-run lands only the finish commit (commits added after it are refused), and `--no-milestone-rollup` skips it; `pr` does not refuse the flag there. The remote delete is refused if that branch's tip moved after the merged check. Refused under **`pr`** otherwise — there the branch is the only copy of the work until the PR merges.
 
 Merge when CI is green (or after a successful local integration merge). No PM sign-off required.
+
+For merged branches left from earlier (PRs merged on the forge, finishes without the flag): `specy-road branches prune` lists the `feature/rm-*` branches, local and on the remote, that the remote integration branch contains, skipping claimed branches and open milestone rollups; `--delete` deletes them. Run it from the up-to-date integration branch. See `docs/git-workflow.md` ("Deleting merged feature branches"). For everything the loop leaves behind — those branches plus squash- or rebase-merged, unclaimed and Complete-leaf ones, worktrees whose branch is gone or merged, registry rows with no branch or a Complete leaf, and specy-road stashes — `specy-road doctor` lists them, and `--fix` removes them after asking once per kind ("Finding leftovers: `doctor`").
 
 See `docs/dev-workflow.md` for the full task loop.
 

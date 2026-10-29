@@ -5,11 +5,13 @@ description: "Use when a reviewer has read a review packet and must file a verdi
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 specy-road review record <NODE_ID> --model <id> --verdict approve --file <notes.md>
+specy-road review list <NODE_ID>     # read-only: filed records, then the gate
 ```
 
 Before running it: read only `work/reviews/<NODE_ID>/PACKET.md` (from `/specyrd-review-packet`). Copy `work/review-record.template.md`, fill in its front matter with one `acceptance` entry per `A#` in the packet's brief, and set `commit` to the packet's **Commit under review** (quoted).
 
 - `approve` may not list failing acceptance or `required_changes`; use `block`.
+- List failing READY verifiers that already fail on the integration branch under `verify_pre_existing` (command strings must match the READY file).
 - The record counts only for the commit it names. Any later commit — a merge included — needs a new review.
 - `--model` must be a roster id in `roadmap/orchestration.yaml` on the integration branch; the family comes from the roster. `human` is refused here: a human approves interactively in `mark-implementation-reviewed`.
 

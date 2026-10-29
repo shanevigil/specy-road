@@ -32,6 +32,7 @@ from typing import Any
 
 from specy_road import tool_call_guard_shapes as shapes
 from specy_road.git_subprocess import git_text
+from specy_road.runtime_paths import git_root
 from specy_road.session_presence import list_sessions, unreadable_records
 
 ALLOW = "allow"
@@ -334,6 +335,8 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
     will not load counts too: the guard cannot tell it is not a live peer.
     """
     here = Path(repo_root).resolve()
+    # A worker records the git root of its tree; in the nested layout the guard runs at the project root below it.
+    trees = {here, git_root(here) or here}
     others = [s.agent for s in list_sessions(repo_root)
               if s.agent != agent and not (tree_only and s.worktree and Path(s.worktree).resolve() != here)]
     others += [f"{p} (unreadable; fix or delete it)" for p in unreadable_records(repo_root)]
@@ -343,7 +346,7 @@ def shared_with_others(repo_root: Path, agent: str | None, *, tree_only: bool = 
 
         me = os.environ.get("SPECY_ROAD_WORKER_ID")   # a worker's own hook must not count the worker
         others += [f"worker {r.worker_id}" for r in list_records(repo_root, active_only=True)
-                   if r.worker_id != me and wrapper_alive(r, repo_root) and Path(r.worktree).resolve() == here]
+                   if r.worker_id != me and wrapper_alive(r, repo_root) and Path(r.worktree).resolve() in trees]
     except Exception:  # noqa: BLE001 — presence is advisory; a broken record must not break the guard
         pass
     return others

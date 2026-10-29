@@ -89,26 +89,60 @@ roster:
     harness: claude-code            # claude-code | codex | cursor | generic
     billing_route: claude_subscription   # a label, recorded on the worker
     # Optional: your own command. {prompt} is the prompt file path; {session}
-    # is the native session id. A command that names {session} serves launch
-    # AND `message` / `resume` (the same line, run again with the recorded id);
-    # one without it is used for launch only, and resumes run the default
-    # command with the default's permissions. No channels.cli: the default
-    # command (Claude: --session-id on launch, --resume on resume).
+    # is the native session id; {session_flag} (claude-code only) is the
+    # harness's own argument for it: `--session-id <id>` on launch,
+    # `--resume <id>` on resume. A command that names {session} or
+    # {session_flag} serves launch AND `message` / `resume` (the same line, run
+    # again with the recorded id); one without either is used for launch only,
+    # and resumes run the default command with the default's permissions. No
+    # channels.cli: the default command (Claude: --session-id on launch,
+    # --resume on resume).
     # channels:
     #   (a placeholder must be a whole argument, bare or in one pair of quotes —
     #   `--session-id={session}` and `"prefix <prompt>"` are refused; `< {prompt}` feeds the file on stdin)
-    #   cli: "/abs/path/claude-worker.sh {session} {prompt}"   # the wrapper below
+    #   cli: "claude -p --output-format stream-json --verbose --permission-mode acceptEdits {session_flag} < {prompt}"
 policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
+
+**Cursor's CLI.** The `cursor` harness runs Cursor's agent CLI. Its binary is
+`agent` (`cursor agent` runs the same; `cursor-agent` is an older alias), not
+the `cursor` command, which launches the editor: a `channels.cli` or
+`preflight` naming `cursor -p …` starts no agent and the worker fails with no
+output to explain it. Log in once with `agent login` (a browser sign-in;
+`NO_OPEN_BROWSER=1` prints the link instead), or set `CURSOR_API_KEY` on a
+machine without a browser. The default command passes `--trust`: in a
+workspace it has not trusted yet, which every new worktree is, `agent -p`
+exits 1 asking to trust it unless given `--trust` or `--force` (checked on
+agent 2026.10.22 with a fresh worktree); keep `--trust` in a `channels.cli`
+that drops `--force`. Cursor's model ids carry the effort (`agent
+--list-models`: `gpt-5.6-sol-high`, `claude-opus-5-5-high`); list them in the
+profile's `aliases` so the prompt still carries the model notes
+([orchestration-models.md](orchestration-models.md#model-profiles-models-and-prompt)).
+
+```yaml
+  - id: gpt-5.6-sol-high            # Cursor's id for GPT-5.6 Sol at high effort
+    family: openai
+    roles: [reviewer]
+    harness: cursor
+    preflight: agent status         # fails (exit 127) when `agent` is not installed
+```
+
+`agent status` prints `Not logged in` but still exits 0 when signed out (agent
+2026.10.22), so it catches a missing binary, not a lapsed login; `preflight:
+agent status | grep -q "Logged in"` stops on both.
 
 **Claude and `{session}`.** Claude Code refuses `--session-id` for a session
 that already exists ("Session ID … is already in use", exit 1), so a
 `channels.cli` of the form `claude -p … --session-id {session} < {prompt}`
 launches fine and then fails every `message` / `resume`, closing the worker as
-`failed`. No single `claude` command line serves both. Either keep the default
-command, or point `channels.cli` at a small wrapper that resumes when the
-session exists:
+`failed`. Use `{session_flag}` instead: it expands to `--session-id <id>` when
+the worker is launched and to `--resume <id>` on every `message` / `resume`, so
+one command line, with your permission flags, serves the whole leaf (the
+roster example above). It is defined for `claude-code` only; on another
+harness a `{session_flag}` command is refused rather than guessed. `prompt
+--channel cli` has no session, so there it expands to nothing. An older
+alternative is a small wrapper that resumes when the session exists:
 
 ```sh
 #!/bin/sh
@@ -125,7 +159,17 @@ It looks for Claude Code's own transcript of the session (checked on Claude
 Code 2.1.312; re-check after upgrading), and `exec` keeps `claude` itself as
 the worker's harness process.
 
-**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
+**Permissions in the harness's settings file.** The other way to keep a
+worker's permissions across resumes is to leave the command alone and put them
+where every `claude` run in the worktree reads them: `.claude/settings.json`
+(committed, shared) or `.claude/settings.local.json` (yours), with
+`permissions.allow` / `permissions.deny` rules and `permissions.defaultMode`.
+Claude Code reads them from the working directory on launch and on resume
+alike, so the default command and a custom one run under the same rules, and
+a linked worktree sees the committed file once its branch has it. Command-line
+flags still win over the file for that run.
+
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, and `--trust` accepts the new worktree as a workspace, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
 
 ## The loop
 
@@ -138,8 +182,10 @@ specy-road worker sync --ack           # once you have acted on the events
 `delegate` runs **after pickup**: the leaf must hold a registry claim with a
 branch (`do-next-available-task --under M2.3`). It builds the executor prompt
 (`work/prompt-M2.3-executor-<model>.md`, the same text `specy-road prompt`
-writes), chooses the worktree — this checkout when it has the claim's branch
-checked out, otherwise a linked worktree at `work/.worktrees/<codename>` —
+writes), chooses the worktree — this checkout's git root when it has the
+claim's branch checked out, otherwise a linked worktree at
+`work/.worktrees/<codename>`; the harness runs there, and that is the
+`worktree` the record keeps —
 refuses that worktree while it has uncommitted changes other than the leaf's own untracked bookkeeping (`work/brief-<ID>.md`, `work/implementation-summary-<ID>.md`, its prompts, and `work/reviews/`, `.workers/`, `.sessions/`, `.worktrees/`), or while `git status` cannot read it (it names
 them: the worker would edit the same files, and `reconcile` could not tell its
 edits from yours; commit or stash them first; nothing is written then), writes the prompt, hashes it as the
@@ -150,7 +196,10 @@ kind, target and arguments — for `message --file`, the file's text — so a
 replay naming another leaf, worker or message is refused). A roster
 entry's `preflight` runs first, as `prompt --channel cli` runs it. Into a
 linked worktree the brief is copied too, since `work/` is gitignored and the
-executor's precondition looks for it there.
+executor's precondition looks for it there: under the worktree's project root
+(`sr/work/brief-<ID>.md` in the nested layout, where the prompt and brief name
+the project root and give the summary and hand-off paths from the git root, the
+directory the worker is told to work from).
 
 The worker's job is the executor's as before: implement, commit, write
 `work/implementation-summary-<ID>.md` and `work/reviews/<ID>/READY-*.md`,
@@ -162,7 +211,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | Command | Does |
 |---|---|
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. |
-| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`); compact, with state, lease, epoch and flags. |
+| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`); compact, with state, lease, epoch and flags. A sequence number between the last acknowledged one and the record's `last_event_seq` that no readable line carries (lost or unreadable, the final event included) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`); a worker whose new events are all unreadable is still listed, and `--ack` moves past its gaps. |
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
@@ -268,9 +317,9 @@ session, which is the case the hook exists for.
 
 | Harness | Launch | Session id | Resume (`message`) | Interrupt / steer | Handoff command |
 |---|---|---|---|---|---|
-| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit) | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
-| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
-| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
+| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit). In a **linked** worktree the default also passes `--add-dir` pointing at the main checkout's `work/reviews/<ID>/` so the executor can write its READY hand-off under `acceptEdits`. | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
+| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin). The harness runs in the worktree; write READY under the main checkout's `work/reviews/<ID>/` (same path `reviews_root` resolves to from any linked worktree). | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
+| `cursor` | `agent -p --output-format stream-json --force --trust --model … --workspace <worktree> "<prompt>"`. The agent's workspace is the linked worktree; READY still belongs in the main checkout's `work/reviews/<ID>/` (open or copy that path explicitly if the harness cannot reach it). | first event | `agent -p --resume <id> … --force --trust …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
 | `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies) | none | unsupported | unsupported | none |
 
 Whatever the harness, the wrapper's own command line carries only the repo
@@ -314,7 +363,10 @@ must not edit files in that leaf's touch zones while the worker runs — the
 presence guard (`session guard`) already refuses the git operations that
 would collide. Finishing the leaf is still `finish-this-task` from the
 leaf's branch after the gate; `terminate` the idle worker afterwards so its
-record closes and the slot frees. From a linked worktree with
+record closes and the slot frees. With `--on-complete merge`, finish merges
+into the integration branch and **pushes that branch** (after stating how many
+local integration commits are not on the remote yet); `--push` only pushes
+the feature branch. From a linked worktree with
 `on_complete: merge`, finish cannot check the integration branch out while
 the coordinator's checkout holds it, so it merges and pushes **in that
 checkout** instead. That checkout must have no uncommitted changes to tracked

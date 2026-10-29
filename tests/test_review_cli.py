@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.review_repo_helpers import NODE, commit_file, diverge, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 # One AI reviewer beside the default human: `review record` refuses `human`.
@@ -44,9 +44,12 @@ def _notes(repo: Path, model: str = "opus", **kw) -> Path:
 
 
 def _status(repo: Path, capsys) -> dict:
+    """One node's status; its exit is 0 when the gate is met and 1 when it is not."""
     capsys.readouterr()
-    assert _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
-    return json.loads(capsys.readouterr().out)["nodes"][0]
+    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert code == (0 if st["policy_met"] else 1), st["state"]
+    return st
 
 
 def test_status_walks_waiting_review_approved_stale(tmp_path: Path, capsys) -> None:
@@ -135,3 +138,100 @@ def test_counted_reviews_outrank_a_stale_ready_file(tmp_path: Path, capsys) -> N
     assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
     assert _status(repo, capsys)["state"] == "approved"
+
+
+def _drop_claim(repo: Path) -> None:
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+
+
+def test_records_without_a_claim_are_listed_with_their_verdicts(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo)
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    _drop_claim(repo)
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 2   # no commit: undeterminable
+    out = capsys.readouterr().out
+    assert "M1.1: unclaimed — no commit under review" in out
+    assert "READY-composer.md (ok)" in out
+    assert "REVIEW-opus.md: approve by opus (anthropic)" in out
+    assert "--ref <branch>" in out and "do-next-available-task --under M1.1 --local" in out
+    assert "leftover" not in out and "--under M1.1`" not in out
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--ref", "feature/rm-thing", "--json",
+                "--repo-root", str(repo)) == 0
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert st["state"] == "approved" and st["policy_met"]
+    assert _run("handoff", "status", "--ref", "feature/rm-thing", "--repo-root", str(repo)) == 2
+
+
+def _complete(repo: Path) -> None:
+    _drop_claim(repo)
+    (repo / "roadmap" / "phases" / "M1.json").write_text(json.dumps({"nodes": [{**NODE, "status": "Complete"}]}))
+
+
+def test_a_complete_node_without_a_claim_exits_0(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    _complete(repo)
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "M1.1: complete_no_claim — no commit under review" in out
+    assert "REVIEW-opus.md: approve by opus (anthropic)" in out
+    assert "--ref <branch or commit>" in out and "do-next-available-task" not in out
+    assert _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
+    assert json.loads(capsys.readouterr().out)["nodes"][0]["state"] == "complete_no_claim"
+
+
+def test_review_list_prints_records_and_the_gate_and_writes_nothing(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
+                "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
+    d = reviews_dir(repo, "M1.1")
+    before = {p.relative_to(d): p.read_text() for p in d.rglob("*") if p.is_file()}
+    head = git(repo, "rev-parse", "HEAD")
+    capsys.readouterr()
+    assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert f"REVIEW-opus.md: approve by opus (anthropic) at {head[:12]}" in out
+    assert f"gate at feature/rm-thing @ {head[:12]}: 1/1 approvals, 0 block(s): met" in out
+    _complete(repo)
+    assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
+    assert "gate: not evaluated" in capsys.readouterr().out
+    assert _run("review", "list", "M1.1", "--ref", "feature/rm-thing", "--repo-root", str(repo)) == 0
+    assert "1/1 approvals, 0 block(s): met" in capsys.readouterr().out
+    assert {p.relative_to(d): p.read_text() for p in d.rglob("*") if p.is_file()} == before
+
+
+def test_no_claim_and_no_records_is_an_empty_directory(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    reviews_dir(repo, "M1.1").mkdir(parents=True)
+    _drop_claim(repo)
+    capsys.readouterr()
+    assert _run("handoff", "status", "M1.1", "--repo-root", str(repo)) == 2
+    out = capsys.readouterr().out
+    assert "no READY or REVIEW records; the directory can be deleted" in out
+    assert "do-next-available-task" not in out
+
+
+@pytest.mark.parametrize("case, line", [
+    ("clean", None),
+    ("bookkeeping", f"  trial merge with refs/heads/dev: conflicts on {NODE['planning_dir']} "
+                    "(bookkeeping only, which does not block)"),
+    ("code", "  trial merge with refs/heads/dev: conflicts on src/a.py"),
+])
+def test_status_reports_a_trial_merge_conflict(tmp_path: Path, capsys, case: str, line: str | None) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    path = diverge(repo, case)
+    st = _status(repo, capsys)
+    merge = [p for p in st["problems"] if "trial merge" in p]
+    assert merge == (["refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
+                      "merge it into this branch and resolve before review"] if case == "code" else [])
+    assert st["trial_merge"] == (None if case == "clean" else {
+        "ref": "refs/heads/dev", "behind": 1, "conflicts": [path], "blocking": [path] if case == "code" else []})
+    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    text = capsys.readouterr().out.splitlines()
+    assert [t for t in text if t.startswith("  trial merge")] == ([line] if line else [])

@@ -12,6 +12,7 @@ from typing import Any
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, GUIDE_AGENTS, apply_guide_and_report  # noqa: F401 — re-exported
 from specy_road.agent_ignores import apply_and_report
+from specy_road.agents_md_block import apply_agents_and_report
 from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refresh_stubs
     SKILLS_REL,
     _package_templates_dir,
@@ -314,6 +315,8 @@ def run_init(
             repo_root, prefix, written, agent=agent, dry_run=dry_run
         )
     apply_and_report(repo_root, prefix, written, dry_run=dry_run)
+    if project is not None:   # no roadmap yet: `init project` writes the block when it scaffolds one
+        apply_agents_and_report(project, written, dry_run=dry_run, prefix=prefix)
 
     if not dry_run:
         _record_manifest(

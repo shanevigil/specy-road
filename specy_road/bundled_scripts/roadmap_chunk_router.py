@@ -64,11 +64,13 @@ def write_with_routing(
     node: dict,
     *,
     extra_files: dict[Path, str] | None = None,
+    validate: bool = True,
 ) -> Path:
-    """Route ``node`` to the right chunk, write atomically, validate, return chunk path.
+    """Route ``node`` to the right chunk, write atomically, optionally validate.
 
     ``extra_files`` (abs path -> text) joins the same transaction, so a node's
     planning sheet is never left on disk after a rejected write.
+    ``validate=False`` skips the post-write check so a batch can validate once.
     """
     decision = pick_target_chunk(root, parent_id, hint_chunk_arg, node)
     plan = AtomicWritePlan(root=root)
@@ -92,7 +94,7 @@ def write_with_routing(
             f"(node {node.get('id')!r} {decision.new_chunk_reason})",
             file=sys.stderr,
         )
-    plan.commit(validate_callback(root))
+    plan.commit(validate_callback(root) if validate else (lambda: None))
     return decision.chunk_path
 
 

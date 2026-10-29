@@ -26,16 +26,13 @@ from specy_road.review_gate import (
     evaluate_gate,
     human_approval_completes,
     review_required,
+    trial_merge_or_exit,
     write_human_approval,
 )
 from specy_road.review_target import resolve_target_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
-from specy_road.bundled_scripts.work_dir_stash import (
-    restore_work_dir_changes as _restore_work,
-    stash_work_dir_changes as _stash_work,
-)
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
@@ -46,14 +43,6 @@ ROOT = Path.cwd()
 
 def _save_registry(doc: dict) -> None:
     write_registry(registry_path(ROOT), doc)
-
-
-def _stash_work_dir_changes() -> bool:
-    return _stash_work(ROOT, "mark-implementation-reviewed")
-
-
-def _restore_work_dir_changes(stashed: bool) -> None:
-    _restore_work(ROOT, stashed)
 
 
 def _summary_path(node_id: str) -> Path:
@@ -180,11 +169,12 @@ def _commit_registry_approved(codename: str, reg: dict, trailers: list[str]) -> 
     _save_registry(reg)
     print(f"[ok] registry: implementation_review -> approved ({now})\n")
 
-    git_run(ROOT, "add", str(registry_path(ROOT).relative_to(ROOT)))
+    rel = str(registry_path(ROOT).relative_to(ROOT))
+    git_run(ROOT, "add", rel)
     message = f"chore(rm-{codename}): mark implementation reviewed"
     if trailers:
         message += "\n\n" + "\n".join(trailers)
-    git_run(ROOT, "commit", "-m", message)
+    git_run(ROOT, "commit", "-m", message, "--", rel)   # only the registry, whatever else is staged
     print("[ok] committed registry update")
     print()
     print("Next: specy-road finish-this-task")
@@ -203,6 +193,7 @@ def _gate_or_human_approval(
     args: argparse.Namespace,
     node: dict,
     *,
+    branch: str | None,
     summary_text: str,
     walkthrough: str | None,
 ) -> GateResult:
@@ -211,7 +202,12 @@ def _gate_or_human_approval(
     Exits 0 when the human declines, and 1 when the recorded reviews fall short
     and a human approval here could not (or may not) make up the difference.
     """
-    gate = evaluate_gate(ROOT, node, resolve_target_or_exit(ROOT, node["id"], "HEAD").commit)
+    gate = evaluate_gate(
+        ROOT,
+        node,
+        resolve_target_or_exit(ROOT, node["id"], "HEAD").commit,
+        branch=branch,
+    )
     _print_gate(gate)
     if gate.passed:
         if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough):
@@ -232,7 +228,7 @@ def _gate_or_human_approval(
             raise SystemExit(1) from None
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
-        gate = evaluate_gate(ROOT, node, gate.commit)
+        gate = evaluate_gate(ROOT, node, gate.commit, branch=branch)
         if gate.passed:
             return gate
         for problem in gate.problems():   # say why the record just written does not count
@@ -312,6 +308,7 @@ def main(argv: list[str] | None = None) -> None:
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
 
+    trial_merge_or_exit(ROOT)   # before a human reads, approves, or a record is written
     spath = _summary_path(node_id)
     summary_text = _load_summary_text(args, spath)
 
@@ -322,22 +319,19 @@ def main(argv: list[str] | None = None) -> None:
         print()
 
     walkthrough = _extract_walkthrough(summary_text) if summary_text else None
-    gate = _gate_or_human_approval(args, node, summary_text=summary_text, walkthrough=walkthrough)
+    gate = _gate_or_human_approval(
+        args, node, branch=entry.get("branch"), summary_text=summary_text, walkthrough=walkthrough
+    )
 
-    # F-011: stash any work/ changes so the registry commit is clean,
-    # then restore on top of the feature branch (where they belong).
-    stashed = _stash_work_dir_changes()
-    try:
-        if not working_tree_clean(ROOT):
-            print(
-                "error: working tree is not clean (commit, stash, or "
-                "discard changes outside work/ first).",
-                file=sys.stderr,
-            )
-            raise SystemExit(1)
-        _commit_registry_approved(codename, reg, commit_trailers(gate))
-    finally:
-        _restore_work_dir_changes(stashed)
+    # work/ changes stay where they are: the registry commit names its one path.
+    if not working_tree_clean(ROOT, except_work=True):
+        print(
+            "error: working tree is not clean (commit, stash, or "
+            "discard changes outside work/ first).",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    _commit_registry_approved(codename, reg, commit_trailers(gate))
 
 
 if __name__ == "__main__":

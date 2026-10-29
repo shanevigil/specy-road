@@ -110,3 +110,17 @@ def test_warning_names_the_command_that_fixes_it(
     err = capsys.readouterr().err
     assert "roadmap.schema.json" in err
     assert "specy-road refresh-schemas" in err
+
+
+def test_a_schema_new_in_this_version_is_labelled(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """rc1 feedback: a new untracked schema was easy to miss in a schemas-only diff."""
+    from specy_road.bundled_scripts.refresh_schemas import main
+
+    (repo / "schemas" / "orchestration.schema.json").unlink()
+    _degrade_roadmap_schema(repo)
+
+    main(["--repo-root", str(repo)])
+
+    out = capsys.readouterr().out
+    assert "wrote schemas/orchestration.schema.json (new in this version" in out
+    assert "wrote schemas/roadmap.schema.json\n" in out

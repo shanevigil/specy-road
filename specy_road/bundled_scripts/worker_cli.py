@@ -18,12 +18,12 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import worker_ops as ops
+from specy_road.bundled_scripts.worker_cli_render import _line, _row, _sync_event_lines
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
 from specy_road.worker_outbox import lookup_op
-from specy_road.worker_process import wrapper_alive
 from specy_road.worker_runner import log_path
 from specy_road.worker_sessions import render_command
 from specy_road.worker_state import (
@@ -41,19 +41,6 @@ from specy_road.worker_state import (
 def _emit(ns: argparse.Namespace, data: dict[str, Any], lines: list[str]) -> int:
     print(json.dumps(data, indent=2) if ns.json else "\n".join(lines))
     return 0
-
-
-def _row(rec) -> dict[str, Any]:
-    d = rec.to_dict()
-    d["alive"] = wrapper_alive(rec)
-    return d
-
-
-def _line(rec) -> str:
-    flags = f" [{', '.join(rec.flags)}]" if rec.flags else ""
-    run = " (running)" if wrapper_alive(rec) else ""
-    return (f"{rec.worker_id}  {rec.node_id:<10} {rec.harness}/{rec.model:<22} {rec.state}{run}  "
-            f"lease={rec.lease.get('holder')} epoch={rec.instruction_epoch}{flags}")
 
 
 def _target_of(ns: argparse.Namespace) -> str | None:
@@ -116,7 +103,7 @@ def cmd_list(ns: argparse.Namespace) -> int:
     recs = list_records(root, active_only=not ns.all)
     if not recs:
         return _emit(ns, {"workers": []}, ["No workers under work/.workers/."])
-    return _emit(ns, {"workers": [_row(r) for r in recs]}, [_line(r) for r in recs])
+    return _emit(ns, {"workers": [_row(r) for r in recs]}, [_line(r, root) for r in recs])
 
 
 def cmd_status(ns: argparse.Namespace) -> int:
@@ -144,7 +131,11 @@ def cmd_sync(ns: argparse.Namespace) -> int:
     for w in delta:
         flags = f" [{', '.join(w['flags'])}]" if w["flags"] else ""
         lines.append(f"{w['worker_id']} {w['node_id']} {w['state']} lease={w['lease']} epoch={w['epoch']}{flags}")
-        lines += [f"  #{e['seq']} {e['type']} ({e['source']}): {e['summary']}" for e in w["events"]]
+        lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
+                  for a, b in w["gaps"]]
+        # The whole log, not the delta: the final message may have been acked before the exit event.
+        history = [e.to_dict() for e in events_since(root, w["worker_id"])]
+        lines += [line for e in w["events"] for line in _sync_event_lines(history, e)]
     if not lines:
         lines = ["No new worker events."]
     elif not ns.ack:

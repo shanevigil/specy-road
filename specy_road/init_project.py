@@ -16,6 +16,9 @@ from specy_road.runtime_paths import (
 )
 
 
+_GITIGNORE = Path(".gitignore")
+
+
 def project_template_root() -> Path:
     return specy_road_package_dir() / "templates" / "project"
 
@@ -64,8 +67,10 @@ def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop
     marker = dst / "roadmap" / "manifest.json"
     if marker.is_file() and not force:
         msg = (
-            f"error: {marker} already exists. "
-            "Use --force to overwrite scaffold files."
+            f"error: {marker} already exists. To upgrade this repo, run "
+            "specy-road refresh-schemas, refresh-profiles and refresh-stubs instead. "
+            "--force overwrites every scaffold file: roadmap/, planning/, "
+            "constitution/, schemas/, model-profiles/ and the rest."
         )
         print(msg, file=sys.stderr)
         return 1
@@ -77,7 +82,9 @@ def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop
             continue
         rel = path.relative_to(src)
         out = dst / rel
-        if out.exists() and not force:
+        # .gitignore is the consumer's even under --force; its managed block is
+        # re-applied by _record_layout below.
+        if out.exists() and (not force or rel == _GITIGNORE):
             skipped.append(str(rel))
             continue
         if dry_run:
@@ -98,7 +105,8 @@ def run_init_project(  # noqa: C901 — baseline 2026-10-28; simplify, then drop
         return 0
 
     # AGENTS.md is a managed block, not a template file: an existing file gets
-    # the section inserted, and --force rewrites only the section.
+    # the section inserted, with or without --force. Every other existing
+    # scaffold file except .gitignore was replaced above when --force was given.
     outcome = apply_agents_md_block(dst)
     if outcome != UNCHANGED:
         written.append(f"AGENTS.md ({outcome})")

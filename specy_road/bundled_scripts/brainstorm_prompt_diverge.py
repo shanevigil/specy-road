@@ -12,6 +12,8 @@ others' output before merge.
 
 from __future__ import annotations
 
+import re
+
 from specy_road.bundled_scripts.brainstorm_lenses import (
     DEFAULT_KINDS_BY_PROFILE,
     DIRECTIONS,
@@ -48,36 +50,60 @@ WRITE_ALLOW_LINES = [
 ]
 
 
+#: The canonical frame: key, question, required. The keys are what
+#: ``brainstorm frame --answer KEY=TEXT`` records and later prompts show.
+FRAME_KEYS: tuple[tuple[str, str, bool], ...] = (
+    ("outcome", "What outcome would make this a success, stated without naming a feature?", True),
+    ("metric", "Which metric or observable change would show it moved?", False),
+    ("served", "Who exactly is served, and who is deliberately not?", True),
+    ("assumed-vs-known", "What has to be true for this to matter at all? Which of those is "
+                         "assumed rather than known?", True),
+    ("tried", "What has already been tried here, and why did it stop?", False),
+    ("fixed-or-choice", "What is being treated as fixed that is actually a choice?", False),
+    ("not-the-question", "What would make this topic the wrong thing to brainstorm at all?", True),
+    ("do-nothing", "If we did nothing in this area for a year, what would break first?", False),
+    ("deadline", "By when does this have to matter, and what sets that date?", False),
+    ("budget", "What may this cost — people, money, time — and what is out of bounds?", False),
+)
+
+
 def frame_lines(session: BrainstormSession) -> list[str]:
     subject = session.topic.strip() or "the topic the PM gives you"
+    required = [k for k, _q, req in FRAME_KEYS if req]
     lines = [
-        "## Step 1 — interrogate the question before answering it",
+        "## Step 1 — frame the question before answering it",
         "",
         f"The stated topic is: **{subject}**",
         "",
-        "Ask the PM these before generating. Wait for answers; a brainstorm "
-        "aimed at the wrong question produces confident, useless volume.",
+        "Do not hand the PM a questionnaire. For each key below, **propose an "
+        "answer** from what the PM has already said (the topic, the "
+        "conversation so far). Where their words already answer it, mark your "
+        "answer `assumed`; where nothing they said bears on it, say so. Show "
+        "the PM the whole proposed frame in one message and ask them to "
+        "correct it. A brainstorm aimed at the wrong question produces "
+        "confident, useless volume.",
         "",
-        "- What outcome would make this a success, stated without naming a feature?",
-        "- Which metric or observable change would show it moved?",
-        "- Who exactly is served, and who is deliberately not?",
-        "- What has to be true for this to matter at all? Which of those is "
-        "assumed rather than known?",
-        "- What has already been tried here, and why did it stop?",
-        "- What is being treated as fixed that is actually a choice?",
-        "- What would make this topic the wrong thing to brainstorm at all?",
-        "- If we did nothing in this area for a year, what would break first?",
+        "**Required** before you generate: "
+        + ", ".join(f"`{k}`" for k in required)
+        + ". Ask the PM about a required key only when you could not propose "
+        "an answer; the others may stand as assumed or be left out.",
+        "",
+    ]
+    lines += [f"- `{k}`{' (required)' if req else ''} — {q}" for k, q, req in FRAME_KEYS]
+    lines += [
         "",
         "Then **neutralise the frame**: rewrite every assertion the PM made "
         "(\"we obviously need X\") as a question (\"what problem does X solve, "
         "what else addresses it, what would disconfirm the need?\"). Questions "
         "draw far less agreement-seeking from you than statements do.",
         "",
-        "Record the agreed frame so later rounds and other stakeholders see it:",
+        "Record the frame so later rounds and other stakeholders see it, "
+        "prefixing an answer the PM has not confirmed with `assumed:`:",
         "",
         "```bash",
         f"specy-road brainstorm frame --slug {session.slug} --answer "
-        "\"outcome=...\" --answer \"served=...\" --answer \"not-the-question=...\"",
+        "\"outcome=...\" --answer \"served=assumed: ...\" "
+        "--answer \"not-the-question=...\" --answer \"assumed-vs-known=...\"",
         "```",
         "",
     ]
@@ -111,6 +137,14 @@ def allocation_lines(session: BrainstormSession, count: int, *, shard: bool = Fa
             f"specy-road brainstorm frame --slug {session.slug} --allocation \"<grid as text>\"",
             "```",
         ]
+        if session.panel:
+            plan += [
+                "",
+                f"This session has {session.panel} panel shards. Put one cell per "
+                "shard on its own line, labelled `s1:`, `s2:` … (for example "
+                "`s1: Inversion x user segments, Random constraints, 6`); recording "
+                "the allocation rewrites each shard prompt with its cell and the frame.",
+            ]
     lines = [
         "## Step 2 — plan the search before generating",
         "",
@@ -254,9 +288,33 @@ def header_lines(session: BrainstormSession, count: int, *, title: str) -> list[
     ]
 
 
+def allocation_cells(allocation: str) -> dict[int, str]:
+    """``{N: cell}`` for each ``sN: <cell>`` line of a recorded allocation."""
+    cells: dict[int, str] = {}
+    for line in allocation.splitlines():
+        m = _SHARD_CELL.match(line)
+        if m:
+            cells[int(m.group(1))] = m.group(2).strip()
+    return cells
+
+
+_SHARD_CELL = re.compile(r"^\s*[-*]?\s*s(\d+)\s*[:=]\s*(\S.*)$", re.IGNORECASE)
+
+
 def shard_lines(session: BrainstormSession, shard: int, total: int) -> list[str]:
-    op = OPERATORS[(shard - 1) % len(OPERATORS)]
-    direction = DIRECTIONS[(shard - 1) % len(DIRECTIONS)]
+    cell = allocation_cells(session.allocation).get(shard)
+    if cell:
+        given = [f"- **Cell (from the recorded allocation):** {cell}"]
+    else:
+        # No allocation labels this shard: spread operators and directions by shard number.
+        op = OPERATORS[(shard - 1) % len(OPERATORS)]
+        direction = DIRECTIONS[(shard - 1) % len(DIRECTIONS)]
+        given = [
+            f"- **Direction:** {direction}",
+            f"- **Operator:** {op[0]} — {op[1]}",
+            "- **Lenses:** any two of the list above that you have not been given "
+            "elsewhere.",
+        ]
     return [
         f"## Shard {shard} of {total} — work alone",
         "",
@@ -264,10 +322,7 @@ def shard_lines(session: BrainstormSession, shard: int, total: int) -> list[str]
         "read the other shards' output, the session file, or the roadmap** "
         "before you finish; workers that see each other converge. Your cell:",
         "",
-        f"- **Direction:** {direction}",
-        f"- **Operator:** {op[0]} — {op[1]}",
-        "- **Lenses:** any two of the list above that you have not been given "
-        "elsewhere.",
+        *given,
         "",
         f"Record with `--origin <harness>/<model>/<lens>/{session.round}/s{shard}` "
         "so the merge can attribute every idea.",

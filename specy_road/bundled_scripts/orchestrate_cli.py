@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """CLI for `specy-road orchestrate plan [PARENT]`.
 
-Prints, per parallel batch, which roster model should coordinate, execute, and
-review each ready leaf, with the reason for each pick, and names every leaf
-the roster cannot staff under the current policy. Exit 1 when any ready leaf
+Prints the ref the roster was read from, then, per parallel batch, which roster
+model should coordinate, execute, and review each ready leaf, with the reason
+for each pick, and names every leaf the roster cannot staff under the current
+policy. Exit 1 when any ready leaf
 is unstaffable, so a coordinator script stops before dispatching. Assigns
 only: dispatch is `specy-road prompt`.
 """
@@ -23,7 +24,12 @@ def render(plan: OrchestrationPlan) -> list[str]:
     pol = plan.policy
     unit = "distinct-family" if pol.get("reviewers_distinct_families") else "any-family"
     lines = [f"policy: {pol.get('reviewers_required')} {unit} reviewer(s)"
-             + (f"; scope {plan.under}" if plan.under else "")]
+             + (f"; scope {plan.under}" if plan.under else ""),
+             # Routing reads the integration branch's roster, not necessarily the file you are looking at.
+             "roster: roadmap/orchestration.yaml "
+             + (f"at {plan.roster_ref}" if plan.roster_ref else "in the working tree (not a git checkout)")]
+    if plan.roster_drift:
+        lines.append(f"! {plan.roster_drift}")
     if not plan.batches:
         lines.append("no ready leaves to assign"
                      + (f" ({len(plan.blocked)} blocked, {len(plan.active)} active)" if plan.blocked or plan.active else ""))

@@ -43,9 +43,11 @@ _SCRIPTS = {
     "refresh-schemas": "refresh_schemas.py",
     "refresh-profiles": "refresh_profiles.py",
     "refresh-stubs": "refresh_stubs.py",
+    "upgrade": "upgrade.py",
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
     "move-node": "roadmap_move_node.py",
+    "doctor": "doctor.py",
 }
 
 # Commands whose bundled script owns its own argparse. The command name is
@@ -63,6 +65,7 @@ _FORWARDED = {
     "session": "session_cli.py",
     "review": "review_cli.py",
     "worker": "worker_cli.py",
+    "branches": "branches_cli.py",
 }
 
 _CRUD_COMMANDS = (
@@ -76,6 +79,7 @@ _CRUD_COMMANDS = (
     "set-dependencies",
     "add-dependency",
     "remove-dependency",
+    "apply",
 )
 
 _ARCHIVE_COMMANDS = (
@@ -87,11 +91,36 @@ _ARCHIVE_COMMANDS = (
 )
 
 
+# Commands an agent file may still name that are not registered, each with what
+# to run instead ("" when nothing replaces it). `validate` names the replacement
+# when AGENTS.md or CLAUDE.md mentions one.
+REPLACED_COMMANDS = {
+    "specy-road grind": "specy-road grind-session",
+    "specy-road pm-sync": "specy-road sync",
+    "specy-road backfill-activity": "",   # last-worked dates are derived from git
+}
+
+
 def _known_commands() -> list[str]:
     return sorted(
         {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS,
          "scaffold-constitution", "init", "gui"}
     )
+
+
+def registered_agent_command_names() -> dict[str, set[str]]:
+    """Registered ``specy-road`` / ``specyrd`` subcommand names for agent-file checks."""
+    from specy_road.specyrd_cli import _build_parser as _specyrd_parser
+
+    specyrd = next(
+        a
+        for a in _specyrd_parser()._actions
+        if isinstance(a, argparse._SubParsersAction)
+    )
+    return {
+        "specy-road": {*_known_commands(), "version"},
+        "specyrd": set(specyrd.choices),
+    }
 
 
 def _did_you_mean(cmd: str) -> list[str]:
@@ -296,7 +325,7 @@ def main(argv: list[str] | None = None) -> None:
     if not argv or argv[0] in ("-h", "--help"):
         print(USAGE_TEXT)
         raise SystemExit(0)
-    if argv[0] in ("--version", "-V"):
+    if argv[0] in ("--version", "-V", "version"):
         from specy_road import __version__
 
         print(f"specy-road {__version__}")

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set, title_to_codename
 
-from tests.test_roadmap_crud import _fixture_repo
+from tests.test_roadmap_crud import crud_fixture_repo
 
 _NK = "10000000-0000-4000-8000-000000009901"
 
@@ -90,7 +92,7 @@ def test_a_missing_codename_is_still_derived() -> None:
 
 
 def test_edit_title_renames_planning_file_on_disk(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     old = tmp_path / "planning" / f"M99_unnamed_{_NK}.md"
     assert old.is_file()
     edit_node_set_pairs(
@@ -103,3 +105,35 @@ def test_edit_title_renames_planning_file_on_disk(tmp_path: Path) -> None:
     new = tmp_path / "planning" / f"M99_{slug}_{_NK}.md"
     assert new.is_file()
     assert not old.exists()
+
+
+@pytest.mark.parametrize(
+    ("value", "noted"),
+    [('["Returns 404", "Logs the miss"]', True), ("Returns 404 for an unknown id", False)],
+)
+def test_a_json_looking_list_value_is_noted_and_stored_as_text(value: str, noted: bool) -> None:
+    """rc1: `--set acceptance='["a","b"]'` stored one criterion with the brackets in it, silently."""
+    node = _hand_picked_node()
+    notes: list[str] = []
+    apply_set(node, "acceptance", value, all_ids={"M0.1"}, all_node_keys={_NK2}, self_id="M0.1",
+              notify=notes.append)
+    assert node["acceptance"] == [value]
+    assert bool(notes) is noted
+    if noted:
+        assert "--set acceptance=" in notes[0]
+
+
+def test_title_to_codename_honors_max_words() -> None:
+    slug = title_to_codename(
+        "Phase Alpha Long Enough For A Branch Name",
+        max_words=4,
+    )
+    assert slug == "phase-alpha-long-enough"
+
+
+def test_title_to_codename_skips_punctuation_tokens_when_capping() -> None:
+    slug = title_to_codename(
+        "!!! ??? ... --- Five Six Seven Eight Nine Ten",
+        max_words=4,
+    )
+    assert slug == "five-six-seven-eight"

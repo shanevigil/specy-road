@@ -6,6 +6,7 @@ import argparse
 
 from specy_road.bundled_scripts.roadmap_crud_dependency_ops import (
     cmd_add_dependency,
+    cmd_apply,
     cmd_list_dependencies,
     cmd_remove_dependency,
     cmd_set_dependencies,
@@ -36,6 +37,12 @@ def _p_list(sub: argparse._SubParsersAction) -> None:
             "than read off its own field. Repeatable. One of: "
             + ", ".join(sorted(ROADMAP_NODE_STATUSES))
         ),
+    )
+    sp.add_argument(
+        "--json",
+        dest="as_json",
+        action="store_true",
+        help="Print a JSON array of full node objects (titles untruncated), each with its chunk path",
     )
     sp.set_defaults(func=cmd_list)
 
@@ -91,7 +98,18 @@ def _p_add(sub: argparse._SubParsersAction) -> None:
         default=None,
     )
     sp.add_argument("--touch-zone", action="append", default=[])
-    sp.add_argument("--dependency", action="append", default=[])
+    sp.add_argument(
+        "--dependency",
+        action="append",
+        default=[],
+        help="Node this one depends on: display id (M1.2) or node_key; stored as the node_key. Repeatable.",
+    )
+    sp.add_argument(
+        "--acceptance",
+        action="append",
+        default=[],
+        help="One acceptance criterion; repeat for each ('|' is not a separator).",
+    )
     sp.add_argument("--sensitivity", default=None, help="Data-sensitivity class (default public); see roadmap/orchestration.yaml may_process")
     sp.add_argument("--executor-eligibility", dest="executor_eligibility", default=None, help="any (default) or a roster class tag such as senior")
     sp.add_argument(
@@ -113,6 +131,12 @@ def _p_edit(sub: argparse._SubParsersAction) -> None:
         action="append",
         required=True,
         metavar="KEY=VALUE",
+        help=(
+            "Field to set; repeatable. List fields (acceptance, risks, touch_zones, "
+            "dependencies) take one --set per item: --set acceptance='Saves offline' "
+            "--set acceptance='Syncs on reconnect'. touch_zones also splits on commas; "
+            "'|' is not a separator. An empty value (acceptance=) removes the field."
+        ),
     )
     sp.add_argument(
         "--sync-codename",
@@ -177,10 +201,14 @@ def _p_set_dependencies(sub: argparse._SubParsersAction) -> None:
 def _p_add_dependency(sub: argparse._SubParsersAction) -> None:
     sp = sub.add_parser(
         "add-dependency",
-        help="Append one dependency node_key if missing (uses edit_node_set_pairs / validate)",
+        help="Append one dependency if missing (uses edit_node_set_pairs / validate)",
     )
     sp.add_argument("node_id", metavar="NODE_ID")
-    sp.add_argument("dep_node_key", metavar="DEP_NODE_KEY")
+    sp.add_argument(
+        "dep_node_key",
+        metavar="DEP",
+        help="Display id (M1.2) or node_key; stored as the node_key",
+    )
     sp.set_defaults(func=cmd_add_dependency)
 
 
@@ -192,6 +220,27 @@ def _p_remove_dependency(sub: argparse._SubParsersAction) -> None:
     sp.add_argument("node_id", metavar="NODE_ID")
     sp.add_argument("dep_node_key", metavar="DEP_NODE_KEY")
     sp.set_defaults(func=cmd_remove_dependency)
+
+
+def _p_apply(sub: argparse._SubParsersAction) -> None:
+    sp = sub.add_parser(
+        "apply",
+        help="Run a YAML file of add-node / edit-node / add-dependency changes as one batch",
+        description=(
+            "Apply a change file in order, all or nothing: if any change is "
+            "refused, every file the batch touched is restored. Each entry is "
+            "op: plus the subcommand's long options (node: and dependency: for "
+            "the positionals, set: {field: value} for edit-node). See "
+            "docs/roadmap-authoring.md."
+        ),
+    )
+    sp.add_argument("changes_file", metavar="CHANGES.yaml")
+    sp.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Rehearse on a scratch copy and print the resulting waves; write nothing",
+    )
+    sp.set_defaults(func=cmd_apply)
 
 
 def _p_archive(sub: argparse._SubParsersAction) -> None:
@@ -223,5 +272,6 @@ def build_parser() -> argparse.ArgumentParser:
     _p_set_dependencies(sub)
     _p_add_dependency(sub)
     _p_remove_dependency(sub)
+    _p_apply(sub)
     _p_archive(sub)
     return p

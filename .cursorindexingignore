@@ -1,0 +1,13 @@
+# >>> specy-road managed block — do not edit inside <<<
+# Excluded from IDE indexing, not from reading. These are either archived or
+# near-verbatim duplicates of content indexed from its primary source, and
+# they crowd out current decisions in search results.
+#
+# Read roadmap-context.md for the current state, and reach anything here with:
+#   specy-road search "<query>" --scope all
+#
+# Cursor honours this file; other tools ignore it harmlessly.
+sr/roadmap/archive/
+sr/work/brief-*.md
+sr/roadmap.md
+# >>> end specy-road managed block <<<

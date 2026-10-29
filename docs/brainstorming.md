@@ -6,12 +6,13 @@
 **Not for:** the browser panel and its search providers — [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md).
 
 **Must know without reading on:**
+- Run `specy-road brainstorm start` before reading anything else — the digest and the roadmap anchor round 1 — then open the prompt it writes. Every command prints the next step.
 - Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
 - `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
 - The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
 - Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
-- The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it are gitignored.
+- The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it, one per pass, are gitignored. `start` warns on the integration branch and suggests `chore/brainstorm-<slug>`.
 
 **Read further for:**
 - the session file and the flow diagram → "Where the work lives"
@@ -89,9 +90,19 @@ a session six months later should be able to see that something was already
 considered. Fields that are empty are left out of the file so it stays
 readable.
 
-The prompt files next to it (`work/brainstorm-<slug>-prompt.md`,
-`…-sN-prompt.md`, `…-evidence-prompt.md`) are regenerated from the session
-plus the current graph, so they are gitignored.
+The prompt files next to it are one per pass — `work/brainstorm-<slug>-r1-prompt.md`,
+`…-r2-prompt.md` and so on per diverge round, `…-r1-sN-prompt.md` per panel
+shard, `…-recommend-prompt.md`, `…-evidence-prompt.md` — so a later pass never
+overwrites an earlier one and every prompt an agent ran stays available for
+audit. They are regenerated from the session plus the current graph, so they
+are gitignored.
+
+Run `start` **before** reading `roadmap-context.md`, the roadmap or
+`planning/`: the managed AGENTS.md block says so too, because whatever the
+agent reads before round 1 anchors it. On the integration branch `start`
+warns and suggests a `chore/brainstorm-<slug>` branch, since the session file
+is tracked. Each command ends with the next one in the order round →
+`recommend` → `evidence`/`verify` → triage → `promote`.
 
 ```mermaid
 flowchart LR
@@ -124,15 +135,19 @@ independent shard prompts (below).
 This writes the **round-1 prompt** and prints its path. Hand that file to your
 coding agent. It instructs the agent to:
 
-- **Interrogate the question first.** Eight Socratic questions — outcome and
-  metric, who is served, what is assumed, what was tried, what is treated as
-  fixed, and *what would make this the wrong topic*. It waits for answers,
-  then **neutralises the frame**: every assertion the PM made becomes a
-  question, because questions draw far less agreement-seeking from a model
-  than statements do. The agreed frame is recorded:
+- **Frame the question first, without a questionnaire.** The prompt lists
+  the canonical frame keys: `outcome`, `served`, `not-the-question` and
+  `assumed-vs-known` (required), and `metric`, `tried`, `fixed-or-choice`,
+  `do-nothing`, `deadline` and `budget`. The agent proposes an answer to
+  each from what the PM already said, marks the ones their words cover
+  `assumed`, shows the whole proposed frame in one message, and asks only
+  about a required key it could not propose. It then **neutralises the
+  frame**: every assertion the PM made becomes a question, because
+  questions draw far less agreement-seeking from a model than statements do.
+  The frame is recorded, unconfirmed answers prefixed `assumed:`:
 
   ```bash
-  specy-road brainstorm frame --answer "outcome=fewer failed payments" --answer "served=SMBs"
+  specy-road brainstorm frame --answer "outcome=fewer failed payments" --answer "served=assumed: SMBs"
   ```
 
 - **Plan the search before generating.** An allocation grid of lenses ×
@@ -172,7 +187,7 @@ required.
 specy-road brainstorm next-round --count 15
 ```
 
-Writes the **round-k prompt**: the titles of everything captured so far, and
+Writes the **round-k prompt** (`…-r<k>-prompt.md`): the titles of everything captured so far, and
 an instruction to add only ideas that are not in, and not near, that pool —
 with the mechanics that measurably widen a pool (estimate how likely a
 typical PM would be to propose each candidate and keep only the unlikely
@@ -186,14 +201,17 @@ beat one of forty.
 specy-road brainstorm start --topic "…" --count 30 --panel 3
 ```
 
-Also writes `work/brainstorm-<slug>-s1-prompt.md` … `-s3-prompt.md`: one
-cell each with a distinct operator and direction, and the rule that the
-worker must **not** read the other shards, the session file, or the roadmap
-before it finishes — workers that see each other converge. A shard plans
+Also writes `work/brainstorm-<slug>-r1-s1-prompt.md` … `-r1-s3-prompt.md`: one
+cell each, and the rule that the worker must **not** read the other shards,
+the session file, or the roadmap before it finishes — workers that see each
+other converge. A shard's cell comes from the recorded allocation: the
+coordinator labels one line per shard, `s1: Inversion x user segments, Random
+constraints, 6`, and shard N gets the `sN:` line. A shard the allocation does
+not label gets a distinct operator and direction by its number. A shard plans
 inside its own cell and does not record an allocation: the session keeps one
-grid, the coordinator's, and `frame --allocation` replaces it. Shard prompts
-carry the frame and grid recorded when they were written, so record those
-first and re-run `start` to give the shards them. Run them as
+grid, the coordinator's, and `frame --allocation` replaces it. Every `frame`
+call rewrites the shard prompts, so they carry the frame and cells as last
+recorded. Run them as
 sub-agents of your session or on other harnesses from the roster (the best
 measured gains come from different *model families*); each records with
 `--origin …/1/sN` into the same session file, and converge clusters the
@@ -207,9 +225,9 @@ rule otherwise reads `roadmap-context.md` before it sees the prompt (Cursor did,
 specy-road brainstorm recommend
 ```
 
-Switches the session to `roadmap` mode and writes the convergent prompt over
-the ideas already captured, with the roadmap inventory inlined for the
-overlap check. The agent is asked to cluster near-duplicates (singletons are
+Switches the session to `roadmap` mode and writes the convergent prompt
+(`…-recommend-prompt.md`) over the ideas already captured, with the roadmap
+inventory inlined for the overlap check. The agent is asked to cluster near-duplicates (singletons are
 clusters of one; outliers are never hidden), flag overlaps with existing
 nodes by id **and relation** (same problem/same solution, same
 problem/different solution, prerequisite, superseded, adjacent), assess
@@ -226,14 +244,25 @@ specy-road brainstorm revise B1 --cluster C2 --overlap M3.1:adjacent \
 Verdicts are `strong`, `consider`, or `park`. Passing only `--recommendation`
 leaves the idea's triage status alone — the agent advises, you decide.
 
+When the agent hands back, check that the pass covered every idea:
+
+```bash
+specy-road brainstorm recommend --check
+```
+
+It writes nothing; it lists each idea still without a cluster or a
+recommendation and exits 1, or exits 0 and prints the next step.
+
 ## 3. Evidence
 
 ```bash
-specy-road brainstorm evidence            # the strong/consider shortlist
-specy-road brainstorm evidence B4 B9      # or named ideas
+specy-road brainstorm evidence            # the ideas recommended strong
+specy-road brainstorm evidence B4 B9      # or named ideas, e.g. a consider worth checking
 ```
 
-Writes `work/brainstorm-<slug>-evidence-prompt.md`: for each idea, one to
+More than 15 ideas in one pass warns: the sources get thinner and the
+disconfirming searches are the first thing dropped, so name the ids and run it
+in batches. Writes `work/brainstorm-<slug>-evidence-prompt.md`: for each idea, one to
 three sources and at least one search that could disconfirm it, using the
 strongest research capability the session exposes (and never claiming a
 named research product that is not a tool). Each source needs a **verbatim
@@ -255,10 +284,11 @@ specy-road brainstorm verify
 without a terminal and without `--yes` it fetches nothing). It fetches
 public `https` pages only, with a timeout and a size cap (a larger page is
 `blocked`, not read in part), and records
-`retrieved` (quote found), `not-found` (page read, quote absent — or no
+`matched` (quote found on the page), `not-found` (page read, quote absent — or no
 quote was given; `add-evidence` requires one), or
 `blocked` (paywall, robots, transport error — never "fabricated"). Sources
-it did not fetch stay `unverified`. This is the only network call the CLI
+it did not fetch stay `unverified`. Session files written before the rename
+say `retrieved`; they read as `matched` and are saved that way. This is the only network call the CLI
 makes. Other brainstorm commands (CLI or GUI) are not blocked while it asks
 or fetches; it records its results into the session as it then stands, so
 ideas added meanwhile are kept.
@@ -266,19 +296,31 @@ ideas added meanwhile are kept.
 ## 4. Triage
 
 ```bash
-specy-road brainstorm list --by cluster       # cluster-first; verdicts hidden
+specy-road brainstorm list --by cluster       # cluster-first; verdicts and critics hidden
+specy-road brainstorm list --summary          # per-status and per-recommendation counts
 specy-road brainstorm list --show-verdicts    # or --json, --status accepted
 specy-road brainstorm accept B1 B4 B9
+specy-road brainstorm accept B3 --reason "fits the anchor"
 specy-road brainstorm reject B2 --reason "duplicates M3.1"
 specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing ships"
+specy-road brainstorm realize B1 --node M3.6   # node you added outside promote
 ```
 
-Verdicts are hidden by default so they do not steer you; clusters, critics'
-objections and evidence show first. `reject` and `park` require a reason;
-`park` also takes an optional revisit condition (`--revisit-when`). Both are
-recorded as the idea's decision. Editing an idea's content marks it
-`revised`. Once an idea has been promoted it can no longer be re-triaged: it
-is a roadmap node, and the node is what you edit.
+`accept`, `reject`, and `park` resolve every idea before changing anything or
+printing `[ok]` — a missing or already-promoted id in a batch prints nothing
+and leaves the session untouched. The agent's
+judgement — verdicts, their reasoning and the critics'
+objections — is hidden by default so it does not steer you; clusters and
+source counts show first, and `--show-verdicts` adds the rest. `reject` and
+`park` require `--reason`; `accept` may take an optional `--reason`. Both
+decision reasons and `--revisit-when` on `park` are recorded on the idea.
+`revise --why` sets `verdict_why`; `--append-why` adds to it. `revise --codename`
+sets the branch slug `promote` will use instead of deriving one from the title.
+Editing an idea's
+content marks it `revised`. Once an idea has been promoted it can no longer be
+re-triaged: it is a roadmap node, and the node is what you edit. `realize`
+links an idea to a node you created by hand (`promoted_node_key`) after
+checking that node exists in the merged graph.
 
 ## 5. Promote
 
@@ -289,8 +331,21 @@ specy-road brainstorm promote
 
 Every accepted, not-yet-promoted idea becomes a node through the same path as
 `specy-road add-node`: display id under the anchor, stable `node_key`,
-planning sheet scaffolded, chunk and manifest written in one transaction, and
-`validate` run over the batch.
+planning sheet scaffolded, chunk and manifest written in one transaction. A
+batch defers `validate` until every node in that promote call is on disk, so
+pin/schema warnings and other validate notices print once, not per node.
+
+Promoted nodes get a `goal` from the idea's `--hypothesis` when present,
+`sibling_order` in accept order (every `accept`, including without `--reason`,
+records a sequence; later promote calls append after existing siblings), and a
+`codename` from the first four title words unless `revise --codename` set one.
+After a successful promote, stderr lists any new node ids still missing
+`acceptance` or `touch_zones`.
+
+Before it writes (and on `--dry-run`), `promote` warns for each idea it is
+about to promote on a `strong` verdict that no `matched` source backs — its
+sources are unverified, not found or blocked, or it has none — and names
+`verify` or `evidence` as the fix. It warns; the call is yours.
 
 The new sheet's `## Intent` is seeded from the idea's rationale; its
 `## References` gains the sources (with quote and verification state), the
@@ -300,8 +355,11 @@ slice is properly scoped — the seed is a starting point, not a spec.
 
 Options: `--under NODE_ID` overrides the anchor; `--type` is `milestone` by
 default (`vision`, `phase`, `task` also work; `gate` is refused — a gate is a
-human hold, not work); `--dry-run` writes nothing. An unusable anchor is
-rejected before anything is written. Afterwards:
+human hold, not work); `--dry-run` writes nothing. Promoted nodes copy the
+anchor's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
+`--set execution_milestone=…` only when a leaf should differ (typically
+`Human-led` under an agentic anchor). An unusable anchor is rejected before
+anything is written. Afterwards:
 
 ```bash
 specy-road export && specy-road digest
@@ -310,9 +368,15 @@ specy-road export && specy-road digest
 ## Several sessions at once
 
 `--slug` is optional when exactly one session is open, and required when more
-than one is. `specy-road brainstorm sessions` lists them. Re-running `start`
-on an existing session keeps its ideas, frame and round and regenerates the
-prompt against the current graph.
+than one is. `specy-road brainstorm sessions` lists them; a session file it
+cannot read is reported with the fix and the rest are still listed (exit 1).
+Re-running `start` on an existing session keeps its ideas, frame and round and
+regenerates the prompt against the current graph.
+
+When a session is finished, `specy-road brainstorm close [--slug SLUG]` moves
+its file and its prompts to `work/brainstorm-closed/`, so it stops counting as
+open and `--slug` is no longer needed for the rest. The closed file stays
+tracked as the record; close refuses if that destination already exists.
 
 ## Checking it works for you
 

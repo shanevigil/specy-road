@@ -88,6 +88,17 @@ def test_work_inside_the_zone_passes(repo):
     assert _error(repo, ["src/api"]) is None
 
 
+def test_a_nested_project_counts_code_outside_it(repo):
+    """Project files rebase into the project; code beside it keeps its git-root path."""
+    _commit(repo, "sr/src/a.py")
+    _commit(repo, "lib/b.py")
+
+    paths = implementation_paths(
+        repo / "sr", zones=["src", "lib"], remote="origin", integration_branch="main"
+    )
+    assert sorted(paths) == ["lib/b.py", "src/a.py"]
+
+
 def test_an_untouched_branch_is_refused(repo):
     assert _paths(repo, ["src/api"]) == []
     error = _error(repo, ["src/api"])

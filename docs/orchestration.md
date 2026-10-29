@@ -8,26 +8,24 @@
 **Must know without reading on:**
 - The executor never reviews its own leaf, and the coordinator's own session is never a reviewer; every review record attests this and the gate checks it. The one exception is the default interactive human approval in `mark-implementation-reviewed`, which writes `REVIEW-human.md` with `is_coordinator: true` by design.
 - A review is a file under `work/reviews/<NODE_ID>/` bound to one commit; any later commit (other than one touching only `roadmap/registry.yaml`) makes it stale.
-- Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review).
+- Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review). The packet header and `handoff status` report a trial merge (`git merge-tree`, nothing checked out) of the integration branch into the leaf's branch: a conflict on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md` means the executor merges and resolves before reviewers run, and `mark-implementation-reviewed` and `finish-this-task` refuse, before any bookkeeping commit, until it is resolved. The integration ref is the remote-tracking one as last fetched, else the local branch.
 - The policy is `roadmap/orchestration.yaml` as read from the integration branch; a feature branch cannot lower its own bar.
 
 **Read further for:**
 - the step sequence from pickup to finish → "The flow"
 - roster, policy keys, substitutions, model choice → "`roadmap/orchestration.yaml`", "Choosing and prompting models"
 - READY, PACKET and REVIEW file shapes and what `review record` rejects → "Hand-off files: `work/reviews/<NODE_ID>/`"
-- what counts, `Reviewed-by` trailers, signed reviews, `handoff status` → "The review gate"
+- what counts, `Reviewed-by` trailers, signed reviews, `handoff status` → [orchestration-review.md](orchestration-review.md)
 - grind-session hooks and step mode → "Unattended loops"
 - `session start|guard`, the harness hook adapters, several agents in one tree, migrating → "Presence: `specy-road session`", "Working in one shared checkout", "Upgrading from 0.2.x"
 
-**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
+**Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
 
 specy-road separates three roles around a roadmap leaf and prescribes how work passes
 between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit.
 
-- **Coordinator** — picks the leaf, creates the branch or worktree, assembles the
-  review packet, closes the review gate, finishes the leaf, and changes roadmap status.
-- **Executor** — reads the brief, changes only the leaf's touch zones, runs the
-  verifiers, commits, writes a hand-off file, and **stops**.
+- **Coordinator** — picks the leaf, creates the branch or worktree, assembles the review packet, closes the review gate, finishes the leaf, and changes roadmap status.
+- **Executor** — reads the brief, changes only the leaf's touch zones, runs the verifiers, commits, writes a hand-off file, and **stops**.
 - **Reviewer** — reads the review packet and nothing else, in a fresh session, and records approve or block.
 
 ## The flow
@@ -50,7 +48,7 @@ The review gate applies when `roadmap/git-workflow.yaml` sets
 ## `roadmap/orchestration.yaml`
 
 Scaffolded by `specy-road init project`. A repo without the file gets exactly
-the defaults shown here, so upgrading does not strand a solo maintainer.
+the defaults shown here, so upgrading does not strand a solo maintainer. The commented starter that `init project` writes has this policy and one more roster entry, a placeholder executor (`my-executor`) to rename to the model you run; `specy-road validate --generate-orchestration` writes the same starter into a repo that has no file, and leaves an existing one alone.
 
 ```yaml
 version: 1
@@ -76,9 +74,7 @@ substitutions: []
 | `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. A `model: human` record is trusted as written unless `signed_reviews` is on, so under unsigned policy this switch is cooperative attestation, not enforcement. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
-Roster entries also accept `profile`, `channels`, `may_process`,
-`subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy
-also takes `max_workers` (routing, prompts, and `worker delegate` use them).
+Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
 
 **Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md),
 scaffolded into your repo by `init project`, is the canonical guide to filling the roster: it ranks
@@ -116,7 +112,7 @@ must name itself in its own committed copy, and with remotes only `refs/remotes/
 read. If any of this is missing, unfetched or disagrees, the gate fails closed (on, and nothing passes
 it). Outside this protection: a remote whose default branch the feature author can push to, and anyone who can run git in the
 finishing clone (they can retarget `refs/remotes/<remote>/HEAD`); unsigned, the gate is cooperative attestation. Change policy on the integration branch; an edit on
-a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
+a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale. Routing reads the roster from the same ref: `orchestrate plan` names it (`roster_ref` in `--json`) and, when the working tree's `roadmap/orchestration.yaml` is absent there or differs, says so (`roster_drift`) in place of the "needs a rostered executor with may_process …" hint, which would send you to a file routing does not read; `validate` warns the same. Commit the roster to the integration branch to clear it.
 
 ## Choosing and prompting models
 
@@ -125,11 +121,11 @@ Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](o
 
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
-Plain files work across every harness, including IDE chats that cannot see each
-other. Each file is Markdown whose YAML front matter is the machine-readable part.
-The directory always resolves to the **main** worktree: an executor in a linked
-worktree writes its hand-off there by absolute path, and every command — including the gate
-run from that worktree — reads the same files. New scaffolds ship `work/handoff-ready.template.md` and `work/review-record.template.md`.
+Plain files work across every harness, including IDE chats that cannot see each other. Each file is Markdown whose YAML front matter is the machine-readable part.
+The directory always resolves to the **main** worktree: an executor in a linked worktree writes its hand-off there by absolute path, and every command — including the gate run from that worktree — reads the same files. New scaffolds ship `work/handoff-ready.template.md` and `work/review-record.template.md`.
+
+Records are read from the working tree and are untracked by design (`work/reviews/` is gitignored), so they never travel with a push; the review policy, by contrast, comes from `roadmap/orchestration.yaml` on the integration branch. What persists is the outcome: the gate writes one `Reviewed-by:` trailer per approval into git history.
+A repository that never pushes claims still sees its records: `handoff status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only. Every read-only review command takes the same `--ref <branch or commit>` in place of a claim: `review-packet`, `prompt` (so a second-family reviewer prompt for a Complete node needs no claim; the prompt passes the `--ref` on to the reviewer's `review record`), `handoff status`, and `review list <NODE_ID>`, which prints each filed record's verdict, model, family and commit, then the gate evaluation, and writes nothing.
 
 ### `READY-<agent>.md` — the executor's hand-off
 
@@ -179,7 +175,7 @@ tests, each with a reason) is noted, not failed. The reviewer prompt (`specy-roa
 duplicated logic, overlapping tests — that needs a caller trace or the covering test as
 evidence and never recommends removing error handling without one. Changes to `roadmap/orchestration.yaml` or
 `roadmap/git-workflow.yaml` are flagged. `--ref` reviews a different branch or
-commit, and exits 1 when it does not resolve.
+commit, and exits 1 when it does not resolve. An empty diff is explained in the packet and warned about on stderr: the commit adds nothing past its merge base, as when the branch is already merged. `--base <ref>` diffs from the merge base with `<ref>` instead (the commit before the leaf, say); the commit under review stays the same. `-o <path>` writes a copy there too: `work/reviews/<NODE_ID>/PACKET.md`, the only path `prompt --role reviewer` reads, is always written.
 
 ### `REVIEW-<model>.md` — one reviewer's verdict
 
@@ -197,6 +193,7 @@ findings:
   boundary: ["src/session.ts changed outside touch zones"]
   test_integrity: ["login.test.ts assertion loosened"]
 commands_rerun: ["npm test -- login"]
+verify_pre_existing: ["pytest -q tests/regression.py"]
 required_changes: ["restore the assertion", "revert src/session.ts"]
 fresh_session: true
 authored_fix: false
@@ -224,83 +221,11 @@ specy-road review record M1.2 --model claude-opus-5.5 --verdict block --file not
   `mark-implementation-reviewed`, so an agent cannot file one.
 
 It sets `family` from the roster; a `family` written in the file is ignored. When policy
-requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive.
+requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from.
 
 ## The review gate
 
-`specy-road mark-implementation-reviewed`, run on the feature branch, counts a
-review record only when:
-
-- it validates, and its `node_id` is this node;
-- its `commit` resolves, through git, to the commit under review — any later
-  commit makes it stale, so a substantive fix restarts every review. Every
-  merge counts as new work, including `git merge -s ours`, whose tree equals
-  its first parent's; commits that touch only `roadmap/registry.yaml` are
-  skipped, so claim bookkeeping does not;
-- its model is a rostered reviewer, or the substitute in an active substitution that covers this
-  node; its family comes from the roster, and its roster `may_process` includes the node's `sensitivity`;
-- no other record from the same model already counts — one vote per model, and
-  a block from any of a model's records wins;
-- it attests a fresh session when policy requires one.
-
-The gate passes when no counted review blocks and the counted approvals reach
-`reviewers_required` (by distinct family when configured). On success it sets
-`implementation_review: approved` in the registry and adds one
-`Reviewed-by: <model> (<family>) approve <commit>` trailer per approval to that
-commit.
-
-`finish-this-task` checks the gate again at the current commit, so work
-committed after approval cannot ship on the earlier reviews.
-
-**Under the default policy** the interactive menu's **approve** files
-`REVIEW-human.md` and closes the gate in one step; a human approval is offered
-only when it would complete the policy. **`--yes` never creates a review:** it
-commits an approval only when the recorded reviews already satisfy the policy,
-and without a TTY and without `--yes` the command refuses, as in 0.2.x. A
-coordinator that can satisfy the gate alone is no gate.
-
-### Signed reviews
-
-A review record is a file, so without more, any agent that can write under
-`work/reviews/` can pose as a rostered reviewer. Signing closes that:
-
-```yaml
-roster:
-  - id: opus
-    family: anthropic
-    roles: [reviewer]
-    public_key: ssh-ed25519 AAAAC3...   # the reviewer's OpenSSH public key
-policy:
-  signed_reviews: true
-```
-
-The reviewer files its record with `specy-road review record … --sign-key
-~/.ssh/opus_review` (an OpenSSH private key). The front matter is signed with
-`ssh-keygen -Y sign` (namespace `specy-road-review`) and verified against the
-roster `public_key` with `ssh-keygen -Y verify`; OpenSSH 8.1+, no other
-dependency. With `signed_reviews: true` an unsigned record does not count;
-with it off, a present signature is still verified, so a tampered front matter never
-counts. `review record` also signs `notes_sha256`, the notes' hash, so a record whose
-notes changed, or a signed one without it, never counts. A human approving interactively passes `--sign-key` to
-`mark-implementation-reviewed`, with a `public_key` on the `human` entry; a wrong key is refused before any record is written.
-
-The boundary is the key: run each reviewer with a private key the executor's
-process does not hold. Still self-attested: the session flags inside a signed record
-(the key proves who signed, not how they worked) and presence files, which stay advisory.
-
-`specy-road handoff status [<NODE_ID>] [--json]` shows each node's state:
-
-| State | Meaning |
-|---|---|
-| `waiting` | No valid READY file. |
-| `in-review` | READY matches the commit under review; the policy is not met yet. |
-| `blocked` | A counted review blocks. |
-| `approved` | The policy is met. Run `mark-implementation-reviewed`. |
-| `stale` | The branch moved past the READY commit. |
-| `unclaimed` | Leftover files for a node with no open claim (finished or aborted); safe to delete. |
-
-Below each node it lists every problem to fix. Naming a node that cannot be
-resolved exits 1.
+How records count, `Reviewed-by` trailers, signed reviews, `handoff status`, and review-loop escalation: [orchestration-review.md](orchestration-review.md).
 
 ## Unattended loops
 
@@ -333,9 +258,9 @@ The registry shows claimed leaves; work that is not a claim — a design note, a
 merge, a review, a verifier's experiments — was invisible to every other agent in the checkout. A session announces itself instead:
 
 ```bash
-specy-road session start --path src/api --path docs/api.md --note "rate limits"
+specy-road session start --path src/api docs/api.md --note "rate limits"   # or repeat --path
 specy-road session touch            # renew; records expire after 4 hours by default
-specy-road session end
+specy-road session end [<id>]       # <id>: retire a record of yours left by a closed terminal
 specy-road session list [--all]
 specy-road session check            # exit 1 if staged paths overlap another live session
 specy-road session guard --command "git stash"   # exit 2 with the reason when another session is live
@@ -361,8 +286,8 @@ decision (Claude Code gets context only; Codex nothing), so the harness's own pr
 Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch, worktree, paths, expiry. The id is
 `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
 `start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
-out; one that will not load counts as live to the guard until fixed or deleted. `handoff status` lists live sessions first,
-`do-next-available-task` warns on touch-zone overlap, and `session check` refuses a commit on another live session's paths.
+out; one that will not load counts as live to the guard until fixed or deleted. A record keeps the `$USER` that started it, so `session end <id>` retires a record of yours before it expires (a closed terminal's still counts as a live peer to the guard) and refuses one another user started. `handoff status` lists live sessions first,
+`do-next-available-task` warns on touch-zone overlap, `grind-session --plan` and `orchestrate plan` never put two ready leaves sharing a zone in one parallel batch, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout
 
@@ -390,9 +315,10 @@ scaffold `AGENTS.md` repeats these rules; [design-notes/agent-guidance-and-share
 - With the review gate on, `mark-implementation-reviewed` now needs a review
   record, and `finish-this-task` re-checks it at the current commit. Interactive use
   works as before under the default policy, because **approve** files the human record. **`--yes` without a satisfying record now exits 1.**
-- `roadmap/orchestration.yaml` is optional; copy it from a fresh
-  `specy-road init project` to change the policy.
-- Add `work/reviews/` to `.gitignore`, as new scaffolds do: a review binds to
+- `roadmap/orchestration.yaml` is optional; `specy-road validate
+  --generate-orchestration` writes the commented starter to change the policy.
+- `work/reviews/` must be gitignored, as new scaffolds do (`specy-road
+  upgrade` adds it to the managed `.gitignore` block): a review binds to
   the commit it read, so committing review files would move the branch past it
   (approvals are kept as `Reviewed-by` trailers). No consumer schema changed:
   `orchestration.schema.json` is new in `schemas/` for new scaffolds, and the

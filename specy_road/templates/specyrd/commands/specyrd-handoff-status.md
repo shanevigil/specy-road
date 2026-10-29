@@ -7,9 +7,12 @@ cd "$(git rev-parse --show-toplevel)"
 specy-road handoff status            # every node under work/reviews/
 specy-road handoff status <NODE_ID>  # one node
 specy-road handoff status --json     # for a coordinator that polls
+specy-road handoff status <NODE_ID> --ref <branch or commit>   # no claim names the commit
 ```
 
-States: `waiting` (no valid READY file), `in-review`, `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit), `unclaimed` (leftover files for a node with no open claim — safe to delete).
+States: `waiting` (no valid READY file), `in-review`, `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit), `escalated` (the review loop keeps blocking and no root-cause analysis covers it: run `specy-road prompt <NODE_ID> --role rca --model <id>`), `complete_no_claim` (Complete, claim released), `unclaimed` (no claim names a commit; pass `--ref`), `error`.
+
+With a `<NODE_ID>` the exit says which: `0` approved or `complete_no_claim`, `1` policy not met (including `escalated`), `2` cannot be determined (`unclaimed`, `error`). `specy-road review list <NODE_ID> [--ref …]` prints the filed records and the gate without writing anything.
 
 Each line under a node names a problem to fix: an invalid file, a review of an older commit, a reviewer outside the roster, or the approvals still missing.
 

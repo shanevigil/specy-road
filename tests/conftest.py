@@ -23,6 +23,9 @@ def repo_root_env_never_leaks_in(monkeypatch: pytest.MonkeyPatch) -> None:
     Tests that want it set it themselves with ``monkeypatch.setenv``.
     """
     monkeypatch.delenv("SPECY_ROAD_REPO_ROOT", raising=False)
+    # Set by worker_runner for the harness it launches; a suite run inside a worker would
+    # otherwise see itself as a live worker in every guard and presence test.
+    monkeypatch.delenv("SPECY_ROAD_WORKER_ID", raising=False)
 
 
 @pytest.fixture(autouse=True)

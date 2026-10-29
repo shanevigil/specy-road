@@ -16,6 +16,18 @@ def test_file_limits_passes_on_repo() -> None:
     )
 
 
+def test_file_limits_help_names_ts_js_function_counts() -> None:
+    r = subprocess.run(
+        [sys.executable, str(BUNDLED_SCRIPTS / "validate_file_limits.py"), "--help"],
+        cwd=REPO,
+        env=script_subprocess_env(),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "optional Python and TS/JS function counts" in " ".join(r.stdout.split())
+
+
 def _git(root, *args: str) -> None:
     subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True)
 

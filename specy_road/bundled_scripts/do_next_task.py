@@ -11,6 +11,7 @@ from specy_road.bundled_scripts.do_next_available import (
     _load_branch_enrichment,
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
+    run_baseline_gate,
 )
 from specy_road.bundled_scripts.do_next_prompt import (
     print_pickup_header,
@@ -29,13 +30,10 @@ from specy_road.bundled_scripts.do_next_task_pickup_helpers import (
 )
 from specy_road.bundled_scripts.do_next_task_leaf_guards import (
     assert_leaf_target as _assert_leaf_target,
+    drop_unauthored,
     exit_no_actionable_leaves as _exit_no_actionable_leaves,
 )
 from specy_road.bundled_scripts.registration_pickup_commit import registration_commit_message
-from specy_road.bundled_scripts.work_dir_stash import (
-    restore_work_dir_changes as _restore_work,
-    stash_work_dir_changes as _stash_work,
-)
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.do_next_task_virtual_complete import (
     virtual_complete_from_registry as _virtual_complete_from_registry,
@@ -52,9 +50,11 @@ from specy_road.git_workflow_config import (
     on_complete_from_git_workflow,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
+    resolve_prefer_agentic,
 )
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
+from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch
@@ -110,10 +110,14 @@ def _resync_and_select(
     parent_filter,
     *,
     sync: bool = True,
+    allow_unauthored: bool = False,
+    prefer_agentic_cli: bool | None = None,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty.
 
-    ``sync=False`` (``--local``) skips only the fetch and merge.
+    ``sync=False`` (``--local``) skips only the fetch and merge. Unauthored
+    leaves are dropped here, after sync, because the sync may bring their sheet;
+    ``prefer_agentic_pick_order`` is read after it for the same reason.
     """
     if sync:
         sync_integration_branch(
@@ -122,11 +126,15 @@ def _resync_and_select(
             remote,
             retry_hint="retry do-next-available-task",
             clean_tree_detail=(
-                "Integration-branch sync and creating a new feature branch need a clean tree."
+                "Integration-branch sync and creating a new feature branch need a clean tree "
+                "outside work/."
             ),
+            except_work=True,
         )
     else:
-        assert_working_tree_clean(ROOT, "A local pickup still commits the claim on the integration branch.")
+        assert_working_tree_clean(
+            ROOT, "A local pickup still commits the claim on the integration branch.", except_work=True
+        )
     reg = read_registry(registry_path(ROOT))
     nodes = load_roadmap(ROOT)["nodes"]
     enrich = _load_branch_enrichment(ROOT)
@@ -139,10 +147,12 @@ def _resync_and_select(
         nodes, reg, enrich,
         status_overrides=status_overrides or None,
         virtual_complete_keys=virtual_keys or None,
+        prefer_agentic=resolve_prefer_agentic(ROOT, cli=prefer_agentic_cli),
     )
     available = _drop_finished_unmerged(available, base, remote)
     if parent_filter:
         available = filter_available_under_parent(available, parent_filter, nodes)
+    available = drop_unauthored(ROOT, available, allow=allow_unauthored)
     if not available:
         if parent_filter:
             _exit_no_leaves_under_parent(parent_filter, after_sync=True, integration_branch=base)
@@ -152,8 +162,7 @@ def _resync_and_select(
 
 def _validate_or_exit() -> None:
     """F-006/F-008: run self-healing validate before pickup."""
-    # Skip in test scenarios where load_roadmap is monkeypatched and there's
-    # no real manifest on disk under ROOT.
+    # Skipped when tests monkeypatch load_roadmap and ROOT has no manifest on disk.
     if not (ROOT / "roadmap" / "manifest.json").is_file():
         return
     try:
@@ -189,14 +198,6 @@ def _assert_current_branch_equals(base: str) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
-
-
-def _stash_work_dir_changes() -> bool:
-    return _stash_work(ROOT, "registry commit")
-
-
-def _restore_work_dir_changes(stashed: bool) -> None:
-    _restore_work(ROOT, stashed)
 
 
 def _checkout_new_branch(branch: str) -> None:
@@ -350,6 +351,7 @@ def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
     else:
         node = available[0]
     _assert_leaf_target(node, nodes)
+    warn_scaffold_at_pickup(ROOT, node)
     return node
 
 
@@ -372,25 +374,26 @@ def main(argv: list[str] | None = None) -> None:
         print("local pickup: no fetch, no push (see the footer)", file=sys.stderr)
     else:
         _check_pre_sync_availability(base, remote, parent_filter)
-    # F-011: stash any in-progress work/ changes so the integration-branch
-    # registry commit is clean; restore onto the new feature branch.
-    stashed = _stash_work_dir_changes()
-    try:
-        nodes, reg, available, integration_statuses = _resync_and_select(
-            base, remote, parent_filter, sync=not args.local
-        )
-        _assert_current_branch_equals(base)
-        node = _pick_node(args, nodes, reg, available, integration_statuses)
-        branch = f"feature/rm-{node['codename']}"
-        on_complete = prompt_on_complete(ROOT, args.on_complete)
-        _finalize_pickup(
-            node, nodes, branch,
-            base=base, remote=remote, push_registry=not args.local,
-            include_ci_skip=include_ci_skip, on_complete=on_complete,
-            owner=args.owner or git_config_user_name(ROOT),
-        )
-    finally:
-        _restore_work_dir_changes(stashed)
+    # work/ is never stashed: the stash stack is shared by every session in the
+    # checkout, and files another session wrote mid-pickup were stranded in it.
+    # Untracked work/ files ride the branch switches; the registry commit names
+    # its one path, so nothing else in the index goes with it.
+    nodes, reg, available, integration_statuses = _resync_and_select(
+        base, remote, parent_filter, sync=not args.local,
+        allow_unauthored=args.allow_unauthored,
+        prefer_agentic_cli=args.prefer_agentic,
+    )
+    _assert_current_branch_equals(base)
+    run_baseline_gate(ROOT, base, cli=args.baseline_cmd, warn_only=args.baseline_warn)
+    node = _pick_node(args, nodes, reg, available, integration_statuses)
+    branch = f"feature/rm-{node['codename']}"
+    on_complete = prompt_on_complete(ROOT, args.on_complete)
+    _finalize_pickup(
+        node, nodes, branch,
+        base=base, remote=remote, push_registry=not args.local,
+        include_ci_skip=include_ci_skip, on_complete=on_complete,
+        owner=args.owner or git_config_user_name(ROOT),
+    )
 
 
 if __name__ == "__main__":

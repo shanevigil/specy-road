@@ -10,9 +10,8 @@ request forever against an unresponsive remote.
 A few callers still spawn git themselves, deliberately, because they need
 something this signature does not offer: ``file_limits_engine`` pipes a NUL
 -separated path list into ``check-ignore --stdin``; ``repo_ops.git_run`` wants
-``check_call``'s raise-on-failure for scripted sequences; ``work_dir_stash``
-drives a stash push/pop pair. Those are the exceptions, and they are the only
-ones.
+``check_call``'s raise-on-failure for scripted sequences. Those are the
+exceptions, and they are the only ones.
 
 The shapes callers actually need are all views on one result, so :class:`GitResult`
 carries the raw fields and names each view:
@@ -165,6 +164,25 @@ def commits_behind(repo_root: Path, branch: str, base: str) -> int | None:
         return int(out) if out else None
     except ValueError:
         return None
+
+
+def merge_conflicts(repo_root: Path, ours: str, theirs: str) -> list[str] | None:
+    """Paths a merge of ``theirs`` into ``ours`` would leave conflicted, or ``None``.
+
+    ``git merge-tree --write-tree`` merges in memory — no checkout, index or
+    working-tree change — so a coordinator can ask about any branch. ``[]`` is
+    a clean merge. ``None`` means git could not answer (an unknown ref, or a git
+    older than 2.38), which callers treat as "say nothing". Paths are named
+    from the repository root.
+    """
+    # merge-tree names paths relative to the working directory, so run it at the top level.
+    top = git_text(["rev-parse", "--show-toplevel"], repo_root) or repo_root   # not a repo: merge-tree fails below
+    r = run(["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", ours, theirs], Path(top))
+    # Both outcomes print the merged tree id first; an unknown ref also exits 1, with nothing on stdout.
+    fields = r.out.split("\0")
+    if r.code not in (0, 1) or not fields[0].strip():
+        return None
+    return sorted({f for f in fields[1:] if f})
 
 
 def is_git_worktree(repo_root: Path) -> bool:

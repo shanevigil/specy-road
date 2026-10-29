@@ -65,3 +65,19 @@ def test_validate_prints_one_warning_and_passes(tmp_path: Path, capsys) -> None:
     out = capsys.readouterr()
     assert out.err.count("has no acceptance criteria") == 1
     assert "OK: roadmap and registry validate." in out.out
+
+
+def test_a_pipe_joined_criterion_warns_on_an_open_node(capsys) -> None:
+    """rc1 adopters set `acceptance=a|b` believing it made two criteria."""
+    from specy_road.bundled_scripts.brief_acceptance import warn_acceptance_merged
+
+    capsys.readouterr()
+    warn_acceptance_merged([_node("M1.1", acceptance=["Saves | Syncs"]),
+                            _node("M1.2", acceptance=["Saves | Syncs"], status="Complete"),
+                            _node("M1.3", acceptance=["Saves", "Syncs"]),
+                            _node("M1.4", acceptance=["Saves|Syncs"])])
+
+    err = capsys.readouterr().err
+    assert "M1.1 has an acceptance criterion containing '|'" in err and "M1.4 has" in err
+    assert "--set acceptance='First' --set acceptance='Second'" in err
+    assert "M1.2" not in err and "M1.3" not in err

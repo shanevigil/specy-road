@@ -6,9 +6,9 @@
 **Not for:** the PM's day-to-day loop and dashboard ([`pm-workflow.md`](pm-workflow.md)) or claiming and finishing leaves ([`dev-workflow.md`](dev-workflow.md)).
 
 **Must know without reading on:**
-- Identity is `node_key` (UUID, immutable); `dependencies` list other nodes' `node_key` values, never display ids. Display `id` may be renumbered; never recycle a `node_key`.
+- Identity is `node_key` (UUID, immutable); `dependencies` store other nodes' `node_key` values, never display ids (`add-node --dependency`, `add-dependency` and `apply` take a display id and store its key). Display `id` may be renumbered; never recycle a `node_key`.
 - `roadmap.md` is generated: edit chunks, then `specy-road export` (`--check` in CI); `specy-road validate` is the gate after every edit.
-- Prefer `specy-road add-node` / `edit-node` / `set-dependencies` to hand-editing chunks: routing picks the chunk, and `specy-road rebalance-chunks` fixes one over the 500-line cap.
+- Prefer `specy-road add-node` / `edit-node` / `set-dependencies` (or `apply` for a batch) to hand-editing chunks: routing picks the chunk, and `specy-road rebalance-chunks` fixes one over the 500-line cap.
 - Every `vision`, `phase`, `milestone`, `task` and `gate` node needs `planning_dir` → `planning/<id>_<slug>_<node_key>.md`; contracts are cited in that sheet's `## References`, not in the JSON.
 - A `type: gate` node is a leaf-only hold: never picked up, never in `roadmap/registry.yaml`, and it blocks its dependents until `Complete`.
 
@@ -117,6 +117,8 @@ Use the `notes` field (markdown string) for short context in the graph. **Vision
 
 Enforced by `specy-road validate` (via [`specy_road/bundled_scripts/roadmap_load.py`](../specy_road/bundled_scripts/roadmap_load.py)). Configure limits in [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) in **your** project (or the toolkit’s [`constraints/file-limits.yaml`](../constraints/file-limits.yaml) when working on this repository).
 
+**Canonical key order.** Every tool write (`add-node`, `edit-node`, the PM Gantt, `finish-this-task`, `rebalance-chunks`) re-renders the **whole** chunk it touches in one canonical form: a `{"nodes": [...]}` object, keys sorted alphabetically inside every node, 2-space indent, UTF-8, trailing newline. Nodes keep their chunk and their position in it; only the text changes. So the **first** tool edit of a hand-authored chunk rewrites all of it — every node's keys move, even though one field changed — and from then on diffs stay confined to the fields that actually changed. To take that one-time rewrite on purpose, in its own commit rather than inside an unrelated edit, run `specy-road rebalance-chunks --normalize [--dry-run]`: it rewrites every included chunk in canonical form without moving a node between or within chunks, leaves `manifest.json` alone, validates, and is a no-op when every chunk is already canonical.
+
 ### Automatic chunk routing (no daily commands)
 
 Writes that add a node (`add-node`, PM Gantt add-task, `edit-node` when growth pushes a chunk over the cap) go through an **automatic chunk router**. PMs no longer pick a chunk or split full chunks. Routing (deterministic): hint chunk if it fits → **a phase root gets its own chunk named after it** (`phases/M2.json`, in the directory of the first manifest include) → smallest valid chunk in the same phase subtree (manifest-order tie-break) → smallest valid chunk anywhere → auto-create a new chunk named `<base-stem>__<6hex>.json` where `<6hex>` is the new node's `node_key` prefix (same key → same filename; different keys → different filenames, so concurrent PMs never collide on chunk files — only the manifest gets a trivially-mergeable add). The phase-root step exists because a phase has no phase *ancestor*, so the locality step cannot apply to it; without a rule of its own it would be packed into a sibling phase's file and its whole subtree would follow. A name already in `includes`, or already present on disk, is treated as taken and routing continues to the next step. All mutations run in an atomic plan that snapshots every affected file and rolls back on validation failure. That plan covers everything the mutation touches — the chunk, the manifest, an overflow relocation, **and the node's planning sheet** (created on `add-node`, renamed when an edit changes `planning_dir`, removed on `archive-node --hard-remove`) — so a refused command leaves the working tree byte-for-byte as it was. `--chunk` on `add-node` is now optional (still accepted as a hint). Existing repos stay byte-identical until the next mutation triggers an auto-create.
@@ -198,14 +200,14 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `codename` | Kebab-case unique label for branch naming (`feature/rm-<codename>`). Required if registering work. Auto-derived from `title` when omitted, and re-derived when the title changes — **unless you chose it yourself**, in which case `edit-node --set title=…` keeps it and says so. Pass `--sync-codename` to re-derive anyway. It is the branch identity and the registry key, so renaming it mid-flight desynchronizes a live `feature/rm-*` from its node. |
 | `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | **Advisory** dominant work type: `Human-led` / `Agentic-led` / `Mixed`. Read by humans and by the PM UI; it does **not** gate pickup — use a `type: gate` dependency for that. |
-| `touch_zones` | Paths or globs, relative to the project root, that this node modifies (enables overlap detection). `specy-road validate` warns when a zone on an open node matches nothing in the working tree. |
-| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). |
+| `touch_zones` | Paths or globs, relative to the project root, that this node modifies (enables overlap detection). Zones may name files the work will create. `specy-road validate` warns when a zone on an In Progress or Blocked node matches nothing in the working tree (a typo or a moved path); Not Started and Complete nodes are not checked. Never shrink zones to quiet that warning: overlap detection needs them. `edit-node --set touch_zones=a,b` (commas or one `--set` per path). |
+| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). `add-node --dependency` and `add-dependency` also accept a display id and store its `node_key`; `edit-node` and `set-dependencies` take keys. |
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
-| `acceptance` | List of observable acceptance criteria. |
+| `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`, or at creation with one `add-node --acceptance` per criterion. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. |
 | `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
 | `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
-| `risks` | List of known risks or blockers to surface during planning. |
+| `risks` | List of known risks or blockers to surface during planning (one `--set risks=…` per item). |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
 
@@ -380,7 +382,11 @@ specy-road export --check
 
 ## Tooling
 
-PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
+PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`, `apply`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
+
+### Batch edits (`apply`)
+
+`specy-road apply changes.yaml [--dry-run]` runs `add-node`, `edit-node` and `add-dependency` entries in order as one batch: if any is refused, every file the batch touched is restored, so it applies whole or not at all. Each entry is `op:` plus that command's long options (`node:` and `dependency:` for its positionals, `set: {field: value}` for `edit-node`; a list repeats the option), and every entry is parsed before anything runs. Entries apply in order, so add a node before an entry that depends on it. `--dry-run` rehearses the same commands on a scratch copy (graph and planning files copied, the rest symlinked) and writes nothing. Both print the resulting waves and the ready and blocked leaves, as `grind-session --plan` computes them. Example, a file holding: `[{op: add-node, id: M2.4, type: task, title: Export CSV, parent_id: M2, acceptance: [Downloads a CSV], dependencies: [M2.3]}, {op: add-dependency, node: M2.5, dependency: M2.4}]`.
 
 ## Registry and brief
 

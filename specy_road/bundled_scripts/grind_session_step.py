@@ -58,7 +58,10 @@ def _step_pickup(args, repo_root: Path, emitter: EventEmitter) -> int:
     claim on top of an unfinished one is exactly what ``--step finish`` could
     not tell apart. Ownership still needs a registry row *and* a local branch.
     """
-    nodes, reg, plan = gs.gather_plan(repo_root, args.under)
+    nodes, reg, plan = gs.gather_plan(
+        repo_root, args.under, allow_unauthored=args.allow_unauthored,
+        prefer_agentic=args.prefer_agentic,
+    )
     claims = own_in_flight_claims(repo_root, reg, plan.active)
     if claims:
         claim = claims[0]

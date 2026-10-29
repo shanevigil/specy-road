@@ -5,11 +5,18 @@ Uses ``roadmap_gui_lib`` for registry/settings and ``roadmap_gui_remote`` for
 matches the PM GUI’s forge enrichment rules.
 
 Eligible-task order within each tier follows ``ordered_tree_rows`` (outline /
-``sibling_order``), not merged JSON chunk list order.
+``sibling_order``), not merged JSON chunk list order. With ``prefer_agentic``,
+each tier is ordered by execution milestone first (:data:`EXECUTION_PICK_RANK`)
+and outline second.
+
+:func:`run_baseline_gate` is the one pre-pickup check that is not about which
+leaf: whether the synced integration branch is healthy enough to branch from.
 """
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -17,9 +24,65 @@ from specy_road.bundled_scripts.roadmap_gui_lib import load_settings, registry_b
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, ordered_tree_rows
+from specy_road.bundled_scripts.repo_ops import working_tree_clean
 from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+from specy_road.git_subprocess import git_ok
+from specy_road.git_workflow_config import resolve_baseline_cmd
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
+
+
+#: ``prefer_agentic`` order: Agentic-led, Mixed, unset, then Human-led last,
+#: because Human-led is the one value that says an unattended loop should wait.
+EXECUTION_PICK_RANK = {"Agentic-led": 0, "Mixed": 1, None: 2, "Human-led": 3}
+
+
+def execution_pick_rank(node: dict) -> int:
+    return EXECUTION_PICK_RANK.get(node.get("execution_milestone"), EXECUTION_PICK_RANK[None])
+
+
+def _git_state(repo_root: Path) -> dict[str, str]:
+    """HEAD, branch and tree status: what a read-only baseline leaves as it found it."""
+    on_branch, ref = git_ok(["symbolic-ref", "-q", "HEAD"], repo_root)
+    clean = working_tree_clean(repo_root, except_work=True)
+    return {
+        "HEAD": git_ok(["rev-parse", "HEAD"], repo_root)[1],
+        "branch": ref if on_branch else "(detached)",
+        "working tree": "clean" if clean else "changed outside work/",
+    }
+
+
+def run_baseline_gate(repo_root: Path, base: str, *, cli: str | None, warn_only: bool) -> None:
+    """Run the baseline command on ``base`` before a leaf is claimed from it.
+
+    A red integration branch is inherited by every leaf picked from it, and the
+    agent implementing that leaf then "fixes" failures it did not cause. Exit 1
+    when the command fails, unless ``warn_only``; exit 1 either way when it moved
+    HEAD, switched branch or changed files: pickup registers from what it leaves.
+    """
+    cmd = resolve_baseline_cmd(repo_root, cli=cli)
+    if not cmd:
+        return
+    print(f"baseline on {base}: {cmd}")
+    before = _git_state(repo_root)
+    rc = subprocess.run(cmd, shell=True, cwd=repo_root).returncode
+    after = _git_state(repo_root)
+    moved = [f"{k} {before[k]} -> {after[k]}" for k in before if after[k] != before[k]]
+    if moved:
+        print(f"error: the baseline command must only check, but it moved git state: "
+              f"{'; '.join(moved)}.\n  No leaf was claimed. Restore {base!r} and make "
+              "the command read-only with respect to git.", file=sys.stderr)
+        raise SystemExit(1)
+    if rc == 0:
+        return
+    if warn_only:
+        print(f"warning: baseline failed on {base!r} (exit {rc}); picking up anyway "
+              "(--baseline-warn). The leaf starts from a red base.", file=sys.stderr)
+        return
+    print(f"error: baseline failed on {base!r} (exit {rc}); no leaf was claimed.\n"
+          f"  Fix {base!r} first, so the next leaf does not inherit the failure, "
+          "or pass --baseline-warn to pick up anyway.", file=sys.stderr)
+    raise SystemExit(1)
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -168,12 +231,13 @@ def _outline_order_index(nodes: list[dict]) -> dict[str, int]:
 
 
 def _sort_by_outline(
-    items: list[dict], order_index: dict[str, int]
+    items: list[dict], order_index: dict[str, int], *, prefer_agentic: bool = False
 ) -> list[dict]:
     tail = 10**9
 
-    def key(n: dict) -> int:
-        return order_index.get(n["id"], tail)
+    def key(n: dict) -> tuple[int, int]:
+        rank = execution_pick_rank(n) if prefer_agentic else 0
+        return rank, order_index.get(n["id"], tail)
 
     return sorted(items, key=key)
 
@@ -284,10 +348,13 @@ def _available(
     *,
     status_overrides: dict[str, str] | None = None,
     virtual_complete_keys: set[str] | None = None,
+    prefer_agentic: bool = False,
 ) -> list[dict]:
     """Actionable leaf candidates: blocked first, then MR-rejected, then the rest.
 
     Within each tier, order follows outline (tree) order, not merged chunk order.
+    ``prefer_agentic`` sorts each tier by execution milestone before outline; the
+    tiers themselves, and which leaves are eligible, do not change.
 
     ``status_overrides`` merges into per-node_key statuses for dependency checks only
     (e.g. feature-branch tips Complete before PR merges into the integration branch).
@@ -325,9 +392,8 @@ def _available(
         else:
             rest_other.append(n)
 
-    return (
-        _sort_by_outline(blocked, order_index)
-        + _sort_by_outline(mr_rejected, order_index)
-        + _sort_by_outline(rest_dep, order_index)
-        + _sort_by_outline(rest_other, order_index)
-    )
+    return [
+        n
+        for tier in (blocked, mr_rejected, rest_dep, rest_other)
+        for n in _sort_by_outline(tier, order_index, prefer_agentic=prefer_agentic)
+    ]

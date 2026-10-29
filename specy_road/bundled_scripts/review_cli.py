@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status` and `specy-road review record`.
+"""CLI for `specy-road handoff status`, `specy-road review record` and `specy-road review list`.
 
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
 review record, and whether the review policy is met at the commit under
-review. ``review record`` validates one reviewer's notes, fills in the family
-from the roster, labels same-family independence, and files the record as
-``REVIEW-<model>.md`` beside the READY file.
+review. Records with no registry claim are listed without a commit unless
+``--ref`` names one. Given one node it exits 0 when the gate is met or the node
+is Complete, 1 when it is not met, and 2 when it cannot be determined. A leaf
+whose review loop is not converging and has no root-cause analysis for it is
+``escalated`` (exit 1), with the trigger named (``review_rca``).
+``review record`` validates one reviewer's notes, fills in the family from the
+roster, labels same-family independence, and files the record as
+``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
+``review list`` prints the filed records, any RCA records, the escalation and
+the gate evaluation, and writes nothing.
 """
 
 from __future__ import annotations
@@ -18,18 +25,22 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import (
     HUMAN,
+    archive_review,
     latest_ready,
     list_ready,
+    list_reviews,
     load_review,
     node_ids_with_reviews,
     render_front_matter,
     review_path,
-    verify_problems,
+    non_gating_verify_problems,
 )
-from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
+from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -50,15 +61,20 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
     return "in-review"
 
 
-def _node_status(root: Path, node_id: str) -> dict[str, Any]:
-    t = resolve_target(root, node_id)
-    gate = evaluate_gate(root, t.node, t.commit)
+def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
+    t = resolve_target(root, node_id, ref)
     branch = (t.entry or {}).get("branch")
+    gate = evaluate_gate(root, t.node, t.commit, branch=branch)
     ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
+    tm = trial_merge(root, t.ref, t.base_ref)
+    merge_problem = [tm.problem()] if tm and tm.problem() else []
+    loop = loop_state(root, node_id)
+    escalated = loop.escalation is not None and not gate.passed
     return {
         "node_id": node_id,
-        "state": _state(root, t, gate, ready_commit),
+        "state": "escalated" if escalated else _state(root, t, gate, ready_commit),
+        "escalation": loop.escalation.to_dict() if escalated else None,
         "ref": t.ref,
         "commit": gate.commit,
         "ready": [
@@ -67,44 +83,106 @@ def _node_status(root: Path, node_id: str) -> dict[str, Any]:
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
-             "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature"))}
+             "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature")),
+             "commands_rerun": list(c.review.data.get("commands_rerun") or [])}
             for c in gate.approvals + gate.blocks
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": gate.problems() + (verify_problems(ready) if ready else []),
+        "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
+                        "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
+        "problems": merge_problem + gate.problems() + non_gating_verify_problems(ready) + loop.problems(),
     }
 
 
 def _render(st: dict[str, Any]) -> list[str]:
-    if st["state"] in ("unclaimed", "error"):
+    if "error" in st:
         return [f"{st['node_id']}: {st['state']} — {st['error']}"]
-    lines = [f"{st['node_id']}: {st['state']} — {st['ref']} @ {(st['commit'] or '?')[:12]}"]
+    where = f"{st['ref']} @ {(st['commit'] or '?')[:12]}" if st["ref"] else "no commit under review"
+    lines = [f"{st['node_id']}: {st['state']} — {where}"]
     for r in st["ready"]:
         mark = "ok" if not r["errors"] else "INVALID: " + "; ".join(r["errors"])
         lines.append(f"  {r['file']} ({mark})")
     for r in st["reviews"]:
-        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']}){' [signed]' if r['signed'] else ''}")
+        rerun = r.get("commands_rerun") or []
+        extra = f"; reviewer re-ran {', '.join(rerun)!r}" if rerun else ""
+        lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
+                     f"{' [signed]' if r['signed'] else ''}{extra}")
     lines.append(f"  policy: {st['policy']}")
+    if tm := st.get("trial_merge"):
+        kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
+        lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
+    if st.get("escalation"):
+        lines.append(_escalation_line(st["node_id"], st["escalation"]["describe"]))
     lines += [f"  - {p}" for p in st["problems"]]
     return lines
 
 
-def _status_or_error(root: Path, nid: str) -> dict[str, Any]:
+def _escalation_line(node_id: str, describe: str) -> str:
+    return (f"  escalated: {describe}; next, a root-cause analysis: "
+            f"`specy-road prompt {node_id} --role rca --model <reviewer that has not reviewed it>`")
+
+
+def _print_rcas(loop: LoopState) -> None:
+    for r in loop.rcas:
+        if r.ok:
+            c, a = r.data["classification"], r.data["recommended_action"]
+            print(f"{r.path.name}: {c['primary']} ({c['confidence']}) by {r.data['model']}, through round "
+                  f"{r.data['trigger']['round']} — {a['type']}")
+    for p in loop.problems():
+        print(p)
+
+
+def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
+    """Records without a claim are listed, not called leftover: a repository may never push claims.
+
+    A Complete node passed its gate before its claim was released, so it is
+    ``complete_no_claim``, not an undeterminable ``unclaimed``.
+    """
+    node = next(n for n in load_roadmap(root)["nodes"] if n.get("id") == nid)
+    complete = node.get("status") == "Complete"
+    ready, reviews = list_ready(root, nid), list_reviews(root, nid)
+    if not complete and not ready and not reviews:
+        return {"node_id": nid, "state": "unclaimed",
+                "error": "no open claim and no READY or REVIEW records; the directory can be deleted"}
+    hint = ("Complete with no open claim: pass --ref <branch or commit> to check these records against it"
+            if complete else
+            f"no open claim: pass --ref <branch> to check these records against its commit, "
+            f"or claim the leaf in this checkout with `specy-road do-next-available-task --under {nid} --local`")
+    return {
+        "node_id": nid,
+        "state": "complete_no_claim" if complete else "unclaimed",
+        "ref": None,
+        "commit": None,
+        "ready": [{"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors} for r in ready],
+        "reviews": [
+            {"file": r.path.name, "model": r.data["model"], "family": r.data.get("family"),
+             "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature"))}
+            for r in reviews if r.ok
+        ],
+        "policy": "not evaluated: no claim names the commit under review",
+        "policy_met": False,
+        "trial_merge": None,
+        "problems": [hint] + [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in reviews if not r.ok],
+    }
+
+
+def _status_or_error(root: Path, nid: str, ref: str | None = None) -> dict[str, Any]:
     try:
-        return _node_status(root, nid)
+        return _node_status(root, nid, ref)
     except ReviewTargetError as e:
         msg = str(e)
         if msg.startswith("no registry claim"):
-            return {"node_id": nid, "state": "unclaimed",
-                    "error": f"no open claim; leftover hand-off files can be deleted ({msg})"}
+            return _unclaimed(root, nid)
         return {"node_id": nid, "state": "error", "error": msg}
 
 
 def cmd_handoff_status(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
+    if ns.ref and not ns.node_id:
+        return _fail("--ref names one node's branch or commit; give the node id too", 2)
     node_ids = [ns.node_id] if ns.node_id else node_ids_with_reviews(root)
-    out = [_status_or_error(root, nid) for nid in node_ids]
+    out = [_status_or_error(root, nid, ns.ref) for nid in node_ids]
     sessions = list_sessions(root)
     workers = list_records(root, active_only=True)
     if ns.json:
@@ -121,14 +199,17 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
             print("No hand-offs under work/reviews/.")
         else:
             print("\n".join(line for st in out for line in _render(st)))
-    # Naming a node that cannot be resolved (unknown, or with no open claim) is a
-    # caller error; a stale directory in the sweep is only reported.
-    return 1 if ns.node_id and out[0]["state"] in ("error", "unclaimed") else 0
+    # A sweep only reports. For one named node a polling script reads the exit:
+    # 0 gate met (or Complete), 1 not met, 2 undeterminable; `state` says which.
+    return _EXIT.get(out[0]["state"], 1) if ns.node_id else 0
 
 
-def _fail(msg: str) -> int:
+_EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2}
+
+
+def _fail(msg: str, code: int = 1) -> int:
     print(f"error: {msg}", file=sys.stderr)
-    return 1
+    return code
 
 
 def _relabel_independence(root: Path, gate: GateResult) -> None:
@@ -167,7 +248,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     rec, err = _check_record(ns, root, t)
     if err:
         return _fail(err)
-    gate = evaluate_gate(root, t.node, t.commit)
+    gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     if gate.config_error:
         return _fail(f"orchestration config: {gate.config_error}")
     config = gate.config
@@ -200,15 +281,49 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     data["family"] = entry["family"]
     dest = review_path(root, ns.node_id, ns.model)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(render_front_matter(data, rec["body"]), encoding="utf-8")
+    text = render_front_matter(data, rec["body"])
+    dest.write_text(text, encoding="utf-8")
+    archive_review(root, ns.node_id, ns.model, text)
     print(f"Wrote {dest}")
-    after = evaluate_gate(root, t.node, t.commit)
+    after = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     if after.distinct_families:
         _relabel_independence(root, after)
         if any(o.family == entry["family"] and o.model != ns.model for o in after.approvals + after.blocks):
             print(f"note: another counted review is also from family {entry['family']!r}; "
                   "it is less independent and counts once toward the distinct-family policy.")
     print(f"policy: {after.summary()}")
+    return 0
+
+
+def cmd_review_list(ns: argparse.Namespace) -> int:
+    """Filed records and RCA records, the gate at the commit under review, then any escalation; reads only."""
+    root = resolve_repo_root(ns)
+    try:
+        t = resolve_target(root, ns.node_id, ns.ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            return _fail(str(e))
+        t = None
+    reviews = list_reviews(root, ns.node_id)
+    if not reviews:
+        print(f"No review records for {ns.node_id}.")
+    for r in reviews:
+        d = r.data
+        print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
+              f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
+              + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}"))
+    loop = loop_state(root, ns.node_id)
+    _print_rcas(loop)
+    if t is None:
+        print("gate: not evaluated — no registry claim names the commit under review; "
+              "pass --ref <branch or commit>")
+    else:
+        gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
+        print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
+        for p in gate.problems():
+            print(f"  - {p}")
+    if loop.escalation and (t is None or not gate.passed):
+        print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0
 
 
@@ -221,6 +336,7 @@ def build_parser() -> argparse.ArgumentParser:
     st = hsub.add_parser("status", help="Report hand-offs, reviews, and whether review policy is met")
     st.add_argument("node_id", nargs="?", help="One node (default: every node under work/reviews/)")
     st.add_argument("--json", action="store_true", help="Machine-readable output for polling")
+    st.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(st)
     st.set_defaults(func=cmd_handoff_status)
 
@@ -235,6 +351,11 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
+    ls = rsub.add_parser("list", help="Print a node's filed review records and the gate evaluation; writes nothing")
+    ls.add_argument("node_id")
+    ls.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_repo_root_arg(ls)
+    ls.set_defaults(func=cmd_review_list)
     return p
 
 

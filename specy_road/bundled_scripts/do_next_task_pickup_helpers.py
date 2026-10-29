@@ -95,7 +95,7 @@ def register_and_commit(
     reg.setdefault("entries", []).append(entry)
     write_registry(registry_path, reg)
     git_runner("add", str(registry_path))
-    git_runner("commit", "-m", commit_message)
+    git_runner("commit", "-m", commit_message, "--", str(registry_path))   # only the registry, whatever else is staged
 
 
 def announce_resumed_branch(repo_root: Path, branch: str, base: str) -> None:

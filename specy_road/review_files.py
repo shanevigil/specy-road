@@ -7,7 +7,12 @@ machine-readable part:
   paths, and the tail of each verify command
   (``schemas/handoff.schema.json``).
 * ``REVIEW-<model>.md`` — one reviewer's verdict on one commit
-  (``schemas/review-record.schema.json``).
+  (``schemas/review-record.schema.json``). ``review record`` overwrites it
+  each round and keeps a copy of every filing under ``history/``, which is
+  what escalation counts rounds from (``review_rca``).
+
+Beside them, ``RCA-<round>.md`` is a root-cause analysis of a stalled review
+loop (``schemas/rca-record.schema.json``).
 
 Plain files work across every harness, including IDE chats that cannot see
 each other: the executor writes READY, reviewers write REVIEW beside it, and the
@@ -19,7 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -33,6 +38,8 @@ from specy_road.runtime_paths import specy_road_package_dir
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
 REVIEW_PREFIX = "REVIEW-"
+RCA_PREFIX = "RCA-"
+HISTORY_DIRNAME = "history"
 PACKET_NAME = "PACKET.md"
 #: The interactive approver. A solo maintainer both coordinates and reviews, so
 #: only this model may attest ``is_coordinator: true``.
@@ -189,7 +196,9 @@ def review_semantic_errors(
             errs.append("verdict: approve with required_changes listed; use block")
     if acceptance_ids is not None:
         missing = [a for a in acceptance_ids if a not in results]
-        unknown = sorted(set(results) - set(acceptance_ids))
+        # An `n/a` on an id the brief lacks (a criterion moved to another leaf and
+        # still named in the summary) carries no judgment; a pass or fail on one does.
+        unknown = sorted(k for k in set(results) - set(acceptance_ids) if results[k] != "n/a")
         if missing:
             errs.append(f"acceptance: no result for {', '.join(missing)}")
         if unknown:
@@ -224,6 +233,33 @@ def list_reviews(
     return [load_review(p, acceptance_ids) for p in _files(repo_root, node_id, REVIEW_PREFIX)]
 
 
+def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path:
+    """Keep a copy of a filed record under ``history/``; names sort in filing order."""
+    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}-{model}.md"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
+    """Every record ``review record`` has filed for the node, oldest first."""
+    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
+    return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
+
+
+def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
+    """``RCA-*.md`` records, schema-checked and bound to ``node_id``."""
+    out = []
+    for p in _files(repo_root, node_id, RCA_PREFIX):
+        data, body, errs = _read(p)
+        errs = errs or _schema_errors(data, "rca-record.schema.json")
+        if not errs and data.get("node_id") != node_id:
+            errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r}")
+        out.append(ReviewFile(p, data, body, errs))
+    return out
+
+
 def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> ReviewFile | None:
     """The most recently modified valid READY file for this node (and ``branch``), if any."""
     valid = [r for r in list_ready(repo_root, node_id, branch) if r.ok]
@@ -232,16 +268,41 @@ def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> Re
     return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))
 
 
-def verify_problems(ready: ReviewFile) -> list[str]:
-    """A READY's verifier evidence that a reviewer must weigh: failures, or none at all.
+def failing_verifier_entries(ready: ReviewFile) -> list[dict[str, Any]]:
+    """Each READY ``verify`` row with a non-zero exit."""
+    return [v for v in (ready.data.get("verify") or []) if v.get("exit") != 0]
 
-    Reported, never gating: the exit codes are the executor's own claim.
-    """
+
+def pre_existing_cmds_from_approvals(approvals: list[Any]) -> set[str]:
+    """Verifier command names marked pre-existing on counted approving reviews."""
+    covered: set[str] = set()
+    for counted in approvals:
+        for cmd in counted.review.data.get("verify_pre_existing") or []:
+            covered.add(str(cmd))
+    return covered
+
+
+def verifier_gate_problems(ready: ReviewFile | None, approvals: list[Any]) -> list[str]:
+    """Failing READY verifiers with no approving review marking them pre-existing."""
+    if ready is None:
+        return []
+    failing = failing_verifier_entries(ready)
+    if not failing:
+        return []
+    covered = pre_existing_cmds_from_approvals(approvals)
     name = ready.path.name
-    entries = ready.data.get("verify") or []
-    if not entries:
-        return [f"{name}: no verifier evidence recorded (verify is empty)"]
-    return [f"{name}: verifier `{v['cmd']}` exited {v['exit']}" for v in entries if v.get("exit") != 0]
+    return [
+        f"{name} (executor-reported): verifier `{v['cmd']}` exited {v['exit']}"
+        for v in failing
+        if str(v["cmd"]) not in covered
+    ]
+
+
+def non_gating_verify_problems(ready: ReviewFile | None) -> list[str]:
+    """READY verifier notes that are reported but do not fail the gate (empty ``verify``)."""
+    if ready is None or ready.data.get("verify"):
+        return []
+    return [f"{ready.path.name} (executor-reported): no verifier evidence recorded (verify is empty)"]
 
 
 def node_ids_with_reviews(repo_root: Path) -> list[str]:

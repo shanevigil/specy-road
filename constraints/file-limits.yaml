@@ -1,7 +1,7 @@
 # Line limits for the specy-road toolkit source (not consumer app repos).
 
 max_lines_per_file: 400
-max_lines_per_function: 80
+max_lines_per_function: 80  # Python (.py) and TS/JS (.ts .tsx .js .jsx .mjs) functions
 applies_to_globs:
   - "specy_road/bundled_scripts/**/*.py"
   - "specy_road/*.py"

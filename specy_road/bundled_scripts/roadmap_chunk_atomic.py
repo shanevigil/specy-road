@@ -112,3 +112,49 @@ class AtomicWritePlan:
         except BaseException:
             self.rollback()
             raise
+
+
+@dataclass
+class TreeSnapshot:
+    """Restore files under ``dirs`` (and extra ``files``) to captured bytes.
+
+    Files that appear after capture are unlinked on :meth:`restore`.
+    """
+
+    dirs: tuple[Path, ...]
+    files: tuple[Path, ...] = ()
+    _captured: dict[Path, bytes | None] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        captured: dict[Path, bytes | None] = {}
+        for folder in self.dirs:
+            if folder.is_dir():
+                for path in folder.rglob("*"):
+                    if path.is_file():
+                        captured[path] = path.read_bytes()
+        for path in self.files:
+            captured[path] = path.read_bytes() if path.is_file() else None
+        self._captured = captured
+
+    def restore(self) -> None:
+        """Write captured bytes back; unlink files created after capture."""
+        known = set(self._captured)
+        for folder in self.dirs:
+            if not folder.is_dir():
+                continue
+            for path in list(folder.rglob("*")):
+                if path.is_file() and path not in known:
+                    try:
+                        path.unlink()
+                    except OSError:
+                        pass
+        for path, original in self._captured.items():
+            try:
+                if original is None:
+                    if path.is_file():
+                        path.unlink()
+                else:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(original)
+            except OSError:
+                pass

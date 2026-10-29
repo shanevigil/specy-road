@@ -11,6 +11,8 @@ sub-agent work without trial-and-error pickup:
 * ``blocked``  — unmet effective dependencies; each carries ``waiting_on``
   (display ids) and a ``reason`` (``dependency`` or ``gate``).
 * ``active``   — already claimed (registry) or status *In Progress* (in flight).
+* ``unauthored`` — would be ready, but the planning sheet is still a placeholder
+  and the node has no acceptance; pickup skips them unless ``--allow-unauthored``.
 * ``waves``    — leaves layered by dependency depth; a leaf in wave *k* is
   ready once its own dependencies are Complete (they all sit in waves ``< k``;
   the rest of those waves need not be). This is what lets an orchestrator
@@ -18,7 +20,7 @@ sub-agent work without trial-and-error pickup:
   ``M10.5`` is still in flight).
 * ``parallel_batches`` — per wave, the subset that is *ready and unclaimed*,
   i.e. the sets of independent leaves an orchestrator can dispatch in parallel,
-  wave by wave.
+  wave by wave; a leaf sharing a touch zone with an earlier one moves to the next set.
 
 Pure functions only: no git, no disk writes. Callers load the roadmap + registry
 and pass them in.
@@ -26,7 +28,7 @@ and pass them in.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 from specy_road.bundled_scripts.do_next_available import (
     _available,
@@ -34,9 +36,15 @@ from specy_road.bundled_scripts.do_next_available import (
     _statuses_by_node_key,
 )
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
+from specy_road.bundled_scripts.session_plan_render import session_plan_to_dict, split_on_zone_overlap
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
 from specy_road.node_kinds import is_gate
+
+__all__ = [
+    "BlockedLeaf", "SessionPlan", "UnauthoredLeaf", "Wave",
+    "compute_session_plan", "session_plan_to_dict",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -53,9 +61,17 @@ class BlockedLeaf:
 
 
 @dataclass
+class UnauthoredLeaf:
+    node_id: str
+    codename: str
+    reason: str
+
+
+@dataclass
 class Wave:
     index: int
     node_ids: list[str]
+    touch_zones: dict[str, list[str]] = field(default_factory=dict)  # leaf id -> its zones
 
 
 @dataclass
@@ -72,7 +88,11 @@ class SessionPlan:
     parallel_batches: list[list[str]]
     finished_unmerged: list[str] = field(default_factory=list)
     finished_claimed: list[str] = field(default_factory=list)
+    unauthored: list[UnauthoredLeaf] = field(default_factory=list)
     totals: dict[str, int] = field(default_factory=dict)
+    #: ready leaf id -> its ``execution_milestone`` (``None`` when unset).
+    ready_execution: dict[str, str | None] = field(default_factory=dict)
+    prefer_agentic: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -135,8 +155,10 @@ def _classify(
     reg: dict,
     *,
     under: str | None,
+    unauthored: dict[str, str],
+    prefer_agentic: bool = False,
 ) -> dict:
-    """Bucket scoped leaves into ready / blocked / active / closed / gated."""
+    """Bucket scoped leaves into ready / unauthored / blocked / active / closed / gated."""
     by_key = {n["node_key"]: n for n in nodes if n.get("node_key")}
     key_to_id = {n["node_key"]: n["id"] for n in nodes if n.get("node_key")}
     statuses_by_key = _statuses_by_node_key(nodes)
@@ -145,11 +167,17 @@ def _classify(
     claimed = _claimed_node_ids(reg)
     scope = _scope_leaf_ids(nodes, under)
 
-    ready_order = [n["id"] for n in _available(nodes, reg) if n["id"] in scope]
-    ready_set = set(ready_order)
+    available = _available(nodes, reg, prefer_agentic=prefer_agentic)
+    pickable = [n for n in available if n["id"] in scope]
+    ready_order = [n["id"] for n in pickable if n["id"] not in unauthored]
+    ready_set = {n["id"] for n in pickable}
 
     buckets: dict[str, list] = {
         "ready": ready_order,
+        "unauthored": [
+            UnauthoredLeaf(n["id"], n.get("codename") or "", unauthored[n["id"]])
+            for n in pickable if n["id"] in unauthored
+        ],
         "blocked": [],
         "active": [],
         "closed": [],
@@ -242,8 +270,11 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
     blocked_dep_ids = {
         b.node_id for b in buckets["blocked"] if b.reason == "dependency"
     }
+    # Unauthored leaves still get a wave: writing the sheet makes them ready,
+    # and their dependents need somewhere to sit after them.
     schedulable = (
         set(buckets["ready"]) | blocked_dep_ids | set(buckets["active"])
+        | {u.node_id for u in buckets["unauthored"]}
     ) - gated
     id_to_key = {
         n["id"]: n["node_key"]
@@ -283,9 +314,10 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
 
     waves: list[Wave] = []
     max_wave = max(assigned.values(), default=-1)
+    zones = {n["id"]: list(n["touch_zones"]) for n in nodes if n.get("touch_zones")}
     for k in range(max_wave + 1):
         ids = _sorted_ids(nid for nid, w in assigned.items() if w == k)
-        waves.append(Wave(index=k, node_ids=ids))
+        waves.append(Wave(index=k, node_ids=ids, touch_zones={i: zones[i] for i in ids if i in zones}))
     return waves
 
 
@@ -295,7 +327,8 @@ def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[st
     Ordered as pickup will actually claim them (tier, then roadmap outline
     order), not by id: ``waves`` are id-sorted so the human wave listing reads
     predictably, but a reader who dispatches ``parallel_batches[0]`` in order
-    must see the same first leaf that ``grind-session`` takes.
+    must see the same first leaf that ``grind-session`` takes. Leaves sharing a
+    touch zone never share a set (:func:`split_on_zone_overlap`).
     """
     position = {nid: i for i, nid in enumerate(ready_order)}
     out: list[list[str]] = []
@@ -304,8 +337,7 @@ def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[st
             (nid for nid in w.node_ids if nid in position),
             key=position.__getitem__,
         )
-        if dispatchable:
-            out.append(dispatchable)
+        out.extend(split_on_zone_overlap(dispatchable, w.touch_zones))
     return out
 
 
@@ -319,11 +351,19 @@ def compute_session_plan(
     reg: dict,
     *,
     under: str | None = None,
+    unauthored: dict[str, str] | None = None,
+    prefer_agentic: bool = False,
 ) -> SessionPlan:
-    ctx = _classify(nodes, reg, under=under)
+    """``unauthored`` (id -> reason, from ``planning_sheet_bootstrap.unauthored_leaves``)
+    moves those leaves from ``ready`` to ``unauthored``; the caller reads the sheets.
+    ``prefer_agentic`` orders ``ready`` as pickup does with the same setting."""
+    ctx = _classify(
+        nodes, reg, under=under, unauthored=unauthored or {}, prefer_agentic=prefer_agentic
+    )
     buckets = ctx["buckets"]
     waves = _compute_waves(nodes, ctx)
     batches = _parallel_batches(waves, buckets["ready"])
+    ready_ids = set(buckets["ready"])
     plan = SessionPlan(
         under=under,
         ready=list(buckets["ready"]),
@@ -335,6 +375,11 @@ def compute_session_plan(
         needs_codename=_sorted_ids(buckets["needs_codename"]),
         waves=waves,
         parallel_batches=batches,
+        unauthored=list(buckets["unauthored"]),
+        ready_execution={
+            n["id"]: n.get("execution_milestone") for n in nodes if n.get("id") in ready_ids
+        },
+        prefer_agentic=prefer_agentic,
     )
     plan.totals = {
         "ready": len(plan.ready),
@@ -346,23 +391,6 @@ def compute_session_plan(
         "needs_codename": len(plan.needs_codename),
         "waves": len(plan.waves),
     }
+    if plan.unauthored:
+        plan.totals["unauthored"] = len(plan.unauthored)
     return plan
-
-
-def session_plan_to_dict(plan: SessionPlan) -> dict:
-    """JSON-serializable view of a :class:`SessionPlan`."""
-    return {
-        "under": plan.under,
-        "ready": list(plan.ready),
-        "blocked": [asdict(b) for b in plan.blocked],
-        "active": list(plan.active),
-        "closed": list(plan.closed),
-        "gated": list(plan.gated),
-        "gates_open": list(plan.gates_open),
-        "needs_codename": list(plan.needs_codename),
-        "waves": [asdict(w) for w in plan.waves],
-        "parallel_batches": [list(b) for b in plan.parallel_batches],
-        "finished_unmerged": list(plan.finished_unmerged),
-        "finished_claimed": list(plan.finished_claimed),
-        "totals": dict(plan.totals),
-    }

@@ -51,3 +51,17 @@ sample-apps/
 # dogfood fixture, which builds its own cache when a command runs against it.
 .specyrd/cache/
 **/.specyrd/cache/
+
+# >>> specy-road managed block — do not edit inside <<<
+# Written by specy-road at run time, never committed: derived caches for
+# `history`, `search` and `brainstorm`; review records (a commit would move
+# the branch past the reviewed commit); session, worker and worktree state;
+# brainstorm prompts. `.specyrd/manifest.json` stays tracked.
+sr/.specyrd/cache/
+sr/work/reviews/
+sr/work/.sessions/
+sr/work/.workers/
+sr/work/.worktrees/
+sr/work/brainstorm-*-prompt.md
+sr/work/brainstorm-closed/*-prompt.md
+# >>> end specy-road managed block <<<

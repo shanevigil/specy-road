@@ -54,6 +54,9 @@ def test_default_commands_follow_the_documented_cli_flags(tmp_path: Path) -> Non
     assert "-C" not in xr.argv
     u = wa.adapter_for("cursor").launch(p, tmp_path, "composer-2.5", None)
     assert u.argv[:2] == ["agent", "-p"] and "--force" in u.argv and "--workspace" in u.argv
+    # a new worktree is an untrusted workspace: without --trust (or --force) `agent -p` exits 1
+    ur = wa.adapter_for("cursor").resume("c1", p, tmp_path, "m", None)
+    assert "--trust" in u.argv and "--trust" in ur.argv
     assert wa.adapter_for("claude-code").human_resume("sid", tmp_path) == ["claude", "--resume", "sid"]
     assert wa.adapter_for("codex").human_resume("t1", tmp_path) == ["codex", "resume", "t1"]
     assert wa.adapter_for("cursor").human_resume("c1", tmp_path) == ["agent", "--resume", "c1"]
@@ -91,12 +94,13 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     out = cc.parse('{"type":"assistant","session_id":"s1","message":{"content":[{"type":"text","text":"hi  there"}]}}')
     assert out.type == "output" and out.summary == "hi there"
     done = cc.parse('{"type":"result","subtype":"success","session_id":"s1","result":"ok","total_cost_usd":0.5}')
-    assert done.type == "turn_completed" and done.detail == {"cost_usd": 0.5}
+    assert done.type == "turn_completed" and done.detail == {"cost_usd": 0.5, "message": "ok"}
     assert cc.parse('{"type":"result","subtype":"error_max_turns","is_error":true}').type == "error"
     assert cc.parse("not json") is None and cc.parse('{"type":"user"}') is None
     cx = wa.adapter_for("codex")
     assert cx.parse('{"type":"thread.started","thread_id":"t1"}').session_id == "t1"
-    assert cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":"done"}}').summary == "done"
+    said = cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":"done"}}')
+    assert said.summary == "done" and said.detail == {"message": "done"}
     assert cx.parse('{"type":"item.completed","item":{"type":"agent_message","text":""}}').summary == "(empty message)"
     assert cx.parse('{"type":"item.completed","item":{"type":"command_execution"}}').summary == "command_execution done"
     assert cx.parse('{"type":"turn.completed","usage":{"input_tokens":1}}').type == "turn_completed"
@@ -105,7 +109,8 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     assert cu.parse('{"type":"system","subtype":"init","session_id":"c1"}').session_id == "c1"
     assert cu.parse('{"type":"tool_call","subtype":"started","session_id":"c1"}').summary == "tool call started"
     assert cu.parse('{"type":"result","subtype":"success","session_id":"c1","result":"fin"}').type == "turn_completed"
-    assert wa.adapter_for("generic").parse("plain line").summary == "plain line"
+    plain = wa.adapter_for("generic").parse("plain line")
+    assert plain.summary == "plain line" and plain.detail == {"message": "plain line"}
 
 
 def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:

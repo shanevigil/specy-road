@@ -30,7 +30,7 @@ This guide is for **product managers, program leads, and tech leads** who shape 
 - **Git** is how the team shares changes. You pull updates before you edit, and you commit when you save roadmap changes.
 - You can work in two ways: a **visual dashboard** in the browser (recommended if you prefer clicking to typing), or the **command line** (`specy-road` …) for quick edits and scripts.
 
-There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `roadmap.md` (in your project) is a **generated index** — refresh it with `specy-road export` or `specy-road sync`.
+There is no “import from Word” flow: the source of truth is the **chunk files** under `roadmap/` and the manifest order in `manifest.json`. Root `roadmap.md` (in your project) is a **generated index** — refresh it with `specy-road export` (`specy-road sync` does too, but first fast-forwards your integration branch from the remote).
 
 ### Establish the constitution (purpose and principles)
 
@@ -256,7 +256,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road scaffold-constitution`                 | Create starter `constitution/purpose.md` and `constitution/principles.md` if missing (`--force` overwrites).                               |
 | `specy-road validate`                              | Check that roadmap and registry files follow the rules. Run after edits if you want a quick sanity check. Parent and phase **effective** completion follows **F-013 rollup** (every leaf descendant `Complete`), same as the PM GUI wire model — a phase chunk may still store `Not Started` / `In Progress` until someone edits it; validation does **not** warn for that. The `--no-phase-status-warn` flag is deprecated and ignored (kept for backward-compatible CLI scripts). |
 | `specy-road export`                                | Regenerate `roadmap.md` from the merged graph — shareable index for stakeholders.                                            |
-| `specy-road list-nodes`                            | Table of all items with type, status, title, and which file they live in.                                                                   |
+| `specy-road list-nodes`                            | Table of all items with type, status, title, and which file they live in. `--json` prints every node in full (titles untruncated) with its `chunk`, for scripts; `--status` filters either form. |
 | `specy-road show-node M0.1.1`                      | Print one item as JSON on stdout (replace `M0.1.1` with a real id). The source chunk path goes to stderr, so the output pipes into a parser. |
 | `specy-road edit-node M0.1.1 --set status=Blocked` | Change allowed fields without hand-editing the chunk file. Validation runs after the save.                                                  |
 | `specy-road add-node`                              | Add a new item; run `specy-road add-node -h` for options.                                                                                   |
@@ -270,6 +270,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
 | `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
 | `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
+| `specy-road refresh-stubs --diff`                  | Preview a stub refresh after upgrading: a unified diff of every stub, skill, `.specyrd/README.md` and managed block (`AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.cursorindexingignore`) it would change. Writes nothing (implies `--dry-run`). See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade). |
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.
 
@@ -350,7 +351,7 @@ Resolve these **before** developers reach them:
 ## Monitoring execution (not approving PRs)
 
 - `**roadmap/registry.yaml`** — Who claimed what and which areas of the repo are “in use.” Stale entries may mean a blocked branch; check with the developer.
-- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths, and about a touch zone on an open node that matches nothing on disk.
+- `**specy-road validate**` — Warns about overlapping touch zones when multiple claims touch the same paths, and about a touch zone on an In Progress or Blocked node that matches nothing on disk (Not Started nodes may name files the work will create).
 - `**specy-road export**` and `**roadmap.md**` — Stakeholder-friendly snapshot of status.
 
 ## Human-led vs agentic (short guide)

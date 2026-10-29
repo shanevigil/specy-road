@@ -68,6 +68,25 @@ def test_specyrd_init_writes_cursor(tmp_path: Path) -> None:
     assert data["specyrd_version"] == expected
 
 
+def test_specyrd_init_writes_the_agents_md_block_in_a_project(tmp_path: Path) -> None:
+    """Agents read AGENTS.md; a pack installed into a scaffolded project must not leave it bare."""
+    (tmp_path / "roadmap").mkdir()
+    (tmp_path / "roadmap" / "manifest.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# Ours\n", encoding="utf-8")
+
+    r = run_init(target=tmp_path, agent="cursor", dry_run=False, force=False, ai_commands_dir=None)
+
+    assert "AGENTS.md (updated)" in r.written
+    text = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert text.startswith("# Ours\n") and "specy-road managed block" in text
+
+
+def test_specyrd_init_leaves_agents_md_alone_without_a_roadmap(tmp_path: Path) -> None:
+    run_init(target=tmp_path, agent="cursor", dry_run=False, force=False, ai_commands_dir=None)
+
+    assert not (tmp_path / "AGENTS.md").exists()
+
+
 def test_specyrd_init_generic_requires_dir(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="--ai-commands-dir"):
         run_init(

@@ -30,6 +30,8 @@ DEFAULT_POLICY: dict[str, Any] = {
     "signed_reviews": False,
     "reviewer_reruns_required": False,
     "max_workers": 2,
+    "escalate_same_acceptance_blocks": 3,
+    "escalate_review_rounds": 5,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
@@ -129,7 +131,7 @@ def load_orchestration_config(
     :func:`effective_config` instead.
     """
     if ref is not None:
-        text = git_stdout(["show", f"{ref}:{ORCHESTRATION_REL.as_posix()}"], repo_root)
+        text = git_stdout(["show", f"{ref}:./{ORCHESTRATION_REL.as_posix()}"], repo_root)   # ./ = project-root relative
         return (None, None) if text is None else parse_orchestration_text(text)
     path = orchestration_yaml_path(repo_root)
     if not path.is_file():

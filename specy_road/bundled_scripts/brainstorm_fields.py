@@ -14,7 +14,9 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:  # the real import would be circular; raised lazily below
     from specy_road.bundled_scripts.brainstorm_session import BrainstormError
 
-VERIFICATIONS = ("unverified", "retrieved", "not-found", "blocked")
+VERIFICATIONS = ("unverified", "matched", "not-found", "blocked")
+#: Read-side names from older session files: ``retrieved`` meant the quote was found.
+VERIFICATION_ALIASES = {"retrieved": "matched"}
 STANCES = ("for", "against")
 OVERLAP_RELATIONS = ("same-problem-same-solution", "same-problem-different-solution",
                      "prerequisite", "superseded", "adjacent")
@@ -23,6 +25,7 @@ ORIGIN_KEYS = ("harness", "model", "lens", "round", "shard")
 EXTRA_DEFAULTS: dict[str, Any] = {
     "origin": None, "cluster_id": None, "sources": [], "overlap": [], "critic": None,
     "hypothesis": "", "assumptions": [], "decision": None, "verdict_why": "",
+    "codename": "",
 }
 
 
@@ -90,12 +93,14 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C90
             if not isinstance(s, dict) or not str(s.get("url", "")).strip():
                 raise _bad(ident, "each source needs a url")
             v = s.get("verification", "unverified")
+            if isinstance(v, str):
+                v = VERIFICATION_ALIASES.get(v, v)
             if v not in VERIFICATIONS:
                 raise _bad(ident, f"verification {v!r} not one of {', '.join(VERIFICATIONS)}")
             stance = s.get("stance", "for")
             if stance not in STANCES:
                 raise _bad(ident, f"stance {stance!r} not one of {', '.join(STANCES)}")
-            out["sources"].append({k: v for k, v in s.items() if v not in ("", None)})
+            out["sources"].append({k: v for k, v in {**s, "verification": v}.items() if v not in ("", None)})
     overlap = raw.get("overlap")
     if isinstance(overlap, list):
         for o in overlap:
@@ -114,6 +119,8 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C90
         out["assumptions"] = [str(a).strip() for a in raw["assumptions"] if str(a).strip()]
     if isinstance(raw.get("decision"), dict):
         out["decision"] = {str(k): str(v) for k, v in raw["decision"].items() if v not in ("", None)}
+    if isinstance(raw.get("codename"), str):
+        out["codename"] = raw["codename"].strip()
     return out
 
 

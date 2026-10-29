@@ -35,7 +35,11 @@ def heal_before_mutation(root: Path) -> None:
 
 
 def derive_codename_with_collision_suffix(
-    title: str, node_key: str, existing: set[str]
+    title: str,
+    node_key: str,
+    existing: set[str],
+    *,
+    max_words: int | None = None,
 ) -> str | None:
     """
     Derive a kebab-case codename from ``title``; if a collision exists,
@@ -43,11 +47,12 @@ def derive_codename_with_collision_suffix(
 
     Returns ``None`` when no valid codename can be derived from the title
     (e.g. empty or all-punctuation titles); callers may leave the node
-    unnamed so ``validate`` can re-visit it later.
+    unnamed so ``validate`` can re-visit it later. ``max_words`` is passed
+    through to ``title_to_codename`` (promote caps derived slugs).
     """
     from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 
-    slug = title_to_codename(title)
+    slug = title_to_codename(title, max_words=max_words)
     if not slug:
         return None
     if slug not in existing:
@@ -60,13 +65,16 @@ def derive_codename_with_collision_suffix(
     return cand
 
 
-def ensure_codename_for_new_node(root: Path, node: dict) -> None:
+def ensure_codename_for_new_node(
+    root: Path, node: dict, *, max_words: int | None = None
+) -> None:
     """F-006: give a new node a codename from its title, before it is written.
 
     Downstream pickup and registry logic need one, and the planning sheet's
     slug comes from it — the same derivation ``edit-node --set title=…`` runs.
     Deriving it here keeps every add path (CLI and PM GUI) producing complete
-    nodes instead of ``<id>_unnamed_…`` sheets.
+    nodes instead of ``<id>_unnamed_…`` sheets. ``max_words`` is passed through
+    to derivation so promote cannot fall back to an uncapped slug.
     """
     if node.get("codename"):
         return
@@ -74,7 +82,10 @@ def ensure_codename_for_new_node(root: Path, node: dict) -> None:
         n.get("codename") for n in load_roadmap(root)["nodes"] if n.get("codename")
     }
     derived = derive_codename_with_collision_suffix(
-        str(node.get("title") or ""), str(node.get("node_key") or ""), existing
+        str(node.get("title") or ""),
+        str(node.get("node_key") or ""),
+        existing,
+        max_words=max_words,
     )
     if not derived:
         return

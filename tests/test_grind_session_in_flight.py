@@ -265,7 +265,7 @@ def test_loop_resumes_instead_of_exiting_six(monkeypatch, capsys, tmp_path):
     ]
     calls: list[str] = []
 
-    def fake_gather(_repo_root, _under):
+    def fake_gather(_repo_root, _under, *, allow_unauthored=False, prefer_agentic=None):
         plan, reg = plans[min(len(calls), len(plans) - 1)]
         return [{"id": "M1.1", "codename": "cn"}], reg, plan
 
@@ -300,7 +300,7 @@ def test_loop_without_the_flag_stops_with_exit_six(monkeypatch, capsys, tmp_path
     monkeypatch.setattr(gsif, "local_branch_exists", lambda _root, _b: True)
     monkeypatch.setattr(
         gs, "gather_plan",
-        lambda _r, _u: ([{"id": "M1.1", "codename": "cn"}],
+        lambda _r, _u, **_kw: ([{"id": "M1.1", "codename": "cn"}],
                         _reg(_entry("M1.1", "cn")),
                         _plan(active=["M1.1"])),
     )
