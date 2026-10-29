@@ -100,3 +100,15 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap
+    node_id: M3.16
+    branch: feature/rm-bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap
+    touch_zones:
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
