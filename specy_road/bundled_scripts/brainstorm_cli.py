@@ -276,7 +276,7 @@ def cmd_promote(ns: argparse.Namespace) -> int:
         )
         return 0
     for idea in unverified_strong(session):
-        states = ", ".join(s.get("verification", "unverified") for s in idea.sources) or "no sources"
+        states = ", ".join(s["verification"] for s in idea.sources) or "no sources"
         fix = "verify" if idea.sources else f"evidence {idea.id}"
         print(f"warning: {idea.id} is recommended strong but no source is matched ({states}); "
               f"`specy-road brainstorm {fix} --slug {session.slug}`", file=sys.stderr)

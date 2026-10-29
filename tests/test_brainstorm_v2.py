@@ -342,20 +342,23 @@ def test_promote_carries_evidence_hypothesis_and_alternatives_into_the_sheet(rep
 
 def test_promote_warns_for_each_strong_idea_no_matched_source_backs(repo: Path) -> None:
     _start(repo)
-    for t in ("Unverified", "Unsourced", "Matched", "Consider"):
+    for t in ("Unverified", "Unsourced", "Matched", "Not found", "Consider"):
         _cli(repo, "add-idea", "--title", t)
-    for ident in ("B1", "B3"):
+    for ident in ("B1", "B3", "B4"):
         _cli(repo, "add-evidence", ident, "--url", f"https://example.com/{ident}", "--quote", "q")
     session = _session(repo)
     session.by_id("B3").sources[0]["verification"] = "matched"
+    session.by_id("B4").sources[0]["verification"] = "not-found"
     write_session(repo, session)
-    for ident, verdict in (("B1", "strong"), ("B2", "strong"), ("B3", "strong"), ("B4", "consider")):
+    for ident, verdict in (("B1", "strong"), ("B2", "strong"), ("B3", "strong"),
+                           ("B4", "strong"), ("B5", "consider")):
         _cli(repo, "revise", ident, "--recommendation", verdict)
-    _cli(repo, "accept", "B1", "B2", "B3", "B4")
+    _cli(repo, "accept", "B1", "B2", "B3", "B4", "B5")
     code, _, err = _cli(repo, "promote", "--dry-run")
     assert code == 0
     assert "warning: B1 is recommended strong but no source is matched (unverified)" in err
     assert f"brainstorm verify --slug {SLUG}" in err
     assert "warning: B2 is recommended strong but no source is matched (no sources)" in err
     assert f"brainstorm evidence B2 --slug {SLUG}" in err
-    assert "B3" not in err and "B4" not in err
+    assert "warning: B4 is recommended strong but no source is matched (not-found)" in err
+    assert "B3" not in err and "B5" not in err
