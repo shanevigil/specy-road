@@ -73,7 +73,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.17_a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch_e57ac618-27a2-4893-bfa6-0fdcd26b6138.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch",
       "touch_zones": [
         "specy_road/review_gate.py",

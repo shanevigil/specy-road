@@ -55,7 +55,15 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
     sign,
     verify,
 )
-from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
+from specy_road.review_files import (
+    HUMAN,
+    ReviewFile,
+    latest_ready,
+    list_reviews,
+    render_front_matter,
+    review_path,
+    verifier_gate_problems,
+)
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import project_prefix, rebase_to_project
@@ -104,6 +112,7 @@ class GateResult:
     stale: list[ReviewFile] = field(default_factory=list)
     invalid: list[ReviewFile] = field(default_factory=list)
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
+    verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
     config: dict[str, Any] = field(default_factory=dict)
 
@@ -119,6 +128,7 @@ class GateResult:
             self.config_error is None
             and self.commit is not None
             and not self.blocks
+            and not self.verifier_problems
             and self.approval_count >= self.required
         )
 
@@ -144,6 +154,7 @@ class GateResult:
         if self.approval_count < self.required:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
+        out.extend(self.verifier_problems)
         return out
 
 
@@ -226,6 +237,7 @@ def evaluate_gate(
     commit: str | None,
     *,
     today: date | None = None,
+    branch: str | None = None,
 ) -> GateResult:
     ref, ref_err = policy_source(repo_root)
     config, err = effective_config(repo_root, ref)
@@ -253,6 +265,8 @@ def evaluate_gate(
             result.ineligible.append((review, why or "not eligible"))
         else:
             _count(result, counted)
+    ready = latest_ready(repo_root, node["id"], branch)
+    result.verifier_problems = verifier_gate_problems(ready, result.approvals)
     return result
 
 
@@ -265,7 +279,7 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     approval still missing, and — under ``signed_reviews`` — a key was given and
     the roster has its public key.
     """
-    if gate.config_error or gate.commit is None or gate.blocks:
+    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems:
         return False
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):
@@ -336,7 +350,13 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     ``implementation_review: approved`` is written once; without this check a
     commit made after approval would ship unreviewed. A fix restarts review.
     """
-    gate = evaluate_gate(repo_root, node, resolve_target_or_exit(repo_root, node["id"], "HEAD").commit)
+    target = resolve_target_or_exit(repo_root, node["id"], "HEAD")
+    gate = evaluate_gate(
+        repo_root,
+        node,
+        target.commit,
+        branch=(target.entry or {}).get("branch"),
+    )
     if gate.passed:
         return
     print(
