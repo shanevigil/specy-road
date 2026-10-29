@@ -74,22 +74,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold
-    node_id: M3.14
-    branch: feature/rm-finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold
-    touch_zones:
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/bundled_scripts/finish_task_args.py
-      - specy_road/finish_implementation_check.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/planning_scaffold_check.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/dev-workflow.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: worker-reconcile-and-status
     node_id: M3.10
     branch: feature/rm-worker-reconcile-and-status

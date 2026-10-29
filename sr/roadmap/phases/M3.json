@@ -462,7 +462,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.14_finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold_7e4ea42a-408d-4399-a6b8-1febbc3a1386.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task and pickup detect a planning sheet that is still the scaffold",
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",
