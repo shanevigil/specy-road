@@ -13,12 +13,13 @@ from pathlib import Path
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_models_and_prompt import ROSTER, TEMPLATE_PROFILES
 
+from specy_road.agents_md_block import render_agents_lines
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.bundled_scripts import role_prompt
 from specy_road.review_files import PACKET_NAME, reviews_dir
 
 REPO = Path(__file__).resolve().parent.parent
-BLOCK = REPO / "specy_road" / "templates" / "specyrd" / "agents-md-block.md"
+BLOCK = "\n".join(render_agents_lines())
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 AGENTS = REPO / "AGENTS.md"
 HEADING = "## Lean changes and tests"
@@ -34,7 +35,7 @@ def _bullets(section: str) -> list[str]:
 
 
 def test_block_section_is_short_and_covers_the_rules() -> None:
-    section = _section(BLOCK.read_text(encoding="utf-8"))
+    section = _section(BLOCK)
     assert len(section.splitlines()) <= 12
     text = section.lower()
     for needle in ("smallest behaviour-complete change", "search for an existing one", "validate at boundaries only",
@@ -45,11 +46,11 @@ def test_block_section_is_short_and_covers_the_rules() -> None:
 
 
 def test_bootstrap_prompt_and_toolkit_agents_md_mirror_the_block() -> None:
-    bullets = _bullets(_section(BLOCK.read_text(encoding="utf-8")))
+    bullets = _bullets(_section(BLOCK))
     prompt = PROMPT.read_text(encoding="utf-8")
     for b in bullets:
         assert b in prompt, b
-    assert _section(AGENTS.read_text(encoding="utf-8")) == _section(BLOCK.read_text(encoding="utf-8"))
+    assert _section(AGENTS.read_text(encoding="utf-8")) == _section(BLOCK)
 
 
 def test_principle_9_carries_the_two_test_rules() -> None:

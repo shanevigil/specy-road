@@ -128,4 +128,5 @@ def test_the_guide_block_is_prefixed_in_a_nested_layout(tmp_path: Path) -> None:
     assert any("sr/roadmap-context.md" in ln for ln in lines)
     assert not any("{{PROJECT_PREFIX}}" in ln for ln in lines)
     assert not any("{{SPECYRD_VERSION}}" in ln for ln in lines)
+    assert not any("<!--" in ln for ln in lines)   # provenance stays in the template
 
