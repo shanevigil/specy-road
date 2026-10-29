@@ -10,7 +10,8 @@ Four kinds, each its own section:
   why: merged, its leaf Complete, or only that its claim is gone; an unmerged
   one also says how many commits the integration branch lacks.
 - linked worktrees whose directory is missing, whose branch is gone (detached at
-  a commit the integration branch contains, which is how ``finish
+  a commit the integration branch contains or whose patch it has, the same test
+  as a branch, which is how ``finish
   --delete-branch`` leaves a delegate worktree) or is merged, whether or not the
   branch itself is listed (a claimed branch whose leaf is not Complete stays).
 - registry rows on the integration branch whose branch is in neither this clone
@@ -176,8 +177,11 @@ def _worktree_reason(ctx: _Ctx, wt: dict[str, str], merged_local: set[str]) -> s
     branch = wt.get("branch", "").removeprefix("refs/heads/")
     if not branch:
         head = wt.get("HEAD", "")
-        if head and merged_into(ctx.root, head, ctx.target):
+        how = merged_how(ctx.root, head, ctx.target) if head else None
+        if how == "merged":
             return f"branch gone: detached at {head[:12]}, which {ctx.target} contains"
+        if how:
+            return f"branch gone: detached at {head[:12]}, {how}"
         return None
     if branch in merged_local:
         return f"branch {branch} is merged"

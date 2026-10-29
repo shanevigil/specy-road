@@ -83,6 +83,7 @@ def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     (tmp_path / "wt-done" / "work" / "reviews").mkdir(parents=True)
     (tmp_path / "wt-done" / "work" / "reviews" / "READY.md").write_text("x", encoding="utf-8")
     git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-detached"), "dev")
+    git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-squash"), "feature/rm-squash")
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-missing"), "feature/rm-squash")
     shutil.rmtree(tmp_path / "wt-missing")
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-thing"), "feature/rm-thing")
@@ -124,6 +125,8 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
         assert branch not in out.split("Worktrees")[0]
     assert "wt-done  — branch feature/rm-done is merged; removing it deletes ignored work/" in out
     assert "wt-detached  — branch gone: detached at" in out
+    assert any(line.startswith("  ") and "wt-squash  — branch gone: detached at" in line
+               and line.endswith(doctor.SAME_PATCH) for line in out.splitlines())
     assert "wt-missing  — directory missing" in out
     assert "wt-settled  — branch feature/rm-settled is merged" in out
     assert "wt-thing  — branch feature/rm-thing is merged" in out
@@ -158,7 +161,7 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
             assert not _has(repo, f"refs/heads/{branch}")
         assert f"[ok] deleted {branch} on origin" in out
         assert not _has(bare, f"refs/heads/{branch}")
-    for name in ("wt-done", "wt-detached", "wt-missing", "wt-settled", "wt-thing"):
+    for name in ("wt-done", "wt-detached", "wt-squash", "wt-missing", "wt-settled", "wt-thing"):
         assert any(line.startswith("[ok] removed worktree ") and line.endswith(name)
                    for line in out.splitlines())
         assert name not in git(repo, "worktree", "list")
