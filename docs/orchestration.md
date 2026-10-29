@@ -197,6 +197,7 @@ findings:
   boundary: ["src/session.ts changed outside touch zones"]
   test_integrity: ["login.test.ts assertion loosened"]
 commands_rerun: ["npm test -- login"]
+verify_pre_existing: ["pytest -q tests/regression.py"]
 required_changes: ["restore the assertion", "revert src/session.ts"]
 fresh_session: true
 authored_fix: false
@@ -242,6 +243,8 @@ review record only when:
 - no other record from the same model already counts — one vote per model, and
   a block from any of a model's records wins;
 - it attests a fresh session when policy requires one.
+
+The newest valid `READY-<agent>.md` for the node's registered branch lists verifier commands the executor ran. A non-zero exit in that list is treated as a gate failure: `handoff status`, `mark-implementation-reviewed`, and `finish-this-task` all refuse while any failing command is unmarked. An approving review may name commands in `verify_pre_existing` when the same command already fails identically on the integration branch; only approving records count, and every failing READY verifier must be named by at least one approving reviewer before the gate can pass. An empty `verify` block is still reported but does not by itself fail the gate.
 
 The gate passes when no counted review blocks and the counted approvals reach
 `reviewers_required` (by distinct family when configured). On success it sets

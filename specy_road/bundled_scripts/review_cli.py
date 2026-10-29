@@ -33,7 +33,7 @@ from specy_road.review_files import (
     node_ids_with_reviews,
     render_front_matter,
     review_path,
-    verify_problems,
+    non_gating_verify_problems,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
@@ -58,10 +58,11 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
 
 def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
     t = resolve_target(root, node_id, ref)
-    gate = evaluate_gate(root, t.node, t.commit)
     branch = (t.entry or {}).get("branch")
+    gate = evaluate_gate(root, t.node, t.commit, branch=branch)
     ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
+    gate_problems = gate.problems()
     return {
         "node_id": node_id,
         "state": _state(root, t, gate, ready_commit),
@@ -79,7 +80,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": gate.problems() + (_executor_verify_problems(ready) if ready else []),
+        "problems": gate_problems + non_gating_verify_problems(ready, gate_problems),
     }
 
 
@@ -174,12 +175,6 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
 _EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2}
 
 
-def _executor_verify_problems(ready) -> list[str]:
-    """The READY's verify block is what the executor recorded, not a reviewer re-run."""
-    return [p.replace(f"{ready.path.name}:", f"{ready.path.name} (executor-reported):", 1)
-            for p in verify_problems(ready)]
-
-
 def _fail(msg: str, code: int = 1) -> int:
     print(f"error: {msg}", file=sys.stderr)
     return code
@@ -221,7 +216,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     rec, err = _check_record(ns, root, t)
     if err:
         return _fail(err)
-    gate = evaluate_gate(root, t.node, t.commit)
+    gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     if gate.config_error:
         return _fail(f"orchestration config: {gate.config_error}")
     config = gate.config
@@ -256,7 +251,7 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(render_front_matter(data, rec["body"]), encoding="utf-8")
     print(f"Wrote {dest}")
-    after = evaluate_gate(root, t.node, t.commit)
+    after = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     if after.distinct_families:
         _relabel_independence(root, after)
         if any(o.family == entry["family"] and o.model != ns.model for o in after.approvals + after.blocks):
@@ -287,7 +282,7 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print("gate: not evaluated — no registry claim names the commit under review; "
               "pass --ref <branch or commit>")
         return 0
-    gate = evaluate_gate(root, t.node, t.commit)
+    gate = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))
     print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
     for p in gate.problems():
         print(f"  - {p}")

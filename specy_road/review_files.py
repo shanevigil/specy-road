@@ -234,16 +234,57 @@ def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> Re
     return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))
 
 
-def verify_problems(ready: ReviewFile) -> list[str]:
-    """A READY's verifier evidence that a reviewer must weigh: failures, or none at all.
+def failing_verifier_entries(ready: ReviewFile) -> list[dict[str, Any]]:
+    """Each READY ``verify`` row with a non-zero exit."""
+    return [v for v in (ready.data.get("verify") or []) if v.get("exit") != 0]
 
-    Reported, never gating: the exit codes are the executor's own claim.
-    """
+
+def pre_existing_cmds_from_approvals(approvals: list[Any]) -> set[str]:
+    """Verifier command names marked pre-existing on the integration branch."""
+    covered: set[str] = set()
+    for counted in approvals:
+        if counted.verdict != "approve":
+            continue
+        for cmd in counted.review.data.get("verify_pre_existing") or []:
+            covered.add(str(cmd))
+    return covered
+
+
+def verifier_gate_problems(ready: ReviewFile | None, approvals: list[Any]) -> list[str]:
+    """Failing READY verifiers with no approving review marking them pre-existing."""
+    if ready is None or not ready.ok:
+        return []
+    failing = failing_verifier_entries(ready)
+    if not failing:
+        return []
+    covered = pre_existing_cmds_from_approvals(approvals)
+    name = ready.path.name
+    return [
+        f"{name} (executor-reported): verifier `{v['cmd']}` exited {v['exit']}"
+        for v in failing
+        if str(v["cmd"]) not in covered
+    ]
+
+
+def verify_problems(ready: ReviewFile) -> list[str]:
+    """A READY's verifier evidence: failures, or none at all (handoff status notes)."""
     name = ready.path.name
     entries = ready.data.get("verify") or []
     if not entries:
         return [f"{name}: no verifier evidence recorded (verify is empty)"]
-    return [f"{name}: verifier `{v['cmd']}` exited {v['exit']}" for v in entries if v.get("exit") != 0]
+    return [f"{name}: verifier `{v['cmd']}` exited {v['exit']}" for v in failing_verifier_entries(ready)]
+
+
+def non_gating_verify_problems(ready: ReviewFile | None, gate_problems: list[str]) -> list[str]:
+    """READY verifier notes that are reported but do not fail the gate (empty ``verify``)."""
+    if ready is None or not ready.ok:
+        return []
+    entries = ready.data.get("verify") or []
+    if entries:
+        return []
+    msg = f"{ready.path.name}: no verifier evidence recorded (verify is empty)"
+    labeled = msg.replace(f"{ready.path.name}:", f"{ready.path.name} (executor-reported):", 1)
+    return [] if labeled in gate_problems or msg in gate_problems else [labeled]
 
 
 def node_ids_with_reviews(repo_root: Path) -> list[str]:
