@@ -304,9 +304,9 @@ In the Notes app, with a real agent on two harnesses (one run each):
 6. **Evidence and verify.** `brainstorm evidence`; the agent records ≥ 10
    sources with quotes from real pages. `brainstorm verify` lists the URLs
    and **asks**; answer `n`: nothing fetched, all `unverified`. Answer `y`:
-   record the share `retrieved` vs `not-found` vs `blocked`. Pass: the
+   record the share `matched` vs `not-found` vs `blocked`. Pass: the
    prompt appears, nothing is fetched on `n`, and a hand check of five
-   `retrieved` quotes finds them on the page.
+   `matched` quotes finds them on the page.
 7. **Triage and promote.** `reject` without `--reason` is refused; `park
    --reason … --revisit-when …` (the condition is optional); `accept`
    three; `promote --dry-run` then `promote`; `validate`, `export`,

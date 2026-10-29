@@ -36,7 +36,9 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.finish_implementation_check import base_ref
+from specy_road.git_subprocess import commits_behind, merge_conflicts
+from specy_road.git_workflow_config import require_implementation_review_before_finish, resolve_integration_defaults
 from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
 from specy_road.orchestration_config import (
     effective_config,
@@ -53,9 +55,18 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
     sign,
     verify,
 )
-from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
+from specy_road.review_files import (
+    HUMAN,
+    ReviewFile,
+    latest_ready,
+    list_reviews,
+    render_front_matter,
+    review_path,
+    verifier_gate_problems,
+)
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 
 def review_required(repo_root: Path) -> bool:
@@ -101,6 +112,7 @@ class GateResult:
     stale: list[ReviewFile] = field(default_factory=list)
     invalid: list[ReviewFile] = field(default_factory=list)
     ineligible: list[tuple[ReviewFile, str]] = field(default_factory=list)
+    verifier_problems: list[str] = field(default_factory=list)
     config_error: str | None = None
     config: dict[str, Any] = field(default_factory=dict)
 
@@ -116,6 +128,7 @@ class GateResult:
             self.config_error is None
             and self.commit is not None
             and not self.blocks
+            and not self.verifier_problems
             and self.approval_count >= self.required
         )
 
@@ -141,6 +154,7 @@ class GateResult:
         if self.approval_count < self.required:
             unit = "distinct-family approvals" if self.distinct_families else "approvals"
             out.append(f"need {self.required} {unit} at this commit, have {self.approval_count}")
+        out.extend(self.verifier_problems)
         return out
 
 
@@ -223,6 +237,7 @@ def evaluate_gate(
     commit: str | None,
     *,
     today: date | None = None,
+    branch: str | None = None,
 ) -> GateResult:
     ref, ref_err = policy_source(repo_root)
     config, err = effective_config(repo_root, ref)
@@ -250,6 +265,8 @@ def evaluate_gate(
             result.ineligible.append((review, why or "not eligible"))
         else:
             _count(result, counted)
+    ready = latest_ready(repo_root, node["id"], branch)
+    result.verifier_problems = verifier_gate_problems(ready, result.approvals)
     return result
 
 
@@ -262,7 +279,7 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     approval still missing, and — under ``signed_reviews`` — a key was given and
     the roster has its public key.
     """
-    if gate.config_error or gate.commit is None or gate.blocks:
+    if gate.config_error or gate.commit is None or gate.blocks or gate.verifier_problems:
         return False
     config = gate.config
     if not is_rostered_reviewer(config, HUMAN) or not may_handle(roster_entry(config, HUMAN), node_sensitivity(node)):
@@ -333,7 +350,13 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     ``implementation_review: approved`` is written once; without this check a
     commit made after approval would ship unreviewed. A fix restarts review.
     """
-    gate = evaluate_gate(repo_root, node, resolve_target_or_exit(repo_root, node["id"], "HEAD").commit)
+    target = resolve_target_or_exit(repo_root, node["id"], "HEAD")
+    gate = evaluate_gate(
+        repo_root,
+        node,
+        target.commit,
+        branch=(target.entry or {}).get("branch"),
+    )
     if gate.passed:
         return
     print(
@@ -348,4 +371,50 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
         f"(specy-road handoff status {node['id']}).",
         file=sys.stderr,
     )
+    raise SystemExit(1)
+
+
+#: Project-relative bookkeeping, where a trial-merge conflict blocks nothing; ``x/`` covers below x, a file only itself.
+TRIAL_MERGE_BOOKKEEPING = ("work/", "roadmap/", "planning/", "roadmap.md", "roadmap-context.md")
+
+
+def is_trial_merge_bookkeeping(project_path: str) -> bool:
+    return any(project_path.startswith(b) if b.endswith("/") else project_path == b for b in TRIAL_MERGE_BOOKKEEPING)
+
+
+@dataclass(frozen=True)
+class TrialMerge:
+    """Merging the integration branch into a branch, done in memory; ``problem()`` says why review waits."""
+    base_ref: str
+    behind: int
+    conflicts: list[str]        # project-relative; outside the project, ``../``-relative
+    code_conflicts: list[str]   # the ones that block: not bookkeeping, or outside the project
+
+    def problem(self) -> str | None:
+        return (f"{self.base_ref} is {self.behind} commit(s) ahead and a trial merge conflicts on "
+                f"{', '.join(self.code_conflicts)}: merge it into this branch and resolve before review"
+                ) if self.code_conflicts else None
+
+
+def trial_merge(repo_root: Path, ref: str, integration_ref: str | None) -> TrialMerge | None:
+    """Trial-merge ``integration_ref`` into ``ref``, or ``None`` when git cannot answer."""
+    behind = commits_behind(repo_root, ref, integration_ref) if integration_ref else None
+    conflicts = merge_conflicts(repo_root, ref, integration_ref) if integration_ref and behind else []
+    if integration_ref is None or behind is None or conflicts is None:
+        return None
+    prefix = project_prefix(repo_root)
+    rebased = {p: rebase_to_project(p, prefix) for p in conflicts}   # None: outside the project
+    named = {p: r if r is not None else "../" * prefix.count("/") + p for p, r in rebased.items()}
+    code = [named[p] for p, r in rebased.items() if r is None or not is_trial_merge_bookkeeping(r)]
+    return TrialMerge(integration_ref, behind, list(named.values()), code)
+
+
+def trial_merge_or_exit(repo_root: Path) -> None:
+    """Refuse before any bookkeeping commit while landing ``HEAD`` would conflict on code."""
+    ib, remote, _warnings = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    tm = trial_merge(repo_root, "HEAD", base_ref(repo_root, remote, ib))
+    if tm is None or tm.problem() is None:
+        return
+    print(f"error: {tm.problem()}.", file=sys.stderr)
+    print(f"  Run `git merge {tm.base_ref}`, resolve, commit, and have the result reviewed.", file=sys.stderr)
     raise SystemExit(1)

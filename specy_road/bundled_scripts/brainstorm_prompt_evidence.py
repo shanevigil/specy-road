@@ -18,11 +18,15 @@ RESEARCH_TOOL_NOTE = (
 )
 
 
+#: Past this many ideas one evidence pass turns into a skim: fewer sources each, no disconfirming search.
+MAX_EVIDENCE_IDEAS = 15
+
+
 def shortlist(session: BrainstormSession, ids: list[str] | None) -> list[Idea]:
-    """The ids given, else the ideas the converge pass rated strong or consider."""
+    """The ids given, else the ideas the converge pass rated strong."""
     if ids:
         return [session.by_id(i) for i in ids]
-    return [i for i in session.ideas if i.recommendation in ("strong", "consider")
+    return [i for i in session.ideas if i.recommendation == "strong"
             and i.status not in ("rejected",)]
 
 

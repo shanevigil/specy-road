@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.review_repo_helpers import diverge, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -39,6 +39,16 @@ def _record(repo: Path, model: str) -> None:
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
     (d / f"REVIEW-{model}.md").write_text(review_text(git(repo, "rev-parse", "HEAD"), model=model))
+
+
+def _failing_ready(repo: Path) -> None:
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "READY-exec.md").write_text(
+        f"---\nnode_id: M1.1\nagent: exec\nbranch: feature/rm-thing\n"
+        f"commit: {git(repo, 'rev-parse', 'HEAD')}\nbase: {git(repo, 'rev-parse', 'dev')}\n"
+        "changed_paths: [src/a.py]\nverify:\n  - {cmd: 'false', exit: 1, tail: boom}\n---\n"
+    )
 
 
 def test_yes_without_reviews_refuses(tmp_path: Path, capsys) -> None:
@@ -128,3 +138,44 @@ def test_finish_refuses_work_committed_after_approval(tmp_path: Path, monkeypatc
         ft._impl_review_or_exit(entry, NODE)
     assert e.value.code == 1
     assert "no longer holds at this commit" in capsys.readouterr().err
+
+
+def test_yes_refuses_a_failing_ready_verifier(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    _record(repo, "human")
+    _failing_ready(repo)
+    assert _run(repo, "--yes") == 1
+    captured = capsys.readouterr()
+    assert "review gate is not met" in captured.err
+    assert "verifier `false` exited 1" in captured.out
+    assert _review_state(repo) == "pending"
+
+
+def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, capsys) -> None:
+    from specy_road.bundled_scripts import finish_task as ft
+    from tests.review_repo_helpers import NODE
+
+    repo = _repo(tmp_path)
+    _record(repo, "human")
+    _failing_ready(repo)
+    monkeypatch.setattr(ft, "ROOT", repo)
+    with pytest.raises(SystemExit) as e:
+        ft._impl_review_or_exit({"implementation_review": "approved"}, NODE)
+    assert e.value.code == 1
+    err = capsys.readouterr().err
+    assert "no longer holds at this commit" in err
+    assert "verifier `false` exited 1" in err
+
+
+@pytest.mark.parametrize("case", ["clean", "bookkeeping", "code"])
+def test_yes_refuses_while_a_trial_merge_conflicts_on_code(tmp_path: Path, capsys, case: str) -> None:
+    repo = _repo(tmp_path, orchestration=TWO_FAMILIES)
+    diverge(repo, case)
+    _record(repo, "opus")
+    _record(repo, "sol")
+    head = git(repo, "rev-parse", "HEAD")
+    refused = case == "code"
+    assert _run(repo, "--yes") == (1 if refused else 0)
+    assert ("trial merge conflicts on src/a.py" in capsys.readouterr().err) == refused
+    assert _review_state(repo) == ("pending" if refused else "approved")
+    assert (git(repo, "rev-parse", "HEAD") == head) == refused   # no bookkeeping commit when refused

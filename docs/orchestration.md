@@ -8,7 +8,7 @@
 **Must know without reading on:**
 - The executor never reviews its own leaf, and the coordinator's own session is never a reviewer; every review record attests this and the gate checks it. The one exception is the default interactive human approval in `mark-implementation-reviewed`, which writes `REVIEW-human.md` with `is_coordinator: true` by design.
 - A review is a file under `work/reviews/<NODE_ID>/` bound to one commit; any later commit (other than one touching only `roadmap/registry.yaml`) makes it stale.
-- Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review).
+- Order: `specy-road review-packet <NODE_ID>` → `specy-road review record <NODE_ID> --model <roster id> --verdict approve|block --file notes.md` → `specy-road mark-implementation-reviewed` (`--yes` never creates a review). The packet header and `handoff status` report a trial merge (`git merge-tree`, nothing checked out) of the integration branch into the leaf's branch: a conflict on any path outside `work/`, `roadmap/`, `planning/`, `roadmap.md` and `roadmap-context.md` means the executor merges and resolves before reviewers run, and `mark-implementation-reviewed` and `finish-this-task` refuse, before any bookkeeping commit, until it is resolved. The integration ref is the remote-tracking one as last fetched, else the local branch.
 - The policy is `roadmap/orchestration.yaml` as read from the integration branch; a feature branch cannot lower its own bar.
 
 **Read further for:**
@@ -195,6 +195,7 @@ findings:
   boundary: ["src/session.ts changed outside touch zones"]
   test_integrity: ["login.test.ts assertion loosened"]
 commands_rerun: ["npm test -- login"]
+verify_pre_existing: ["pytest -q tests/regression.py"]
 required_changes: ["restore the assertion", "revert src/session.ts"]
 fresh_session: true
 authored_fix: false
@@ -240,6 +241,8 @@ review record only when:
 - no other record from the same model already counts — one vote per model, and
   a block from any of a model's records wins;
 - it attests a fresh session when policy requires one.
+
+The newest valid `READY-<agent>.md` for the node's registered branch lists verifier commands the executor ran. A non-zero exit in that list is treated as a gate failure: `handoff status`, `mark-implementation-reviewed`, and `finish-this-task` all refuse while any failing command is unmarked. An approving review may name commands in `verify_pre_existing` when the same command already fails identically on the integration branch; only approving records count, and every failing READY verifier must be named by at least one approving reviewer before the gate can pass. An empty `verify` block is still reported but does not by itself fail the gate.
 
 The gate passes when no counted review blocks and the counted approvals reach
 `reviewers_required` (by distinct family when configured). On success it sets

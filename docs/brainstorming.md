@@ -244,14 +244,25 @@ specy-road brainstorm revise B1 --cluster C2 --overlap M3.1:adjacent \
 Verdicts are `strong`, `consider`, or `park`. Passing only `--recommendation`
 leaves the idea's triage status alone — the agent advises, you decide.
 
+When the agent hands back, check that the pass covered every idea:
+
+```bash
+specy-road brainstorm recommend --check
+```
+
+It writes nothing; it lists each idea still without a cluster or a
+recommendation and exits 1, or exits 0 and prints the next step.
+
 ## 3. Evidence
 
 ```bash
-specy-road brainstorm evidence            # the strong/consider shortlist
-specy-road brainstorm evidence B4 B9      # or named ideas
+specy-road brainstorm evidence            # the ideas recommended strong
+specy-road brainstorm evidence B4 B9      # or named ideas, e.g. a consider worth checking
 ```
 
-Writes `work/brainstorm-<slug>-evidence-prompt.md`: for each idea, one to
+More than 15 ideas in one pass warns: the sources get thinner and the
+disconfirming searches are the first thing dropped, so name the ids and run it
+in batches. Writes `work/brainstorm-<slug>-evidence-prompt.md`: for each idea, one to
 three sources and at least one search that could disconfirm it, using the
 strongest research capability the session exposes (and never claiming a
 named research product that is not a tool). Each source needs a **verbatim
@@ -273,10 +284,11 @@ specy-road brainstorm verify
 without a terminal and without `--yes` it fetches nothing). It fetches
 public `https` pages only, with a timeout and a size cap (a larger page is
 `blocked`, not read in part), and records
-`retrieved` (quote found), `not-found` (page read, quote absent — or no
+`matched` (quote found on the page), `not-found` (page read, quote absent — or no
 quote was given; `add-evidence` requires one), or
 `blocked` (paywall, robots, transport error — never "fabricated"). Sources
-it did not fetch stay `unverified`. This is the only network call the CLI
+it did not fetch stay `unverified`. Session files written before the rename
+say `retrieved`; they read as `matched` and are saved that way. This is the only network call the CLI
 makes. Other brainstorm commands (CLI or GUI) are not blocked while it asks
 or fetches; it records its results into the session as it then stands, so
 ideas added meanwhile are kept.
@@ -284,19 +296,29 @@ ideas added meanwhile are kept.
 ## 4. Triage
 
 ```bash
-specy-road brainstorm list --by cluster       # cluster-first; verdicts hidden
+specy-road brainstorm list --by cluster       # cluster-first; verdicts and critics hidden
+specy-road brainstorm list --summary          # per-status and per-recommendation counts
 specy-road brainstorm list --show-verdicts    # or --json, --status accepted
 specy-road brainstorm accept B1 B4 B9
+specy-road brainstorm accept B3 --reason "fits the anchor"
 specy-road brainstorm reject B2 --reason "duplicates M3.1"
 specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing ships"
+specy-road brainstorm realize B1 --node M3.6   # node you added outside promote
 ```
 
-Verdicts are hidden by default so they do not steer you; clusters, critics'
-objections and evidence show first. `reject` and `park` require a reason;
-`park` also takes an optional revisit condition (`--revisit-when`). Both are
-recorded as the idea's decision. Editing an idea's content marks it
-`revised`. Once an idea has been promoted it can no longer be re-triaged: it
-is a roadmap node, and the node is what you edit.
+`accept`, `reject`, and `park` resolve every idea before changing anything or
+printing `[ok]` — a missing or already-promoted id in a batch prints nothing
+and leaves the session untouched. The agent's
+judgement — verdicts, their reasoning and the critics'
+objections — is hidden by default so it does not steer you; clusters and
+source counts show first, and `--show-verdicts` adds the rest. `reject` and
+`park` require `--reason`; `accept` may take an optional `--reason`. Both
+decision reasons and `--revisit-when` on `park` are recorded on the idea.
+`revise --why` sets `verdict_why`; `--append-why` adds to it. Editing an idea's
+content marks it `revised`. Once an idea has been promoted it can no longer be
+re-triaged: it is a roadmap node, and the node is what you edit. `realize`
+links an idea to a node you created by hand (`promoted_node_key`) after
+checking that node exists in the merged graph.
 
 ## 5. Promote
 
@@ -310,6 +332,11 @@ Every accepted, not-yet-promoted idea becomes a node through the same path as
 planning sheet scaffolded, chunk and manifest written in one transaction, and
 `validate` run over the batch.
 
+Before it writes (and on `--dry-run`), `promote` warns for each idea it is
+about to promote on a `strong` verdict that no `matched` source backs — its
+sources are unverified, not found or blocked, or it has none — and names
+`verify` or `evidence` as the fix. It warns; the call is yours.
+
 The new sheet's `## Intent` is seeded from the idea's rationale; its
 `## References` gains the sources (with quote and verification state), the
 hypothesis and assumptions, and the cluster's rejected or parked siblings as
@@ -318,8 +345,11 @@ slice is properly scoped — the seed is a starting point, not a spec.
 
 Options: `--under NODE_ID` overrides the anchor; `--type` is `milestone` by
 default (`vision`, `phase`, `task` also work; `gate` is refused — a gate is a
-human hold, not work); `--dry-run` writes nothing. An unusable anchor is
-rejected before anything is written. Afterwards:
+human hold, not work); `--dry-run` writes nothing. Promoted nodes copy the
+anchor's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
+`--set execution_milestone=…` only when a leaf should differ (typically
+`Human-led` under an agentic anchor). An unusable anchor is rejected before
+anything is written. Afterwards:
 
 ```bash
 specy-road export && specy-road digest

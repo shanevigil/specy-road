@@ -51,7 +51,7 @@ def add_v2_subcommands(sub) -> None:
 
     p = sub.add_parser("evidence", help="write the evidence prompt for shortlisted ideas")
     p.add_argument("idea_id", nargs="*", metavar="IDEA_ID",
-                   help="Ideas to source (default: those recommended strong or consider).")
+                   help="Ideas to source (default: those recommended strong). More than 15 warns.")
     _slug(p)
 
     p = sub.add_parser("add-evidence", help="record one source on an idea (the agent calls this)")
@@ -73,7 +73,8 @@ def add_v2_subcommands(sub) -> None:
 
     p = sub.add_parser("park", help="set ideas aside with a reason and, optionally, a revisit condition")
     p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
-    p.add_argument("--reason", required=True, metavar="TEXT")
+    p.add_argument("--reason", required=True, metavar="TEXT",
+                   help="Required; recorded as the decision reason.")
     p.add_argument("--revisit-when", default="", metavar="TEXT",
                    help="Optional: what would make the idea worth another look.")
     _slug(p)

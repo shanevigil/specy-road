@@ -26,6 +26,7 @@ from specy_road.review_gate import (
     evaluate_gate,
     human_approval_completes,
     review_required,
+    trial_merge_or_exit,
     write_human_approval,
 )
 from specy_road.review_target import resolve_target_or_exit
@@ -192,6 +193,7 @@ def _gate_or_human_approval(
     args: argparse.Namespace,
     node: dict,
     *,
+    branch: str | None,
     summary_text: str,
     walkthrough: str | None,
 ) -> GateResult:
@@ -200,7 +202,12 @@ def _gate_or_human_approval(
     Exits 0 when the human declines, and 1 when the recorded reviews fall short
     and a human approval here could not (or may not) make up the difference.
     """
-    gate = evaluate_gate(ROOT, node, resolve_target_or_exit(ROOT, node["id"], "HEAD").commit)
+    gate = evaluate_gate(
+        ROOT,
+        node,
+        resolve_target_or_exit(ROOT, node["id"], "HEAD").commit,
+        branch=branch,
+    )
     _print_gate(gate)
     if gate.passed:
         if not _user_approves(args, summary_text=summary_text, walkthrough=walkthrough):
@@ -221,7 +228,7 @@ def _gate_or_human_approval(
             raise SystemExit(1) from None
         # From a linked worktree the review lands in the main worktree.
         print(f"[ok] wrote {written.relative_to(ROOT) if written.is_relative_to(ROOT) else written}")
-        gate = evaluate_gate(ROOT, node, gate.commit)
+        gate = evaluate_gate(ROOT, node, gate.commit, branch=branch)
         if gate.passed:
             return gate
         for problem in gate.problems():   # say why the record just written does not count
@@ -301,6 +308,7 @@ def main(argv: list[str] | None = None) -> None:
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
 
+    trial_merge_or_exit(ROOT)   # before a human reads, approves, or a record is written
     spath = _summary_path(node_id)
     summary_text = _load_summary_text(args, spath)
 
@@ -311,7 +319,9 @@ def main(argv: list[str] | None = None) -> None:
         print()
 
     walkthrough = _extract_walkthrough(summary_text) if summary_text else None
-    gate = _gate_or_human_approval(args, node, summary_text=summary_text, walkthrough=walkthrough)
+    gate = _gate_or_human_approval(
+        args, node, branch=entry.get("branch"), summary_text=summary_text, walkthrough=walkthrough
+    )
 
     # work/ changes stay where they are: the registry commit names its one path.
     if not working_tree_clean(ROOT, except_work=True):

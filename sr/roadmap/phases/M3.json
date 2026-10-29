@@ -162,7 +162,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.5_brainstorm-converge-checks_ac36c1fd-1afc-45b9-89f8-9f1e2cacda10.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Converge and evidence passes that cannot silently skip work",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_cli.py",
@@ -173,6 +173,7 @@
         "specy_road/bundled_scripts/brainstorm_verify.py",
         "specy_road/bundled_scripts/brainstorm_promote.py",
         "docs/brainstorming.md",
+        "docs/agentic-sandbox-runbook.md",
         "tests/",
         "specy_road/bundled_scripts/brainstorm_fields.py",
         "docs/agentic-sandbox-runbook.md"
@@ -198,7 +199,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.6_brainstorm-triage-cli_acbadda9-3756-4e55-aad3-e7153ad5be97.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_cli.py",
@@ -236,7 +237,10 @@
         "specy_road/bundled_scripts/brainstorm_cli_args.py",
         "specy_road/bundled_scripts/roadmap_edit_fields.py",
         "docs/brainstorming.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brainstorm_cli.py",
+        "specy_road/bundled_scripts/brainstorm_fields.py",
+        "specy_road/bundled_scripts/brainstorm_session.py"
       ],
       "type": "task"
     },
@@ -434,7 +438,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.13_a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish_6ef93230-aa7f-44d7-9138-4e7aef301c0e.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A trial merge with the integration branch runs before review and before finish",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",

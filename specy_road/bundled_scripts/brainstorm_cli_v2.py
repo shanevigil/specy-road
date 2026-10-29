@@ -13,7 +13,7 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
     render_shard_prompt,
     write_prompt,
 )
-from specy_road.bundled_scripts.brainstorm_prompt_evidence import shortlist
+from specy_road.bundled_scripts.brainstorm_prompt_evidence import MAX_EVIDENCE_IDEAS, shortlist
 from specy_road.bundled_scripts.brainstorm_promote import pending_ideas
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
@@ -24,12 +24,32 @@ from specy_road.bundled_scripts.brainstorm_session import (
     set_status,
     write_session,
 )
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.brainstorm_verify import confirm, pending, verify_session
 from specy_road.git_subprocess import current_branch_name
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.runtime_paths import resolve_repo_root
 
 DEFAULT_COUNT = 20
+
+
+def print_idea_summary(session: BrainstormSession) -> None:
+    from specy_road.bundled_scripts.brainstorm_session import IDEA_STATUSES, RECOMMENDATIONS
+
+    by_status = {s: 0 for s in IDEA_STATUSES}
+    for idea in session.ideas:
+        by_status[idea.status] += 1
+    by_rec = {r: 0 for r in RECOMMENDATIONS}
+    by_rec["-"] = 0
+    for idea in session.ideas:
+        key = idea.recommendation if idea.recommendation in RECOMMENDATIONS else "-"
+        by_rec[key] += 1
+    print("status:")
+    for name in IDEA_STATUSES:
+        print(f"  {name}: {by_status[name]}")
+    print("recommendation:")
+    for name in (*RECOMMENDATIONS, "-"):
+        print(f"  {name}: {by_rec[name]}")
 
 
 def _load(ns: argparse.Namespace) -> tuple:
@@ -132,7 +152,10 @@ def cmd_evidence(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
     ideas = shortlist(session, list(ns.idea_id))
     if not ideas:
-        raise BrainstormError("nothing to source — name idea ids, or run `recommend` so some are strong/consider")
+        raise BrainstormError("nothing to source — name idea ids, or run `recommend` so some are strong")
+    if len(ideas) > MAX_EVIDENCE_IDEAS:
+        print(f"warning: {len(ideas)} ideas selected; an evidence pass over more than {MAX_EVIDENCE_IDEAS} "
+              "gets shallow — name the ids to source and run `evidence` in batches", file=sys.stderr)
     ppath = write_prompt(root, session, render_evidence_prompt(session, ideas), pass_name="evidence")
     print(f"prompt: {ppath.relative_to(root)} ({len(ideas)} idea(s) to source)")
     print(next_step(session, "evidence"))
@@ -182,14 +205,33 @@ def cmd_verify(ns: argparse.Namespace) -> int:
 
 def cmd_park(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
-    for ident in ns.idea_id:
-        idea = set_status(session, ident, "parked")
+    ideas = [set_status(session, ident, "parked") for ident in ns.idea_id]
+    for idea in ideas:
         idea.decision = {"status": "parked", "reason": ns.reason.strip(), "decided_at": date.today().isoformat()}
         if ns.revisit_when.strip():
             idea.decision["revisit_when"] = ns.revisit_when.strip()
         print(f"[ok] {idea.id} parked")
     write_session(root, session)
     print(next_step(session, "triage"))
+    return 0
+
+
+def cmd_realize(ns: argparse.Namespace) -> int:
+    root, session = _load(ns)
+    idea = session.by_id(ns.idea_id)
+    if idea.promoted_node_key:
+        raise BrainstormError(
+            f"idea {idea.id} is already on the roadmap as {idea.promoted_node_key} — "
+            "edit the node instead"
+        )
+    node_id = (ns.node or "").strip()
+    match = next((n for n in load_roadmap(root)["nodes"] if n.get("id") == node_id), None)
+    if match is None:
+        raise BrainstormError(f"node {node_id!r} is not in the roadmap")
+    idea.promoted_node_key = match["node_key"]
+    write_session(root, session)
+    print(f"[ok] {idea.id} -> {node_id} ({idea.promoted_node_key[:8]})")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -200,6 +242,7 @@ HANDLERS_V2 = {
     "add-evidence": cmd_add_evidence,
     "verify": cmd_verify,
     "park": cmd_park,
+    "realize": cmd_realize,
 }
 
 __all__ = ["HANDLERS_V2", "integration_branch_warning", "next_step", "stage", "write_round_prompts", "sys"]
