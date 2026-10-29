@@ -27,6 +27,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Not Started |
 | `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Not Started |
 | `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |
+| `M3.14` | finish-this-task and pickup detect a planning sheet that is still the scaffold | task | Agentic-led | Not Started |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |
@@ -62,6 +63,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Not Started |
 | `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
+| `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Human-led | Not Started |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Human-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

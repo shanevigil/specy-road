@@ -170,6 +170,29 @@
         "docs/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A Copilot CLI reviewer profile (model pinned, deny git push and gh pr, one-shot) and an Antigravity agy generic profile exist, each marked by the runtime checks that passed"
+      ],
+      "codename": "candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic",
+      "dependencies": [
+        "431d31bb-d8bd-4b7f-8259-66c9c756be94"
+      ],
+      "execution_milestone": "Human-led",
+      "id": "M8.6",
+      "node_key": "af298d00-74cc-47d6-be84-b809eb6c0d3b",
+      "parent_id": "M8",
+      "planning_dir": "planning/M8.6_candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic_af298d00-74cc-47d6-be84-b809eb6c0d3b.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic",
+      "touch_zones": [
+        "specy_road/templates/project/model-profiles/",
+        "roadmap/",
+        "docs/orchestration-models.md"
+      ],
+      "type": "task"
     }
   ]
 }
