@@ -31,6 +31,13 @@ Two files outside the zones still use the old wording. I left them unedited beca
 - `scripts/check_test_private_imports.py`: 0 new.
 - `scripts/check_clones.py` could not run, because `pylint` is not installed in this environment.
 
+## Review round 1
+
+Sol blocked on two items. Grok approved.
+
+- **Unreachable fallbacks, fixed.** `unverified_strong` and the `promote` warning now read `s["verification"]`. `parse_extra` always stores that key (`unverified` when the file omits it, `matched` when it says `retrieved`), and `cmd_promote` only sees sessions that have been read that way. The existing promote-warning test now also covers a `strong` idea whose source is `not-found`: the warning prints that stored state, and a `consider` idea still draws none.
+- **Runbook, not fixed.** `docs/agentic-sandbox-runbook.md` step 6 still tells the release check to count `retrieved` and to hand-check five `retrieved` quotes. That file is outside the touch zones, and the review says the coordinator adds it to the zones before the wording changes. It is not in the claim on this branch or on `origin/WIP/improvements-0-3-1`.
+
 ## Added
 
 - Helper `_check_converge` in `brainstorm_cli.py`: `recommend --check`'s report and exit code (A1). It is a private function beside `cmd_recommend`, not a new module.
@@ -44,7 +51,7 @@ Two files outside the zones still use the old wording. I left them unedited beca
 - Guard changed: `if verdicts and i.critic` in `_print_rows`. Critics are gated like the verdicts (A2).
 - Mocks: none.
 - Test `test_recommend_check_lists_every_idea_the_converge_pass_missed` (`tests/test_brainstorm_v2.py`): the exit codes, one line per gap, and that `--check` writes neither the mode nor the prompt (A1).
-- Test `test_promote_warns_for_each_strong_idea_no_matched_source_backs` (`tests/test_brainstorm_v2.py`): a warning for a strong idea with unverified sources and for one with no sources; none for a strong idea with a `matched` source or for a `consider` (A5).
+- Test `test_promote_warns_for_each_strong_idea_no_matched_source_backs` (`tests/test_brainstorm_v2.py`): a warning for a strong idea with unverified sources, for one with no sources, and for one whose source is `not-found` (the stored state, with no default); none for a strong idea with a `matched` source or for a `consider` (A5, and the review's fallback removal).
 - Extended `test_list_by_cluster_hides_verdicts_unless_asked`: critic text is now absent without `--show-verdicts` and present with it (A2). This assertion was inverted to match the new behaviour that A2 requires.
 - Extended `test_evidence_prompt_covers_the_shortlist_only`: a `consider` idea is left out of the default selection; 15 named ideas do not warn and 16 do (A3).
 - Extended `test_v1_session_files_still_read`: a source saved as `retrieved` reads as `matched` and is written back as `matched` (A4).
