@@ -22,7 +22,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Not Started**
   - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
   - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Complete**
-  - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Not Started**
+  - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Complete**
   - `M3.10` Worker hand-off, reconcile and finish report what actually happened `worker-reconcile-and-status` — task — **Not Started**
   - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Not Started**
   - `M3.12` A baseline gate runs on the integration branch before pickup `a-baseline-gate-runs-on-the-integration-branch-before-pickup` — task — **Not Started**
@@ -63,7 +63,7 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M3.12` on `feature/rm-a-baseline-gate-runs-on-the-integration-branch-before-pickup` since 2026-10-28
-- `M3.9` on `feature/rm-worker-cli-fixes` since 2026-10-28
+- `M3.13` on `feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` since 2026-10-28
 - `M4.10` on `feature/rm-branch-cleanup` since 2026-10-28
 - `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
 - `M5.3` on `feature/rm-context-budget-meter` since 2026-10-28

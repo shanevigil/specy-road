@@ -14,9 +14,12 @@ are the later adapters that turn those flags on.
 A roster entry's ``channels.cli`` (``{prompt}`` = prompt file path) replaces
 the built command for any harness while its output is still parsed as that
 harness's; that is how an adopter widens or narrows permissions, pins flags,
-or points at a wrapper. Claude Code's default asks for the narrowest mode
-that lets it edit unattended (``acceptEdits``; ``dontAsk`` is stricter but
-denies every tool not allow-listed), so a first run may stop at a shell
+or points at a wrapper. ``{session_flag}`` is the harness's own session
+argument, so one command serves launch and resume (Claude Code:
+``--session-id <id>`` on launch, ``--resume <id>`` on resume). Claude Code's
+default asks for the narrowest mode that lets it edit unattended
+(``acceptEdits``; ``dontAsk`` is stricter but denies every tool not
+allow-listed), so a first run may stop at a shell
 permission; Cursor's ``agent -p`` has write and shell tools already and
 ``--force`` force-allows every command not explicitly denied, so that default
 is the widest — read the table
@@ -90,7 +93,8 @@ def _model_flag(flag: str, model: str | None) -> list[str]:
 #: ``shlex.quote`` adds would land inside still-open quotes, where ``$(…)``
 #: runs; and an embedded ``{session}`` would never be substituted at all.
 #: Validation and substitution walk the same tokens, so they cannot disagree.
-PLACEHOLDERS = ("<prompt>", "{prompt}", "{session}")
+PLACEHOLDERS = ("<prompt>", "{prompt}", "{session}", "{session_flag}")
+_SESSION = frozenset({"{session}", "{session_flag}"})
 _WORD = re.compile(r'''(?:[^\s"']+|"[^"]*"|'[^']*')+''')   # a shell word: bare runs and whole quoted spans
 _ANY_PROMPT = re.compile(r"<prompt>|\{prompt\}")
 
@@ -113,20 +117,23 @@ def _tokens(cli: str) -> list[tuple[int, int, str | None, str]]:
     return [(m.start(), m.end(), *_placeholder_of(m.group(0))) for m in _WORD.finditer(cli)]
 
 
-def substitute_prompt(cli: str, prompt_path: Path, session: str | None = None) -> str:
-    """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text.
+def substitute_prompt(cli: str, prompt_path: Path, session: str | None = None,
+                      session_flag: list[str] | None = None) -> str:
+    """``{prompt}`` → the quoted file path; ``<prompt>`` (the profiles' form) → the quoted text;
+    ``{session_flag}`` → ``session_flag`` as quoted words (nothing when ``None``).
 
     Per token, whole words only: substituted text is never rescanned, and a
     placeholder embedded in a larger word is refused by
     :func:`placeholder_problem` before this runs.
     """
-    values = {"{session}": lambda: session or "", "{prompt}": lambda: str(prompt_path),
-              "<prompt>": lambda: _text(prompt_path)}
+    values = {"{session}": lambda: shlex.quote(session or ""), "{prompt}": lambda: shlex.quote(str(prompt_path)),
+              "<prompt>": lambda: shlex.quote(_text(prompt_path)),
+              "{session_flag}": lambda: shlex.join(session_flag or [])}
     out, pos = [], 0
     for start, end, ph, prefix in _tokens(cli):
         if ph is None:
             continue
-        out.append(cli[pos:start] + prefix + shlex.quote(values[ph]()))
+        out.append(cli[pos:start] + prefix + values[ph]())
         pos = end
     return "".join(out) + cli[pos:]
 
@@ -143,7 +150,9 @@ def placeholder_problem(cli: str | None) -> str | None:
         tok = cli[start:end]
         if ph is None and any(p in tok for p in PLACEHOLDERS):
             return (f"placeholder in {tok!r} must be a whole argument — bare or in one pair of quotes "
-                    '("<prompt>", {prompt}, "{session}"), not part of a larger word')
+                    '("<prompt>", {prompt}, "{session}", {session_flag}), not part of a larger word')
+        if ph == "{session_flag}" and _prefix:
+            return f"{tok!r}: {{session_flag}} is arguments, not a file to redirect from"
     if not any(ph in ("<prompt>", "{prompt}") for _s, _e, ph, _p in toks):
         return 'the prompt placeholder must be a whole argument ("<prompt>" or {prompt}), not part of a larger word'
     return None
@@ -178,6 +187,7 @@ class Adapter:
         why = placeholder_problem(cli)
         if why:
             raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
+        self._session_flag_check(cli, {ph for _s, _e, ph, _p in _tokens(cli)})
         return Launch(["sh", "-c", substitute_prompt(cli, prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None) -> Launch:
@@ -189,13 +199,23 @@ class Adapter:
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         raise Unsupported(f"{self.harness}: no native session to hand off")
 
+    def session_flag(self, session_id: str, resume: bool) -> list[str] | None:
+        """The arguments ``{session_flag}`` expands to; ``None`` where the harness has no such flag."""
+        return None
+
+    def _session_flag_check(self, cli: str, named: set[str | None]) -> None:
+        if "{session_flag}" in named and self.session_flag("", False) is None:
+            raise Unsupported(f"channels.cli: {{session_flag}} is defined only for claude-code, not {self.harness}; "
+                              f"use {{session}} with the harness's own flag: {cli}")
+
     def _custom(self, cli: str | None, prompt_path: Path, session_id: str | None = None) -> Launch | None:
         """The roster's own command, when it has the placeholders this call needs.
 
         ``{prompt}`` is the prompt file path; ``{session}`` (optional) is the
-        native session id, and a resume uses the custom command only when it
-        names it, since the default command is the only one that knows the
-        harness's resume flag.
+        native session id and ``{session_flag}`` the harness's argument for it
+        (:meth:`session_flag`). A resume uses the custom command only when it
+        names one of them, since otherwise the default command is the only
+        one that knows the harness's resume flag.
         """
         if not cli:
             return None
@@ -204,13 +224,15 @@ class Adapter:
             # Never fall back to the vendor default: that would silently
             # widen (or change) the permissions the adopter wrote down.
             raise Unsupported(f"channels.cli / access.cli: {why}: {cli}")
-        if session_id is not None and "{session}" not in cli:
+        named = {ph for _s, _e, ph, _p in _tokens(cli)}
+        self._session_flag_check(cli, named)
+        if session_id is not None and not named & _SESSION:
             return None
         # On launch a command that names {session} gets a fresh id, and the
         # record keeps it, so the same command serves `message` / `resume`.
-        sid = session_id if session_id is not None else (str(uuid.uuid4()) if "{session}" in cli else None)
-        text = substitute_prompt(cli, prompt_path, sid)
-        return Launch(["sh", "-c", text], session_id=sid)
+        sid = session_id if session_id is not None else (str(uuid.uuid4()) if named & _SESSION else None)
+        flag = self.session_flag(sid, session_id is not None) if "{session_flag}" in named else None
+        return Launch(["sh", "-c", substitute_prompt(cli, prompt_path, sid, flag)], session_id=sid)
 
 
 class ClaudeCode(Adapter):
@@ -258,6 +280,10 @@ class ClaudeCode(Adapter):
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         return ["claude", "--resume", session_id]
+
+    def session_flag(self, session_id: str, resume: bool) -> list[str] | None:
+        # `--session-id` is refused for a session that exists, so a resume needs `--resume`.
+        return ["--resume", session_id] if resume else ["--session-id", session_id]
 
 
 class Codex(Adapter):
