@@ -46,16 +46,20 @@ from specy_road.runtime_paths import git_root
 
 AGENTS_MD = "AGENTS.md"
 
-#: Codex concatenates the AGENTS.md files from the git root down to the working directory
-#: and truncates them at ``project_doc_max_bytes``, 32 KiB by default:
+#: Codex, per directory from the git root down, takes the first non-empty of
+#: ``AGENTS.override.md`` then ``AGENTS.md`` and truncates the result at
+#: ``project_doc_max_bytes``, 32 KiB by default:
 #: https://developers.openai.com/codex/guides/agents-md
 CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024
-#: "target under 200 lines per CLAUDE.md file": https://code.claude.com/docs/en/memory
+_CODEX_CANDIDATES = ("AGENTS.override.md", AGENTS_MD)
+#: "target under 200 lines per CLAUDE.md file". Loaded from the working directory and
+#: every ancestor, root-down; within a directory ``CLAUDE.local.md`` follows ``CLAUDE.md``:
+#: https://code.claude.com/docs/en/memory
 CLAUDE_MD_TARGET_LINES = 200
-#: A project instruction lives at either path. Either one, anywhere from the git root
-#: down to the working directory, is what Claude Code reads, and it suppresses the
-#: AGENTS.md fallback: https://code.claude.com/docs/en/memory
-_CLAUDE_PROJECT_DOCS = (AGENT_GUIDE, f".claude/{AGENT_GUIDE}")
+_CLAUDE_CANDIDATES = (AGENT_GUIDE, f".claude/{AGENT_GUIDE}", "CLAUDE.local.md")
+#: Read only when no candidate above is present. ``~/.claude/CLAUDE.md`` loads too, but
+#: it does not count toward that check: https://code.claude.com/docs/en/memory
+_CLAUDE_AGENTS_FALLBACK = (AGENTS_MD, f".claude/{AGENTS_MD}")
 _TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
 _H1 = "# Agents — load order\n"
 
@@ -175,29 +179,57 @@ def _measure(path: Path, rel: str) -> InjectedFile:
     return InjectedFile(rel, len(data.splitlines()), len(data), len(own.splitlines()), len(own))
 
 
-def injected_context(project_root: Path) -> tuple[list[InjectedFile], list[InjectedFile]]:
-    """``(Codex, Claude Code)``: the files each injects into a session started in ``project_root``.
+def _dirs_from_root(start: Path) -> list[Path]:
+    """``start`` and every ancestor, filesystem root first."""
+    return list(reversed((start, *start.parents)))
 
-    Both walk from the git root down to the working directory. Claude Code reads
-    ``CLAUDE.md`` and ``.claude/CLAUDE.md``; it reads ``AGENTS.md`` only when
-    neither is on that path.
+
+def _display(path: Path, top: Path) -> str:
+    """Repo-relative inside the checkout; absolute for a file above the git root."""
+    try:
+        return path.relative_to(top).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _present(dirs: list[Path], names: tuple[str, ...]) -> list[Path]:
+    return [d / name for d in dirs for name in names if (d / name).is_file()]
+
+
+def _codex_paths(start: Path, top: Path) -> list[Path]:
+    """One non-empty file per directory: ``AGENTS.override.md``, else ``AGENTS.md``."""
+    chosen = []
+    for d in (d for d in _dirs_from_root(start) if d.is_relative_to(top)):
+        for name in _CODEX_CANDIDATES:
+            path = d / name
+            if path.is_file() and path.stat().st_size > 0:
+                chosen.append(path)
+                break
+    return chosen
+
+
+def _claude_paths(start: Path) -> list[Path]:
+    """Launch-time Claude Code files. A project file suppresses the AGENTS.md fallback.
+
+    ``~/.claude/CLAUDE.md`` is user scope: it is injected, and it does not suppress.
     """
+    dirs = _dirs_from_root(start)
+    claude = _present(dirs, _CLAUDE_CANDIDATES)
+    user = (Path.home() / ".claude" / AGENT_GUIDE).resolve()
+    if any(p.resolve() != user for p in claude):
+        return claude
+    return _present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK))
+
+
+def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
+    return [_measure(p, _display(p, top)) for p in paths]
+
+
+def injected_context(project_root: Path) -> tuple[list[InjectedFile], list[InjectedFile]]:
+    """``(Codex, Claude Code)``: the files each injects into a session started in ``project_root``."""
     project_root = project_root.resolve()
     top = git_root(project_root) or project_root
-    dirs = [d for d in reversed((project_root, *project_root.parents)) if d.is_relative_to(top)]
-
-    def found(rel: str) -> list[InjectedFile]:
-        return [_measure(d / rel, (d / rel).relative_to(top).as_posix())
-                for d in dirs if (d / rel).is_file()]
-
-    agents = found(AGENTS_MD)
-    claude = []
-    for d in dirs:   # root-down; within a directory, CLAUDE.md then .claude/CLAUDE.md
-        for rel in _CLAUDE_PROJECT_DOCS:
-            path = d / rel
-            if path.is_file():
-                claude.append(_measure(path, path.relative_to(top).as_posix()))
-    return agents, claude or agents
+    return _measured(_codex_paths(project_root, top), top), _measured(_claude_paths(project_root), top)
 
 
 def print_injected_context(project_root: Path) -> None:
@@ -219,7 +251,7 @@ def warn_if_context_over_limits(project_root: Path) -> None:
     if total > CODEX_PROJECT_DOC_MAX_BYTES:
         print(
             f"context: warning — {', '.join(f.rel for f in codex)} total {total:,} bytes, and Codex "
-            f"truncates AGENTS.md instructions at {CODEX_PROJECT_DOC_MAX_BYTES:,} (project_doc_max_bytes), "
+            f"truncates project instructions at {CODEX_PROJECT_DOC_MAX_BYTES:,} (project_doc_max_bytes), "
             "so its sessions here never see the rest. Shorten them, or raise project_doc_max_bytes "
             "in ~/.codex/config.toml.",
             file=sys.stderr,

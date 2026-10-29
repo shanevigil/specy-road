@@ -4,16 +4,16 @@
 
 `specy-road validate` now meters the context every agent session pays before its first prompt. After the `OK` line it prints one `context:` line per harness on stdout, listing each instruction file that harness injects into a session started in the project root, with its lines and bytes and those of the specy-road managed section inside it, against the documented limit:
 
-- **Codex** reads every `AGENTS.md` from the git root down to the working directory and truncates them at `project_doc_max_bytes`, 32 KiB by default ([source](https://developers.openai.com/codex/guides/agents-md)). The line shows the combined bytes out of 32,768.
-- **Claude Code** reads `CLAUDE.md` and `.claude/CLAUDE.md` on that path (root-down, and within a directory the direct file then `.claude/CLAUDE.md`), or the `AGENTS.md` files when neither is present. Either Claude location suppresses the `AGENTS.md` fallback. It documents "target under 200 lines per CLAUDE.md file" ([source](https://code.claude.com/docs/en/memory)).
+- **Codex** ([Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md)) walks from the git root down to the working directory. In each directory it takes the first non-empty file of `AGENTS.override.md`, then `AGENTS.md` (empty files are skipped; at most one file per directory), and truncates the combined result at `project_doc_max_bytes`, 32 KiB by default. The line shows the combined bytes out of 32,768. The same page's global layer (`~/.codex`) is outside this project walk.
+- **Claude Code** ([How CLAUDE.md files load](https://code.claude.com/docs/en/memory), and the AGENTS.md section on the same page) loads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory and every ancestor, filesystem root down. A file above the git root is reported by its absolute path. Any of those, other than `~/.claude/CLAUDE.md`, suppresses the fallback; `~/.claude/CLAUDE.md` is still injected and loads alongside it. The fallback is every `AGENTS.md` and `.claude/AGENTS.md` on that same walk. The documented target is under 200 lines per file.
 
-When a limit is exceeded (combined `AGENTS.md` over 32,768 bytes; any file Claude Code reads at 200 lines or more, since the target is under 200), `validate` prints a `context: warning —` line on stderr naming the file and what to do. It is a warning like the others, so `validate --strict` fails on it (A1, A2).
+When a limit is exceeded (the selected Codex files over 32,768 bytes; any file Claude Code reads at 200 lines or more), `validate` prints a `context: warning —` line on stderr naming that file. An ignored sibling, such as an `AGENTS.md` next to a non-empty `AGENTS.override.md`, is neither reported nor warned. The warning is like the others, so `validate --strict` fails on it (A1, A2).
 
-On this repository's nested `sr/` layout:
+On this repository's nested `sr/` layout the Claude line now includes the checkout's ancestor `CLAUDE.md`, which sits above this worktree's git root:
 
 ```text
 context: Codex reads AGENTS.md 57 lines, 6,056 bytes; sr/AGENTS.md 54 lines, 7,632 bytes (specy-road section 52 lines, 7,606 bytes) — 13,688 of its 32,768-byte project_doc_max_bytes budget
-context: Claude Code reads CLAUDE.md 113 lines, 7,973 bytes — target under 200 lines per file
+context: Claude Code reads /Users/savigil/WORKSPACE/specy-road/CLAUDE.md 113 lines, 7,973 bytes; CLAUDE.md 113 lines, 7,973 bytes — target under 200 lines per file
 ```
 
 I chose `validate` over a new `context show` command because `specy_road/cli.py` is outside the touch zones. The report is printed only by the `validate` command, not by the other `validate_at` callers (pickup, `add-node`, `upgrade`), so their output does not change. The warning sits in `validate_at` next to the other agent-guide warnings, so it reaches those callers the same way `warn_if_agents_md_block_stale` does.
@@ -35,22 +35,24 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK
 - Manual: `python -m specy_road.cli validate --repo-root sr` (output above)
 - Review round 1: `python -m pytest -q tests/test_agents_md_block.py tests/test_validate_strict.py` — 15 passed; `specy-road file-limits` — OK
+- Review round 2: the same pytest command — 19 passed; `specy-road file-limits` — OK
 
 ## Walkthrough
 
 1. Run `specy-road validate` in any project and read the two `context:` lines after `OK`.
-2. Write 200 lines to `CLAUDE.md` (or to `.claude/CLAUDE.md`), or pad `AGENTS.md` past 32,768 bytes, and run it again: a `context: warning —` line appears and `validate --strict` exits 1.
+2. Write 200 lines to a `CLAUDE.md` above the git root, or to `CLAUDE.local.md`, or put a non-empty `AGENTS.override.md` past 32,768 bytes next to an `AGENTS.md`: a `context: warning —` line names that file and `validate --strict` exits 1. The sibling `AGENTS.md` is not named.
 
 ## Added
 
 - `CODEX_PROJECT_DOC_MAX_BYTES`, `CLAUDE_MD_TARGET_LINES`: the documented limits, as constants with their source URLs (the planning sheet's Approach).
 - `InjectedFile` + `describe()`: one measured file and its specy-road section, and the text the report prints for it.
 - `_measure`: reads one file's lines and bytes and its managed section's lines and bytes (reuses `managed_block._split`).
-- `injected_context`: which files each harness reads, from the git root down to the project root (reuses `runtime_paths.git_root`).
-- `_CLAUDE_PROJECT_DOCS`: the two project-instruction paths, `CLAUDE.md` and `.claude/CLAUDE.md` (review round 1; vendor docs).
-- Branch `claude or agents`: Claude Code reads `AGENTS.md` only when neither project-instruction path is present. A `.claude/CLAUDE.md` anywhere on the path suppresses the fallback, same as a direct `CLAUDE.md`.
-- Loop over `_CLAUDE_PROJECT_DOCS` per directory: root-down, and within a directory the direct file before `.claude/CLAUDE.md`, which is the documented load order. Both are measured, managed section included.
-- Branch `git_root(...) or project_root`: a project outside a git repository measures only its own directory.
+- `injected_context`: dispatches to the two walks below (reuses `runtime_paths.git_root` as Codex's ceiling only).
+- `_CODEX_CANDIDATES`, `_codex_paths`: per directory, first non-empty of `AGENTS.override.md` then `AGENTS.md`. The size check is the documented skip of empty files (review round 2).
+- `_CLAUDE_CANDIDATES`, `_CLAUDE_AGENTS_FALLBACK`, `_claude_paths`: ancestor walk from the filesystem root, the three Claude filenames, and the `AGENTS.md` / `.claude/AGENTS.md` fallback (review round 2). Replaces `_CLAUDE_PROJECT_DOCS`, which stopped at the git root.
+- Branch `any(p.resolve() != user ...)`: a project Claude file suppresses the fallback; `~/.claude/CLAUDE.md` does not, and is still listed (same page, "Don't count").
+- `_dirs_from_root`, `_present`, `_display`, `_measured`: the shared walk, the filename filter, absolute paths above the git root, and measurement.
+- Branch `git_root(...) or project_root`: outside a git repository Codex measures only that directory. Claude still walks its ancestors.
 - Branches `if codex:` / `if claude:` in the report: no line for a harness that reads no file.
 - Branch `if self.block_size` in `describe`: no section clause for a file without a specy-road block (for example a git-root `AGENTS.md` in a nested layout).
 - `print_injected_context`: the A1 report, called from `validate`'s `main`.
@@ -58,6 +60,10 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - Test `test_context_meter_reports_what_each_harness_reads`: the exact report for a nested layout (both `AGENTS.md` files for Codex; Claude Code falling back to them, then switching to `CLAUDE.md`).
 - Test `test_context_warnings_fire_only_past_a_documented_limit`: no warning at exactly 32,768 bytes and at 199 lines; one warning each at 32,769 bytes and at 200 lines (review round 1 moved the Claude boundary from 201).
 - Test `test_dot_claude_claude_md_suppresses_the_agents_fallback`: with only `.claude/CLAUDE.md` as a Claude file (and an `AGENTS.md` present), Claude Code's line reports that file and its managed section, and Codex's line still reports `AGENTS.md`.
+- Test `test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents`: an ancestor `CLAUDE.md` and a `CLAUDE.local.md` are reported and suppress both `AGENTS.md` files; removing them makes the line report `AGENTS.md` and `.claude/AGENTS.md` (review round 2).
+- Test `test_user_claude_md_loads_beside_agents_md`: with `HOME` pointed at the fixture, `~/.claude/CLAUDE.md` appears on the Claude line together with `AGENTS.md`.
+- Test `test_codex_meters_a_nonempty_override_instead_of_agents_md`: an empty override leaves the over-budget `AGENTS.md` as the measured and warned file; a non-empty override replaces it in both the report and the warning (review round 2).
+- Test `test_strict_warns_when_an_ancestor_claude_file_hits_200_lines`: public `validate --strict` is clean at 199 lines of an ancestor `CLAUDE.md` and exits 1 at 200, naming that file (review round 2).
 - Test parametrization of `test_strict_fails_a_validation_that_warned` with `_overlong_claude_md`: `validate` itself emits the warning and `--strict` fails on it. The existing acceptance case is kept as the other parameter, so `_scaffold` lost its `acceptance` flag and that edit moved into `_clear_acceptance`.
 - Assertions added to `test_strict_passes_a_fresh_scaffold`: the `validate` command prints both `context:` lines, and a fresh scaffold stays warning-free.
-- Mocks: none.
+- Mocks: none. `test_user_claude_md_loads_beside_agents_md` sets `HOME` so `Path.home()` is the fixture; it does not patch a production name.

@@ -56,6 +56,21 @@ def test_strict_fails_a_validation_that_warned(tmp_path: Path, spoil, warning: s
     assert "OK: roadmap and registry validate." in r.stdout
 
 
+def test_strict_warns_when_an_ancestor_claude_file_hits_200_lines(tmp_path: Path) -> None:
+    """A CLAUDE.md above the git root is injected; 199 lines is under the target, 200 is not."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    _scaffold(root)
+    ancestor = tmp_path / "CLAUDE.md"
+    ancestor.write_text("- rule\n" * 199, encoding="utf-8")
+    assert _validate(root, "--strict").returncode == 0
+
+    ancestor.write_text("- rule\n" * 200, encoding="utf-8")
+    r = _validate(root, "--strict")
+    assert r.returncode == 1
+    assert f"{ancestor.resolve().as_posix()} is 200 lines" in r.stderr
+
+
 def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:
     """The scaffold's sample task carries acceptance criteria, so a new project starts clean."""
     root = _scaffold(tmp_path)

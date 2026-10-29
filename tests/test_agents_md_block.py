@@ -186,6 +186,70 @@ def test_dot_claude_claude_md_suppresses_the_agents_fallback(tmp_path: Path, cap
     )
 
 
+def test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents(tmp_path: Path, capsys) -> None:
+    """Above the git root, CLAUDE.local.md, and .claude/AGENTS.md are launch-time files."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    above = tmp_path / "CLAUDE.md"
+    above.write_text("# above\n", encoding="utf-8")
+    (repo / "CLAUDE.local.md").write_text("# local\n", encoding="utf-8")
+    (repo / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+    (repo / ".claude").mkdir()
+    (repo / ".claude" / AGENTS_MD).write_text("# nested\n", encoding="utf-8")
+
+    print_injected_context(repo)
+    claude = capsys.readouterr().out.splitlines()[1]
+    assert above.resolve().as_posix() in claude
+    assert "CLAUDE.local.md 1 lines" in claude
+    assert "AGENTS.md" not in claude
+
+    above.unlink()
+    (repo / "CLAUDE.local.md").unlink()
+    print_injected_context(repo)
+    claude = capsys.readouterr().out.splitlines()[1]
+    assert claude.startswith("context: Claude Code reads AGENTS.md ")
+    assert ".claude/AGENTS.md 1 lines" in claude
+
+
+def test_user_claude_md_loads_beside_agents_md(tmp_path: Path, monkeypatch, capsys) -> None:
+    """``~/.claude/CLAUDE.md`` is injected and does not suppress the AGENTS.md fallback."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    user = tmp_path / ".claude" / AGENT_GUIDE
+    user.parent.mkdir()
+    user.write_text("# user\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+
+    print_injected_context(repo)
+    claude = capsys.readouterr().out.splitlines()[1]
+    assert user.resolve().as_posix() in claude
+    assert "AGENTS.md " in claude
+
+
+def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, capsys) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    agents, override = tmp_path / AGENTS_MD, tmp_path / "AGENTS.override.md"
+    agents.write_text("x" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
+    override.write_text("", encoding="utf-8")
+    print_injected_context(tmp_path)
+    warn_if_context_over_limits(tmp_path)
+    out, err = capsys.readouterr()
+    assert out.splitlines()[0].startswith("context: Codex reads AGENTS.md ")
+    assert err.startswith("context: warning — AGENTS.md total")
+
+    override.write_text("y" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
+    print_injected_context(tmp_path)
+    warn_if_context_over_limits(tmp_path)
+    out, err = capsys.readouterr()
+    assert out.splitlines()[0].startswith("context: Codex reads AGENTS.override.md ")
+    assert "AGENTS.md " not in out.splitlines()[0]
+    assert err.startswith("context: warning — AGENTS.override.md total")
+    assert "AGENTS.md" not in err
+
+
 def test_block_text_is_the_full_rule_set() -> None:
     text = "\n".join(render_agents_lines())
     for needle in ("### Load order", "## Finding things", "**Task pickup:**", "**Review roles:**",
