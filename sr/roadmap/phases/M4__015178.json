@@ -2,6 +2,7 @@
   "nodes": [
     {
       "acceptance": [
+        "First, fold the two review-loop RCA research reports (/Users/savigil/WORKSPACE/specy-road/work/research-reports/openai-review-loop-rca.md and claude-review-loop-rca.md, untracked, read by absolute path) into docs/design-notes/review-loop-rca.md: where they agree, the trigger thresholds and signals adopted, the RCA protocol and record schema adopted, and what is deferred; the remaining criteria follow that note and may be adjusted to it",
         "handoff status and review list detect non-convergence from the leaf's review records: 3 consecutive blocking reviews citing the same acceptance id, or 5 review rounds in total (both thresholds configurable in roadmap/orchestration.yaml policy)",
         "When triggered, handoff status reports escalated and names the trigger; prompt --role rca builds a root-cause prompt from the leaf's review history, brief, acceptance and diffs, asking for a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence and the cheapest corrective action, including a proposed acceptance rewrite when the class is specification",
         "The RCA result is a record under work/reviews/<ID>/ validated against a schema; until one exists for the current trigger, review prompts for that leaf say the loop is escalated",
@@ -29,7 +30,8 @@
         "specy_road/templates/specyrd/commands/",
         "docs/orchestration.md",
         "docs/pm-llm-review.md",
-        "tests/"
+        "tests/",
+        "docs/design-notes/review-loop-rca.md"
       ],
       "type": "task"
     }
