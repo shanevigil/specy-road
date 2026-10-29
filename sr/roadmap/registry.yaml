@@ -32,3 +32,20 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: executor-blocked-on
+    node_id: M9.4
+    branch: feature/rm-executor-blocked-on
+    touch_zones:
+      - specy_road/schemas/handoff.schema.json
+      - specy_road/templates/project/work/handoff-ready.template.md
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/review_files.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/templates/specyrd/commands/specyrd-handoff-status.md
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
