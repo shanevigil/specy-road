@@ -8,10 +8,15 @@ Eligible-task order within each tier follows ``ordered_tree_rows`` (outline /
 ``sibling_order``), not merged JSON chunk list order. With ``prefer_agentic``,
 each tier is ordered by execution milestone first (:data:`EXECUTION_PICK_RANK`)
 and outline second.
+
+:func:`run_baseline_gate` is the one pre-pickup check that is not about which
+leaf: whether the synced integration branch is healthy enough to branch from.
 """
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -19,7 +24,9 @@ from specy_road.bundled_scripts.roadmap_gui_lib import load_settings, registry_b
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.bundled_scripts.roadmap_gui_remote import build_registry_enrichment, enrichment_is_mr_rejected
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, ordered_tree_rows
+from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean
 from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
+from specy_road.git_workflow_config import resolve_baseline_cmd
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
 
@@ -31,6 +38,44 @@ EXECUTION_PICK_RANK = {"Agentic-led": 0, "Mixed": 1, None: 2, "Human-led": 3}
 
 def execution_pick_rank(node: dict) -> int:
     return EXECUTION_PICK_RANK.get(node.get("execution_milestone"), EXECUTION_PICK_RANK[None])
+
+
+def run_baseline_gate(
+    repo_root: Path, base: str, *, cli: str | None, warn_only: bool
+) -> None:
+    """Run the baseline command on ``base`` before a leaf is claimed from it.
+
+    A red integration branch is inherited by every leaf picked from it, and the
+    agent implementing that leaf then "fixes" failures it did not cause. Exit 1
+    when the command fails, unless ``warn_only``. Exit 1 either way when it left
+    changes outside ``work/``: the claim would carry them onto the feature branch.
+    """
+    cmd = resolve_baseline_cmd(repo_root, cli=cli)
+    if not cmd:
+        return
+    print(f"baseline on {base}: {cmd}")
+    rc = subprocess.run(cmd, shell=True, cwd=repo_root).returncode
+    assert_working_tree_clean(
+        repo_root,
+        "The baseline command changed files; it must only check, never write.",
+        except_work=True,
+    )
+    if rc == 0:
+        return
+    if warn_only:
+        print(
+            f"warning: baseline failed on {base!r} (exit {rc}); picking up anyway "
+            "(--baseline-warn). The leaf starts from a red base.",
+            file=sys.stderr,
+        )
+        return
+    print(
+        f"error: baseline failed on {base!r} (exit {rc}); no leaf was claimed.\n"
+        f"  Fix {base!r} first, so the next leaf does not inherit the failure, "
+        "or pass --baseline-warn to pick up anyway.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:

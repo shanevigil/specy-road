@@ -11,6 +11,7 @@ from specy_road.bundled_scripts.do_next_available import (
     _load_branch_enrichment,
     _statuses_by_node_key,
     interactive_deps_blocked_entries,
+    run_baseline_gate,
 )
 from specy_road.bundled_scripts.do_next_prompt import (
     print_pickup_header,
@@ -382,6 +383,7 @@ def main(argv: list[str] | None = None) -> None:
         prefer_agentic_cli=args.prefer_agentic,
     )
     _assert_current_branch_equals(base)
+    run_baseline_gate(ROOT, base, cli=args.baseline_cmd, warn_only=args.baseline_warn)
     node = _pick_node(args, nodes, reg, available, integration_statuses)
     branch = f"feature/rm-{node['codename']}"
     on_complete = prompt_on_complete(ROOT, args.on_complete)

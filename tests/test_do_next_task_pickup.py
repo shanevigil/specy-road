@@ -308,3 +308,65 @@ def test_pickup_commit_without_ci_skip_tokens(monkeypatch: pytest.MonkeyPatch, t
 
     assert calls[1][0] == "commit"
     assert calls[1][2] == "chore(rm-pickup-git): register as in-progress"
+
+
+# ---------------------------------------------------------------------------
+# Baseline gate (--baseline-cmd): runs on the base, before anything is claimed
+# ---------------------------------------------------------------------------
+
+
+def _baseline_harness(monkeypatch, tmp_path, order: list[str]) -> None:
+    node = _pickup_test_node()
+    (tmp_path / "roadmap").mkdir(parents=True)
+    (tmp_path / "roadmap" / "registry.yaml").write_text(
+        "version: 1\nentries: []\n", encoding="utf-8"
+    )
+    (tmp_path / "work").mkdir()
+    monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": [node]})
+    monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
+    monkeypatch.setattr(dnt, "sync_integration_branch",
+                        lambda *_a, **_k: order.append("sync"))
+    monkeypatch.setattr(dnt, "_assert_current_branch_equals",
+                        lambda _b: order.append("on-base"))
+    monkeypatch.setattr(dnt, "_push_integration_branch", lambda _r, _b: None)
+    monkeypatch.setattr(dnt, "git_run", lambda _root, *a: order.append(f"git {a[0]}"))
+    monkeypatch.setattr(dnt, "prompt_on_complete", lambda _root, _cli: "pr")
+    monkeypatch.setattr(dnt, "merge_request_requires_manual_approval", lambda _r: False)
+    monkeypatch.setattr(
+        dnt, "resolve_integration_defaults",
+        lambda _root, explicit_base=None, explicit_remote=None: ("main", "origin", []),
+    )
+    monkeypatch.setattr(dnt, "_write_brief", lambda n, nodes: tmp_path / "work" / "b.md")
+    monkeypatch.setattr(dnt, "write_agent_prompt",
+                        lambda n, nodes, bp, **kw: tmp_path / "work" / "p.md")
+
+
+def test_pickup_runs_baseline_on_base_before_registering(monkeypatch, tmp_path) -> None:
+    order: list[str] = []
+    seen: list[tuple] = []
+    _baseline_harness(monkeypatch, tmp_path, order)
+
+    def fake_gate(root, base, *, cli, warn_only):
+        seen.append((base, cli, warn_only))
+        order.append("baseline")
+
+    monkeypatch.setattr(dnt, "run_baseline_gate", fake_gate)
+    dnt.main(["--repo-root", str(tmp_path), "--baseline-cmd", "make test",
+              "--baseline-warn"])
+    assert seen == [("main", "make test", True)]
+    assert order.index("sync") < order.index("on-base") < order.index("baseline")
+    assert order.index("baseline") < order.index("git add")
+
+
+def test_pickup_refused_by_baseline_claims_nothing(monkeypatch, tmp_path) -> None:
+    order: list[str] = []
+    _baseline_harness(monkeypatch, tmp_path, order)
+
+    def failing_gate(*_a, **_k):
+        raise SystemExit(1)
+
+    monkeypatch.setattr(dnt, "run_baseline_gate", failing_gate)
+    with pytest.raises(SystemExit):
+        dnt.main(["--repo-root", str(tmp_path), "--baseline-cmd", "false"])
+    assert not [c for c in order if c.startswith("git ")]
+    assert "entries: []" in (tmp_path / "roadmap" / "registry.yaml").read_text()
