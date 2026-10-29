@@ -392,7 +392,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.13_specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes_9bd48271-4b15-475a-b3a1-3fae67e10fb7.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",

@@ -89,19 +89,3 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes
-    node_id: M4.13
-    branch: feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes
-    touch_zones:
-      - specy_road/bundled_scripts/doctor.py
-      - specy_road/bundled_scripts/branches_cli.py
-      - specy_road/feature_rm_registry.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/templates/specyrd/commands/
-      - docs/git-workflow.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T06:11:45+00:00'
