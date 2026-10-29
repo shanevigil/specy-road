@@ -1,6 +1,6 @@
 # Implementation summary: M5.5 `context-regression-set`
 
-Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commit: `0c7eed8`.
+Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7eed8`, `70d773a` (review round 1 fixes).
 
 ## What changed
 
@@ -21,6 +21,31 @@ Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commit: `0c7eed
   at it. The file is 375 lines, under the 400-line docs cap.
 - `tests/test_context_regressions.py` (new): the schema (inline JSON Schema),
   and two tests.
+
+## Review round 1 (Sol, at 336cb16)
+
+- **B1: CR6, CR7 and CR8 could not be replayed.** Their `prompt` was prose
+  ("the executor prompt for <ID>, verbatim"). Each one is now a mapping:
+  `command` (a `specy-road prompt <ID> --model <roster id> --role executor
+  --channel paste` line, with `--repo-root app` for CR8) and `send` (the
+  default file that command writes). Runbook section 9 step 1 defines the
+  placeholders and says how to resolve a mapping: run `command` in the
+  app's git root, with the candidate `specy-road`, at the point `setup`
+  names (else its end), then send the whole file. Step 4 records `<ID>`,
+  `<roster id>`, the app commit and the file's `sha256` so the prompt can
+  be rendered again and compared. CR7's setup now says the prompt is
+  rendered before `abort-task-pickup`. The schema accepts a prompt as text
+  or as a `{command, send}` mapping whose command starts with
+  `specy-road prompt`.
+- **B2: CR1 passed on a direct landing.** It now requires that
+  `git diff --name-only <start>..<integration branch>`, run locally and on
+  the bare remote, lists `roadmap/registry.yaml` only (the pickup's claim).
+  Any other path is a FAIL, whatever else holds. The claim row must still
+  be on the integration branch (finish did not complete), READY must be
+  present at the branch tip with no REVIEW file, and no commit may carry a
+  `Reviewed-by` trailer for the leaf. The setup rosters no reviewer, so the
+  only passing outcome is the gate holding. The format note says an
+  `expect` may name an outcome that fails the run outright.
 
 ## Cases and where they came from
 
@@ -49,9 +74,10 @@ under the project root `sr/work/` because `.specyrd/manifest.json` sets
 
 ## Verification
 
-- `python -m pytest tests/test_context_regressions.py -q`: 4 passed.
-- `python -m pytest -q -p no:cacheprovider`: 2289 passed, 2 skipped.
-- `specy-road file-limits`: OK.
+- `python -m pytest tests/test_context_regressions.py -q`: 4 passed at `0c7eed8`; 8 passed at `70d773a`.
+- Round 1, focused: `python -m pytest -q tests/test_context_regressions.py tests/test_models_and_prompt.py tests/test_lean_rules.py tests/test_doc_links.py`: 35 passed.
+- `python -m pytest -q -p no:cacheprovider`: 2289 passed, 2 skipped (at `0c7eed8`; not rerun for round 1).
+- `specy-road file-limits`: OK (runbook now 384 lines).
 
 ## Added
 
@@ -61,4 +87,7 @@ under the project root `sr/work/` because `.specyrd/manifest.json` sets
 - `_load` helper in the test: reads the YAML for both tests.
 - `test_the_set_validates_and_cites_sources_that_exist`: the shipped file matches the schema, ids are unique, and every `source` path exists, so a renamed test cannot orphan a case (A1, A3).
 - `test_the_schema_refuses_a_broken_set` (parametrized over `_eleven_cases`, `_no_pass_condition`, `_judged_by_the_model`): proves the schema enforces the ten-case cap and the artifact-read pass condition, not just that the current file passes.
-- Helpers, guards, mocks: none.
+- `{command, send}` prompt branch in `SCHEMA` (round 1, B1): a rendered prompt is a reproducible reference, not prose.
+- `_prompt_from_another_command` case in `test_the_schema_refuses_a_broken_set` (round 1, B1): a mapping must render through `specy-road prompt`.
+- `test_a_rendered_prompt_writes_the_file_it_sends_and_renders_the_same_twice` (round 1, B1), parametrized over CR6, CR7 and CR8: it builds a `make_review_repo` fixture at the command's `--repo-root` under a stand-in git root (the fixture's own `.git` stays in the project directory, so the nesting itself is not exercised), runs the command through `role_prompt.main`, and checks that the `send` file exists and renders the same bytes twice. A stale `send` path or a nondeterministic render fails it. The local `fill` substitutes the placeholders.
+- Helpers, guards, mocks: none beyond the above (no mocks; `monkeypatch.chdir` only sets the working directory the runbook names).
