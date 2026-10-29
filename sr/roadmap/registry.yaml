@@ -97,6 +97,8 @@ entries:
     node_id: M3.13
     branch: feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
     touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_gate.py
       - specy_road/bundled_scripts/review_packet.py
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
       - specy_road/bundled_scripts/finish_task.py

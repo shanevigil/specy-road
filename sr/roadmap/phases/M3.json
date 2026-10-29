@@ -440,7 +440,9 @@
         "specy_road/git_subprocess.py",
         "docs/orchestration.md",
         "docs/dev-workflow.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py"
       ],
       "type": "task"
     }
