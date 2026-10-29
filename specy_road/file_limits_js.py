@@ -254,7 +254,6 @@ def _arrow_body(s: str, j: int) -> int | None:
     if _ch(s, j) == "<":
         j = _ws(s, _angles_end(s, j))
     if _ch(s, j) == "(":
-        # `((x) => body)` is grouped; `(x) => body` is the parameter list.
         close, inner = _close(s, j), _arrow_body(s, j + 1)
         if inner is not None and inner < close and not s.startswith("=>", _ws(s, close + 1)):
             return inner
@@ -273,7 +272,7 @@ def _arrow_body(s: str, j: int) -> int | None:
 
 
 def _body_end(s: str, j: int) -> int:
-    """Index of the last character of the function body starting at ``j``."""
+    """Index of the last character of the expression or function body starting at ``j``."""
     if s[j] == "{":
         return _close(s, j)
     last = j
@@ -281,6 +280,8 @@ def _body_end(s: str, j: int) -> int:
         c = s[j]
         if c in _OPEN:
             last = j = _close(s, j)
+        elif c == "<" and (end := _angles_end(s, j)) < len(s) and "{" not in s[j:end] and ";" not in s[j:end]:
+            last, j = end - 1, end; continue  # `Map<string, number>`; a comparison has no such `>`
         elif c in ";,)]}":
             break
         elif c == "\n":

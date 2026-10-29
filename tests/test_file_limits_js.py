@@ -62,6 +62,8 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
         ("declarators.ts", [("clamp", 1, 5), ("twice", 7, 1), ("reset", 7, 3)]),
         # A grouped initializer `((x) => { … })` is the arrow, not a parameter list.
         ("parenthesized.ts", [("wrapped", 1, 5), ("after", 6, 1)]),
+        # The comma in `Map<string, number>` does not end the declarator list.
+        ("generic_declarator.ts", [("oversized", 1, 5), ("after", 6, 1)]),
         # A typed arrow field keeps its name: `onChange: (x) => T = (x) => { … }`.
         ("typed_field.ts", [("Handler.onChange", 2, 5)]),
         # An apostrophe or quote in JSX text is not a string; the following function stays separate.
@@ -115,6 +117,8 @@ def test_scan_reports_over_cap_js_function_with_line(tmp_path: Path, suffix: str
         ("parenthesized.ts", "parenthesized.ts:1 function `wrapped` 5 lines"),
         # The report names `onChange`, not the `number` in its type.
         ("typed_field.ts", "typed_field.ts:2 function `Handler.onChange` 5 lines"),
+        # `new Map<string, number>(), oversized = () =>` still reports `oversized`.
+        ("generic_declarator.ts", "generic_declarator.ts:1 function `oversized` 5 lines"),
     ],
 )
 def test_scan_measures_concise_arrows_regexes_and_divisions(
@@ -143,6 +147,7 @@ def test_js_function_hard_alert(tmp_path: Path) -> None:
     [
         ("arrow.tsx", "arrow.tsx:3 function `Badge` 5 lines"),
         ("computed_method.ts", "computed_method.ts:4 function `Bag.[Symbol.iterator]` 5 lines"),
+        ("generic_declarator.ts", "generic_declarator.ts:1 function `oversized` 5 lines"),
     ],
 )
 def test_validator_does_not_print_ok_with_over_cap_ts_function(
