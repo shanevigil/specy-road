@@ -270,6 +270,7 @@ Use the terminal in the **repo root**. The main program is `**specy-road`** foll
 | `specy-road add-dependency M0.1.1 <NODE_KEY>`     | Append one **node_key** dependency if it is not already listed.                                                                            |
 | `specy-road remove-dependency M0.1.1 <NODE_KEY>`  | Remove one **node_key** dependency if present.                                                                                               |
 | `specy-road brief M0.1.1`                          | Show the same “brief” a developer sees for that item (good for spot checks). The brief carries `## 6. Dependency context (intent of upstream work)` with each effective dep's `## Intent` block — review it before authoring the planning sheet so you don't restate dep prose. |
+| `specy-road refresh-stubs --diff`                  | Preview a stub refresh after upgrading: a unified diff of every stub, skill, `.specyrd/README.md` and managed block (`AGENTS.md`, `CLAUDE.md`, `.gitignore`, `.cursorindexingignore`) it would change. Writes nothing (implies `--dry-run`). See [Keeping a consumer repo current](install-and-usage.md#keeping-a-consumer-repo-current-after-an-upgrade). |
 
 **Global option:** `--repo-root DIR` (must come **before** the command) if the project is not the current folder.
 
