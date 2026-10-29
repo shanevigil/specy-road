@@ -7,6 +7,24 @@ file-limit overruns back under the caps without changing behaviour, rewrote the 
 tests to use public APIs (the private-import gate flagged six new references), and wrote
 this summary.
 
+## Review round 1 (Sol, at `2e421bb`)
+
+- I merged `origin/WIP/improvements-0-3-1` (`7e87da1`) first. It includes the
+  coordinator's fix to the touch zones (B1): the schema zone is now project-relative.
+- **R1:** `session_plan.py` re-exports `session_plan_to_dict` from
+  `session_plan_render`, and an `__all__` now lists the public names (`BlockedLeaf`,
+  `SessionPlan`, `UnauthoredLeaf`, `Wave`, `compute_session_plan`,
+  `session_plan_to_dict`). To avoid an import cycle, `session_plan_render` imports
+  `SessionPlan` only under `TYPE_CHECKING` (it is used only in annotations, and the
+  module has `from __future__ import annotations`). Both import orders work in a fresh
+  interpreter and return the same function object. `grind_session.py` imports from
+  `session_plan` again, as it did at the base.
+- **T1:** the three pre-existing tests (`test_session_plan.py`,
+  `test_unauthored_leaf_guard.py`, `test_archive_dependencies.py`) are back to
+  importing `session_plan_to_dict` from `specy_road.bundled_scripts.session_plan`. They
+  now match WIP exactly. The new `test_pick_ordering.py` keeps importing it from
+  `session_plan_render`.
+
 ## Acceptance
 
 - **A1** — `do-next-available-task --prefer-agentic` (or `prefer_agentic_pick_order: true` in
@@ -46,8 +64,8 @@ this summary.
 - `session_plan_render.py`: the Next auto-pick line now shows the execution milestone.
   **`session_plan_to_dict` moved here from `session_plan.py`** without changes. That
   module's docstring says it exists to keep `session_plan.py` under the line cap, and
-  `session_plan.py` was at 411 lines (cap 400). Importers updated: `grind_session.py`
-  and four tests.
+  `session_plan.py` was at 411 lines (cap 400). `session_plan.py` re-exports it, so the
+  public import path and its importers are unchanged (review round 1).
 - `grind_session_args.py` and `grind_session.py`: add the option. **`_pickup_args` /
   `_finish_args` moved without changes into `grind_session_args.py`** as `pickup_args` /
   `finish_args`, because `grind_session.py` was at 408 lines (cap 400).
@@ -83,6 +101,11 @@ Every path I changed is inside the listed zones. I did not edit
 - `ruff check specy_road tests`: All checks passed
 - `specy-road file-limits`: OK (all five overruns at `b02aebc` are fixed; the base was clean)
 - `specy-road validate` / `export --check --repo-root tests/fixtures/specy_road_dogfood`: OK
+- Round 1, after merging WIP `7e87da1`:
+  - Focused tests (the list above plus `test_orchestrate*`): 307 passed, 2 skipped.
+  - `tests/test_review_round6_evidence.py`: 14 passed (fixed on WIP).
+  - `scripts/check_test_private_imports.py`: 117 current, 118 baselined, 0 new. It also lists a stale baseline entry for `review_packet._changed`; that is WIP's round6 fix, not this leaf.
+  - `specy-road file-limits`, `ruff check specy_road tests scripts`, and validate/export on the fixture: OK.
 
 ## Added
 
@@ -97,7 +120,8 @@ Every path I changed is inside the listed zones. I did not edit
 - `_render_next_pick` falls back to `no execution milestone` when the leaf has none, and adds the order note only when `prefer_agentic` is on.
 
 ### Moves (no behaviour change)
-- `session_plan_to_dict` moved from `session_plan.py` to `session_plan_render.py`, because of the 400-line file cap.
+- `session_plan_to_dict` moved from `session_plan.py` to `session_plan_render.py`, because of the 400-line file cap. `session_plan.py` re-exports it and lists it in `__all__`, so the public path still works (R1).
+- `TYPE_CHECKING` guard on `session_plan_render`'s `SessionPlan` import: breaks the cycle that the re-export would otherwise create (R1).
 - `_pickup_args` / `_finish_args` moved from `grind_session.py` to `grind_session_args.py` (re-imported under the old names), because of the 400-line file cap.
 
 ### Mocks
