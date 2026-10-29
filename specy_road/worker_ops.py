@@ -159,7 +159,7 @@ def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
     """The executor's precondition wants ``work/brief-<id>.md`` under **its** tree's project root (the
     prompt names it from the git root in the nested layout), and ``work/`` may be gitignored."""
-    dest = (git_root(wt) or wt) / project_prefix(repo_root) / "work" / f"brief-{node_id}.md"
+    dest = git_root(wt) / project_prefix(repo_root) / "work" / f"brief-{node_id}.md"   # wt is a checked git tree
     if dest.is_file():
         return
     src = repo_root / "work" / f"brief-{node_id}.md"

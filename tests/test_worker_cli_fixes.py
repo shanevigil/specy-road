@@ -181,3 +181,35 @@ def test_nested_delegate_puts_the_brief_under_the_worktrees_project_root(tmp_pat
     again, created = ops.delegate(project, "M1.1", "opus")   # its own untracked brief is bookkeeping
     assert created and Path(again.worktree) == wt
     wait_for_worker(project, again.worker_id)
+
+
+def test_nested_delegate_counts_only_the_projects_work_as_bookkeeping(tmp_path: Path) -> None:
+    top, project = _nested(tmp_path)
+    git(top, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(top, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    stray = wt / "work" / "implementation-summary-M1.1.md"   # the git root's work/, outside sr/
+    stray.parent.mkdir()
+    stray.write_text("wrong place\n")
+    with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*work/implementation-summary-M1\.1\.md"):
+        ops.delegate(project, "M1.1", "opus", worktree=wt)
+    stray.unlink()
+    (wt / "sr" / "work").mkdir(parents=True, exist_ok=True)
+    (wt / "sr" / "work" / "implementation-summary-M1.1.md").write_text("right place\n")
+    rec, created = ops.delegate(project, "M1.1", "opus", worktree=wt)
+    assert created
+    wait_for_worker(project, rec.worker_id)
+
+
+def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_path: Path) -> None:
+    top, project = _nested(tmp_path)   # the claim's branch is checked out here: the worker runs in sr/
+    rec, created = ops.delegate(project, "M1.1", "opus")
+    assert created and Path(rec.worktree) == project
+    wait_for_worker(project, rec.worker_id)
+    (top / "work").mkdir()
+    (top / "work" / "implementation-summary-M1.1.md").write_text("wrong place\n")
+    (project / "work" / "implementation-summary-M1.1.md").write_text("right place\n")
+    _rec, delta = ops.reconcile(project, rec.worker_id)
+    assert "work/implementation-summary-M1.1.md" in delta["outside_touch_zones"]
+    assert "sr/work/implementation-summary-M1.1.md" in delta["changed"]
+    assert "sr/work/implementation-summary-M1.1.md" not in delta["outside_touch_zones"]

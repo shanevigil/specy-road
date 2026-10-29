@@ -49,7 +49,9 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
     # Both sides of a rename or copy: a `git mv` into the zone is also a
     # deletion outside it.
     changed = diff_paths(worktree, since_sha) or []
-    untracked = git_text(["ls-files", "--others", "--exclude-standard"], worktree) or ""
+    # Named from the git root over the whole repo, as `git diff` names them: the
+    # worktree may be a nested project root, where plain ls-files is directory-relative.
+    untracked = git_text(["ls-files", "--others", "--exclude-standard", "--full-name", "--", ":(top)"], worktree) or ""
     return sorted(set(changed) | {p for p in untracked.splitlines() if p.strip()})
 
 
@@ -61,12 +63,12 @@ def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
     out (role_prompt), the prompts ``delegate`` writes, and the toolkit's state.
 
-    ``prefix`` is the project's (nested layout): git names a path from the git root, ``ls-files``
-    from the directory it runs in, so a path under the prefix is read without it.
+    ``path`` is git-root-relative; ``prefix`` is the project's (nested layout). A path outside the
+    project, such as the git root's own ``work/``, is never the leaf's bookkeeping.
     """
-    path = rebase_to_project(path, prefix) or path
-    return (path in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
-            or path.startswith((f"work/prompt-{node_id}-", *_STATE_DIRS)))
+    rel = rebase_to_project(path, prefix)
+    return rel is not None and (rel in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
+                                or rel.startswith((f"work/prompt-{node_id}-", *_STATE_DIRS)))
 
 
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:
