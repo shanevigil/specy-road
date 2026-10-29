@@ -297,19 +297,28 @@ ideas added meanwhile are kept.
 
 ```bash
 specy-road brainstorm list --by cluster       # cluster-first; verdicts and critics hidden
+specy-road brainstorm list --summary          # per-status and per-recommendation counts
 specy-road brainstorm list --show-verdicts    # or --json, --status accepted
 specy-road brainstorm accept B1 B4 B9
+specy-road brainstorm accept B3 --reason "fits the anchor"
 specy-road brainstorm reject B2 --reason "duplicates M3.1"
 specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing ships"
+specy-road brainstorm realize B1 --node M3.6   # node you added outside promote
 ```
 
-The agent's judgement — verdicts, their reasoning and the critics'
+`accept`, `reject`, and `park` resolve every idea before changing anything or
+printing `[ok]` — a missing or already-promoted id in a batch prints nothing
+and leaves the session untouched. The agent's
+judgement — verdicts, their reasoning and the critics'
 objections — is hidden by default so it does not steer you; clusters and
-source counts show first, and `--show-verdicts` adds the rest. `reject` and `park` require a reason;
-`park` also takes an optional revisit condition (`--revisit-when`). Both are
-recorded as the idea's decision. Editing an idea's content marks it
-`revised`. Once an idea has been promoted it can no longer be re-triaged: it
-is a roadmap node, and the node is what you edit.
+source counts show first, and `--show-verdicts` adds the rest. `reject` and
+`park` require `--reason`; `accept` may take an optional `--reason`. Both
+decision reasons and `--revisit-when` on `park` are recorded on the idea.
+`revise --why` sets `verdict_why`; `--append-why` adds to it. Editing an idea's
+content marks it `revised`. Once an idea has been promoted it can no longer be
+re-triaged: it is a roadmap node, and the node is what you edit. `realize`
+links an idea to a node you created by hand (`promoted_node_key`) after
+checking that node exists in the merged graph.
 
 ## 5. Promote
 

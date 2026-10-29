@@ -317,7 +317,7 @@ def test_reject_requires_a_reason_and_park_records_a_decision(repo: Path) -> Non
     _cli(repo, "add-idea", "--title", "One")
     _cli(repo, "add-idea", "--title", "Two")
     code, _, err = _cli(repo, "reject", "B1")
-    assert code == 1 and "--reason" in err and _session(repo).by_id("B1").status == "proposed"
+    assert code != 0 and "--reason" in err and _session(repo).by_id("B1").status == "proposed"
     assert _cli(repo, "reject", "B1", "--reason", "duplicates M1.1")[0] == 0
     d = _session(repo).by_id("B1").decision
     assert d["status"] == "rejected" and d["reason"] == "duplicates M1.1" and d["decided_at"]

@@ -116,6 +116,8 @@ def _add_list(sub) -> None:
         help="Show only ideas in this state.",
     )
     p.add_argument("--json", action="store_true", help="Machine-readable output.")
+    p.add_argument("--summary", action="store_true",
+                   help="Print per-status and per-recommendation counts instead of a row listing.")
     p.add_argument("--by", default=None, choices=("cluster",),
                    help="Group the listing (cluster-first triage).")
     p.add_argument("--show-verdicts", action="store_true",
@@ -131,12 +133,26 @@ def _add_list(sub) -> None:
 
 
 def _add_triage(sub) -> None:
-    for name, verb in (("accept", "keep"), ("reject", "discard")):
-        p = sub.add_parser(name, help=f"{verb} one or more ideas")
-        p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
-        p.add_argument("--reason", default=None, metavar="TEXT",
-                       help="Why (required for reject; recorded as the decision).")
-        _add_slug(p)
+    p = sub.add_parser("accept", help="keep one or more ideas")
+    p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
+    p.add_argument("--reason", default=None, metavar="TEXT",
+                   help="Optional; when given, recorded as the decision reason.")
+    _add_slug(p)
+
+    p = sub.add_parser("reject", help="discard one or more ideas")
+    p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
+    p.add_argument("--reason", required=True, metavar="TEXT",
+                   help="Required; recorded as the decision reason.")
+    _add_slug(p)
+
+    p = sub.add_parser(
+        "realize",
+        help="link an idea to a roadmap node you created outside promote",
+    )
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--node", required=True, metavar="NODE_ID",
+                   help="Display id of an existing node in the merged roadmap.")
+    _add_slug(p)
 
     p = sub.add_parser("revise", help="edit an idea, or record a recommendation")
     p.add_argument("idea_id", metavar="IDEA_ID")
@@ -152,8 +168,10 @@ def _add_triage(sub) -> None:
         "triage status alone, so accept/reject stays the PM's call.",
     )
     p.add_argument("--why", default=None, metavar="TEXT",
-                   help="The verdict's reasoning (cite a constitution clause, a source, or an overlap). "
+                   help="Set verdict_why (the stored verdict reasoning; cite a clause, source, or overlap). "
                         "Unlike --rationale it does not edit the idea or mark it revised.")
+    p.add_argument("--append-why", default=None, metavar="TEXT",
+                   help="Append to verdict_why instead of replacing it.")
     p.add_argument("--cluster", default=None, metavar="CID", help="Cluster id from the converge pass.")
     p.add_argument("--overlap", action="append", default=None, metavar="NODE_ID:RELATION",
                    help="Existing node this overlaps and how (repeatable).")

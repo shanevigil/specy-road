@@ -73,7 +73,8 @@ def add_v2_subcommands(sub) -> None:
 
     p = sub.add_parser("park", help="set ideas aside with a reason and, optionally, a revisit condition")
     p.add_argument("idea_id", nargs="+", metavar="IDEA_ID")
-    p.add_argument("--reason", required=True, metavar="TEXT")
+    p.add_argument("--reason", required=True, metavar="TEXT",
+                   help="Required; recorded as the decision reason.")
     p.add_argument("--revisit-when", default="", metavar="TEXT",
                    help="Optional: what would make the idea worth another look.")
     _slug(p)

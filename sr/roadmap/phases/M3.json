@@ -199,7 +199,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.6_brainstorm-triage-cli_acbadda9-3756-4e55-aad3-e7153ad5be97.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_cli.py",

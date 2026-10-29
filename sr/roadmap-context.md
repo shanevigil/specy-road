@@ -19,7 +19,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.3` Document the canonical chunk key order and offer a deliberate normalisation `chunk-key-order` — task — **Complete**
   - `M3.4` Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers `brainstorm-prompt-fixes` — task — **Complete**
   - `M3.5` Converge and evidence passes that cannot silently skip work `brainstorm-converge-checks` — task — **Complete**
-  - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Not Started**
+  - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Complete**
   - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
   - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Complete**
   - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Complete**
@@ -82,7 +82,6 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M3.17` on `feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` since 2026-10-29
 - `M3.18` on `feature/rm-bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error` since 2026-10-29
-- `M3.6` on `feature/rm-brainstorm-triage-cli` since 2026-10-29
 
 ## Reaching the detail behind this
 
