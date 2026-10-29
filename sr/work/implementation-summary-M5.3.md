@@ -5,15 +5,17 @@
 `specy-road validate` now meters the context every agent session pays before its first prompt. After the `OK` line it prints one `context:` line per harness on stdout, listing each instruction file that harness injects into a session started in the project root, with its lines and bytes and those of the specy-road managed section inside it, against the documented limit:
 
 - **Codex** ([Custom instructions with AGENTS.md](https://developers.openai.com/codex/guides/agents-md)) walks from the git root down to the working directory. In each directory it takes the first non-empty file of `AGENTS.override.md`, then `AGENTS.md` (empty files are skipped; at most one file per directory), and truncates the combined result at `project_doc_max_bytes`, 32 KiB by default. The line shows the combined bytes out of 32,768. The same page's global layer (`~/.codex`) is outside this project walk.
-- **Claude Code** ([How CLAUDE.md files load](https://code.claude.com/docs/en/memory), and the AGENTS.md section on the same page) loads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory and every ancestor, filesystem root down. A file above the git root is reported by its absolute path. Any of those suppresses the fallback. The fallback is every `AGENTS.md` and `.claude/AGENTS.md` on that same walk. The documented target is under 200 lines per file. `~/.claude/CLAUDE.md` (`Path.home()`) is a separate candidate, so a repository that is not under the home directory still reports it. It is deduplicated against the ancestor walk and printed once, on a note line labelled user-level (this machine). That note is informational: the file is not in the repository list, so it never produces the over-limit warning and never fails `validate --strict`.
+- **Claude Code** ([How CLAUDE.md files load](https://code.claude.com/docs/en/memory), and the AGENTS.md section on the same page) loads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory and every ancestor, filesystem root down. A project file suppresses the `AGENTS.md` fallback; `~/.claude/CLAUDE.md` does not. The fallback is every `AGENTS.md` and `.claude/AGENTS.md` on that walk. The documented target is under 200 lines per file, and it applies only to files inside the git root.
+- **Outside the git root** is a note, labelled user-level / machine-local, with the file's lines and bytes, and it never warns and never fails `validate --strict`. That covers ancestor instruction files, `~/.claude/CLAUDE.md` (still its own `Path.home()` candidate, deduplicated against the walk), and Codex's global layer ([the same AGENTS.md page](https://developers.openai.com/codex/guides/agents-md)): the first non-empty of `~/.codex/AGENTS.override.md`, then `~/.codex/AGENTS.md`.
 
-When a limit is exceeded (the selected Codex files over 32,768 bytes; any repository file Claude Code reads at 200 lines or more), `validate` prints a `context: warning —` line on stderr naming that file. The user-level note is not part of that check. An ignored sibling, such as an `AGENTS.md` next to a non-empty `AGENTS.override.md`, is neither reported nor warned. The warning is like the others, so `validate --strict` fails on it (A1, A2).
+When a limit is exceeded by a file inside the git root (the selected Codex files over 32,768 bytes; a Claude file at 200 lines or more), `validate` prints a `context: warning —` line on stderr naming that file. Notes are not part of that check. An ignored sibling, such as an `AGENTS.md` next to a non-empty `AGENTS.override.md`, is neither reported nor warned. The warning is like the others, so `validate --strict` fails on it (A1, amended A2: limits apply to files in the repository).
 
 On this repository's nested `sr/` layout the Claude line now includes the checkout's ancestor `CLAUDE.md`, which sits above this worktree's git root:
 
 ```text
 context: Codex reads AGENTS.md 57 lines, 6,056 bytes; sr/AGENTS.md 54 lines, 7,632 bytes (specy-road section 52 lines, 7,606 bytes) — 13,688 of its 32,768-byte project_doc_max_bytes budget
-context: Claude Code reads /Users/savigil/WORKSPACE/specy-road/CLAUDE.md 113 lines, 7,973 bytes; CLAUDE.md 113 lines, 7,973 bytes — target under 200 lines per file
+context: Claude Code reads CLAUDE.md 113 lines, 7,973 bytes — target under 200 lines per file
+context: note — /Users/savigil/WORKSPACE/specy-road/CLAUDE.md 113 lines, 7,973 bytes, user-level / machine-local; not counted toward this repository's limit
 ```
 
 I chose `validate` over a new `context show` command because `specy_road/cli.py` is outside the touch zones. The report is printed only by the `validate` command, not by the other `validate_at` callers (pickup, `add-node`, `upgrade`), so their output does not change. The warning sits in `validate_at` next to the other agent-guide warnings, so it reaches those callers the same way `warn_if_agents_md_block_stale` does.
@@ -37,11 +39,12 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - Review round 1: `python -m pytest -q tests/test_agents_md_block.py tests/test_validate_strict.py` — 15 passed; `specy-road file-limits` — OK
 - Review round 2: the same pytest command — 19 passed; `specy-road file-limits` — OK
 - Review round 3: the same pytest command — 20 passed; `specy-road file-limits` — OK
+- Review round 5: the same pytest command — 21 passed; `specy-road file-limits` — OK
 
 ## Walkthrough
 
 1. Run `specy-road validate` in any project and read the two `context:` lines after `OK`.
-2. Write 200 lines to a `CLAUDE.md` above the git root, or to `CLAUDE.local.md`, or put a non-empty `AGENTS.override.md` past 32,768 bytes next to an `AGENTS.md`: a `context: warning —` line names that file and `validate --strict` exits 1. The sibling `AGENTS.md` is not named.
+2. Write 200 lines to a `CLAUDE.md` inside the git root, or put a non-empty `AGENTS.override.md` past 32,768 bytes next to an `AGENTS.md`: a `context: warning —` line names that file and `validate --strict` exits 1. The same files above the git root, or under `~/.codex`, are a `context: note` labelled user-level / machine-local and `--strict` still passes.
 
 ## Added
 
@@ -51,7 +54,9 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - `injected_context`: dispatches to the two walks below (reuses `runtime_paths.git_root` as Codex's ceiling only).
 - `_CODEX_CANDIDATES`, `_codex_paths`: per directory, first non-empty of `AGENTS.override.md` then `AGENTS.md`. The size check is the documented skip of empty files (review round 2).
 - `_CLAUDE_CANDIDATES`, `_CLAUDE_AGENTS_FALLBACK`, `_claude_paths`: ancestor walk from the filesystem root, the three Claude filenames, and the `AGENTS.md` / `.claude/AGENTS.md` fallback (review round 2). Replaces `_CLAUDE_PROJECT_DOCS`, which stopped at the git root.
-- `_user_claude_path`, `_without_user`, `_user_level_claude`: the user file is its own candidate (`Path.home() / ".claude" / "CLAUDE.md"`), removed from the ancestor walk so a repo under HOME lists it once, and printed as a note. It is excluded from `warn_if_context_over_limits`, so a long user file does not fail `--strict` (review round 3).
+- `_inside`: a path is metered only when it is inside the git root (review round 5).
+- `_codex_home_file`: the non-empty `~/.codex/AGENTS.override.md` or `AGENTS.md`, the global layer on the Codex page.
+- `_machine_local_paths`: everything discovered outside the git root, plus the home candidates when the walk did not already include them. Replaces `_without_user` and `_user_level_claude`. `warn_if_context_over_limits` never sees this list (review round 5).
 - `_dirs_from_root`, `_present`, `_display`, `_measured`: the shared walk, the filename filter, absolute paths above the git root, and measurement.
 - Branch `git_root(...) or project_root`: outside a git repository Codex measures only that directory. Claude still walks its ancestors.
 - Branches `if codex:` / `if claude:` in the report: no line for a harness that reads no file.
@@ -63,7 +68,9 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - Test `test_dot_claude_claude_md_suppresses_the_agents_fallback`: with only `.claude/CLAUDE.md` as a Claude file (and an `AGENTS.md` present), Claude Code's line reports that file and its managed section, and Codex's line still reports `AGENTS.md`.
 - Test `test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents`: an ancestor `CLAUDE.md` and a `CLAUDE.local.md` are reported and suppress both `AGENTS.md` files; removing them makes the line report `AGENTS.md` and `.claude/AGENTS.md` (review round 2).
 - Test `test_user_claude_md_under_home_is_listed_once`: with the repo under `HOME`, the user path appears once, on the note, labelled user-level (this machine), and the repository line still reports `AGENTS.md` (review round 3; replaces the round-2 test of the same layout).
-- Test `test_user_claude_outside_home_is_noted_and_does_not_fail_strict`: the repo is not under `HOME`, the user file is 201 lines, `validate --strict` exits 0 with an empty stderr, and stdout names the file once with the label (review round 3).
+- Test `test_user_claude_outside_home_is_noted_and_does_not_fail_strict`: the repo is not under `HOME`, the user file is 201 lines, `validate --strict` exits 0 with an empty stderr, and stdout names the file once with the label (review round 3; the label is now user-level / machine-local).
+- Test `test_ancestor_claude_above_the_git_root_does_not_fail_strict`: a 201-line `CLAUDE.md` above the git root is a note and `validate --strict` exits 0. Replaces `test_strict_warns_when_an_ancestor_claude_file_hits_200_lines`, which asserted the opposite under the earlier A2 (review round 5).
+- Test `test_codex_user_layer_is_a_note`: `~/.codex/AGENTS.override.md` is the note and the oversized sibling `~/.codex/AGENTS.md` is neither reported nor warned (review round 5).
 - `test_context_meter_reports_what_each_harness_reads` sets `HOME` to an empty directory so its exact stdout does not pick up a real `~/.claude/CLAUDE.md`.
 - Test `test_codex_meters_a_nonempty_override_instead_of_agents_md`: an empty override leaves the over-budget `AGENTS.md` as the measured and warned file; a non-empty override replaces it in both the report and the warning (review round 2).
 - Test `test_strict_warns_when_an_ancestor_claude_file_hits_200_lines`: public `validate --strict` is clean at 199 lines of an ancestor `CLAUDE.md` and exits 1 at 200, naming that file (review round 2).

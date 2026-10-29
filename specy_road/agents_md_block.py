@@ -208,37 +208,59 @@ def _codex_paths(start: Path, top: Path) -> list[Path]:
     return chosen
 
 
+def _inside(path: Path, top: Path) -> bool:
+    """True when ``path`` is inside the git root. Only those files are metered."""
+    return path.resolve().is_relative_to(top)
+
+
 def _user_claude_path() -> Path:
     """``~/.claude/CLAUDE.md`` on this machine, whether or not the repo sits under it."""
     return Path.home() / ".claude" / AGENT_GUIDE
 
 
-def _without_user(paths: list[Path]) -> list[Path]:
-    """Drop the user file so an ancestor walk and the explicit candidate do not list it twice."""
-    user = _user_claude_path().resolve()
-    return [p for p in paths if p.resolve() != user]
+def _codex_home_file() -> Path | None:
+    """The non-empty ``~/.codex`` file Codex reads before the project, or None.
+
+    Same order as a project directory: ``AGENTS.override.md``, then ``AGENTS.md``.
+    https://developers.openai.com/codex/guides/agents-md
+    """
+    root = Path.home() / ".codex"
+    for name in _CODEX_CANDIDATES:
+        path = root / name
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
 
 
 def _claude_paths(start: Path) -> list[Path]:
-    """Repository files Claude Code loads. The user file is not one of them.
+    """Launch-time Claude files, ancestors included.
 
     A project ``CLAUDE.md``, ``.claude/CLAUDE.md`` or ``CLAUDE.local.md`` suppresses
-    the ``AGENTS.md`` fallback. ``~/.claude/CLAUDE.md`` does not, and it is reported
-    separately so a repository outside ``HOME`` still shows it.
+    the ``AGENTS.md`` fallback. ``~/.claude/CLAUDE.md`` does not.
     """
     dirs = _dirs_from_root(start)
-    claude = _without_user(_present(dirs, _CLAUDE_CANDIDATES))
-    if claude:
+    claude = _present(dirs, _CLAUDE_CANDIDATES)
+    user = _user_claude_path().resolve()
+    if any(p.resolve() != user for p in claude):
         return claude
-    return _without_user(_present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK)))
+    return _present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK))
 
 
-def _user_level_claude() -> InjectedFile | None:
-    """The machine's ``~/.claude/CLAUDE.md``, or None when there is no such file."""
-    path = _user_claude_path()
-    if not path.is_file():
-        return None
-    return _measure(path, path.resolve().as_posix())
+def _machine_local_paths(start: Path, top: Path) -> list[Path]:
+    """Instruction files outside the git root. Each is a note, never a warning.
+
+    The ancestor walk and the explicit home candidates can name one file; it is listed once.
+    """
+    discovered = _claude_paths(start)
+    outside = [p for p in discovered if not _inside(p, top)]
+    seen = {p.resolve() for p in discovered}
+    user = _user_claude_path()
+    if user.is_file() and user.resolve() not in seen and not _inside(user, top):
+        outside.append(user)
+    codex = _codex_home_file()
+    if codex is not None and codex.resolve() not in seen and not _inside(codex, top):
+        outside.append(codex)
+    return outside
 
 
 def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
@@ -246,10 +268,14 @@ def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
 
 
 def injected_context(project_root: Path) -> tuple[list[InjectedFile], list[InjectedFile]]:
-    """``(Codex, Claude Code)``: the files each injects into a session started in ``project_root``."""
+    """``(Codex, Claude Code)``: repository files a session started in ``project_root`` injects.
+
+    Only paths inside the git root. Anything outside is :func:`_machine_local_paths`.
+    """
     project_root = project_root.resolve()
     top = git_root(project_root) or project_root
-    return _measured(_codex_paths(project_root, top), top), _measured(_claude_paths(project_root), top)
+    claude = [p for p in _claude_paths(project_root) if _inside(p, top)]
+    return _measured(_codex_paths(project_root, top), top), _measured(claude, top)
 
 
 def print_injected_context(project_root: Path) -> None:
@@ -262,10 +288,11 @@ def print_injected_context(project_root: Path) -> None:
     if claude:
         print(f"context: Claude Code reads {'; '.join(f.describe() for f in claude)} — "
               f"target under {CLAUDE_MD_TARGET_LINES} lines per file")
-    user = _user_level_claude()
-    if user:
-        print(f"context: note — Claude Code also reads {user.describe()}, "
-              "user-level (this machine); not counted toward this repository's limit")
+    root = project_root.resolve()
+    top = git_root(root) or root
+    for note in _measured(_machine_local_paths(root, top), top):
+        print(f"context: note — {note.describe()}, user-level / machine-local; "
+              "not counted toward this repository's limit")
 
 
 def warn_if_context_over_limits(project_root: Path) -> None:

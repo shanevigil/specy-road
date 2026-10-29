@@ -56,19 +56,20 @@ def test_strict_fails_a_validation_that_warned(tmp_path: Path, spoil, warning: s
     assert "OK: roadmap and registry validate." in r.stdout
 
 
-def test_strict_warns_when_an_ancestor_claude_file_hits_200_lines(tmp_path: Path) -> None:
-    """A CLAUDE.md above the git root is injected; 199 lines is under the target, 200 is not."""
+def test_ancestor_claude_above_the_git_root_does_not_fail_strict(tmp_path: Path) -> None:
+    """A CLAUDE.md above the git root is a note. Over 200 lines does not fail --strict."""
     root = tmp_path / "repo"
     root.mkdir()
     _scaffold(root)
     ancestor = tmp_path / "CLAUDE.md"
-    ancestor.write_text("- rule\n" * 199, encoding="utf-8")
-    assert _validate(root, "--strict").returncode == 0
+    ancestor.write_text("- rule\n" * 201, encoding="utf-8")
 
-    ancestor.write_text("- rule\n" * 200, encoding="utf-8")
     r = _validate(root, "--strict")
-    assert r.returncode == 1
-    assert f"{ancestor.resolve().as_posix()} is 200 lines" in r.stderr
+
+    assert r.returncode == 0, r.stderr
+    assert r.stderr == ""
+    shown = ancestor.resolve().as_posix()
+    assert f"{shown} 201 lines" in r.stdout and "user-level / machine-local" in r.stdout
 
 
 def test_user_claude_outside_home_is_noted_and_does_not_fail_strict(tmp_path: Path) -> None:
@@ -88,7 +89,7 @@ def test_user_claude_outside_home_is_noted_and_does_not_fail_strict(tmp_path: Pa
     assert r.stderr == ""
     shown = user.resolve().as_posix()
     assert r.stdout.count(shown) == 1
-    assert f"{shown} 201 lines" in r.stdout and "user-level (this machine)" in r.stdout
+    assert f"{shown} 201 lines" in r.stdout and "user-level / machine-local" in r.stdout
 
 
 def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:

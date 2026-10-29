@@ -200,10 +200,12 @@ def test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents(tmp_path: Pa
     (repo / ".claude" / AGENTS_MD).write_text("# nested\n", encoding="utf-8")
 
     print_injected_context(repo)
-    claude = capsys.readouterr().out.splitlines()[1]
-    assert above.resolve().as_posix() in claude
-    assert "CLAUDE.local.md 1 lines" in claude
-    assert "AGENTS.md" not in claude
+    out = capsys.readouterr().out
+    reads = [ln for ln in out.splitlines() if ln.startswith("context: Claude Code reads ")][0]
+    assert above.resolve().as_posix() not in reads
+    assert "CLAUDE.local.md 1 lines" in reads
+    assert "AGENTS.md" not in reads
+    assert f"{above.resolve().as_posix()} 1 lines" in out and "user-level / machine-local" in out
 
     above.unlink()
     (repo / "CLAUDE.local.md").unlink()
@@ -228,9 +230,32 @@ def test_user_claude_md_under_home_is_listed_once(tmp_path: Path, monkeypatch, c
     out = capsys.readouterr().out
     shown = user.resolve().as_posix()
     assert out.count(shown) == 1
-    assert f"{shown} 1 lines" in out and "user-level (this machine)" in out
+    assert f"{shown} 1 lines" in out and "user-level / machine-local" in out
     reads = [ln for ln in out.splitlines() if ln.startswith("context: Claude Code reads ")][0]
     assert shown not in reads and "AGENTS.md " in reads
+
+
+def test_codex_user_layer_is_a_note(tmp_path: Path, monkeypatch, capsys) -> None:
+    """``~/.codex`` is reported and not metered, even when the file is past the budget."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    codex = tmp_path / "home" / ".codex"
+    codex.mkdir(parents=True)
+    (codex / AGENTS_MD).write_text("x" * (CODEX_PROJECT_DOC_MAX_BYTES + 1), encoding="utf-8")
+    override = codex / "AGENTS.override.md"
+    override.write_text("# home override\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / AGENTS_MD).write_text("# repo\n", encoding="utf-8")
+
+    print_injected_context(repo)
+    warn_if_context_over_limits(repo)
+    out, err = capsys.readouterr()
+    shown = override.resolve().as_posix()
+    assert out.splitlines()[0].startswith("context: Codex reads AGENTS.md ")
+    assert (codex / AGENTS_MD).resolve().as_posix() not in out
+    assert f"{shown} 1 lines" in out and "user-level / machine-local" in out
+    assert err == ""
 
 
 def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, capsys) -> None:
