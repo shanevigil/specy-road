@@ -1,0 +1,301 @@
+{
+  "nodes": [
+    {
+      "codename": "regression-prevention",
+      "dependencies": [],
+      "id": "M9",
+      "node_key": "5f87b038-3bb6-4506-8950-046b66cde4b1",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "planning_dir": "planning/M9_regression-prevention_5f87b038-3bb6-4506-8950-046b66cde4b1.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "Regression prevention",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "With land_check_cmd set in roadmap/git-workflow.yaml and on_complete merge, finish-this-task runs that command exactly once through the shell, after it creates the local merge commit on the integration branch and before git push; the command's working directory is the project root inside a detached temporary worktree whose HEAD is that merge commit",
+        "When the command exits 0, finish pushes and exits 0, and the pushed integration tip is the commit the command ran at",
+        "When the command exits non-zero, finish exits 1, pushes nothing, leaves the local integration branch and its remote-tracking ref at the commits they had before finish ran, and prints to stderr the command, its exit code and the last 20 lines of its output",
+        "When git push is rejected, finish resets the local integration branch to its pre-merge commit, exits 1 and prints the finish-this-task command to re-run; a re-run merges onto the new tip and runs the command again",
+        "In every outcome of A2-A4, git worktree list shows the same worktrees after finish as before it",
+        "--land-check-cmd CMD overrides the key and --land-check-cmd '' skips the check for that run; with neither, and in pr mode, finish runs no check and the existing finish tests pass unchanged",
+        "Tests cover A1-A5 in the embedded and the nested layout; in the nested layout the command's working directory is <worktree>/<project prefix>"
+      ],
+      "codename": "land-check-on-merge-commit",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.1",
+      "node_key": "a0b87812-67a0-40b9-87f5-e16c178aa6d9",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.1_land-check-on-merge-commit_a0b87812-67a0-40b9-87f5-e16c178aa6d9.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "finish-this-task runs a configured land check on the merge commit before it pushes",
+      "touch_zones": [
+        "specy_road/finish_land_integration.py",
+        "specy_road/finish_land_check.py",
+        "specy_road/bundled_scripts/finish_task_args.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Before any test runs, when git status --porcelain --ignored -- tests/fixtures lists an ignored path (!!), pytest exits non-zero without running a test and prints each such path and the command git clean -fdX tests/fixtures",
+        "When the git status --porcelain --ignored output for tests/fixtures at session end differs from session start, the session exits non-zero and prints each path whose status line was added or changed",
+        "When the tests/fixtures status is empty at start and unchanged at end, the guard prints nothing and does not change the exit status",
+        "tests/test_fixture_guard.py proves A1-A3 by running pytest in a subprocess against a temporary git repository that installs the guard; a file at tests/fixtures/<x>/.specyrd/cache/<y> ignored by that repo's .gitignore is the A1 case"
+      ],
+      "codename": "fixture-pollution-guard",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.2",
+      "node_key": "99049793-0a79-4a99-a632-8023399c2dcb",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.2_fixture-pollution-guard_99049793-0a79-4a99-a632-8023399c2dcb.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree",
+      "touch_zones": [
+        "tests/conftest.py",
+        "tests/fixture_guard.py",
+        "tests/test_fixture_guard.py",
+        "docs/contributor-guide.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A new module tests/test_project_layouts_outside.py defines a layout fixture with three shapes: embedded, nested under sr/, and nested under sr/ with a leaf commit that also changes a file at the git root outside sr/",
+        "For each shape, finish-this-task's implementation check on that leaf does not report that nothing was implemented; for the third shape the test fails when specy_road/finish_implementation_check.py is restored to its content at 79eaff3^",
+        "For each shape, the review packet's Changed paths section names every path in git diff --name-only <merge-base>..<leaf branch>, including the outside path",
+        "For each shape, running finish-this-task in merge mode a second time on the landed leaf exits 0, and the integration branch SHA and the bytes of roadmap/registry.yaml equal those after the first run"
+      ],
+      "codename": "layout-with-outside-change",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.3",
+      "node_key": "1bd6720b-14cb-488d-8058-2346f0b6640e",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.3_layout-with-outside-change_1bd6720b-14cb-488d-8058-2346f0b6640e.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project",
+      "touch_zones": [
+        "tests/test_project_layouts_outside.py",
+        "tests/helpers.py",
+        "tests/review_repo_helpers.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "handoff.schema.json accepts an optional blocked_on array of objects with acceptance (A<n>) and reason (non-empty string); a READY whose blocked_on names an id that is not among the node's acceptance ids is reported invalid, naming the id",
+        "The executor prompt written at pickup contains one rule: when an acceptance criterion can be met only by deleting, skipping or weakening an existing test, or by raising a baseline or cap, stop and write READY with blocked_on naming the criterion instead of making that change",
+        "When the latest valid READY for the commit under review has a non-empty blocked_on, handoff status reports state executor_blocked, prints one line per entry as A<n>: <reason>, and exits 1",
+        "While that READY is current, the review gate is unmet: mark-implementation-reviewed --yes and finish-this-task refuse and name each blocked acceptance id",
+        "The handoff template and docs/orchestration-review.md describe blocked_on; tests cover A1, A3 and A4"
+      ],
+      "codename": "executor-blocked-on",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.4",
+      "node_key": "4ae51fbf-5470-4827-bb06-59fbc3088f41",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.4_executor-blocked-on_4ae51fbf-5470-4827-bb06-59fbc3088f41.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet",
+      "touch_zones": [
+        "specy_road/schemas/handoff.schema.json",
+        "specy_road/templates/project/work/handoff-ready.template.md",
+        "specy_road/bundled_scripts/do_next_prompt.py",
+        "specy_road/review_files.py",
+        "specy_road/review_gate.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/templates/specyrd/commands/specyrd-handoff-status.md",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road integrity <ID> [--ref REF] compares REF (default the node's registered branch) with its merge base on the integration branch, reading git objects only (no checkout, no file written), and prints one finding per line, sorted, with git-root-relative paths; it exits 1 when there is any finding and 0 with no output otherwise",
+        "removed-test: <path>::<qualname> for each test_* function or method in a file named test_*.py or *_test.py at the base that is absent at REF; removed-test-file: <path> for each deleted file matching **/test_*.py, **/*_test.py, **/*.test.*, **/*.spec.* or **/*_test.go",
+        "new-skip: <path>::<qualname> for each test function present at both commits that at REF, and not at the base, has a pytest.mark.skip, skipif or xfail decorator or a unittest.skip* decorator, or calls pytest.skip, pytest.xfail or pytest.importorskip in its body",
+        "assert-loss: <path>::<qualname> <before>-><after> for each test function present at both commits whose count of assert statements plus pytest.raises and self.assert* calls is lower at REF",
+        "config-change: <path> when REF changes any conftest.py, pytest.ini, tox.ini or setup.cfg, or a [tool.pytest*] table of pyproject.toml",
+        "--json prints {\"findings\": [{\"kind\", \"path\", \"test\", \"detail\"}]} with the same findings; each finding form in A2-A5 has a test against a fixture git repository whose REF makes exactly that change, asserting the exact output line and exit 1, and an unchanged REF gives exit 0 and empty output",
+        "review-packet adds a ## Test integrity section after Changed paths listing the findings, or none; two builds from the same refs produce byte-identical sections"
+      ],
+      "codename": "integrity-report",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.5",
+      "node_key": "1ce37cd5-2f56-4774-845b-fccc6664458e",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.5_integrity-report_1ce37cd5-2f56-4774-845b-fccc6664458e.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them",
+      "touch_zones": [
+        "specy_road/integrity.py",
+        "specy_road/bundled_scripts/integrity_cli.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The roadmap schema accepts an optional node field integrity_waivers (a list of strings), and the orchestration schema accepts policy.integrity_gate (boolean, default false)",
+        "With policy.integrity_gate true, as read from the integration branch like the rest of the policy, evaluate_gate adds one problem per specy-road integrity finding for the commit under review whose exact line is not in the node's integrity_waivers as read from the integration branch; handoff status prints them, and mark-implementation-reviewed --yes and finish-this-task refuse",
+        "A waiver present only on the leaf branch does not clear its finding; the same waiver committed on the integration branch clears it (both cases tested)",
+        "With policy.integrity_gate false or absent, the gate result is unchanged and the existing gate tests pass unchanged",
+        "docs/roadmap-authoring.md documents integrity_waivers and states that a test removal the lean-test rules allow needs a waiver on the integration branch while the gate is on; suggested_prompts/*.md that enumerate node fields name it"
+      ],
+      "codename": "integrity-gate-and-waivers",
+      "dependencies": [
+        "4ae51fbf-5470-4827-bb06-59fbc3088f41",
+        "1ce37cd5-2f56-4774-845b-fccc6664458e"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.6",
+      "node_key": "bfd60247-5ca6-478b-9bbb-e1af4975b601",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.6_integrity-gate-and-waivers_bfd60247-5ca6-478b-9bbb-e1af4975b601.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "With integrity_gate on, each test-integrity finding blocks the review gate unless the node's waivers on the integration branch list it",
+      "touch_zones": [
+        "specy_road/integrity_gate.py",
+        "specy_road/review_gate.py",
+        "specy_road/templates/project/schemas/roadmap.schema.json",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/",
+        "docs/roadmap-authoring.md",
+        "docs/orchestration-review.md",
+        "suggested_prompts/",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road integrity prints new-suppression: <path>:<line> for each line added by REF, in any file, that contains noqa, type: ignore, pragma: no cover, pylint: disable, eslint-disable, @ts-ignore, @ts-expect-error or nolint",
+        "For each git-root-relative path in policy.ratchet_paths (read from the integration branch), a diff that adds one or more lines to it prints baseline-widened: <path> +<added lines>; a diff that only removes lines from it prints nothing for that path",
+        "sr/roadmap/orchestration.yaml lists constraints/clone-baseline.json, constraints/test-private-imports-baseline.txt, constraints/mutation-baseline.json and constraints/file-limits.yaml under policy.ratchet_paths",
+        "Each finding form in A1-A2 has a test against a fixture git repository asserting the exact output line and exit 1; a removal-only diff gives exit 0"
+      ],
+      "codename": "suppression-and-ratchet-findings",
+      "dependencies": [
+        "1ce37cd5-2f56-4774-845b-fccc6664458e",
+        "bfd60247-5ca6-478b-9bbb-e1af4975b601"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.7",
+      "node_key": "0bc061ae-796e-480e-8fe4-e206c7e11f0a",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.7_suppression-and-ratchet-findings_0bc061ae-796e-480e-8fe4-e206c7e11f0a.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "specy-road integrity also reports new lint suppressions and widened baseline files",
+      "touch_zones": [
+        "specy_road/integrity.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/",
+        "sr/roadmap/orchestration.yaml",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road review check-pre-existing <ID> runs each failing READY verifier command named in verify_pre_existing by a counted approving record twice through the shell, at the project root of a detached temporary worktree of the integration branch tip, and writes work/reviews/<ID>/PRE-EXISTING.md with front matter integration_commit and one {cmd, exits: [first, second]} per command",
+        "It exits 0 when every command exited non-zero both times; otherwise it exits 1 and prints claim-rejected: <cmd> for each command that exited 0 at least once",
+        "The gate counts a READY verifier as pre-existing only when PRE-EXISTING.md lists its command with two non-zero exits and its integration_commit equals the current integration tip; otherwise the gate problem stays, ending with (unverified), (rejected) or (stale: <sha>)",
+        "git worktree list is the same before and after the command",
+        "Tests: a claim on a command that passes on the tip is rejected; one that fails twice is accepted; a tip that moved after the run makes it stale"
+      ],
+      "codename": "verified-pre-existing-claims",
+      "dependencies": [
+        "bfd60247-5ca6-478b-9bbb-e1af4975b601"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.8",
+      "node_key": "01de268c-c69c-411d-b712-e41c38a1056c",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.8_verified-pre-existing-claims_01de268c-c69c-411d-b712-e41c38a1056c.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/review_pre_existing.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/schemas/review-record.schema.json",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road impact <ID> [--ref REF] prints, sorted, one per line, every Python test file (test_*.py or *_test.py) in the repository that imports, directly or through this repository's own modules at any depth, a module whose file changed between the merge base and REF; with --zones it uses the modules under the node's touch zones instead of the diff",
+        "When the diff changes any conftest.py, the output is the single line ALL; changed files that are not Python are counted on a final line not analysed: <n> files",
+        "A test against a fixture repository of at least six Python files with a two-level import chain asserts the exact output for a diff, for --zones, and for a conftest.py change",
+        "The executor prompt written at pickup has a Tests at risk section with the --zones list (or none found), at most 50 paths followed by a count of the rest",
+        "review-packet has a ## Tests at risk section with the diff list, same cap; two builds from the same refs produce byte-identical sections"
+      ],
+      "codename": "tests-at-risk",
+      "dependencies": [
+        "4ae51fbf-5470-4827-bb06-59fbc3088f41",
+        "1ce37cd5-2f56-4774-845b-fccc6664458e"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.9",
+      "node_key": "cf553fb0-348a-45d2-ae3d-c42ceac0265c",
+      "notes": "Proposed 2026-10-29 from docs/design-notes/regression-prevention.md; do not pick up until the maintainer approves the M9 list.",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.9_tests-at-risk_cf553fb0-348a-45d2-ae3d-c42ceac0265c.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "The executor prompt and the review packet list the Python tests that import the leaf's code",
+      "touch_zones": [
+        "specy_road/impact.py",
+        "specy_road/bundled_scripts/impact_cli.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/bundled_scripts/do_next_prompt.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "docs/orchestration-review.md",
+        "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

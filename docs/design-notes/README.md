@@ -8,6 +8,7 @@ When one disagrees with `docs/*.md` or the code, the doc and the code win; only 
 | [`v0-3-0-orchestration-slices.md`](v0-3-0-orchestration-slices.md) | Model-aware orchestration on the `0.3.0` line: decisions and what each of slices 1–7 settled | live design |
 | [`v0-3-1-worker-orchestration.md`](v0-3-1-worker-orchestration.md) | Workers behind the coordinator (slice 7): CLI adapters, no daemon, no MCP, reconciled against the cross-harness research | live design |
 | [`v0-3-1-brainstorm-v2.md`](v0-3-1-brainstorm-v2.md) | Brainstorm v2: rounds, allocation, panel shards, quote-anchored evidence, reconciled against the ideation research | live design |
+| [`regression-prevention.md`](regression-prevention.md) | Keeping the integration branch green when many agents land: land check on the merge commit, test-integrity findings, escalation channel (milestone `M9`, proposed) | live design |
 | [`agent-guidance-and-shared-checkouts.md`](agent-guidance-and-shared-checkouts.md) | Guiding agents outside a roadmap claim: the managed `AGENTS.md` block and `specy-road session` presence | live design |
 | [`sre-for-ai-triage.md`](sre-for-ai-triage.md) | "SRE for AI" report triaged into six review-evidence slices, with the standing list of what was rejected | live design |
 | [`pm-gui-integration-branch-auto-ff.md`](pm-gui-integration-branch-auto-ff.md) | PM GUI optional `fetch` + `merge --ff-only` of the integration branch: controls and safety | live design |
