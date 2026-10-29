@@ -56,3 +56,17 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: brainstorm-triage-cli
+    node_id: M3.6
+    branch: feature/rm-brainstorm-triage-cli
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_cli_v2.py
+      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
