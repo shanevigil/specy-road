@@ -14,7 +14,8 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
   - The hand-off keeps its absolute main-checkout path and is labelled with its `sr/work/reviews/<ID>` form. An absolute path is the only one correct from both the main checkout and a linked worktree.
   - The precondition's bookkeeping excludes carry the prefix.
   - The brief gains one `Project root` line with the same paths, deterministic and with no host paths.
-  - `worker delegate` copies the brief to the worktree's project root (`<wt>/sr/work/brief-<ID>.md`), not the git root's `work/`. Its own dirty check and `reconcile` match bookkeeping with the prefix stripped, so the moved brief is neither refused nor flagged.
+  - `worker delegate` copies the brief to the worktree's project root (`<wt>/sr/work/brief-<ID>.md`), not the git root's `work/`.
+  - Delegate's dirty check and `reconcile` both pass `_bookkeeping` paths named from the git root. `_bookkeeping` counts a path only when it is under the project prefix, so `sr/work/brief-<ID>.md` and `sr/work/implementation-summary-<ID>.md` are bookkeeping, and a git-root `work/implementation-summary-<ID>.md` is not: delegate refuses it and `reconcile` reports it outside the touch zones.
   - The embedded layout's prompt and brief are unchanged.
 
 ## Changes
@@ -38,6 +39,14 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
   - Only the names changed, so no assertion or test body changed. `test_worker_cli._repo` stays private because the new test does not use it.
   - Moving them into `tests/helpers.py` was the other option offered. It would need `make_review_repo`, and `tests/review_repo_helpers.py` already imports `tests/helpers.py`, so that path means an import cycle or a copy the clone gate counts.
 - `WIP/improvements-0-3-1` (`b89715b`) merged in as `0a86214`, which brings the integration branch's fix for the two renamed-helper failures (`0f0c662`).
+- Review round 2 (Sol blocked `981d7f7` on A5):
+  - **The defect:** `_bookkeeping` did `rebase_to_project(path, prefix) or path`. In the nested layout, a git-root `work/implementation-summary-<ID>.md` (outside `sr/`) rebased to `None`, fell back to the raw path and counted as bookkeeping. Delegate's dirty check let it through, and `reconcile` hid it from touch-zone reporting.
+  - **Root cause:** `reconcile` mixed two path forms. `git diff` names paths from the git root, but `ls-files --others` names them from the directory it runs in, which is `sr/` when the worker runs in the coordinator's checkout. The fallback papered over that mismatch.
+  - **The fix, in `specy_road/worker_reconcile.py`:**
+    - `_changed_since` runs `ls-files --others --exclude-standard --full-name -- ':(top)'`, so untracked paths are named from the git root and cover the whole repository, as `git diff`'s do.
+    - `_bookkeeping` returns `False` for a path outside the project prefix.
+    - Delegate's dirty check already read `git status --porcelain`, which names paths from the git root.
+  - **Unreachable fallback removed:** `worker_ops._brief_into` drops its `or wt` fallback. Both `_worktree_for` results are checked git trees (`_check_tree`, or the coordinator's checkout once `git branch --show-current` has answered there), so `git_root(wt)` always resolves.
 
 Final touch zones: the ones on the integration branch (`b0c6d5c`, which added `specy_road/bundled_scripts/orchestrate_cli.py`). Every path this leaf changes is inside them; the merge commit `0a86214` carries the integration branch's own changes.
 
@@ -50,8 +59,10 @@ Every other path difference is still caught.
 
 ## Verification
 
-- `pytest` (full, after merging `WIP/improvements-0-3-1`): 2267 passed, 2 skipped, 0 failed.
-- `pytest` over the renamed helpers' modules and the new tests (`tests/test_worker_cli_fixes.py`, `test_worker_cli.py`, `test_orchestrate_plan.py`, `test_review_round4_sol.py`, `test_worker_review_round1.py`, `test_review_round6_ops.py`, `test_review_round6_runner.py`, `test_worker_review_round2.py`, `test_review_round6_evidence.py`): 148 passed.
+- Review round 2, focused: `pytest tests/test_worker_cli_fixes.py tests/test_project_layouts.py tests/test_review_round6_evidence.py tests/test_worker_cli.py tests/test_worker_review_round1.py tests/test_worker_review_round2.py tests/test_review_round5.py tests/test_review_round6_ops.py tests/test_worker_faults.py`: 167 passed. `test_review_round6_evidence.py` pins `_changed_since`'s output in the embedded layout, which is unchanged.
+- The two new round-2 tests fail against `981d7f7`'s `worker_reconcile.py` and pass with the fix.
+- `pytest` (full): 2269 passed, 2 skipped, 0 failed.
+- `pytest` over the renamed helpers' modules and the new tests (review round 1): 148 passed.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK. The fixture's `.specyrd/cache` written by these runs was removed afterwards.
 - `specy-road file-limits`: OK. `ruff check specy_road tests scripts`: OK.
 - `scripts/check_test_private_imports.py`: exit 0, 117 current, 118 baselined, 0 new. It also prints one stale entry, `tests/test_review_round6_evidence.py: …review_packet._changed`. The integration branch's own fix removed that reference; the baseline in `constraints/` is outside this leaf's zones and was left as is.
@@ -64,6 +75,7 @@ Every other path difference is still caught.
 2. `::test_text_plan_always_names_the_roster_ref` (the text output, clean and drifted) and `::test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint` (the plan problem and the `validate` warning).
 3. `::test_sync_reports_a_gap_in_event_sequence_numbers`: two lost lines produce one gap, reported once.
 4. `::test_nested_prompt_and_brief_give_paths_from_the_git_root` and `::test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`.
+5. `::test_nested_delegate_counts_only_the_projects_work_as_bookkeeping` (linked worktree) and `::test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (worker running in `sr/` itself): a git-root `work/implementation-summary-M1.1.md` is refused or reported, while `sr/work/implementation-summary-M1.1.md` is not.
 
 ## Added
 
@@ -77,7 +89,8 @@ Every other path difference is still caught.
 - `orchestrate_cli.render` roster line and `! <drift>` line: A2's "prints the ref" in text mode.
 - `validate_orchestration_contract` drift warning: "validate warns the same way".
 - `worker_reconcile._gaps` and the `gaps` key in `sync`; the gap line in `worker_cli.cmd_sync`: A3.
-- `_bookkeeping(prefix=…)`: git names `sr/work/...`, and without this the moved brief would be refused by delegate and flagged by reconcile.
+- `_bookkeeping(prefix=…)` and its `rel is not None` guard: git names `sr/work/...`. Without the prefix the moved brief would be refused by delegate and flagged by reconcile; without the guard, a git-root `work/` file would pass as bookkeeping (review round 2).
+- `_changed_since`'s `--full-name -- ':(top)'`: untracked paths named from the git root, the form `_bookkeeping` and `git diff` use (review round 2).
 - `role_prompt._dirty_check(prefix)` (replaces `_DIRTY_CHECK`), `_where`, and the `prefix` parameters: A5. In the nested layout the old `:(top)work/...` excludes did not match the project's bookkeeping.
 - `generate_brief._project_root_line` and the `_section_metadata(prefix=…)` parameter: A5.
 - `worker_ops._brief_into` destination change and the dirty-check prefix: the brief sits where the nested prompt says.
@@ -87,6 +100,6 @@ Every other path difference is still caught.
   - A2: `test_text_plan_always_names_the_roster_ref` (with helper `_plan_text`), `test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint`, `test_a_roster_absent_on_the_integration_branch_is_named`.
   - A3: `test_sync_reports_a_gap_in_event_sequence_numbers`.
   - A4: `test_path_takes_several_values_or_repeats` (×3 commands).
-  - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`.
+  - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`, `test_nested_delegate_counts_only_the_projects_work_as_bookkeeping`, `test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (the last two from review round 2).
   - Helper `_nested`: a two-branch nested review repo.
   - Public test helpers (review round 1, renamed from private, not added): `worker_roster`, `run_worker_cli`, `wait_for_worker`, `plan_repo`, `only_assignment`. They are what the new tests import, so `tests/test_worker_cli_fixes.py` imports no private name from another module or from `specy_road`.
