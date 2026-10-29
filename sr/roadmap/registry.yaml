@@ -92,3 +92,16 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: file-limits-function-length-check-covers-typescript-and-javascript
+    node_id: M4.12
+    branch: feature/rm-file-limits-function-length-check-covers-typescript-and-javascript
+    touch_zones:
+      - specy_road/bundled_scripts/validate_file_limits.py
+      - specy_road/file_limits/
+      - constraints/file-limits.yaml
+      - specy_road/templates/project/constraints/file-limits.yaml
+      - docs/file-limits.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
