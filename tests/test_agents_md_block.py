@@ -6,20 +6,26 @@ Mirrors tests/test_specyrd_init_guide_block.py for `CLAUDE.md`.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.agent_guide_block import AGENT_GUIDE
 from specy_road.agents_md_block import (
     AGENTS_MD,
+    CLAUDE_MD_TARGET_LINES,
+    CODEX_PROJECT_DOC_MAX_BYTES,
     agents_md_block_state,
     apply_agents_md_block,
+    print_injected_context,
     render_agents_lines,
     warn_if_agents_md_block_stale,
+    warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.init_project import run_init_project
-from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
+from specy_road.managed_block import CREATED, HTML_COMMENT, UNCHANGED, UPDATED
 from specy_road.specyrd_init import run_init
 
 HAND_AUTHORED = """# Our agents guide
@@ -115,6 +121,48 @@ def test_refresh_stubs_reapplies_the_block(tmp_path: Path) -> None:
     written, _orphans = refresh_stubs(tmp_path)
     assert any(w.startswith("AGENTS.md") for w in written)
     assert agents_md_block_state(tmp_path) == "current"
+
+
+def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys) -> None:
+    """Codex reads every AGENTS.md from the git root down; Claude Code reads CLAUDE.md, else those."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+    block = f"{HTML_COMMENT.start}\n- one rule\n{HTML_COMMENT.end}"
+    (tmp_path / "sr").mkdir()
+    (tmp_path / "sr" / AGENTS_MD).write_text(f"# Ours\n{block}\n", encoding="utf-8")
+    size = len(block.encode("utf-8"))
+    agents = (f"AGENTS.md 6 lines, {len(HAND_AUTHORED)} bytes; "
+              f"sr/AGENTS.md 4 lines, {size + 8} bytes (specy-road section 3 lines, {size} bytes)")
+
+    print_injected_context(tmp_path / "sr")
+    assert capsys.readouterr().out == (
+        f"context: Codex reads {agents} — {len(HAND_AUTHORED) + size + 8:,} of its 32,768-byte "
+        "project_doc_max_bytes budget\n"
+        f"context: Claude Code reads {agents} — target under 200 lines per file\n"
+    )
+
+    (tmp_path / AGENT_GUIDE).write_text("# Claude\n\n", encoding="utf-8")
+    print_injected_context(tmp_path / "sr")
+    assert capsys.readouterr().out.splitlines()[1] == (
+        "context: Claude Code reads CLAUDE.md 2 lines, 10 bytes — target under 200 lines per file"
+    )
+
+
+def test_context_warnings_fire_only_past_a_documented_limit(tmp_path: Path, capsys) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    agents, claude = tmp_path / AGENTS_MD, tmp_path / AGENT_GUIDE
+    agents.write_text("x" * (CODEX_PROJECT_DOC_MAX_BYTES - 1) + "\n", encoding="utf-8")
+    claude.write_text("- rule\n" * CLAUDE_MD_TARGET_LINES, encoding="utf-8")
+    warn_if_context_over_limits(tmp_path)
+    assert capsys.readouterr().err == ""
+
+    agents.write_text("x" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
+    claude.write_text("- rule\n" * (CLAUDE_MD_TARGET_LINES + 1), encoding="utf-8")
+    warn_if_context_over_limits(tmp_path)
+    err = capsys.readouterr().err.splitlines()
+    assert len(err) == 2
+    assert err[0].startswith("context: warning — AGENTS.md total 32,769 bytes, and Codex truncates")
+    assert err[1].startswith("context: warning — CLAUDE.md is 201 lines; Claude Code's documented target")
 
 
 def test_block_text_is_the_full_rule_set() -> None:

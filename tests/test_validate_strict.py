@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from specy_road.init_project import run_init_project
 from tests.helpers import REPO, script_subprocess_env
 
@@ -17,37 +19,50 @@ def _validate(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _scaffold(root: Path, *, acceptance: bool) -> Path:
-    """A fresh scaffold validates quietly; clearing M1.1's acceptance makes it warn."""
+def _scaffold(root: Path) -> Path:
+    """A fresh scaffold validates quietly."""
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     assert run_init_project(root) == 0
-    if not acceptance:
-        r = subprocess.run(
-            [sys.executable, "-m", "specy_road.cli", "edit-node", "M1.1", "--repo-root", str(root),
-             "--set", "acceptance="],
-            cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
-        )
-        assert r.returncode == 0, r.stderr
     return root
 
 
-def test_strict_fails_a_validation_that_warned(tmp_path: Path) -> None:
-    root = _scaffold(tmp_path, acceptance=False)
+def _clear_acceptance(root: Path) -> None:
+    r = subprocess.run(
+        [sys.executable, "-m", "specy_road.cli", "edit-node", "M1.1", "--repo-root", str(root),
+         "--set", "acceptance="],
+        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+    )
+    assert r.returncode == 0, r.stderr
+
+
+def _overlong_claude_md(root: Path) -> None:
+    (root / "CLAUDE.md").write_text("- rule\n" * 201, encoding="utf-8")
+
+
+@pytest.mark.parametrize(("spoil", "warning"), [
+    (_clear_acceptance, "has no acceptance criteria"),
+    (_overlong_claude_md, "CLAUDE.md is 201 lines; Claude Code's documented target is under 200"),
+])
+def test_strict_fails_a_validation_that_warned(tmp_path: Path, spoil, warning: str) -> None:
+    root = _scaffold(tmp_path)
+    spoil(root)
 
     assert _validate(root).returncode == 0
     r = _validate(root, "--strict")
 
     assert r.returncode == 1
-    assert "has no acceptance criteria" in r.stderr
+    assert warning in r.stderr
     assert "FAILED (--strict)" in r.stderr
     assert "OK: roadmap and registry validate." in r.stdout
 
 
 def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:
     """The scaffold's sample task carries acceptance criteria, so a new project starts clean."""
-    root = _scaffold(tmp_path, acceptance=True)
+    root = _scaffold(tmp_path)
 
     r = _validate(root, "--strict")
 
     assert r.returncode == 0, r.stderr
     assert r.stderr == ""
+    assert "context: Codex reads AGENTS.md " in r.stdout
+    assert "context: Claude Code reads AGENTS.md " in r.stdout
