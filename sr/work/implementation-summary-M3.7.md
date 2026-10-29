@@ -10,6 +10,7 @@ Registered zones covered promote, argparse, `title_to_codename`, docs, and tests
 
 - `specy_road/bundled_scripts/roadmap_crud_ops.py` — `append_node_to_chunk(..., validate=False)`
 - `specy_road/bundled_scripts/roadmap_chunk_router.py` — `write_with_routing(..., validate=False)`
+- `specy_road/bundled_scripts/roadmap_chunk_atomic.py` — `TreeSnapshot` restores the batch after deferred validate fails
 - `specy_road/bundled_scripts/roadmap_crud_prepare.py` — `max_words` through collision-suffix derivation
 - `specy_road/bundled_scripts/brainstorm_session.py` — persist `codename` on ideas
 - `specy_road/bundled_scripts/brainstorm_fields.py` — YAML load/save for idea `codename`
@@ -18,7 +19,7 @@ Registered zones covered promote, argparse, `title_to_codename`, docs, and tests
 
 ## Behaviour
 
-- **A1:** each node is `append_node_to_chunk(..., validate=False)`; `run_validate_raise` once after the batch so pin/schema warnings print once.
+- **A1:** each node is `append_node_to_chunk(..., validate=False)`; `run_validate_raise` once after the batch so pin/schema warnings print once. Deferred validation failure restores chunks, planning sheets, and `promoted_node_key` so a retry still sees the rejected ideas.
 - **A2:** `derive_codename_with_collision_suffix(..., max_words=4)` calls `title_to_codename` (punctuation-only tokens do not count toward the cap); `append_node_to_chunk(..., max_words=4)` so the add-node heal cannot uncap; `revise --codename` on the idea wins.
 - **A3:** `goal` from `idea.hypothesis`; every CLI `accept` (including without `--reason`) records `decision.seq`; promote sorts by seq then timestamp; `sibling_order` from `next_sibling_order` so later batches append.
 - **A4:** `_report_promoted_missing_fields` prints one stderr line listing node ids missing `acceptance` or `touch_zones`.
@@ -34,6 +35,9 @@ specy-road file-limits
 
 ## Added
 
+- `TreeSnapshot` — capture roadmap/planning/session bytes so a deferred validate failure can restore them.
+- `_promote_ideas` — keep `promote_session` under the 80-line cap after adding restore.
+- `test_promote_rolls_back_when_deferred_validate_rejects_a_duplicate_title` — public duplicate-title rejection leaves graph and session unpromoted, and retry still attempts.
 - `write_with_routing(..., validate=)` / `append_node_to_chunk(..., validate=)` — skip per-node validate so a batch can check once.
 - `_promote_execution_milestone` — keep `promote_session` under the 80-line cap.
 - `derive_codename_with_collision_suffix(..., max_words=)` — pass the promote word cap into `title_to_codename`.

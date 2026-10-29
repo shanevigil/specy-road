@@ -13,12 +13,14 @@ import pytest
 from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts.brainstorm_promote import (
     PROMOTE_CODENAME_MAX_WORDS,
+    pending_ideas,
     promote_session,
 )
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     add_idea,
     read_session,
+    write_session,
 )
 from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order
 from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
@@ -165,6 +167,34 @@ def test_successive_promote_appends_after_existing_siblings(repo: Path) -> None:
     assert [t for t, _o in under_m1] == [
         "Batch one first", "Batch one second", "Batch two last",
     ]
+
+
+def test_promote_rolls_back_when_deferred_validate_rejects_a_duplicate_title(
+    repo: Path,
+) -> None:
+    """A title that already exists on the graph must not leave a node or marker."""
+    s = BrainstormSession(slug="pay", topic="t", under="M1")
+    add_idea(s, title="Implementation track").status = "accepted"
+    write_session(repo, s)
+    before = load_roadmap(repo)["nodes"]
+    n_before = len(before)
+    titles_before = [n["title"] for n in before]
+
+    with pytest.raises(ValueError, match="duplicate title"):
+        promote_session(repo, s)
+
+    after = load_roadmap(repo)["nodes"]
+    assert len(after) == n_before
+    assert [n["title"] for n in after].count("Implementation track") == 1
+    assert titles_before == [n["title"] for n in after]
+    reloaded = read_session(repo, s.slug)
+    assert reloaded.ideas[0].promoted_node_key is None
+    assert [i.title for i in pending_ideas(reloaded)] == ["Implementation track"]
+
+    with pytest.raises(ValueError, match="duplicate title"):
+        promote_session(repo, reloaded)
+    assert len(load_roadmap(repo)["nodes"]) == n_before
+    assert pending_ideas(read_session(repo, s.slug))
 
 
 def test_promote_lists_nodes_still_missing_acceptance_or_touch_zones(

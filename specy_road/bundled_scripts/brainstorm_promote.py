@@ -1,13 +1,8 @@
 """Turn accepted brainstorm ideas into roadmap nodes.
 
-The converge step. Everything here routes through the same mutation path as
-``specy-road add-node`` — ``append_node_to_chunk`` stages the chunk, the
-manifest and the planning sheet in one transaction — so a promoted idea is
-indistinguishable from a hand-authored node once it lands.
-
-The sheet is seeded afterwards rather than inside that transaction: the
-scaffold is already valid, and enriching it is a plain markdown edit that can
-fail without leaving the graph inconsistent.
+Promoted ideas use the same add-node write as ``specy-road add-node``. The
+planning sheet is seeded after that write; deferred validation restores the
+batch if the graph is then invalid.
 """
 
 from __future__ import annotations
@@ -21,20 +16,19 @@ from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     Idea,
     PROMOTABLE_STATUSES,
+    session_path,
     write_session,
 )
 from specy_road.bundled_scripts.planning_artifacts import (
-    normalize_planning_dir,
-    planning_artifact_paths,
+    normalize_planning_dir, planning_artifact_paths,
 )
 from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER
+from specy_road.bundled_scripts.roadmap_chunk_atomic import TreeSnapshot
 from specy_road.bundled_scripts.roadmap_crud_ops import (
-    append_node_to_chunk,
-    run_validate_raise,
+    append_node_to_chunk, run_validate_raise,
 )
 from specy_road.bundled_scripts.roadmap_crud_prepare import (
-    derive_codename_with_collision_suffix,
-    next_sibling_order,
+    derive_codename_with_collision_suffix, next_sibling_order,
 )
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
@@ -198,11 +192,8 @@ def _report_promoted_missing_fields(root: Path, promotions: list[Promotion]) -> 
         node = by_id.get(promo.node_id)
         if not isinstance(node, dict):
             continue
-        acc = node.get("acceptance")
-        tz = node.get("touch_zones")
-        has_acc = isinstance(acc, list) and bool(acc)
-        has_tz = isinstance(tz, list) and bool(tz)
-        if not has_acc or not has_tz:
+        if not (isinstance(node.get("acceptance"), list) and node["acceptance"]
+                and isinstance(node.get("touch_zones"), list) and node["touch_zones"]):
             missing.append(promo.node_id)
     if missing:
         print(
@@ -299,11 +290,8 @@ def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
 
 def pending_ideas(session: BrainstormSession) -> list[Idea]:
     """Accepted ideas that have not been promoted yet."""
-    return [
-        i
-        for i in session.ideas
-        if i.status in PROMOTABLE_STATUSES and not i.promoted_node_key
-    ]
+    return [i for i in session.ideas
+            if i.status in PROMOTABLE_STATUSES and not i.promoted_node_key]
 
 
 def unverified_strong(session: BrainstormSession) -> list[Idea]:
@@ -312,37 +300,17 @@ def unverified_strong(session: BrainstormSession) -> list[Idea]:
             and not any(s["verification"] == "matched" for s in i.sources)]
 
 
-def promote_session(
+def _promote_ideas(
     root: Path,
     session: BrainstormSession,
-    *,
-    under: str | None = None,
-    node_type: str = DEFAULT_PROMOTE_TYPE,
-    execution_milestone: object = INHERIT_EXECUTION_MILESTONE,
-    dry_run: bool = False,
+    todo: list[Idea],
+    parent_id: str | None,
+    node_type: str,
+    execution_milestone: str | None,
+    nodes: list[dict],
+    dry_run: bool,
 ) -> list[Promotion]:
-    """Promote every pending accepted idea, newest ids allocated as we go.
-
-    Raises :class:`BrainstormError` before touching the graph when the anchor is
-    unusable, so a bad ``--under`` promotes nothing.
-
-    Each node is its own transaction — the router's choice of chunk depends on
-    what the previous write left on disk, so the batch cannot be one. The
-    session is therefore saved after every node rather than by the caller at the
-    end: if idea three fails, the two already on the graph are recorded as
-    promoted, and re-running promotes the rest instead of duplicating them.
-    """
-    if node_type not in PROMOTABLE_TYPES:
-        raise BrainstormError(
-            f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}"
-        )
-    todo = sorted(pending_ideas(session), key=_accept_order_key)
-    if not todo:
-        return []
-    parent_id = under if under is not None else session.under
-    nodes = _load_nodes(root)
-    _assert_parent(root, nodes, parent_id)
-    resolved_em = _promote_execution_milestone(nodes, parent_id, execution_milestone)
+    """Write each pending idea; routing reads the previous node on disk."""
     out: list[Promotion] = []
     existing = {n.get("codename") for n in nodes if n.get("codename")}
     order = next_sibling_order(root, parent_id, None)
@@ -352,7 +320,7 @@ def promote_session(
             idea,
             parent_id=parent_id,
             node_type=node_type,
-            execution_milestone=resolved_em,
+            execution_milestone=execution_milestone,
             sibling_order=order,
         )
         derived = _promote_codename(idea, existing, node["node_key"])
@@ -374,17 +342,55 @@ def promote_session(
             chunk = str(chunk_path.relative_to(root))
             nodes = _load_nodes(root)
             order = next_sibling_order(root, parent_id, None)
-        out.append(
-            Promotion(
-                idea_id=idea.id,
-                node_id=node["id"],
-                node_key=node["node_key"],
-                title=idea.title,
-                parent_id=parent_id,
-                chunk=chunk,
-            )
+        out.append(Promotion(
+            idea_id=idea.id, node_id=node["id"], node_key=node["node_key"],
+            title=idea.title, parent_id=parent_id, chunk=chunk,
+        ))
+    return out
+
+
+def promote_session(
+    root: Path,
+    session: BrainstormSession,
+    *,
+    under: str | None = None,
+    node_type: str = DEFAULT_PROMOTE_TYPE,
+    execution_milestone: object = INHERIT_EXECUTION_MILESTONE,
+    dry_run: bool = False,
+) -> list[Promotion]:
+    """Promote every pending accepted idea, newest ids allocated as we go.
+
+    Raises :class:`BrainstormError` before touching the graph when the
+    anchor is unusable. Per-idea writes stay routing transactions; deferred
+    validation failure restores nodes, sheets, and session markers.
+    """
+    if node_type not in PROMOTABLE_TYPES:
+        raise BrainstormError(
+            f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}"
         )
-    if not dry_run and out:
+    todo = sorted(pending_ideas(session), key=_accept_order_key)
+    if not todo:
+        return []
+    parent_id = under if under is not None else session.under
+    nodes = _load_nodes(root)
+    _assert_parent(root, nodes, parent_id)
+    resolved_em = _promote_execution_milestone(nodes, parent_id, execution_milestone)
+    snap = None if dry_run else TreeSnapshot(
+        (root / "roadmap", root / "planning"),
+        (session_path(root, session.slug),),
+    )
+    out = _promote_ideas(
+        root, session, todo, parent_id, node_type, resolved_em, nodes, dry_run,
+    )
+    if dry_run or not out:
+        return out
+    try:
         run_validate_raise(root)
-        _report_promoted_missing_fields(root, out)
+    except BaseException:
+        assert snap is not None
+        snap.restore()
+        for idea in todo:
+            idea.promoted_node_key = None
+        raise
+    _report_promoted_missing_fields(root, out)
     return out
