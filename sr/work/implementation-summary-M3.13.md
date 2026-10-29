@@ -16,7 +16,7 @@ The integration ref is the one the rest of the toolkit uses (`finish_implementat
 - `specy_road/review_gate.py`: `TRIAL_MERGE_BOOKKEEPING`, `is_trial_merge_bookkeeping`, `TrialMerge` (`conflicts`, `code_conflicts`, `problem()`), `trial_merge(repo_root, ref, integration_ref)` and `trial_merge_or_exit(repo_root)`. `trial_merge` rebases every conflicting path to the project with `rebase_to_project`. A path that does not rebase lies outside the project: it always blocks and is shown `../`-relative to the project root. A path that does rebase is bookkeeping only if it is exactly `roadmap.md` or `roadmap-context.md`, or lies below `work/`, `roadmap/` or `planning/`.
 - `specy_road/bundled_scripts/review_packet.py`: `_trial_merge_line` in the header.
 - `specy_road/bundled_scripts/review_cli.py`: the `handoff status` problems list leads with the trial-merge problem.
-- `specy_road/bundled_scripts/mark_implementation_reviewed.py`, `specy_road/bundled_scripts/finish_task.py`: call `trial_merge_or_exit(ROOT)`. In finish it runs after M4.10's `delete_branch_preflight` and before the review check. I had removed finish_task.py's empty `# Git helpers` banner to fit the 400-line cap. M4.10 moved the argument parsing out (349 lines), so the banner is restored and this file's diff against WIP is just the import and the call.
+- `specy_road/bundled_scripts/mark_implementation_reviewed.py`, `specy_road/bundled_scripts/finish_task.py`: call `trial_merge_or_exit(ROOT)`. In finish it runs after M4.10's `delete_branch_preflight`, before M3.14's scaffold-sheet check and before the review check. I had removed finish_task.py's empty `# Git helpers` banner to fit the 400-line cap. M4.10 moved the argument parsing out (349 lines), so the banner is restored and this file's diff against WIP is just the import and the call.
 - `docs/orchestration.md` (at the 400-line cap, so I extended the existing "Order:" bullet rather than adding lines) and `docs/dev-workflow.md` (review step 2 and finish step 1).
 
 Final touch zones are the widened list on the claim. Every changed path is inside it: the eight original zones plus `specy_road/bundled_scripts/review_cli.py` and `specy_road/review_gate.py`. Nothing else was needed.
@@ -35,9 +35,21 @@ Final touch zones are the widened list on the claim. Every changed path is insid
   - `tests/test_finish_task_commands.py::test_finish_already_done_on_branch_when_complete_and_deregistered` fails on WIP's tip `6bcfeb8` without this branch. M4.10's `retry_milestone_rollup_landing` (`specy_road/finish_milestone_rollout.py:120`, reached from `feature_rm_registry.py:120`) loads the real roadmap, but the test patches `load_roadmap` only in `feature_rm_registry`.
   - `ruff check` reports C901 on `tests/test_grind_session.py:57` (`__init__` complexity 11). That is also present on `6bcfeb8`.
 
+## Merge with WIP (ce4225e, after M3.12, M3.14 and M3.15 landed)
+
+Both reviewers approved `ead181e`. WIP then moved 48 commits ahead, and this leaf's own check reported code conflicts (`handoff status`: `docs/dev-workflow.md`, `finish_task.py`, `tests/test_review_cli.py`). I merged at `c8b6e9a`, keeping both sides of each conflict. The merge adds no new behaviour, and it makes the earlier approvals stale.
+
+- `specy_road/bundled_scripts/finish_task.py`: `_resolve_main_context` runs `delete_branch_preflight`, then `trial_merge_or_exit`, then M3.14's `scaffold_planning_or_exit`, then the review gate. None of these write. The import line takes both.
+- `docs/dev-workflow.md` finish step 1: states both refusals, trial merge first, then the scaffold sheet, then the review gate.
+- `tests/test_review_cli.py`: imports both M3.15's `NODE` and this leaf's `diverge`.
+- `review_cli.py` auto-merged. M3.15's `handoff status` exit code comes from `state` alone. So a node whose gate is met still exits 0 while listing a trial-merge conflict under `problems`. A1 asks only for the report, so I left M3.15's exit contract as it was.
+- The two inherited failures from the previous merge are fixed on WIP (`4d5775c` and others), so every gate now exits 0.
+- WIP has since moved 2 more commits (`86b476e`: a roadmap chunk and `sr/tools/*.sh`). A trial merge against it is clean, so I did not merge again.
+
 ## Verification
 
-- After the WIP merge: full `pytest` 2365 passed, 2 skipped, 1 failed. The failure is the inherited M4.10 test above.
+- After the ce4225e merge: full `pytest -q -p no:cacheprovider -rf` gave 2402 passed and 2 skipped. The focused files (`review_packet`, `review_cli`, `mark_implementation_reviewed_gate`, `finish_task_commands`, `git_subprocess`, `review_gate`, `finish_bookkeeping_wiring`, `project_layouts`) gave 117 passed. `specy-road file-limits` was OK, `ruff check specy_road tests` passed, and `git diff --check` was clean.
+- After the 6bcfeb8 merge: full `pytest` 2365 passed, 2 skipped, 1 failed. The failure is the inherited M4.10 test above.
 - After the merge, the focused tests for both leaves (this leaf's files plus `test_branch_cleanup`, `test_rollup_branch_cleanup` and the `test_finish_*` files): 182 passed, 1 failed (the same inherited test).
 - Round 0: full `pytest` 2310 passed, 2 skipped. The full suite was not re-run for round 1.
 - Round 1: `pytest tests/test_review_packet.py tests/test_review_cli.py tests/test_mark_implementation_reviewed_gate.py tests/test_finish_task_commands.py tests/test_git_subprocess.py tests/test_review_gate.py tests/test_finish_bookkeeping_wiring.py tests/test_project_layouts.py` → 115 passed.
@@ -71,3 +83,4 @@ Final touch zones are the widened list on the claim. Every changed path is insid
 - `tests/test_mark_implementation_reviewed_gate.py::test_yes_refuses_while_a_trial_merge_conflicts_on_code` (clean / bookkeeping / code): A2/A3 for mark; registry and HEAD unchanged when refused.
 - `tests/test_finish_task_commands.py::test_finish_refuses_while_a_trial_merge_conflicts_on_code` (bookkeeping / code): A2/A3 for finish. A code conflict refuses first; a bookkeeping conflict gets past it to the review gate; HEAD and the tree are unchanged.
 - Mocks: none.
+- ce4225e merge: nothing added; conflict resolution only.
