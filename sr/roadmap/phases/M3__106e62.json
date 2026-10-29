@@ -110,7 +110,11 @@
         "specy_road/bundled_scripts/validate_stale_mentions.py",
         "tests/",
         "specy_road/review_gate.py",
-        "specy_road/review_gate_ready.py"
+        "specy_road/review_gate_ready.py",
+        "docs/orchestration.md",
+        "docs/orchestration-review.md",
+        "specy_road/bundled_scripts/brainstorm_cli.py",
+        "specy_road/bundled_scripts/brainstorm_cli_revise.py"
       ],
       "type": "task"
     }

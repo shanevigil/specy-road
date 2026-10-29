@@ -15,6 +15,10 @@ entries:
     node_id: M3.18
     branch: feature/rm-bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
     touch_zones:
+      - docs/orchestration.md
+      - docs/orchestration-review.md
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_revise.py
       - specy_road/review_gate.py
       - specy_road/review_gate_ready.py
       - specy_road/bundled_scripts/role_prompt.py
@@ -29,6 +33,9 @@ entries:
     node_id: M3.7
     branch: feature/rm-promote-node-quality
     touch_zones:
+      - specy_road/bundled_scripts/roadmap_chunk_router.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_crud_prepare.py
       - specy_road/bundled_scripts/brainstorm_cli.py
       - specy_road/bundled_scripts/brainstorm_fields.py
       - specy_road/bundled_scripts/brainstorm_session.py
