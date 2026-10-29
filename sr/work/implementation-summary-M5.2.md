@@ -111,6 +111,14 @@ the product name is the first token after the marker, or is preceded only by a r
 (`- **Adoption prompts** are kept aligned with other specy-road formats that ...`) is a noun
 phrase and does not report. `AGENTS.md` and `CLAUDE.md` in this repository report nothing.
 
+## Review round 9
+
+The same reviewer blocked A1 at `90fff63`. `_INLINE_CODE` matched only a single backtick, so a
+double-backtick span was prose and a noun phrase inside it was quiet. A code span is now an
+opening run of N backticks closed by the next run of exactly N, N >= 1. ``the specy-road frob``,
+an inline ```the specy-road frob```, and ``see ` the specy-road frob`` all report. The single
+backtick in the last one does not end the span.
+
 ## Touch zones
 
 Final list: `specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `tests/`,
@@ -123,7 +131,7 @@ calls `_split`.
 ## Verification
 
 - `python -m pytest -q` (after review round 1): 2258 passed, 2 skipped. Not re-run after round 2.
-- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 8): 8 passed.
+- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 9): 8 passed.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -147,14 +155,15 @@ calls `_split`.
 - Helper `_command_mentions` (validate_roadmap.py): walks every line and yields the tokens `_reports` keeps (A1).
 - Helper `unregistered_commands` (validate_roadmap.py, public): drops registered names and keeps every remaining occurrence. Its docstring states the precedence rule.
 - Helper `warn_unregistered_commands` (validate_roadmap.py, public): one warning per occurrence, with the file line number, wired into `validate_at`.
-- Regexes `_FENCE`, `_INLINE_CODE`, `_MENTION`, `_LIST_ITEM` (validate_roadmap.py): fences, inline code, the lookbehind mention, and a list marker. `_HEADING` is gone with the heading exclusion.
+- Helper `_backtick_run` / `_code_spans` (validate_roadmap.py): a CommonMark code span, N backticks closed by the next run of N. Replaces `_INLINE_CODE`, which stopped at the next single backtick (A1).
+- Regexes `_FENCE`, `_MENTION`, `_LIST_ITEM` (validate_roadmap.py): fences, the lookbehind mention, and a list marker.
 - Table `REPLACED_COMMANDS` (cli.py): the A2 alias/deprecated-name table, next to the command set it complements.
 - Guard `if not path.is_file(): continue`: most projects have only one of the two files, and the test's tmp git root has no `AGENTS.md`.
 - Guard `except UnicodeDecodeError: continue`: a non-UTF-8 agent file; reached by `test_an_agent_file_that_is_not_utf8_is_skipped`.
 - Branch: three-way advice (replacement / removed with none / `--help`): A2 wording; all three are asserted in the end-to-end test.
 - Mocks: none.
 - Test `test_validate_warns_for_each_unregistered_command_and_still_passes`: A1 + A2 + A3 end to end through the validate script on a nested `sr/` copy of the dogfood fixture (exit 0, exact warning lines, managed block skipped, `frob` / `does-not-exist` / a fenced `files` flagged, `the specy-road toolkit is` and `specy-road validate` not flagged, `CLAUDE.md` at the git root).
-- Test `test_a_noun_phrase_is_quiet_and_a_command_is_not`: `# Please specy-road frob`, `- specy-road frob --x`, and `- Run specy-road frob` warn; `- **Adoption prompts** are kept aligned with other specy-road formats that ...`, `- the specy-road frob`, `the specy-road toolkit is`, and `specy-road validate --strict` do not. A flag, path, quote, `M1.2`, and `command`/`subcommand` still warn inside a noun phrase. `specy-road frob; specy-road frob` is two entries.
+- Test `test_a_noun_phrase_is_quiet_and_a_command_is_not`: `# Please specy-road frob`, `- specy-road frob --x`, and `- Run specy-road frob` warn; `- **Adoption prompts** are kept aligned with other specy-road formats that ...`, `- the specy-road frob`, `the specy-road toolkit is`, and `specy-road validate --strict` do not. A flag, path, quote, `M1.2`, and `command`/`subcommand` still warn inside a noun phrase. ``the specy-road frob``, an inline ```the specy-road frob```, and ``see ` the specy-road frob`` warn. `specy-road frob; specy-road frob` is two entries.
 - Test `test_each_occurrence_warns_with_its_line`: the same unknown token on two lines of a file is two warnings, `AGENTS.md:1` and `AGENTS.md:2` (A1).
 - Test `test_each_replaced_name_is_unregistered_and_its_replacement_is_not` (parametrized over the table): keeps the alias table honest as commands change.
 - Test `test_the_toolkits_agent_files_report_nothing`: `unregistered_commands` on this repository's `AGENTS.md` and `CLAUDE.md` is empty (A3). Replaces `test_the_toolkits_agent_files_follow_the_mention_rule`, which expected the prose bullet `specy-road formats` under the wider list-item rule.

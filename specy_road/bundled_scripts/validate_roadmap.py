@@ -98,7 +98,6 @@ def warn_if_pin_differs(start: Path) -> None:
 
 
 _FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
-_INLINE_CODE = re.compile(r"`([^`\n]*)`")
 _MENTION = re.compile(r"(?<![\w/.-])(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
 # The product name is a noun phrase when one of these words is the last word
@@ -173,6 +172,48 @@ def _reports(line: str, start: int) -> bool:
     return True
 
 
+def _backtick_run(line: str, index: int) -> int:
+    end = index
+    while end < len(line) and line[end] == "`":
+        end += 1
+    return end
+
+
+def _code_spans(line: str) -> list[tuple[int, int, str]]:
+    """CommonMark code spans: a run of N backticks closed by the next run of N.
+
+    A run of a different length does not close the span, so one backtick inside
+    a double-backtick span stays inside it.
+    """
+    spans: list[tuple[int, int, str]] = []
+    index = 0
+    length = len(line)
+    while index < length:
+        if line[index] != "`":
+            index += 1
+            continue
+        opener_end = _backtick_run(line, index)
+        width = opener_end - index
+        cursor = opener_end
+        closer: tuple[int, int] | None = None
+        while cursor < length:
+            if line[cursor] != "`":
+                cursor += 1
+                continue
+            run_end = _backtick_run(line, cursor)
+            if run_end - cursor == width:
+                closer = (cursor, run_end)
+                break
+            cursor = run_end
+        if closer is None:
+            index = opener_end
+            continue
+        close_at, close_end = closer
+        spans.append((index, close_end, line[opener_end:close_at]))
+        index = close_end
+    return spans
+
+
 def _command_mentions(lines: list[tuple[int, str]]):
     """``(line, tool, name)`` for each command-shaped token the rule keeps."""
     in_fence = False
@@ -184,10 +225,13 @@ def _command_mentions(lines: list[tuple[int, str]]):
             for tool, name in _MENTION.findall(line):
                 yield lineno, tool, name
             continue
-        for code in _INLINE_CODE.findall(line):
-            for tool, name in _MENTION.findall(code):
+        spans = _code_spans(line)
+        chars = list(line)
+        for start, end, content in spans:
+            for tool, name in _MENTION.findall(content):
                 yield lineno, tool, name
-        plain = _INLINE_CODE.sub(lambda match: " " * len(match.group(0)), line)
+            chars[start:end] = " " * (end - start)
+        plain = "".join(chars)
         for match in _MENTION.finditer(plain):
             if _reports(plain, match.start()):
                 yield lineno, match.group(1), match.group(2)
@@ -234,7 +278,9 @@ def unregistered_commands(text: str) -> list[str]:
     (``specy-road validate --strict``).
 
     Mandatory contexts are decided first and win over a noun phrase: a code
-    span, a fenced block, a command-led list item (the product name is the
+    span (a run of N backticks, N >= 1, closed by the next run of exactly N;
+    ``the specy-road frob`` and ```the specy-road frob``` warn, and one
+    backtick inside a longer span does not end it), a fenced block, a command-led list item (the product name is the
     first token after the marker, optionally in code or emphasis, or it is
     preceded only by a run verb: ``- specy-road frob --x``, ``- Run specy-road
     frob``), a run verb (run, exec, execute, invoke, uvx), and a token followed
