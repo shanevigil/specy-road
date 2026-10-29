@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git
-from tests.test_worker_cli import _repo, _wait
+from tests.test_worker_cli import _repo, wait_for_worker
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -148,7 +148,7 @@ def test_a_huge_stdin_prompt_travels_in_a_0600_file_not_argv(tmp_path: Path) -> 
         wr.subprocess.Popen = real
     assert seen["mode"] == "0o600" and sum(len(a) for a in seen["argv"]) < 4096
     assert seen["argv"][3:6] == [str(repo.resolve()), rec.worker_id, ws.load_record(repo, rec.worker_id).wrapper_token]
-    final = _wait(repo, rec.worker_id)
+    final = wait_for_worker(repo, rec.worker_id)
     assert final.provider_session_id == "2000000"
     assert not list((repo / "work" / ".workers").glob("*.launch-*.json"))   # read once and deleted
 

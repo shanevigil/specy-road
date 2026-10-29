@@ -20,9 +20,8 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_orchestrate_plan import ROSTER, _only
-from tests.test_orchestrate_plan import _repo as _plan_repo
-from tests.test_worker_cli import FAKE, _cli, _roster, _wait
+from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
+from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
 
 from specy_road import orchestrate_plan as op
 from specy_road import worker_adapters as wa
@@ -70,7 +69,7 @@ def _plan_text(repo: Path, capsys) -> str:
 
 
 def test_text_plan_always_names_the_roster_ref(tmp_path: Path, capsys) -> None:
-    repo = _plan_repo(tmp_path)
+    repo = plan_repo(tmp_path)
     plan, err = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
     assert err is None and plan.roster_ref and plan.roster_drift is None
     out = _plan_text(repo, capsys)
@@ -83,21 +82,21 @@ def test_text_plan_always_names_the_roster_ref(tmp_path: Path, capsys) -> None:
 
 def test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint(
         tmp_path: Path, capsys) -> None:
-    repo = _plan_repo(tmp_path, roster=EXECUTORLESS)
+    repo = plan_repo(tmp_path, roster=EXECUTORLESS)
     (repo / "roadmap" / "orchestration.yaml").write_text(ROSTER)   # executors added, not committed
     plan, _ = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
-    problems = " ".join(_only(plan).problems)
+    problems = " ".join(only_assignment(plan).problems)
     assert "differs from" in problems and plan.roster_ref in problems and "may_process containing" not in problems
     validate_orchestration_contract(repo)
     assert "warning: roadmap/orchestration.yaml in the working tree differs from" in capsys.readouterr().err
 
 
 def test_a_roster_absent_on_the_integration_branch_is_named(tmp_path: Path, capsys) -> None:
-    repo = _plan_repo(tmp_path, roster=None)
+    repo = plan_repo(tmp_path, roster=None)
     (repo / "roadmap" / "orchestration.yaml").write_text(ROSTER)
     plan, _ = op.build_orchestration_plan(repo, today=date(2026, 11, 1))
     assert plan.roster_drift and "is not on" in plan.roster_drift
-    assert any("is not on" in p for p in _only(plan).problems)
+    assert any("is not on" in p for p in only_assignment(plan).problems)
     validate_orchestration_contract(repo)
     assert "is not on" in capsys.readouterr().err
 
@@ -114,7 +113,7 @@ def test_sync_reports_a_gap_in_event_sequence_numbers(tmp_path: Path, capsys) ->
     seqs = [json.loads(ln)["seq"] for ln in lines]
     lost = seqs[1:3]
     log.write_text("\n".join([lines[0], "{not json", *lines[3:]]) + "\n")   # two events lost
-    assert _cli("worker", "sync", "--repo-root", str(repo)) == 0
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
     assert f"! gap: event(s) #{lost[0]}–#{lost[1]} missing" in capsys.readouterr().out
     delta = ops.sync(repo, ack=True)
     assert delta[0]["gaps"] == [lost]
@@ -136,7 +135,7 @@ def _nested(tmp_path: Path) -> tuple[Path, Path]:
     """``(git root, project root)``: the review repo's tree under ``sr/``, the claim's branch checked out."""
     script = tmp_path / "fake.py"
     script.write_text(FAKE)
-    flat = make_review_repo(tmp_path, orchestration=_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
+    flat = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
     top = tmp_path / "top"
     git(flat, "checkout", "-q", "dev")
     shutil.copytree(flat, top / "sr", ignore=shutil.ignore_patterns(".git"))
@@ -177,8 +176,8 @@ def test_nested_delegate_puts_the_brief_under_the_worktrees_project_root(tmp_pat
     wt = Path(rec.worktree)
     assert created and wt != top and (wt / "sr" / "work" / "brief-M1.1.md").is_file()
     assert not (wt / "work").exists()
-    _wait(project, rec.worker_id)
+    wait_for_worker(project, rec.worker_id)
     ops.terminate(project, rec.worker_id)
     again, created = ops.delegate(project, "M1.1", "opus")   # its own untracked brief is bookkeeping
     assert created and Path(again.worktree) == wt
-    _wait(project, again.worker_id)
+    wait_for_worker(project, again.worker_id)

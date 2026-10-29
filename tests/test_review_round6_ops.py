@@ -29,7 +29,7 @@ import pytest
 import yaml
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import _cli, _repo, _wait
+from tests.test_worker_cli import run_worker_cli, _repo, wait_for_worker
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_lease as wl
@@ -52,7 +52,7 @@ def _idle(repo: Path, node: str = "M1.1", harness: str = "claude-code", sid: str
 def _hook(repo: Path, fmt: str, payload: dict) -> int:
     sys.stdin = io.StringIO(json.dumps(payload))
     try:
-        return _cli("worker", "hook", "--format", fmt, "--repo-root", str(repo))
+        return run_worker_cli("worker", "hook", "--format", fmt, "--repo-root", str(repo))
     finally:
         sys.stdin = sys.__stdin__
 
@@ -80,9 +80,9 @@ def test_resume_commands_are_shell_quoted_and_bad_ids_refused(tmp_path: Path) ->
 def test_handoff_prints_a_quoted_command(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
     rec = _idle(repo, sid="a.b:c-d")
-    assert _cli("worker", "handoff", rec.worker_id, "--repo-root", str(repo)) == 0
+    assert run_worker_cli("worker", "handoff", rec.worker_id, "--repo-root", str(repo)) == 0
     assert "claude --resume a.b:c-d" in capsys.readouterr().out
-    assert _cli("worker", "open", rec.worker_id, "--repo-root", str(repo)) == 0
+    assert run_worker_cli("worker", "open", rec.worker_id, "--repo-root", str(repo)) == 0
     assert "resume:   claude --resume a.b:c-d" in capsys.readouterr().out
 
 
@@ -132,21 +132,21 @@ def test_an_embedded_session_placeholder_is_refused_by_the_adapter(tmp_path: Pat
 
 def test_message_op_id_binds_the_text_and_survives_a_missing_file(tmp_path: Path, capsys) -> None:
     repo, _ = _repo(tmp_path)
-    _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
-    _wait(repo, "w-0001")
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    wait_for_worker(repo, "w-0001")
     capsys.readouterr()
     msg = tmp_path / "message.txt"
     msg.write_text("first")
-    assert _cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 0
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 0
     first = json.loads(capsys.readouterr().out)
-    _wait(repo, "w-0001")
+    wait_for_worker(repo, "w-0001")
     msg.write_text("second")
-    assert _cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 1
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 1
     assert "different arguments" in capsys.readouterr().err
     msg.unlink()
-    assert _cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 0
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--op-id", "same-op", "--json", "--repo-root", str(repo)) == 0
     assert json.loads(capsys.readouterr().out) == first
-    assert _cli("worker", "message", "w-0001", "--file", str(msg), "--repo-root", str(repo)) == 1
+    assert run_worker_cli("worker", "message", "w-0001", "--file", str(msg), "--repo-root", str(repo)) == 1
     assert "cannot read --file" in capsys.readouterr().err
 
 
@@ -207,7 +207,7 @@ def test_delegate_runs_preflight_outside_the_workers_lock(tmp_path: Path, monkey
     monkeypatch.setattr(ops, "_preflight", probe)
     rec, created = ops.delegate(repo, "M1.1", "opus")
     assert created and seen == {"free": True, "other_thread": True}
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
 
 
 # --- F11 (a) / G2 ---------------------------------------------------------------
@@ -231,7 +231,7 @@ def test_sync_and_delegate_reap_dead_wrappers_on_any_leaf(tmp_path: Path) -> Non
     ws.set_state(repo, dead2, "running", pid=_dead_pid())
     rec, created = ops.delegate(repo, "M1.1", "opus")
     assert created and ws.load_record(repo, dead2.worker_id).state == "failed"
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
 
 
 # --- F11 (b) ---------------------------------------------------------------------
@@ -253,7 +253,7 @@ def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, ca
     (repo / "src" / "a.py").write_text("edited before delegate\n")
     prompt = repo / "work" / "prompt-M1.1-executor-opus.md"   # third review F4: nothing is written before the check
     prompt.write_text("an earlier prompt\n")
-    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
     assert ("uncommitted changes" in err and "commit or stash" in err
             and "pre.txt, src/a.py, work/implementation-summary-M1.1.md, work/notes.md;" in err)
@@ -264,12 +264,12 @@ def test_delegate_refuses_a_checkout_with_uncommitted_changes(tmp_path: Path, ca
     index = repo / ".git" / "index"
     saved = index.read_bytes()
     index.write_bytes(b"not an index")   # re-review N9: a status git cannot read is not a clean tree
-    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     assert "cannot read `git status`" in capsys.readouterr().err and not ws.list_records(repo)
     assert prompt.read_text() == "an earlier prompt\n"
     index.write_bytes(saved)
-    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only the brief left
-    _wait(repo, "w-0001")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0   # only the brief left
+    wait_for_worker(repo, "w-0001")
 
 
 # --- F11 (c) ---------------------------------------------------------------------
@@ -347,7 +347,7 @@ def test_message_from_a_linked_worktree_without_work_dir(tmp_path: Path) -> None
     git(repo, "worktree", "add", "-q", str(wt), "-b", "side")
     assert not (wt / "work").exists()
     ops.message(wt, rec.worker_id, "hi from the side")
-    final = _wait(repo, rec.worker_id)
+    final = wait_for_worker(repo, rec.worker_id)
     assert final.state in ("idle", "completed") and (wt / "work" / f"prompt-{rec.worker_id}-message-2.md").is_file()
 
 
@@ -356,5 +356,5 @@ def test_delegate_in_the_same_checkout_writes_the_missing_brief(tmp_path: Path) 
     assert not (repo / "work" / "brief-M1.1.md").exists()
     rec, _c = ops.delegate(repo, "M1.1", "opus")
     assert rec.worktree == str(repo.resolve()) and (repo / "work" / "brief-M1.1.md").is_file()
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     assert os.path.getsize(repo / "work" / "brief-M1.1.md") > 0
