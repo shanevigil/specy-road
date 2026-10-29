@@ -303,7 +303,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.10_branch-cleanup_34da74ce-0529-4465-ba64-ded0310e2814.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Clean up merged feature branches after finish",
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",
@@ -315,7 +315,9 @@
         "specy_road/templates/specyrd/commands/specyrd-finish.md",
         "tests/",
         "specy_road/feature_rm_registry.py",
-        "specy_road/finish_milestone_rollout.py"
+        "specy_road/finish_milestone_rollout.py",
+        "specy_road/finish_implementation_check.py",
+        "specy_road/finish_land_integration.py"
       ],
       "type": "task"
     },
@@ -348,7 +350,7 @@
     {
       "acceptance": [
         "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods",
-        "file-limits reports an over-cap function with file and line in the same format as Python, and no longer prints OK while one exists",
+        "file-limits reports an over-cap TS/JS function on one line in the same shape as the Python report (`file-limits: <rel> function `<name>` <N> lines (max M per function)`), adding `:<line>` after <rel> for both languages, and no longer prints OK while one exists",
         "Tests use a fixture per syntax form; the policy file documents which languages the function cap covers"
       ],
       "codename": "file-limits-function-length-check-covers-typescript-and-javascript",
@@ -363,11 +365,14 @@
       "title": "file-limits function-length check covers TypeScript and JavaScript",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_file_limits.py",
-        "specy_road/file_limits/",
         "constraints/file-limits.yaml",
         "specy_road/templates/project/constraints/file-limits.yaml",
         "docs/file-limits.md",
-        "tests/"
+        "tests/",
+        "specy_road/file_limits_engine.py",
+        "constraints/README.md",
+        "tests/fixtures/specy_road_dogfood/constraints/README.md",
+        "specy_road/file_limits_js.py"
       ],
       "type": "task"
     },

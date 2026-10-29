@@ -127,7 +127,9 @@ def test_the_brief_is_identical_across_layouts(tmp_path: Path) -> None:
     """A brief must not depend on where in the checkout the project sits.
 
     Guards the whole class of bug at once: any path handled relative to the
-    wrong root shows up here as a diff.
+    wrong root shows up here as a diff. The one deliberate difference (M3.9):
+    a nested brief names its project root, with the summary and hand-off
+    paths from the git root, in one line the embedded brief does not have.
     """
     briefs = []
     for prefix in ("", "sr/"):
@@ -144,7 +146,11 @@ def test_the_brief_is_identical_across_layouts(tmp_path: Path) -> None:
         assert proc.returncode == 0, proc.stderr
         briefs.append(proc.stdout)
 
-    assert briefs[0] == briefs[1]
+    root_line = ("- **Project root:** `sr/` under the git root. Work from the git root; from there this leaf's "
+                 "implementation summary is `sr/work/implementation-summary-M0.3.md` and its review hand-offs go "
+                 "in `sr/work/reviews/M0.3/` of the main checkout — never in the git root's `work/`.\n")
+    assert root_line not in briefs[0] and briefs[1].count(root_line) == 1
+    assert briefs[0] == briefs[1].replace(root_line, "")
 
 
 def test_ignore_blocks_land_at_the_git_root_and_match(

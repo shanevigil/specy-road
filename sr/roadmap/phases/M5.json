@@ -41,7 +41,7 @@
     },
     {
       "acceptance": [
-        "validate warns for each occurrence of `specy-road <token>` or `specyrd <token>` in AGENTS.md or CLAUDE.md outside managed blocks where <token> is command-shaped ([a-z][a-z0-9-]*) and not a registered subcommand. Rule (decidable, documented): code spans, fenced blocks, list items, run-verb contexts (run, exec, execute, invoke, uvx), a token followed by a flag, path, quoted or id-like argument, or a token followed by the word command/subcommand always warn; the only exclusion is a noun phrase: the product name immediately preceded by a determiner, possessive or preposition (the, a, an, this, that, these, those, other, any, all, every, each, its, our, your, their, own, of, with, in, for, from, about) and the token followed by a plain word or nothing",
+        "validate warns for each occurrence of `specy-road <token>` or `specyrd <token>` in AGENTS.md or CLAUDE.md outside managed blocks where <token> is command-shaped ([a-z][a-z0-9-]*) and not a registered subcommand. Rule (decidable, documented): code spans, fenced blocks, command-led list items (the product name is the item's first token after the marker, or preceded only by a run verb), run-verb contexts (run, exec, execute, invoke, uvx), a token followed by a flag, path, quoted or id-like argument, or a token followed by the word command/subcommand always warn; the only exclusion is a noun phrase: the product name immediately preceded by a determiner, possessive or preposition (the, a, an, this, that, these, those, other, any, all, every, each, its, our, your, their, own, of, with, in, for, from, about) and the token followed by a plain word or nothing; there is no heading exclusion and no other exclusion",
         "Known aliases and deprecated names are listed with their replacement",
         "The check never fails validation and has no false positive on the toolkit's own docs"
       ],
@@ -61,7 +61,8 @@
         "specy_road/cli.py",
         "specy_road/managed_block.py",
         "tests/",
-        "docs/install-and-usage.md"
+        "docs/install-and-usage.md",
+        "AGENTS.md"
       ],
       "type": "task"
     },
@@ -79,7 +80,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.3_context-budget-meter_1296cce5-a445-4edc-80b0-14c22e8da22f.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "validate reports always-injected context per harness against documented limits",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",

@@ -16,7 +16,7 @@ The integration ref is the one the rest of the toolkit uses (`finish_implementat
 - `specy_road/review_gate.py`: `TRIAL_MERGE_BOOKKEEPING`, `is_trial_merge_bookkeeping`, `TrialMerge` (`conflicts`, `code_conflicts`, `problem()`), `trial_merge(repo_root, ref, integration_ref)` and `trial_merge_or_exit(repo_root)`. `trial_merge` rebases every conflicting path to the project with `rebase_to_project`. A path that does not rebase lies outside the project: it always blocks and is shown `../`-relative to the project root. A path that does rebase is bookkeeping only if it is exactly `roadmap.md` or `roadmap-context.md`, or lies below `work/`, `roadmap/` or `planning/`.
 - `specy_road/bundled_scripts/review_packet.py`: `_trial_merge_line` in the header.
 - `specy_road/bundled_scripts/review_cli.py`: the `handoff status` problems list leads with the trial-merge problem.
-- `specy_road/bundled_scripts/mark_implementation_reviewed.py`, `specy_road/bundled_scripts/finish_task.py`: call `trial_merge_or_exit(ROOT)`. finish_task.py was at the 400-line cap, so I removed its empty `# Git helpers` section banner, which had no code under it.
+- `specy_road/bundled_scripts/mark_implementation_reviewed.py`, `specy_road/bundled_scripts/finish_task.py`: call `trial_merge_or_exit(ROOT)`. In finish it runs after M4.10's `delete_branch_preflight` and before the review check. I had removed finish_task.py's empty `# Git helpers` banner to fit the 400-line cap. M4.10 moved the argument parsing out (349 lines), so the banner is restored and this file's diff against WIP is just the import and the call.
 - `docs/orchestration.md` (at the 400-line cap, so I extended the existing "Order:" bullet rather than adding lines) and `docs/dev-workflow.md` (review step 2 and finish step 1).
 
 Final touch zones are the widened list on the claim. Every changed path is inside it: the eight original zones plus `specy_road/bundled_scripts/review_cli.py` and `specy_road/review_gate.py`. Nothing else was needed.
@@ -28,12 +28,21 @@ Final touch zones are the widened list on the claim. Every changed path is insid
 - **Deviation:** a file named exactly `work`, `roadmap` or `planning` is a code conflict, not bookkeeping, which is stricter than `path == dir`. Conflicted paths are files, and a file named `roadmap` is not under `roadmap/`.
 - **Dropped hint:** the refusal no longer prints the hint listing the allowed paths. It had to go to stay within the 400-line cap, and the error already names only the blocking files.
 
+## Merge with WIP (6bcfeb8, after M4.10 landed)
+
+- **Conflict:** the only one was `specy_road/bundled_scripts/finish_task.py` in `_resolve_main_context`. I kept both sides: M4.10's `delete_branch_preflight` (a flag and mode check, no git) first, then `trial_merge_or_exit`. Everything else merged automatically. The claim row and its touch zones are unchanged.
+- **Inherited failures, not touched (outside M3.13's zones):**
+  - `tests/test_finish_task_commands.py::test_finish_already_done_on_branch_when_complete_and_deregistered` fails on WIP's tip `6bcfeb8` without this branch. M4.10's `retry_milestone_rollup_landing` (`specy_road/finish_milestone_rollout.py:120`, reached from `feature_rm_registry.py:120`) loads the real roadmap, but the test patches `load_roadmap` only in `feature_rm_registry`.
+  - `ruff check` reports C901 on `tests/test_grind_session.py:57` (`__init__` complexity 11). That is also present on `6bcfeb8`.
+
 ## Verification
 
+- After the WIP merge: full `pytest` 2365 passed, 2 skipped, 1 failed. The failure is the inherited M4.10 test above.
+- After the merge, the focused tests for both leaves (this leaf's files plus `test_branch_cleanup`, `test_rollup_branch_cleanup` and the `test_finish_*` files): 182 passed, 1 failed (the same inherited test).
 - Round 0: full `pytest` 2310 passed, 2 skipped. The full suite was not re-run for round 1.
 - Round 1: `pytest tests/test_review_packet.py tests/test_review_cli.py tests/test_mark_implementation_reviewed_gate.py tests/test_finish_task_commands.py tests/test_git_subprocess.py tests/test_review_gate.py tests/test_finish_bookkeeping_wiring.py tests/test_project_layouts.py` → 115 passed.
 - Round 1 mutation checks: against d2215f8's `review_gate.py` and `git_subprocess.py`, the `roadmap.md.backup` case fails. Classifying an unrebased path by its raw name, or running `merge-tree` in the project root, fails the nested layout test.
-- `specy-road file-limits` → OK; `ruff check specy_road tests` → all checks passed.
+- `specy-road file-limits` → OK. `ruff check specy_road tests` passed before the merge; after it, the only error is the inherited `tests/test_grind_session.py:57`.
 - Mutation check: with `merge_conflicts` forced to return `[]`, the six code-conflict and bookkeeping tests fail.
 
 ## Notes for reviewers

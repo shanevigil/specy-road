@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_worker_cli import _cli, _repo, _wait
+from tests.test_worker_cli import run_worker_cli, _repo, wait_for_worker
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -41,7 +41,7 @@ def test_a_flag_set_while_the_wrapper_streams_survives(tmp_path: Path) -> None:
     time.sleep(0.8)
     ws.add_flag(repo, rec, ws.FLAG_RECONCILE)           # another process writes while it runs
     ws.append_event(repo, rec, "reconcile", source="orchestrator", summary="mid-run")
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     final = ws.load_record(repo, rec.worker_id)
     assert ws.FLAG_RECONCILE in final.flags
     seqs = [e.seq for e in ws.events_since(repo, rec.worker_id)]
@@ -66,7 +66,7 @@ def test_concurrent_delegates_on_one_leaf_launch_once(tmp_path: Path) -> None:
     recs = [r for r in results if isinstance(r, tuple)]
     assert len(recs) == 4 and sum(1 for _r, created in recs if created) == 1
     assert {r.worker_id for r, _c in recs} == {"w-0001"}
-    _wait(repo, "w-0001")
+    wait_for_worker(repo, "w-0001")
 
 
 def test_terminate_reaches_the_harness_and_its_children(tmp_path: Path) -> None:
@@ -147,12 +147,12 @@ def test_the_harness_does_not_inherit_the_wrappers_pythonpath(tmp_path: Path, mo
     monkeypatch.setenv("PYTHONPATH", "/adopter/own/path")
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     wr.spawn(repo, rec, wa.Launch([sys.executable, str(probe)]))
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).provider_session_id == "/adopter/own/path"
     monkeypatch.delenv("PYTHONPATH")
     rec2 = ws.create_record(repo, "M1.2", "claude-code", "opus", repo)
     wr.spawn(repo, rec2, wa.Launch([sys.executable, str(probe)]))
-    _wait(repo, rec2.worker_id)
+    wait_for_worker(repo, rec2.worker_id)
     assert ws.load_record(repo, rec2.worker_id).provider_session_id == "(unset)"
 
 

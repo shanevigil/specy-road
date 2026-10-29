@@ -17,10 +17,16 @@ from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL, warn_if_stubs
 from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_path, load_manifest_mapping
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
-from specy_road.agents_md_block import warn_if_agents_md_block_stale, warn_missing_load_order_paths
+from specy_road.agents_md_block import (
+    print_injected_context,
+    warn_if_agents_md_block_stale,
+    warn_if_context_over_limits,
+    warn_missing_load_order_paths,
+)
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.orchestration_config import load_orchestration_config
+from specy_road.orchestration_pinned import roster_source
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
 from specy_road.specyrd_init import _load_manifest
 from specy_road.bundled_scripts.validate_roadmap_checks import (
@@ -120,11 +126,16 @@ def validate_orchestration_contract(root: Path) -> None:
 
     A missing file is not a warning: it means the default review policy
     (one reviewer, any family), which is the scaffolded template's content.
+    A file that is not what routing reads (absent on the integration branch,
+    or different there) is, as ``orchestrate plan`` says.
     """
     _data, err = load_orchestration_config(root)
     if err:
         print(err, file=sys.stderr)
         raise SystemExit(1)
+    _ref, drift = roster_source(root)
+    if drift:
+        print(f"warning: {drift}", file=sys.stderr)
 
 
 def validate_at(
@@ -156,6 +167,7 @@ def validate_at(
     warn_if_stubs_stale(root)
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
+    warn_if_context_over_limits(root)
     warn_if_generated_files_ignored(root)
 
     if auto_heal:
@@ -221,6 +233,7 @@ def main() -> None:
             require_registry=True,
             show_all=args.all,
         )
+        print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()   # the OK line first, then why it does not count
         print(f"FAILED (--strict): validation passed with {stderr.lines} line(s) of warnings above.",

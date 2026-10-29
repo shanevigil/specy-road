@@ -29,7 +29,7 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 from tests.test_review_signing import _key, _roster
-from tests.test_worker_cli import _repo, _wait
+from tests.test_worker_cli import _repo, wait_for_worker
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
@@ -58,7 +58,7 @@ def _wrapper_cmdline(monkeypatch, worker_id: str = "w-0001") -> None:
 def test_a_completed_worker_still_owns_its_leaf(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path, max_workers=4)
     rec, _c = ops.delegate(repo, "M1.1", "opus")
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     ws.set_state(repo, rec, "completed", pid=None)
     again, created = ops.delegate(repo, "M1.1", "opus")
     assert not created and again.worker_id == rec.worker_id
@@ -289,7 +289,7 @@ def test_a_dead_wrapper_frees_the_leaf(tmp_path: Path) -> None:
     again, created = ops.delegate(repo, "M1.1", "opus")
     assert created and again.worker_id != rec.worker_id
     assert ws.load_record(repo, rec.worker_id).state == "failed"
-    _wait(repo, again.worker_id)
+    wait_for_worker(repo, again.worker_id)
 
 
 def test_a_spawn_failure_marks_the_record_failed(tmp_path: Path, monkeypatch) -> None:

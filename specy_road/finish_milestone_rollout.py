@@ -15,6 +15,7 @@ from specy_road.milestone_rollup_git import (
 from specy_road.milestone_chunk_io import maybe_promote_milestone_to_pending_mr
 from specy_road.milestone_session import MilestoneSession, milestone_session_path, read_milestone_session
 from specy_road.milestone_subtree import subtree_node_ids
+from specy_road.finish_modes import delete_landed_branch, refuse_unless_finish_tip
 from specy_road.on_complete_session import remove_on_complete_session
 
 
@@ -40,6 +41,96 @@ def milestone_session_conflict_or_exit(
         file=sys.stderr,
     )
     raise SystemExit(1)
+
+
+def _fail(err: str) -> None:
+    print(f"error: {err}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def land_milestone_rollup(
+    repo: Path, *, branch: str, ms: MilestoneSession, ib: str, remote: str,
+) -> None:
+    """Push the leaf, cherry-pick its bookkeeping, merge the leaf into the rollup.
+
+    Ends on ``ib``. A re-run is the same steps: a bookkeeping commit already on
+    ``ib`` cherry-picks as an empty resolution, and a leaf already in the rollup
+    merges as "already up to date".
+    """
+    bookkeeping_sha = rev_parse_head(repo)
+    print("\n[milestone] pushing leaf branch, then landing bookkeeping on integration …")
+    ok, err = push_branch(repo, remote, branch)
+    if not ok:
+        _fail(err)
+    ok, err = cherry_pick_bookkeeping_to_integration(
+        repo, remote=remote, integration_branch=ib,
+        bookkeeping_commit=bookkeeping_sha, leaf_branch=branch,
+    )
+    if not ok:
+        _fail(err)
+    print(f"[milestone] merging {branch} into {ms.rollup_branch} …")
+    ok, err = merge_leaf_into_rollup(
+        repo, remote=remote, rollup_branch=ms.rollup_branch,
+        leaf_branch=branch, integration_branch=ib,
+    )
+    if not ok:
+        _fail(err)
+
+
+def _delete_rolled_leaf(
+    repo: Path, *, branch: str, ms: MilestoneSession, ib: str, remote: str,
+) -> None:
+    """The leaf is contained in the rollup, not in ``ib``. Delete it there."""
+    delete_landed_branch(
+        repo, branch=branch, ib=ib, remote=remote, contained_in=ms.rollup_branch,
+    )
+
+
+def rollup_session_applies(
+    ms: MilestoneSession | None, *, skip: bool, node_id: str, nodes: list[dict],
+) -> bool:
+    """Whether this finish lands on the rollup branch instead of ``on_complete``."""
+    return (
+        ms is not None
+        and not skip
+        and node_id in subtree_node_ids(ms.parent_node_id, nodes)
+    )
+
+
+def retry_milestone_rollup_landing(
+    repo: Path,
+    *,
+    node_id: str,
+    branch: str,
+    delete_branch: bool,
+    no_milestone_rollup: bool = False,
+) -> bool:
+    """Re-land a leaf whose bookkeeping is committed and whose rollup session remains.
+
+    False when no session owns this leaf, or ``--no-milestone-rollup`` was
+    passed, so the caller retries an integration merge instead. Only the finish
+    bookkeeping commit is landed. True after the rollup landing, having deleted
+    the leaf when asked; the caller then stops.
+    """
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+
+    if no_milestone_rollup:
+        return False
+    ms = read_milestone_session(milestone_session_path(repo / "work"))
+    nodes = load_roadmap(repo)["nodes"]
+    if ms is None or node_id not in subtree_node_ids(ms.parent_node_id, nodes):
+        return False
+    refuse_unless_finish_tip(repo, branch)
+    print(f"[info] {node_id} is already Complete on {branch}; landing it on {ms.rollup_branch}.")
+    land_milestone_rollup(
+        repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,
+    )
+    if delete_branch:
+        _delete_rolled_leaf(
+            repo, branch=branch, ms=ms, ib=ms.integration_branch, remote=ms.remote,
+        )
+    print("\n[ok] Milestone rollup: integration branch updated; rollup branch merged.")
+    return True
 
 
 def try_milestone_rollup_finish(
@@ -68,36 +159,12 @@ def try_milestone_rollup_finish(
     )
     if ms is None or args.no_milestone_rollup:
         return False
-    if node_id not in subtree_node_ids(ms.parent_node_id, nodes):
+    if not rollup_session_applies(
+        ms, skip=args.no_milestone_rollup, node_id=node_id, nodes=nodes,
+    ):
         return False
 
-    bookkeeping_sha = rev_parse_head(repo)
-    print("\n[milestone] pushing leaf branch, then landing bookkeeping on integration …")
-    ok, err = push_branch(repo, gw_remote, branch)
-    if not ok:
-        print(f"error: {err}", file=sys.stderr)
-        raise SystemExit(1)
-    ok, err = cherry_pick_bookkeeping_to_integration(
-        repo,
-        remote=gw_remote,
-        integration_branch=ib,
-        bookkeeping_commit=bookkeeping_sha,
-        leaf_branch=branch,
-    )
-    if not ok:
-        print(f"error: {err}", file=sys.stderr)
-        raise SystemExit(1)
-    print(f"[milestone] merging {branch} into {ms.rollup_branch} …")
-    ok, err = merge_leaf_into_rollup(
-        repo,
-        remote=gw_remote,
-        rollup_branch=ms.rollup_branch,
-        leaf_branch=branch,
-        integration_branch=ib,
-    )
-    if not ok:
-        print(f"error: {err}", file=sys.stderr)
-        raise SystemExit(1)
+    land_milestone_rollup(repo, branch=branch, ms=ms, ib=ib, remote=gw_remote)
     remove_on_complete_session(sess_path)
     try:
         from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -113,6 +180,8 @@ def try_milestone_rollup_finish(
             f"[warn] could not refresh milestone_execution: {exc}",
             file=sys.stderr,
         )
+    if args.delete_branch:
+        _delete_rolled_leaf(repo, branch=branch, ms=ms, ib=ib, remote=gw_remote)
     print("\n[ok] Milestone rollup: integration branch updated; rollup branch merged.")
     print(f"     You are on {ib!r}. Next: specy-road do-next-available-task --milestone-subtree")
     print("     When the subtree is done: specy-road open-milestone-pr")

@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
-from tests.test_worker_cli import _cli, _repo, _wait
+from tests.test_worker_cli import run_worker_cli, _repo, wait_for_worker
 
 from specy_road import session_presence as sp
 from specy_road import tool_call_guard as tg
@@ -51,7 +51,7 @@ def test_the_session_id_chosen_up_front_is_on_disk_after_spawn(tmp_path: Path) -
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     wr.spawn(repo, rec, wa.Launch(["true"], session_id="sid-1234"))
     assert ws.load_record(repo, rec.worker_id).provider_session_id == "sid-1234"
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).provider_session_id == "sid-1234"
 
 
@@ -61,7 +61,7 @@ def test_a_completed_worker_takes_a_review_block_as_a_message(tmp_path: Path) ->
     ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
     ws.set_state(repo, rec, "completed", pid=None)
     rec = ops.message(repo, rec.worker_id, "fix the blocker")
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).state in ("idle", "completed")
     for closed in ("failed", "terminated"):
         ws.set_state(repo, rec, closed, pid=None)
@@ -98,7 +98,7 @@ def test_delegate_into_a_linked_worktree_carries_the_brief(tmp_path: Path) -> No
     rec, created = ops.delegate(repo, "M1.1", "opus")
     assert created and Path(rec.worktree) != repo.resolve()
     assert (Path(rec.worktree) / "work" / "brief-M1.1.md").read_text() == "# Brief\n"
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     text, _p, err = build_prompt(repo, "M1.1", role="executor", model="opus")
     assert err is None and str(reviews_root(repo) / "M1.1") in text
 
@@ -147,9 +147,9 @@ def test_malformed_hook_stdin_denies() -> None:
 
 def test_an_op_id_is_bound_to_its_target(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path, max_workers=4)
-    assert _cli("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) == 0
-    _wait(repo, "w-0001")
-    assert _cli("worker", "delegate", "M9.9", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) != 0
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, "w-0001")
+    assert run_worker_cli("worker", "delegate", "M9.9", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo)) != 0
     assert [r.worker_id for r in ws.list_records(repo)] == ["w-0001"]   # no replayed result, no second worker
 
 
@@ -188,7 +188,7 @@ def test_adopt_refuses_a_second_worker_on_the_leaf(tmp_path: Path) -> None:
 def test_reconcile_counts_an_unbuildable_prompt_as_a_contract_change(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
     rec, _c = ops.delegate(repo, "M1.1", "opus")
-    _wait(repo, rec.worker_id)
+    wait_for_worker(repo, rec.worker_id)
     orch = repo / "roadmap" / "orchestration.yaml"
     orch.write_text(orch.read_text().replace("roles: [executor, reviewer], harness", "roles: [reviewer], harness"))
     git(repo, "commit", "-qm", "roster change", "--", "roadmap/orchestration.yaml")

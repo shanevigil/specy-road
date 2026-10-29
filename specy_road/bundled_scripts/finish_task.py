@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path, load_json_chunk, write_json_chunk
+from specy_road.bundled_scripts.finish_task_args import parse_finish_args
 from specy_road.git_workflow_config import (
-    ON_COMPLETE_MODES,
     merge_request_requires_manual_approval,
     resolve_integration_defaults,
     resolve_on_complete,
@@ -25,8 +25,16 @@ from specy_road.finish_work_artifacts import (
     warn_if_pr_body_tracked,
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
-from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
-from specy_road.finish_modes import apply_on_complete_mode, merge_landing_preflight
+from specy_road.finish_milestone_rollout import (
+    rollup_session_applies,
+    try_milestone_rollup_finish,
+)
+from specy_road.milestone_session import milestone_session_path, read_milestone_session
+from specy_road.finish_modes import (
+    apply_on_complete_mode,
+    delete_branch_preflight,
+    merge_landing_preflight,
+)
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context_for_finish
 from specy_road.generated_files import (
     GENERATED_COMMITTED,
@@ -38,13 +46,18 @@ from specy_road.on_complete_session import (
     on_complete_session_path,
     read_on_complete_session,
 )
-from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
+from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run
 
 #: Rebound by :func:`main` before any helper runs; this is only a placeholder
 #: so the name exists at import. Resolving the real root here would make
 #: importing the module shell out to git.
 ROOT = Path.cwd()
+
+
+# ---------------------------------------------------------------------------
+# Git helpers
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -61,9 +74,18 @@ def _save_registry(doc: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_context(branch: str, on_complete: str | None = None) -> tuple[str, dict, dict, list[dict]]:
+def _resolve_context(
+    branch: str,
+    on_complete: str | None = None,
+    *,
+    delete_branch: bool = False,
+    no_milestone_rollup: bool = False,
+) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
-    return resolve_feature_rm_registry_context_for_finish(ROOT, branch, on_complete)
+    return resolve_feature_rm_registry_context_for_finish(
+        ROOT, branch, on_complete, delete_branch=delete_branch,
+        no_milestone_rollup=no_milestone_rollup,
+    )
 
 
 def _update_chunk_status(node_id: str) -> list[str]:
@@ -103,83 +125,6 @@ def _validate_export_digest() -> None:
         )
 
 
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description=(
-            "Mark the current roadmap task complete, validate, export, digest, commit.\n"
-            "\n"
-            "Finishing the last open leaf under a parent also flips that parent "
-            "to Complete, in the same bookkeeping commit, walking up as far as "
-            "the rollup reaches. Nothing is printed when there is nothing to "
-            "close, so a run that leaves other leaves open looks the same as "
-            "one with no parents to close.\n"
-            "\n"
-            "The exception is a node carrying a milestone_execution block "
-            "(written by start-milestone-session): its status belongs to the "
-            "milestone-rollup state machine, which closes it only once the "
-            "rollup branch is proven merged. Use "
-            "specy-road reconcile-milestone-status for those.\n"
-            "\n"
-            "--push pushes the branch; it does not open the PR. The printed "
-            "gh/glab command is pasteable."
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    p.add_argument(
-        "--push",
-        action="store_true",
-        help=(
-            "After the bookkeeping commit, run git push -u <remote> <branch>. "
-            "Does not open the PR — the gh/glab line is printed for you."
-        ),
-    )
-    p.add_argument(
-        "--remote",
-        default="origin",
-        metavar="NAME",
-        help="Remote for --push (default: origin).",
-    )
-    add_repo_root_arg(p)
-    p.add_argument(
-        "--no-cleanup-work",
-        action="store_true",
-        help=(
-            "Keep work/brief-, work/prompt-, and work/implementation-summary- for this node "
-            "(default: delete after successful validate/export/digest)."
-        ),
-    )
-    p.add_argument(
-        "--on-complete",
-        choices=sorted(ON_COMPLETE_MODES),
-        default=None,
-        metavar="MODE",
-        help=(
-            "Override completion workflow: pr, merge, or auto. "
-            "Default: session file from do-next-available-task, then "
-            "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
-        ),
-    )
-    p.add_argument(
-        "--allow-empty-implementation",
-        action="store_true",
-        help=(
-            "Finish even though the branch changes no file under the node's "
-            "declared touch zones. For a leaf that genuinely needs no code "
-            "change; otherwise fix the zones or abort the pickup."
-        ),
-    )
-    p.add_argument(
-        "--no-milestone-rollup",
-        action="store_true",
-        help=(
-            "Skip milestone dual-land (cherry-pick bookkeeping to integration + merge "
-            "leaf into rollup) when work/.milestone-session.yaml exists; use normal "
-            "on_complete instead."
-        ),
-    )
-    return p.parse_args(argv)
-
-
 def _impl_review_or_exit(entry: dict, node: dict) -> None:
     node_id = node["id"]
     if not review_required(ROOT):
@@ -202,7 +147,10 @@ def _impl_review_or_exit(entry: dict, node: dict) -> None:
 
 def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
-    codename, reg, entry, nodes = _resolve_context(branch, args.on_complete)
+    codename, reg, entry, nodes = _resolve_context(
+        branch, args.on_complete, delete_branch=args.delete_branch,
+        no_milestone_rollup=args.no_milestone_rollup,
+    )
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
     work_dir = ROOT / "work"
@@ -212,6 +160,16 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     )
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
+    )
+    delete_branch_preflight(
+        on_mode,
+        delete_branch=args.delete_branch,
+        rollup=rollup_session_applies(
+            read_milestone_session(milestone_session_path(work_dir)),
+            skip=args.no_milestone_rollup,
+            node_id=node_id,
+            nodes=nodes,
+        ),
     )
     trial_merge_or_exit(ROOT)
     _impl_review_or_exit(entry, node)
@@ -328,7 +286,7 @@ def _bookkeeping_commit_phase(
 
 def main(argv: list[str] | None = None) -> None:
     global ROOT
-    args = _parse_args(argv if argv is not None else sys.argv[1:])
+    args = parse_finish_args(argv if argv is not None else sys.argv[1:])
     ROOT = resolve_repo_root(args)
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):
