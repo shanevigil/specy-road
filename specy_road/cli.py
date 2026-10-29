@@ -47,6 +47,7 @@ _SCRIPTS = {
     "review-node": "review_node.py",
     "scaffold-planning": "scaffold_planning.py",
     "move-node": "roadmap_move_node.py",
+    "doctor": "doctor.py",
 }
 
 # Commands whose bundled script owns its own argparse. The command name is
