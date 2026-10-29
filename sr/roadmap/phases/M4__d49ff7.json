@@ -1,0 +1,98 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "handoff status and review list report, per leaf, the number of review rounds (distinct reviewed commits) and the elapsed time from the first review to the latest",
+        "docs/orchestration.md states that two or more review rounds per leaf are normal under a two-family policy",
+        "doctor also lists detached worktrees of the repository (for example ones a review recipe left behind) and, with --fix, removes those with no uncommitted changes"
+      ],
+      "codename": "review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees",
+      "dependencies": [
+        "106e6277-f3ec-46b6-939f-9a213b27c38f",
+        "9bd48271-4b15-475a-b3a1-3fae67e10fb7"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.16",
+      "node_key": "d49ff77b-d845-4e5d-85f3-deedc56bbe1b",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.16_review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees_d49ff77b-d845-4e5d-85f3-deedc56bbe1b.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "Review rounds and elapsed time per leaf, and doctor lists detached worktrees",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "docs/orchestration.md",
+        "docs/pm-llm-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "First, fold the two review-loop RCA research reports (/Users/savigil/WORKSPACE/specy-road/work/research-reports/openai-review-loop-rca.md and claude-review-loop-rca.md, untracked, read by absolute path) into docs/design-notes/review-loop-rca.md: where they agree, the trigger thresholds and signals adopted, the RCA protocol and record schema adopted, and what is deferred; the remaining criteria follow that note and may be adjusted to it",
+        "handoff status and review list detect non-convergence from the leaf's review records: 3 consecutive blocking reviews citing the same acceptance id, or 5 review rounds in total (both thresholds configurable in roadmap/orchestration.yaml policy)",
+        "When triggered, handoff status reports escalated and names the trigger; prompt --role rca builds a root-cause prompt from the leaf's review history, brief, acceptance and diffs, asking for a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence and the cheapest corrective action, including a proposed acceptance rewrite when the class is specification",
+        "The RCA result is a record under work/reviews/<ID>/ validated against a schema; until one exists for the current trigger, review prompts for that leaf say the loop is escalated",
+        "The thresholds, signals and protocol follow the review-loop RCA research (tracked prompt and register entry) once it is folded in"
+      ],
+      "codename": "review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking",
+      "dependencies": [
+        "106e6277-f3ec-46b6-939f-9a213b27c38f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.17",
+      "node_key": "01517858-1959-47e2-97ce-951e486d9aca",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.17_review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking_01517858-1959-47e2-97ce-951e486d9aca.md",
+      "sibling_order": 17,
+      "status": "Complete",
+      "title": "Review-loop escalation: a root-cause analysis runs when reviews keep blocking",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate.py",
+        "specy_road/review_files.py",
+        "specy_road/review_rca.py",
+        "specy_road/templates/project/schemas/",
+        "schemas/",
+        "specy_road/templates/specyrd/commands/",
+        "docs/orchestration.md",
+        "docs/pm-llm-review.md",
+        "tests/",
+        "docs/design-notes/review-loop-rca.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/schemas/",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/roadmap/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each syntax form listed in this leaf's planning sheet (from M4.12's later review rounds, starting with class arrow fields declared with a definite-assignment bang and declarators after a grouped arrow) is measured, with a test per form"
+      ],
+      "codename": "further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review",
+      "dependencies": [
+        "abeedb0d-ada4-407d-8cf3-3a8263670370"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.18",
+      "node_key": "e2c438ba-5f47-4f6c-b386-7e454c8cda72",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.18_further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review_e2c438ba-5f47-4f6c-b386-7e454c8cda72.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Further TS/JS syntax forms for the function cap found in M4.12 review",
+      "touch_zones": [
+        "specy_road/file_limits_js.py",
+        "specy_road/file_limits_js_mask.py",
+        "specy_road/file_limits_jsx.py",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

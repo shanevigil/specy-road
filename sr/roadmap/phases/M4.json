@@ -28,6 +28,7 @@
       "goal": "A promoted node's sheet holds what the brainstorm learned about it, and the batch comes with a prompt that fills the rest.",
       "id": "M4.1",
       "node_key": "e6871451-eb23-42bb-8877-9228bb521193",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.1_promote-judgement_e6871451-eb23-42bb-8877-9228bb521193.md",
       "sibling_order": 1,
@@ -57,6 +58,7 @@
       "goal": "Accepted ideas land where the PM intends in one command.",
       "id": "M4.2",
       "node_key": "7433fe33-15a2-4574-9b4e-3a166b207ac4",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.2_promote-structured_7433fe33-15a2-4574-9b4e-3a166b207ac4.md",
       "sibling_order": 2,
@@ -87,6 +89,7 @@
       "goal": "Sixty ideas or verdicts are one command and one transaction, duplicates merge instead of being rejected, and gap ideas have a sanctioned origin.",
       "id": "M4.3",
       "node_key": "e23d24a4-b720-4f95-b5c5-e715a49cb6a8",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.3_brainstorm-batch-io_e23d24a4-b720-4f95-b5c5-e715a49cb6a8.md",
       "sibling_order": 3,
@@ -119,6 +122,7 @@
       "goal": "A decision made during a brainstorm is recorded as a decision, not as a parked or rejected idea, and the frame can change with history.",
       "id": "M4.4",
       "node_key": "9dd1abfb-0fdd-43a9-bd84-b63a02dea6ee",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.4_brainstorm-decisions_9dd1abfb-0fdd-43a9-bd84-b63a02dea6ee.md",
       "sibling_order": 4,
@@ -151,6 +155,7 @@
       "goal": "Brownfield brainstorms can cite code and record a search that found nothing.",
       "id": "M4.5",
       "node_key": "d2f29378-7143-4bf3-8b5b-dc6846ab82bb",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.5_brainstorm-repo-evidence_d2f29378-7143-4bf3-8b5b-dc6846ab82bb.md",
       "sibling_order": 5,
@@ -181,6 +186,7 @@
       "goal": "Personas fit the product being brainstormed and the recommend prompt stays readable on a large roadmap.",
       "id": "M4.6",
       "node_key": "fed16291-24ba-47dd-a301-300e59ece353",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.6_brainstorm-lenses_fed16291-24ba-47dd-a301-300e59ece353.md",
       "sibling_order": 6,
@@ -349,7 +355,7 @@
     },
     {
       "acceptance": [
-        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods; the scanner is a best-effort heuristic: JSX text (including apostrophes) must not be read as code, while non-ASCII identifiers and overload signatures without a terminating semicolon are documented out of scope",
+        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods; the scanner is a best-effort heuristic: JSX text (including apostrophes) must not be read as code, while non-ASCII identifiers and overload signatures without a terminating semicolon are documented out of scope; Scope is frozen (maintainer decision 2026-10-29): A1 is met by the syntax forms the branch's tests cover; any further TS/JS syntax form found in review is recorded in M4.18 and is not a block for this leaf",
         "file-limits reports an over-cap TS/JS function on one line in the same shape as the Python report (`file-limits: <rel> function `<name>` <N> lines (max M per function)`), adding `:<line>` after <rel> for both languages, and no longer prints OK while one exists",
         "Tests use a fixture per syntax form; the policy file documents which languages the function cap covers"
       ],
@@ -361,7 +367,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.12_file-limits-function-length-check-covers-typescript-and-javascript_abeedb0d-ada4-407d-8cf3-3a8263670370.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "file-limits function-length check covers TypeScript and JavaScript",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_file_limits.py",
@@ -428,7 +434,10 @@
         "specy_road/brainstorm_promote.py",
         "specy_road/brainstorm_cli.py",
         "docs/brainstorming.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brainstorm_promote.py",
+        "specy_road/bundled_scripts/brainstorm_cli.py",
+        "specy_road/bundled_scripts/brainstorm_cli_args.py"
       ],
       "type": "task"
     },
@@ -443,6 +452,7 @@
       "execution_milestone": "Agentic-led",
       "id": "M4.15",
       "node_key": "d513099f-60bc-4af7-8ef4-40f363d57f82",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
       "parent_id": "M4",
       "planning_dir": "planning/M4.15_session-overlap-warnings-name-the-other-worktree-and-its-edit-state_d513099f-60bc-4af7-8ef4-40f363d57f82.md",
       "sibling_order": 15,
@@ -453,35 +463,6 @@
         "specy_road/session_presence.py",
         "specy_road/session_overlap.py",
         "docs/dev-workflow.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "handoff status and review list report, per leaf, the number of review rounds (distinct reviewed commits) and the elapsed time from the first review to the latest",
-        "docs/orchestration.md states that two or more review rounds per leaf are normal under a two-family policy",
-        "doctor also lists detached worktrees of the repository (for example ones a review recipe left behind) and, with --fix, removes those with no uncommitted changes"
-      ],
-      "codename": "review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees",
-      "dependencies": [
-        "106e6277-f3ec-46b6-939f-9a213b27c38f",
-        "9bd48271-4b15-475a-b3a1-3fae67e10fb7"
-      ],
-      "execution_milestone": "Agentic-led",
-      "id": "M4.16",
-      "node_key": "d49ff77b-d845-4e5d-85f3-deedc56bbe1b",
-      "parent_id": "M4",
-      "planning_dir": "planning/M4.16_review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees_d49ff77b-d845-4e5d-85f3-deedc56bbe1b.md",
-      "sibling_order": 16,
-      "status": "Not Started",
-      "title": "Review rounds and elapsed time per leaf, and doctor lists detached worktrees",
-      "touch_zones": [
-        "specy_road/bundled_scripts/review_cli.py",
-        "specy_road/review_files.py",
-        "specy_road/bundled_scripts/doctor.py",
-        "docs/orchestration.md",
-        "docs/pm-llm-review.md",
         "tests/"
       ],
       "type": "task"

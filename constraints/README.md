@@ -7,11 +7,11 @@ Test-fixture roadmap validation uses the consumer-shaped sample tree under [`tes
 | Rule | Where | Check |
 | ---- | ----- | ----- |
 | Max file length (any matched glob) | [`file-limits.yaml`](file-limits.yaml) | `specy-road file-limits` |
-| Max function length (**Python `.py` only**, stdlib `ast`) | same | same |
+| Max function length (**Python** `.py` via stdlib `ast`; **TS/JS** `.ts` `.tsx` `.js` `.jsx` `.mjs` via a bracket scanner) | same | same |
 | Optional: `exclude_path_globs`, `override_limits`, `hard_alerts` | same | same (`--strict-hard-alerts` fails on warnings) |
 | Roadmap manifest / JSON chunk line caps | same (`roadmap_*_max_lines` keys) | `specy-road validate` (via roadmap loader) |
 | Dogfood test-fixture roadmap graph | `tests/fixtures/specy_road_dogfood/roadmap/` | `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` |
 
-**Non-Python files** matched by `applies_to_globs` are checked for **line count per file** only. Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** sources in this toolkit; use your stack’s analyzers in CI for other languages.
+Per-function / `hard_alerts.max_lines_per_function` apply to **`.py`** and **`.ts` `.tsx` `.js` `.jsx` `.mjs`** sources. TS/JS coverage is `function` declarations, arrow functions bound by `const`/`let`/`var`, and class methods ([`specy_road/file_limits_js.py`](../specy_road/file_limits_js.py)); unnamed callbacks are not measured. **Other files** matched by `applies_to_globs` are checked for **line count per file** only; use your stack’s analyzers in CI for other languages.
 
 **Skipped before `applies_to_globs` is applied:** git-ignored files (opt out with `--no-respect-gitignore`), the toolkit's own `work/` session artifacts, and archived roadmap material under `roadmap/archive/` (a scaffold's `**/*.md` glob would otherwise keep flagging planning sheets for milestones that shipped years ago). See [`specy_road/file_limits_engine.py`](../specy_road/file_limits_engine.py) (`SESSION_ARTIFACT_GLOBS`).

@@ -30,6 +30,8 @@ DEFAULT_POLICY: dict[str, Any] = {
     "signed_reviews": False,
     "reviewer_reruns_required": False,
     "max_workers": 2,
+    "escalate_same_acceptance_blocks": 3,
+    "escalate_review_rounds": 5,
 }
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,

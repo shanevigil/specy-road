@@ -76,9 +76,7 @@ substitutions: []
 | `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. A `model: human` record is trusted as written unless `signed_reviews` is on, so under unsigned policy this switch is cooperative attestation, not enforcement. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
-Roster entries also accept `profile`, `channels`, `may_process`,
-`subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy
-also takes `max_workers` (routing, prompts, and `worker delegate` use them).
+Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
 
 **Choosing models.** [`model-profiles/`](../specy_road/templates/project/model-profiles/README.md),
 scaffolded into your repo by `init project`, is the canonical guide to filling the roster: it ranks
@@ -224,7 +222,7 @@ specy-road review record M1.2 --model claude-opus-5.5 --verdict block --file not
   `mark-implementation-reviewed`, so an agent cannot file one.
 
 It sets `family` from the roster; a `family` written in the file is ignored. When policy
-requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive.
+requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from.
 
 ## The review gate
 
@@ -297,10 +295,11 @@ process does not hold. Still self-attested: the session flags inside a signed re
 | `blocked` | A counted review blocks. |
 | `approved` | The policy is met. Run `mark-implementation-reviewed`. |
 | `stale` | The branch moved past the READY commit. |
+| `escalated` | The review loop is not converging (see below) and no RCA record covers it; the trigger is named. |
 | `complete_no_claim` | The node is Complete and its claim is released; its records are listed, not evaluated (`--ref` evaluates them). |
 | `unclaimed`, `error` | No open claim names a commit, so the gate cannot be evaluated and the records are only listed (pass `--ref`); `error`: the node or `--ref` does not resolve. |
 
-Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `stale`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0.
+Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id, or after `escalate_review_rounds` rounds, an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
 
 ## Unattended loops
 

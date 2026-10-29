@@ -7,7 +7,12 @@ machine-readable part:
   paths, and the tail of each verify command
   (``schemas/handoff.schema.json``).
 * ``REVIEW-<model>.md`` — one reviewer's verdict on one commit
-  (``schemas/review-record.schema.json``).
+  (``schemas/review-record.schema.json``). ``review record`` overwrites it
+  each round and keeps a copy of every filing under ``history/``, which is
+  what escalation counts rounds from (``review_rca``).
+
+Beside them, ``RCA-<round>.md`` is a root-cause analysis of a stalled review
+loop (``schemas/rca-record.schema.json``).
 
 Plain files work across every harness, including IDE chats that cannot see
 each other: the executor writes READY, reviewers write REVIEW beside it, and the
@@ -19,7 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -33,6 +38,8 @@ from specy_road.runtime_paths import specy_road_package_dir
 REVIEWS_REL = Path("work") / "reviews"
 READY_PREFIX = "READY-"
 REVIEW_PREFIX = "REVIEW-"
+RCA_PREFIX = "RCA-"
+HISTORY_DIRNAME = "history"
 PACKET_NAME = "PACKET.md"
 #: The interactive approver. A solo maintainer both coordinates and reviews, so
 #: only this model may attest ``is_coordinator: true``.
@@ -224,6 +231,33 @@ def list_reviews(
     repo_root: Path, node_id: str, acceptance_ids: list[str] | None = None
 ) -> list[ReviewFile]:
     return [load_review(p, acceptance_ids) for p in _files(repo_root, node_id, REVIEW_PREFIX)]
+
+
+def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path:
+    """Keep a copy of a filed record under ``history/``; names sort in filing order."""
+    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}-{model}.md"
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
+    """Every record ``review record`` has filed for the node, oldest first."""
+    d = reviews_dir(repo_root, node_id) / HISTORY_DIRNAME
+    return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
+
+
+def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
+    """``RCA-*.md`` records, schema-checked and bound to ``node_id``."""
+    out = []
+    for p in _files(repo_root, node_id, RCA_PREFIX):
+        data, body, errs = _read(p)
+        errs = errs or _schema_errors(data, "rca-record.schema.json")
+        if not errs and data.get("node_id") != node_id:
+            errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r}")
+        out.append(ReviewFile(p, data, body, errs))
+    return out
 
 
 def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> ReviewFile | None:

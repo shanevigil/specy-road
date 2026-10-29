@@ -18,12 +18,12 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import worker_ops as ops
+from specy_road.bundled_scripts.worker_cli_render import _line, _row, _sync_event_lines
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
 from specy_road.worker_hook import HOOKS
 from specy_road.worker_outbox import lookup_op
-from specy_road.worker_process import wrapper_alive
 from specy_road.worker_runner import log_path
 from specy_road.worker_sessions import render_command
 from specy_road.worker_state import (
@@ -41,68 +41,6 @@ from specy_road.worker_state import (
 def _emit(ns: argparse.Namespace, data: dict[str, Any], lines: list[str]) -> int:
     print(json.dumps(data, indent=2) if ns.json else "\n".join(lines))
     return 0
-
-
-def _row(rec) -> dict[str, Any]:
-    d = rec.to_dict()
-    d["alive"] = wrapper_alive(rec)
-    return d
-
-
-def _line(rec, repo: Path | None = None) -> str:
-    flags = f" [{', '.join(rec.flags)}]" if rec.flags else ""
-    run = " (running)" if wrapper_alive(rec) else ""
-    line = (f"{rec.worker_id}  {rec.node_id:<10} {rec.harness}/{rec.model:<22} {rec.state}{run}  "
-            f"lease={rec.lease.get('holder')} epoch={rec.instruction_epoch}{flags}")
-    if repo is not None and rec.state == "failed":
-        msg = _terminal_message(repo, rec.worker_id)
-        if msg:
-            line += f"\n  {msg}"
-    return line
-
-
-def _ends_turn(e: dict[str, Any]) -> bool:
-    """The wrapper's own exit record: a completion, or an error carrying the exit code."""
-    return e.get("type") == "completion" or (e.get("type") == "error" and "exit" in (e.get("detail") or {}))
-
-
-def _harness_message_before(events: list[dict[str, Any]], seq: int) -> str | None:
-    """The last full harness message of the turn that ``seq`` ends; never an earlier turn's."""
-    for e in reversed(events):
-        if e["seq"] >= seq:
-            continue
-        if _ends_turn(e):
-            return None
-        if e.get("source") != "worker":
-            continue
-        msg = (e.get("detail") or {}).get("message")
-        if msg:
-            return str(msg)
-    return None
-
-
-def _terminal_message(repo: Path, worker_id: str) -> str | None:
-    evs = [e.to_dict() for e in events_since(repo, worker_id)]
-    for ev in reversed(evs):
-        if ev.get("type") != "error" or ev.get("source") != "worker":
-            continue
-        msg = (ev.get("detail") or {}).get("message") or _harness_message_before(evs, ev["seq"])
-        if msg:
-            return msg
-    return None
-
-
-def _sync_event_lines(events: list[dict[str, Any]], e: dict[str, Any]) -> list[str]:
-    lines = [f"  #{e['seq']} {e['type']} ({e['source']}): {e['summary']}"]
-    detail = e.get("detail") or {}
-    msg = detail.get("message")
-    if e["type"] == "completion" and not detail.get("ready"):
-        msg = msg or _harness_message_before(events, e["seq"])
-    if e["type"] == "error" and e.get("source") == "worker":
-        msg = msg or _harness_message_before(events, e["seq"])
-    if msg:
-        lines.append(f"  {msg}")
-    return lines
 
 
 def _target_of(ns: argparse.Namespace) -> str | None:

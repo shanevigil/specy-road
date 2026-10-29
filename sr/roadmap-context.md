@@ -29,7 +29,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.13` A trial merge with the integration branch runs before review and before finish `a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` — task — **Not Started**
   - `M3.14` finish-this-task and pickup detect a planning sheet that is still the scaffold `finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold` — task — **Complete**
   - `M3.15` Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter `read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter` — task — **Complete**
-  - `M3.16` Bring worker_cli and worker_adapters back under the 400-line cap `bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap` — task — **Not Started**
+  - `M3.16` Bring worker_cli and worker_adapters back under the 400-line cap `bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap` — task — **Complete**
+  - `M3.17` A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch `a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` — task — **Not Started**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
   - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**
@@ -42,20 +43,22 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Complete**
   - `M4.10` Clean up merged feature branches after finish `branch-cleanup` — task — **Complete**
   - `M4.11` grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave `grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` — task — **Complete**
-  - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Not Started**
+  - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Complete**
   - `M4.13` specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes `specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` — task — **Complete**
   - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Not Started**
   - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Not Started**
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Not Started**
-  - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Not Started**
+  - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
+  - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
-  - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
+  - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Complete**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Complete**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Not Started**
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
+  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Not Started**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
@@ -77,10 +80,9 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M3.13` on `feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` since 2026-10-28
+- `M3.17` on `feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` since 2026-10-29
 - `M3.5` on `feature/rm-brainstorm-converge-checks` since 2026-10-29
-- `M4.12` on `feature/rm-file-limits-function-length-check-covers-typescript-and-javascript` since 2026-10-28
-- `M4.17` on `feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` since 2026-10-28
-- `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
+- `M4.14` on `feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor` since 2026-10-29
 
 ## Reaching the detail behind this
 

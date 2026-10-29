@@ -1,6 +1,9 @@
 # Tune globs to match your repository (examples below).
 
 max_lines_per_file: 400
+# The function cap covers Python (.py) and TS/JS (.ts .tsx .js .jsx .mjs):
+# declarations, named arrow functions and class methods. Other matched
+# files get the per-file cap only.
 max_lines_per_function: 50
 applies_to_globs:
   - "src/**/*.py"
@@ -21,7 +24,7 @@ applies_to_globs:
 #     rationale: Legacy surface; tighten over time.
 
 # Advisory stderr warnings (non-fatal unless `specy-road file-limits --strict-hard-alerts`).
-# `max_lines_per_function` here is Python-only (same as enforcement).
+# `max_lines_per_function` here covers the same languages as enforcement.
 # hard_alerts:
 #   max_lines_per_file: 600
 #   max_lines_per_function: 80

@@ -1,4 +1,4 @@
-"""Language-neutral file line limits + optional Python per-function checks."""
+"""Language-neutral file line limits + per-function checks for Python and TS/JS."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 import yaml
+
+from specy_road.file_limits_js import JS_SUFFIXES, js_function_metrics
 
 
 SKIP_DIR_NAMES = frozenset(
@@ -166,15 +168,15 @@ def line_count(path: Path) -> int:
     return text.count("\n") + (0 if text.endswith("\n") else 1)
 
 
-def python_function_metrics(path: Path) -> list[tuple[str, int]]:
-    """Qualified name and line span for each function/async def (Python only)."""
+def python_function_metrics(path: Path) -> list[tuple[str, int, int]]:
+    """Qualified name, first line and line span for each function/async def."""
     src = path.read_text(encoding="utf-8", errors="replace")
     try:
         tree = ast.parse(src)
     except SyntaxError:
         return []
 
-    found: list[tuple[str, int]] = []
+    found: list[tuple[str, int, int]] = []
 
     class Visitor(ast.NodeVisitor):
         def __init__(self) -> None:
@@ -184,7 +186,7 @@ def python_function_metrics(path: Path) -> list[tuple[str, int]]:
             self.stack.append(node.name)
             end = getattr(node, "end_lineno", None) or node.lineno
             nlines = end - node.lineno + 1
-            found.append((".".join(self.stack), nlines))
+            found.append((".".join(self.stack), node.lineno, nlines))
             self.generic_visit(node)
             self.stack.pop()
 
@@ -201,6 +203,15 @@ def python_function_metrics(path: Path) -> list[tuple[str, int]]:
 
     Visitor().visit(tree)
     return found
+
+
+def function_metrics(path: Path) -> list[tuple[str, int, int]]:
+    """Per-function spans for the languages the function cap covers; else none."""
+    if path.suffix == ".py":
+        return python_function_metrics(path)
+    if path.suffix in JS_SUFFIXES:
+        return js_function_metrics(path)
+    return []
 
 
 @dataclass(frozen=True)
@@ -345,26 +356,24 @@ def run_file_limits_scan(  # noqa: C901 — baseline 2026-10-28; simplify, then 
             )
             failed = True
 
-        if path.suffix == ".py":
-            metrics = python_function_metrics(path)
-            for name, flines in metrics:
-                if ha_func_n is not None and flines > ha_func_n:
-                    print(
-                        f"file-limits: WARNING: {rel} function `{name}` "
-                        f"{flines} lines (hard_alerts.max_lines_per_function={ha_func_n}; "
-                        f"Python-only advisory){ha_note}",
-                        file=err,
-                    )
-                    if strict_hard_alerts:
-                        hard_failed = True
+        for name, lineno, flines in function_metrics(path):
+            if ha_func_n is not None and flines > ha_func_n:
+                print(
+                    f"file-limits: WARNING: {rel}:{lineno} function `{name}` "
+                    f"{flines} lines (hard_alerts.max_lines_per_function={ha_func_n})"
+                    f"{ha_note}",
+                    file=err,
+                )
+                if strict_hard_alerts:
+                    hard_failed = True
 
-                if flines > limits.max_lines_per_function:
-                    print(
-                        f"file-limits: {rel} function `{name}` "
-                        f"{flines} lines (max {limits.max_lines_per_function} per function)"
-                        f"{_overlay_suffix(limits)}",
-                        file=err,
-                    )
-                    failed = True
+            if flines > limits.max_lines_per_function:
+                print(
+                    f"file-limits: {rel}:{lineno} function `{name}` "
+                    f"{flines} lines (max {limits.max_lines_per_function} per function)"
+                    f"{_overlay_suffix(limits)}",
+                    file=err,
+                )
+                failed = True
 
     return failed or hard_failed

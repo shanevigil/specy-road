@@ -41,6 +41,11 @@ policy:
   reviewer_reruns_required: false
   # Most workers `specy-road worker delegate` keeps running at once.
   max_workers: 2
+  # Escalate a leaf's review loop for root-cause analysis (`specy-road prompt
+  # <ID> --role rca`) after this many consecutive rounds blocking on one
+  # acceptance id, or this many rounds in total since the last analysis.
+  escalate_same_acceptance_blocks: 3
+  escalate_review_rounds: 5
 # Recorded decisions to let a named substitute review while the usual reviewer
 # is unavailable, e.g.:
 #   - slot: reviewer-openai

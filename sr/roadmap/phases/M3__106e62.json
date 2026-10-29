@@ -48,13 +48,66 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.16_bring-worker-cli-and-worker-adapters-back-under-the-400-line-cap_cc8f1a03-ae51-4cb5-b142-866eec45eddb.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Bring worker_cli and worker_adapters back under the 400-line cap",
       "touch_zones": [
         "specy_road/bundled_scripts/worker_cli.py",
         "specy_road/worker_adapters.py",
         "specy_road/worker_adapter_parsers.py",
         "specy_road/bundled_scripts/worker_cli_render.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "handoff status, mark-implementation-reviewed and finish-this-task treat a READY verifier with a non-zero exit as a gate problem (policy not met)",
+        "A review record can mark a named failing verifier as pre-existing (it fails identically on the integration branch); when every failing verifier is so marked by at least one approving reviewer, the gate is met as before",
+        "Tests cover a failing verifier that blocks, one marked pre-existing that does not, and the marker on a blocking review (ignored)"
+      ],
+      "codename": "a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.17",
+      "node_key": "e57ac618-27a2-4893-bfa6-0fdcd26b6138",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.17_a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch_e57ac618-27a2-4893-bfa6-0fdcd26b6138.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/schemas/",
+        "specy_road/templates/specyrd/",
+        "docs/orchestration.md",
+        "tests/",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/templates/project/work/review-record.template.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road file-limits passes on the integration branch (role_prompt.py at most 400 lines) by moving whole functions into a new module with no behaviour change",
+        "ruff check specy_road tests passes (validate_stale_commands._command_mentions under the C901 limit) with no behaviour change; the existing tests pass unchanged"
+      ],
+      "codename": "bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.18",
+      "node_key": "39350768-2f5d-4853-afab-797a6cd25e45",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.18_bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error_39350768-2f5d-4853-afab-797a6cd25e45.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Bring role_prompt under the file cap and clear the ruff complexity error",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/bundled_scripts/validate_stale_commands.py",
+        "specy_road/bundled_scripts/validate_stale_mentions.py",
         "tests/"
       ],
       "type": "task"

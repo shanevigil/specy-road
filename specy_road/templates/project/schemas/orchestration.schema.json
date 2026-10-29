@@ -88,6 +88,16 @@
           "type": "integer",
           "minimum": 1,
           "description": "Most workers `specy-road worker delegate` keeps active at once; each draws on a plan quota. Default 2."
+        },
+        "escalate_same_acceptance_blocks": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A leaf's review loop is escalated for root-cause analysis when this many consecutive review rounds block on the same acceptance id. Default 3."
+        },
+        "escalate_review_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
         }
       }
     },

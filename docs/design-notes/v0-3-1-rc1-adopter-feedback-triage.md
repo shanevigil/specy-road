@@ -110,6 +110,10 @@ and data are deliberately not recorded here.
 | A session-overlap warning names the other session and branch but not its worktree, nor whether that copy has uncommitted or unmerged edits to the path (the warning was the useful signal that a later merge would conflict) | Gap | Name the worktree and branch and the other copy's edit state; keep reporting the user's own other worktrees, labelled |
 | Nothing reports how many review rounds a leaf took or how long; adopters had no baseline for whether multiple blocking rounds were normal. Review recipes also left detached worktrees behind with no step that removes them | Gap | `handoff status` and `review list` show rounds and elapsed time; docs say two or more rounds is normal; `doctor` lists detached worktrees |
 
+## Deferred past 0.3.1rc2
+
+These leaves are outside rc2's scope. If rc2 feedback is to ship, 0.3.1 goes to PyPI and they land in 0.3.2; otherwise they go into rc3: promote and brainstorm editing features (M4.1–M4.6), session-overlap worktree detail (M4.15), review rounds and detached worktrees (M4.16), rule pointers (M5.4), the context-feedback pilot and managed-section measurement (M5.6, M5.7), the research register (M7.1, M7.2) and harness compatibility (M8.1–M8.7).
+
 ## Not acted on
 
 | Finding | Why |
