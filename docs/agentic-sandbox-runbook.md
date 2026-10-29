@@ -361,16 +361,19 @@ hit it. The harness runs the cases; no `specy-road` command does.
    account of what it did is not evidence.
 3. Repeat for `runs` runs, each from a fresh app copy.
 4. Record in `work/context-regressions-<YYYY-MM-DD>.md`: toolkit commit,
-   harness versions, model ids, and per case and harness the passes out of
-   `runs`, with the failing artifact quoted. For a rendered prompt also
-   record `<ID>`, `<roster id>`, the app commit it was rendered at and the
-   file's `sha256`, so anyone can render it again and compare. Compare
-   with the previous results file: a case and harness that passed every run
-   before and now fails any run is a regression. Record it as a FAIL here (it blocks an rc)
-   and triage it before the upgraded version is named in §0.
+   harness versions, model ids, and per case and harness each run with an
+   id (`<case>/<harness>/r<n>`) and its result, quoting the failing
+   artifact. For a rendered prompt also record `<ID>`, `<roster id>`, the
+   app commit it was rendered at and the file's `sha256`, so anyone can
+   render it again and compare. Rate each case and harness by the failure
+   rule below.
 
-Few runs catch gross breaks, not subtle shifts; read a single failure as a
-signal to rerun, a repeated one as a regression.
+**Failure rule.** A case that fails one run on a harness is rerun twice
+more at the same commit (same toolkit, app and harness versions). It is a
+**regression** when it fails at least 2 of those 3 runs: record it as a
+FAIL (it blocks the rc) and triage it before the upgraded version is named
+in §0. A 1-of-3 failure is recorded as **flaky** with the three run ids; it
+does not block the rc.
 
 **Format.** `version: 1` and `cases`, at most ten. Each case has `id`
 (`CR<n>`), `title`, `source` (repo paths of the review-round tests or notes

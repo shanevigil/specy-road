@@ -1,6 +1,6 @@
 # Implementation summary: M5.5 `context-regression-set`
 
-Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7eed8`, `70d773a` (review round 1 fixes).
+Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7eed8`, `70d773a` (review round 1 fixes), and the review round 2 commit that adds this edit.
 
 ## What changed
 
@@ -15,9 +15,8 @@ Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7ee
 - `docs/agentic-sandbox-runbook.md`: new section "9. Context regressions" with
   the replay procedure (fresh session per harness, prompt verbatim, pass read
   from artifacts, `runs` fresh copies), the results file
-  `work/context-regressions-<YYYY-MM-DD>.md`, the regression rule (a case that
-  passed every run before and fails any run now is a FAIL and blocks an rc),
-  and the format. Quickstart "Use this doc when" and "Read further for" point
+  `work/context-regressions-<YYYY-MM-DD>.md`, one failure rule (see review
+  round 2 below), and the format. Quickstart "Use this doc when" and "Read further for" point
   at it. The file is 375 lines, under the 400-line docs cap.
 - `tests/test_context_regressions.py` (new): the schema (inline JSON Schema),
   and two tests.
@@ -46,6 +45,21 @@ Base: `525fea03e0f1ed0e017dd8e118d1fa4991f035d5`. Implementation commits: `0c7ee
   `Reviewed-by` trailer for the leaf. The setup rosters no reviewer, so the
   only passing outcome is the gate holding. The format note says an
   `expect` may name an outcome that fails the run outright.
+
+## Review round 2 (Sol, at be5c862)
+
+- **C1: section 9 stated two failure thresholds.** Step 4 called any failed
+  run an rc-blocking regression, and the paragraph after it called a single
+  failure a reason to rerun. The maintainer chose one rule, which is now
+  stated once as **Failure rule**, and step 4 refers to it. A case that
+  fails one run on a harness is rerun twice more at the same commit. It is
+  a regression (a FAIL that blocks the rc) when it fails at least 2 of those
+  3 runs. A 1-of-3 failure is recorded as flaky with its three run ids and
+  does not block the rc. Step 4 now records each run under an id
+  (`<case>/<harness>/r<n>`) so the flaky record can name them. The old
+  "compare with the previous results file" rule and the "few runs" paragraph
+  are gone. The header of `docs/context-regressions.yaml` states no failure
+  rule, so it is unchanged.
 
 ## Cases and where they came from
 
@@ -77,12 +91,13 @@ under the project root `sr/work/` because `.specyrd/manifest.json` sets
 - `python -m pytest tests/test_context_regressions.py -q`: 4 passed at `0c7eed8`; 8 passed at `70d773a`.
 - Round 1, focused: `python -m pytest -q tests/test_context_regressions.py tests/test_models_and_prompt.py tests/test_lean_rules.py tests/test_doc_links.py`: 35 passed.
 - `python -m pytest -q -p no:cacheprovider`: 2289 passed, 2 skipped (at `0c7eed8`; not rerun for round 1).
-- `specy-road file-limits`: OK (runbook now 384 lines).
+- Round 2, focused: the same four test files: 35 passed.
+- `specy-road file-limits`: OK (runbook now 387 lines).
 
 ## Added
 
 - `docs/context-regressions.yaml`: the case set (A1).
-- `docs/agentic-sandbox-runbook.md` section 9: the replay step and format (A2, A3).
+- `docs/agentic-sandbox-runbook.md` section 9: the replay step, the failure rule (round 2, C1) and the format (A2, A3).
 - `SCHEMA` in `tests/test_context_regressions.py`: the format as a JSON Schema (A3). It is inline because the touch zones exclude `specy_road/schemas/`. It caps cases at 10 and requires `artifact` + `expect` objects, so a pass condition cannot be bare prose.
 - `_load` helper in the test: reads the YAML for both tests.
 - `test_the_set_validates_and_cites_sources_that_exist`: the shipped file matches the schema, ids are unique, and every `source` path exists, so a renamed test cannot orphan a case (A1, A3).
