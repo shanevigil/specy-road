@@ -155,7 +155,7 @@ def check_source(source: dict[str, Any], fetch: Fetcher) -> str:
         return "blocked" if status in (401, 403, 429) else "not-found"
     quote = _norm(str(source.get("quote", "")))
     # No quote, nothing to find: a URL alone is not evidence (docs/brainstorming.md).
-    return "retrieved" if quote and quote in _norm(text) else "not-found"
+    return "matched" if quote and quote in _norm(text) else "not-found"
 
 
 def pending(ideas: list[Idea]) -> list[tuple[Idea, dict[str, Any]]]:

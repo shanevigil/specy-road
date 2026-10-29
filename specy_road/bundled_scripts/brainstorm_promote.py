@@ -219,6 +219,12 @@ def pending_ideas(session: BrainstormSession) -> list[Idea]:
     ]
 
 
+def unverified_strong(session: BrainstormSession) -> list[Idea]:
+    """Ideas about to be promoted on a ``strong`` verdict that no ``matched`` source backs."""
+    return [i for i in pending_ideas(session) if i.recommendation == "strong"
+            and not any(s["verification"] == "matched" for s in i.sources)]
+
+
 def promote_session(
     root: Path,
     session: BrainstormSession,

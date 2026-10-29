@@ -13,7 +13,7 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
     render_shard_prompt,
     write_prompt,
 )
-from specy_road.bundled_scripts.brainstorm_prompt_evidence import shortlist
+from specy_road.bundled_scripts.brainstorm_prompt_evidence import MAX_EVIDENCE_IDEAS, shortlist
 from specy_road.bundled_scripts.brainstorm_promote import pending_ideas
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
@@ -132,7 +132,10 @@ def cmd_evidence(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
     ideas = shortlist(session, list(ns.idea_id))
     if not ideas:
-        raise BrainstormError("nothing to source — name idea ids, or run `recommend` so some are strong/consider")
+        raise BrainstormError("nothing to source — name idea ids, or run `recommend` so some are strong")
+    if len(ideas) > MAX_EVIDENCE_IDEAS:
+        print(f"warning: {len(ideas)} ideas selected; an evidence pass over more than {MAX_EVIDENCE_IDEAS} "
+              "gets shallow — name the ids to source and run `evidence` in batches", file=sys.stderr)
     ppath = write_prompt(root, session, render_evidence_prompt(session, ideas), pass_name="evidence")
     print(f"prompt: {ppath.relative_to(root)} ({len(ideas)} idea(s) to source)")
     print(next_step(session, "evidence"))
