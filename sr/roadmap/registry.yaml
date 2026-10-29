@@ -42,25 +42,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: file-limits-function-length-check-covers-typescript-and-javascript
-    node_id: M4.12
-    branch: feature/rm-file-limits-function-length-check-covers-typescript-and-javascript
-    touch_zones:
-      - specy_road/file_limits_js_mask.py
-      - specy_road/file_limits_jsx.py
-      - specy_road/templates/project/constraints/README.md
-      - specy_road/file_limits_js.py
-      - specy_road/file_limits_engine.py
-      - constraints/README.md
-      - tests/fixtures/specy_road_dogfood/constraints/README.md
-      - specy_road/bundled_scripts/validate_file_limits.py
-      - constraints/file-limits.yaml
-      - specy_road/templates/project/constraints/file-limits.yaml
-      - docs/file-limits.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
     node_id: M4.17
     branch: feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
