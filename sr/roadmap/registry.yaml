@@ -35,17 +35,3 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: graph-listing-and-moves
-    node_id: M4.8
-    branch: feature/rm-graph-listing-and-moves
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - docs/pm-workflow.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T01:22:36+00:00'

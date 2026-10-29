@@ -241,7 +241,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.8_graph-listing-and-moves_b7f094e3-dce5-4ab0-9e14-e00f8f412609.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "list-nodes --json, refresh-stubs --diff, move-node zone rewrite",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
