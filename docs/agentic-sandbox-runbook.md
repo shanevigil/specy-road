@@ -359,7 +359,8 @@ hit it. The harness runs the cases; no `specy-road` command does.
 2. When the session stops, read each `pass` item's `artifact` and compare it
    with `expect`. A run passes only if every item holds; the model's own
    account of what it did is not evidence.
-3. Repeat for `runs` runs, each from a fresh app copy.
+3. Run the case `runs` times per harness, each from a fresh app copy, and
+   complete its sample as the failure rule below says.
 4. Record in `work/context-regressions-<YYYY-MM-DD>.md`: toolkit commit,
    harness versions, model ids, and per case and harness each run with an
    id (`<case>/<harness>/r<n>`) and its result, quoting the failing
@@ -368,12 +369,19 @@ hit it. The harness runs the cases; no `specy-road` command does.
    render it again and compare. Rate each case and harness by the failure
    rule below.
 
-**Failure rule.** A case that fails one run on a harness is rerun twice
-more at the same commit (same toolkit, app and harness versions). It is a
-**regression** when it fails at least 2 of those 3 runs: record it as a
-FAIL (it blocks the rc) and triage it before the upgraded version is named
-in §0. A 1-of-3 failure is recorded as **flaky** with the three run ids; it
-does not block the rc.
+**Failure rule.** Per case and harness the sample is S = max(`runs`, 3)
+runs at one commit (same toolkit, app and harness versions): run `runs`
+times, then, only if any run failed, add runs until there are S; never run
+more than S. With F failed runs, the case is a **regression** when
+F ≥ max(2, ceil(S/2)): record it as a FAIL (it blocks the rc) and triage it
+before the upgraded version is named in §0. It is **flaky** when F is at
+least 1 but below that: record it with its run ids; it does not block the
+rc. F = 0 passes.
+
+- `runs: 2` (S = 3, regression at F ≥ 2): two passes end the sample, a
+  pass. One or two failures add a third run: F = 1 is flaky, F ≥ 2 a regression.
+- `runs: 3` (S = 3, regression at F ≥ 2): no runs are added; F = 0 passes,
+  F = 1 is flaky, F = 2 or 3 is a regression.
 
 **Format.** `version: 1` and `cases`, at most ten. Each case has `id`
 (`CR<n>`), `title`, `source` (repo paths of the review-round tests or notes
@@ -383,5 +391,6 @@ or `notes`), `harnesses` (`claude-code`, `codex`, `cursor`), optional
 mapping of `command`, a `specy-road prompt` line, and `send`, the file it
 writes), `pass` (items of `artifact`, a file or a git or `specy-road` read,
 and `expect`; an `expect` may name an outcome that fails the run outright)
-and `runs`. `tests/test_context_regressions.py` holds the schema and checks
-the file against it. Replace a case rather than adding an eleventh.
+and `runs` (the first runs of the failure rule's sample).
+`tests/test_context_regressions.py` holds the schema and checks the file
+against it. Replace a case rather than adding an eleventh.
