@@ -106,3 +106,23 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: roster-profiles-and-packet-path
+    node_id: M3.11
+    branch: feature/rm-roster-profiles-and-packet-path
+    touch_zones:
+      - specy_road/orchestration_config.py
+      - specy_road/orchestration_pinned.py
+      - specy_road/model_profiles.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/session_presence.py
+      - specy_road/worker_adapters.py
+      - docs/orchestration-models.md
+      - docs/orchestration.md
+      - tests/
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/orchestration-workers.md
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
