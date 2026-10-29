@@ -32,8 +32,9 @@ are reported relative to the git root, for example `sr/AGENTS.md`.
   the token immediately before the product name, with only whitespace between them, is a
   determiner, possessive, or preposition (the, a, an, this, that, these, those, other, any, all,
   every, each, its, our, your, their, own, of, with, in, for, from, about), and only when no
-  mandatory context matched. A digit or any other token in between cancels it (`the 2 specy-road
-  frob` reports). That noun phrase is the only exclusion.
+  mandatory context matched. Emphasis markers attached to the name are transparent
+  (`the **specy-road toolkit** is` is quiet); a digit or any other token in between cancels it
+  (`the 2 specy-road frob` reports). That noun phrase is the only exclusion.
   Mandatory contexts, decided first: a code span, a fenced block (closed only by a line whose
   fence uses the opening character and is at least as long), a command-led list item (the
   product name is the first token after the marker, optionally in code or emphasis, or it is
@@ -129,10 +130,13 @@ tilde) and its length. A later fence line closes it only when it uses that chara
 least as long, so a three-backtick line inside a four-backtick fence, and a three-tilde line
 inside a backtick fence, stay inside and still report. The noun-phrase exclusion requires the
 determiner or preposition to be the token immediately before the product name, whitespace only
-between them. `the 2 specy-road frob` reports. `CLAUDE.md` said `the **specy-road toolkit**`;
-the asterisks are a token between `the` and the product name, so that line now reads
-`the specy-road **toolkit**`. The scanner lives in
-`specy_road/bundled_scripts/validate_stale_commands.py`.
+between them. `the 2 specy-road frob` reports. Emphasis markers (`*`, `**`, `_`, `__`)
+attached to the product name are markup, not tokens, so `the **specy-road toolkit** is` keeps
+the exclusion. `CLAUDE.md` is unedited (it says `the **specy-road toolkit**`), and the
+self-check over this repository's `AGENTS.md` and `CLAUDE.md` still reports nothing. An
+underscore directly before the product name already stops the mention regex from matching,
+because its lookbehind treats `_` as a word character; that regex is unchanged. The scanner
+lives in `specy_road/bundled_scripts/validate_stale_commands.py`.
 
 ## Touch zones
 
@@ -147,7 +151,7 @@ calls `_split`.
 
 - `python -m pytest -q` (after review round 1): 2258 passed, 2 skipped. Not re-run after round 2.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 9): 8 passed.
-- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 10): 8 passed in 0.55s. `specy-road file-limits`: OK.
+- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 10, emphasis follow-up): 8 passed in 0.89s. `specy-road file-limits`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -162,7 +166,7 @@ calls `_split`.
 - Helper `_preceding_words` (validate_roadmap.py): the last two words before the product name, so "the specy-road toolkit" and "run the specy-road project" are told apart.
 - Helper `_command_led_list_item` (validate_roadmap.py): a list item reports when the product name is the first token after the marker (emphasis and backticks ignored) or is preceded only by a run verb (A1). Replaces `_on_list_item`, which treated every bullet as a command. `_heading_title` and `_HEADING` are gone; a heading is not an exclusion (A1).
 - Helper `_run_verb` (validate_roadmap.py): `run` / `exec` / `execute` / `invoke` / `uvx` immediately before the product name, or before one noun-phrase word (A1).
-- Helper `_noun_phrase` (validate_stale_commands.py): the noun-phrase exclusion, applied only when no mandatory context matched and the determiner or preposition is the token immediately before the product name (A3, review round 10).
+- Helper `_noun_phrase` (validate_stale_commands.py): the noun-phrase exclusion, applied only when no mandatory context matched and the determiner or preposition is the token immediately before the product name; emphasis markers attached to the name are stripped first (A3, review round 10).
 - Helper `_next_token` / `_mandatory_follower` (validate_roadmap.py): a flag, path, quote, id-like argument, or the word `command`/`subcommand` after the token reports even inside a noun phrase or a heading (A1). Replaces `_followed_by_command_word`.
 - Helper `_reports` (validate_roadmap.py): mandatory contexts first; a noun phrase is the only exclusion. The `code` parameter is gone; code spans are yielded before this helper.
 - Helper `_occurrences` (validate_roadmap.py): every unregistered mention with its line number, without collapsing repeats (A1).
@@ -180,7 +184,7 @@ calls `_split`.
 - Branch: three-way advice (replacement / removed with none / `--help`): A2 wording; all three are asserted in the end-to-end test.
 - Mocks: none.
 - Test `test_validate_warns_for_each_unregistered_command_and_still_passes`: A1 + A2 + A3 end to end through the validate script on a nested `sr/` copy of the dogfood fixture (exit 0, exact warning lines, managed block skipped, `frob` / `does-not-exist` / a fenced `files` flagged, `the specy-road toolkit is` and `specy-road validate` not flagged, `CLAUDE.md` at the git root).
-- Test `test_a_noun_phrase_is_quiet_and_a_command_is_not`: `# Please specy-road frob`, `- specy-road frob --x`, and `- Run specy-road frob` warn; `- **Adoption prompts** are kept aligned with other specy-road formats that ...`, `- the specy-road frob`, `the specy-road toolkit is`, and `specy-road validate --strict` do not. A flag, path, quote, `M1.2`, and `command`/`subcommand` still warn inside a noun phrase. ``the specy-road frob``, an inline ```the specy-road frob```, and ``see ` the specy-road frob`` warn. A three-backtick line inside a four-backtick fence, and a three-tilde line inside a backtick fence, do not close the fence, so `the specy-road frob` inside still warns. `the 2 specy-road frob` warns. `specy-road frob; specy-road frob` is two entries.
+- Test `test_a_noun_phrase_is_quiet_and_a_command_is_not`: `# Please specy-road frob`, `- specy-road frob --x`, and `- Run specy-road frob` warn; `- **Adoption prompts** are kept aligned with other specy-road formats that ...`, `- the specy-road frob`, `the specy-road toolkit is`, and `specy-road validate --strict` do not. A flag, path, quote, `M1.2`, and `command`/`subcommand` still warn inside a noun phrase. ``the specy-road frob``, an inline ```the specy-road frob```, and ``see ` the specy-road frob`` warn. A three-backtick line inside a four-backtick fence, and a three-tilde line inside a backtick fence, do not close the fence, so `the specy-road frob` inside still warns. `the 2 specy-road frob` warns; `the **specy-road toolkit** is` does not. `specy-road frob; specy-road frob` is two entries.
 - Test `test_each_occurrence_warns_with_its_line`: the same unknown token on two lines of a file is two warnings, `AGENTS.md:1` and `AGENTS.md:2` (A1).
 - Test `test_each_replaced_name_is_unregistered_and_its_replacement_is_not` (parametrized over the table): keeps the alias table honest as commands change.
 - Test `test_the_toolkits_agent_files_report_nothing`: `unregistered_commands` on this repository's `AGENTS.md` and `CLAUDE.md` is empty (A3). Replaces `test_the_toolkits_agent_files_follow_the_mention_rule`, which expected the prose bullet `specy-road formats` under the wider list-item rule.

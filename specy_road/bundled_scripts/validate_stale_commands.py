@@ -78,11 +78,12 @@ def _run_verb(line: str, start: int) -> bool:
 def _noun_phrase(line: str, start: int) -> bool:
     """True when the token immediately before the product name is a determiner or preposition.
 
-    Only whitespace may sit between that word and the product name. Any other
-    token, including a digit or punctuation, cancels the exclusion
-    (``the 2 specy-road frob`` reports).
+    Only whitespace, and emphasis markers (``*``, ``_``) attached to the product
+    name, may sit between that word and the name (``the **specy-road toolkit**``
+    is quiet). Any other token, including a digit or punctuation, cancels the
+    exclusion (``the 2 specy-road frob`` reports).
     """
-    before = line[:start].rstrip(" \t")
+    before = line[:start].rstrip("*_").rstrip(" \t")
     if not before:
         return False
     split_at = len(before)
@@ -266,7 +267,8 @@ def unregistered_commands(text: str) -> list[str]:
     frob M1.2.``, ``Use the specy-road frob command.``). A heading is not
     special (``# Please specy-road frob`` warns). The only exclusion is a noun
     phrase: the token immediately before the product name, with only whitespace
-    between them, is a determiner, possessive, or preposition — the, a, an, this, that,
+    and emphasis markers attached to the name between them (``the
+    **specy-road toolkit** is``), is a determiner, possessive, or preposition — the, a, an, this, that,
     these, those, other, any, all, every, each, its, our, your, their, own,
     of, with, in, for, from, about — when the token is followed by a plain
     word or nothing (``the specy-road toolkit is``, ``other specy-road

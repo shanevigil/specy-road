@@ -1,6 +1,6 @@
 # specy-road (local agent guide)
 
-This repo is the specy-road **toolkit** (Python package + validators + optional PM UI). Consumer application repos use `specy-road init project` for their own `roadmap/`, `constitution/`, and `shared/`.
+This repo is the **specy-road toolkit** (Python package + validators + optional PM UI). Consumer application repos use `specy-road init project` for their own `roadmap/`, `constitution/`, and `shared/`.
 
 ## Start here (required load order)
 
