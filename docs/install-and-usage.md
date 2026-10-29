@@ -203,17 +203,21 @@ warning) can gate CI next to `export --check` and `digest --check`.
 
 `validate` also warns when `AGENTS.md` or `CLAUDE.md`, outside the managed
 block, names a `specy-road` or `specyrd` subcommand this version does not
-register. What follows the name does not matter (`specy-road frob M1.2` warns).
-A registered command never warns (`specy-road validate --strict`). Prose is a
-noun phrase, not a command, when the product name is preceded by a determiner,
-possessive, or preposition: the, a, an, this, that, these, those, other, any,
-all, every, each, its, our, your, their, own, of, with, in, for, from, about
-("the specy-road toolkit is" and "other specy-road formats" do not warn). A
-code span, a fenced block, a list item, or a run verb (run, exec, execute,
-invoke, uvx) still warns after one of those words (`Run specy-road project now.`
-and `- the specy-road frob` warn). A token followed by the word command or
-subcommand warns even inside a noun phrase (`Use the specy-road frob command.`
-warns).
+register. Each occurrence is its own warning and names the file line
+(`AGENTS.md:4`); the same name on two lines is two warnings. A registered
+command never warns (`specy-road validate --strict`).
+
+These contexts always warn, even after a determiner and inside a heading: a
+code span, a fenced block, a list item, a run verb (run, exec, execute,
+invoke, uvx), and a token followed by a flag, a path, a quoted argument, an
+id-like argument, or the word command or subcommand (`- the specy-road frob`,
+`## the specy-road frob --x`, and `Use the specy-road frob M1.2.` warn). Only
+then is prose excluded. It is a noun phrase, not a command, when the product
+name is preceded by a determiner, possessive, or preposition — the, a, an,
+this, that, these, those, other, any, all, every, each, its, our, your, their,
+own, of, with, in, for, from, about — and the token is followed by a plain
+word or nothing ("the specy-road toolkit is" and "other specy-road formats
+(templates...)" do not warn). A heading that is only a title is not a command.
 
 #### Upgrading from 0.2.x
 

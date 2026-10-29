@@ -21,7 +21,7 @@ from specy_road.agents_md_block import warn_if_agents_md_block_stale, warn_missi
 from specy_road.cli import REPLACED_COMMANDS, _known_commands
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
-from specy_road.managed_block import HTML_COMMENT, _split
+from specy_road.managed_block import HTML_COMMENT
 from specy_road.orchestration_config import load_orchestration_config
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
 from specy_road.specyrd_cli import _build_parser as _specyrd_parser
@@ -117,16 +117,10 @@ def _preceding_words(text: str, start: int) -> list[str]:
     return [word.lower() for word in re.findall(r"[A-Za-z]+", before)[-2:]]
 
 
-def _list_command(line: str, start: int) -> bool:
-    """True when the list item is the command, even after a noun-phrase word."""
+def _on_list_item(line: str, start: int) -> bool:
+    """True when the mention sits on a list item, whatever words precede the tool."""
     mark = _LIST_ITEM.match(line)
-    if mark is None or start < mark.end():
-        return False
-    gap = re.sub(r"[*_`]+", " ", line[mark.end():start]).strip()
-    if not gap:
-        return True
-    parts = gap.split()
-    return len(parts) == 1 and parts[0].lower() in _NOUN_PHRASE
+    return mark is not None and start >= mark.end()
 
 
 def _heading_title(line: str, start: int) -> bool:
@@ -141,84 +135,137 @@ def _heading_title(line: str, start: int) -> bool:
     return first is None or first.group(0).lower() not in _RUN_VERB
 
 
-def _followed_by_command_word(line: str, start: int) -> bool:
-    """True when the token is immediately followed by ``command`` or ``subcommand``."""
-    match = _MENTION.match(line, start)
-    if match is None:
-        return False
-    word = re.match(r"[ \t]*([A-Za-z]+)", line[match.end():])
-    return word is not None and word.group(1).lower() in {"command", "subcommand"}
-
-
-def _reports(line: str, start: int, *, code: bool) -> bool:
-    if code or _list_command(line, start) or _followed_by_command_word(line, start):
-        return True
+def _run_verb(line: str, start: int) -> bool:
     words = _preceding_words(line, start)
     immediate = words[-1] if words else ""
     earlier = words[-2] if len(words) > 1 else ""
-    if immediate in _RUN_VERB or (earlier in _RUN_VERB and immediate in _NOUN_PHRASE):
+    return immediate in _RUN_VERB or (earlier in _RUN_VERB and immediate in _NOUN_PHRASE)
+
+
+def _noun_phrase(line: str, start: int) -> bool:
+    words = _preceding_words(line, start)
+    return bool(words) and words[-1] in _NOUN_PHRASE
+
+
+def _next_token(line: str, start: int) -> str:
+    match = _MENTION.match(line, start)
+    if match is None:
+        return ""
+    found = re.match(r"[ \t]*(\S+)", line[match.end():])
+    return "" if found is None else found.group(1)
+
+
+def _mandatory_follower(line: str, start: int) -> bool:
+    """True for a flag, path, quote, id, or the word command/subcommand."""
+    raw = _next_token(line, start)
+    if not raw:
+        return False
+    if raw[0] in "\"'":
         return True
-    if _heading_title(line, start) or immediate in _NOUN_PHRASE:
+    if re.match(r"-{1,2}[A-Za-z0-9]", raw):
+        return True
+    word = raw.rstrip(".,;:!?)]")
+    if word.lower() in {"command", "subcommand"}:
+        return True
+    if "/" in word or word.startswith(".") or re.search(r"\.[A-Za-z]", word):
+        return True
+    return bool(re.search(r"\d", word))
+
+
+def _reports(line: str, start: int, *, code: bool) -> bool:
+    """Mandatory contexts first; the noun phrase and a heading title only then."""
+    if code or _on_list_item(line, start) or _run_verb(line, start) or _mandatory_follower(line, start):
+        return True
+    if _heading_title(line, start) or _noun_phrase(line, start):
         return False
     return True
 
 
-def _command_mentions(text: str):
-    """Each ``specy-road`` / ``specyrd`` token of command shape that is an instruction.
-
-    Prose preceded by a noun-phrase word (:data:`_NOUN_PHRASE`) is skipped, unless
-    the token is followed by ``command`` or ``subcommand``. Code, a fenced block,
-    a list item, and a run verb are not skipped.
-    """
+def _command_mentions(lines: list[tuple[int, str]]):
+    """``(line, tool, name)`` for each command-shaped token the rule keeps."""
     in_fence = False
-    for line in text.splitlines():
+    for lineno, line in lines:
         if _FENCE.match(line):
             in_fence = not in_fence
             continue
         if in_fence:
-            yield from _MENTION.findall(line)
+            for tool, name in _MENTION.findall(line):
+                yield lineno, tool, name
             continue
         for code in _INLINE_CODE.findall(line):
-            yield from _MENTION.findall(code)
+            for tool, name in _MENTION.findall(code):
+                yield lineno, tool, name
         plain = _INLINE_CODE.sub(lambda match: " " * len(match.group(0)), line)
         for match in _MENTION.finditer(plain):
             if _reports(plain, match.start(), code=False):
-                yield match.group(1), match.group(2)
+                yield lineno, match.group(1), match.group(2)
 
 
-def unregistered_commands(text: str) -> list[str]:
-    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, once, in order.
-
-    A command-shaped token is reported whatever follows it (``specy-road frob
-    M1.2``, ``Then specy-road frob.``, ``Run specy-road project now.``). A
-    registered command is never reported (``specy-road validate --strict``).
-    Prose is a noun phrase, not a command, when the product name is preceded on
-    the same line (ignoring whitespace) by a determiner, possessive, or
-    preposition: the, a, an, this, that, these, those, other, any, all, every,
-    each, its, our, your, their, own, of, with, in, for, from, about
-    (``the specy-road toolkit is``, ``other specy-road formats``). A code span,
-    a fenced block, a list item (``- the specy-road frob``), or a run verb
-    (run, exec, execute, invoke, uvx) is still a command after one of those
-    words. A token followed by the word ``command`` or ``subcommand`` is still a
-    command inside that noun phrase (``Use the specy-road frob command.``). An
-    ATX heading is a title, not an instruction, unless it opens with the tool
-    or a run verb.
-    """
+def _registered_names() -> dict[str, set[str]]:
     specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
-    registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}
-    found: list[str] = []
-    for tool, name in _command_mentions(text):
-        mention = f"{tool} {name}"
-        if name not in registered[tool] and mention not in found:
-            found.append(mention)
+    return {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}
+
+
+def _occurrences(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
+    registered = _registered_names()
+    found: list[tuple[int, str]] = []
+    for lineno, tool, name in _command_mentions(lines):
+        if name not in registered[tool]:
+            found.append((lineno, f"{tool} {name}"))
     return found
 
 
-def warn_unregistered_commands(root: Path) -> None:
-    """One non-fatal line per command ``AGENTS.md`` / ``CLAUDE.md`` sends agents to that does not exist.
+def _lines_outside_block(text: str) -> list[tuple[int, str]]:
+    """File lines that are not inside the managed block, with their file line numbers."""
+    start = text.find(HTML_COMMENT.start)
+    if start < 0:
+        stop = -1
+    else:
+        end = text.find(HTML_COMMENT.end, start)
+        stop = len(text) if end < 0 else end + len(HTML_COMMENT.end)
+    kept: list[tuple[int, str]] = []
+    offset = 0
+    for number, raw in enumerate(text.splitlines(keepends=True), 1):
+        line_end = offset + len(raw)
+        inside = start >= 0 and offset < stop and line_end > start
+        if not inside:
+            kept.append((number, raw.rstrip("\r\n")))
+        offset = line_end
+    return kept
 
-    The managed block is skipped: ``warn_if_agents_md_block_stale`` already
-    reports one written by another version.
+
+def unregistered_commands(text: str) -> list[str]:
+    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, in order.
+
+    Every occurrence is returned. The same token on two lines is two entries
+    (``specy-road frob`` twice). A registered command is never returned
+    (``specy-road validate --strict``).
+
+    Mandatory contexts are decided first and win over a noun phrase and over a
+    heading: a code span, a fenced block, a list item (``- the specy-road
+    frob``, ``- Use the specy-road frob``), a run verb (run, exec, execute,
+    invoke, uvx), and a token followed by a flag, a path, a quoted argument,
+    an id-like argument, or the word command or subcommand (``## the
+    specy-road frob --x``, ``Use the specy-road frob --flag.``, ``Use the
+    specy-road frob path/to/file.``, ``Use the specy-road frob "quoted".``,
+    ``Use the specy-road frob M1.2.``, ``Use the specy-road frob command.``).
+    Only then is prose excluded. A noun phrase is the product name preceded on
+    the same line (ignoring whitespace) by a determiner, possessive, or
+    preposition: the, a, an, this, that, these, those, other, any, all, every,
+    each, its, our, your, their, own, of, with, in, for, from, about, when the
+    token is followed by a plain word or nothing (``the specy-road toolkit
+    is``, ``other specy-road formats``). An ATX heading that is only a title
+    is not an instruction.
+    """
+    return [mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))]
+
+
+def warn_unregistered_commands(root: Path) -> None:
+    """One non-fatal line per occurrence ``AGENTS.md`` / ``CLAUDE.md`` names, with that file's line number.
+
+    Repeated names are not collapsed. The managed block is skipped:
+    ``warn_if_agents_md_block_stale`` already reports one written by another
+    version.
     """
     root = root.resolve()
     checkout = git_root(root) or root
@@ -227,16 +274,16 @@ def warn_unregistered_commands(root: Path) -> None:
         if not path.is_file():
             continue
         try:
-            before, _block, after = _split(path.read_text(encoding="utf-8"), HTML_COMMENT)
+            text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
         rel = path.relative_to(checkout)
-        for mention in unregistered_commands(f"{before}\n{after}"):
+        for lineno, mention in _occurrences(_lines_outside_block(text)):
             replacement = REPLACED_COMMANDS.get(mention)
             advice = (f"use `{replacement}`" if replacement
                       else "it was removed and nothing replaces it" if replacement == ""
                       else f"see `{mention.split()[0]} --help`")
-            print(f"agents: warning — {rel} tells agents to run `{mention}`, which is not a "
+            print(f"agents: warning — {rel}:{lineno} tells agents to run `{mention}`, which is not a "
                   f"command in specy-road {__version__}; {advice}.", file=sys.stderr)
 
 

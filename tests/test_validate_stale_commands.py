@@ -51,17 +51,32 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     assert r.returncode == 0, r.stderr
     lines = [ln for ln in r.stderr.splitlines() if "tells agents to run" in ln]
     tail = f"which is not a command in specy-road {__version__};"
+    agents = (root / "AGENTS.md").read_text(encoding="utf-8")
+    claude = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
+
+    def at(text: str, needle: str, nth: int = 1) -> int:
+        seen = 0
+        for number, line in enumerate(text.splitlines(), 1):
+            if needle in line:
+                seen += 1
+                if seen == nth:
+                    return number
+        raise AssertionError(needle)
+
+    def warning(rel: str, number: int, mention: str, advice: str) -> str:
+        return f"agents: warning — {rel}:{number} tells agents to run `{mention}`, {tail} {advice}"
+
     assert lines == [
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road grind`, {tail} use `specy-road grind-session`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road frob`, {tail} see `specy-road --help`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road does-not-exist`, {tail} "
-        "see `specy-road --help`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road nope`, {tail} see `specy-road --help`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road files`, {tail} see `specy-road --help`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specyrd refresh`, {tail} see `specyrd --help`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road pm-sync`, {tail} use `specy-road sync`.",
-        f"agents: warning — CLAUDE.md tells agents to run `specy-road backfill-activity`, {tail} "
-        "it was removed and nothing replaces it.",
+        warning("sr/AGENTS.md", at(agents, "grind"), "specy-road grind", "use `specy-road grind-session`."),
+        warning("sr/AGENTS.md", at(agents, "Then specy-road frob."), "specy-road frob", "see `specy-road --help`."),
+        warning("sr/AGENTS.md", at(agents, "- specy-road frob --flag"), "specy-road frob", "see `specy-road --help`."),
+        warning("sr/AGENTS.md", at(agents, "does-not-exist"), "specy-road does-not-exist", "see `specy-road --help`."),
+        warning("sr/AGENTS.md", at(agents, "nope"), "specy-road nope", "see `specy-road --help`."),
+        warning("sr/AGENTS.md", at(agents, "files omit"), "specy-road files", "see `specy-road --help`."),
+        warning("sr/AGENTS.md", at(agents, "specyrd refresh"), "specyrd refresh", "see `specyrd --help`."),
+        warning("sr/AGENTS.md", at(agents, "pm-sync"), "specy-road pm-sync", "use `specy-road sync`."),
+        warning("CLAUDE.md", at(claude, "backfill-activity"), "specy-road backfill-activity",
+                "it was removed and nothing replaces it."),
     ]
 
 
@@ -72,9 +87,17 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
     assert unregistered_commands("specy-road frob M1.2") == ["specy-road frob"]
     assert unregistered_commands("- the specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands("- Use the specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands("## the specy-road frob --x") == ["specy-road frob"]
+    assert unregistered_commands("# Please specy-road frob --flag") == ["specy-road frob"]
+    assert unregistered_commands("Use the specy-road frob --flag.") == ["specy-road frob"]
+    assert unregistered_commands("Use the specy-road frob path/to/file.") == ["specy-road frob"]
+    assert unregistered_commands('Use the specy-road frob "quoted".') == ["specy-road frob"]
+    assert unregistered_commands("Use the specy-road frob M1.2.") == ["specy-road frob"]
     assert unregistered_commands("Use the specy-road frob command.") == ["specy-road frob"]
     assert unregistered_commands("Use the specy-road frob subcommand.") == ["specy-road frob"]
     assert unregistered_commands("specy-road validate --strict") == []
+    assert unregistered_commands("specy-road frob; specy-road frob") == ["specy-road frob", "specy-road frob"]
 
 
 @pytest.mark.parametrize(("old", "new"), REPLACED_COMMANDS.items())
@@ -84,9 +107,19 @@ def test_each_replaced_name_is_unregistered_and_its_replacement_is_not(old: str,
         assert unregistered_commands(f"`{new}`") == []
 
 
-def test_the_toolkits_agent_files_report_nothing() -> None:
-    for name in ("AGENTS.md", "CLAUDE.md"):
-        assert unregistered_commands((REPO / name).read_text(encoding="utf-8")) == []
+def test_each_occurrence_warns_with_its_line(tmp_path: Path, capsys) -> None:
+    (tmp_path / "AGENTS.md").write_text("specy-road frob\nspecy-road frob\n", encoding="utf-8")
+    warn_unregistered_commands(tmp_path)
+    lines = [ln for ln in capsys.readouterr().err.splitlines() if "tells agents to run" in ln]
+    assert len(lines) == 2
+    assert "AGENTS.md:1" in lines[0] and "`specy-road frob`" in lines[0]
+    assert "AGENTS.md:2" in lines[1] and "`specy-road frob`" in lines[1]
+
+
+def test_the_toolkits_agent_files_follow_the_mention_rule() -> None:
+    assert unregistered_commands((REPO / "AGENTS.md").read_text(encoding="utf-8")) == []
+    # CLAUDE.md's adoption-prompts bullet is a list item, so the token is reported.
+    assert unregistered_commands((REPO / "CLAUDE.md").read_text(encoding="utf-8")) == ["specy-road formats"]
 
 
 def test_an_agent_file_that_is_not_utf8_is_skipped(tmp_path: Path, capsys) -> None:
