@@ -1,7 +1,8 @@
 # Regression prevention: keep the integration branch green when many agents land
 
-**Status:** live design (roadmap milestone `M9`, leaves `M9.1`–`M9.9`, none
-started). Proposed; the maintainer approves the leaf list before any is picked up.
+**Status:** live design (roadmap milestone `M9`). The maintainer approved
+`M9.2`–`M9.9` on 2026-10-29. `M9.1` is held until the project settles what
+"green" means (see *Open decision*), and `M9.10` stays proposed.
 
 **Sources:** one research run, kept untracked under the maintainer's
 `work/research-reports/`: `claude-regression-prevention.md` (the "report"). It
@@ -147,12 +148,19 @@ git objects only, and prints one line per finding:
 
 The review packet shows the findings (`M9.5`). With `policy.integrity_gate: true`
 in `roadmap/orchestration.yaml` (default false), each finding is a gate problem
-unless the node's `integrity_waivers`, **as read from the integration branch**,
-lists the exact line (`M9.6`). An executor cannot plant a waiver from its
-worktree, which gives the report's signed-waiver property without key
-management. Removing a test that another test covers stays allowed by the lean
-test rules; under the gate it needs a waiver added on the integration branch by
-whoever coordinates.
+unless the leaf declared it (`M9.6`).
+
+**Test changes are declared before any code is written.** A planned test
+removal or weakening is part of the leaf: the node's `planned_test_changes`
+lists each finding line exactly as `specy-road integrity` will print it, and it
+is authored and approved with the leaf, before pickup. The gate reads the node
+**from the integration branch**, so the approved leaf is the waiver and no
+separate waiver exists; an executor cannot add a declaration from its worktree.
+A removal discovered mid-implementation is a `blocked_on` stop (`M9.4`): the
+coordinator amends the leaf on the integration branch, and only then does the
+work continue. An undeclared finding fails the gate. Removing a test that
+another test covers stays allowed by the lean test rules, but it is planned, not
+improvised.
 
 Language reach: `removed-test-file`, `config-change`, `new-suppression` and
 `baseline-widened` work for any language. The per-function findings are Python
@@ -185,6 +193,31 @@ TDAD result applied to the executor. Advisory only: it never decides a gate, and
 the review-side evidence says more context does not raise reviewer recall, so the
 packet gets a list, not caller source.
 
+## Proposed: red-green evidence, opt-in (`M9.10`, shipped, Python first)
+
+With `policy.red_green: true`, the gate requires every test the leaf added or
+changed to fail on the merge base (with only the head's test files overlaid) and
+pass at head; a test the leaf declares `preserve` must pass on both. A
+`specy-road review red-green <ID>` run records the outcomes, bound to the commit.
+The basis is BSG-VA: 46.0% of agents' positive validation events carried no
+bug-discriminating information, so a passing test alone proves little.
+
+This is test-first evidence, not a test-first instruction. TDAD measured the
+difference: a bare "do TDD" instruction *raised* regressions (6.08% to 9.94%),
+while a code-to-test impact map cut them to 1.82%. specy-road therefore checks
+the evidence (`M9.10`) and supplies the map (`M9.9`) rather than telling agents
+to work test-first. It prevents none of the seven observed regressions; it is
+the check that catches tests written to pass. Proposed, not approved.
+
+## Open decision: what "green" means
+
+`M9.1` runs a configured command on the merge commit. Whether that command is a
+new `land_check_cmd`, the existing pickup `baseline_cmd`, or one definition the
+orchestrator settles before it assigns work and the merge path is the
+maintainer's call. The direction given: humans and agents both make mistakes, so
+the point is to detect them early and always. `M9.1` stays unchanged until
+that is settled.
+
 ## Mapping: each observed regression to its mechanism
 
 | # | Adopted mechanism | Earliest point it is caught | Notes |
@@ -205,7 +238,7 @@ packet gets a list, not caller source.
 | READY | Executor-run verifiers recorded in READY (blocking since `M3.17`); `blocked_on` when stuck (`M9.4`) | the gate, from the file | ~1–3 min |
 | Each review round | No new toolkit runs. The packet carries the integrity findings (`M9.5`), at-risk tests (`M9.9`) and READY results | reviewers advise, gate decides | seconds plus 2 reviewer runs |
 | Trial merge (before review and finish) | Conflict check in memory (exists) | the gate | seconds |
-| Finish | `land_check_cmd` on the merge commit (`M9.1`); integrity gate (`M9.6`); verified pre-existing claims (`M9.8`) | deterministic | ~12 min serial |
+| Finish | `land_check_cmd` on the merge commit (`M9.1`); integrity gate (`M9.6`); verified pre-existing claims (`M9.8`); red-green evidence when opted in (`M9.10`) | deterministic | ~12 min serial |
 | Release | The full gate suite in the release runbook; weekly mutmut (`.github/workflows/mutation.yml`, exists) | deterministic | unchanged |
 
 For this repository `land_check_cmd` should be the release gate: `pytest`,
@@ -220,7 +253,7 @@ fixture `validate` / `export --check` / `digest --check`. It is set in
   deterministic checks. ImpossibleBench reports that read-only tests stop test
   edits but not special-casing in the code under test. `M9.5`–`M9.7` cover edits
   to tests and baselines; special-casing is left to review, the weekly mutation
-  run, and (deferred) red-green evidence per criterion.
+  run, and the opt-in red-green evidence of `M9.10`.
 - **"General across languages"** holds only for the file-level findings. The
   per-function findings and the import graph are Python only, with no generic
   substitute.
@@ -236,9 +269,9 @@ fixture `validate` / `export --check` / `digest --check`. It is set in
 - **Speculative parallel candidates:** on one machine they contend rather than
   finish sooner, and capacity is the scarce resource.
 - **ML predictive test selection:** needs a large failure history.
-- **Signed waivers (`git verify-commit`):** replaced by waivers read from the
-  integration branch, which an executor cannot write either, with no key to
-  manage.
+- **Signed waivers (`git verify-commit`):** replaced by test changes declared on
+  the leaf and read from the integration branch, which an executor cannot write
+  either, with no key to manage.
 - **Interface snapshots, a grep lint for root-computing code, property tests for
   path logic:** practice or opinion only.
 - **Changed-line coverage as a gate:** the report itself warns it invites
@@ -258,13 +291,11 @@ landing, time red).
 - **Batch-and-bisect at finish**, when finish rejections fall to a few percent.
 - **Selected tests on the trial-merged tree before review** (testmon or the
   `M9.9` import graph), to catch regression 3 before reviewers spend tokens.
-- **Red-green evidence per acceptance criterion** (BSG-VA): measured, but it
-  prevents none of the seven and changes the acceptance format for every adopter.
 - **Golden and differential CLI runs on fixture repositories.**
 - **Random test order with a recorded seed** at finish and nightly.
 - **A journaled, resumable finish** and a landing lock for local-only
   integration branches with no remote to reject a push.
 - **Metrics** (`landing-log.jsonl`: escaped regressions per landing, time red,
-  late-catch rate, integrity findings and waivers).
+  late-catch rate, integrity findings and declared test changes).
 - **Impact zones in the registry**, to keep leaves whose write and impact zones
   intersect out of the same wave.

@@ -80,9 +80,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Not Started |
 | `M9.4` | An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet | task | Agentic-led | Not Started |
 | `M9.5` | specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them | task | Agentic-led | Not Started |
-| `M9.6` | With integrity_gate on, each test-integrity finding blocks the review gate unless the node's waivers on the integration branch list it | task | Agentic-led | Not Started |
+| `M9.6` | With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup | task | Agentic-led | Not Started |
 | `M9.7` | specy-road integrity also reports new lint suppressions and widened baseline files | task | Agentic-led | Not Started |
 | `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Not Started |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
+| `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
