@@ -82,9 +82,9 @@ def _policy_line(root: Path) -> str:
     return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
 
 
-def _trial_merge_line(root: Path, t: ReviewTarget) -> list[str]:
+def _trial_merge_line(root: Path, ref: str | None, integration_ref: str | None) -> list[str]:
     """Whether the branch tip still merges into the integration branch; a code conflict stops review."""
-    tm = trial_merge(root, t.ref, t.base_ref)
+    tm = trial_merge(root, ref, integration_ref)
     if tm is None:
         return ["- **Trial merge:** _git could not answer_"]
     ahead = f"`{tm.base_ref}` is {tm.behind} commit(s) ahead"
@@ -98,7 +98,7 @@ def _trial_merge_line(root: Path, t: ReviewTarget) -> list[str]:
             f"**Stop: {tm.problem()}.** Reviewing this commit is wasted work: the merge makes it stale.", ""]
 
 
-def _header(root: Path, t: ReviewTarget) -> list[str]:
+def _header(root: Path, t: ReviewTarget, integration_ref: str | None) -> list[str]:
     return [
         f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}",
         "",
@@ -107,7 +107,7 @@ def _header(root: Path, t: ReviewTarget) -> list[str]:
         f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
         _policy_line(root),
         f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
-        *_trial_merge_line(root, t),
+        *_trial_merge_line(root, t.ref, integration_ref),
         "",
         "Record your verdict with `specy-road review record "
         f"{t.node_id} --model <id> --verdict approve|block --file <notes.md>`. "
@@ -227,13 +227,14 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
                  base: str | None = None) -> str:
     t = resolve_target_or_exit(root, node_id, ref)
+    integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
     if base:
         t = _with_base(root, t, base)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()
     parts = [
-        _header(root, t),
+        _header(root, t, integration_ref),
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         changed,

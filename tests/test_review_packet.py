@@ -124,10 +124,12 @@ def test_packet_reports_trial_merge_with_integration_branch(tmp_path: Path, case
     repo = make_review_repo(tmp_path)
     assert "- **Trial merge:** up to date with `refs/heads/dev`" in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
     diverge(repo, case)
-    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
-    assert line in text
-    assert ("**Stop: refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
-            "merge it into this branch and resolve before review.**" in text) == (case == "code")
+    tip = git(repo, "rev-parse", "feature/rm-thing")
+    for base in (None, tip):   # --base moves the diff range only; the trial merge stays on the integration branch
+        text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], base=base)
+        assert line in text
+        assert ("**Stop: refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
+                "merge it into this branch and resolve before review.**" in text) == (case == "code")
 
 
 def test_an_empty_merge_base_diff_is_explained_and_base_sets_the_range(tmp_path: Path, capsys) -> None:
