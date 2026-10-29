@@ -274,11 +274,9 @@ def failing_verifier_entries(ready: ReviewFile) -> list[dict[str, Any]]:
 
 
 def pre_existing_cmds_from_approvals(approvals: list[Any]) -> set[str]:
-    """Verifier command names marked pre-existing on the integration branch."""
+    """Verifier command names marked pre-existing on counted approving reviews."""
     covered: set[str] = set()
     for counted in approvals:
-        if counted.verdict != "approve":
-            continue
         for cmd in counted.review.data.get("verify_pre_existing") or []:
             covered.add(str(cmd))
     return covered
@@ -286,7 +284,7 @@ def pre_existing_cmds_from_approvals(approvals: list[Any]) -> set[str]:
 
 def verifier_gate_problems(ready: ReviewFile | None, approvals: list[Any]) -> list[str]:
     """Failing READY verifiers with no approving review marking them pre-existing."""
-    if ready is None or not ready.ok:
+    if ready is None:
         return []
     failing = failing_verifier_entries(ready)
     if not failing:
@@ -311,7 +309,7 @@ def verify_problems(ready: ReviewFile) -> list[str]:
 
 def non_gating_verify_problems(ready: ReviewFile | None, gate_problems: list[str]) -> list[str]:
     """READY verifier notes that are reported but do not fail the gate (empty ``verify``)."""
-    if ready is None or not ready.ok:
+    if ready is None:
         return []
     entries = ready.data.get("verify") or []
     if entries:

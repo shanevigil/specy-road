@@ -192,3 +192,22 @@ def test_pre_existing_marker_on_block_is_ignored(tmp_path: Path) -> None:
     assert not gate.passed
     assert gate.blocks
     assert any("verifier `false` exited 1" in p for p in gate.problems())
+
+
+def test_no_ready_file_does_not_add_verifier_problems(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    assert _gate(repo, _review(repo)).passed
+    st = _status(repo, capsys)
+    assert st["policy_met"]
+    assert not any("verifier" in p for p in st["problems"])
+
+
+def test_empty_verify_is_reported_but_does_not_block_with_an_approval(
+    tmp_path: Path, capsys
+) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready(repo, "")
+    assert _gate(repo, _review(repo)).passed
+    st = _status(repo, capsys)
+    assert st["policy_met"]
+    assert "READY-exec.md (executor-reported): no verifier evidence recorded (verify is empty)" in st["problems"]
