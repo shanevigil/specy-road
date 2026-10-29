@@ -367,7 +367,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.11_roster-profiles-and-packet-path_0c1fbd53-6a24-446d-9940-1620f01f7993.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Roster ids with effort suffixes, packet path, stale sessions",
       "touch_zones": [
         "specy_road/orchestration_config.py",

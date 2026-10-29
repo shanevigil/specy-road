@@ -24,7 +24,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Complete**
   - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Complete**
   - `M3.10` Worker hand-off, reconcile and finish report what actually happened `worker-reconcile-and-status` — task — **Complete**
-  - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Not Started**
+  - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Complete**
   - `M3.12` A baseline gate runs on the integration branch before pickup `a-baseline-gate-runs-on-the-integration-branch-before-pickup` — task — **Complete**
   - `M3.13` A trial merge with the integration branch runs before review and before finish `a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` — task — **Not Started**
   - `M3.14` finish-this-task and pickup detect a planning sheet that is still the scaffold `finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold` — task — **Complete**
@@ -75,10 +75,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M3.11` on `feature/rm-roster-profiles-and-packet-path` since 2026-10-28
 - `M3.13` on `feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` since 2026-10-28
 - `M4.12` on `feature/rm-file-limits-function-length-check-covers-typescript-and-javascript` since 2026-10-28
 - `M4.13` on `feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` since 2026-10-28
+- `M4.17` on `feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` since 2026-10-28
 - `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
 
 ## Reaching the detail behind this
