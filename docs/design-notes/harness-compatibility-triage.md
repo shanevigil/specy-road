@@ -132,7 +132,7 @@ workers with a broader sandbox and rely on the guard hook instead; (b) let
 the adapter make the checkpoint commit on the worker's behalf after each
 turn (author = the model profile, trailer recorded); (c) keep Codex as a
 reviewer only. Both reports lean to (b) by implication (the harness should
-never own commits). M8.2 is written for (b) but needs the decision.
+never own commits). Decided (2026-10-29): (b), the adapter commits on the worker's behalf; M8.2 implements it.
 
 ## Relation to the research register
 

@@ -58,6 +58,33 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "handoff status, mark-implementation-reviewed and finish-this-task treat a READY verifier with a non-zero exit as a gate problem (policy not met)",
+        "A review record can mark a named failing verifier as pre-existing (it fails identically on the integration branch); when every failing verifier is so marked by at least one approving reviewer, the gate is met as before",
+        "Tests cover a failing verifier that blocks, one marked pre-existing that does not, and the marker on a blocking review (ignored)"
+      ],
+      "codename": "a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.17",
+      "node_key": "e57ac618-27a2-4893-bfa6-0fdcd26b6138",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.17_a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch_e57ac618-27a2-4893-bfa6-0fdcd26b6138.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/schemas/",
+        "specy_road/templates/specyrd/",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
