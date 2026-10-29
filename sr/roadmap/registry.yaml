@@ -39,3 +39,15 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: promote-node-quality
+    node_id: M3.7
+    branch: feature/rm-promote-node-quality
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/roadmap_edit_fields.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
