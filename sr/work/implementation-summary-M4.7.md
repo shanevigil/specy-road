@@ -34,6 +34,7 @@ Limits, all deliberate and kept small:
 
 - `pytest tests/test_roadmap_apply.py`: 14 passed.
 - After the review fix: `pytest tests/test_roadmap_apply.py tests/test_roadmap_crud.py tests/test_roadmap_crud_dependencies.py tests/test_roadmap_edit_fields.py tests/test_scaffold_planning.py`: 49 passed.
+- Re-run on the review fix (`c3536ad`): full `pytest` 2254 passed, 2 skipped, 2 failed (the same two `test_review_round6_evidence.py` failures as below); `ruff`, `validate_file_limits.py`, `check_test_private_imports.py` (118/118, 0 new), `check_clones.py` (12/12, 0 new), dogfood `validate` and `export --check` all OK. No `_`-prefixed name is imported from `tests.test_roadmap_crud` any more.
 - `pytest` (full suite): 2254 passed, 2 skipped, 2 failed. Both failures are in `tests/test_review_round6_evidence.py`, which calls `review_packet._changed`; that function does not exist at base `d13ed8d`. Neither file is in this diff or the touch zones, so they fail without this change and were left alone.
 - `python specy_road/bundled_scripts/validate_roadmap.py --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `python specy_road/bundled_scripts/export_roadmap_md.py --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
