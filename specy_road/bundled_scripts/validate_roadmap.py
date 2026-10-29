@@ -51,7 +51,6 @@ __all__ = [
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",
-    "PROSE_NOUNS",
     "unregistered_commands",
     "warn_stale_parent_status",
     "warn_if_pin_differs",
@@ -100,24 +99,66 @@ def warn_if_pin_differs(start: Path) -> None:
 
 _FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
 _INLINE_CODE = re.compile(r"`([^`\n]*)`")
-# Whatever precedes the tool. The lookbehind only rejects a token glued onto
-# another word, a path, or a dot.
 _MENTION = re.compile(r"(?<![\w/.-])(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
-
-# Ordinary nouns that follow the product name in prose ("the specy-road toolkit").
-# Not commands. The same word inside code is still reported when it is unregistered.
-PROSE_NOUNS = frozenset({
-    "toolkit", "command", "commands", "cli", "skill", "skills", "package",
-    "project", "repo", "repository", "docs", "documentation", "workflow",
-    "roadmap", "version",
+_LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
+_HEADING = re.compile(r"^[ \t]*#+[ \t]+")
+# The product name is a noun phrase when one of these words is the last word
+# before it on the line ("the specy-road toolkit", "other specy-road formats").
+_NOUN_PHRASE = frozenset({
+    "the", "a", "an", "this", "that", "these", "those", "other", "any", "all",
+    "every", "each", "its", "our", "your", "their", "own", "of", "with", "in",
+    "for", "from", "about",
 })
+_RUN_VERB = frozenset({"run", "exec", "execute", "invoke", "uvx"})
+
+
+def _preceding_words(text: str, start: int) -> list[str]:
+    before = text[:start].rstrip(" \t*_`\"'()[]{}<>|:—–-")
+    return [word.lower() for word in re.findall(r"[A-Za-z]+", before)[-2:]]
+
+
+def _list_command(line: str, start: int) -> bool:
+    """True when the list item is the command, even after a noun-phrase word."""
+    mark = _LIST_ITEM.match(line)
+    if mark is None or start < mark.end():
+        return False
+    gap = re.sub(r"[*_`]+", " ", line[mark.end():start]).strip()
+    if not gap:
+        return True
+    parts = gap.split()
+    return len(parts) == 1 and parts[0].lower() in _NOUN_PHRASE
+
+
+def _heading_title(line: str, start: int) -> bool:
+    """An ATX heading is a title unless it opens with the tool or a run verb."""
+    if _HEADING.match(line) is None:
+        return False
+    gap = re.sub(r"^[ \t]*#+[ \t]*", "", line[:start])
+    gap = re.sub(r"[*_`]+", " ", gap).strip(" \t—–-:|")
+    if not gap:
+        return False
+    first = re.match(r"[A-Za-z]+", gap)
+    return first is None or first.group(0).lower() not in _RUN_VERB
+
+
+def _reports(line: str, start: int, *, code: bool) -> bool:
+    if code or _list_command(line, start):
+        return True
+    words = _preceding_words(line, start)
+    immediate = words[-1] if words else ""
+    earlier = words[-2] if len(words) > 1 else ""
+    if immediate in _RUN_VERB or (earlier in _RUN_VERB and immediate in _NOUN_PHRASE):
+        return True
+    if _heading_title(line, start) or immediate in _NOUN_PHRASE:
+        return False
+    return True
 
 
 def _command_mentions(text: str):
-    """Each ``specy-road`` / ``specyrd`` token of command shape, skipping prose nouns.
+    """Each ``specy-road`` / ``specyrd`` token of command shape that is an instruction.
 
-    Inline code and fenced blocks yield every token. Prose skips only
-    :data:`PROSE_NOUNS`.
+    Prose preceded by a noun-phrase word (:data:`_NOUN_PHRASE`) is skipped. Code,
+    a fenced block, a list item, and a run verb are not.
     """
     in_fence = False
     for line in text.splitlines():
@@ -130,22 +171,26 @@ def _command_mentions(text: str):
         for code in _INLINE_CODE.findall(line):
             yield from _MENTION.findall(code)
         plain = _INLINE_CODE.sub(lambda match: " " * len(match.group(0)), line)
-        for tool, name in _MENTION.findall(plain):
-            if name not in PROSE_NOUNS:
-                yield tool, name
+        for match in _MENTION.finditer(plain):
+            if _reports(plain, match.start(), code=False):
+                yield match.group(1), match.group(2)
 
 
 def unregistered_commands(text: str) -> list[str]:
     """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, once, in order.
 
     A command-shaped token is reported whatever follows it (``specy-road frob
-    M1.2``, ``specy-road frob somefile.md``). A registered command is never
-    reported (``specy-road validate --strict``). The one exception is prose
-    that uses the product name with an ordinary noun, which is not a command:
-    toolkit, command, commands, cli, skill, skills, package, project, repo,
-    repository, docs, documentation, workflow, roadmap, version
-    (``the specy-road toolkit is``). The same word inside code is still
-    reported when it is not registered.
+    M1.2``, ``Then specy-road frob.``, ``Run specy-road project now.``). A
+    registered command is never reported (``specy-road validate --strict``).
+    Prose is a noun phrase, not a command, when the product name is preceded on
+    the same line (ignoring whitespace) by a determiner, possessive, or
+    preposition: the, a, an, this, that, these, those, other, any, all, every,
+    each, its, our, your, their, own, of, with, in, for, from, about
+    (``the specy-road toolkit is``, ``other specy-road formats``). A code span,
+    a fenced block, a list item (``- the specy-road frob``), or a run verb
+    (run, exec, execute, invoke, uvx) is still a command after one of those
+    words. An ATX heading is a title, not an instruction, unless it opens with
+    the tool or a run verb.
     """
     specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
     registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}

@@ -204,11 +204,14 @@ warning) can gate CI next to `export --check` and `digest --check`.
 `validate` also warns when `AGENTS.md` or `CLAUDE.md`, outside the managed
 block, names a `specy-road` or `specyrd` subcommand this version does not
 register. What follows the name does not matter (`specy-road frob M1.2` warns).
-A registered command never warns (`specy-road validate --strict`). Prose that
-uses the product name with an ordinary noun is not a command: toolkit, command,
-commands, cli, skill, skills, package, project, repo, repository, docs,
-documentation, workflow, roadmap, version ("the specy-road toolkit is" does not
-warn). The same word inside code still warns when it is not a registered command.
+A registered command never warns (`specy-road validate --strict`). Prose is a
+noun phrase, not a command, when the product name is preceded by a determiner,
+possessive, or preposition: the, a, an, this, that, these, those, other, any,
+all, every, each, its, our, your, their, own, of, with, in, for, from, about
+("the specy-road toolkit is" and "other specy-road formats" do not warn). A
+code span, a fenced block, a list item, or a run verb (run, exec, execute,
+invoke, uvx) still warns after one of those words (`Run specy-road project now.`
+and `- the specy-road frob` warn).
 
 #### Upgrading from 0.2.x
 

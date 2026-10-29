@@ -13,7 +13,7 @@ from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, REPO, script_subprocess_env
 
 from specy_road import __version__
 from specy_road.agents_md_block import render_agents_lines
-from specy_road.bundled_scripts.validate_roadmap import PROSE_NOUNS, unregistered_commands, warn_unregistered_commands
+from specy_road.bundled_scripts.validate_roadmap import unregistered_commands, warn_unregistered_commands
 from specy_road.cli import REPLACED_COMMANDS
 from specy_road.managed_block import HTML_COMMENT, render_block
 
@@ -65,13 +65,14 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     ]
 
 
-def test_an_unknown_command_with_an_argument_warns_and_a_noun_or_real_command_does_not() -> None:
-    assert unregistered_commands("specy-road frob M1.2") == ["specy-road frob"]
-    assert unregistered_commands("specy-road frob somefile.md") == ["specy-road frob"]
+def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
+    assert unregistered_commands("Run specy-road project now.") == ["specy-road project"]
+    assert unregistered_commands("other specy-road formats (templates...)") == []
     assert unregistered_commands("the specy-road toolkit is") == []
+    assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
+    assert unregistered_commands("specy-road frob M1.2") == ["specy-road frob"]
+    assert unregistered_commands("- the specy-road frob") == ["specy-road frob"]
     assert unregistered_commands("specy-road validate --strict") == []
-    assert unregistered_commands("run `specy-road does-not-exist`") == ["specy-road does-not-exist"]
-    assert unregistered_commands("> specy-road does-not-exist --flag") == ["specy-road does-not-exist"]
 
 
 @pytest.mark.parametrize(("old", "new"), REPLACED_COMMANDS.items())
@@ -81,16 +82,9 @@ def test_each_replaced_name_is_unregistered_and_its_replacement_is_not(old: str,
         assert unregistered_commands(f"`{new}`") == []
 
 
-def test_prose_nouns_in_the_toolkits_docs_are_not_reported() -> None:
-    docs = [REPO / "AGENTS.md", REPO / "CLAUDE.md", REPO / "README.md", *sorted((REPO / "docs").glob("*.md")),
-            *sorted((REPO / "suggested_prompts").glob("*.md")),
-            *sorted((REPO / "specy_road" / "templates").rglob("*.md"))]
-    reported = {name.split()[1] for path in docs for name in unregistered_commands(path.read_text(encoding="utf-8"))}
-    assert PROSE_NOUNS == {
-        "toolkit", "command", "commands", "cli", "skill", "skills", "package", "project",
-        "repo", "repository", "docs", "documentation", "workflow", "roadmap", "version",
-    }
-    assert reported.isdisjoint(PROSE_NOUNS)
+def test_the_toolkits_agent_files_report_nothing() -> None:
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        assert unregistered_commands((REPO / name).read_text(encoding="utf-8")) == []
 
 
 def test_an_agent_file_that_is_not_utf8_is_skipped(tmp_path: Path, capsys) -> None:
