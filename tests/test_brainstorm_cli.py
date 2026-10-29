@@ -169,7 +169,7 @@ def test_list_filters_by_status(repo: Path) -> None:
     _run(repo, "add-idea", "--title", "Keep")
     _run(repo, "add-idea", "--title", "Drop")
     _run(repo, "accept", "B1")
-    _run(repo, "reject", "B2")
+    _run(repo, "reject", "B2", "--reason", "out of scope")
 
     payload = json.loads(_run(repo, "list", "--json", "--status", "accepted").stdout)
 

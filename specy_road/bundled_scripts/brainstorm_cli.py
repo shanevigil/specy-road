@@ -22,7 +22,9 @@ from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     HANDLERS_V2,
     integration_branch_warning,
     next_step,
+    print_idea_summary,
     stage,
+    validate_idea_ids,
     write_round_prompts,
 )
 from specy_road.bundled_scripts.brainstorm_close import close_session
@@ -152,6 +154,10 @@ def _print_rows(ideas: list, *, verdicts: bool) -> None:
 
 def cmd_list(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
+    if ns.summary:
+        print_idea_summary(session)
+        print(next_step(session, stage(session)))
+        return 0
     ideas = session.ideas
     if ns.status:
         ideas = [i for i in ideas if i.status == ns.status]
@@ -188,6 +194,7 @@ def _triage(ns: argparse.Namespace, status: str) -> int:
         raise BrainstormError("reject needs --reason: the record of why is worth more than the reject")
     from datetime import date
 
+    validate_idea_ids(session, ns.idea_id)
     for ident in ns.idea_id:
         idea = set_status(session, ident, status)
         if reason:
@@ -221,7 +228,11 @@ def cmd_revise(ns: argparse.Namespace) -> int:
             content_changed = True
     if ns.recommendation is not None:
         idea.recommendation = ns.recommendation
-    if ns.why is not None:
+    if ns.append_why is not None:
+        addition = ns.append_why.strip()
+        if addition:
+            idea.verdict_why = f"{idea.verdict_why}\n{addition}".strip() if idea.verdict_why else addition
+    elif ns.why is not None:
         idea.verdict_why = ns.why.strip()
     if ns.cluster is not None:
         idea.cluster_id = ns.cluster.strip() or None
