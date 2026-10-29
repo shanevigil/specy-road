@@ -98,11 +98,14 @@ def test_v1_session_files_still_read(tmp_path: Path) -> None:
     session_path(tmp_path, "old").parent.mkdir(parents=True)
     session_path(tmp_path, "old").write_text(
         "version: 1\nslug: old\ntopic: t\nmode: brainstorm\nideas:\n- id: B1\n  title: One\n"
-        "  evidence: [https://a]\n", encoding="utf-8")
+        "  evidence: [https://a]\n  sources:\n  - url: https://a\n    quote: q\n    verification: retrieved\n",
+        encoding="utf-8")
     s = read_session(tmp_path, "old")
     assert s.round == 1 and s.profile == "product" and s.ideas[0].evidence == ["https://a"]
+    assert s.ideas[0].sources[0]["verification"] == "matched"   # the state's name before the rename
     write_session(tmp_path, s)
-    assert "version: 2" in session_path(tmp_path, "old").read_text()
+    text = session_path(tmp_path, "old").read_text()
+    assert "version: 2" in text and "verification: matched" in text and "retrieved" not in text
 
 
 @pytest.mark.parametrize("raw, msg", [
@@ -265,6 +268,24 @@ def test_revise_records_cluster_overlap_and_critics_without_triaging(repo: Path)
     assert code == 1 and "relation" in err
 
 
+def test_recommend_check_lists_every_idea_the_converge_pass_missed(repo: Path) -> None:
+    _start(repo)
+    for t in ("One", "Two", "Three"):
+        _cli(repo, "add-idea", "--title", t)
+    _cli(repo, "revise", "B1", "--cluster", "C1", "--recommendation", "strong")
+    _cli(repo, "revise", "B2", "--cluster", "C1")
+    code, out, _ = _cli(repo, "recommend", "--check")
+    assert code == 1 and "2 of 3 idea(s) not converged" in out
+    assert "B1" not in out and "B2    no recommendation  Two" in out
+    assert "B3    no cluster and no recommendation  Three" in out
+    assert _session(repo).mode == "brainstorm"
+    assert not (repo / "work" / f"brainstorm-{SLUG}-recommend-prompt.md").exists()
+    _cli(repo, "revise", "B2", "--recommendation", "park")
+    _cli(repo, "revise", "B3", "--cluster", "C2", "--recommendation", "consider")
+    code, out, _ = _cli(repo, "recommend", "--check")
+    assert code == 0 and "all 3 idea(s) have a cluster and a recommendation" in out and "next:" in out
+
+
 # --- triage ------------------------------------------------------------------
 
 def test_reject_requires_a_reason_and_park_records_a_decision(repo: Path) -> None:
@@ -291,9 +312,9 @@ def test_list_by_cluster_hides_verdicts_unless_asked(repo: Path) -> None:
     _cli(repo, "revise", "B2", "--cluster", "C1", "--recommendation", "park")
     _, out, _ = _cli(repo, "list", "--by", "cluster")
     assert out.index("C1  (2)") < out.index("(unclustered)  (1)")
-    assert "strong" not in out and "value: thin" in out
+    assert "strong" not in out and "value: thin" not in out
     _, out, _ = _cli(repo, "list", "--by", "cluster", "--show-verdicts")
-    assert "strong" in out and "park" in out
+    assert "strong" in out and "park" in out and "value: thin" in out
 
 
 # --- promote -----------------------------------------------------------------
@@ -317,3 +338,24 @@ def test_promote_carries_evidence_hypothesis_and_alternatives_into_the_sheet(rep
     assert 'Brainstorm evidence (for, unverified): https://example.com/a — "exact words"' in text
     assert "Hypothesis: PCI scope shrinks" in text and "Assumption: we keep cards" in text
     assert "Alternative considered: B2 Vault via vendor (rejected: vendor lock-in)" in text
+
+
+def test_promote_warns_for_each_strong_idea_no_matched_source_backs(repo: Path) -> None:
+    _start(repo)
+    for t in ("Unverified", "Unsourced", "Matched", "Consider"):
+        _cli(repo, "add-idea", "--title", t)
+    for ident in ("B1", "B3"):
+        _cli(repo, "add-evidence", ident, "--url", f"https://example.com/{ident}", "--quote", "q")
+    session = _session(repo)
+    session.by_id("B3").sources[0]["verification"] = "matched"
+    write_session(repo, session)
+    for ident, verdict in (("B1", "strong"), ("B2", "strong"), ("B3", "strong"), ("B4", "consider")):
+        _cli(repo, "revise", ident, "--recommendation", verdict)
+    _cli(repo, "accept", "B1", "B2", "B3", "B4")
+    code, _, err = _cli(repo, "promote", "--dry-run")
+    assert code == 0
+    assert "warning: B1 is recommended strong but no source is matched (unverified)" in err
+    assert f"brainstorm verify --slug {SLUG}" in err
+    assert "warning: B2 is recommended strong but no source is matched (no sources)" in err
+    assert f"brainstorm evidence B2 --slug {SLUG}" in err
+    assert "B3" not in err and "B4" not in err

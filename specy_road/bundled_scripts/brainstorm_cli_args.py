@@ -118,8 +118,8 @@ def _add_list(sub) -> None:
     p.add_argument("--by", default=None, choices=("cluster",),
                    help="Group the listing (cluster-first triage).")
     p.add_argument("--show-verdicts", action="store_true",
-                   help="Show the agent's recommendation column (hidden by default so it "
-                        "does not steer the triage).")
+                   help="Show the agent's recommendation column, its reasoning and the critics' "
+                        "objections (hidden by default so they do not steer the triage).")
     _add_slug(p)
 
     s = sub.add_parser("sessions", help="list every open brainstorm session")
@@ -166,6 +166,9 @@ def _add_converge(sub) -> None:
         "recommend",
         help="switch to roadmap mode and write the convergent prompt",
     )
+    p.add_argument("--check", action="store_true",
+                   help="Write nothing; exit 1 listing every idea without a cluster or a "
+                        "recommendation (run after the agent's converge pass).")
     _add_slug(p)
 
     p = sub.add_parser("promote", help="turn accepted ideas into roadmap nodes")

@@ -34,6 +34,7 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
 from specy_road.bundled_scripts.brainstorm_promote import (
     pending_ideas,
     promote_session,
+    unverified_strong,
 )
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
@@ -143,7 +144,7 @@ def _print_rows(ideas: list, *, verdicts: bool) -> None:
         print(f"  {i.id:<5} {i.status:<9} {rec:<9} {i.kind:<11} {i.title}{src}{mark}")
         if verdicts and i.verdict_why:
             print(f"        why: {i.verdict_why}")
-        if i.critic:
+        if verdicts and i.critic:
             for role, text in i.critic.items():
                 print(f"        {role}: {text}")
 
@@ -236,8 +237,28 @@ def cmd_revise(ns: argparse.Namespace) -> int:
     return 0
 
 
+def _check_converge(session: BrainstormSession) -> int:
+    """Exit 1, listing each idea the converge pass left without a cluster or a recommendation."""
+    missed = 0
+    for i in session.ideas:
+        gaps = [name for name, value in (("cluster", i.cluster_id), ("recommendation", i.recommendation))
+                if not value]
+        if gaps:
+            missed += 1
+            print(f"  {i.id:<5} no {' and no '.join(gaps)}  {i.title}")
+    if missed:
+        print(f"recommend --check: {missed} of {len(session.ideas)} idea(s) not converged; record each with "
+              f"`specy-road brainstorm revise <IDEA_ID> --cluster CID --recommendation … --slug {session.slug}`")
+        return 1
+    print(f"recommend --check: all {len(session.ideas)} idea(s) have a cluster and a recommendation")
+    print(next_step(session, "recommend"))
+    return 0
+
+
 def cmd_recommend(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
+    if ns.check:
+        return _check_converge(session)
     session.mode = "roadmap"
     write_session(root, session)
     ppath = write_prompt(root, session, render_recommend_prompt(root, session), pass_name="recommend")
@@ -254,6 +275,11 @@ def cmd_promote(ns: argparse.Namespace) -> int:
             f"specy-road brainstorm accept <IDEA_ID> --slug {session.slug}"
         )
         return 0
+    for idea in unverified_strong(session):
+        states = ", ".join(s.get("verification", "unverified") for s in idea.sources) or "no sources"
+        fix = "verify" if idea.sources else f"evidence {idea.id}"
+        print(f"warning: {idea.id} is recommended strong but no source is matched ({states}); "
+              f"`specy-road brainstorm {fix} --slug {session.slug}`", file=sys.stderr)
     results = promote_session(
         root,
         session,

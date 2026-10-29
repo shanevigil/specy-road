@@ -14,7 +14,9 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:  # the real import would be circular; raised lazily below
     from specy_road.bundled_scripts.brainstorm_session import BrainstormError
 
-VERIFICATIONS = ("unverified", "retrieved", "not-found", "blocked")
+VERIFICATIONS = ("unverified", "matched", "not-found", "blocked")
+#: Read-side names from older session files: ``retrieved`` meant the quote was found.
+VERIFICATION_ALIASES = {"retrieved": "matched"}
 STANCES = ("for", "against")
 OVERLAP_RELATIONS = ("same-problem-same-solution", "same-problem-different-solution",
                      "prerequisite", "superseded", "adjacent")
@@ -90,12 +92,13 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C90
             if not isinstance(s, dict) or not str(s.get("url", "")).strip():
                 raise _bad(ident, "each source needs a url")
             v = s.get("verification", "unverified")
+            v = VERIFICATION_ALIASES.get(v, v)
             if v not in VERIFICATIONS:
                 raise _bad(ident, f"verification {v!r} not one of {', '.join(VERIFICATIONS)}")
             stance = s.get("stance", "for")
             if stance not in STANCES:
                 raise _bad(ident, f"stance {stance!r} not one of {', '.join(STANCES)}")
-            out["sources"].append({k: v for k, v in s.items() if v not in ("", None)})
+            out["sources"].append({k: v for k, v in {**s, "verification": v}.items() if v not in ("", None)})
     overlap = raw.get("overlap")
     if isinstance(overlap, list):
         for o in overlap:
