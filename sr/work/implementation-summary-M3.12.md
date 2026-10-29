@@ -37,6 +37,12 @@
   - `docs/dev-workflow.md`: a new "Baseline gate" paragraph in the automated pickup
     path, presented as the start-of-leaf counterpart of `--pre-finish-cmd`. The
     grind-session paragraph now names it too.
+  - Both docs state the same rule for the git-state guard. Writes under `work/` are
+    allowed; any other file change, a new HEAD or a branch switch refuses the pickup,
+    even with `--baseline-warn`. (Review round 3, Grok at `9bafe03`: before this,
+    `grind-session.md` said that any file change was refused, which missed the
+    `work/` exception that `dev-workflow.md` and `test_baseline_may_write_under_work`
+    already had.)
   - `grind-session.md` was already at its 500-line cap. To stay inside it without
     raising the limit, I moved the `--plan --json` example's empty-list fields onto
     one line.
@@ -66,6 +72,8 @@ Not touched, though it may want follow-up outside this leaf's zones:
 
 ## Verification
 
+- Round 3 (doc only): `docs/grind-session.md` stays at 500 lines;
+  `specy-road file-limits` passes. No code or tests changed.
 - Round 2: focused tests (`test_baseline_gate`, `test_baseline_gate_cli`,
   `test_do_next_task_pickup`, `test_grind_session`, `test_grind_session_step`,
   `test_lean_gates`, `test_do_next_queue`, `test_unauthored_leaf_guard`): 118 passed,
