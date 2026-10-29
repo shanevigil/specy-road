@@ -26,10 +26,16 @@ All nine acceptance items are covered. Item by item:
 
 Touch zones: the listed zones were accurate. The only file outside them that A1 would have needed is the roster schema (plus `worker_ops.py`), which is why A1 uses the aliases route.
 
+### Review round 1
+
+Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_entry`'s search without `profile:` asked `for_id` of whatever `_pinned_at` returned. A working tree that differs from the integration branch comes back with no front matter, so an alias (or an `api_id` that is not the file name) did not match and the drift error was dropped. `prompt` then wrote a prompt with no notes, and `delegate` launched. The search now matches the committed text. When that text is the roster id and the pinned copy is not ok, the not-ok profile is returned, so the drift error is kept. The alias is reported as `api_id` only when the pinned copy is ok. `test_a_dirty_alias_matched_profile_is_refused` covers an alias id and the bare `api_id` after one extra newline, and `build_prompt` returns the drift error.
+
+`test_prerelease_s2.py::test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes` does not fail on this branch. The READY's exit 1 was a full-suite run taken while the reviewer wording had dropped the phrase "lists changes you did not make", which that test searches for. The phrase was put back in `ce265b4`, before the summary commit, and the test was re-run then (61 passed, including it). Re-run again with this fix: `tests/test_prerelease_s2.py` passes. It does not fail on `origin/WIP/improvements-0-3-1` (`87bcca`) or on this branch's base (`81d9be1`): both still contain that phrase in `role_prompt.py`, and neither changes the test. The branch caused the failure only in that uncommitted wording.
+
 ## Changes
 
 - `specy_road/model_profiles.py`: `Profile.alias` field, `Profile.for_id`, an `aliases` shape check, and `profile_for_entry` matching through `for_id`.
-- `specy_road/orchestration_pinned.py`: `pinned_profile_for_entry` matches through `for_id`, in both the `profile:` path and the search.
+- `specy_road/orchestration_pinned.py`: `pinned_profile_for_entry` matches through `for_id`, in both the `profile:` path and the search. The search (`_pinned_for_id`) matches a refused copy against the committed text and returns that refusal.
 - `specy_road/bundled_scripts/role_prompt.py`: `_reviewer_precondition`.
 - `specy_road/bundled_scripts/review_packet.py`: `--base` (`_with_base`), the empty-diff note and warning (`_empty_diff_reason`), and `-o` writing the canonical copy too.
 - `specy_road/session_presence.py`: `current_user()` and the `user` field on records.
@@ -40,7 +46,7 @@ Touch zones: the listed zones were accurate. The only file outside them that A1 
 
 ## Verification
 
-- `python -m pytest -q` ran the whole suite: 2378 passed, 2 skipped, 1 failed. The failure was `test_prerelease_s2.py::test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes`, which finds the command by the phrase "lists changes you did not make". I restored that phrase in the reviewer wording rather than change the test's assertions, and extended the test with a coordinator prompt file under `work/`, which is A3's case. That file and the affected suites then passed: `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_project_layouts.py` (61 passed), and `tests/test_review_packet.py`, `tests/test_review_hardening.py`, `tests/test_review_round6_evidence.py` (44 passed).
+- `python -m pytest -q` ran the whole suite before the phrase was restored: 2378 passed, 2 skipped, 1 failed (`test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes`). The phrase is back in the committed wording. After that, and again after the round-1 fix: `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_review_round6_policy.py` — 36 passed. Earlier, `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_project_layouts.py` (61 passed) and `tests/test_review_packet.py`, `tests/test_review_hardening.py`, `tests/test_review_round6_evidence.py` (44 passed).
 - `ruff check specy_road tests scripts`: all checks passed.
 - `specy-road file-limits`: OK.
 - `specy-road validate`, `export --check` and `digest --check` with `--repo-root tests/fixtures/specy_road_dogfood`: all OK.
@@ -51,6 +57,7 @@ Touch zones: the listed zones were accurate. The only file outside them that A1 
 ## Added
 
 - helper `Profile.for_id` (model_profiles.py): one match rule (`api_id`, file name, `aliases`) shared by the working-tree and pinned lookups, replacing the two inline comparisons.
+- helper `_pinned_for_id` (orchestration_pinned.py): the no-`profile:` search. A refused pinned copy has no front matter, so the committed text is what `for_id` sees, and the refusal is what is returned. Round-1 review finding.
 - field `Profile.alias`: lets an alias-matched profile report the harness's own id as `api_id`, so worker launch keeps passing a valid id without touching `worker_ops.py`.
 - guard: `aliases` must be a list of strings (`_structure_errors`). This is a profile-file boundary; `aliases: x-high` would otherwise match by substring. Tested in `test_broken_profile_reports_errors`.
 - helper `_reviewer_precondition` (role_prompt.py): the reviewer's precondition differs from the executor's in checkout and pathspec.
@@ -60,6 +67,7 @@ Touch zones: the listed zones were accurate. The only file outside them that A1 
 - helper `_retire` (session_cli.py), with three branches, all tested: an invalid id (CLI boundary, the `ValueError` from `session_path`), no record, and a record from another user (or one that does not load).
 - constant `NO_ORCHESTRATION_NOTICE` (validate_roadmap.py).
 - test `test_an_effort_suffixed_roster_id_finds_its_profile_through_aliases`: A1, covering notes in the prompt, the launch id, and that the plain id is unchanged.
+- test `test_a_dirty_alias_matched_profile_is_refused`: a one-newline local edit of an alias-matched profile is the drift error for the alias and for the `api_id`, and `build_prompt` returns it. Round-1 regression.
 - test `test_an_empty_merge_base_diff_is_explained_and_base_sets_the_range`: A8.
 - test `test_cli_end_with_an_id_retires_only_the_same_users_session`: A4.
 - extended `test_main_writes_packet_file` (A2), `test_reviewer_prompt_needs_a_packet_and_embeds_it` and `test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim` (A3, A7), `test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes` (A3: a coordinator prompt under `work/` is ignored), `test_default_commands_follow_the_documented_cli_flags` (A5), `test_init_writes_the_starter_and_validate_generates_it_when_missing` (A9), and `test_broken_profile_reports_errors` (the aliases guard).
