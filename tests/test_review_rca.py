@@ -177,6 +177,15 @@ def test_mismatched_or_non_independent_rca_keeps_escalation(tmp_path: Path, caps
     assert _status(repo, capsys)[1]["state"] == "blocked"
 
 
+def test_schema_invalid_rca_is_reported_without_crashing_status(tmp_path: Path, capsys) -> None:
+    repo = _escalated_repo(tmp_path)
+    (reviews_dir(repo, "M1.1") / "RCA-3.md").write_text(
+        "---\nnode_id: M1.1\ntrigger: {rule: same_acceptance, round: three}\n---\nmalformed analyst record\n")
+    code, st = _status(repo, capsys)
+    assert code == 1 and st["state"] == "escalated" and st["escalation"] is not None
+    assert any("RCA-3.md: invalid" in p for p in st["problems"])
+
+
 def test_two_spellings_of_one_commit_are_one_round(tmp_path: Path, capsys) -> None:
     """A short SHA and the full id are one commit, and the later record wins."""
     repo = make_review_repo(tmp_path, orchestration=ROSTER)

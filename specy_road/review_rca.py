@@ -152,9 +152,7 @@ def loop_state(repo_root: Path, node_id: str) -> LoopState:
     rounds = review_rounds(repo_root, node_id)
     rcas = list_rcas(repo_root, node_id)
     resolved = 0
-    for r in sorted(rcas, key=lambda x: int((x.data.get("trigger") or {}).get("round") or 0)):
-        if not r.ok:
-            continue
+    for r in sorted((x for x in rcas if x.ok), key=lambda x: int(x.data["trigger"]["round"])):
         r.errors.extend(_rca_semantic_errors(repo_root, node_id, r.data, rounds, policy, config, resolved))
         if r.ok:
             resolved = max(resolved, int(r.data["trigger"]["round"]))
