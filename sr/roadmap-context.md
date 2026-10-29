@@ -41,11 +41,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Complete**
   - `M4.10` Clean up merged feature branches after finish `branch-cleanup` — task — **Complete**
   - `M4.11` grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave `grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` — task — **Complete**
-  - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Not Started**
+  - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Complete**
   - `M4.13` specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes `specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` — task — **Not Started**
   - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Not Started**
   - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Not Started**
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Not Started**
+  - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
@@ -74,9 +75,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M3.10` on `feature/rm-worker-reconcile-and-status` since 2026-10-28
+- `M3.11` on `feature/rm-roster-profiles-and-packet-path` since 2026-10-28
 - `M3.13` on `feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` since 2026-10-28
 - `M3.14` on `feature/rm-finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold` since 2026-10-28
-- `M4.12` on `feature/rm-file-limits-function-length-check-covers-typescript-and-javascript` since 2026-10-28
 - `M4.13` on `feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` since 2026-10-28
 - `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
 

@@ -41,7 +41,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.9` | Opt-in auto-pick ordering by execution milestone | task | Agentic-led | Complete |
 | `M4.10` | Clean up merged feature branches after finish | task | Agentic-led | Complete |
 | `M4.11` | grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave | task | Agentic-led | Complete |
-| `M4.12` | file-limits function-length check covers TypeScript and JavaScript | task | Agentic-led | Not Started |
+| `M4.12` | file-limits function-length check covers TypeScript and JavaScript | task | Agentic-led | Complete |
 | `M4.13` | specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes | task | Agentic-led | Not Started |
 | `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Not Started |
 | `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Not Started |
