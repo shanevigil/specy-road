@@ -303,7 +303,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.10_branch-cleanup_34da74ce-0529-4465-ba64-ded0310e2814.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Clean up merged feature branches after finish",
       "touch_zones": [
         "specy_road/bundled_scripts/finish_task.py",

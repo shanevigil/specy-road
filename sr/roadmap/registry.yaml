@@ -13,25 +13,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: branch-cleanup
-    node_id: M4.10
-    branch: feature/rm-branch-cleanup
-    touch_zones:
-      - specy_road/finish_implementation_check.py
-      - specy_road/finish_land_integration.py
-      - specy_road/finish_milestone_rollout.py
-      - specy_road/feature_rm_registry.py
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_modes.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/
-      - docs/git-workflow.md
-      - specy_road/templates/specyrd/commands/specyrd-finish.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: project-setup
     node_id: M1.1
     branch: feature/rm-project-setup
