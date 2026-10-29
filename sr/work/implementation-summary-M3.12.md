@@ -9,9 +9,14 @@
   is picked or registered, `run_baseline_gate` runs the command in the repo root:
   - It exits non-zero → pickup exits 1 with `baseline failed on '<base>' (exit N); no leaf was claimed`. No brief is written, no registry row is added, no branch is created.
   - `--baseline-warn` turns that refusal into a warning, and pickup continues.
-  - The command leaves changes outside `work/` → pickup refuses even with
-    `--baseline-warn`, because the claim would carry those changes onto the feature
-    branch.
+  - The command changes git state → pickup refuses even with `--baseline-warn`, and
+    the message names what moved. The gate records HEAD (`rev-parse HEAD`), the
+    symbolic ref (`symbolic-ref -q HEAD`, else `(detached)`) and whether the tree is
+    clean outside `work/`, before and after the command. Any difference means the
+    command moved HEAD, switched branch or wrote files, and pickup would otherwise
+    register and push from that state. (Review round 1, Sol at `fff671f`: a
+    passing baseline could commit or check out another ref while leaving the tree
+    clean.)
 
   `grind-session` accepts both flags and forwards them to every pickup it runs,
   including `--step pickup`. A refused baseline is a refused pickup: exit 5 and
@@ -61,7 +66,11 @@ Not touched, though it may want follow-up outside this leaf's zones:
 
 ## Verification
 
-- `python -m pytest -q`, after merging `origin/WIP/improvements-0-3-1` (`09b722c`):
+- Round 1: focused tests (`test_baseline_gate`, `test_do_next_task_pickup`,
+  `test_grind_session`, `test_grind_session_step`, `test_lean_gates`,
+  `test_do_next_queue`): 102 passed, 2 skipped. `file-limits` passes
+  (`do_next_available.py` is at 399 of 400 lines), and so does `ruff`.
+- `python -m pytest -q` (round 0), after merging `origin/WIP/improvements-0-3-1` (`09b722c`):
   2337 passed, 2 skipped. Before the merge, one test failed:
   `tests/test_roadmap_crud.py::test_list_nodes_json_is_the_full_untruncated_list`
   (`NameError: _fixture_repo`). That was a WIP-side bug, fixed upstream; this branch
@@ -77,12 +86,13 @@ Not touched, though it may want follow-up outside this leaf's zones:
 
 ### Helpers
 - `git_workflow_config.resolve_baseline_cmd`: returns the CLI value if set, then the yaml `baseline_cmd`, else none. An empty CLI value disables the yaml one. It is how A2 reaches the CLI.
-- `do_next_available.run_baseline_gate`: runs the command on the integration branch. It refuses on failure unless `warn_only`, and refuses if the command left changes outside `work/`. This is A1's gate.
+- `do_next_available.run_baseline_gate`: runs the command on the integration branch. It refuses on failure unless `warn_only`, and refuses if `_git_state` differs before and after the command. This is A1's gate.
+- `do_next_available._git_state`: HEAD SHA, symbolic ref (or `(detached)`) and clean-outside-`work/` status, the state a read-only baseline must leave unchanged (review round 1).
 - `do_next_task_args._add_baseline_args`: the `--baseline-cmd` and `--baseline-warn` flags for pickup (A1).
 
 ### Branches or guards
 - `do_next_task.main` calls `run_baseline_gate` after `_assert_current_branch_equals(base)` and before `_pick_node`, so the gate always runs on the synced base and before anything is claimed.
-- `run_baseline_gate` checks the tree is clean after the command, so a baseline that writes cannot leak changes into the claimed leaf.
+- `run_baseline_gate` compares git state before and after the command and refuses, naming each field that moved. A baseline that commits, switches ref or writes files cannot change what pickup registers and pushes. This replaces the round-0 clean-tree-only check.
 - `grind_session_args.pickup_args` forwards `--baseline-cmd` (an empty value too, so it can switch the yaml default off) and `--baseline-warn`, so grind-session supports A1.
 - Schema key `baseline_cmd`, in the bundled template and in `sr/schemas` (A2).
 
@@ -95,7 +105,9 @@ Not touched, though it may want follow-up outside this leaf's zones:
   - `test_schema_accepts_baseline_cmd`: A2 schema.
   - `test_yaml_sets_the_default`, `test_cli_wins_over_yaml`, `test_empty_cli_turns_the_yaml_default_off`, `test_no_config_means_no_baseline`: A2 precedence.
   - `test_passing_baseline_returns`, `test_failing_baseline_refuses`, `test_baseline_warn_downgrades_a_failure`: A1 refuse and warn, in a real git repo.
-  - `test_baseline_that_writes_is_refused_even_when_warned`, `test_baseline_may_write_under_work`: the clean-tree guard.
+  - `test_baseline_that_writes_is_refused_even_when_warned`, `test_baseline_may_write_under_work`: the tree part of the git-state guard; the message names `working tree`.
+  - `test_baseline_that_commits_is_refused`: a passing baseline that commits leaves the tree clean and is still refused, naming the HEAD move (review round 1).
+  - `test_baseline_that_switches_ref_is_refused` (`checkout -b`, `checkout --detach`): a branch switch is refused even with `--baseline-warn`, naming the old and new ref (review round 1).
   - `test_yaml_baseline_runs_without_a_flag`: A2 end to end through the gate.
   - `test_grind_passes_baseline_flags_to_pickup`, `test_grind_forwards_an_empty_baseline_to_turn_the_default_off`, `test_grind_without_baseline_flags_forwards_none`: grind pass-through.
   - `test_grind_step_pickup_passes_baseline_through`: `--step pickup` forwards the flag, and a refused pickup gives exit 5.
