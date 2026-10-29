@@ -19,7 +19,7 @@ _FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 _MENTION = re.compile(
     r"(?:(?<![A-Za-z0-9])[*_]+|(?<![\w/.-]))"
     r"(?:[*_]+)?(specy-road|specyrd)(?:[*_]+)?[ \t]+"
-    r"(?:[*_]+)?([a-z][a-z0-9-]*)[*_]*"
+    r"(?:[*_]+)?([a-z][a-z0-9-]*)[*_]*(?!\w)"
 )
 _PLAIN_WORD = re.compile(r"[A-Za-z]+(?:[-'][A-Za-z]+)*")
 _PUNCT_ONLY = re.compile(r"^[\(\)\[\]\{\}.,;:!?…\"'`—–-]+$")
@@ -272,7 +272,7 @@ def _command_mentions(lines: list[tuple[int, str]]):
             chars[start:end] = " " * (end - start)
         plain = "".join(chars)
         for match in _MENTION.finditer(plain):
-            if _reports(plain, match.start()):
+            if _reports(line, match.start()):
                 yield lineno, match.group(1), match.group(2)
 
 

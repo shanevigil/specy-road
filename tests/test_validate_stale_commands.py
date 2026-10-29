@@ -130,6 +130,10 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
         "the specy-road toolkit in v2",
         "**the specy-road toolkit** is",
         "*the specy-road toolkit* is",
+        "the specy-road toolkit `is`",
+        "other specy-road formats that accept `--strict`",
+        "specy-road frob_extra",
+        "Run specy-road do_next",
     ):
         assert unregistered_commands(quiet) == [], quiet
     for warn in (
@@ -141,6 +145,11 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
         "Use the specy-road frob, --flag",
         "Use the specy-road frob, M1.2",
         "Use the specy-road frob, command",
+        "Use the specy-road frob `M1.2`.",
+        "Use the specy-road frob `path/to/file`.",
+        "Use the specy-road frob `--flag`.",
+        "Use the specy-road frob `command`.",
+        "specy-road frob_",
     ):
         assert unregistered_commands(warn) == ["specy-road frob"], warn
     assert unregistered_commands("foo_specy-road frob") == []
