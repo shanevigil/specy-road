@@ -47,6 +47,31 @@ def commit_file(repo: Path, rel: str, text: str, msg: str) -> str:
     return git(repo, "rev-parse", "HEAD")
 
 
+def advance_dev(repo: Path, rel: str, text: str) -> None:
+    """Commit ``rel`` on ``dev`` after the feature branched; the repo stays on the feature branch."""
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, rel, text, "dev moves on")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+
+
+#: Trial-merge cases: what ``dev`` commits after the branch, and whether the
+#: feature branch edits the same file first. ``src/a.py`` is the branch's own file.
+TRIAL_MERGES = {
+    "clean": ("other.txt", False),
+    "bookkeeping": (NODE["planning_dir"], True),
+    "code": ("src/a.py", False),
+}
+
+
+def diverge(repo: Path, case: str) -> str:
+    """Set up one :data:`TRIAL_MERGES` case; return the path ``dev`` changed."""
+    rel, both = TRIAL_MERGES[case]
+    if both:
+        commit_file(repo, rel, "feature side\n", "feature edits it too")
+    advance_dev(repo, rel, "dev side\n")
+    return rel
+
+
 def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Path:
     root = tmp_path / "r"
     (root / "roadmap" / "phases").mkdir(parents=True)

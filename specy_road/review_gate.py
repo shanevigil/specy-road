@@ -36,7 +36,9 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
-from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.finish_implementation_check import base_ref
+from specy_road.git_subprocess import commits_behind, merge_conflicts
+from specy_road.git_workflow_config import require_implementation_review_before_finish, resolve_integration_defaults
 from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
 from specy_road.orchestration_config import (
     effective_config,
@@ -56,6 +58,7 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
 from specy_road.review_files import HUMAN, ReviewFile, list_reviews, render_front_matter, review_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 
 def review_required(repo_root: Path) -> bool:
@@ -348,4 +351,50 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
         f"(specy-road handoff status {node['id']}).",
         file=sys.stderr,
     )
+    raise SystemExit(1)
+
+
+#: Bookkeeping every leaf touches: a trial-merge conflict only here stops neither review nor finish.
+TRIAL_MERGE_BOOKKEEPING = ("work/", "roadmap/", "roadmap.md", "roadmap-context.md", "planning/")
+
+
+@dataclass(frozen=True)
+class TrialMerge:
+    """Merging the integration branch into a branch, done in memory."""
+
+    base_ref: str
+    behind: int
+    conflicts: list[str]   # project-relative; a path outside the project keeps its repository name
+
+    @property
+    def code_conflicts(self) -> list[str]:
+        return [p for p in self.conflicts if not p.startswith(TRIAL_MERGE_BOOKKEEPING)]
+
+    def problem(self) -> str | None:
+        """Why review should wait, or ``None`` when nothing but bookkeeping conflicts."""
+        if not self.code_conflicts:
+            return None
+        return (f"{self.base_ref} is {self.behind} commit(s) ahead and a trial merge conflicts on "
+                f"{', '.join(self.code_conflicts)}: merge it into this branch and resolve before review")
+
+
+def trial_merge(repo_root: Path, ref: str, integration_ref: str | None) -> TrialMerge | None:
+    """Trial-merge ``integration_ref`` into ``ref``, or ``None`` when git cannot answer."""
+    behind = commits_behind(repo_root, ref, integration_ref) if integration_ref else None
+    conflicts = merge_conflicts(repo_root, ref, integration_ref) if integration_ref and behind else []
+    if integration_ref is None or behind is None or conflicts is None:
+        return None
+    prefix = project_prefix(repo_root)
+    return TrialMerge(integration_ref, behind, [rebase_to_project(p, prefix) or p for p in conflicts])
+
+
+def trial_merge_or_exit(repo_root: Path) -> None:
+    """Refuse before any bookkeeping commit while landing ``HEAD`` would conflict on code."""
+    ib, remote, _warnings = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    tm = trial_merge(repo_root, "HEAD", base_ref(repo_root, remote, ib))
+    if tm is None or tm.problem() is None:
+        return
+    print(f"error: {tm.problem()}.", file=sys.stderr)
+    print(f"  Run `git merge {tm.base_ref}`, resolve, commit, and have the result reviewed. Conflicts "
+          f"only under {', '.join(TRIAL_MERGE_BOOKKEEPING)} do not block.", file=sys.stderr)
     raise SystemExit(1)

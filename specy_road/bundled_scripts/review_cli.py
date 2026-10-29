@@ -31,7 +31,7 @@ from specy_road.review_files import (
     review_path,
     verify_problems,
 )
-from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
+from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
@@ -58,6 +58,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     branch = (t.entry or {}).get("branch")
     ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
+    tm = trial_merge(root, t.ref, t.base_ref)
+    merge_problem = [tm.problem()] if tm and tm.problem() else []
     return {
         "node_id": node_id,
         "state": _state(root, t, gate, ready_commit),
@@ -74,7 +76,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": gate.problems() + (verify_problems(ready) if ready else []),
+        "problems": merge_problem + gate.problems() + (verify_problems(ready) if ready else []),
     }
 
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
+from tests.review_repo_helpers import commit_file, diverge, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 # One AI reviewer beside the default human: `review record` refuses `human`.
@@ -172,3 +172,12 @@ def test_no_claim_and_no_records_is_an_empty_directory(tmp_path: Path, capsys) -
     out = capsys.readouterr().out
     assert "no READY or REVIEW records; the directory can be deleted" in out
     assert "do-next-available-task" not in out
+
+
+@pytest.mark.parametrize("case", ["clean", "bookkeeping", "code"])
+def test_status_reports_a_trial_merge_code_conflict(tmp_path: Path, capsys, case: str) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    diverge(repo, case)
+    merge = [p for p in _status(repo, capsys)["problems"] if "trial merge" in p]
+    assert merge == (["refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
+                      "merge it into this branch and resolve before review"] if case == "code" else [])

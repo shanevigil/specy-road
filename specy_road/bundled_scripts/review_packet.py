@@ -28,7 +28,7 @@ from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, head_sha
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
-from specy_road.review_gate import policy_source
+from specy_road.review_gate import policy_source, trial_merge
 from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
@@ -80,6 +80,22 @@ def _policy_line(root: Path) -> str:
     return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
 
 
+def _trial_merge_line(root: Path, t: ReviewTarget) -> list[str]:
+    """Whether the branch tip still merges into the integration branch; a code conflict stops review."""
+    tm = trial_merge(root, t.ref, t.base_ref)
+    if tm is None:
+        return ["- **Trial merge:** _git could not answer_"]
+    ahead = f"`{tm.base_ref}` is {tm.behind} commit(s) ahead"
+    if not tm.conflicts:
+        return [f"- **Trial merge:** {ahead}; merges cleanly" if tm.behind else
+                f"- **Trial merge:** up to date with `{tm.base_ref}`"]
+    names = ", ".join(f"`{p}`" for p in tm.conflicts)
+    if tm.problem() is None:
+        return [f"- **Trial merge:** {ahead}; conflicts on bookkeeping only ({names}), which does not block"]
+    return [f"- **Trial merge:** {ahead}; **conflicts on {names}**", "",
+            f"**Stop: {tm.problem()}.** Reviewing this commit is wasted work: the merge makes it stale.", ""]
+
+
 def _header(root: Path, t: ReviewTarget) -> list[str]:
     return [
         f"# Review packet: `{t.node_id}` — {t.node.get('title', '')}",
@@ -89,6 +105,7 @@ def _header(root: Path, t: ReviewTarget) -> list[str]:
         f"- **Touch zones:** {', '.join(f'`{z}`' for z in t.touch_zones) or '_none declared_'}",
         _policy_line(root),
         f"- **Generated:** {date.today().isoformat()} by review-packet at HEAD `{head_sha(root) or '?'}`",
+        *_trial_merge_line(root, t),
         "",
         "Record your verdict with `specy-road review record "
         f"{t.node_id} --model <id> --verdict approve|block --file <notes.md>`. "

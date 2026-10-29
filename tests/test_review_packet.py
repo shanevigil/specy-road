@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+import pytest
+
+from tests.review_repo_helpers import commit_file, diverge, git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.review_files import PACKET_NAME, reviews_dir
@@ -104,3 +106,18 @@ def test_main_writes_packet_file(tmp_path: Path, capsys) -> None:
     out = reviews_dir(repo, "M1.1") / PACKET_NAME
     assert out.is_file()
     assert str(out) in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(("case", "line"), [
+    ("clean", "- **Trial merge:** `refs/heads/dev` is 1 commit(s) ahead; merges cleanly\n"),
+    ("bookkeeping", "conflicts on bookkeeping only (`planning/M1.1_thing_"),
+    ("code", "- **Trial merge:** `refs/heads/dev` is 1 commit(s) ahead; **conflicts on `src/a.py`**\n"),
+])
+def test_packet_reports_trial_merge_with_integration_branch(tmp_path: Path, case: str, line: str) -> None:
+    repo = make_review_repo(tmp_path)
+    assert "- **Trial merge:** up to date with `refs/heads/dev`" in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    diverge(repo, case)
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert line in text
+    assert ("**Stop: refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
+            "merge it into this branch and resolve before review.**" in text) == (case == "code")

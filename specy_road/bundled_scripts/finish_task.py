@@ -17,7 +17,7 @@ from specy_road.git_workflow_config import (
     should_cleanup_work_artifacts_on_finish,
 )
 from specy_road.finish_implementation_check import implementation_or_exit
-from specy_road.review_gate import gate_holds_at_head_or_exit, review_required
+from specy_road.review_gate import gate_holds_at_head_or_exit, review_required, trial_merge_or_exit
 from specy_road.finish_pr_body import pr_body_modes, write_pr_body
 from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
@@ -45,11 +45,6 @@ from specy_road.bundled_scripts.repo_ops import current_branch, git_run
 #: so the name exists at import. Resolving the real root here would make
 #: importing the module shell out to git.
 ROOT = Path.cwd()
-
-
-# ---------------------------------------------------------------------------
-# Git helpers
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +213,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
     )
+    trial_merge_or_exit(ROOT)
     _impl_review_or_exit(entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT, explicit_base=None, explicit_remote=None,

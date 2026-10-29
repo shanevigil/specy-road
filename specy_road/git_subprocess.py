@@ -166,6 +166,23 @@ def commits_behind(repo_root: Path, branch: str, base: str) -> int | None:
         return None
 
 
+def merge_conflicts(repo_root: Path, ours: str, theirs: str) -> list[str] | None:
+    """Paths a merge of ``theirs`` into ``ours`` would leave conflicted, or ``None``.
+
+    ``git merge-tree --write-tree`` merges in memory — no checkout, index or
+    working-tree change — so a coordinator can ask about any branch. ``[]`` is
+    a clean merge. ``None`` means git could not answer (an unknown ref, or a git
+    older than 2.38), which callers treat as "say nothing". Paths are named
+    from the repository root.
+    """
+    r = run(["merge-tree", "--write-tree", "--name-only", "--no-messages", "-z", ours, theirs], repo_root)
+    # Both outcomes print the merged tree id first; an unknown ref also exits 1, with nothing on stdout.
+    fields = r.out.split("\0")
+    if r.code not in (0, 1) or not fields[0].strip():
+        return None
+    return sorted({f for f in fields[1:] if f})
+
+
 def is_git_worktree(repo_root: Path) -> bool:
     """Whether ``repo_root`` is inside a git worktree."""
     return (git_text(["rev-parse", "--is-inside-work-tree"], repo_root) or "").lower() == "true"
