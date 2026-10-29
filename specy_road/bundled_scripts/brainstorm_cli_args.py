@@ -13,6 +13,7 @@ from collections.abc import Callable
 from specy_road.bundled_scripts.brainstorm_promote import (
     DEFAULT_PROMOTE_TYPE,
     PROMOTABLE_TYPES,
+    execution_milestone_from_promote_sets,
 )
 from specy_road.bundled_scripts.brainstorm_cli_args_v2 import (
     add_start_v2_options,
@@ -185,6 +186,17 @@ def _add_converge(sub) -> None:
         "--dry-run",
         action="store_true",
         help="Show the ids that would be created, write nothing.",
+    )
+    p.add_argument(
+        "--set",
+        dest="set",
+        action="append",
+        metavar="KEY=VALUE",
+        help=(
+            "Override a field on every promoted node. Only execution_milestone "
+            "is supported (e.g. --set execution_milestone=Human-led); otherwise "
+            "the anchor's execution_milestone is copied."
+        ),
     )
     _add_slug(p)
 

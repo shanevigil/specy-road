@@ -32,6 +32,7 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
     write_prompt,
 )
 from specy_road.bundled_scripts.brainstorm_promote import (
+    execution_milestone_from_promote_sets,
     pending_ideas,
     promote_session,
 )
@@ -259,6 +260,7 @@ def cmd_promote(ns: argparse.Namespace) -> int:
         session,
         under=ns.under,
         node_type=ns.type,
+        execution_milestone=execution_milestone_from_promote_sets(getattr(ns, "set", None)),
         dry_run=ns.dry_run,
     )
     if not ns.dry_run:

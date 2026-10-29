@@ -231,3 +231,27 @@ def test_promoting_to_the_root_makes_a_top_level_node(repo: Path) -> None:
     result = promote_session(repo, s, node_type="phase")[0]
 
     assert _by_id(repo)[result.node_id].get("parent_id") is None
+
+
+def test_promoted_nodes_inherit_the_anchor_execution_milestone(repo: Path) -> None:
+    s = _accepted_session(under="M1")
+
+    node_id = promote_session(repo, s)[0].node_id
+
+    assert _by_id(repo)[node_id]["execution_milestone"] == "Agentic-led"
+
+
+def test_promoted_nodes_inherit_human_led_from_the_anchor(repo: Path) -> None:
+    s = _accepted_session(under="M0")
+
+    node_id = promote_session(repo, s)[0].node_id
+
+    assert _by_id(repo)[node_id]["execution_milestone"] == "Human-led"
+
+
+def test_promoted_nodes_accept_execution_milestone_override(repo: Path) -> None:
+    s = _accepted_session(under="M1")
+
+    node_id = promote_session(repo, s, execution_milestone="Human-led")[0].node_id
+
+    assert _by_id(repo)[node_id]["execution_milestone"] == "Human-led"
