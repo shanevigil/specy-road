@@ -100,6 +100,8 @@ entries:
     node_id: M3.17
     branch: feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
     touch_zones:
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/templates/project/work/review-record.template.md
       - specy_road/review_gate.py
       - specy_road/review_files.py
       - specy_road/bundled_scripts/review_cli.py

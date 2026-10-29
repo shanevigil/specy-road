@@ -82,7 +82,9 @@
         "specy_road/schemas/",
         "specy_road/templates/specyrd/",
         "docs/orchestration.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/templates/project/work/review-record.template.md"
       ],
       "type": "task"
     }
