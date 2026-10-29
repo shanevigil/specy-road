@@ -101,7 +101,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.18_bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error_39350768-2f5d-4853-afab-797a6cd25e45.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Bring role_prompt under the file cap and clear the ruff complexity error",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",

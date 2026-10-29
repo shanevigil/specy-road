@@ -11,25 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
-    node_id: M3.18
-    branch: feature/rm-bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
-    touch_zones:
-      - docs/orchestration.md
-      - docs/orchestration-review.md
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_revise.py
-      - specy_road/review_gate.py
-      - specy_road/review_gate_ready.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - specy_road/bundled_scripts/validate_stale_mentions.py
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T08:54:06+00:00'
   - codename: promote-node-quality
     node_id: M3.7
     branch: feature/rm-promote-node-quality
