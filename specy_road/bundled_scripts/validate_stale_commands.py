@@ -170,28 +170,40 @@ def _code_spans(line: str) -> list[tuple[int, int, str]]:
     return spans
 
 
-def _fence_run(line: str) -> tuple[str, int] | None:
-    """The opening marker on a fence line: its character and how long the run is."""
+def _fence_marker(line: str) -> tuple[str, int, int] | None:
+    """The fence run at the start of a line: character, length, index after the run."""
     match = _FENCE.match(line)
     if match is None:
         return None
     run = match.group(1)
-    return run[0], len(run)
+    return run[0], len(run), match.end()
+
+
+def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
+    """True when the line ends an open fence (same char, length >= opener, no info string)."""
+    marker = _fence_marker(line)
+    if marker is None:
+        return False
+    char, width, end = marker
+    if char != open_fence[0] or width < open_fence[1]:
+        return False
+    return not line[end:].strip()
 
 
 def _command_mentions(lines: list[tuple[int, str]]):
     """``(line, tool, name)`` for each command-shaped token the rule keeps."""
     open_fence: tuple[str, int] | None = None
     for lineno, line in lines:
-        run = _fence_run(line)
-        if run is not None and (
-            open_fence is None or (run[0] == open_fence[0] and run[1] >= open_fence[1])
-        ):
-            open_fence = None if open_fence is not None else run
-            continue
         if open_fence is not None:
+            if _fence_closes(line, open_fence):
+                open_fence = None
+                continue
             for tool, name in _MENTION.findall(line):
                 yield lineno, tool, name
+            continue
+        marker = _fence_marker(line)
+        if marker is not None:
+            open_fence = (marker[0], marker[1])
             continue
         spans = _code_spans(line)
         chars = list(line)
@@ -248,6 +260,10 @@ def _lines_outside_block(text: str) -> list[tuple[int, str]]:
 def unregistered_commands(text: str) -> list[str]:
     """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, in order.
 
+    Scanning is line-based and best-effort. Inline code spans are parsed only when
+    they open and close on the same line; code spans that span lines are out of
+    scope.
+
     Every occurrence is returned. The same token on two lines is two entries
     (``specy-road frob`` twice). A registered command is never returned
     (``specy-road validate --strict``).
@@ -257,7 +273,8 @@ def unregistered_commands(text: str) -> list[str]:
     ``the specy-road frob`` and ```the specy-road frob``` warn, and one
     backtick inside a longer span does not end it), a fenced block (opened by a
     run of backticks or tildes and closed only by a line whose fence uses that
-    same character and is at least as long, so ``` inside a four-backtick fence
+    same character, is at least as long, and has nothing but whitespace after
+    the run, so `` ```bash `` does not close and ``` inside a four-backtick fence
     and ~~~ inside a backtick fence stay inside), a command-led list item (the product name is the
     first token after the marker, optionally in code or emphasis, or it is
     preceded only by a run verb: ``- specy-road frob --x``, ``- Run specy-road
