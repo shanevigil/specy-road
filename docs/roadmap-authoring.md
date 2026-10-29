@@ -6,9 +6,9 @@
 **Not for:** the PM's day-to-day loop and dashboard ([`pm-workflow.md`](pm-workflow.md)) or claiming and finishing leaves ([`dev-workflow.md`](dev-workflow.md)).
 
 **Must know without reading on:**
-- Identity is `node_key` (UUID, immutable); `dependencies` list other nodes' `node_key` values, never display ids. Display `id` may be renumbered; never recycle a `node_key`.
+- Identity is `node_key` (UUID, immutable); `dependencies` store other nodes' `node_key` values, never display ids (`add-node --dependency`, `add-dependency` and `apply` take a display id and store its key). Display `id` may be renumbered; never recycle a `node_key`.
 - `roadmap.md` is generated: edit chunks, then `specy-road export` (`--check` in CI); `specy-road validate` is the gate after every edit.
-- Prefer `specy-road add-node` / `edit-node` / `set-dependencies` to hand-editing chunks: routing picks the chunk, and `specy-road rebalance-chunks` fixes one over the 500-line cap.
+- Prefer `specy-road add-node` / `edit-node` / `set-dependencies` (or `apply` for a batch) to hand-editing chunks: routing picks the chunk, and `specy-road rebalance-chunks` fixes one over the 500-line cap.
 - Every `vision`, `phase`, `milestone`, `task` and `gate` node needs `planning_dir` → `planning/<id>_<slug>_<node_key>.md`; contracts are cited in that sheet's `## References`, not in the JSON.
 - A `type: gate` node is a leaf-only hold: never picked up, never in `roadmap/registry.yaml`, and it blocks its dependents until `Complete`.
 
@@ -201,10 +201,10 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `status` | `Not Started` / `In Progress` / `Complete` / `Blocked` |
 | `execution_milestone` | **Advisory** dominant work type: `Human-led` / `Agentic-led` / `Mixed`. Read by humans and by the PM UI; it does **not** gate pickup — use a `type: gate` dependency for that. |
 | `touch_zones` | Paths or globs, relative to the project root, that this node modifies (enables overlap detection). Zones may name files the work will create. `specy-road validate` warns when a zone on an In Progress or Blocked node matches nothing in the working tree (a typo or a moved path); Not Started and Complete nodes are not checked. Never shrink zones to quiet that warning: overlap detection needs them. `edit-node --set touch_zones=a,b` (commas or one `--set` per path). |
-| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). |
+| `dependencies` | **`node_key` UUIDs** of nodes that must reach `Complete` before this node starts (not display ids). `add-node --dependency` and `add-dependency` also accept a display id and store its `node_key`; `edit-node` and `set-dependencies` take keys. |
 | `parallel_tracks` | Integer — number of independent workstreams within this node. |
 | `goal` | Concise statement of what the node achieves when complete. |
-| `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. |
+| `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`, or at creation with one `add-node --acceptance` per criterion. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. |
 | `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
 | `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
 | `risks` | List of known risks or blockers to surface during planning (one `--set risks=…` per item). |
@@ -382,7 +382,11 @@ specy-road export --check
 
 ## Tooling
 
-PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
+PMs may use **`specy-road` CRUD commands** (`list-nodes`, `show-node`, `add-node`, `edit-node`, `archive-node`, `apply`) to change chunk files; see [PM workflow](pm-workflow.md#get-the-latest-roadmap-import--sync). The dashboard and `finish-this-task` update **JSON** chunks in place.
+
+### Batch edits (`apply`)
+
+`specy-road apply changes.yaml [--dry-run]` runs `add-node`, `edit-node` and `add-dependency` entries in order as one batch: if any is refused, every file the batch touched is restored, so it applies whole or not at all. Each entry is `op:` plus that command's long options (`node:` and `dependency:` for its positionals, `set: {field: value}` for `edit-node`; a list repeats the option), and every entry is parsed before anything runs. Entries apply in order, so add a node before an entry that depends on it. `--dry-run` rehearses the same commands on a scratch copy (graph and planning files copied, the rest symlinked) and writes nothing. Both print the resulting waves and the ready and blocked leaves, as `grind-session --plan` computes them. Example, a file holding: `[{op: add-node, id: M2.4, type: task, title: Export CSV, parent_id: M2, acceptance: [Downloads a CSV], dependencies: [M2.3]}, {op: add-dependency, node: M2.5, dependency: M2.4}]`.
 
 ## Registry and brief
 

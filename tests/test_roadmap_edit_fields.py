@@ -9,7 +9,7 @@ import pytest
 from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
 from specy_road.bundled_scripts.roadmap_edit_fields import apply_set, title_to_codename
 
-from tests.test_roadmap_crud import _fixture_repo
+from tests.test_roadmap_crud import crud_fixture_repo
 
 _NK = "10000000-0000-4000-8000-000000009901"
 
@@ -92,7 +92,7 @@ def test_a_missing_codename_is_still_derived() -> None:
 
 
 def test_edit_title_renames_planning_file_on_disk(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     old = tmp_path / "planning" / f"M99_unnamed_{_NK}.md"
     assert old.is_file()
     edit_node_set_pairs(
