@@ -191,7 +191,7 @@ def test_review_list_prints_records_and_the_gate_and_writes_nothing(tmp_path: Pa
     assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "approve",
                 "--file", str(_notes(repo)), "--repo-root", str(repo)) == 0
     d = reviews_dir(repo, "M1.1")
-    before = {p.name: p.read_text() for p in d.iterdir()}
+    before = {p.relative_to(d): p.read_text() for p in d.rglob("*") if p.is_file()}
     head = git(repo, "rev-parse", "HEAD")
     capsys.readouterr()
     assert _run("review", "list", "M1.1", "--repo-root", str(repo)) == 0
@@ -203,7 +203,7 @@ def test_review_list_prints_records_and_the_gate_and_writes_nothing(tmp_path: Pa
     assert "gate: not evaluated" in capsys.readouterr().out
     assert _run("review", "list", "M1.1", "--ref", "feature/rm-thing", "--repo-root", str(repo)) == 0
     assert "1/1 approvals, 0 block(s): met" in capsys.readouterr().out
-    assert {p.name: p.read_text() for p in d.iterdir()} == before
+    assert {p.relative_to(d): p.read_text() for p in d.rglob("*") if p.is_file()} == before
 
 
 def test_no_claim_and_no_records_is_an_empty_directory(tmp_path: Path, capsys) -> None:
