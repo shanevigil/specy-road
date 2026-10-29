@@ -51,6 +51,7 @@ __all__ = [
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",
+    "PROSE_NOUNS",
     "unregistered_commands",
     "warn_stale_parent_status",
     "warn_if_pin_differs",
@@ -102,116 +103,49 @@ _INLINE_CODE = re.compile(r"`([^`\n]*)`")
 # Whatever precedes the tool. The lookbehind only rejects a token glued onto
 # another word, a path, or a dot.
 _MENTION = re.compile(r"(?<![\w/.-])(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
-_PLAIN_WORD = re.compile(r"[a-z][a-z-]*\Z")
-_FLAG = re.compile(r"^--?[A-Za-z0-9]")
-_LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]")
-# "the specy-road repository." is a noun phrase. "Please run specy-road frob." is not.
-_DETERMINER = re.compile(r"(?i:\b(?:the|a|an)[ \t]+)$")
 
-
-def _plain_word_follows(text: str) -> bool:
-    word = re.match(r"([A-Za-z][A-Za-z-]*)", text.lstrip(" \t*_`'\"()[]}>"))
-    return word is not None and _PLAIN_WORD.fullmatch(word.group(1)) is not None
-
-
-def _punctuation_kind(s: str) -> str:
-    """``punct`` when ``s`` opens with sentence punctuation that ends the mention."""
-    after = s[1:]
-    if s[0] == ")" and after and after.lstrip(":*_`") == "":
-        return ""
-    if after[:1] in {"*", "_", "`"} or _plain_word_follows(after):
-        return ""
-    return "punct"
-
-
-def _argument_kind(s: str) -> str:
-    """``quoted`` or ``path`` when the next token is an argument, else ``""``."""
-    if s[:1] in {"'", '"'}:
-        return "quoted"
-    token = re.match(r"\S+", s)
-    if token is None:
-        return "eol"
-    word = token.group(0).strip("*_`'\".,;:!?)]")
-    if not word or _PLAIN_WORD.fullmatch(word):
-        return ""
-    if "/" in word or "\\" in word or re.search(r"\.[A-Za-z0-9]", word):
-        return "" if _plain_word_follows(s[token.end() :]) else "path"
-    return ""
-
-
-def _trailing_kind(rest: str) -> str:
-    """How ``rest`` marks the token as a subcommand, or ``""`` when it does not.
-
-    End of line, sentence punctuation (``. , ; : ! ? )``), a flag
-    (``-x`` / ``--name``), or a quoted or path-like argument qualifies. A plain
-    word does not (``specy-road toolkit is``). Punctuation that a plain word
-    continues (``specy-road repo, or``) is the sentence going on, not a command.
-    """
-    s = rest.lstrip(" \t")
-    if re.fullmatch(r"[*_]*", s):
-        return "eol"
-    if s[:1] in ".,;:!?)":
-        return _punctuation_kind(s)
-    if _FLAG.match(s):
-        return "flag"
-    return _argument_kind(s)
-
-
-def _mentions_in(chunk: str, *, code: bool, list_item: bool, following: str):
-    for match in _MENTION.finditer(chunk):
-        kind = _trailing_kind(chunk[match.end() :])
-        if kind == "eol" and not code and _plain_word_follows(following):
-            kind = ""
-        if kind == "punct" and chunk[match.end() :].lstrip()[:1] == ":" and _LIST_ITEM.match(following):
-            kind = ""
-        # A determiner makes end-of-line and punctuation a noun phrase. A flag,
-        # a quote, a path, code, or a list item still names a command.
-        if kind in {"eol", "punct"} and not code and not list_item and _DETERMINER.search(chunk[: match.start()]):
-            kind = ""
-        # A list item with only a plain word ("specy-road ships no") is prose.
-        # One whose tail is a flag, punctuation, or the end of the line is a command.
-        if kind:
-            yield match.group(1), match.group(2)
+# Ordinary nouns that follow the product name in prose ("the specy-road toolkit").
+# Not commands. The same word inside code is still reported when it is unregistered.
+PROSE_NOUNS = frozenset({
+    "toolkit", "command", "commands", "cli", "skill", "skills", "package",
+    "project", "repo", "repository", "docs", "documentation", "workflow",
+    "roadmap", "version",
+})
 
 
 def _command_mentions(text: str):
-    """Each command-shaped ``specy-road`` / ``specyrd`` token that reads as a subcommand.
+    """Each ``specy-road`` / ``specyrd`` token of command shape, skipping prose nouns.
 
-    Every line is scanned with ``(?<![\\w/.-])(specy-road|specyrd)`` plus a
-    token ``[a-z][a-z0-9-]*``, whatever precedes the tool.     The token is a subcommand in inline code or a fenced block (the end of the
-    span counts as end of line), on a list item, or when a flag, sentence
-    punctuation, end of line, or a quoted or path-like argument follows it. A
-    plain following word is not one, including on a list line.
+    Inline code and fenced blocks yield every token. Prose skips only
+    :data:`PROSE_NOUNS`.
     """
-    lines = text.splitlines()
     in_fence = False
-    for index, line in enumerate(lines):
+    for line in text.splitlines():
         if _FENCE.match(line):
             in_fence = not in_fence
             continue
-        following = ""
-        for later in lines[index + 1 :]:
-            if later.strip() and not _FENCE.match(later):
-                following = later
-                break
         if in_fence:
-            yield from _mentions_in(line, code=True, list_item=False, following=following)
+            yield from _MENTION.findall(line)
             continue
         for code in _INLINE_CODE.findall(line):
-            yield from _mentions_in(code, code=True, list_item=False, following="")
+            yield from _MENTION.findall(code)
         plain = _INLINE_CODE.sub(lambda match: " " * len(match.group(0)), line)
-        yield from _mentions_in(plain, code=False, list_item=bool(_LIST_ITEM.match(line)), following=following)
+        for tool, name in _MENTION.findall(plain):
+            if name not in PROSE_NOUNS:
+                yield tool, name
 
 
 def unregistered_commands(text: str) -> list[str]:
     """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, once, in order.
 
-    The tool is found wherever it occurs. A command-shaped token is a
-    subcommand in inline code or a fenced block, on a list item, or when end
-    of line, sentence punctuation (``. , ; : ! ? )``), a flag, or a quoted or
-    path-like argument follows it. A plain word does not (``the specy-road
-    toolkit is``). ``specy-road validate`` at end of line is registered, so it
-    is not reported.
+    A command-shaped token is reported whatever follows it (``specy-road frob
+    M1.2``, ``specy-road frob somefile.md``). A registered command is never
+    reported (``specy-road validate --strict``). The one exception is prose
+    that uses the product name with an ordinary noun, which is not a command:
+    toolkit, command, commands, cli, skill, skills, package, project, repo,
+    repository, docs, documentation, workflow, roadmap, version
+    (``the specy-road toolkit is``). The same word inside code is still
+    reported when it is not registered.
     """
     specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
     registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}

@@ -201,6 +201,15 @@ manifest recorded as the kit's, so `--prune` deletes exactly the list shown
 Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any
 warning) can gate CI next to `export --check` and `digest --check`.
 
+`validate` also warns when `AGENTS.md` or `CLAUDE.md`, outside the managed
+block, names a `specy-road` or `specyrd` subcommand this version does not
+register. What follows the name does not matter (`specy-road frob M1.2` warns).
+A registered command never warns (`specy-road validate --strict`). Prose that
+uses the product name with an ordinary noun is not a command: toolkit, command,
+commands, cli, skill, skills, package, project, repo, repository, docs,
+documentation, workflow, roadmap, version ("the specy-road toolkit is" does not
+warn). The same word inside code still warns when it is not a registered command.
+
 #### Upgrading from 0.2.x
 
 - **Commands became skills.** 0.2.x installed `.cursor/commands/specyrd-*.md`
