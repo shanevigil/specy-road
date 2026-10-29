@@ -123,8 +123,9 @@ def test_refresh_stubs_reapplies_the_block(tmp_path: Path) -> None:
     assert agents_md_block_state(tmp_path) == "current"
 
 
-def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys) -> None:
+def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys, monkeypatch) -> None:
     """Codex reads every AGENTS.md from the git root down; Claude Code reads CLAUDE.md, else those."""
+    monkeypatch.setenv("HOME", str(tmp_path / "no-user-claude"))
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
     block = f"{HTML_COMMENT.start}\n- one rule\n{HTML_COMMENT.end}"
@@ -212,8 +213,8 @@ def test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents(tmp_path: Pa
     assert ".claude/AGENTS.md 1 lines" in claude
 
 
-def test_user_claude_md_loads_beside_agents_md(tmp_path: Path, monkeypatch, capsys) -> None:
-    """``~/.claude/CLAUDE.md`` is injected and does not suppress the AGENTS.md fallback."""
+def test_user_claude_md_under_home_is_listed_once(tmp_path: Path, monkeypatch, capsys) -> None:
+    """A repo under HOME finds the user file on the ancestor walk; the report names it once."""
     monkeypatch.setenv("HOME", str(tmp_path))
     user = tmp_path / ".claude" / AGENT_GUIDE
     user.parent.mkdir()
@@ -224,9 +225,12 @@ def test_user_claude_md_loads_beside_agents_md(tmp_path: Path, monkeypatch, caps
     (repo / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
 
     print_injected_context(repo)
-    claude = capsys.readouterr().out.splitlines()[1]
-    assert user.resolve().as_posix() in claude
-    assert "AGENTS.md " in claude
+    out = capsys.readouterr().out
+    shown = user.resolve().as_posix()
+    assert out.count(shown) == 1
+    assert f"{shown} 1 lines" in out and "user-level (this machine)" in out
+    reads = [ln for ln in out.splitlines() if ln.startswith("context: Claude Code reads ")][0]
+    assert shown not in reads and "AGENTS.md " in reads
 
 
 def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, capsys) -> None:

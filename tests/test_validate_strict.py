@@ -12,10 +12,10 @@ from specy_road.init_project import run_init_project
 from tests.helpers import REPO, script_subprocess_env
 
 
-def _validate(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+def _validate(root: Path, *args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "specy_road.cli", "validate", "--repo-root", str(root), *args],
-        cwd=REPO, env=script_subprocess_env(), capture_output=True, text=True,
+        cwd=REPO, env=env or script_subprocess_env(), capture_output=True, text=True,
     )
 
 
@@ -69,6 +69,26 @@ def test_strict_warns_when_an_ancestor_claude_file_hits_200_lines(tmp_path: Path
     r = _validate(root, "--strict")
     assert r.returncode == 1
     assert f"{ancestor.resolve().as_posix()} is 200 lines" in r.stderr
+
+
+def test_user_claude_outside_home_is_noted_and_does_not_fail_strict(tmp_path: Path) -> None:
+    """The user file is reported for a repo that is not under HOME, and 201 lines of it is not a warning."""
+    home, root = tmp_path / "home", tmp_path / "repo"
+    root.mkdir()
+    _scaffold(root)
+    user = home / ".claude" / "CLAUDE.md"
+    user.parent.mkdir(parents=True)
+    user.write_text("- rule\n" * 201, encoding="utf-8")
+    env = script_subprocess_env()
+    env["HOME"] = str(home)
+
+    r = _validate(root, "--strict", env=env)
+
+    assert r.returncode == 0, r.stderr
+    assert r.stderr == ""
+    shown = user.resolve().as_posix()
+    assert r.stdout.count(shown) == 1
+    assert f"{shown} 201 lines" in r.stdout and "user-level (this machine)" in r.stdout
 
 
 def test_strict_passes_a_fresh_scaffold(tmp_path: Path) -> None:

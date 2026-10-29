@@ -208,17 +208,37 @@ def _codex_paths(start: Path, top: Path) -> list[Path]:
     return chosen
 
 
-def _claude_paths(start: Path) -> list[Path]:
-    """Launch-time Claude Code files. A project file suppresses the AGENTS.md fallback.
+def _user_claude_path() -> Path:
+    """``~/.claude/CLAUDE.md`` on this machine, whether or not the repo sits under it."""
+    return Path.home() / ".claude" / AGENT_GUIDE
 
-    ``~/.claude/CLAUDE.md`` is user scope: it is injected, and it does not suppress.
+
+def _without_user(paths: list[Path]) -> list[Path]:
+    """Drop the user file so an ancestor walk and the explicit candidate do not list it twice."""
+    user = _user_claude_path().resolve()
+    return [p for p in paths if p.resolve() != user]
+
+
+def _claude_paths(start: Path) -> list[Path]:
+    """Repository files Claude Code loads. The user file is not one of them.
+
+    A project ``CLAUDE.md``, ``.claude/CLAUDE.md`` or ``CLAUDE.local.md`` suppresses
+    the ``AGENTS.md`` fallback. ``~/.claude/CLAUDE.md`` does not, and it is reported
+    separately so a repository outside ``HOME`` still shows it.
     """
     dirs = _dirs_from_root(start)
-    claude = _present(dirs, _CLAUDE_CANDIDATES)
-    user = (Path.home() / ".claude" / AGENT_GUIDE).resolve()
-    if any(p.resolve() != user for p in claude):
+    claude = _without_user(_present(dirs, _CLAUDE_CANDIDATES))
+    if claude:
         return claude
-    return _present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK))
+    return _without_user(_present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK)))
+
+
+def _user_level_claude() -> InjectedFile | None:
+    """The machine's ``~/.claude/CLAUDE.md``, or None when there is no such file."""
+    path = _user_claude_path()
+    if not path.is_file():
+        return None
+    return _measure(path, path.resolve().as_posix())
 
 
 def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
@@ -242,6 +262,10 @@ def print_injected_context(project_root: Path) -> None:
     if claude:
         print(f"context: Claude Code reads {'; '.join(f.describe() for f in claude)} — "
               f"target under {CLAUDE_MD_TARGET_LINES} lines per file")
+    user = _user_level_claude()
+    if user:
+        print(f"context: note — Claude Code also reads {user.describe()}, "
+              "user-level (this machine); not counted toward this repository's limit")
 
 
 def warn_if_context_over_limits(project_root: Path) -> None:
