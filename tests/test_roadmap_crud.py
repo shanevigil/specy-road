@@ -239,7 +239,7 @@ def test_list_nodes_cli(tmp_path: Path) -> None:
 
 def test_list_nodes_json_is_the_full_untruncated_list(tmp_path: Path) -> None:
     """The table cuts titles at 60 characters; --json is for scripts and keeps every field."""
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     chunk = tmp_path / "roadmap" / "phases" / "T.json"
     nodes = load_json_chunk(chunk)
     long_title = "A title well past the sixty characters the table keeps, kept whole"
