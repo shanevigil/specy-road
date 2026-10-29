@@ -20,6 +20,7 @@ from specy_road.managed_block import HTML_COMMENT, render_block
 AGENTS_MD = """# Our agents guide
 
 The specy-road toolkit coordinates work; run `specy-road validate` and `specy-road grind`.
+Run specy-road does-not-exist before opening a PR; use specy-road to coordinate.
 
 ```bash
 $ specy-road nope --flag && specy-road brief M1
@@ -48,6 +49,8 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     tail = f"which is not a command in specy-road {__version__};"
     assert lines == [
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road grind`, {tail} use `specy-road grind-session`.",
+        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road does-not-exist`, {tail} "
+        "see `specy-road --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road nope`, {tail} see `specy-road --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specyrd refresh`, {tail} see `specyrd --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road pm-sync`, {tail} use `specy-road sync`.",

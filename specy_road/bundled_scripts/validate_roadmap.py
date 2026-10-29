@@ -100,31 +100,36 @@ def warn_if_pin_differs(start: Path) -> None:
 _FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
 # Command position only: prose ("the specy-road toolkit") and comments in a
-# code block ("# specy-road files omit…") name no command.
-_COMMAND = re.compile(r"(?:^|[;&|($]|\buvx|\brun|\bexec)[ \t]*(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
+# code block ("# specy-road files omit…") name no command. Prose counts only
+# after a run verb ("Run specy-road validate").
+_TOOL = r"(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)"
+_RUN = r"(?i:\b(?:uvx|run|exec|execute|invoke)\b)"
+_IN_CODE = re.compile(rf"(?:^|[;&|($]|{_RUN})[ \t]*{_TOOL}")
+_IN_PROSE = re.compile(rf"{_RUN}[ \t]+{_TOOL}")
 
 
-def _code_spans(text: str):
+def _command_mentions(text: str):
     in_fence = False
     for line in text.splitlines():
         if _FENCE.match(line):
             in_fence = not in_fence
         elif in_fence:
-            yield line
+            yield from _IN_CODE.findall(line)
         else:
-            yield from _INLINE_CODE.findall(line)
+            for code in _INLINE_CODE.findall(line):
+                yield from _IN_CODE.findall(code)
+            yield from _IN_PROSE.findall(line)
 
 
 def unregistered_commands(text: str) -> list[str]:
-    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` runs in code and no CLI registers, once, in order."""
+    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` runs and no CLI registers, once, in order."""
     specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
     registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}
     found: list[str] = []
-    for code in _code_spans(text):
-        for tool, name in _COMMAND.findall(code):
-            mention = f"{tool} {name}"
-            if name not in registered[tool] and mention not in found:
-                found.append(mention)
+    for tool, name in _command_mentions(text):
+        mention = f"{tool} {name}"
+        if name not in registered[tool] and mention not in found:
+            found.append(mention)
     return found
 
 
