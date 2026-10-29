@@ -355,7 +355,7 @@
     },
     {
       "acceptance": [
-        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods; the scanner is a best-effort heuristic: JSX text (including apostrophes) must not be read as code, while non-ASCII identifiers and overload signatures without a terminating semicolon are documented out of scope; Scope is frozen (maintainer decision 2026-10-29): A1 is met by the syntax forms the branch's tests cover; any further TS/JS syntax form found in review is recorded in M4.12a and is not a block for this leaf",
+        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods; the scanner is a best-effort heuristic: JSX text (including apostrophes) must not be read as code, while non-ASCII identifiers and overload signatures without a terminating semicolon are documented out of scope; Scope is frozen (maintainer decision 2026-10-29): A1 is met by the syntax forms the branch's tests cover; any further TS/JS syntax form found in review is recorded in M4.18 and is not a block for this leaf",
         "file-limits reports an over-cap TS/JS function on one line in the same shape as the Python report (`file-limits: <rel> function `<name>` <N> lines (max M per function)`), adding `:<line>` after <rel> for both languages, and no longer prints OK while one exists",
         "Tests use a fixture per syntax form; the policy file documents which languages the function cap covers"
       ],

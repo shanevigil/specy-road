@@ -38,6 +38,31 @@
         "specy_road/templates/project/roadmap/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "Each syntax form listed in this leaf's planning sheet (from M4.12's later review rounds, starting with class arrow fields declared with a definite-assignment bang and declarators after a grouped arrow) is measured, with a test per form"
+      ],
+      "codename": "further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review",
+      "dependencies": [
+        "abeedb0d-ada4-407d-8cf3-3a8263670370"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.18",
+      "node_key": "e2c438ba-5f47-4f6c-b386-7e454c8cda72",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.18_further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review_e2c438ba-5f47-4f6c-b386-7e454c8cda72.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Further TS/JS syntax forms for the function cap found in M4.12 review",
+      "touch_zones": [
+        "specy_road/file_limits_js.py",
+        "specy_road/file_limits_js_mask.py",
+        "specy_road/file_limits_jsx.py",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
