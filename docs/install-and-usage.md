@@ -259,9 +259,9 @@ specy-road show-node M1.2.1
 specy-road sync
 ```
 
-Run all of these with `--repo-root /path/to/consumer/repo` if your shell is
-not already inside the consumer repo (for example when you're working in
-the toolkit clone and pointing at `playground/`).
+Run all of these with `--repo-root /path/to/consumer/repo` if your shell is not already inside the consumer repo (for example when you're working in the toolkit clone and pointing at `playground/`).
+
+`validate` ends with one `context:` line per harness: the lines and bytes of each instruction file it injects into every session started in the project root, and of the specy-road section inside it. Codex reads, in each directory from the git root down, the first non-empty of `AGENTS.override.md` then `AGENTS.md`, and truncates them at its 32 KiB `project_doc_max_bytes` budget; Claude Code reads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory up to the filesystem root (or `AGENTS.md` and `.claude/AGENTS.md` when none of those is present) and documents a target of under 200 lines per file. Only files inside the git root count toward those limits, so exceeding one there is a warning and `validate --strict` fails on it. Files outside the git root — ancestor instructions, `~/.claude/CLAUDE.md`, and `AGENTS.override.md` or `AGENTS.md` in the Codex home (`$CODEX_HOME`, else `~/.codex`) — are notes labelled user-level / machine-local and are never a warning.
 
 Shape the roadmap before authoring it: `specy-road brainstorm start --topic "…" --under <ID>`, hand the prompt to your agent, `next-round`, `recommend`, `evidence` + `verify`, then `accept` / `reject --reason` / `park` and `promote` ([brainstorming.md](brainstorming.md)).
 

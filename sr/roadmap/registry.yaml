@@ -13,18 +13,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: context-budget-meter
-    node_id: M5.3
-    branch: feature/rm-context-budget-meter
-    touch_zones:
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/agents_md_block.py
-      - specy_road/agent_guide_block.py
-      - docs/install-and-usage.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: branch-cleanup
     node_id: M4.10
     branch: feature/rm-branch-cleanup

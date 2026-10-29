@@ -45,7 +45,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
-  - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Not Started**
+  - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Complete**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Not Started**
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
@@ -65,8 +65,8 @@ Do not pick these up.
 - `M3.12` on `feature/rm-a-baseline-gate-runs-on-the-integration-branch-before-pickup` since 2026-10-28
 - `M3.13` on `feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` since 2026-10-28
 - `M4.10` on `feature/rm-branch-cleanup` since 2026-10-28
+- `M4.11` on `feature/rm-grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` since 2026-10-28
 - `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
-- `M5.3` on `feature/rm-context-budget-meter` since 2026-10-28
 
 ## Reaching the detail behind this
 

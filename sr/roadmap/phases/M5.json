@@ -80,7 +80,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.3_context-budget-meter_1296cce5-a445-4edc-80b0-14c22e8da22f.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "validate reports always-injected context per harness against documented limits",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_roadmap.py",
