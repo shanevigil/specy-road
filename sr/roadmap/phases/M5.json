@@ -62,7 +62,8 @@
         "specy_road/managed_block.py",
         "tests/",
         "docs/install-and-usage.md",
-        "AGENTS.md"
+        "AGENTS.md",
+        "specy_road/bundled_scripts/validate_stale_commands.py"
       ],
       "type": "task"
     },
