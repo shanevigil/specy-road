@@ -130,6 +130,7 @@ def test_refresh_stubs_reapplies_the_block(tmp_path: Path) -> None:
 def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys, monkeypatch) -> None:
     """Codex reads every AGENTS.md from the git root down; Claude Code reads CLAUDE.md, else those."""
     monkeypatch.setenv("HOME", str(tmp_path / "no-user-claude"))
+    monkeypatch.delenv("CODEX_HOME", raising=False)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
     block = f"{HTML_COMMENT.start}\n- one rule\n{HTML_COMMENT.end}"
@@ -242,6 +243,7 @@ def test_user_claude_md_under_home_is_listed_once(tmp_path: Path, monkeypatch, c
 def test_codex_user_layer_is_a_note(tmp_path: Path, monkeypatch, capsys) -> None:
     """``~/.codex`` is reported and not metered, even when the file is past the budget."""
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("CODEX_HOME", raising=False)
     codex = tmp_path / "home" / ".codex"
     codex.mkdir(parents=True)
     (codex / AGENTS_MD).write_text("x" * (CODEX_PROJECT_DOC_MAX_BYTES + 1), encoding="utf-8")
@@ -260,6 +262,28 @@ def test_codex_user_layer_is_a_note(tmp_path: Path, monkeypatch, capsys) -> None
     assert (codex / AGENTS_MD).resolve().as_posix() not in out
     assert f"{shown} 1 lines" in out and "user-level / machine-local" in out
     assert err == ""
+
+
+def test_codex_home_env_moves_the_user_layer(tmp_path: Path, monkeypatch, capsys) -> None:
+    """With ``CODEX_HOME`` set, its AGENTS.md is the note and ``~/.codex`` is not read."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    default = tmp_path / "home" / ".codex" / AGENTS_MD
+    default.parent.mkdir(parents=True)
+    default.write_text("# default home\n", encoding="utf-8")
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    (codex_home / AGENTS_MD).write_text("# profile\n# rules\n", encoding="utf-8")
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / AGENTS_MD).write_text("# repo\n", encoding="utf-8")
+
+    print_injected_context(repo)
+    out = capsys.readouterr().out
+    shown = (codex_home / AGENTS_MD).resolve().as_posix()
+    assert f"context: note — {shown} 2 lines" in out and "user-level / machine-local" in out
+    assert default.resolve().as_posix() not in out
 
 
 def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, capsys) -> None:

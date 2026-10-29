@@ -26,6 +26,7 @@ injects into every session, against the limit its vendor documents.
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -220,12 +221,13 @@ def _user_claude_path() -> Path:
 
 
 def _codex_home_file() -> Path | None:
-    """The non-empty ``~/.codex`` file Codex reads before the project, or None.
+    """The non-empty Codex-home file Codex reads before the project, or None.
 
-    Same order as a project directory: ``AGENTS.override.md``, then ``AGENTS.md``.
+    The Codex home is ``CODEX_HOME`` when set, else ``~/.codex``. Same order as a
+    project directory: ``AGENTS.override.md``, then ``AGENTS.md``.
     https://developers.openai.com/codex/guides/agents-md
     """
-    root = Path.home() / ".codex"
+    root = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
     for name in _CODEX_CANDIDATES:
         path = root / name
         if path.is_file() and path.stat().st_size > 0:
