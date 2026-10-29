@@ -41,7 +41,7 @@
     },
     {
       "acceptance": [
-        "validate warns for each `specy-road <subcommand>` or `specyrd <subcommand>` mentioned in AGENTS.md or CLAUDE.md (outside managed blocks) whose subcommand is not registered",
+        "validate warns for each occurrence of `specy-road <token>` or `specyrd <token>` in AGENTS.md or CLAUDE.md outside managed blocks where <token> is command-shaped ([a-z][a-z0-9-]*) and not a registered subcommand. Rule (decidable, documented): code spans, fenced blocks, list items, run-verb contexts (run, exec, execute, invoke, uvx), a token followed by a flag, path, quoted or id-like argument, or a token followed by the word command/subcommand always warn; the only exclusion is a noun phrase: the product name immediately preceded by a determiner, possessive or preposition (the, a, an, this, that, these, those, other, any, all, every, each, its, our, your, their, own, of, with, in, for, from, about) and the token followed by a plain word or nothing",
         "Known aliases and deprecated names are listed with their replacement",
         "The check never fails validation and has no false positive on the toolkit's own docs"
       ],
@@ -132,7 +132,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.5_context-regression-set_6bea8860-1394-4fff-9094-c781dc86a11a.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A replayable context regression set for the sandbox runbook",
       "touch_zones": [
         "docs/agentic-sandbox-runbook.md",

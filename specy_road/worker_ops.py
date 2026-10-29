@@ -29,6 +29,7 @@ from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
+from specy_road.runtime_paths import git_root, project_prefix
 from specy_road.worker_adapters import Unsupported, adapter_for
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
 from specy_road.worker_reconcile import _bookkeeping
@@ -118,7 +119,9 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
     if explicit:
         return _check_tree(Path(explicit), branch)
     if git_text(["branch", "--show-current"], repo_root) == branch:
-        return repo_root.resolve()
+        # The git root, not a nested project root: the harness runs in the recorded
+        # tree, and the prompt and brief give their paths from the git root.
+        return git_root(repo_root)
     wt = reviews_root(repo_root).parent / ".worktrees" / codename
     if not wt.exists():
         wt.parent.mkdir(parents=True, exist_ok=True)
@@ -156,8 +159,9 @@ def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
 
 
 def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
-    """The executor's precondition wants ``work/brief-<id>.md`` in **its** tree, and ``work/`` is gitignored."""
-    dest = wt / "work" / f"brief-{node_id}.md"
+    """The executor's precondition wants ``work/brief-<id>.md`` under **its** tree's project root (the
+    prompt names it from the git root in the nested layout), and ``work/`` may be gitignored."""
+    dest = git_root(wt) / project_prefix(repo_root) / "work" / f"brief-{node_id}.md"   # wt is a checked git tree
     if dest.is_file():
         return
     src = repo_root / "work" / f"brief-{node_id}.md"
@@ -226,7 +230,8 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     if entries is None:
         raise WorkerError(f"cannot read `git status` in {wt}, so its uncommitted changes are unknown; "
                           "repair that checkout, then delegate again")
-    dirty = sorted(p for xy, p in entries if not (xy == "??" and _bookkeeping(p, node_id)))
+    prefix = project_prefix(repo_root)
+    dirty = sorted(p for xy, p in entries if not (xy == "??" and _bookkeeping(p, node_id, prefix)))
     if dirty:
         raise WorkerError(f"{wt} has uncommitted changes the worker could overwrite: {', '.join(dirty)}; "
                           "commit or stash them, then delegate again")

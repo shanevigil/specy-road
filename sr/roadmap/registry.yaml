@@ -1,27 +1,5 @@
 version: 1
 entries:
-  - codename: worker-cli-fixes
-    node_id: M3.9
-    branch: feature/rm-worker-cli-fixes
-    touch_zones:
-      - specy_road/tool_call_guard.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration-workers.md
-      - docs/orchestration.md
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - specy_road/worker_reconcile.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: stale-command-check
     node_id: M5.2
     branch: feature/rm-stale-command-check
@@ -63,16 +41,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: context-regression-set
-    node_id: M5.5
-    branch: feature/rm-context-regression-set
-    touch_zones:
-      - docs/agentic-sandbox-runbook.md
-      - docs/
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: project-setup
     node_id: M1.1
     branch: feature/rm-project-setup
@@ -99,6 +67,36 @@ entries:
       - schemas/git-workflow.schema.json
       - docs/dev-workflow.md
       - docs/grind-session.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
+    node_id: M3.13
+    branch: feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/bundled_scripts/finish_task.py
+      - specy_road/finish_land_integration.py
+      - specy_road/git_subprocess.py
+      - docs/orchestration.md
+      - docs/dev-workflow.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave
+    node_id: M4.11
+    branch: feature/rm-grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave
+    touch_zones:
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/orchestrate_plan.py
+      - docs/grind-session.md
+      - docs/orchestration.md
       - tests/
     started: '2026-10-28'
     owner: savigil

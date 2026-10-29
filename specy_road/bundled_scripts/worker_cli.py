@@ -144,6 +144,8 @@ def cmd_sync(ns: argparse.Namespace) -> int:
     for w in delta:
         flags = f" [{', '.join(w['flags'])}]" if w["flags"] else ""
         lines.append(f"{w['worker_id']} {w['node_id']} {w['state']} lease={w['lease']} epoch={w['epoch']}{flags}")
+        lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
+                  for a, b in w["gaps"]]
         lines += [f"  #{e['seq']} {e['type']} ({e['source']}): {e['summary']}" for e in w["events"]]
     if not lines:
         lines = ["No new worker events."]

@@ -22,10 +22,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.6` | Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept | task | Agentic-led | Not Started |
 | `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Not Started |
 | `M3.8` | Upgrade and validate report drift and migrations plainly | task | Agentic-led | Complete |
-| `M3.9` | Worker and session CLI: resume permissions, roster provenance, event gaps | task | Agentic-led | Not Started |
+| `M3.9` | Worker and session CLI: resume permissions, roster provenance, event gaps | task | Agentic-led | Complete |
 | `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Not Started |
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Not Started |
 | `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Not Started |
+| `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |
@@ -46,7 +47,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Not Started |
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Not Started |
 | `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Not Started |
-| `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Not Started |
+| `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
 | `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Mixed | Not Started |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Human-led | Not Started |
 | `M6` | 0.3.1-rc2 release | phase | — | Not Started |
