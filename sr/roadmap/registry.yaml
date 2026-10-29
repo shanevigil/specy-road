@@ -22,3 +22,13 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: layout-with-outside-change
+    node_id: M9.3
+    branch: feature/rm-layout-with-outside-change
+    touch_zones:
+      - tests/test_project_layouts_outside.py
+      - tests/helpers.py
+      - tests/review_repo_helpers.py
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
