@@ -61,11 +61,11 @@ Not touched, though it may want follow-up outside this leaf's zones:
 
 ## Verification
 
-- `python -m pytest -q`: 2307 passed, 2 skipped, 1 failed. The failure is
+- `python -m pytest -q`, after merging `origin/WIP/improvements-0-3-1` (`09b722c`):
+  2337 passed, 2 skipped. Before the merge, one test failed:
   `tests/test_roadmap_crud.py::test_list_nodes_json_is_the_full_untruncated_list`
-  (`NameError: _fixture_repo`). It was already failing at base `bc8c2c8`. The file is
-  untouched, and that helper is now called `crud_fixture_repo`. I left it alone
-  because it is outside this leaf.
+  (`NameError: _fixture_repo`). That was a WIP-side bug, fixed upstream; this branch
+  never touched the file.
 - `specy-road file-limits`: OK.
 - `ruff check specy_road tests scripts`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
