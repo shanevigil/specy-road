@@ -39,7 +39,7 @@ from specy_road.review_files import (
     review_path,
     verify_problems,
 )
-from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem
+from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
@@ -67,6 +67,8 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     branch = (t.entry or {}).get("branch")
     ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
+    tm = trial_merge(root, t.ref, t.base_ref)
+    merge_problem = [tm.problem()] if tm and tm.problem() else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
     return {
@@ -87,7 +89,9 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": (gate.problems() + (_executor_verify_problems(ready) if ready else [])
+        "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
+                        "blocking": tm.code_conflicts} if tm and tm.conflicts else None,
+        "problems": (merge_problem + gate.problems() + (_executor_verify_problems(ready) if ready else [])
                      + loop.problems()),
     }
 
@@ -106,6 +110,9 @@ def _render(st: dict[str, Any]) -> list[str]:
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
                      f"{' [signed]' if r['signed'] else ''}{extra}")
     lines.append(f"  policy: {st['policy']}")
+    if tm := st.get("trial_merge"):
+        kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
+        lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
     if st.get("escalation"):
         lines.append(_escalation_line(st["node_id"], st["escalation"]["describe"]))
     lines += [f"  - {p}" for p in st["problems"]]
@@ -156,6 +163,7 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
         ],
         "policy": "not evaluated: no claim names the commit under review",
         "policy_met": False,
+        "trial_merge": None,
         "problems": [hint] + [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in reviews if not r.ok],
     }
 

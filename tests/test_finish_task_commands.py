@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 import yaml
 
+from tests.review_repo_helpers import diverge, git, make_review_repo
+
 from specy_road.bundled_scripts import finish_task as ft
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
 from specy_road import feature_rm_registry as frm
@@ -231,3 +233,20 @@ def test_finish_already_done_on_branch_when_complete_and_deregistered(
     assert "already Complete" in out
     assert "Do not run finish again" in out
     assert "Where things stand (on_complete: pr)" in out
+
+
+@pytest.mark.parametrize("case", ["bookkeeping", "code"])
+def test_finish_refuses_while_a_trial_merge_conflicts_on_code(
+    tmp_path, capsys: pytest.CaptureFixture[str], case: str
+) -> None:
+    """A code conflict stops finish before anything; a bookkeeping one reaches the review gate."""
+    repo = make_review_repo(tmp_path)
+    diverge(repo, case)
+    head = git(repo, "rev-parse", "HEAD")
+    with pytest.raises(SystemExit) as ei:
+        ft.main(["--repo-root", str(repo)])
+    assert ei.value.code == 1
+    err = capsys.readouterr().err
+    assert ("trial merge conflicts on src/a.py" in err) == (case == "code")
+    assert ("implementation review is required" in err) == (case == "bookkeeping")
+    assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""

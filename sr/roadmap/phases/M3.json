@@ -435,7 +435,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.13_a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish_6ef93230-aa7f-44d7-9138-4e7aef301c0e.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A trial merge with the integration branch runs before review and before finish",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",

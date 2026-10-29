@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import commit_file, git, make_review_repo
+from tests.review_repo_helpers import commit_file, diverge, git, make_review_repo
 
 from specy_road.bundled_scripts import review_packet as rp
 from specy_road.review_files import PACKET_NAME, reviews_dir
@@ -113,6 +113,23 @@ def test_main_writes_packet_file(tmp_path: Path, capsys) -> None:
     assert out.read_text() == extra.read_text() and "+print('a')" in extra.read_text()
     printed = capsys.readouterr().out
     assert f"Wrote {out}" in printed and f"Wrote {extra}" in printed
+
+
+@pytest.mark.parametrize(("case", "line"), [
+    ("clean", "- **Trial merge:** `refs/heads/dev` is 1 commit(s) ahead; merges cleanly\n"),
+    ("bookkeeping", "conflicts on bookkeeping only (`planning/M1.1_thing_"),
+    ("code", "- **Trial merge:** `refs/heads/dev` is 1 commit(s) ahead; **conflicts on `src/a.py`**\n"),
+])
+def test_packet_reports_trial_merge_with_integration_branch(tmp_path: Path, case: str, line: str) -> None:
+    repo = make_review_repo(tmp_path)
+    assert "- **Trial merge:** up to date with `refs/heads/dev`" in rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    diverge(repo, case)
+    tip = git(repo, "rev-parse", "feature/rm-thing")
+    for base in (None, tip):   # --base moves the diff range only; the trial merge stays on the integration branch
+        text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], base=base)
+        assert line in text
+        assert ("**Stop: refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
+                "merge it into this branch and resolve before review.**" in text) == (case == "code")
 
 
 def test_an_empty_merge_base_diff_is_explained_and_base_sets_the_range(tmp_path: Path, capsys) -> None:
