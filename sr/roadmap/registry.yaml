@@ -4,6 +4,7 @@ entries:
     node_id: M3.9
     branch: feature/rm-worker-cli-fixes
     touch_zones:
+      - specy_road/tool_call_guard.py
       - specy_road/worker_adapters.py
       - specy_road/worker_ops.py
       - specy_road/orchestrate_plan.py
