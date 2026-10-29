@@ -88,6 +88,16 @@ _ARCHIVE_COMMANDS = (
 )
 
 
+# Commands an agent file may still name that are not registered, each with what
+# to run instead ("" when nothing replaces it). `validate` names the replacement
+# when AGENTS.md or CLAUDE.md mentions one.
+REPLACED_COMMANDS = {
+    "specy-road grind": "specy-road grind-session",
+    "specy-road pm-sync": "specy-road sync",
+    "specy-road backfill-activity": "",   # last-worked dates are derived from git
+}
+
+
 def _known_commands() -> list[str]:
     return sorted(
         {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS,

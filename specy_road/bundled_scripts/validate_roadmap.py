@@ -18,10 +18,13 @@ from specy_road.bundled_scripts.roadmap_chunk_utils import discover_manifest_pat
 from specy_road.bundled_scripts.roadmap_load import load_roadmap, validate_roadmap_line_limits
 from specy_road.registry_yaml import registry_path
 from specy_road.agents_md_block import warn_if_agents_md_block_stale, warn_missing_load_order_paths
+from specy_road.cli import REPLACED_COMMANDS, _known_commands
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.managed_block import HTML_COMMENT, _split
 from specy_road.orchestration_config import load_orchestration_config
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
+from specy_road.specyrd_cli import _build_parser as _specyrd_parser
 from specy_road.specyrd_init import _load_manifest
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
@@ -48,9 +51,11 @@ __all__ = [
     "validate_required_planning_dirs",
     "validate_unique_title_slugs",
     "validate_unique_titles",
+    "unregistered_commands",
     "warn_stale_parent_status",
     "warn_if_pin_differs",
     "warn_touch_zones_match_nothing",
+    "warn_unregistered_commands",
 ]
 
 
@@ -90,6 +95,63 @@ def warn_if_pin_differs(start: Path) -> None:
         f"is running. If the upgrade is deliberate, update the pin; otherwise install {pin}.",
         file=sys.stderr,
     )
+
+
+_FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
+_INLINE_CODE = re.compile(r"`([^`\n]+)`")
+# Command position only: prose ("the specy-road toolkit") and comments in a
+# code block ("# specy-road files omit…") name no command.
+_COMMAND = re.compile(r"(?:^|[;&|($]|\buvx|\brun|\bexec)[ \t]*(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
+
+
+def _code_spans(text: str):
+    in_fence = False
+    for line in text.splitlines():
+        if _FENCE.match(line):
+            in_fence = not in_fence
+        elif in_fence:
+            yield line
+        else:
+            yield from _INLINE_CODE.findall(line)
+
+
+def unregistered_commands(text: str) -> list[str]:
+    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` runs in code and no CLI registers, once, in order."""
+    specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
+    registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}
+    found: list[str] = []
+    for code in _code_spans(text):
+        for tool, name in _COMMAND.findall(code):
+            mention = f"{tool} {name}"
+            if name not in registered[tool] and mention not in found:
+                found.append(mention)
+    return found
+
+
+def warn_unregistered_commands(root: Path) -> None:
+    """One non-fatal line per command ``AGENTS.md`` / ``CLAUDE.md`` sends agents to that does not exist.
+
+    The managed block is skipped: ``warn_if_agents_md_block_stale`` already
+    reports one written by another version.
+    """
+    root = root.resolve()
+    checkout = git_root(root) or root
+    paths = dict.fromkeys(base / name for base in (root, checkout) for name in ("AGENTS.md", "CLAUDE.md"))
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            before, _block, after = _split(path.read_text(encoding="utf-8"), HTML_COMMENT)
+        except UnicodeDecodeError:
+            continue
+        rel = path.relative_to(checkout)
+        for mention in unregistered_commands(f"{before}\n{after}"):
+            replacement = REPLACED_COMMANDS.get(mention)
+            advice = (f"use `{replacement}`" if replacement
+                      else "it was removed and nothing replaces it" if replacement == ""
+                      else f"see `{mention.split()[0]} --help`")
+            print(f"agents: warning — {rel} tells agents to run `{mention}`, which is not a "
+                  f"command in specy-road {__version__}; {advice}.", file=sys.stderr)
 
 
 def validate_git_workflow_contract(root: Path) -> None:
@@ -156,6 +218,7 @@ def validate_at(
     warn_if_stubs_stale(root)
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
+    warn_unregistered_commands(root)
     warn_if_generated_files_ignored(root)
 
     if auto_heal:
