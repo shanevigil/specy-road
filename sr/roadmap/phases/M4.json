@@ -349,7 +349,7 @@
     },
     {
       "acceptance": [
-        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods",
+        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods; the scanner is a best-effort heuristic: JSX text (including apostrophes) must not be read as code, while non-ASCII identifiers and overload signatures without a terminating semicolon are documented out of scope",
         "file-limits reports an over-cap TS/JS function on one line in the same shape as the Python report (`file-limits: <rel> function `<name>` <N> lines (max M per function)`), adding `:<line>` after <rel> for both languages, and no longer prints OK while one exists",
         "Tests use a fixture per syntax form; the policy file documents which languages the function cap covers"
       ],
@@ -373,7 +373,8 @@
         "constraints/README.md",
         "tests/fixtures/specy_road_dogfood/constraints/README.md",
         "specy_road/file_limits_js.py",
-        "specy_road/templates/project/constraints/README.md"
+        "specy_road/templates/project/constraints/README.md",
+        "specy_road/file_limits_jsx.py"
       ],
       "type": "task"
     },

@@ -54,6 +54,7 @@ from specy_road.git_workflow_config import (
 )
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
+from specy_road.planning_scaffold_check import warn_scaffold_at_pickup
 from specy_road.runtime_paths import resolve_repo_root
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 from specy_road.bundled_scripts.repo_ops import assert_working_tree_clean, current_branch, git_run, sync_integration_branch
@@ -161,8 +162,7 @@ def _resync_and_select(
 
 def _validate_or_exit() -> None:
     """F-006/F-008: run self-healing validate before pickup."""
-    # Skip in test scenarios where load_roadmap is monkeypatched and there's
-    # no real manifest on disk under ROOT.
+    # Skipped when tests monkeypatch load_roadmap and ROOT has no manifest on disk.
     if not (ROOT / "roadmap" / "manifest.json").is_file():
         return
     try:
@@ -351,6 +351,7 @@ def _pick_node(args, nodes, reg, available, integration_statuses) -> dict:
     else:
         node = available[0]
     _assert_leaf_target(node, nodes)
+    warn_scaffold_at_pickup(ROOT, node)
     return node
 
 

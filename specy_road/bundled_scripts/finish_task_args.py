@@ -22,8 +22,9 @@ _DESCRIPTION = (
     "rollup branch is proven merged. Use "
     "specy-road reconcile-milestone-status for those.\n"
     "\n"
-    "--push pushes the branch; it does not open the PR. The printed "
-    "gh/glab command is pasteable."
+    "--on-complete merge (and auto when merge succeeds) lands on the "
+    "integration branch and pushes it. --push only pushes the feature "
+    "branch; it does not open the PR. The printed gh/glab command is pasteable."
 )
 
 
@@ -49,6 +50,7 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
         metavar="MODE",
         help=(
             "Override completion workflow: pr, merge, or auto. "
+            "merge lands on the integration branch and pushes it. "
             "Default: session file from do-next-available-task, then "
             "roadmap/git-workflow.yaml / SPECY_ROAD_ON_COMPLETE."
         ),
@@ -87,6 +89,15 @@ def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
             "Finish even though the branch changes no file under the node's "
             "declared touch zones. For a leaf that genuinely needs no code "
             "change; otherwise fix the zones or abort the pickup."
+        ),
+    )
+    p.add_argument(
+        "--allow-scaffold-planning",
+        action="store_true",
+        help=(
+            "Finish even though the node's planning sheet still has the "
+            "scaffold-planning or brainstorm promote placeholder text. "
+            "Otherwise write the sheet and commit it on this branch."
         ),
     )
     p.add_argument(

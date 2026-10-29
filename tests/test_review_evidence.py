@@ -61,7 +61,7 @@ def test_status_lists_a_failing_verifier(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo, FAILED)
     st = _status(repo, capsys)
-    assert "READY-exec.md: verifier `false` exited 1" in st["problems"]
+    assert "READY-exec.md (executor-reported): verifier `false` exited 1" in st["problems"]
     assert not any("pytest" in p for p in st["problems"])
 
 
@@ -69,7 +69,7 @@ def test_status_lists_missing_verifier_evidence(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo, "")
     st = _status(repo, capsys)
-    assert "READY-exec.md: no verifier evidence recorded (verify is empty)" in st["problems"]
+    assert "READY-exec.md (executor-reported): no verifier evidence recorded (verify is empty)" in st["problems"]
 
 
 def test_a_failing_verifier_does_not_change_state(tmp_path: Path, capsys) -> None:

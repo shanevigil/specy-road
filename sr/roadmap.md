@@ -23,11 +23,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Not Started |
 | `M3.8` | Upgrade and validate report drift and migrations plainly | task | Agentic-led | Complete |
 | `M3.9` | Worker and session CLI: resume permissions, roster provenance, event gaps | task | Agentic-led | Complete |
-| `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Not Started |
+| `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Complete |
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Not Started |
 | `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Complete |
 | `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |
-| `M3.14` | finish-this-task and pickup detect a planning sheet that is still the scaffold | task | Agentic-led | Not Started |
+| `M3.14` | finish-this-task and pickup detect a planning sheet that is still the scaffold | task | Agentic-led | Complete |
 | `M3.15` | Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter | task | Agentic-led | Complete |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
@@ -46,6 +46,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Not Started |
 | `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Not Started |
 | `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Not Started |
+| `M4.17` | Review-loop escalation: a root-cause analysis runs when reviews keep blocking | task | Agentic-led | Not Started |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Not Started |
