@@ -82,6 +82,7 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - Round 1 mutation checks: against d2215f8's `review_gate.py` and `git_subprocess.py`, the `roadmap.md.backup` case fails. Classifying an unrebased path by its raw name, or running `merge-tree` in the project root, fails the nested layout test.
 - `specy-road file-limits` → OK. `ruff check specy_road tests` passed before the merge; after it, the only error is the inherited `tests/test_grind_session.py:57`.
 - Mutation check: with `merge_conflicts` forced to return `[]`, the six code-conflict and bookkeeping tests fail.
+- Composer-2.5 executor (at `c5ac660`): `pytest tests/test_review_packet.py tests/test_review_cli.py tests/test_mark_implementation_reviewed_gate.py tests/test_finish_task_commands.py tests/test_git_subprocess.py tests/test_review_gate.py tests/test_finish_bookkeeping_wiring.py tests/test_project_layouts.py -q -p no:cacheprovider -rf` → 118 passed; `specy-road file-limits` OK; `ruff check specy_road tests` passed.
 
 ## Notes for reviewers
 
@@ -98,7 +99,7 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - `review_gate.TrialMerge` / `trial_merge`: shared by the packet, `handoff status`, mark and finish so all four agree. The `None` branch covers no integration ref or git unable to answer, so callers say nothing. The outside-project branch (round 1) makes a path that does not rebase a code conflict.
 - `review_gate.trial_merge_or_exit`: A2's refusal, shared by mark and finish.
 - `review_packet._trial_merge_line`: A1's packet report (up to date / clean / bookkeeping-only / code conflict). After the 065e4cc merge, it takes `(ref, integration_ref)`, and `build_packet` captures `integration_ref` before `--base`, so `--base` cannot move the trial merge.
-- `review_cli._node_status` `merge_problem`: A1's `handoff status` report.
+- `review_cli._node_status` `trial_merge` JSON field and text render line: A1's `handoff status` report (round 3 extended bookkeeping-only reporting).
 - Guard in mark `main` and finish `_resolve_main_context`: A2, placed before any write.
 - `tests/review_repo_helpers.advance_dev`, `TRIAL_MERGES`, `diverge`: build the three trial-merge cases on the shared review repo.
 - `tests/test_git_subprocess.py::test_merge_conflicts_is_in_memory_and_names_conflicted_paths`: clean, conflicted, unknown-ref and non-repository results; the working tree is untouched.
