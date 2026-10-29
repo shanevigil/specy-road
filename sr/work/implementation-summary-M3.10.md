@@ -11,7 +11,7 @@ Delegated workers can write READY from linked worktrees, reconcile reports real 
 | A1 | yes | `ClaudeCode._add_dir` passes `--add-dir` to `reviews_dir` when `linked_worktree`; docs note Codex/Cursor equivalents |
 | A2 | yes | Reconcile normalizes zones with `_clean`; `contract_changed` ignores prompt hash drift when `_brief_unchanged` |
 | A3 | yes | `review_cli._executor_verify_problems` labels READY verify; review lines show `commands_rerun` |
-| A4 | yes | Codex agent messages and generic output keep the full text in `detail.message`; sync prints it when READY is absent |
+| A4 | yes | Codex agent messages and generic output keep the full text in `detail.message`; sync prints it when READY is absent, looking back through the whole event log (the message may have been acknowledged before the exit event) to the previous turn's exit |
 | A5 | yes | `print_merge_push_notice` before the first merge land and again in `retry_merge_landing` |
 | A6 | yes | Generic, Claude, Codex and Cursor error results keep the full harness text in `detail.message` for sync and list |
 
@@ -40,5 +40,8 @@ pytest tests/test_worker_m310_reconcile_status.py tests/test_review_evidence.py 
 - `_harness_message_before`, `_sync_event_lines`, `_terminal_message` in `worker_cli.py` — full harness message on sync/list without changing `worker_runner`
 - `integration_commits_ahead_of_remote` / `print_merge_push_notice` in `finish_land_integration.py` — pre-merge push notice with ahead count
 - `print_merge_push_notice` call in `finish_modes.apply_on_complete_mode` and `retry_merge_landing` — notice before the first land and before a retry land
-- `tests/test_worker_m310_reconcile_status.py` — behavioural coverage for A1–A6 and merge help
+- `_ends_turn` in `worker_cli.py`, and the stop at it in `_harness_message_before` — sync reads the full log, so the lookback must not cross into an earlier turn; reached by the second exit in `test_sync_shows_an_acknowledged_final_message_with_the_later_exit`
+- Full event history passed to `_sync_event_lines` in `cmd_sync` — a final message acknowledged before the exit event is still found (review round 2, Sol)
+- `tests/test_worker_m310_reconcile_status.py` — behavioural coverage for A1, A2, A4–A6 and merge help; `test_sync_shows_an_acknowledged_final_message_with_the_later_exit` covers ack-then-completion and ack-then-error through the CLI
+- Removed `test_handoff_status_labels_ready_verify_as_executor_reported` (review round 2, Grok) — `tests/test_review_evidence.py::test_status_lists_a_failing_verifier` asserts the same executor-reported problem string
 - Updated assertions in `tests/test_review_evidence.py` — executor-reported wording
