@@ -22,9 +22,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Not Started**
   - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
   - `M3.8` Upgrade and validate report drift and migrations plainly `upgrade-and-validate-checks` — task — **Complete**
-  - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Not Started**
+  - `M3.9` Worker and session CLI: resume permissions, roster provenance, event gaps `worker-cli-fixes` — task — **Complete**
   - `M3.10` Worker hand-off, reconcile and finish report what actually happened `worker-reconcile-and-status` — task — **Not Started**
   - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Not Started**
+  - `M3.12` A baseline gate runs on the integration branch before pickup `a-baseline-gate-runs-on-the-integration-branch-before-pickup` — task — **Not Started**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
   - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**
@@ -36,6 +37,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.8` list-nodes --json, refresh-stubs --diff, move-node zone rewrite `graph-listing-and-moves` — task — **Complete**
   - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Complete**
   - `M4.10` Clean up merged feature branches after finish `branch-cleanup` — task — **Not Started**
+  - `M4.11` grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave `grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` — task — **Not Started**
+  - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Not Started**
+  - `M4.13` specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes `specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` — task — **Not Started**
+  - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
@@ -47,12 +52,15 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
+- `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **Not Started**
+  - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Not Started**
+  - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
 
 ## Claimed and in flight
 
 Do not pick these up.
 
-- `M3.9` on `feature/rm-worker-cli-fixes` since 2026-10-28
+- `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M4.10` on `feature/rm-branch-cleanup` since 2026-10-28
 - `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
 - `M5.3` on `feature/rm-context-budget-meter` since 2026-10-28

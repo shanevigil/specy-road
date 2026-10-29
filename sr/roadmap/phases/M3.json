@@ -290,7 +290,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.9_worker-cli-fixes_4785eb3e-6445-4f0f-9147-925ae859db43.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Worker and session CLI: resume permissions, roster provenance, event gaps",
       "touch_zones": [
         "specy_road/worker_adapters.py",

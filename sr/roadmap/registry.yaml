@@ -1,28 +1,5 @@
 version: 1
 entries:
-  - codename: worker-cli-fixes
-    node_id: M3.9
-    branch: feature/rm-worker-cli-fixes
-    touch_zones:
-      - specy_road/tool_call_guard.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration-workers.md
-      - docs/orchestration.md
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - specy_road/worker_reconcile.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T02:22:17+00:00'
   - codename: stale-command-check
     node_id: M5.2
     branch: feature/rm-stale-command-check
