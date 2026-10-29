@@ -301,14 +301,14 @@ limit, so they can poll but cannot restart one. The installed
 
 ### Baseline and pre-finish hooks
 
-`--baseline-cmd "make test"` runs in each pickup, on the integration branch after
-the sync and before the claim, so a red base is caught before a leaf inherits it
-and no implementer "fixes" failures it did not cause. Failure claims nothing and
-stops the session (exit `5`); `--baseline-warn` only warns. A baseline that moves
-HEAD, switches branch or changes files is always refused. Default: `baseline_cmd`.
-`--pre-finish-cmd "make test && specy-road validate"` runs after implementation,
-before `finish-this-task`. A non-zero exit stops the session (exit `4`) and leaves
-the feature branch intact so you can fix and resume.
+`--baseline-cmd "make test"` runs in each pickup on the integration branch, after
+the sync and before the claim: a red base is caught before a leaf inherits it, and
+no implementer "fixes" failures it did not cause. Failure claims nothing and stops
+the session (exit `5`); `--baseline-warn` only warns. Default: `baseline_cmd` in
+`git-workflow.yaml`. Writes under `work/` are allowed; any other file change, a new
+HEAD or a branch switch refuses the pickup, even with `--baseline-warn`.
+`--pre-finish-cmd "make test && specy-road validate"` runs before `finish-this-task`;
+a non-zero exit stops the session (exit `4`) and leaves the feature branch intact.
 
 ### Running Claude as the implementer
 
