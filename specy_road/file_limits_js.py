@@ -3,8 +3,8 @@
 The stdlib has no TS/JS parser, so this masks out comments, strings, template
 literals and regex literals, then balances brackets on what is left. It
 measures three forms: ``function`` declarations, arrow functions bound by
-``const`` / ``let`` / ``var``, and class methods (arrow-valued class fields
-included). A concise arrow body runs to its terminating ``;``, ``,`` or
+``const`` / ``let`` / ``var``, and class methods (computed, string and number
+names and arrow-valued class fields included). A concise arrow body runs to its terminating ``;``, ``,`` or
 closing bracket, or to a line break the next line does not continue. A
 function inside a class or another function is named ``Outer.inner``, as the
 Python report does.
@@ -26,8 +26,9 @@ _BINDING_RE = re.compile(rf"{_NOT_AFTER}(?:const|let|var)\s+")
 _CLASS_RE = re.compile(rf"{_NOT_AFTER}class\b(?:\s+({_IDENT}))?")
 _MEMBER_RE = re.compile(
     r"(?:(?:public|private|protected|static|async|readonly|override|abstract"
-    rf"|accessor|get|set)\s+)*(?:\*\s*)?(#?{_IDENT})\s*\??\s*"
+    rf"|accessor|get|set)\s+)*(?:\*\s*)?(?:(#?{_IDENT}|\d[\w.]*)|([\[\"]))"
 )
+_OPTIONAL_RE = re.compile(r"\s*\??\s*")
 _ASYNC_RE = re.compile(r"async\b\s*")
 _LITERAL_START_RE = re.compile(r"[/'\"`]")
 # A `/` starts a regex after these, not a division. `<` is left out so a JSX
@@ -322,18 +323,25 @@ def _declarators(s: str, j: int) -> list[tuple[int, int, str]]:
     return found
 
 
-def _class_members(s: str, j: int, close: int) -> list[tuple[int, int, str]]:
-    """Methods and arrow-valued fields at the top level of a class body."""
+def _class_members(s: str, src: str, j: int, close: int) -> list[tuple[int, int, str]]:
+    """Methods and arrow-valued fields at the top level of a class body.
+
+    A computed or string name (``[Symbol.iterator]``, ``'my-key'``) is reported as
+    its source text on one line.
+    """
     found: list[tuple[int, int, str]] = []
     while j < close:
-        if s[j] in _OPEN:
-            j = _close(s, j) + 1
-            continue
         m = None if _WORD_CHAR_RE.match(_ch(s, j - 1)) else _MEMBER_RE.match(s, j)
         if m is None:
-            j += 1
+            j = _close(s, j) + 1 if s[j] in _OPEN else j + 1
             continue
-        k = m.end()
+        if m.group(1):
+            name, k = m.group(1), m.end()
+        else:
+            a = m.start(2)
+            k = _close(s, a) + 1 if s[a] == "[" else _quoted_end(src, a)
+            name = " ".join(src[a:k].split())
+        k = _OPTIONAL_RE.match(s, k).end()
         if _ch(s, k) == "=":
             body = _arrow_body(s, k + 1)
         else:
@@ -343,13 +351,13 @@ def _class_members(s: str, j: int, close: int) -> list[tuple[int, int, str]]:
             j = k
             continue
         end = _body_end(s, body)
-        found.append((m.start(), end, m.group(1)))
+        found.append((m.start(), end, name))
         j = end + 1
     return found
 
 
-def _spans(s: str) -> tuple[list[tuple[int, int, str]], list[tuple[int, int, str]]]:
-    """``(start, end, name)`` for every function, and for every named class, in ``s``."""
+def _spans(s: str, src: str) -> tuple[list[tuple[int, int, str]], list[tuple[int, int, str]]]:
+    """``(start, end, name)`` for every function, and every named class, in ``s`` (masked ``src``)."""
     funcs: list[tuple[int, int, str]] = []
     classes: list[tuple[int, int, str]] = []
     for m in _DECL_RE.finditer(s):
@@ -366,14 +374,15 @@ def _spans(s: str) -> tuple[list[tuple[int, int, str]], list[tuple[int, int, str
         close = _close(s, body)
         if m.group(1):
             classes.append((m.start(), close, m.group(1)))
-        funcs.extend(_class_members(s, body + 1, close))
+        funcs.extend(_class_members(s, src, body + 1, close))
     return funcs, classes
 
 
 def js_function_metrics(path: Path) -> list[tuple[str, int, int]]:
     """Qualified name, first line and line span for each TS/JS function in ``path``."""
-    s = mask_source(path.read_text(encoding="utf-8", errors="replace"))
-    funcs, classes = _spans(s)
+    src = path.read_text(encoding="utf-8", errors="replace")
+    s = mask_source(src)
+    funcs, classes = _spans(s, src)
     line_starts = [0, *(m.end() for m in re.finditer("\n", s))]
 
     def line(pos: int) -> int:

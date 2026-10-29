@@ -44,6 +44,18 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
                 ("Store.onChange", 26, 3),
             ],
         ),
+        # Computed (a multi-line one too), string and number names; index signatures are not methods.
+        (
+            "computed_method.ts",
+            [
+                ("Bag.[Symbol.iterator]", 4, 5),
+                ('Bag.["load" + "All"]', 9, 3),
+                ("Bag.[ Symbol.toStringTag ]", 12, 3),
+                ("Bag.[Symbol.species]", 15, 3),
+                ("Bag.'my-key'", 18, 3),
+                ("Bag.404", 21, 3),
+            ],
+        ),
         # Braces in a type parameter's constraint or the heritage clause do not open the body.
         ("generic_class.ts", [("Store.find", 2, 6)]),
         # Every declarator of one statement, past plain values, annotations and patterns.
@@ -114,13 +126,22 @@ def test_js_function_hard_alert(tmp_path: Path) -> None:
     assert run_file_limits_scan(tmp_path, cfg, err=io.StringIO(), strict_hard_alerts=True) is True
 
 
-def test_validator_does_not_print_ok_with_over_cap_ts_function(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("fixture", "report"),
+    [
+        ("arrow.tsx", "arrow.tsx:3 function `Badge` 5 lines"),
+        ("computed_method.ts", "computed_method.ts:4 function `Bag.[Symbol.iterator]` 5 lines"),
+    ],
+)
+def test_validator_does_not_print_ok_with_over_cap_ts_function(
+    tmp_path: Path, fixture: str, report: str
+) -> None:
     (tmp_path / "constraints").mkdir()
     (tmp_path / "constraints" / "file-limits.yaml").write_text(
-        'max_lines_per_function: 4\napplies_to_globs:\n  - "src/**/*.tsx"\n', encoding="utf-8"
+        'max_lines_per_function: 4\napplies_to_globs:\n  - "src/**/*.ts*"\n', encoding="utf-8"
     )
     (tmp_path / "src").mkdir()
-    shutil.copy(FIXTURES / "arrow.tsx", tmp_path / "src" / "arrow.tsx")
+    shutil.copy(FIXTURES / fixture, tmp_path / "src" / fixture)
     r = subprocess.run(
         [sys.executable, str(BUNDLED_SCRIPTS / "validate_file_limits.py"), "--repo-root", str(tmp_path)],
         cwd=REPO,
@@ -131,4 +152,4 @@ def test_validator_does_not_print_ok_with_over_cap_ts_function(tmp_path: Path) -
     )
     assert r.returncode == 1
     assert "OK" not in r.stdout
-    assert "file-limits: src/arrow.tsx:3 function `Badge` 5 lines (max 4 per function)" in r.stderr
+    assert f"file-limits: src/{report} (max 4 per function)" in r.stderr
