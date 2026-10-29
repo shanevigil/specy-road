@@ -9,7 +9,7 @@
 
 ## Agent quickstart
 
-**Use this doc when:** playing out the real-harness scenarios that gate `0.3.1-rc1`, or recording their evidence.
+**Use this doc when:** playing out the real-harness scenarios that gate `0.3.1-rc1`, or recording their evidence; replaying the context regression set after a harness or model upgrade.
 **Not for:** cutting the tag and publishing — [`release-runbook.md`](release-runbook.md) §A; the worker commands themselves — [`orchestration-workers.md`](orchestration-workers.md).
 
 **Must know without reading on:**
@@ -28,6 +28,7 @@
 - rounds, panel, evidence, promote and the GUI → "6. Brainstorm v2"
 - hook-mode grind and the gate → "7. Grind and unattended loops"
 - what must be green before §A → "8. Close-out"
+- replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"
 
 **Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
 
@@ -336,3 +337,39 @@ In the Notes app, with a real agent on two harnesses (one run each):
   on the candidate commit.
 - Remove disposable apps and keys. Then follow release-runbook §A with the
   version the maintainer states (`0.3.1-rc1`; this line never uses `.0`).
+
+## 9. Context regressions
+
+Replay [`context-regressions.yaml`](context-regressions.yaml) whenever a
+harness CLI or a rostered model changes (a new `claude`, `codex` or `agent`
+version, or a new `api_id`), and in every rc pass. Each case is a past
+review-round or sandbox finding about how agents follow the managed
+guidance; an upgrade that breaks the guidance shows up here before adopters
+hit it. The harness runs the cases; no `specy-road` command does.
+
+1. Per case, in a fresh copy of its `app` set up as `setup` says, open a
+   **fresh** session of each listed harness and send `prompt` verbatim as
+   the first message (`<ID>`, `<slug>`, `<harness>` filled in). Add nothing
+   that names the rule under test.
+2. When the session stops, read each `pass` item's `artifact` and compare it
+   with `expect`. A run passes only if every item holds; the model's own
+   account of what it did is not evidence.
+3. Repeat for `runs` runs, each from a fresh app copy.
+4. Record in `work/context-regressions-<YYYY-MM-DD>.md`: toolkit commit,
+   harness versions, model ids, and per case and harness the passes out of
+   `runs`, with the failing artifact quoted. Compare with the previous
+   results file: a case and harness that passed every run before and now
+   fails any run is a regression. Record it as a FAIL here (it blocks an rc)
+   and triage it before the upgraded version is named in §0.
+
+Few runs catch gross breaks, not subtle shifts; read a single failure as a
+signal to rerun, a repeated one as a regression.
+
+**Format.** `version: 1` and `cases`, at most ten. Each case has `id`
+(`CR<n>`), `title`, `source` (repo paths of the review-round tests or notes
+it came from, `path::test` or `path#anchor`), `app` (`todo`, `calculator`
+or `notes`), `harnesses` (`claude-code`, `codex`, `cursor`), optional
+`setup`, `prompt` (the outcome a user would ask for, never the rule), `pass`
+(items of `artifact`, a file or a git or `specy-road` read, and `expect`)
+and `runs`. `tests/test_context_regressions.py` holds the schema and checks
+the file against it. Replace a case rather than adding an eleventh.
