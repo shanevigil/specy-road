@@ -61,10 +61,7 @@ classification plus a dependency **wave** layout. No git, no pickup.
 
 ### What the planner reports
 
-- **`ready`** — leaves whose dependencies are satisfied and that are unclaimed.
-  This is exactly the set/order `do-next-available-task` would claim. Its head is
-  printed as **Next auto-pick** with that leaf's `execution_milestone`
-  (`ready_execution` in `--json`, for every ready leaf).
+- **`ready`** — unclaimed leaves whose dependencies are satisfied, in pickup's exact order.
 - **`blocked`** — leaves with unmet effective dependencies. Each entry has
   `waiting_on` (the blocking node **display ids**) and a `reason`:
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
@@ -88,8 +85,8 @@ classification plus a dependency **wave** layout. No git, no pickup.
 ### When the plan and the pickup seem to disagree
 
 `ready` **is** the pickup queue — one function, so the *set* cannot drift — and
-`--plan` prints its head as **`Next auto-pick`**. When the two still look
-different, it is scope or timing rather than disagreement:
+`--plan` prints its head, with its `execution_milestone`, as **`Next auto-pick`**.
+When the two still look different, it is scope or timing rather than disagreement:
 
 - **The plan is a snapshot; pickup syncs first.** `--plan` reads your local
   working tree (including local `feature/rm-*` branch tips), while
@@ -105,11 +102,7 @@ different, it is scope or timing rather than disagreement:
   earlier milestone wins over a later one even when both are ready. Pass the
   same `--under` to both, or pick by number with `--interactive`. There is no
   "prefer this subtree" flag: outline order is the delivery order by design.
-- **Agentic-led first is opt-in.** `--prefer-agentic` (or
-  `prefer_agentic_pick_order: true` in `roadmap/git-workflow.yaml`) orders each
-  pickup tier `Agentic-led`, `Mixed`, unset, `Human-led`. The plan, the loop and
-  `--step` read the same setting and pass an explicit `--prefer-agentic` /
-  `--no-prefer-agentic` through to pickup, so both orders still match.
+  The one opt-in reorder, `--prefer-agentic` (Agentic-led first per tier), applies to both.
 
 ### Orchestration pattern (sub-agents)
 
@@ -152,8 +145,8 @@ dispatched until `M10.5` completes.
 {
   "event": "plan",
   "ts": "2026-09-06T12:00:00Z",
-  "under": null,
-  "ready": ["M10.3", "M10.4"],
+  "under": null, "prefer_agentic": false,
+  "ready": ["M10.3", "M10.4"], "ready_execution": {"M10.3": "Agentic-led", "M10.4": null},
   "blocked": [
     {"node_id": "M10.5", "codename": "…", "waiting_on": ["M10.3", "M10.4"], "reason": "dependency"},
     {"node_id": "M11.1", "codename": "…", "waiting_on": ["M10.5"], "reason": "dependency"}

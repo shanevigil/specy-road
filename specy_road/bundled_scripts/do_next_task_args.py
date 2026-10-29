@@ -57,6 +57,19 @@ def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_pick_order_arg(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--prefer-agentic",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Order each selection tier by execution_milestone: Agentic-led, Mixed, "
+            "unset, Human-led (default: prefer_agentic_pick_order in "
+            "roadmap/git-workflow.yaml, else off)."
+        ),
+    )
+
+
 def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -102,16 +115,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "(skipped by default, with the reason printed)."
         ),
     )
-    p.add_argument(
-        "--prefer-agentic",
-        action=argparse.BooleanOptionalAction,
-        default=None,
-        help=(
-            "Order each selection tier by execution_milestone: Agentic-led, Mixed, "
-            "unset, Human-led (default: prefer_agentic_pick_order in "
-            "roadmap/git-workflow.yaml, else off)."
-        ),
-    )
+    _add_pick_order_arg(p)
     _add_claim_visibility_args(p)
     add_repo_root_arg(p)
     p.add_argument(

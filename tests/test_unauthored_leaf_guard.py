@@ -28,8 +28,8 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
     placeholder_sheet,
     render_feature_sheet_template,
 )
-from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
-from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
+from specy_road.bundled_scripts.session_plan import compute_session_plan
+from specy_road.bundled_scripts.session_plan_render import render_session_plan_text, session_plan_to_dict
 from specy_road.bundled_scripts.validate_roadmap import validate_at
 
 FILLED = (

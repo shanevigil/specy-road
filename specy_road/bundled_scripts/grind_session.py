@@ -24,7 +24,11 @@ import time
 from pathlib import Path
 
 
-from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
+from specy_road.bundled_scripts.grind_session_args import (
+    finish_args as _finish_args,
+    parse_grind_session_args,
+    pickup_args as _pickup_args,
+)
 from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
 from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_limits import (
@@ -42,9 +46,12 @@ from specy_road.bundled_scripts.grind_session_in_flight import (
     own_in_flight_claims,
     prepare_resume,
 )
-from specy_road.bundled_scripts.session_plan import SessionPlan, session_plan_to_dict
+from specy_road.bundled_scripts.session_plan import SessionPlan
 from specy_road.bundled_scripts.session_plan_git import gather_session_plan as gather_plan
-from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
+from specy_road.bundled_scripts.session_plan_render import (
+    render_session_plan_text,
+    session_plan_to_dict,
+)
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.git_workflow_config import resolve_on_complete
 from specy_road.runtime_paths import default_user_repo_root
@@ -131,41 +138,6 @@ def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
             return False
         time.sleep(interval)
         waited += interval
-
-
-# ---------------------------------------------------------------------------
-# Argument builders for pass-through
-# ---------------------------------------------------------------------------
-
-
-def _pickup_args(args, repo_root: Path) -> list[str]:
-    out = ["do-next-available-task", "--repo-root", str(repo_root)]
-    if args.base:
-        out += ["--base", args.base]
-    if args.remote:
-        out += ["--remote", args.remote]
-    if args.on_complete:
-        out += ["--on-complete", args.on_complete]
-    out += [flag for flag, on in (("--no-ci-skip-in-message", args.no_ci_skip_in_message),
-                                  ("--allow-unauthored", args.allow_unauthored)) if on]
-    if args.prefer_agentic is not None:
-        out.append("--prefer-agentic" if args.prefer_agentic else "--no-prefer-agentic")
-    if args.milestone_subtree:
-        out.append("--milestone-subtree")
-    elif args.under:
-        out += ["--under", args.under]
-    return out
-
-
-def _finish_args(args, repo_root: Path) -> list[str]:
-    out = ["finish-this-task", "--repo-root", str(repo_root)]
-    if args.on_complete:
-        out += ["--on-complete", args.on_complete]
-    if args.remote:
-        out += ["--remote", args.remote]
-    if args.push:
-        out.append("--push")
-    return out
 
 
 def _hook_env(repo_root: Path, node_id: str, branch: str, brief: str, prompt: str) -> dict:

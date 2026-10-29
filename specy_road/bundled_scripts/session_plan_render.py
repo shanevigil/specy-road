@@ -1,4 +1,4 @@
-"""Human-readable rendering of a :class:`session_plan.SessionPlan`.
+"""Human-readable rendering (and the JSON view) of a :class:`session_plan.SessionPlan`.
 
 Kept separate from ``session_plan.py`` so both stay under the file-line cap.
 The rendered text is oriented toward sub-agent orchestration: a "Dispatch now"
@@ -8,6 +8,8 @@ sub-agent for work whose dependencies are unmet.
 """
 
 from __future__ import annotations
+
+from dataclasses import asdict
 
 from specy_road.bundled_scripts.session_plan import SessionPlan
 
@@ -162,3 +164,25 @@ def _render_misc(plan: SessionPlan) -> list[str]:
         )
         lines.append("")
     return lines
+
+
+def session_plan_to_dict(plan: SessionPlan) -> dict:
+    """JSON-serializable view of a :class:`SessionPlan`."""
+    return {
+        "under": plan.under,
+        "ready": list(plan.ready),
+        "blocked": [asdict(b) for b in plan.blocked],
+        "active": list(plan.active),
+        "closed": list(plan.closed),
+        "gated": list(plan.gated),
+        "gates_open": list(plan.gates_open),
+        "needs_codename": list(plan.needs_codename),
+        "waves": [asdict(w) for w in plan.waves],
+        "parallel_batches": [list(b) for b in plan.parallel_batches],
+        "finished_unmerged": list(plan.finished_unmerged),
+        "finished_claimed": list(plan.finished_claimed),
+        "unauthored": [asdict(u) for u in plan.unauthored],
+        "totals": dict(plan.totals),
+        "ready_execution": {i: plan.ready_execution.get(i) for i in plan.ready},
+        "prefer_agentic": plan.prefer_agentic,
+    }

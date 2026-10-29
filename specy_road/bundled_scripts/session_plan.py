@@ -28,7 +28,7 @@ and pass them in.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 from specy_road.bundled_scripts.do_next_available import (
     _available,
@@ -160,9 +160,8 @@ def _classify(
     claimed = _claimed_node_ids(reg)
     scope = _scope_leaf_ids(nodes, under)
 
-    pickable = [
-        n for n in _available(nodes, reg, prefer_agentic=prefer_agentic) if n["id"] in scope
-    ]
+    available = _available(nodes, reg, prefer_agentic=prefer_agentic)
+    pickable = [n for n in available if n["id"] in scope]
     ready_order = [n["id"] for n in pickable if n["id"] not in unauthored]
     ready_set = {n["id"] for n in pickable}
 
@@ -387,25 +386,3 @@ def compute_session_plan(
     if plan.unauthored:
         plan.totals["unauthored"] = len(plan.unauthored)
     return plan
-
-
-def session_plan_to_dict(plan: SessionPlan) -> dict:
-    """JSON-serializable view of a :class:`SessionPlan`."""
-    return {
-        "under": plan.under,
-        "ready": list(plan.ready),
-        "blocked": [asdict(b) for b in plan.blocked],
-        "active": list(plan.active),
-        "closed": list(plan.closed),
-        "gated": list(plan.gated),
-        "gates_open": list(plan.gates_open),
-        "needs_codename": list(plan.needs_codename),
-        "waves": [asdict(w) for w in plan.waves],
-        "parallel_batches": [list(b) for b in plan.parallel_batches],
-        "finished_unmerged": list(plan.finished_unmerged),
-        "finished_claimed": list(plan.finished_claimed),
-        "unauthored": [asdict(u) for u in plan.unauthored],
-        "totals": dict(plan.totals),
-        "ready_execution": {i: plan.ready_execution.get(i) for i in plan.ready},
-        "prefer_agentic": plan.prefer_agentic,
-    }

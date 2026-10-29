@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
-from specy_road.bundled_scripts import do_next_available as dna
+from tests.helpers import DOGFOOD
+
 from specy_road.bundled_scripts import do_next_task as dnt
-from specy_road.bundled_scripts import grind_session as gs
 from specy_road.bundled_scripts.do_next_task_args import parse_do_next_task_args
-from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
-from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
+from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args, pickup_args
+from specy_road.bundled_scripts.session_plan import compute_session_plan
 from specy_road.bundled_scripts.session_plan_git import gather_session_plan
-from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
+from specy_road.bundled_scripts.session_plan_render import render_session_plan_text, session_plan_to_dict
 from specy_road.git_workflow_config import resolve_prefer_agentic, validate_git_workflow_dict
 
 _EMPTY_REG = {"version": 1, "entries": []}
@@ -50,8 +52,9 @@ def _mixed_nodes() -> list[dict]:
     ]
 
 
-def _ids(nodes: list[dict]) -> list[str]:
-    return [n["id"] for n in nodes]
+def _ready(nodes: list[dict], **kwargs) -> list[str]:
+    """The pickup queue, through the public plan API (``ready`` is ``_available``'s order)."""
+    return compute_session_plan(nodes, _EMPTY_REG, **kwargs).ready
 
 
 def _write_git_workflow(root: Path, **extra) -> None:
@@ -67,26 +70,24 @@ def _write_git_workflow(root: Path, **extra) -> None:
 
 
 def test_default_order_is_outline_regardless_of_execution_milestone() -> None:
-    assert _ids(dna._available(_mixed_nodes(), _EMPTY_REG, {})) == ["M1", "M2", "M3", "M4", "M5"]
+    assert _ready(_mixed_nodes()) == ["M1", "M2", "M3", "M4", "M5"]
 
 
 def test_prefer_agentic_orders_agentic_mixed_unset_human_then_outline() -> None:
-    got = dna._available(_mixed_nodes(), _EMPTY_REG, {}, prefer_agentic=True)
-    assert _ids(got) == ["M4", "M5", "M3", "M2", "M1"]
+    assert _ready(_mixed_nodes(), prefer_agentic=True) == ["M4", "M5", "M3", "M2", "M1"]
 
 
 def test_prefer_agentic_keeps_the_blocked_tier_first() -> None:
     nodes = _mixed_nodes()
     nodes[0]["status"] = "Blocked"  # M1, Human-led
-    got = dna._available(nodes, _EMPTY_REG, {}, prefer_agentic=True)
-    assert _ids(got) == ["M1", "M4", "M5", "M3", "M2"]
+    assert _ready(nodes, prefer_agentic=True) == ["M1", "M4", "M5", "M3", "M2"]
 
 
 def test_prefer_agentic_does_not_change_eligibility() -> None:
     nodes = _mixed_nodes()
     nodes[3]["status"] = "Complete"  # M4
-    default = set(_ids(dna._available(nodes, _EMPTY_REG, {})))
-    preferred = set(_ids(dna._available(nodes, _EMPTY_REG, {}, prefer_agentic=True)))
+    default = set(_ready(nodes))
+    preferred = set(_ready(nodes, prefer_agentic=True))
     assert preferred == default == {"M1", "M2", "M3", "M5"}
 
 
@@ -119,43 +120,67 @@ def test_do_next_and_grind_parse_the_flag(argv: list[str], expected) -> None:
     assert parse_grind_session_args(["--plan", *argv]).prefer_agentic is expected
 
 
+def _git(repo: Path, *args: str) -> str:
+    r = subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def _pickup_repo(tmp_path: Path, yaml_value: bool | None) -> Path:
+    """Two authored root leaves on ``dev``: ``M1`` (Human-led) before ``M2`` (Agentic-led)."""
+    root = tmp_path / "r"
+    (root / "roadmap" / "phases").mkdir(parents=True)
+    shutil.copytree(DOGFOOD / "schemas", root / "schemas")
+    nodes = []
+    for order, (nid, codename, execution) in enumerate(
+        (("M1", "human", "Human-led"), ("M2", "agent", "Agentic-led")), 1
+    ):
+        key = f"{order}{order}{order}{order}{order}{order}{order}{order}-1111-5111-8111-111111111111"
+        planning_dir = f"planning/{nid}_{codename}_{key}.md"
+        nodes.append({
+            "id": nid, "node_key": key, "codename": codename, "title": codename,
+            "type": "task", "parent_id": None, "sibling_order": order,
+            "status": "Not Started", "dependencies": [], "touch_zones": ["src"],
+            "execution_milestone": execution, "acceptance": ["it works"],
+            "planning_dir": planning_dir,
+        })
+        (root / planning_dir).parent.mkdir(exist_ok=True)
+        (root / planning_dir).write_text(f"# {nid}\n\n## Intent\n\nWork.\n", encoding="utf-8")
+    (root / "roadmap" / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/M.json"]}), encoding="utf-8"
+    )
+    (root / "roadmap" / "phases" / "M.json").write_text(json.dumps({"nodes": nodes}), encoding="utf-8")
+    (root / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n", encoding="utf-8")
+    extra = {} if yaml_value is None else {"prefer_agentic_pick_order": yaml_value}
+    _write_git_workflow(root, **extra)
+    _git(tmp_path, "init", "-q", "-b", "dev", str(root))
+    _git(root, "config", "user.email", "t@e.com")
+    _git(root, "config", "user.name", "T")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "graph")
+    return root
+
+
 @pytest.mark.parametrize(
     ("cli", "yaml_value", "expected"),
-    [([], True, True), ([], None, False), (["--no-prefer-agentic"], True, False)],
+    [
+        ([], None, "M1"),
+        (["--prefer-agentic"], None, "M2"),
+        ([], True, "M2"),
+        (["--no-prefer-agentic"], True, "M1"),
+    ],
 )
-def test_pickup_hands_the_resolved_setting_to_the_picker(
+def test_pickup_claims_by_the_resolved_setting(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, cli, yaml_value, expected
 ) -> None:
-    """``main`` reads the flag, else git-workflow.yaml, and passes it to ``_available``."""
-    if yaml_value is not None:
-        _write_git_workflow(tmp_path, prefer_agentic_pick_order=yaml_value)
-    (tmp_path / "roadmap").mkdir(exist_ok=True)
-    (tmp_path / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n", encoding="utf-8")
-    seen: list[bool] = []
-
-    def recording_available(nodes, reg, enrich=None, **kwargs):
-        seen.append(kwargs.get("prefer_agentic", False))
-        return dna._available(nodes, reg, enrich, **kwargs)
-
-    class _Picked(Exception):
-        pass
-
-    def stop_at_pick(_args, _nodes, _reg, available, _statuses):
-        raise _Picked(available[0]["id"])
-
-    monkeypatch.setattr(dnt, "load_roadmap", lambda _p: {"nodes": _mixed_nodes()})
-    monkeypatch.setattr(dnt, "_available", recording_available)
-    monkeypatch.setattr(dnt, "_load_branch_enrichment", lambda _r: {})
-    monkeypatch.setattr(dnt, "sync_integration_branch", lambda *_a, **_k: None)
-    monkeypatch.setattr(dnt, "_assert_current_branch_equals", lambda _b: None)
-    monkeypatch.setattr(dnt, "_pick_node", stop_at_pick)
-
-    with pytest.raises(_Picked) as picked:
-        dnt.main(["--repo-root", str(tmp_path), *cli])
-
-    # seen[0] is the pre-sync emptiness check, which never orders anything.
-    assert seen[-1] is expected
-    assert str(picked.value) == ("M4" if expected else "M1")
+    """``--local`` pickup reads the flag, else git-workflow.yaml, and claims accordingly."""
+    repo = _pickup_repo(tmp_path, yaml_value)
+    monkeypatch.setattr(dnt, "ROOT", repo)
+    try:
+        dnt.main(["--local", "--on-complete", "merge", "--repo-root", str(repo), *cli])
+    except SystemExit as e:
+        assert (e.code or 0) == 0
+    row = yaml.safe_load(_git(repo, "show", "dev:roadmap/registry.yaml"))["entries"][0]
+    assert row["node_id"] == expected
 
 
 def test_grind_passes_an_explicit_setting_through_to_pickup(tmp_path: Path) -> None:
@@ -164,8 +189,8 @@ def test_grind_passes_an_explicit_setting_through_to_pickup(tmp_path: Path) -> N
         (["--no-prefer-agentic"], "--no-prefer-agentic"),
     ):
         args = parse_grind_session_args(["--plan", *argv])
-        assert flag in gs._pickup_args(args, tmp_path)
-    unset = gs._pickup_args(parse_grind_session_args(["--plan"]), tmp_path)
+        assert flag in pickup_args(args, tmp_path)
+    unset = pickup_args(parse_grind_session_args(["--plan"]), tmp_path)
     assert not any("prefer-agentic" in a for a in unset)
 
 
@@ -174,11 +199,10 @@ def test_grind_passes_an_explicit_setting_through_to_pickup(tmp_path: Path) -> N
 # ---------------------------------------------------------------------------
 
 
-def test_plan_ready_order_equals_pickup_order_and_carries_execution() -> None:
+def test_plan_carries_execution_for_every_ready_leaf() -> None:
     nodes = _mixed_nodes()
     for prefer in (False, True):
         plan = compute_session_plan(nodes, _EMPTY_REG, prefer_agentic=prefer)
-        assert plan.ready == _ids(dna._available(nodes, _EMPTY_REG, prefer_agentic=prefer))
         assert plan.ready_execution == {
             "M1": "Human-led", "M2": None, "M3": "Mixed",
             "M4": "Agentic-led", "M5": "Agentic-led",
@@ -195,10 +219,6 @@ def test_plan_text_shows_execution_milestone_beside_next_auto_pick() -> None:
     text = render_session_plan_text(compute_session_plan(nodes[1:2], _EMPTY_REG))
     assert "**Next auto-pick:** `M2` (no execution milestone)" in text
     assert "prefer_agentic_pick_order" not in text
-
-
-def _git(repo: Path, *args: str) -> None:
-    subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
 def test_gather_session_plan_reads_the_yaml_default(tmp_path: Path) -> None:
