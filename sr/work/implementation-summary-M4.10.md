@@ -43,7 +43,8 @@ Review round 1 (Sol, at e7ba8af) is addressed on this branch.
 
 - **Retry applies `--delete-branch`.** A re-run in merge mode enters `retry_merge_landing` and used to return without deleting. The flag now travels with the re-run's CLI args: `finish_task._resolve_context` → `resolve_feature_rm_registry_context_for_finish` → `report_finish_already_done_on_branch` → `retry_merge_landing`. After the landing (and when the branch is already on the remote), the same `delete_landed_branch` runs. The failure message names the re-run with `--delete-branch` included, so the command it prints is the one that deletes. The on-complete session file is not where this retry reads its options: that sidecar is removed in the bookkeeping commit, before the landing is attempted, and the retry already passes `session=None`. `feature_rm_registry.py` is outside the original touch zones; the review required the flag to cross that call, and there is no other caller.
 - **Remote delete is leased to the checked tip.** `delete_remote_branch` (used by finish, `branches prune`, and grind's `--delete-merged-branches`) now runs `git push <remote> --force-with-lease=refs/heads/<branch>:<sha> --delete <branch>`, where `<sha>` is the remote-tracking tip that passed the merged check. A push that lands in between is rejected (`stale info`); the branch stays and the failure is reported. A branch that was never pushed is still skipped, before any lease.
-- **Known gap, milestone rollup:** on the milestone rollup path (`try_milestone_rollup_finish`), the leaf merges into the rollup branch rather than the integration branch, and `--delete-branch` is not applied. Nothing is printed about it. Unchanged from round 1; the review did not ask for it.
+- **Milestone rollup deletes the leaf.** After the leaf merges into the rollup branch, `--delete-branch` runs the same leased delete, with the rollup as the ref that contains the leaf (the integration branch does not). A re-run whose bookkeeping is already committed and whose `work/.milestone-session.yaml` still owns the leaf retries that rollup landing (`retry_milestone_rollup_landing`) and then deletes. `on_complete: pr` does not refuse the flag on this path, because the leaf is not the only copy once it is in the rollup.
+- **Open rollups are read at the fetched integration ref.** `branches prune` uses `load_roadmap_nodes_at_ref` on `<remote>/<integration>`. A working tree behind that ref no longer decides which rollups are open. If that roadmap cannot be read, prune lists and deletes nothing.
 - **Local deletes in prune:** prune uses `git branch -d`, the same as grind. git also requires `HEAD`, or the branch's upstream, to contain the branch, so the docs and `--help` say to run prune from the up-to-date integration branch. A refusal is reported per branch, and the command exits 1.
 - **Shared file:** `specy_road/cli.py` is also in a live session on `feature/rm-stale-command-check`. My change there is one added line in `_FORWARDED`.
 
@@ -88,3 +89,19 @@ Review round 1 (Sol, at e7ba8af) is addressed on this branch.
 - Assertion in `tests/test_grind_session_cleanup.py::test_with_push_it_also_deletes_the_remote_branch`: the push argv is now the leased form.
 - `test_a_retried_landing_deletes_the_branch`: a rejected landing, then the same command with `--delete-branch`, deletes locally and on the remote.
 - `test_a_moved_remote_tip_is_not_deleted`: the remote branch moved after the merged check; the lease refuses and the new tip is still there. finish and prune both delete through this function.
+
+### Review round 2
+
+- `delete_landed_branch(..., contained_in=None)`: the ref that must contain the branch. The checkout still moves to `ib`. The rollup path passes the rollup branch, because the integration branch does not contain the leaf.
+- `finish_milestone_rollout.land_milestone_rollup`: the push, cherry-pick, and rollup merge, shared by the first finish and the re-run. A bookkeeping commit already on the integration branch resolves empty; a leaf already in the rollup merges as already up to date.
+- `finish_milestone_rollout._delete_rolled_leaf`: the leased delete against the rollup. Reason: `delete_landed_branch` defaults the containment ref to the integration branch.
+- `finish_milestone_rollout.rollup_session_applies`: whether this finish lands on the rollup, so `--delete-branch` is not refused under `pr`.
+- `finish_milestone_rollout.retry_milestone_rollup_landing`: the re-run when the bookkeeping commit exists and the milestone session still owns the leaf. Returns false when it does not, and the merge retry runs instead.
+- `finish_milestone_rollout._fail`: one exit for a failed rollup step.
+- Call in `try_milestone_rollup_finish` after a successful landing: deletes when the flag is set.
+- Call in `report_finish_already_done_on_branch`: the rollup retry runs before the integration-merge retry, and stops the command when it handles the leaf.
+- `branches_cli._open_rollups`: open rollup names from the roadmap at the fetched integration ref. `None` when that roadmap cannot be read.
+- `branches_cli._live_branches` returning `None`: prune then lists and deletes nothing. Reason: a missing remote roadmap must not fall back to the stale working tree.
+- `test_rollup_finish_deletes_the_leaf_once_it_is_in_the_rollup`: a rollup finish with `--delete-branch` under `pr` deletes the leaf locally and on the remote; the rollup still contains it.
+- `test_a_retried_rollup_landing_deletes_the_leaf`: the rollup push is rejected, then the same command lands the rollup and deletes the leaf.
+- `test_prune_keeps_a_rollup_the_remote_still_marks_active`: local `dev` is one commit behind `origin/dev`; the working tree has no milestone execution, the remote roadmap marks the rollup active, and `--delete` leaves the branch.

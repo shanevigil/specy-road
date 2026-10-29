@@ -24,7 +24,7 @@ from specy_road.bundled_scripts.grind_session_cleanup import (
     delete_remote_branch,
     merged_into,
 )
-from specy_road.bundled_scripts.roadmap_load import load_roadmap
+from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
 from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_code, git_text
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_remote_overlay_merge import read_registry_at_ref
@@ -39,16 +39,33 @@ def _branches(root: Path, prefix: str) -> list[str]:
     return [ref.removeprefix(prefix) for ref in out.splitlines()]
 
 
-def _live_branches(root: Path, target: str) -> set[str]:
-    """Branches still in use: claimed here or on ``target``, or an open milestone rollup."""
-    live: set[str] = set()
+def _open_rollups(root: Path, target: str) -> set[str] | None:
+    """Rollup branches ``target``'s roadmap still has open, or ``None`` if unreadable.
+
+    The working tree can be behind the integration branch prune just fetched.
+    Its roadmap would miss a rollup the remote still marks active, and a delete
+    would remove it.
+    """
+    nodes = load_roadmap_nodes_at_ref(root, target)
+    if nodes is None:
+        return None
+    return {
+        me.get("rollup_branch")
+        for node in nodes
+        if isinstance(me := node.get("milestone_execution"), dict)
+        and me.get("state") != "closed"
+    }
+
+
+def _live_branches(root: Path, target: str) -> set[str] | None:
+    """Branches still in use, or ``None`` when the remote roadmap cannot be read."""
+    rollups = _open_rollups(root, target)
+    if rollups is None:
+        return None
+    live: set[str] = set(rollups)
     for reg in (read_registry(registry_path(root)),
                 read_registry_at_ref(root, target, DEFAULT_TIMEOUT) or {}):
         live.update(e.get("branch") for e in reg.get("entries") or [] if isinstance(e, dict))
-    for node in load_roadmap(root)["nodes"]:
-        me = node.get("milestone_execution")
-        if isinstance(me, dict) and me.get("state") != "closed":
-            live.add(me.get("rollup_branch"))
     return live
 
 
@@ -96,6 +113,13 @@ def cmd_prune(ns: argparse.Namespace) -> int:
         return 1
     target = f"{remote}/{base}"
     live = _live_branches(root, target)
+    if live is None:
+        print(
+            f"error: could not read the roadmap at {target}. "
+            "Not listing or deleting anything.",
+            file=sys.stderr,
+        )
+        return 1
     local = _merged(root, "refs/heads/", target, live)
     remote_side = _merged(root, f"refs/remotes/{remote}/", target, live)
     if not local and not remote_side:

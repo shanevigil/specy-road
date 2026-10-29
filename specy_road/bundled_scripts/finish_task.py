@@ -25,7 +25,11 @@ from specy_road.finish_work_artifacts import (
     warn_if_pr_body_tracked,
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
-from specy_road.finish_milestone_rollout import try_milestone_rollup_finish
+from specy_road.finish_milestone_rollout import (
+    rollup_session_applies,
+    try_milestone_rollup_finish,
+)
+from specy_road.milestone_session import milestone_session_path, read_milestone_session
 from specy_road.finish_modes import (
     apply_on_complete_mode,
     delete_branch_preflight,
@@ -151,7 +155,16 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     on_mode = resolve_on_complete(
         ROOT, cli=args.on_complete, session=session_oc,
     )
-    delete_branch_preflight(on_mode, delete_branch=args.delete_branch)
+    delete_branch_preflight(
+        on_mode,
+        delete_branch=args.delete_branch,
+        rollup=rollup_session_applies(
+            read_milestone_session(milestone_session_path(work_dir)),
+            skip=args.no_milestone_rollup,
+            node_id=node_id,
+            nodes=nodes,
+        ),
+    )
     _impl_review_or_exit(entry, node)
     ib, gw_remote, _gw = resolve_integration_defaults(
         ROOT, explicit_base=None, explicit_remote=None,

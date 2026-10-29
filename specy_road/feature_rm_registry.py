@@ -105,6 +105,7 @@ def report_finish_already_done_on_branch(
     In merge mode the earlier run's landing may have failed after its
     bookkeeping commit; the re-run its error asks for retries the landing.
     """
+    from specy_road.finish_milestone_rollout import retry_milestone_rollup_landing
     from specy_road.finish_modes import print_pr_gated_state, retry_merge_landing
     from specy_road.git_workflow_config import (
         resolve_integration_defaults,
@@ -115,6 +116,10 @@ def report_finish_already_done_on_branch(
     if node is None:
         return
     node_id = node["id"]
+    if retry_milestone_rollup_landing(
+        repo_root, node_id=node_id, branch=branch, delete_branch=delete_branch,
+    ):
+        raise SystemExit(0)
     ib, remote, _ = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )

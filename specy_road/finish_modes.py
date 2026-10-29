@@ -123,9 +123,13 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
         raise SystemExit(1)
 
 
-def delete_branch_preflight(on_mode: str, *, delete_branch: bool) -> None:
-    """Exit 1 before the bookkeeping commit when --delete-branch could delete unlanded work."""
-    if delete_branch and on_mode == "pr":
+def delete_branch_preflight(on_mode: str, *, delete_branch: bool, rollup: bool = False) -> None:
+    """Exit 1 before the bookkeeping commit when --delete-branch could delete unlanded work.
+
+    A milestone rollup finish merges the leaf into the rollup branch, so ``pr``
+    does not leave that leaf as the only copy.
+    """
+    if delete_branch and on_mode == "pr" and not rollup:
         print(
             "error: --delete-branch needs a merge landing (--on-complete merge "
             "or auto). Under pr the feature branch is the only copy of the "
@@ -136,18 +140,24 @@ def delete_branch_preflight(on_mode: str, *, delete_branch: bool) -> None:
         raise SystemExit(1)
 
 
-def delete_landed_branch(repo: Path, *, branch: str, ib: str, remote: str) -> None:
-    """Delete ``branch`` here and on ``remote`` now that ``ib`` contains it.
+def delete_landed_branch(
+    repo: Path, *, branch: str, ib: str, remote: str, contained_in: str | None = None,
+) -> None:
+    """Delete ``branch`` here and on ``remote`` now that it has landed.
 
-    A checked-out branch cannot be deleted, so this checkout moves to ``ib``
-    first -- or, when another worktree holds ``ib``, detaches at it. Failures
-    are reported, never fatal: the work has already landed.
+    ``contained_in`` is the ref that holds the branch (the rollup branch, when
+    the leaf merged there instead of into ``ib``). The checkout still moves to
+    ``ib``, because a checked-out branch cannot be deleted; when another
+    worktree holds ``ib``, this checkout detaches at it. Failures are reported,
+    never fatal: the work has already landed.
     """
     holder = integration_worktree(repo, ib)
     # A failed checkout needs no check of its own: git branch -d then refuses and says why.
     git_ok(["checkout", "--detach", ib] if holder else ["checkout", ib], repo)
     pushed, _ = git_ok(["rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}"], repo)
-    local_ok, remote_ok, failure = delete_merged_branch(repo, branch, ib, remote, push=pushed)
+    local_ok, remote_ok, failure = delete_merged_branch(
+        repo, branch, contained_in or ib, remote, push=pushed,
+    )
     if local_ok:
         where = f"detached at {ib} ({ib} is checked out in {holder})" if holder else f"on {ib}"
         print(f"[ok] deleted local branch {branch}; this checkout is now {where}")
