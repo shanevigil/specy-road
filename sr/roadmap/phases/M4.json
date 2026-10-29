@@ -266,7 +266,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.9_pick-ordering_5bac319f-6749-4980-8576-248df4e287e7.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Opt-in auto-pick ordering by execution milestone",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_available.py",

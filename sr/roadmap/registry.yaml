@@ -34,30 +34,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: pick-ordering
-    node_id: M4.9
-    branch: feature/rm-pick-ordering
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/git_workflow_config.py
-      - docs/dev-workflow.md
-      - tests/
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - schemas/git-workflow.schema.json
-      - tests/fixtures/specy_road_dogfood/schemas/
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/session_plan_git.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/bundled_scripts/grind_session_step.py
-      - docs/grind-session.md
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T01:19:38+00:00'
   - codename: stale-command-check
     node_id: M5.2
     branch: feature/rm-stale-command-check
