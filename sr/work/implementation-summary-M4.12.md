@@ -17,6 +17,12 @@ Review round 1 (Sol, at 4a0f5c9) blocked on two A1 gaps, both fixed in this roun
 - **Concise-body arrows are now measured.** The span runs from the binding to the end of the expression: brackets are balanced, and it stops at the terminating `;`, a `,`, the enclosing statement's closing bracket, or a line break the next line does not continue (`.`, `?`, `:`, binary operators).
 - **Regex literals are now masked** in the same pass as strings and comments. A `/` opens a regex at line start, after an operator, `(`, `,`, `=`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `}` or `;`, and after `return` and the other keywords that take an expression (`typeof`, `case`, `throw`, `await` and so on). After an identifier, number, `)`, `]` or another literal it is a division.
 
+Review round 2 (Sol, at f680a73) asked for three changes, all made in this round:
+
+- **Generic class headers.** Taking the class body now skips balanced type parameters and the heritage clause, braces inside them included. This reuses `_type_end(s, j, "{")`, the same skip that already finds a method's body past its return type. So `class Store<T extends { id: string }> extends Base<{ size: number }> {` measures its methods.
+- **Every declarator.** Each `const` / `let` / `var` list is walked declarator by declarator (`_declarators`). Plain values, declarators without an initializer, annotations and destructuring patterns are stepped over, so `const limit = 10, clamp = (x) => { … }` measures `clamp`.
+- **Template README.** `specy_road/templates/project/constraints/README.md` now describes the TS/JS coverage the same way `constraints/README.md` does.
+
 ## Changes
 
 - `specy_road/file_limits_js.py` (new): a scanner with no dependencies.
@@ -27,11 +33,11 @@ Review round 1 (Sol, at 4a0f5c9) blocked on two A1 gaps, both fixed in this roun
   - It names methods `Class.method` and other nested functions by containment.
 - `specy_road/file_limits_engine.py`: `python_function_metrics` now also returns the start line. A new `function_metrics` dispatches by suffix, and `run_file_limits_scan` uses it for every file. Both report lines gain `:<line>` and the "Python-only" labels are gone. The file is 379 lines, under its 400 cap.
 - `constraints/file-limits.yaml` and `specy_road/templates/project/constraints/file-limits.yaml`: these policy files now say which languages and forms the function cap covers.
-- `constraints/README.md` and `tests/fixtures/specy_road_dogfood/constraints/README.md`: the "Python-only" labels are replaced.
-- `tests/fixtures/file_limits_js/`: one fixture per syntax form (`declaration.ts`, `arrow.tsx`, `class_methods.ts`), plus `literals.mjs` for masking. `legacy.js` and `widget.jsx` cover the last two suffixes. Round 1 adds `concise_arrow.ts`, `regex.js` and `division.js`.
+- `constraints/README.md`, `specy_road/templates/project/constraints/README.md` (round 2) and `tests/fixtures/specy_road_dogfood/constraints/README.md`: the "Python-only" labels are replaced.
+- `tests/fixtures/file_limits_js/`: one fixture per syntax form (`declaration.ts`, `arrow.tsx`, `class_methods.ts`), plus `literals.mjs` for masking. `legacy.js` and `widget.jsx` cover the last two suffixes. Round 1 adds `concise_arrow.ts`, `regex.js` and `division.js`; round 2 adds `generic_class.ts` and `declarators.ts`.
 - `tests/test_file_limits_js.py` (new), plus one assertion added to `tests/test_file_limits_engine.py`.
 
-Final touch zones used: `specy_road/file_limits_engine.py`, `specy_road/file_limits_js.py`, `constraints/file-limits.yaml`, `specy_road/templates/project/constraints/file-limits.yaml`, `constraints/README.md`, `tests/fixtures/specy_road_dogfood/constraints/README.md`, `tests/`. Not touched: `specy_road/bundled_scripts/validate_file_limits.py` (it already exits non-zero before `OK` when the scan fails) and `docs/file-limits.md` (it does not exist, and the policy files carry the documentation A3 asks for).
+Final touch zones used: `specy_road/file_limits_engine.py`, `specy_road/file_limits_js.py`, `constraints/file-limits.yaml`, `specy_road/templates/project/constraints/file-limits.yaml`, `constraints/README.md`, `specy_road/templates/project/constraints/README.md`, `tests/fixtures/specy_road_dogfood/constraints/README.md`, `tests/`. Not touched: `specy_road/bundled_scripts/validate_file_limits.py` (it already exits non-zero before `OK` when the scan fails) and `docs/file-limits.md` (it does not exist, and the policy files carry the documentation A3 asks for).
 
 ## Known limits (by design, documented in the module docstring)
 
@@ -42,27 +48,27 @@ Final touch zones used: `specy_road/file_limits_engine.py`, `specy_road/file_lim
 - **JSX text is code to the scanner.** An apostrophe in it (`<p>Don't</p>`) is read as a string that runs to the end of that line. The damage stays on that one line, but a closing brace later on the same line is missed.
 - **Some functions are not measured.** Unnamed callbacks (`useCallback(() => {…})`), object-literal methods and anonymous `function` expressions all fall outside the three forms A1 names.
 - **No-semicolon TS with a bodiless overload directly before its implementation.** The overload's name takes the implementation's body.
-
-## Out of zone (not edited)
-
-- `specy_road/templates/project/constraints/README.md:8` still says "Max function length (**Python `.py` only**)". Consumer scaffolds will carry that stale label until a follow-up fixes it.
+- **An empty class body directly followed by a block.** `class A {} {` reads the first `{}` as an object type in the header, because of the same lookahead that handles `): { a: T } {`.
+- **A destructuring declarator names no function.** Its pattern is stepped over so later declarators are still found.
 
 ## Verification
 
-- `pytest -q tests/test_file_limits_js.py tests/test_file_limits_engine.py tests/test_file_limits_gitignore.py tests/test_validate_file_limits.py`: 36 passed (round 1; 30 before it).
-- `pytest -q` (full suite, round 0 only): 2344 passed, 2 skipped. Round 1 changed only `specy_road/file_limits_js.py` and its own tests and fixtures, so I reran the focused set, not the full suite.
+- `pytest -q tests/test_file_limits_js.py tests/test_file_limits_engine.py tests/test_file_limits_gitignore.py tests/test_validate_file_limits.py`: 40 passed (round 2; 36 in round 1, 30 before that).
+- `pytest -q` (full suite, round 0 only): 2344 passed, 2 skipped. Rounds 1 and 2 changed only `specy_road/file_limits_js.py`, its own tests and fixtures, and one template README, so I reran the focused set, not the full suite.
+- File caps: `specy_road/file_limits_js.py` is 388 lines (cap 400) and the engine is 379. A separate `_class_body` helper took the scanner to 403, so I reused `_type_end` instead of adding an exemption.
 - `python specy_road/bundled_scripts/validate_file_limits.py` (this repo): `OK: file limits satisfied.`
 - `ruff check specy_road tests scripts`: all checks passed.
 - Dogfood `validate`, `export --check` and `digest --check`: OK. I removed the `.specyrd/cache` those runs leave in the fixture.
 - Manual check (round 1): with `_regex_allowed` forced to always say yes, `division.js` gives `layout` 10 lines and swallows `next`. So `test_scan_measures_concise_arrows_regexes_and_divisions[division.js]` does catch a division misread as a regex.
-- Manual check: I ran the scanner over `gui/pm-gantt/src`, 314 functions in 0.18 s. `App` (`App.tsx:154`, 1703 lines, ending on the file's last line), `SortableRow` and `ModalFrame` end on their real closing braces, and the handlers inside components come out as `SortableRow.handleTitleClick` and so on. Round 1 recheck: the round-0 and round-1 scanners agree on every one of those spans. The only difference is 4 new short concise arrows (at most 3 lines each). This repo's policy does not apply the cap to `gui/`. Adding a `gui/**/*.tsx` glob would flag those components today.
+- Manual check: I ran the scanner over `gui/pm-gantt/src`, 314 functions in 0.18 s. `App` (`App.tsx:154`, 1703 lines, ending on the file's last line), `SortableRow` and `ModalFrame` end on their real closing braces, and the handlers inside components come out as `SortableRow.handleTitleClick` and so on. Round 2 recheck: the round-1 and round-2 scanners agree on every function in every GUI file. Round 1 recheck: the round-0 and round-1 scanners agree on every one of those spans. The only difference is 4 new short concise arrows (at most 3 lines each). This repo's policy does not apply the cap to `gui/`. Adding a `gui/**/*.tsx` glob would flag those components today.
 
 ## Walkthrough
 
 1. Read the masking functions (`mask_source`, `_literal_end`, `_template_end`, `_expr_end`) in `specy_road/file_limits_js.py`, then `_spans` for the three forms.
 2. `tests/test_file_limits_js.py::test_js_function_metrics_per_syntax_form` lists the expected `(name, line, span)` for each fixture.
-3. Round 1: `_regex_allowed` / `_regex_end` in `mask_source`, then `_body_end`; the fixtures are `concise_arrow.ts`, `regex.js` and `division.js`.
-4. `test_validator_does_not_print_ok_with_over_cap_ts_function` runs the real validator on an over-cap `.tsx` file.
+3. Round 2: `_declarators`, and the `_type_end(s, m.end(), "{")` call for class bodies in `_spans`; the fixtures are `generic_class.ts` and `declarators.ts`.
+4. Round 1: `_regex_allowed` / `_regex_end` in `mask_source`, then `_body_end`; the fixtures are `concise_arrow.ts`, `regex.js` and `division.js`.
+5. `test_validator_does_not_print_ok_with_over_cap_ts_function` runs the real validator on an over-cap `.tsx` file.
 
 ## Added
 
@@ -77,6 +83,9 @@ Final touch zones used: `specy_road/file_limits_engine.py`, `specy_road/file_lim
 - Round 1: the `<` exclusion from `_REGEX_AFTER` and the `/>` guard in `_regex_allowed`: keep JSX closing and self-closing tags from opening a regex that would hide their braces.
 - Round 1: the `"` placeholder in `mask_source`: a literal still reads as an operand, both for the regex/division decision and for concise bodies made of a single literal.
 - Round 1: `_body_end`, `_CONTINUES_AFTER`, `_CONTINUES_BEFORE`: the span of a concise arrow body to the end of its expression (review item 1). `_arrow_body` now returns any body start, not only `{` or `(`.
+- Round 2: `_declarators`: walks every declarator of a `const` / `let` / `var` list, so a named arrow after a comma is measured (review item 2). Its `[`/`{` branch steps over a destructuring pattern so later declarators are still reached. `_BINDING_RE` now matches only the keyword.
+- Round 2: `,` as a stop in `_type_end(…, "=")`: ends the annotation of a declarator with no initializer (`let a: T, b = …`).
+- Round 2: class bodies found with `_type_end(s, j, "{")`, and `_CLASS_RE` no longer consumes up to the first `{`: type parameters and heritage clauses holding braces no longer cut the body off (review item 1).
 - `_spans`, `js_function_metrics`: collect the three forms and name them by containment (`Class.method`, `Outer.inner`), matching the Python report.
 - `_ch`, `_ws`: out-of-range-safe character and whitespace helpers. `_close` returns `len(s)` when brackets are unbalanced.
 - `file_limits_engine.function_metrics`: suffix dispatch, so `run_file_limits_scan` has one loop for both languages.
@@ -85,7 +94,7 @@ Final touch zones used: `specy_road/file_limits_engine.py`, `specy_road/file_lim
 - `tests/test_file_limits_js.py`:
   - `test_js_function_metrics_per_syntax_form`: exact spans per fixture.
   - `test_scan_reports_over_cap_js_function_with_line`: exact report line for each of the five suffixes.
-  - `test_scan_measures_concise_arrows_regexes_and_divisions` (round 1): `run_file_limits_scan` on a long concise arrow (reported), a regex holding braces (correct length) and divisions that must not be read as regexes.
+  - `test_scan_measures_concise_arrows_regexes_and_divisions` (round 1): `run_file_limits_scan` on a long concise arrow (reported), a regex holding braces (correct length) and divisions that must not be read as regexes. Round 2 adds an over-cap method in `class Store<T extends { id: string }>` and an over-cap arrow after a comma.
   - `test_js_function_hard_alert`: TS hard-alert line and the strict flag.
   - `test_validator_does_not_print_ok_with_over_cap_ts_function`: A2, end to end.
 - `tests/test_file_limits_engine.py`: one assertion on the exact Python report line, including `:4`.
