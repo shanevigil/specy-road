@@ -29,6 +29,9 @@ entries:
     node_id: M3.7
     branch: feature/rm-promote-node-quality
     touch_zones:
+      - specy_road/bundled_scripts/roadmap_chunk_router.py
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_crud_prepare.py
       - specy_road/bundled_scripts/brainstorm_cli.py
       - specy_road/bundled_scripts/brainstorm_fields.py
       - specy_road/bundled_scripts/brainstorm_session.py

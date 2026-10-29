@@ -240,7 +240,10 @@
         "tests/",
         "specy_road/bundled_scripts/brainstorm_cli.py",
         "specy_road/bundled_scripts/brainstorm_fields.py",
-        "specy_road/bundled_scripts/brainstorm_session.py"
+        "specy_road/bundled_scripts/brainstorm_session.py",
+        "specy_road/bundled_scripts/roadmap_chunk_router.py",
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/roadmap_crud_prepare.py"
       ],
       "type": "task"
     },
