@@ -103,8 +103,10 @@ def implementation_paths(
     paths = changed_paths(repo_root, ref)
     if paths is None:
         return None
+    # Zones name project files project-relative and code outside a nested
+    # project git-root-relative, the same reading review-packet applies.
     prefix = project_prefix(repo_root)
-    project_paths = [p for p in (rebase_to_project(path, prefix) for path in paths) if p]
+    project_paths = [rebase_to_project(path, prefix) or path for path in paths]
     return [p for p in project_paths if any(zone_matches(z, p) for z in cleaned)]
 
 
