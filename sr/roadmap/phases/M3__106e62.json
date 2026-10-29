@@ -87,6 +87,30 @@
         "specy_road/templates/project/work/review-record.template.md"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road file-limits passes on the integration branch (role_prompt.py at most 400 lines) by moving whole functions into a new module with no behaviour change",
+        "ruff check specy_road tests passes (validate_stale_commands._command_mentions under the C901 limit) with no behaviour change; the existing tests pass unchanged"
+      ],
+      "codename": "bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.18",
+      "node_key": "39350768-2f5d-4853-afab-797a6cd25e45",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.18_bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error_39350768-2f5d-4853-afab-797a6cd25e45.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Bring role_prompt under the file cap and clear the ruff complexity error",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/bundled_scripts/validate_stale_commands.py",
+        "specy_road/bundled_scripts/validate_stale_mentions.py",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
