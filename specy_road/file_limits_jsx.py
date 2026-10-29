@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from specy_road.file_limits_js import _NOT_NEWLINE_RE, _ch, _literal_end, _ws
+from specy_road.file_limits_js_mask import _NOT_NEWLINE_RE, _ch, _literal_end, _ws
 
 _JSX_WORDS = frozenset({"return", "yield", "throw", "await", "else", "case", "void"})
 _JSX_NAME_RE = re.compile(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*")

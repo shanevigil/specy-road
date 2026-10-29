@@ -4,3 +4,4 @@ const cache = new Map<string, number>(), oversized = () => {
   return a + b;
 };
 const limit = a < b, after = () => 1;
+const make = new Foo<() => void, T>(), short = () => 1;
