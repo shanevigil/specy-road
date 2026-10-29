@@ -108,6 +108,17 @@ def test_v1_session_files_still_read(tmp_path: Path) -> None:
     assert "version: 2" in text and "verification: matched" in text and "retrieved" not in text
 
 
+def test_agentic_runbook_evidence_step_uses_matched_verification_state() -> None:
+    from tests.helpers import REPO
+
+    text = (REPO / "docs" / "agentic-sandbox-runbook.md").read_text(encoding="utf-8")
+    start = text.index("6. **Evidence and verify.**")
+    end = text.index("7. **Triage and promote.**")
+    step = text[start:end]
+    assert "matched" in step
+    assert "retrieved" not in step
+
+
 @pytest.mark.parametrize("raw, msg", [
     ({"id": "B1", "title": "x", "sources": [{"quote": "no url"}]}, "needs a url"),
     ({"id": "B1", "title": "x", "sources": [{"url": "u", "verification": "sure"}]}, "verification"),

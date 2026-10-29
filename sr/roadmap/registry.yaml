@@ -115,6 +115,7 @@ entries:
       - specy_road/bundled_scripts/brainstorm_verify.py
       - specy_road/bundled_scripts/brainstorm_promote.py
       - docs/brainstorming.md
+      - docs/agentic-sandbox-runbook.md
       - tests/
     started: '2026-10-29'
     owner: savigil
