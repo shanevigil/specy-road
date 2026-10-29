@@ -99,30 +99,78 @@ def warn_if_pin_differs(start: Path) -> None:
 
 _FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
-# Command position only: prose ("the specy-road toolkit") and comments in a
-# code block ("# specy-road files omit…") name no command. Prose counts only
-# after a run verb ("Run specy-road validate").
-_TOOL = r"(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)"
-_RUN = r"(?i:\b(?:uvx|run|exec|execute|invoke)\b)"
-_IN_CODE = re.compile(rf"(?:^|[;&|($]|{_RUN})[ \t]*{_TOOL}")
-_IN_PROSE = re.compile(rf"{_RUN}[ \t]+{_TOOL}")
+_MENTION = re.compile(r"(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
+# Where a command is written. Prose allows a list marker and one leading word
+# ("Then specy-road frob.", "- specy-road frob --flag"). Code allows the start
+# of the span or a shell separator. A "#" before the tool is a comment.
+_PROSE_AT = re.compile(r"^[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]+)?(?:\$[ \t]+)?(?:[A-Za-z]+:?[ \t]+)?$")
+_CODE_AT = re.compile(r"(?:^|\$|[;&|(])[ \t]*\Z")
+
+
+def _subcommand_tail(rest: str) -> bool:
+    """True when ``rest`` marks the preceding token as a subcommand.
+
+    A flag (``-x`` / ``--name``), an argument-looking token, the end of the
+    line, or sentence punctuation (``.!?``) qualifies. An argument-looking
+    token is not a plain lowercase word: it has a digit, ``/``, ``.``, ``_``,
+    ``:`` or an uppercase letter. A plain word does not, so ``specy-road
+    toolkit is`` is prose.
+    """
+    s = rest.lstrip(" \t")
+    if re.fullmatch(r"[*_]*", s):
+        return True
+    if re.match(r"^[.!?](?:\s|[*_`'\"\)\]]|$)", s):
+        return True
+    if re.match(r"^--?[A-Za-z0-9]", s):
+        return True
+    token = re.match(r"[^\s,;:.!?*`'\"()\[\]]+", s)
+    return token is not None and re.fullmatch(r"[a-z][a-z-]*", token.group(0)) is None
+
+
+def _mentions_in(chunk: str, at_command) -> list[tuple[str, str]]:
+    found = []
+    for match in _MENTION.finditer(chunk):
+        before = chunk[: match.start()]
+        if "#" in before or not at_command(before):
+            continue
+        if _subcommand_tail(chunk[match.end() :]):
+            found.append((match.group(1), match.group(2)))
+    return found
 
 
 def _command_mentions(text: str):
+    """Each ``specy-road`` / ``specyrd`` token of command shape that reads as a subcommand.
+
+    The token (``[a-z][a-z0-9-]*``) counts in prose, a list item, inline code
+    and a fenced block when a flag, an argument-looking token, the end of the
+    line, or sentence punctuation follows it (see ``_subcommand_tail``). It
+    must be where a command is written: the tool starts the line (a list marker
+    and one leading word are allowed), or it starts an inline span or a fenced
+    line. A noun phrase (``specy-road toolkit is``) and a ``#`` comment
+    (``# specy-road files omit``) do not count.
+    """
     in_fence = False
     for line in text.splitlines():
         if _FENCE.match(line):
             in_fence = not in_fence
-        elif in_fence:
-            yield from _IN_CODE.findall(line)
-        else:
-            for code in _INLINE_CODE.findall(line):
-                yield from _IN_CODE.findall(code)
-            yield from _IN_PROSE.findall(line)
+            continue
+        for code in _INLINE_CODE.findall(line):
+            yield from _mentions_in(code, lambda before: _CODE_AT.search(before) is not None)
+        plain = _INLINE_CODE.sub(lambda match: " " * len(match.group(0)), line)
+        at = (lambda before: _CODE_AT.search(before) is not None) if in_fence else (
+            lambda before: _PROSE_AT.fullmatch(before) is not None)
+        yield from _mentions_in(plain, at)
 
 
 def unregistered_commands(text: str) -> list[str]:
-    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` runs and no CLI registers, once, in order."""
+    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, once, in order.
+
+    A command-shaped token is a subcommand when a flag, an argument-looking
+    token, the end of the line, or sentence punctuation follows it, in prose,
+    a list item, inline code or a fenced block. A plain following word is not
+    one (``specy-road toolkit is``), and the tool has to start that line or
+    code span (one leading word or a list marker may precede it).
+    """
     specyrd = next(a for a in _specyrd_parser()._actions if isinstance(a, argparse._SubParsersAction))
     registered = {"specy-road": {*_known_commands(), "version"}, "specyrd": set(specyrd.choices)}
     found: list[str] = []

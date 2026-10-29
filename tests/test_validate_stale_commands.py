@@ -20,7 +20,9 @@ from specy_road.managed_block import HTML_COMMENT, render_block
 AGENTS_MD = """# Our agents guide
 
 The specy-road toolkit coordinates work; run `specy-road validate` and `specy-road grind`.
-Run specy-road does-not-exist before opening a PR; use specy-road to coordinate.
+Then specy-road frob.
+- specy-road listed --flag
+The specy-road toolkit is how this repo coordinates; use specy-road to coordinate.
 
 ```bash
 $ specy-road nope --flag && specy-road brief M1
@@ -49,14 +51,20 @@ def test_validate_warns_for_each_unregistered_command_and_still_passes(tmp_path:
     tail = f"which is not a command in specy-road {__version__};"
     assert lines == [
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road grind`, {tail} use `specy-road grind-session`.",
-        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road does-not-exist`, {tail} "
-        "see `specy-road --help`.",
+        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road frob`, {tail} see `specy-road --help`.",
+        f"agents: warning — sr/AGENTS.md tells agents to run `specy-road listed`, {tail} see `specy-road --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road nope`, {tail} see `specy-road --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specyrd refresh`, {tail} see `specyrd --help`.",
         f"agents: warning — sr/AGENTS.md tells agents to run `specy-road pm-sync`, {tail} use `specy-road sync`.",
         f"agents: warning — CLAUDE.md tells agents to run `specy-road backfill-activity`, {tail} "
         "it was removed and nothing replaces it.",
     ]
+
+
+def test_prose_and_list_mentions_are_warnings_and_a_noun_phrase_is_not() -> None:
+    assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
+    assert unregistered_commands("- specy-road frob --flag") == ["specy-road frob"]
+    assert unregistered_commands("specy-road toolkit is how work is coordinated.") == []
 
 
 @pytest.mark.parametrize(("old", "new"), REPLACED_COMMANDS.items())
