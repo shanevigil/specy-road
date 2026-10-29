@@ -20,7 +20,7 @@ Registered zones covered promote, argparse, `title_to_codename`, docs, and tests
 
 - **A1:** each node is `append_node_to_chunk(..., validate=False)`; `run_validate_raise` once after the batch so pin/schema warnings print once.
 - **A2:** `derive_codename_with_collision_suffix(..., max_words=4)` calls `title_to_codename`; `revise --codename` on the idea wins.
-- **A3:** `goal` from `idea.hypothesis`; pending ideas sorted by `decision.decided_at` / `decided_date`; `sibling_order` 1..N in that order.
+- **A3:** `goal` from `idea.hypothesis`; every CLI `accept` (including without `--reason`) records `decision.seq`; promote sorts by seq then timestamp; `sibling_order` from `next_sibling_order` so later batches append.
 - **A4:** `_report_promoted_missing_fields` prints one stderr line listing node ids missing `acceptance` or `touch_zones`.
 
 ## Verification
@@ -39,12 +39,15 @@ specy-road file-limits
 - `derive_codename_with_collision_suffix(..., max_words=)` — pass the promote word cap into `title_to_codename`.
 - `Idea.codename` + fields parse — store PM-chosen slug on the session idea.
 - `revise --codename` argparse + CLI apply — PM override before promote.
-- `_accept_order_key` — sort pending ideas by triage decision time, then id.
+- `_next_decision_seq` — allocate a session-wide accept/reject/park sequence.
+- `_accept_order_key` — sort pending ideas by that sequence, then timestamp, then id.
 - `_promote_codename` — honor idea `codename` or derive with word cap and collision suffix.
 - `_report_promoted_missing_fields` — one stderr list after a successful batch promote.
 - `title_to_codename(..., max_words=)` — optional word cap in the shared slug helper.
 - `test_promote_prints_pin_warnings_once_for_a_multi_node_batch` — public A1 (pin warning once, no mock count).
 - `test_write_with_routing_skip_validate_still_writes` — skip-validate writes even when validate would raise.
+- `test_cli_accept_without_reason_preserves_accept_order` — public CLI accept order without `--reason`.
+- `test_successive_promote_appends_after_existing_siblings` — later promote calls append sibling_order.
 - `tests/test_brainstorm_promote_m37.py` — A2–A4 through `promote_session`.
 - `test_title_to_codename_honors_max_words` — word-cap unit test on `title_to_codename`.
 - none — mocks in the A1 test (pin is a real `requirements.txt` on a nested git copy).

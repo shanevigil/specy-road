@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
+from specy_road.bundled_scripts import brainstorm_cli
 from specy_road.bundled_scripts.brainstorm_promote import (
     PROMOTE_CODENAME_MAX_WORDS,
     promote_session,
@@ -15,7 +18,10 @@ from specy_road.bundled_scripts.brainstorm_promote import (
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     add_idea,
+    read_session,
 )
+from specy_road.bundled_scripts.roadmap_crud_prepare import next_sibling_order
+from specy_road.bundled_scripts.roadmap_layout import ordered_tree_rows
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from tests.helpers import DOGFOOD
 
@@ -29,6 +35,17 @@ def repo(tmp_path: Path) -> Path:
 
 def _by_id(root: Path) -> dict[str, dict]:
     return {n["id"]: n for n in load_roadmap(root)["nodes"]}
+
+
+def _cli(repo: Path, *args: str) -> tuple[int, str, str]:
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        try:
+            brainstorm_cli.main(["brainstorm", *args, "--repo-root", str(repo)])
+            code = 0
+        except SystemExit as e:
+            code = int(e.code) if isinstance(e.code, int) else 1
+    return code, out.getvalue(), err.getvalue()
 
 
 def test_promote_prints_pin_warnings_once_for_a_multi_node_batch(
@@ -81,15 +98,63 @@ def test_promote_copies_hypothesis_to_goal_and_orders_siblings_by_accept_time(
     second.status = "accepted"
     second.decision = {"status": "accepted", "decided_at": "2026-01-01"}
 
+    base = next_sibling_order(repo, "M1", None)
     results = promote_session(repo, s)
 
     assert len(results) == 2
     nodes = _by_id(repo)
     second_id = next(r.node_id for r in results if r.title == "Second")
     first_id = next(r.node_id for r in results if r.title == "First")
-    assert nodes[second_id]["sibling_order"] == 1
-    assert nodes[first_id]["sibling_order"] == 2
+    assert nodes[second_id]["sibling_order"] == base
+    assert nodes[first_id]["sibling_order"] == base + 1
     assert nodes[first_id]["goal"] == "Latency drops because we cache"
+
+
+def test_cli_accept_without_reason_preserves_accept_order(repo: Path) -> None:
+    slug = "how-do-we-expand-payments"
+    assert _cli(repo, "start", "--topic", "How do we expand payments?", "--under", "M1")[0] == 0
+    assert _cli(repo, "add-idea", "--title", "Created first")[0] == 0
+    assert _cli(repo, "add-idea", "--title", "Created second")[0] == 0
+    assert _cli(repo, "accept", "B2")[0] == 0
+    assert _cli(repo, "accept", "B1")[0] == 0
+    session = read_session(repo, slug)
+    assert [i.id for i in session.ideas] == ["B1", "B2"]
+    assert int(session.by_id("B2").decision["seq"]) < int(session.by_id("B1").decision["seq"])
+
+    results = promote_session(repo, session)
+    nodes = _by_id(repo)
+    b2 = next(r.node_id for r in results if r.idea_id == "B2")
+    b1 = next(r.node_id for r in results if r.idea_id == "B1")
+    assert nodes[b2]["sibling_order"] < nodes[b1]["sibling_order"]
+
+
+def test_successive_promote_appends_after_existing_siblings(repo: Path) -> None:
+    s = BrainstormSession(slug="pay", topic="t", under="M1")
+    one = add_idea(s, title="Batch one first")
+    one.status = "accepted"
+    one.decision = {"status": "accepted", "seq": "1"}
+    two = add_idea(s, title="Batch one second")
+    two.status = "accepted"
+    two.decision = {"status": "accepted", "seq": "2"}
+    first = promote_session(repo, s)
+    last_order = max(_by_id(repo)[r.node_id]["sibling_order"] for r in first)
+
+    three = add_idea(s, title="Batch two last")
+    three.status = "accepted"
+    three.decision = {"status": "accepted", "seq": "3"}
+    second = promote_session(repo, s)
+    assert len(second) == 1
+    assert _by_id(repo)[second[0].node_id]["sibling_order"] == last_order + 1
+    under_m1 = [
+        (n["title"], n.get("sibling_order"))
+        for n, _depth in ordered_tree_rows(load_roadmap(repo)["nodes"])
+        if n.get("parent_id") == "M1" and n["title"] in (
+            "Batch one first", "Batch one second", "Batch two last",
+        )
+    ]
+    assert [t for t, _o in under_m1] == [
+        "Batch one first", "Batch one second", "Batch two last",
+    ]
 
 
 def test_promote_lists_nodes_still_missing_acceptance_or_touch_zones(

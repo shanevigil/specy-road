@@ -34,6 +34,7 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
 )
 from specy_road.bundled_scripts.roadmap_crud_prepare import (
     derive_codename_with_collision_suffix,
+    next_sibling_order,
 )
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
@@ -152,11 +153,16 @@ def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
     return lines
 
 
-def _accept_order_key(idea: Idea) -> tuple[str, str]:
-    """Sort pending ideas by triage decision time, then stable id."""
+def _accept_order_key(idea: Idea) -> tuple[int, str, str]:
+    """Sort pending ideas by accept sequence, then decision time, then id."""
     dec = idea.decision or {}
+    raw = dec.get("seq")
+    try:
+        seq = int(str(raw)) if raw not in (None, "") else 0
+    except (TypeError, ValueError):
+        seq = 0
     when = dec.get("decided_at") or dec.get("decided_date") or ""
-    return (when, idea.id)
+    return (seq, when, idea.id)
 
 
 def _promote_codename(
@@ -339,7 +345,8 @@ def promote_session(
     resolved_em = _promote_execution_milestone(nodes, parent_id, execution_milestone)
     out: list[Promotion] = []
     existing = {n.get("codename") for n in nodes if n.get("codename")}
-    for order, idea in enumerate(todo, start=1):
+    order = next_sibling_order(root, parent_id, None)
+    for idea in todo:
         node = _build_node(
             nodes,
             idea,
@@ -355,6 +362,7 @@ def promote_session(
         if dry_run:
             nodes = [*nodes, node]
             chunk = "(not written)"
+            order += 1
         else:
             chunk_path = append_node_to_chunk(root, None, node, validate=False)
             seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
@@ -362,6 +370,7 @@ def promote_session(
             write_session(root, session)
             chunk = str(chunk_path.relative_to(root))
             nodes = _load_nodes(root)
+            order = next_sibling_order(root, parent_id, None)
         out.append(
             Promotion(
                 idea_id=idea.id,

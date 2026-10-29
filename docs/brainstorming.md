@@ -336,7 +336,8 @@ batch defers `validate` until every node in that promote call is on disk, so
 pin/schema warnings and other validate notices print once, not per node.
 
 Promoted nodes get a `goal` from the idea's `--hypothesis` when present,
-`sibling_order` in accept-time order (decision date on the session idea), and a
+`sibling_order` in accept order (every `accept`, including without `--reason`,
+records a sequence; later promote calls append after existing siblings), and a
 `codename` from the first four title words unless `revise --codename` set one.
 After a successful promote, stderr lists any new node ids still missing
 `acceptance` or `touch_zones`.
