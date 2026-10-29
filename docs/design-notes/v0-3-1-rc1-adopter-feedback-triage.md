@@ -61,6 +61,7 @@ and data are deliberately not recorded here.
 | A worker in a linked worktree under the default permission mode cannot write its READY hand-off, which lives in the main checkout; the adapter passes no `--add-dir` | Defect | `--add-dir` for the hand-off directory on launch |
 | `worker reconcile` reports files under a directory touch zone as outside it, and reports the brief as changed when a re-render is identical | Defect | Reuse the packet's boundary match; compare content |
 | `handoff status` presents the executor's recorded verify exits as if re-run | Wording | Label as executor-reported |
+| A worker that exits because the harness refused the call (a usage limit) is reported as `exit 1; see log`; the harness's own message is in the log but not surfaced; found dogfooding | Gap | Show the harness's final message on an error exit |
 | `worker sync` truncates a completion's final message, which is where a missing READY is explained | Gap | Show the full message when READY is absent |
 | Merge-mode finish pushes the integration branch, including unrelated local commits, with no notice and `--help` suggesting `--push` is needed | Gap | State what will be pushed before acting; document |
 | Harness model ids with effort suffixes cannot match a profile, so reviewer prompts carry no model notes | Gap | `launch_model` on the roster entry or profile `aliases` |
