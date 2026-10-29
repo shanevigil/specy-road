@@ -45,8 +45,10 @@ def _ready(repo: Path, verify: str) -> None:
 
 def _status(repo: Path, capsys) -> dict:
     capsys.readouterr()
-    assert _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo)) == 0
-    return json.loads(capsys.readouterr().out)["nodes"][0]
+    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert code == (0 if st["policy_met"] else 1), st["state"]
+    return st
 
 
 FAILED = "verify:\n  - {cmd: 'false', exit: 1, tail: boom}\n  - {cmd: pytest, exit: 0}\n"

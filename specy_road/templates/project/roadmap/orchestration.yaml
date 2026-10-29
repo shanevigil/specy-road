@@ -1,6 +1,9 @@
 # Who may coordinate, execute, and review leaves, and what the implementation
 # review gate requires. See docs/orchestration.md.
-# A missing file means exactly the defaults below.
+# A missing file means the policy below with a roster of only the human entry.
+# Starter written by `specy-road init project` or
+# `specy-road validate --generate-orchestration`: edit it, then commit it to the
+# integration branch (the gate reads the committed copy).
 
 version: 1
 # A review counts toward the gate only when its model is listed here with the
@@ -15,6 +18,12 @@ roster:
   - id: human
     family: human
     roles: [coordinator, reviewer]
+  # The model that implements leaves. Rename id and family to the model you run
+  # (`specy-road models list` shows the shipped profiles); add `reviewer` to its
+  # roles, or add a second entry, to let a model review.
+  - id: my-executor
+    family: my-vendor
+    roles: [executor]
 policy:
   # Approving review records at the branch HEAD that mark-implementation-reviewed
   # needs. Raise to 2 and set reviewers_distinct_families: true for independent

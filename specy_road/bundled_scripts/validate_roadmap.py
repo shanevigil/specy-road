@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from specy_road.agents_md_block import (
 )
 from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
+from specy_road.init_project import project_template_root
 from specy_road.orchestration_config import load_orchestration_config
 from specy_road.orchestration_pinned import roster_source
 from specy_road.planning_scaffold_check import notice_complete_scaffold
@@ -126,7 +128,8 @@ def validate_orchestration_contract(root: Path) -> None:
     """Validate ``roadmap/orchestration.yaml`` if present.
 
     A missing file is not a warning: it means the default review policy
-    (one reviewer, any family), which is the scaffolded template's content.
+    (one reviewer, any family), the scaffolded starter's policy, which
+    ``--generate-orchestration`` writes as an editable file.
     A file that is not what routing reads (absent on the integration branch,
     or different there) is, as ``orchestrate plan`` says.
     """
@@ -137,6 +140,17 @@ def validate_orchestration_contract(root: Path) -> None:
     _ref, drift = roster_source(root)
     if drift:
         print(f"warning: {drift}", file=sys.stderr)
+
+
+def generate_orchestration(root: Path) -> None:
+    """Write the ``init project`` starter to ``roadmap/orchestration.yaml`` unless one exists."""
+    dest = root / "roadmap" / "orchestration.yaml"
+    if dest.exists():
+        print(f"{dest} exists; --generate-orchestration left it unchanged")
+        return
+    shutil.copyfile(project_template_root() / "roadmap" / "orchestration.yaml", dest)
+    print(f"wrote {dest}: a starter roster (human plus one executor) and the default policy; "
+          "edit it, then commit it to the integration branch")
 
 
 def validate_at(
@@ -225,6 +239,12 @@ def main() -> None:
         "(do-next-available-task skips them), not just the first ten, and every Complete "
         "leaf whose planning sheet is still the scaffold.",
     )
+    parser.add_argument(
+        "--generate-orchestration",
+        action="store_true",
+        help="After validation passes, write the commented roadmap/orchestration.yaml starter "
+        "that init project writes, when the file does not exist.",
+    )
     add_repo_root_arg(parser)
     args = parser.parse_args()
     root = (args.repo_root or default_user_repo_root()).resolve()
@@ -236,6 +256,8 @@ def main() -> None:
             show_all=args.all,
         )
         notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
+        if args.generate_orchestration:
+            generate_orchestration(root)
         print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()   # the OK line first, then why it does not count
