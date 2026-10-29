@@ -105,7 +105,10 @@ def test_acceptance_ids_must_match_the_brief(tmp_path: Path) -> None:
     p = _put(tmp_path, "REVIEW-m.md", REVIEW)
     missing = rf.load_review(p, ["A1", "A2", "A3"])
     assert any("no result for A3" in e for e in missing.errors)
-    extra = rf.load_review(p, ["A1"])
+    # A2 is graded n/a: no judgment on an id the brief lacks, so it is not an error.
+    assert rf.load_review(p, ["A1"]).ok
+    graded = _put(tmp_path, "REVIEW-g.md", REVIEW.replace("A2: n/a", "A2: pass"))
+    extra = rf.load_review(graded, ["A1"])
     assert any("A2 not in the brief" in e for e in extra.errors)
     assert rf.load_review(p, None).ok
 
