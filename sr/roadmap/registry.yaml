@@ -11,55 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
-    node_id: M3.13
-    branch: feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/bundled_scripts/mark_implementation_reviewed.py
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/finish_land_integration.py
-      - specy_road/git_subprocess.py
-      - docs/orchestration.md
-      - docs/dev-workflow.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
-  - codename: brainstorm-converge-checks
-    node_id: M3.5
-    branch: feature/rm-brainstorm-converge-checks
-    touch_zones:
-      - docs/agentic-sandbox-runbook.md
-      - specy_road/bundled_scripts/brainstorm_fields.py
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_cli_v2.py
-      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
-      - specy_road/bundled_scripts/brainstorm_prompt_evidence.py
-      - specy_road/bundled_scripts/brainstorm_verify.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: brainstorm-promote-inherits-execution-milestone-from-the-anchor
-    node_id: M4.14
-    branch: feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/brainstorm_promote.py
-      - specy_road/brainstorm_cli.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
   - codename: a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
     node_id: M3.17
     branch: feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
@@ -84,6 +35,20 @@ entries:
       - specy_road/bundled_scripts/role_prompt_rca.py
       - specy_road/bundled_scripts/validate_stale_commands.py
       - specy_road/bundled_scripts/validate_stale_mentions.py
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
+  - codename: brainstorm-triage-cli
+    node_id: M3.6
+    branch: feature/rm-brainstorm-triage-cli
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_cli_v2.py
+      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - docs/brainstorming.md
       - tests/
     started: '2026-10-29'
     owner: savigil

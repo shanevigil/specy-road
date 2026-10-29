@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo, review_text
+from tests.review_repo_helpers import NODE, commit_file, diverge, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 # One AI reviewer beside the default human: `review record` refuses `human`.
@@ -215,3 +215,23 @@ def test_no_claim_and_no_records_is_an_empty_directory(tmp_path: Path, capsys) -
     out = capsys.readouterr().out
     assert "no READY or REVIEW records; the directory can be deleted" in out
     assert "do-next-available-task" not in out
+
+
+@pytest.mark.parametrize("case, line", [
+    ("clean", None),
+    ("bookkeeping", f"  trial merge with refs/heads/dev: conflicts on {NODE['planning_dir']} "
+                    "(bookkeeping only, which does not block)"),
+    ("code", "  trial merge with refs/heads/dev: conflicts on src/a.py"),
+])
+def test_status_reports_a_trial_merge_conflict(tmp_path: Path, capsys, case: str, line: str | None) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    path = diverge(repo, case)
+    st = _status(repo, capsys)
+    merge = [p for p in st["problems"] if "trial merge" in p]
+    assert merge == (["refs/heads/dev is 1 commit(s) ahead and a trial merge conflicts on src/a.py: "
+                      "merge it into this branch and resolve before review"] if case == "code" else [])
+    assert st["trial_merge"] == (None if case == "clean" else {
+        "ref": "refs/heads/dev", "behind": 1, "conflicts": [path], "blocking": [path] if case == "code" else []})
+    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    text = capsys.readouterr().out.splitlines()
+    assert [t for t in text if t.startswith("  trial merge")] == ([line] if line else [])

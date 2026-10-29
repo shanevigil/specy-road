@@ -26,6 +26,7 @@ from specy_road.review_gate import (
     evaluate_gate,
     human_approval_completes,
     review_required,
+    trial_merge_or_exit,
     write_human_approval,
 )
 from specy_road.review_target import resolve_target_or_exit
@@ -307,6 +308,7 @@ def main(argv: list[str] | None = None) -> None:
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)
 
+    trial_merge_or_exit(ROOT)   # before a human reads, approves, or a record is written
     spath = _summary_path(node_id)
     summary_text = _load_summary_text(args, spath)
 

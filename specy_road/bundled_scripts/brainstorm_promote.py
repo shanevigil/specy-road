@@ -32,6 +32,7 @@ from specy_road.bundled_scripts.roadmap_crud_ops import (
     run_validate_raise,
 )
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
+from specy_road.bundled_scripts.roadmap_edit_fields import EXEC_MILESTONES
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 
@@ -39,6 +40,9 @@ from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 PROMOTABLE_TYPES = ("vision", "phase", "milestone", "task")
 
 DEFAULT_PROMOTE_TYPE = "milestone"
+
+#: Promote kwarg default — inherit ``execution_milestone`` from the anchor.
+INHERIT_EXECUTION_MILESTONE = object()
 
 
 @dataclass(frozen=True)
@@ -141,12 +145,22 @@ def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
     return lines
 
 
+def _anchor_execution_milestone(nodes: list[dict], parent_id: str | None) -> str | None:
+    """The already-validated anchor's advisory execution type, when set."""
+    if parent_id is None:
+        return None
+    anchor = next(n for n in nodes if n.get("id") == parent_id)
+    em = anchor.get("execution_milestone")
+    return em if em in EXEC_MILESTONES else None
+
+
 def _build_node(
     nodes: list[dict],
     idea: Idea,
     *,
     parent_id: str | None,
     node_type: str,
+    execution_milestone: str | None = None,
 ) -> dict:
     node = {
         "id": next_child_id(nodes, parent_id),
@@ -155,6 +169,7 @@ def _build_node(
         "type": node_type,
         "title": idea.title,
         "status": "Not Started",
+        "execution_milestone": execution_milestone,
     }
     return {k: v for k, v in node.items() if v is not None}
 
@@ -167,6 +182,34 @@ def _cluster_siblings(session: BrainstormSession, idea: Idea) -> list[Idea]:
             if i.cluster_id == idea.cluster_id and i.id != idea.id and i.status in ("rejected", "parked")]
 
 
+def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
+    """Parse ``promote --set`` pairs; return :data:`INHERIT_EXECUTION_MILESTONE` when absent."""
+    if not pairs:
+        return INHERIT_EXECUTION_MILESTONE
+    value: str | None = None
+    for raw in pairs:
+        if "=" not in raw:
+            raise BrainstormError(
+                f"promote --set expects KEY=VALUE (got {raw!r})"
+            )
+        key, _, raw_val = raw.partition("=")
+        if key.strip() != "execution_milestone":
+            raise BrainstormError(
+                "promote --set only supports execution_milestone "
+                f"(got {key.strip()!r})"
+            )
+        if raw_val.lower() in ("null", "~", ""):
+            value = None
+        elif raw_val not in EXEC_MILESTONES:
+            raise BrainstormError(
+                "execution_milestone must be one of "
+                f"{sorted(EXEC_MILESTONES)} (got {raw_val!r})"
+            )
+        else:
+            value = raw_val
+    return value
+
+
 def pending_ideas(session: BrainstormSession) -> list[Idea]:
     """Accepted ideas that have not been promoted yet."""
     return [
@@ -176,12 +219,19 @@ def pending_ideas(session: BrainstormSession) -> list[Idea]:
     ]
 
 
+def unverified_strong(session: BrainstormSession) -> list[Idea]:
+    """Ideas about to be promoted on a ``strong`` verdict that no ``matched`` source backs."""
+    return [i for i in pending_ideas(session) if i.recommendation == "strong"
+            and not any(s["verification"] == "matched" for s in i.sources)]
+
+
 def promote_session(
     root: Path,
     session: BrainstormSession,
     *,
     under: str | None = None,
     node_type: str = DEFAULT_PROMOTE_TYPE,
+    execution_milestone: object = INHERIT_EXECUTION_MILESTONE,
     dry_run: bool = False,
 ) -> list[Promotion]:
     """Promote every pending accepted idea, newest ids allocated as we go.
@@ -205,10 +255,27 @@ def promote_session(
     parent_id = under if under is not None else session.under
     nodes = _load_nodes(root)
     _assert_parent(root, nodes, parent_id)
+    if execution_milestone is INHERIT_EXECUTION_MILESTONE:
+        resolved_em = _anchor_execution_milestone(nodes, parent_id)
+    elif execution_milestone is None:
+        resolved_em = None
+    elif execution_milestone not in EXEC_MILESTONES:
+        raise BrainstormError(
+            "execution_milestone must be one of "
+            f"{sorted(EXEC_MILESTONES)} (got {execution_milestone!r})"
+        )
+    else:
+        resolved_em = execution_milestone
 
     out: list[Promotion] = []
     for idea in todo:
-        node = _build_node(nodes, idea, parent_id=parent_id, node_type=node_type)
+        node = _build_node(
+            nodes,
+            idea,
+            parent_id=parent_id,
+            node_type=node_type,
+            execution_milestone=resolved_em,
+        )
         if dry_run:
             nodes = [*nodes, node]
             chunk = "(not written)"

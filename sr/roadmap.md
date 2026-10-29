@@ -18,7 +18,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.2` | handoff status reports review records without a claim | task | Agentic-led | Complete |
 | `M3.3` | Document the canonical chunk key order and offer a deliberate normalisation | task | Agentic-led | Complete |
 | `M3.4` | Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers | task | Agentic-led | Complete |
-| `M3.5` | Converge and evidence passes that cannot silently skip work | task | Agentic-led | Not Started |
+| `M3.5` | Converge and evidence passes that cannot silently skip work | task | Agentic-led | Complete |
 | `M3.6` | Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept | task | Agentic-led | Not Started |
 | `M3.7` | promote writes usable nodes once, with short codenames | task | Agentic-led | Not Started |
 | `M3.8` | Upgrade and validate report drift and migrations plainly | task | Agentic-led | Complete |
@@ -26,7 +26,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Complete |
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Complete |
 | `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Complete |
-| `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |
+| `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Complete |
 | `M3.14` | finish-this-task and pickup detect a planning sheet that is still the scaffold | task | Agentic-led | Complete |
 | `M3.15` | Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter | task | Agentic-led | Complete |
 | `M3.16` | Bring worker_cli and worker_adapters back under the 400-line cap | task | Agentic-led | Complete |
@@ -46,7 +46,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.11` | grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave | task | Agentic-led | Complete |
 | `M4.12` | file-limits function-length check covers TypeScript and JavaScript | task | Agentic-led | Complete |
 | `M4.13` | specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes | task | Agentic-led | Complete |
-| `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Not Started |
+| `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Complete |
 | `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Not Started |
 | `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Not Started |
 | `M4.17` | Review-loop escalation: a root-cause analysis runs when reviews keep blocking | task | Agentic-led | Complete |

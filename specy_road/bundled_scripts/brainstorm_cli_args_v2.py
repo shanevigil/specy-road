@@ -51,7 +51,7 @@ def add_v2_subcommands(sub) -> None:
 
     p = sub.add_parser("evidence", help="write the evidence prompt for shortlisted ideas")
     p.add_argument("idea_id", nargs="*", metavar="IDEA_ID",
-                   help="Ideas to source (default: those recommended strong or consider).")
+                   help="Ideas to source (default: those recommended strong). More than 15 warns.")
     _slug(p)
 
     p = sub.add_parser("add-evidence", help="record one source on an idea (the agent calls this)")

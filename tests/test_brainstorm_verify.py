@@ -72,14 +72,22 @@ def test_evidence_prompt_covers_the_shortlist_only(repo: Path) -> None:
     assert code == 1 and "nothing to source" in err
     _cli(repo, "revise", "B1", "--recommendation", "strong")
     _cli(repo, "revise", "B2", "--recommendation", "park")
+    _cli(repo, "revise", "B3", "--recommendation", "consider")
     code, out, _ = _cli(repo, "evidence")
     assert code == 0 and "1 idea(s)" in out
+    ideas = _prompt(repo, "evidence").split("## Ideas")[1].split("## Record")[0]
+    assert "**B1** One" in ideas and "B2" not in ideas and "B3" not in ideas
     text = _prompt(repo, "evidence")
-    assert "**B1** One" in text and "B2" not in text.split("## Ideas")[1].split("## Record")[0]
     assert "verbatim quote" in text and "disconfirm" in text
     assert "Never claim to have used a named research product" in text
-    code, out, _ = _cli(repo, "evidence", "B3", "B2")
-    assert code == 0 and "2 idea(s)" in out
+    code, out, err = _cli(repo, "evidence", "B3", "B2")
+    assert code == 0 and "2 idea(s)" in out and "warning" not in err
+    for n in range(4, 17):
+        _cli(repo, "add-idea", "--title", f"Idea {n}")
+    code, out, err = _cli(repo, "evidence", *[f"B{n}" for n in range(1, 16)])
+    assert code == 0 and "15 idea(s)" in out and "warning" not in err
+    code, out, err = _cli(repo, "evidence", *[f"B{n}" for n in range(1, 17)])
+    assert code == 0 and "16 idea(s)" in out and "warning: 16 ideas selected" in err
 
 
 def test_add_evidence_builds_a_source_record_and_mirrors_the_url(repo: Path) -> None:
@@ -113,12 +121,12 @@ def test_check_source_states(monkeypatch) -> None:
             raise OSError("down")
         return pages[url]
 
-    assert bv.check_source({"url": "https://example.com/ok", "quote": "exact words"}, fetch) == "retrieved"
+    assert bv.check_source({"url": "https://example.com/ok", "quote": "exact words"}, fetch) == "matched"
     assert bv.check_source({"url": "https://example.com/ok"}, fetch) == "not-found"   # no quote, nothing verified
     assert bv.check_source({"url": "https://example.com/miss", "quote": "exact words"}, fetch) == "not-found"
     # Inline tags are not word breaks; a space before punctuation is dropped on both sides.
     for quote in ("defined in .git/config.", "Export files, then", "files , then"):
-        assert bv.check_source({"url": "https://example.com/inline", "quote": quote}, fetch) == "retrieved"
+        assert bv.check_source({"url": "https://example.com/inline", "quote": quote}, fetch) == "matched"
     assert bv.check_source({"url": "https://example.com/inline", "quote": "thenend"}, fetch) == "not-found"
     assert bv.check_source({"url": "https://example.com/paywall", "quote": "x"}, fetch) == "blocked"
     assert bv.check_source({"url": "https://example.com/gone", "quote": "x"}, fetch) == "not-found"
@@ -152,9 +160,9 @@ def test_verify_asks_before_fetching_and_records_states(repo: Path, monkeypatch)
     code, out, _ = _cli(repo, "verify", "--yes")
     assert code == 0 and sorted(calls) == ["https://example.com/miss", "https://example.com/ok"]
     states = {s["url"]: s["verification"] for s in _session(repo).by_id("B1").sources}
-    assert states == {"https://example.com/ok": "retrieved", "https://example.com/miss": "not-found"}
+    assert states == {"https://example.com/ok": "matched", "https://example.com/miss": "not-found"}
     assert [i.title for i in _session(repo).ideas] == ["One", "Two"]
-    assert "B1 retrieved" in out and "B1 not-found" in out
+    assert "B1 matched" in out and "B1 not-found" in out
     code, out, _ = _cli(repo, "verify", "--yes")
     assert code == 0 and "nothing unverified" in out and len(calls) == 2
 

@@ -25,6 +25,12 @@ roster:
     billing_route: cursor_subscription
     channels:
       cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/cursor-review.sh grok-4.7-high \"<prompt>\""
+  - id: claude-opus-5-5-review
+    family: anthropic
+    roles: [reviewer]
+    harness: claude-code
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/claude-review.sh medium \"<prompt>\""
   - id: gpt-6.1-sol
     family: openai
     roles: [reviewer]

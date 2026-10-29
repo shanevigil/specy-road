@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.review_repo_helpers import diverge, git, make_review_repo, review_text
 from tests.test_review_gate import TWO_FAMILIES
 
 from specy_road.bundled_scripts import mark_implementation_reviewed as mir
@@ -165,3 +165,17 @@ def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, ca
     err = capsys.readouterr().err
     assert "no longer holds at this commit" in err
     assert "verifier `false` exited 1" in err
+
+
+@pytest.mark.parametrize("case", ["clean", "bookkeeping", "code"])
+def test_yes_refuses_while_a_trial_merge_conflicts_on_code(tmp_path: Path, capsys, case: str) -> None:
+    repo = _repo(tmp_path, orchestration=TWO_FAMILIES)
+    diverge(repo, case)
+    _record(repo, "opus")
+    _record(repo, "sol")
+    head = git(repo, "rev-parse", "HEAD")
+    refused = case == "code"
+    assert _run(repo, "--yes") == (1 if refused else 0)
+    assert ("trial merge conflicts on src/a.py" in capsys.readouterr().err) == refused
+    assert _review_state(repo) == ("pending" if refused else "approved")
+    assert (git(repo, "rev-parse", "HEAD") == head) == refused   # no bookkeeping commit when refused
