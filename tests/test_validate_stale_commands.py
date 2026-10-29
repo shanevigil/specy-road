@@ -86,8 +86,14 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands("the specy-road toolkit is") == []
     assert unregistered_commands("Then specy-road frob.") == ["specy-road frob"]
     assert unregistered_commands("specy-road frob M1.2") == ["specy-road frob"]
-    assert unregistered_commands("- the specy-road frob") == ["specy-road frob"]
-    assert unregistered_commands("- Use the specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands("- the specy-road frob") == []
+    assert unregistered_commands("- Use the specy-road frob") == []
+    assert unregistered_commands("- specy-road frob --x") == ["specy-road frob"]
+    assert unregistered_commands("- Run specy-road frob") == ["specy-road frob"]
+    assert unregistered_commands(
+        "- **Adoption prompts** are kept aligned with other specy-road formats that ..."
+    ) == []
+    assert unregistered_commands("# Please specy-road frob") == ["specy-road frob"]
     assert unregistered_commands("## the specy-road frob --x") == ["specy-road frob"]
     assert unregistered_commands("# Please specy-road frob --flag") == ["specy-road frob"]
     assert unregistered_commands("Use the specy-road frob --flag.") == ["specy-road frob"]
@@ -116,10 +122,9 @@ def test_each_occurrence_warns_with_its_line(tmp_path: Path, capsys) -> None:
     assert "AGENTS.md:2" in lines[1] and "`specy-road frob`" in lines[1]
 
 
-def test_the_toolkits_agent_files_follow_the_mention_rule() -> None:
-    assert unregistered_commands((REPO / "AGENTS.md").read_text(encoding="utf-8")) == []
-    # CLAUDE.md's adoption-prompts bullet is a list item, so the token is reported.
-    assert unregistered_commands((REPO / "CLAUDE.md").read_text(encoding="utf-8")) == ["specy-road formats"]
+def test_the_toolkits_agent_files_report_nothing() -> None:
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        assert unregistered_commands((REPO / name).read_text(encoding="utf-8")) == []
 
 
 def test_an_agent_file_that_is_not_utf8_is_skipped(tmp_path: Path, capsys) -> None:

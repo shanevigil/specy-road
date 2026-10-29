@@ -207,17 +207,21 @@ register. Each occurrence is its own warning and names the file line
 (`AGENTS.md:4`); the same name on two lines is two warnings. A registered
 command never warns (`specy-road validate --strict`).
 
-These contexts always warn, even after a determiner and inside a heading: a
-code span, a fenced block, a list item, a run verb (run, exec, execute,
-invoke, uvx), and a token followed by a flag, a path, a quoted argument, an
-id-like argument, or the word command or subcommand (`- the specy-road frob`,
-`## the specy-road frob --x`, and `Use the specy-road frob M1.2.` warn). Only
-then is prose excluded. It is a noun phrase, not a command, when the product
-name is preceded by a determiner, possessive, or preposition — the, a, an,
-this, that, these, those, other, any, all, every, each, its, our, your, their,
-own, of, with, in, for, from, about — and the token is followed by a plain
-word or nothing ("the specy-road toolkit is" and "other specy-road formats
-(templates...)" do not warn). A heading that is only a title is not a command.
+These contexts always warn: a code span, a fenced block, a command-led list
+item, a run verb (run, exec, execute, invoke, uvx), and a token followed by a
+flag, a path, a quoted argument, an id-like argument, or the word command or
+subcommand. A list item is command-led when the product name is the first
+token after the marker, optionally in code or emphasis, or is preceded only
+by a run verb (`- specy-road frob --x` and `- Run specy-road frob` warn). A
+heading is not a special case (`# Please specy-road frob` warns). The only
+exclusion is a noun phrase: the product name is preceded by a determiner,
+possessive, or preposition — the, a, an, this, that, these, those, other, any,
+all, every, each, its, our, your, their, own, of, with, in, for, from, about —
+and the token is followed by a plain word or nothing ("the specy-road toolkit
+is" and "other specy-road formats (templates...)" do not warn). A prose bullet
+that names the product mid-sentence is that same exclusion ("- **Adoption
+prompts** are kept aligned with other specy-road formats that ..." does not
+warn).
 
 #### Upgrading from 0.2.x
 

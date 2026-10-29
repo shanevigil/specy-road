@@ -101,7 +101,6 @@ _FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
 _INLINE_CODE = re.compile(r"`([^`\n]*)`")
 _MENTION = re.compile(r"(?<![\w/.-])(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
-_HEADING = re.compile(r"^[ \t]*#+[ \t]+")
 # The product name is a noun phrase when one of these words is the last word
 # before it on the line ("the specy-road toolkit", "other specy-road formats").
 _NOUN_PHRASE = frozenset({
@@ -117,22 +116,17 @@ def _preceding_words(text: str, start: int) -> list[str]:
     return [word.lower() for word in re.findall(r"[A-Za-z]+", before)[-2:]]
 
 
-def _on_list_item(line: str, start: int) -> bool:
-    """True when the mention sits on a list item, whatever words precede the tool."""
+def _command_led_list_item(line: str, start: int) -> bool:
+    """A list item whose command is the first token, or sits after only a run verb.
+
+    Emphasis and backticks around that token do not count. A prose bullet that
+    mentions the product later in the sentence is not command-led.
+    """
     mark = _LIST_ITEM.match(line)
-    return mark is not None and start >= mark.end()
-
-
-def _heading_title(line: str, start: int) -> bool:
-    """An ATX heading is a title unless it opens with the tool or a run verb."""
-    if _HEADING.match(line) is None:
+    if mark is None or start < mark.end():
         return False
-    gap = re.sub(r"^[ \t]*#+[ \t]*", "", line[:start])
-    gap = re.sub(r"[*_`]+", " ", gap).strip(" \t—–-:|")
-    if not gap:
-        return False
-    first = re.match(r"[A-Za-z]+", gap)
-    return first is None or first.group(0).lower() not in _RUN_VERB
+    words = re.findall(r"[A-Za-z]+", re.sub(r"[*_`]+", " ", line[mark.end():start]))
+    return not words or (len(words) == 1 and words[0].lower() in _RUN_VERB)
 
 
 def _run_verb(line: str, start: int) -> bool:
@@ -149,8 +143,6 @@ def _noun_phrase(line: str, start: int) -> bool:
 
 def _next_token(line: str, start: int) -> str:
     match = _MENTION.match(line, start)
-    if match is None:
-        return ""
     found = re.match(r"[ \t]*(\S+)", line[match.end():])
     return "" if found is None else found.group(1)
 
@@ -172,11 +164,11 @@ def _mandatory_follower(line: str, start: int) -> bool:
     return bool(re.search(r"\d", word))
 
 
-def _reports(line: str, start: int, *, code: bool) -> bool:
-    """Mandatory contexts first; the noun phrase and a heading title only then."""
-    if code or _on_list_item(line, start) or _run_verb(line, start) or _mandatory_follower(line, start):
+def _reports(line: str, start: int) -> bool:
+    """Mandatory contexts first. A noun phrase is the only exclusion."""
+    if _command_led_list_item(line, start) or _run_verb(line, start) or _mandatory_follower(line, start):
         return True
-    if _heading_title(line, start) or _noun_phrase(line, start):
+    if _noun_phrase(line, start):
         return False
     return True
 
@@ -197,7 +189,7 @@ def _command_mentions(lines: list[tuple[int, str]]):
                 yield lineno, tool, name
         plain = _INLINE_CODE.sub(lambda match: " " * len(match.group(0)), line)
         for match in _MENTION.finditer(plain):
-            if _reports(plain, match.start(), code=False):
+            if _reports(plain, match.start()):
                 yield lineno, match.group(1), match.group(2)
 
 
@@ -241,21 +233,22 @@ def unregistered_commands(text: str) -> list[str]:
     (``specy-road frob`` twice). A registered command is never returned
     (``specy-road validate --strict``).
 
-    Mandatory contexts are decided first and win over a noun phrase and over a
-    heading: a code span, a fenced block, a list item (``- the specy-road
-    frob``, ``- Use the specy-road frob``), a run verb (run, exec, execute,
-    invoke, uvx), and a token followed by a flag, a path, a quoted argument,
-    an id-like argument, or the word command or subcommand (``## the
-    specy-road frob --x``, ``Use the specy-road frob --flag.``, ``Use the
-    specy-road frob path/to/file.``, ``Use the specy-road frob "quoted".``,
-    ``Use the specy-road frob M1.2.``, ``Use the specy-road frob command.``).
-    Only then is prose excluded. A noun phrase is the product name preceded on
-    the same line (ignoring whitespace) by a determiner, possessive, or
-    preposition: the, a, an, this, that, these, those, other, any, all, every,
-    each, its, our, your, their, own, of, with, in, for, from, about, when the
-    token is followed by a plain word or nothing (``the specy-road toolkit
-    is``, ``other specy-road formats``). An ATX heading that is only a title
-    is not an instruction.
+    Mandatory contexts are decided first and win over a noun phrase: a code
+    span, a fenced block, a command-led list item (the product name is the
+    first token after the marker, optionally in code or emphasis, or it is
+    preceded only by a run verb: ``- specy-road frob --x``, ``- Run specy-road
+    frob``), a run verb (run, exec, execute, invoke, uvx), and a token followed
+    by a flag, a path, a quoted argument, an id-like argument, or the word
+    command or subcommand (``## the specy-road frob --x``, ``Use the specy-road
+    frob M1.2.``, ``Use the specy-road frob command.``). A heading is not
+    special (``# Please specy-road frob`` warns). The only exclusion is a noun
+    phrase: the product name preceded on the same line (ignoring whitespace)
+    by a determiner, possessive, or preposition — the, a, an, this, that,
+    these, those, other, any, all, every, each, its, our, your, their, own,
+    of, with, in, for, from, about — when the token is followed by a plain
+    word or nothing (``the specy-road toolkit is``, ``other specy-road
+    formats``, and a prose bullet such as ``- **Adoption prompts** are kept
+    aligned with other specy-road formats``).
     """
     return [mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))]
 
