@@ -134,12 +134,12 @@ def _type_args_end(s: str, j: int) -> int | None:
     """Index just past the type arguments at ``j`` (``Map<string, number>``); None for a comparison.
 
     A comparison's ``<`` can pair with a later ``>`` (``a < b, f = () => c > d``).
-    Type arguments hold no ``{``, ``;`` or ``=`` other than ``=>``, so a span that
-    does is not one.
+    That span holds ``=`` outside ``=>``. A type-argument list does not, even when
+    it holds a balanced ``{…}`` (``Map<{ id: string }, number>``).
     """
     end = _angles_end(s, j)
     span = s[j:end].replace("=>", "")
-    if end >= len(s) or any(c in span for c in "{;="):
+    if end >= len(s) or any(c in span for c in ";="):
         return None
     return end
 
@@ -184,14 +184,19 @@ def _declarators(s: str, j: int) -> list[tuple[int, int, str]]:
         if _ch(s, k) == ":" and (k := _type_end(s, k + 1, "=")) is None:
             break
         if _ch(s, k) == "=":
-            body = _arrow_body(s, k + 1)
-            start = _ws(s, k + 1) if body is None else body
+            init = _ws(s, k + 1)
+            body = _arrow_body(s, init)
+            start = init if body is None else body
             if start >= len(s):
                 break
             end = _body_end(s, start)
             if body is not None and name is not None:
                 found.append((name.start(), end, name.group()))
             k = _ws(s, end + 1)
+            # `(x => x + 1), next`: the body ends at the group, the comma is after it.
+            # `(x) => x + 1, next` is a parameter list; its body starts past that `(`.
+            if body is not None and _ch(s, init) == "(" and body < _close(s, init):
+                k = _ws(s, _close(s, init) + 1)
         if _ch(s, k) != ",":
             break
         j = _ws(s, k + 1)

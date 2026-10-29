@@ -62,6 +62,13 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
         ("declarators.ts", [("clamp", 1, 5), ("twice", 7, 1), ("reset", 7, 3)]),
         # A grouped initializer `((x) => { … })` is the arrow, not a parameter list.
         ("parenthesized.ts", [("wrapped", 1, 5), ("after", 6, 1)]),
+        # The comma after a grouped arrow still starts the next declarator.
+        ("grouped_list.ts", [("wrapped", 1, 1), ("after", 1, 6), ("also", 7, 1), ("rest", 7, 1)]),
+        # `{…}` inside a type-argument list does not end the declarator list.
+        (
+            "object_type_arg.ts",
+            [("oversized", 1, 5), ("short", 6, 1)],
+        ),
         # The commas in `Map<string, number>` and `Foo<() => void, T>` do not end the declarator list.
         ("generic_declarator.ts", [("oversized", 1, 5), ("after", 6, 1), ("short", 7, 1)]),
         # A comparison `<` that pairs with a later `>` does not swallow the next declarator.
@@ -123,6 +130,10 @@ def test_scan_reports_over_cap_js_function_with_line(tmp_path: Path, suffix: str
         ("generic_declarator.ts", "generic_declarator.ts:1 function `oversized` 5 lines"),
         # `count < limit, oversized = () => { … count > 0 …` still reports `oversized`.
         ("comparison_declarator.ts", "comparison_declarator.ts:1 function `oversized` 5 lines"),
+        # `(x => x + 1), after = () => {` reports the over-cap `after`.
+        ("grouped_list.ts", "grouped_list.ts:1 function `after` 6 lines"),
+        # `new Map<{ id: string }, number>(), oversized` reports `oversized`.
+        ("object_type_arg.ts", "object_type_arg.ts:1 function `oversized` 5 lines"),
     ],
 )
 def test_scan_measures_concise_arrows_regexes_and_divisions(
@@ -153,6 +164,8 @@ def test_js_function_hard_alert(tmp_path: Path) -> None:
         ("computed_method.ts", "computed_method.ts:4 function `Bag.[Symbol.iterator]` 5 lines"),
         ("generic_declarator.ts", "generic_declarator.ts:1 function `oversized` 5 lines"),
         ("comparison_declarator.ts", "comparison_declarator.ts:1 function `oversized` 5 lines"),
+        ("grouped_list.ts", "grouped_list.ts:1 function `after` 6 lines"),
+        ("object_type_arg.ts", "object_type_arg.ts:1 function `oversized` 5 lines"),
     ],
 )
 def test_validator_does_not_print_ok_with_over_cap_ts_function(
