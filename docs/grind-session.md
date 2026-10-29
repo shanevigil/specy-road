@@ -77,8 +77,8 @@ classification plus a dependency **wave** layout. No git, no pickup.
   own** dependencies are `Complete`, whatever else its wave's predecessors hold.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
   **in parallel right now**, in the order pickup will claim them (the same order
-  as `ready`). `waves` stay sorted by id, because they are the dependency
-  layering you read rather than a dispatch order.
+  as `ready`). `waves` stay sorted by id, because they are the dependency layering you read rather than a dispatch order.
+  No set holds two leaves sharing a touch zone (the same path, or one a directory prefix of the other): the later one moves to the next set, and `zone_overlaps` (`node_id`, `waits_for`, `zones`) names the overlap; dispatch it once `waits_for` lands.
 - **`gated`** / **`gates_open`** — leaves stuck behind an open human gate, and
   the gate ids that need a PM decision.
 
@@ -162,7 +162,7 @@ dispatched until `M10.5` completes.
     {"index": 1, "node_ids": ["M10.5"]},
     {"index": 2, "node_ids": ["M11.1"]}
   ],
-  "parallel_batches": [["M10.3", "M10.4"]],
+  "parallel_batches": [["M10.3", "M10.4"]], "zone_overlaps": [],
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
