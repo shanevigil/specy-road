@@ -11,6 +11,7 @@ from specy_road.cli import REPLACED_COMMANDS, registered_agent_command_names
 from specy_road.managed_block import agent_file_lines_outside_block
 from specy_road.runtime_paths import git_root
 
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 # Emphasis directly attached to the product name is markup, so "_" is not a word
 # boundary there. A "_" inside an identifier (foo_specy-road) still blocks.
 _MENTION = re.compile(
@@ -248,6 +249,77 @@ def _code_spans(line: str) -> list[tuple[int, int, str]]:
     return spans
 
 
+def _fence_marker(line: str) -> tuple[str, int, int] | None:
+    match = _FENCE.match(line)
+    if match is None:
+        return None
+    run = match.group(1)
+    return run[0], len(run), match.end()
+
+
+def _opening_is_code_span(line: str) -> bool:
+    lead = len(line) - len(line.lstrip(" \t"))
+    if lead >= len(line) or line[lead] != "`":
+        return False
+    for start, end, _content in _code_spans(line):
+        if start == lead:
+            return True
+    return False
+
+
+def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
+    marker = _fence_marker(line)
+    if marker is None:
+        return False
+    char, width, end = marker
+    if char != open_fence[0] or width < open_fence[1]:
+        return False
+    return not line[end:].strip()
+
+
+def _inside_span(index: int, spans: list[tuple[int, int, str]]) -> bool:
+    return any(start <= index < end for start, end, _ in spans)
+
+
+def _mentions_in_fenced_line(lineno: int, line: str):
+    for tool, name in _MENTION.findall(line):
+        yield lineno, tool, name
+
+
+def _mentions_on_open_line(lineno: int, line: str):
+    spans = _code_spans(line)
+    for span_start, _, content in spans:
+        parsed = _span_command_token(line, span_start, content)
+        if parsed is not None:
+            product_start, tool, token = parsed
+            if _reports(line, product_start):
+                yield lineno, tool, token
+        else:
+            for tool, name in _MENTION.findall(content):
+                yield lineno, tool, name
+    for match in _MENTION.finditer(line):
+        if _inside_span(match.start(), spans):
+            continue
+        if _reports(line, match.start()):
+            yield lineno, match.group(1), match.group(2)
+
+
+def _command_mentions(lines: list[tuple[int, str]]):
+    open_fence: tuple[str, int] | None = None
+    for lineno, line in lines:
+        if open_fence is not None:
+            if _fence_closes(line, open_fence):
+                open_fence = None
+                continue
+            yield from _mentions_in_fenced_line(lineno, line)
+            continue
+        marker = _fence_marker(line)
+        if marker is not None and not _opening_is_code_span(line):
+            open_fence = (marker[0], marker[1])
+            continue
+        yield from _mentions_on_open_line(lineno, line)
+
+
 def _occurrences(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
     registered = registered_agent_command_names()
     found: list[tuple[int, str]] = []
@@ -298,6 +370,3 @@ def warn_unregistered_commands(root: Path) -> None:
                 f"command in specy-road {__version__}; {advice}.",
                 file=sys.stderr,
             )
-
-
-from specy_road.bundled_scripts.validate_stale_mentions import _command_mentions  # noqa: E402
