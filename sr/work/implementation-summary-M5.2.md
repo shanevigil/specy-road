@@ -201,18 +201,20 @@ the product name, and the follower is not a plain word once those markers stay o
 
 ## Touch zones
 
-Final list: `specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `tests/`,
+Final list: `specy_road/bundled_scripts/validate_stale_commands.py`,
+`specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `tests/`,
 `docs/install-and-usage.md`, and `AGENTS.md` (the title needs the determiner `the` once a
 heading is no longer an exclusion).
 `specy_road/managed_block.py` was listed but did not need changing. The scanner skips the
-managed block by the `HTML_COMMENT` markers and keeps the file's line numbers; it no longer
-calls `_split`.
+managed block via `HTML_COMMENT` markers in `_lines_outside_block` and keeps the file's line
+numbers; it does not call `managed_block._split`.
 
 ## Verification
 
 - `python -m pytest -q` (after review round 1): 2258 passed, 2 skipped. Not re-run after round 2.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 9): 8 passed.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 15): 8 passed in 0.63s. `specy-road file-limits`: OK.
+- Executor `composer-2.5` at `ca6199b`: `python -m pytest -q tests/test_validate_stale_commands.py` (8 passed in 0.81s), `specy-road file-limits` OK, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` OK, `specy-road validate --repo-root .` emits no stale-command warning.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -223,21 +225,23 @@ calls `_split`.
 
 ## Added
 
-- Sets `_NOUN_PHRASE` and `_RUN_VERB` (validate_roadmap.py): the determiner/possessive/preposition words that make a noun phrase, and the run verbs that still count as a command after one of those words (A1, A3).
-- Helper `_preceding_words` (validate_roadmap.py): the last two words before the product name, so "the specy-road toolkit" and "run the specy-road project" are told apart.
-- Helper `_command_led_list_item` (validate_roadmap.py): a list item reports when the product name is the first token after the marker (emphasis and backticks ignored) or is preceded only by a run verb (A1). Replaces `_on_list_item`, which treated every bullet as a command. `_heading_title` and `_HEADING` are gone; a heading is not an exclusion (A1).
-- Helper `_run_verb` (validate_roadmap.py): `run` / `exec` / `execute` / `invoke` / `uvx` immediately before the product name, or before one noun-phrase word (A1).
+- Module `validate_stale_commands.py`: scanner, registration filter, and stderr warnings (A1–A3); re-exported from `validate_roadmap.py` for tests and `validate_at`.
+- Sets `_NOUN_PHRASE` and `_RUN_VERB` (validate_stale_commands.py): the determiner/possessive/preposition words that make a noun phrase, and the run verbs that still count as a command after one of those words (A1, A3).
+- Helper `_preceding_words` (validate_stale_commands.py): the last two words before the product name, so "the specy-road toolkit" and "run the specy-road project" are told apart.
+- Helper `_command_led_list_item` (validate_stale_commands.py): a list item reports when the product name is the first token after the marker (emphasis and backticks ignored) or is preceded only by a run verb (A1). Replaces `_on_list_item`, which treated every bullet as a command. `_heading_title` and `_HEADING` are gone; a heading is not an exclusion (A1).
+- Helper `_run_verb` (validate_stale_commands.py): `run` / `exec` / `execute` / `invoke` / `uvx` immediately before the product name, or before one noun-phrase word (A1).
 - Helper `_noun_phrase` (validate_stale_commands.py): the noun-phrase exclusion, applied only when no mandatory context matched and the determiner or preposition is the token immediately before the product name; emphasis markers attached to the name are stripped first (A3, review round 10).
-- Helper `_next_token` / `_mandatory_follower` (validate_roadmap.py): a flag, path, quote, id-like argument, or the word `command`/`subcommand` after the token reports even inside a noun phrase or a heading (A1). Replaces `_followed_by_command_word`.
-- Helper `_reports` (validate_roadmap.py): mandatory contexts first; a noun phrase is the only exclusion. The `code` parameter is gone; code spans are yielded before this helper.
-- Helper `_occurrences` (validate_roadmap.py): every unregistered mention with its line number, without collapsing repeats (A1).
-- Helper `_lines_outside_block` (validate_roadmap.py): drops managed-block lines but keeps the file's line numbers for the warning.
-- Helper `_registered_names` (validate_roadmap.py): the specy-road and specyrd command sets the filter uses.
+- Helpers `_follower_tokens`, `_strip_prose_punctuation`, `_plain_follower`, `_mandatory_follower` (validate_stale_commands.py): mandatory follower detection and plain-word noun-phrase tail (A1).
+- Helper `_reports` (validate_stale_commands.py): mandatory contexts first; a noun phrase is the only exclusion. Code spans are yielded before this helper runs on plain text.
+- Helper `_occurrences` (validate_stale_commands.py): every unregistered mention with its line number, without collapsing repeats (A1).
+- Helper `_lines_outside_block` (validate_stale_commands.py): drops managed-block lines but keeps the file's line numbers for the warning.
+- Helper `_registered_names` (validate_stale_commands.py): the specy-road and specyrd command sets the filter uses.
 - Helper `_fence_marker` / `_fence_closes` (validate_stale_commands.py): fence character and length; a closer needs the same character, length >= the opener, and no info string after the run (A1, review rounds 10–11).
 - Helper `_command_mentions` (validate_stale_commands.py): walks every line and yields the tokens `_reports` keeps, including lines inside a fence that a shorter or different marker did not close (A1).
-- Helper `unregistered_commands` (validate_roadmap.py, public): drops registered names and keeps every remaining occurrence. Its docstring states the precedence rule.
-- Helper `warn_unregistered_commands` (validate_roadmap.py, public): one warning per occurrence, with the file line number, wired into `validate_at`.
-- Helper `_backtick_run` / `_code_spans` (validate_roadmap.py): a CommonMark code span, N backticks closed by the next run of N. Replaces `_INLINE_CODE`, which stopped at the next single backtick (A1).
+- Helper `unregistered_commands` (validate_stale_commands.py, public): drops registered names and keeps every remaining occurrence. Its docstring states the precedence rule.
+- Helper `warn_unregistered_commands` (validate_stale_commands.py, public): one warning per occurrence, with the file line number; `validate_roadmap.validate_at` calls it (A1).
+- Helper `_backtick_run` / `_code_spans` (validate_stale_commands.py): a CommonMark code span, N backticks closed by the next run of N. Replaces `_INLINE_CODE`, which stopped at the next single backtick (A1).
+- Wire-in `validate_roadmap.py`: import and `warn_unregistered_commands(root)` in `validate_at` next to other agent-file checks (A1).
 - Helper `_first_meaningful_follower` (validate_stale_commands.py): the next real token after the command name. Mandatory and plain checks stop there, so a later flag does not cancel a noun phrase (A1, review round 14).
 - Helper `_opening_is_code_span` (validate_stale_commands.py): a line-start backtick run that closes on the same line is scanned as a code span, not a fence opener (A1, review round 13).
 - Regex `_MENTION` (validate_stale_commands.py): emphasis markers attached to the product name or the token are markup, so `_` directly before the name is not a word boundary, and a word character after the token is not trailing emphasis (A1, review rounds 12–15).
