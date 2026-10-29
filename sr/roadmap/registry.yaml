@@ -60,19 +60,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave
-    node_id: M4.11
-    branch: feature/rm-grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave
-    touch_zones:
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/orchestrate_plan.py
-      - docs/grind-session.md
-      - docs/orchestration.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: file-limits-function-length-check-covers-typescript-and-javascript
     node_id: M4.12
     branch: feature/rm-file-limits-function-length-check-covers-typescript-and-javascript

@@ -362,7 +362,7 @@ Records are `work/.sessions/<agent-id>.yaml` (gitignored, main worktree): branch
 `$SPECY_ROAD_AGENT_ID`, else `<user>-s<POSIX session id>`, shared by every command from one terminal or harness process, so
 `start`, `touch`, `end` and the hook name one record; `--agent` names it; `touch` keeps the paths. A crashed record ages
 out; one that will not load counts as live to the guard until fixed or deleted. `handoff status` lists live sessions first,
-`do-next-available-task` warns on touch-zone overlap, and `session check` refuses a commit on another live session's paths.
+`do-next-available-task` warns on touch-zone overlap, `grind-session --plan` and `orchestrate plan` never put two ready leaves sharing a zone in one parallel batch, and `session check` refuses a commit on another live session's paths.
 
 ## Working in one shared checkout
 

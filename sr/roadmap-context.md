@@ -27,6 +27,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.11` Roster ids with effort suffixes, packet path, stale sessions `roster-profiles-and-packet-path` — task — **Not Started**
   - `M3.12` A baseline gate runs on the integration branch before pickup `a-baseline-gate-runs-on-the-integration-branch-before-pickup` — task — **Not Started**
   - `M3.13` A trial merge with the integration branch runs before review and before finish `a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` — task — **Not Started**
+  - `M3.14` finish-this-task and pickup detect a planning sheet that is still the scaffold `finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold` — task — **Not Started**
+  - `M3.15` Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter `read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter` — task — **Not Started**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
   - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**
@@ -38,7 +40,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.8` list-nodes --json, refresh-stubs --diff, move-node zone rewrite `graph-listing-and-moves` — task — **Complete**
   - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Complete**
   - `M4.10` Clean up merged feature branches after finish `branch-cleanup` — task — **Complete**
-  - `M4.11` grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave `grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` — task — **Not Started**
+  - `M4.11` grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave `grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` — task — **Complete**
   - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Not Started**
   - `M4.13` specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes `specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` — task — **Not Started**
   - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Not Started**
@@ -56,6 +58,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **Not Started**
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Not Started**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
+- `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
+  - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Not Started**
+  - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**
+  - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
+  - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Not Started**
+  - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
+  - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Not Started**
+  - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
 
 ## Claimed and in flight
 
@@ -64,8 +74,9 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M3.12` on `feature/rm-a-baseline-gate-runs-on-the-integration-branch-before-pickup` since 2026-10-28
 - `M3.13` on `feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish` since 2026-10-28
-- `M4.11` on `feature/rm-grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave` since 2026-10-28
+- `M3.15` on `feature/rm-read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter` since 2026-10-28
 - `M4.12` on `feature/rm-file-limits-function-length-check-covers-typescript-and-javascript` since 2026-10-28
+- `M4.13` on `feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` since 2026-10-28
 - `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
 
 ## Reaching the detail behind this
