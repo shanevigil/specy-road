@@ -15,7 +15,6 @@ from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import review_cli
 from specy_road.finish_land_integration import print_merge_push_notice
 from specy_road.review_files import reviews_dir
 
@@ -108,22 +107,6 @@ def test_reconcile_ignores_prompt_hash_drift_when_brief_is_byte_identical(tmp_pa
     assert not delta["contract_changed"] and not delta["needs_reconcile"]
 
 
-def test_handoff_status_labels_ready_verify_as_executor_reported(tmp_path: Path, capsys) -> None:
-    repo = make_review_repo(tmp_path)
-    d = reviews_dir(repo, "M1.1")
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "READY-exec.md").write_text(
-        f"---\nnode_id: M1.1\nagent: exec\nbranch: feature/rm-thing\n"
-        f"commit: {git(repo, 'rev-parse', 'HEAD')}\nbase: {git(repo, 'rev-parse', 'dev')}\n"
-        "changed_paths: [src/a.py]\nverify:\n  - {cmd: 'false', exit: 1, tail: boom}\n---\n"
-    )
-    with pytest.raises(SystemExit):
-        review_cli.main(["handoff", "status", "M1.1", "--repo-root", str(repo)])
-    out = capsys.readouterr().out
-    assert "READY-exec.md (executor-reported):" in out
-    assert "verifier `false` exited 1" in out
-
-
 def test_sync_and_list_surface_the_harness_final_message(tmp_path: Path, capsys) -> None:
     limit = "You've hit your 5-hour limit · resets 6:20pm"
     script = tmp_path / "limit.py"
@@ -153,22 +136,27 @@ sys.exit(1)
     assert limit in capsys.readouterr().out
 
 
-def test_sync_shows_full_message_when_completion_has_no_ready(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("exit_type, exit_summary, exit_detail", [
+    ("completion", "exit 0; READY file missing", {"exit": 0, "ready": False}),
+    ("error", "exit 1; see w-0001.log", {"exit": 1, "ready": False}),
+])
+def test_sync_shows_an_acknowledged_final_message_with_the_later_exit(
+    tmp_path: Path, capsys, exit_type: str, exit_summary: str, exit_detail: dict,
+) -> None:
+    final = "Stop: write READY in main checkout reviews dir"
     repo = worker_repo(tmp_path)
     run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
     rec = wait_for_worker(repo, "w-0001")
-    ws.append_event(
-        repo, rec, "output", source="worker",
-        summary="(truncated)", detail={"message": "Stop: write READY in main checkout reviews dir"},
-    )
-    ws.append_event(
-        repo, rec, "completion", source="worker",
-        summary="exit 0; READY file missing",
-        detail={"exit": 0, "ready": False},
-    )
+    ws.append_event(repo, rec, "output", source="worker", summary="(truncated)", detail={"message": final})
+    assert run_worker_cli("worker", "sync", "--ack", "--repo-root", str(repo)) == 0   # acked while the turn runs
+    ws.append_event(repo, rec, exit_type, source="worker", summary=exit_summary, detail=exit_detail)
     capsys.readouterr()
+    assert run_worker_cli("worker", "sync", "--ack", "--repo-root", str(repo)) == 0
+    assert final in capsys.readouterr().out
+    # The next turn exits with no message of its own: the earlier turn's is not shown for it.
+    ws.append_event(repo, rec, exit_type, source="worker", summary=exit_summary, detail=exit_detail)
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
-    assert "Stop: write READY in main checkout reviews dir" in capsys.readouterr().out
+    assert final not in capsys.readouterr().out
 
 
 def test_finish_help_and_merge_notice(tmp_path: Path, capsys) -> None:

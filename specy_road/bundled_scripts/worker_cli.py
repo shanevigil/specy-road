@@ -61,10 +61,18 @@ def _line(rec, repo: Path | None = None) -> str:
     return line
 
 
+def _ends_turn(e: dict[str, Any]) -> bool:
+    """The wrapper's own exit record: a completion, or an error carrying the exit code."""
+    return e.get("type") == "completion" or (e.get("type") == "error" and "exit" in (e.get("detail") or {}))
+
+
 def _harness_message_before(events: list[dict[str, Any]], seq: int) -> str | None:
+    """The last full harness message of the turn that ``seq`` ends; never an earlier turn's."""
     for e in reversed(events):
         if e["seq"] >= seq:
             continue
+        if _ends_turn(e):
+            return None
         if e.get("source") != "worker":
             continue
         msg = (e.get("detail") or {}).get("message")
@@ -187,8 +195,9 @@ def cmd_sync(ns: argparse.Namespace) -> int:
         lines.append(f"{w['worker_id']} {w['node_id']} {w['state']} lease={w['lease']} epoch={w['epoch']}{flags}")
         lines += [f"  ! gap: event(s) #{a}" + (f"–#{b}" if b > a else "") + " missing from the log (lost or unreadable)"
                   for a, b in w["gaps"]]
-        evs = w["events"]
-        lines += [line for e in evs for line in _sync_event_lines(evs, e)]
+        # The whole log, not the delta: the final message may have been acked before the exit event.
+        history = [e.to_dict() for e in events_since(root, w["worker_id"])]
+        lines += [line for e in w["events"] for line in _sync_event_lines(history, e)]
     if not lines:
         lines = ["No new worker events."]
     elif not ns.ack:
