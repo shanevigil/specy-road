@@ -1,19 +1,5 @@
 version: 1
 entries:
-  - codename: stale-command-check
-    node_id: M5.2
-    branch: feature/rm-stale-command-check
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - AGENTS.md
-      - docs/install-and-usage.md
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/cli.py
-      - specy_road/managed_block.py
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: project-setup
     node_id: M1.1
     branch: feature/rm-project-setup
@@ -42,28 +28,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
-    node_id: M4.17
-    branch: feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/schemas/
-      - specy_road/orchestration_config.py
-      - specy_road/templates/project/roadmap/
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - specy_road/review_files.py
-      - specy_road/review_rca.py
-      - specy_road/templates/project/schemas/
-      - schemas/
-      - specy_road/templates/specyrd/commands/
-      - docs/orchestration.md
-      - docs/pm-llm-review.md
-      - tests/
-      - docs/design-notes/review-loop-rca.md
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: brainstorm-converge-checks
     node_id: M3.5
     branch: feature/rm-brainstorm-converge-checks
@@ -86,6 +50,9 @@ entries:
     node_id: M4.14
     branch: feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor
     touch_zones:
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_promote.py
       - specy_road/brainstorm_promote.py
       - specy_road/brainstorm_cli.py
       - docs/brainstorming.md
@@ -97,12 +64,26 @@ entries:
     node_id: M3.17
     branch: feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
     touch_zones:
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/templates/project/work/review-record.template.md
       - specy_road/review_gate.py
       - specy_road/review_files.py
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/schemas/
       - specy_road/templates/specyrd/
       - docs/orchestration.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
+  - codename: bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
+    node_id: M3.18
+    branch: feature/rm-bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/bundled_scripts/validate_stale_commands.py
+      - specy_road/bundled_scripts/validate_stale_mentions.py
       - tests/
     started: '2026-10-29'
     owner: savigil

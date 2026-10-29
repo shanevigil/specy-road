@@ -91,11 +91,36 @@ _ARCHIVE_COMMANDS = (
 )
 
 
+# Commands an agent file may still name that are not registered, each with what
+# to run instead ("" when nothing replaces it). `validate` names the replacement
+# when AGENTS.md or CLAUDE.md mentions one.
+REPLACED_COMMANDS = {
+    "specy-road grind": "specy-road grind-session",
+    "specy-road pm-sync": "specy-road sync",
+    "specy-road backfill-activity": "",   # last-worked dates are derived from git
+}
+
+
 def _known_commands() -> list[str]:
     return sorted(
         {*_SCRIPTS, *_FORWARDED, *_CRUD_COMMANDS, *_ARCHIVE_COMMANDS,
          "scaffold-constitution", "init", "gui"}
     )
+
+
+def registered_agent_command_names() -> dict[str, set[str]]:
+    """Registered ``specy-road`` / ``specyrd`` subcommand names for agent-file checks."""
+    from specy_road.specyrd_cli import _build_parser as _specyrd_parser
+
+    specyrd = next(
+        a
+        for a in _specyrd_parser()._actions
+        if isinstance(a, argparse._SubParsersAction)
+    )
+    return {
+        "specy-road": {*_known_commands(), "version"},
+        "specyrd": set(specyrd.choices),
+    }
 
 
 def _did_you_mean(cmd: str) -> list[str]:

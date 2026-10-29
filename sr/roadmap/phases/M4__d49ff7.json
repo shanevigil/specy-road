@@ -2,6 +2,36 @@
   "nodes": [
     {
       "acceptance": [
+        "handoff status and review list report, per leaf, the number of review rounds (distinct reviewed commits) and the elapsed time from the first review to the latest",
+        "docs/orchestration.md states that two or more review rounds per leaf are normal under a two-family policy",
+        "doctor also lists detached worktrees of the repository (for example ones a review recipe left behind) and, with --fix, removes those with no uncommitted changes"
+      ],
+      "codename": "review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees",
+      "dependencies": [
+        "106e6277-f3ec-46b6-939f-9a213b27c38f",
+        "9bd48271-4b15-475a-b3a1-3fae67e10fb7"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.16",
+      "node_key": "d49ff77b-d845-4e5d-85f3-deedc56bbe1b",
+      "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.16_review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees_d49ff77b-d845-4e5d-85f3-deedc56bbe1b.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "Review rounds and elapsed time per leaf, and doctor lists detached worktrees",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "docs/orchestration.md",
+        "docs/pm-llm-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
         "First, fold the two review-loop RCA research reports (/Users/savigil/WORKSPACE/specy-road/work/research-reports/openai-review-loop-rca.md and claude-review-loop-rca.md, untracked, read by absolute path) into docs/design-notes/review-loop-rca.md: where they agree, the trigger thresholds and signals adopted, the RCA protocol and record schema adopted, and what is deferred; the remaining criteria follow that note and may be adjusted to it",
         "handoff status and review list detect non-convergence from the leaf's review records: 3 consecutive blocking reviews citing the same acceptance id, or 5 review rounds in total (both thresholds configurable in roadmap/orchestration.yaml policy)",
         "When triggered, handoff status reports escalated and names the trigger; prompt --role rca builds a root-cause prompt from the leaf's review history, brief, acceptance and diffs, asking for a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence and the cheapest corrective action, including a proposed acceptance rewrite when the class is specification",
@@ -18,7 +48,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.17_review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking_01517858-1959-47e2-97ce-951e486d9aca.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review-loop escalation: a root-cause analysis runs when reviews keep blocking",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",

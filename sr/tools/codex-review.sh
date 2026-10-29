@@ -7,4 +7,4 @@ PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:$PATH
 export PATH
 exec codex exec -m "$model" -s workspace-write \
   --add-dir /Users/savigil/WORKSPACE/specy-road/sr/work/reviews \
-  --skip-git-repo-check "$prompt"
+  --skip-git-repo-check "$prompt" </dev/null

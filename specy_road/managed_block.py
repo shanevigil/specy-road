@@ -173,3 +173,24 @@ def remove_managed_block(path: Path, *, style: MarkerStyle = HASH) -> str:
         return UNCHANGED
     rest = (before.rstrip("\n") + "\n" + after).lstrip("\n") if after.strip() else before
     return _write(path, rest, UPDATED)
+
+
+def agent_file_lines_outside_block(
+    text: str, *, style: MarkerStyle = HTML_COMMENT
+) -> list[tuple[int, str]]:
+    """Non-managed lines of an agent file, with original 1-based line numbers."""
+    start = text.find(style.start)
+    if start < 0:
+        stop = -1
+    else:
+        end = text.find(style.end, start)
+        stop = len(text) if end < 0 else end + len(style.end)
+    kept: list[tuple[int, str]] = []
+    offset = 0
+    for number, raw in enumerate(text.splitlines(keepends=True), 1):
+        line_end = offset + len(raw)
+        inside = start >= 0 and offset < stop and line_end > start
+        if not inside:
+            kept.append((number, raw.rstrip("\r\n")))
+        offset = line_end
+    return kept
