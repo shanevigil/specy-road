@@ -348,18 +348,25 @@ guidance; an upgrade that breaks the guidance shows up here before adopters
 hit it. The harness runs the cases; no `specy-road` command does.
 
 1. Per case, in a fresh copy of its `app` set up as `setup` says, open a
-   **fresh** session of each listed harness and send `prompt` verbatim as
-   the first message (`<ID>`, `<slug>`, `<harness>` filled in). Add nothing
-   that names the rule under test.
+   **fresh** session of each listed harness and send the prompt as the
+   first message, adding nothing that names the rule under test. `<ID>` is
+   the leaf the setup claimed, `<slug>` its codename, `<harness>` the
+   harness under test and `<roster id>` its executor roster entry. A text
+   `prompt` is sent verbatim with those filled in. A mapping is resolved,
+   never paraphrased: in the app's git root, with the candidate
+   `specy-road` and at the point `setup` names (else its end), run
+   `command`, then send the whole text of the file `send` names.
 2. When the session stops, read each `pass` item's `artifact` and compare it
    with `expect`. A run passes only if every item holds; the model's own
    account of what it did is not evidence.
 3. Repeat for `runs` runs, each from a fresh app copy.
 4. Record in `work/context-regressions-<YYYY-MM-DD>.md`: toolkit commit,
    harness versions, model ids, and per case and harness the passes out of
-   `runs`, with the failing artifact quoted. Compare with the previous
-   results file: a case and harness that passed every run before and now
-   fails any run is a regression. Record it as a FAIL here (it blocks an rc)
+   `runs`, with the failing artifact quoted. For a rendered prompt also
+   record `<ID>`, `<roster id>`, the app commit it was rendered at and the
+   file's `sha256`, so anyone can render it again and compare. Compare
+   with the previous results file: a case and harness that passed every run
+   before and now fails any run is a regression. Record it as a FAIL here (it blocks an rc)
    and triage it before the upgraded version is named in §0.
 
 Few runs catch gross breaks, not subtle shifts; read a single failure as a
@@ -369,7 +376,9 @@ signal to rerun, a repeated one as a regression.
 (`CR<n>`), `title`, `source` (repo paths of the review-round tests or notes
 it came from, `path::test` or `path#anchor`), `app` (`todo`, `calculator`
 or `notes`), `harnesses` (`claude-code`, `codex`, `cursor`), optional
-`setup`, `prompt` (the outcome a user would ask for, never the rule), `pass`
-(items of `artifact`, a file or a git or `specy-road` read, and `expect`)
+`setup`, `prompt` (the outcome a user would ask for, never the rule; or a
+mapping of `command`, a `specy-road prompt` line, and `send`, the file it
+writes), `pass` (items of `artifact`, a file or a git or `specy-road` read,
+and `expect`; an `expect` may name an outcome that fails the run outright)
 and `runs`. `tests/test_context_regressions.py` holds the schema and checks
 the file against it. Replace a case rather than adding an eleventh.
