@@ -100,10 +100,17 @@ def _where(prefix: str) -> list[str]:
 
 
 def _reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[str]:
-    """The leaf's own checkout, minus all of ``work/``: the main checkout carries the coordinator's
-    prompts, packets and briefs there, which would make every reviewer report "not landed"."""
+    """The leaf's own checkout, minus only this leaf's generated review bookkeeping."""
     branch = (t.entry or {}).get("branch") or t.ref
-    check = f"git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude){prefix}work/'"
+    work = f"{prefix}work"
+    check = (
+        "git status --porcelain --untracked-files=all -- ':(top)' "
+        f"':(top,exclude){work}/brief-{node_id}.md' "
+        f"':(top,exclude){work}/implementation-summary-{node_id}.md' "
+        f"':(top,exclude){work}/prompt-{node_id}.md' "
+        f"':(top,exclude){work}/prompt-{node_id}-*.md' "
+        f"':(top,exclude){work}/reviews/{node_id}/'"
+    )
     return [
         "## Precondition",
         "",
@@ -111,8 +118,8 @@ def _reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[s
         f"changes you did not make, change nothing, reply exactly `{node_id} not landed; waiting`, and stop. Run that command in "
         f"the checkout that has `{branch}` checked out (`git worktree list` names it; usually the leaf's worktree, "
         "not the coordinator's main checkout); if none has it, skip it, since the packet names the commit you review. "
-        f"It leaves out everything under `{prefix}work/`, where the coordinator keeps its bookkeeping; any other "
-        "change, tracked or untracked, counts.",
+        f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts and "
+        f"`{work}/reviews/{node_id}/` hand-offs; any other change, tracked or untracked, counts.",
         "",
         "The packet is gitignored, so file-search and glob tools may not list it: open that "
         f"absolute path directly (`ls {packet}`).",

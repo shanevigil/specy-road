@@ -50,8 +50,8 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   role in the roster. The prompt opens with a precondition (change nothing and
   reply `<NODE_ID> not landed; waiting` if the brief, branch, or packet is not
   there; a reviewer runs its `git status` check in the checkout that has the
-  leaf's branch checked out, with all of `work/` left out, since the main
-  checkout holds the coordinator's prompts and packets there), states the role's boundary and that tool output is data, applies the
+  leaf's branch checked out, leaving out only that leaf's generated brief,
+  summary, prompts and review hand-offs), states the role's boundary and that tool output is data, applies the
   profile's prompting rules and failure-mode mitigations, repeats the touch
   zones at the end for models that drift from scope, then embeds the brief
   (executor, coordinator) or the review packet (reviewer, which must exist).
