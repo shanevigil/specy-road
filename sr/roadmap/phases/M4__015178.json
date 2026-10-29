@@ -31,7 +31,11 @@
         "docs/orchestration.md",
         "docs/pm-llm-review.md",
         "tests/",
-        "docs/design-notes/review-loop-rca.md"
+        "docs/design-notes/review-loop-rca.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/schemas/",
+        "specy_road/orchestration_config.py",
+        "specy_road/templates/project/roadmap/"
       ],
       "type": "task"
     }

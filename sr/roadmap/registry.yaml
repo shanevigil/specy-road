@@ -99,6 +99,10 @@ entries:
     node_id: M4.17
     branch: feature/rm-review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking
     touch_zones:
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/schemas/
+      - specy_road/orchestration_config.py
+      - specy_road/templates/project/roadmap/
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/review_gate.py
       - specy_road/review_files.py
