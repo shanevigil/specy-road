@@ -106,7 +106,8 @@ entries:
       - tests/
     started: '2026-10-28'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-10-29T05:59:37+00:00'
   - codename: roster-profiles-and-packet-path
     node_id: M3.11
     branch: feature/rm-roster-profiles-and-packet-path
