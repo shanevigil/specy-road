@@ -72,3 +72,15 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: rule-provenance
+    node_id: M5.1
+    branch: feature/rm-rule-provenance
+    touch_zones:
+      - specy_road/templates/specyrd/agents-md-block.md
+      - specy_road/templates/specyrd/claude-md-block.md
+      - specy_road/agents_md_block.py
+      - specy_road/agent_guide_block.py
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
