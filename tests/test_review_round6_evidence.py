@@ -59,7 +59,7 @@ def test_committed_rename_into_the_zone_is_reported_on_both_sides(tmp_path: Path
     repo = _rename_into_zone(tmp_path, "docs/old name.md", "src/old name.md")
     assert "R100" in git(repo, "diff", "--name-status", "dev...HEAD")   # git does see the rename
     t = resolve_target(repo, "M1.1")
-    paths, lines = rp._changed(repo, t)
+    paths, lines = rp.changed_paths_section(repo, t)
     assert "docs/old name.md" in paths and "src/old name.md" in paths
     assert any("docs/old name.md" in ln and "outside touch zones" in ln for ln in lines)
     assert "docs/old name.md" in wr._changed_since(repo, t.base)
@@ -69,7 +69,7 @@ def test_committed_rename_into_the_zone_is_reported_on_both_sides(tmp_path: Path
 def test_rename_out_of_the_zone_keeps_the_source_inside_it(tmp_path: Path) -> None:
     repo = _rename_into_zone(tmp_path, "src/keep me.py", "docs/keep me.py")
     t = resolve_target(repo, "M1.1")
-    paths, lines = rp._changed(repo, t)
+    paths, lines = rp.changed_paths_section(repo, t)
     assert "src/keep me.py" in paths and "docs/keep me.py" in paths
     assert any("docs/keep me.py" in ln and "outside touch zones" in ln for ln in lines)
     assert not any("src/keep me.py" in ln and "outside" in ln for ln in lines)

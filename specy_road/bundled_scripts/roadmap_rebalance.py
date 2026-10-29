@@ -20,6 +20,11 @@ Algorithm (deterministic):
    pre-call state.
 
 Idempotent: running on an already-balanced repo is a no-op.
+
+``--normalize`` skips the re-pack: every included chunk is re-rendered in
+canonical form (sorted keys, ``{"nodes": [...]}``) with its nodes in the same
+chunk and the same order, and the manifest is left alone. It is the deliberate,
+one-time version of the rewrite the first edit of a hand-authored chunk does.
 """
 
 from __future__ import annotations
@@ -31,6 +36,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
 from specy_road.bundled_scripts.roadmap_chunk_router import validate_callback
 from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
+    all_chunks_in_manifest_order,
     chunk_max_lines,
     load_merged_nodes,
     phase_ancestor_id,
@@ -39,6 +45,7 @@ from specy_road.bundled_scripts.roadmap_chunk_router_pick import (
 )
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     build_node_chunk_map,
+    load_chunk_nodes,
     load_manifest_mapping,
     render_json_chunk,
     roadmap_dir,
@@ -254,6 +261,41 @@ def apply_pack_plan(root: Path, plan: _PackPlan) -> None:  # noqa: C901 — base
         raise
 
 
+def build_normalize_plan(root: Path) -> dict[Path, list[dict]]:
+    """Included chunks whose bytes differ from their canonical rendering.
+
+    Nodes stay in the chunk and position they already occupy; only the text is
+    re-rendered. Chunks already in canonical form are omitted, so an empty
+    result means there is nothing to do.
+    """
+    writes: dict[Path, list[dict]] = {}
+    for chunk in all_chunks_in_manifest_order(root):
+        nodes = load_chunk_nodes(chunk)
+        if chunk.read_text(encoding="utf-8") != render_json_chunk(nodes):
+            writes[chunk] = nodes
+    return writes
+
+
+def _run_normalize(root: Path, dry_run: bool) -> None:
+    writes = build_normalize_plan(root)
+    base = roadmap_dir(root)
+    print("rebalance-chunks --normalize plan:")
+    for path, nodes in sorted(writes.items(), key=lambda t: str(t[0])):
+        rel = path.relative_to(base).as_posix()
+        print(f"  ~ roadmap/{rel}  ({len(nodes)} nodes)")
+    if not writes:
+        print("\n(every chunk is already canonical; nothing to do)")
+        return
+    if dry_run:
+        print("\n(dry-run; no files written)")
+        return
+    write_plan = AtomicWritePlan(root=root)
+    for path, nodes in writes.items():
+        write_plan.stage_chunk(path, nodes)
+    write_plan.commit(validate_callback(root))
+    print("\nrebalance-chunks --normalize: applied; specy-road validate passed.")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     add_repo_root_arg(parser)
@@ -261,6 +303,14 @@ def main(argv: list[str] | None = None) -> None:
         "--dry-run",
         action="store_true",
         help="Print the rebalance summary without writing.",
+    )
+    parser.add_argument(
+        "--normalize",
+        action="store_true",
+        help=(
+            "Rewrite every chunk in canonical key order without moving a node "
+            "or touching the manifest; a no-op on already-canonical chunks."
+        ),
     )
     args = parser.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
@@ -288,6 +338,9 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    if args.normalize:
+        _run_normalize(root, args.dry_run)
+        return
     plan = build_pack_plan(root)
     summary = _diff_summary(plan, root)
     print("rebalance-chunks plan:")

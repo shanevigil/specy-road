@@ -16,8 +16,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M3` 0.3.1 pre-final fixes from rc1 feedback `pre-final-fixes` — phase — **Not Started**
   - `M3.1` Refuse to pick up leaves whose planning sheet is still a placeholder `unauthored-leaf-guard` — task — **Complete**
   - `M3.2` handoff status reports review records without a claim `handoff-local-records` — task — **Complete**
-  - `M3.3` Document the canonical chunk key order and offer a deliberate normalisation `chunk-key-order` — task — **Not Started**
-  - `M3.4` Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers `brainstorm-prompt-fixes` — task — **Not Started**
+  - `M3.3` Document the canonical chunk key order and offer a deliberate normalisation `chunk-key-order` — task — **Complete**
+  - `M3.4` Brainstorm prompts: shards from the allocation, per-pass files, framing with proposed answers `brainstorm-prompt-fixes` — task — **Complete**
   - `M3.5` Converge and evidence passes that cannot silently skip work `brainstorm-converge-checks` — task — **Not Started**
   - `M3.6` Triage commands: realize, append-why, summary, consistent reasons, all-or-nothing accept `brainstorm-triage-cli` — task — **Not Started**
   - `M3.7` promote writes usable nodes once, with short codenames `promote-node-quality` — task — **Not Started**
@@ -51,8 +51,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 Do not pick these up.
 
-- `M3.3` on `feature/rm-chunk-key-order` since 2026-10-28
-- `M3.4` on `feature/rm-brainstorm-prompt-fixes` since 2026-10-28
+- `M3.9` on `feature/rm-worker-cli-fixes` since 2026-10-28
+- `M4.7` on `feature/rm-graph-apply` since 2026-10-28
+- `M4.8` on `feature/rm-graph-listing-and-moves` since 2026-10-28
+- `M4.9` on `feature/rm-pick-ordering` since 2026-10-28
 
 ## Reaching the detail behind this
 

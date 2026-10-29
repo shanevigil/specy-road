@@ -10,8 +10,15 @@ from pathlib import Path
 from tests.helpers import BUNDLED_SCRIPTS, DOGFOOD, script_subprocess_env
 
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, load_manifest_mapping
-from specy_road.bundled_scripts.roadmap_rebalance import build_pack_plan
+from specy_road.bundled_scripts.roadmap_chunk_utils import (
+    load_json_chunk,
+    load_manifest_mapping,
+    render_json_chunk,
+)
+from specy_road.bundled_scripts.roadmap_rebalance import (
+    build_normalize_plan,
+    build_pack_plan,
+)
 
 
 def _copy_dogfood(dest: Path) -> Path:
@@ -130,3 +137,67 @@ def test_rebalance_refuses_when_milestone_active(tmp_path: Path) -> None:
     assert "M0" in r.stderr
     assert "reconcile-milestone-status" in r.stderr
     assert "Traceback" not in r.stderr
+
+
+def _hand_order(chunk: Path) -> list[dict]:
+    """Rewrite ``chunk`` the way a person might: keys reversed, bare array, indent 4."""
+    import json as _json
+
+    nodes = load_json_chunk(chunk)
+    hand = [dict(reversed(list(n.items()))) for n in nodes]
+    chunk.write_text(_json.dumps(hand, indent=4) + "\n", encoding="utf-8")
+    return nodes
+
+
+def _ids_by_chunk(repo: Path) -> dict[str, list[str]]:
+    return {
+        rel: [n["id"] for n in load_json_chunk(repo / "roadmap" / rel)]
+        for rel in load_manifest_mapping(repo)["includes"]
+    }
+
+
+def test_normalize_rewrites_hand_ordered_chunk_without_moving_nodes(
+    tmp_path: Path,
+) -> None:
+    repo = _copy_dogfood(tmp_path / "df")
+    chunk = repo / "roadmap" / "phases" / "M0.json"
+    other = repo / "roadmap" / "phases" / "M1.json"
+    nodes = _hand_order(chunk)
+    ids_before = _ids_by_chunk(repo)
+    manifest_before = (repo / "roadmap" / "manifest.json").read_bytes()
+    other_before = other.read_bytes()
+
+    dry = _run_rebal(repo, "--normalize", "--dry-run")
+    assert dry.returncode == 0, dry.stderr
+    assert "~ roadmap/phases/M0.json" in dry.stdout
+    assert "(dry-run; no files written)" in dry.stdout
+    assert not chunk.read_text(encoding="utf-8").startswith("{")
+
+    r = _run_rebal(repo, "--normalize")
+    assert r.returncode == 0, r.stderr
+    assert "specy-road validate passed" in r.stdout
+    assert chunk.read_text(encoding="utf-8") == render_json_chunk(nodes)
+    # Same nodes in the same chunks and order: M0.2 stays in M1.json, where a
+    # plain rebalance would have moved it back under its phase.
+    assert _ids_by_chunk(repo) == ids_before
+    assert "M0.2" in ids_before["phases/M1.json"]
+    assert (repo / "roadmap" / "manifest.json").read_bytes() == manifest_before
+    assert other.read_bytes() == other_before
+
+
+def test_normalize_is_idempotent(tmp_path: Path) -> None:
+    repo = _copy_dogfood(tmp_path / "df")
+    _hand_order(repo / "roadmap" / "phases" / "M0.json")
+    r1 = _run_rebal(repo, "--normalize")
+    assert r1.returncode == 0, r1.stderr
+    after_first = {
+        p.name: p.read_bytes() for p in (repo / "roadmap").rglob("*.json")
+    }
+    assert build_normalize_plan(repo) == {}
+    r2 = _run_rebal(repo, "--normalize")
+    assert r2.returncode == 0, r2.stderr
+    assert "already canonical; nothing to do" in r2.stdout
+    after_second = {
+        p.name: p.read_bytes() for p in (repo / "roadmap").rglob("*.json")
+    }
+    assert after_first == after_second

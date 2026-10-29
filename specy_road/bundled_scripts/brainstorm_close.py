@@ -22,28 +22,34 @@ from specy_road.bundled_scripts.brainstorm_session import (
 )
 
 CLOSED_DIRNAME = "brainstorm-closed"
+#: The pass part of a prompt name ``prompt_path`` writes (``-r<N>``, ``-r1-s<K>``, ``-recommend``,
+#: ``-evidence``), plus the bare and ``-s<K>`` names older versions wrote.
+PROMPT_PASS_RE = r"(?:-r\d+(?:-s\d+)?|-recommend|-evidence|-s\d+)?"
 
 
 def closed_dir(root: Path) -> Path:
     return work_dir(root) / CLOSED_DIRNAME
 
 
+def _prompt_names(slug: str) -> re.Pattern[str]:
+    return re.compile(rf"^{re.escape(SESSION_PREFIX + slug)}{PROMPT_PASS_RE}{re.escape(PROMPT_SUFFIX)}$")
+
+
 def session_files(root: Path, slug: str) -> list[Path]:
     """The session file plus the prompts written beside it.
 
-    Those are exactly what ``write_prompt`` emits for a slug: ``-prompt.md``
-    (start, next-round, recommend), ``-sN-prompt.md`` (panel shards) and
-    ``-evidence-prompt.md`` (evidence). The pattern is anchored on the whole
+    Those are exactly what ``write_prompt`` emits for a slug: one per pass
+    (``-r<N>``, ``-r1-s<K>``, ``-recommend``, ``-evidence``), plus the bare and
+    ``-s<K>`` names older versions wrote. The pattern is anchored on the whole
     slug, so closing ``a`` never touches ``ab``'s files.
     """
     safe = validate_slug(slug)
-    own = re.compile(rf"^{re.escape(SESSION_PREFIX + safe)}(?:-s\d+|-evidence)?{re.escape(PROMPT_SUFFIX)}$")
-    others = set(list_slugs(root)) - {safe}
+    own = _prompt_names(safe)
+    others = [_prompt_names(s) for s in list_slugs(root) if s != safe]
     out = [session_path(root, safe)]
     for p in sorted(work_dir(root).iterdir()):
-        stem = p.name[len(SESSION_PREFIX):-len(PROMPT_SUFFIX)]
-        # `a-s1` and `a-evidence` are valid slugs too: their own prompt is not `a`'s to move.
-        if p.is_file() and own.match(p.name) and stem not in others:
+        # `a-s1` and `a-r1` are valid slugs too: a name another open session could own is not `a`'s to move.
+        if p.is_file() and own.match(p.name) and not any(o.match(p.name) for o in others):
             out.append(p)
     return out
 

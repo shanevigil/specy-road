@@ -61,12 +61,18 @@ and data are deliberately not recorded here.
 | A worker in a linked worktree under the default permission mode cannot write its READY hand-off, which lives in the main checkout; the adapter passes no `--add-dir` | Defect | `--add-dir` for the hand-off directory on launch |
 | `worker reconcile` reports files under a directory touch zone as outside it, and reports the brief as changed when a re-render is identical | Defect | Reuse the packet's boundary match; compare content |
 | `handoff status` presents the executor's recorded verify exits as if re-run | Wording | Label as executor-reported |
+| A worker that failed mid-turn (harness refusal) cannot be messaged or resumed, only re-delegated, and re-delegation refuses over its uncommitted work, so the recorded harness session and its context are stranded; found dogfooding | Gap | Allow `resume` of a failed worker whose harness session is recorded |
+| A worker that exits because the harness refused the call (a usage limit) is reported as `exit 1; see log`; the harness's own message is in the log but not surfaced; found dogfooding | Gap | Show the harness's final message on an error exit |
 | `worker sync` truncates a completion's final message, which is where a missing READY is explained | Gap | Show the full message when READY is absent |
 | Merge-mode finish pushes the integration branch, including unrelated local commits, with no notice and `--help` suggesting `--push` is needed | Gap | State what will be pushed before acting; document |
 | Harness model ids with effort suffixes cannot match a profile, so reviewer prompts carry no model notes | Gap | `launch_model` on the roster entry or profile `aliases` |
 | `review-packet -o` writes only the given path; `prompt --role reviewer` then reports no packet | Wording / gap | Write the canonical copy too, or say the packet must be at the default path |
 | The reviewer precondition does not say which checkout to check; coordinator bookkeeping in the main checkout makes it report "not landed" | Wording | Name the leaf's worktree; ignore `work/` bookkeeping |
 | A stale session of the same user can only be warned about | Gap | `session end <id>` / takeover |
+| The docs never name the Cursor CLI binary (`agent` / `cursor agent`), its login or `--trust`; an operator trying the `cursor` editor launcher sees a silent failure | Doc gap | Name the binary, login and a `preflight: agent status` roster entry |
+| `prompt --role reviewer` and `worker delegate` need a registry claim, so a Complete node cannot get a second-family review through the dispatch layer (`review record --ref` works) | Gap | `prompt --ref` without a claim |
+| `review-packet` at the merge base yields an empty diff with no explanation | Gap | Warn; `--base <ref>` |
+| With no `roadmap/orchestration.yaml`, the default policy applies silently | Gap | One `validate` notice |
 | The cursor adapter's default launch omits `--trust`; untested whether a fresh worktree stalls | Check | Verify; add if needed |
 | `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
 | `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |

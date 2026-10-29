@@ -6,12 +6,13 @@
 **Not for:** the browser panel and its search providers — [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md).
 
 **Must know without reading on:**
+- Run `specy-road brainstorm start` before reading anything else — the digest and the roadmap anchor round 1 — then open the prompt it writes. Every command prints the next step.
 - Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
 - `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
 - The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
 - Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
-- The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it are gitignored.
+- The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it, one per pass, are gitignored. `start` warns on the integration branch and suggests `chore/brainstorm-<slug>`.
 
 **Read further for:**
 - the session file and the flow diagram → "Where the work lives"
@@ -89,9 +90,19 @@ a session six months later should be able to see that something was already
 considered. Fields that are empty are left out of the file so it stays
 readable.
 
-The prompt files next to it (`work/brainstorm-<slug>-prompt.md`,
-`…-sN-prompt.md`, `…-evidence-prompt.md`) are regenerated from the session
-plus the current graph, so they are gitignored.
+The prompt files next to it are one per pass — `work/brainstorm-<slug>-r1-prompt.md`,
+`…-r2-prompt.md` and so on per diverge round, `…-r1-sN-prompt.md` per panel
+shard, `…-recommend-prompt.md`, `…-evidence-prompt.md` — so a later pass never
+overwrites an earlier one and every prompt an agent ran stays available for
+audit. They are regenerated from the session plus the current graph, so they
+are gitignored.
+
+Run `start` **before** reading `roadmap-context.md`, the roadmap or
+`planning/`: the managed AGENTS.md block says so too, because whatever the
+agent reads before round 1 anchors it. On the integration branch `start`
+warns and suggests a `chore/brainstorm-<slug>` branch, since the session file
+is tracked. Each command ends with the next one in the order round →
+`recommend` → `evidence`/`verify` → triage → `promote`.
 
 ```mermaid
 flowchart LR
@@ -124,15 +135,19 @@ independent shard prompts (below).
 This writes the **round-1 prompt** and prints its path. Hand that file to your
 coding agent. It instructs the agent to:
 
-- **Interrogate the question first.** Eight Socratic questions — outcome and
-  metric, who is served, what is assumed, what was tried, what is treated as
-  fixed, and *what would make this the wrong topic*. It waits for answers,
-  then **neutralises the frame**: every assertion the PM made becomes a
-  question, because questions draw far less agreement-seeking from a model
-  than statements do. The agreed frame is recorded:
+- **Frame the question first, without a questionnaire.** The prompt lists
+  the canonical frame keys: `outcome`, `served`, `not-the-question` and
+  `assumed-vs-known` (required), and `metric`, `tried`, `fixed-or-choice`,
+  `do-nothing`, `deadline` and `budget`. The agent proposes an answer to
+  each from what the PM already said, marks the ones their words cover
+  `assumed`, shows the whole proposed frame in one message, and asks only
+  about a required key it could not propose. It then **neutralises the
+  frame**: every assertion the PM made becomes a question, because
+  questions draw far less agreement-seeking from a model than statements do.
+  The frame is recorded, unconfirmed answers prefixed `assumed:`:
 
   ```bash
-  specy-road brainstorm frame --answer "outcome=fewer failed payments" --answer "served=SMBs"
+  specy-road brainstorm frame --answer "outcome=fewer failed payments" --answer "served=assumed: SMBs"
   ```
 
 - **Plan the search before generating.** An allocation grid of lenses ×
@@ -172,7 +187,7 @@ required.
 specy-road brainstorm next-round --count 15
 ```
 
-Writes the **round-k prompt**: the titles of everything captured so far, and
+Writes the **round-k prompt** (`…-r<k>-prompt.md`): the titles of everything captured so far, and
 an instruction to add only ideas that are not in, and not near, that pool —
 with the mechanics that measurably widen a pool (estimate how likely a
 typical PM would be to propose each candidate and keep only the unlikely
@@ -186,14 +201,17 @@ beat one of forty.
 specy-road brainstorm start --topic "…" --count 30 --panel 3
 ```
 
-Also writes `work/brainstorm-<slug>-s1-prompt.md` … `-s3-prompt.md`: one
-cell each with a distinct operator and direction, and the rule that the
-worker must **not** read the other shards, the session file, or the roadmap
-before it finishes — workers that see each other converge. A shard plans
+Also writes `work/brainstorm-<slug>-r1-s1-prompt.md` … `-r1-s3-prompt.md`: one
+cell each, and the rule that the worker must **not** read the other shards,
+the session file, or the roadmap before it finishes — workers that see each
+other converge. A shard's cell comes from the recorded allocation: the
+coordinator labels one line per shard, `s1: Inversion x user segments, Random
+constraints, 6`, and shard N gets the `sN:` line. A shard the allocation does
+not label gets a distinct operator and direction by its number. A shard plans
 inside its own cell and does not record an allocation: the session keeps one
-grid, the coordinator's, and `frame --allocation` replaces it. Shard prompts
-carry the frame and grid recorded when they were written, so record those
-first and re-run `start` to give the shards them. Run them as
+grid, the coordinator's, and `frame --allocation` replaces it. Every `frame`
+call rewrites the shard prompts, so they carry the frame and cells as last
+recorded. Run them as
 sub-agents of your session or on other harnesses from the roster (the best
 measured gains come from different *model families*); each records with
 `--origin …/1/sN` into the same session file, and converge clusters the
@@ -207,9 +225,9 @@ rule otherwise reads `roadmap-context.md` before it sees the prompt (Cursor did,
 specy-road brainstorm recommend
 ```
 
-Switches the session to `roadmap` mode and writes the convergent prompt over
-the ideas already captured, with the roadmap inventory inlined for the
-overlap check. The agent is asked to cluster near-duplicates (singletons are
+Switches the session to `roadmap` mode and writes the convergent prompt
+(`…-recommend-prompt.md`) over the ideas already captured, with the roadmap
+inventory inlined for the overlap check. The agent is asked to cluster near-duplicates (singletons are
 clusters of one; outliers are never hidden), flag overlaps with existing
 nodes by id **and relation** (same problem/same solution, same
 problem/different solution, prerequisite, superseded, adjacent), assess

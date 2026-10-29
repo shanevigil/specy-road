@@ -18,7 +18,13 @@ import json
 import sys
 
 from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
-from specy_road.bundled_scripts.brainstorm_cli_v2 import HANDLERS_V2, write_round_prompts
+from specy_road.bundled_scripts.brainstorm_cli_v2 import (
+    HANDLERS_V2,
+    integration_branch_warning,
+    next_step,
+    stage,
+    write_round_prompts,
+)
 from specy_road.bundled_scripts.brainstorm_close import close_session
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin, parse_overlap
 from specy_road.bundled_scripts.brainstorm_prompt import (
@@ -61,6 +67,9 @@ def cmd_start(ns: argparse.Namespace) -> int:
         raise BrainstormError(
             "cannot derive a session name — pass --topic '<question>' or --slug SLUG"
         )
+    warning = integration_branch_warning(root, slug)
+    if warning:
+        print(warning, file=sys.stderr)
     if session_path(root, slug).is_file():
         session = read_session(root, slug)
         if topic:
@@ -81,6 +90,7 @@ def cmd_start(ns: argparse.Namespace) -> int:
         session.panel = max(0, ns.panel)
     if ns.rounds:
         session.rounds = max(1, ns.rounds)
+    session.count = max(1, ns.count)
     spath = write_session(root, session)
     paths = write_round_prompts(root, session, count=ns.count)
     print(f"session: {spath.relative_to(root)} ({len(session.ideas)} ideas, "
@@ -88,8 +98,8 @@ def cmd_start(ns: argparse.Namespace) -> int:
     print(f"prompt:  {paths[0].relative_to(root)}")
     for extra in paths[1:]:
         print(f"shard:   {extra.relative_to(root)}")
-    print("\nHand the prompt to your agent, then triage with:")
-    print(f"  specy-road brainstorm list --slug {slug}")
+    print("\nHand the prompt to your agent.")
+    print(next_step(session, "round"))
     return 0
 
 
@@ -108,6 +118,7 @@ def cmd_add_idea(ns: argparse.Namespace) -> int:
     )
     write_session(root, session)
     print(f"[ok] {idea.id} {idea.title}")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -146,23 +157,25 @@ def cmd_list(ns: argparse.Namespace) -> int:
         payload = _idea_payload(session)
         payload["ideas"] = [i.to_dict() for i in ideas]
         print(json.dumps(payload, indent=2))
+        print(next_step(session, stage(session)), file=sys.stderr)   # stdout stays JSON
         return 0
     anchor = session.under or "(roadmap root)"
     print(f"{session.slug} — {session.topic or '(no topic)'}")
     print(f"mode: {session.mode}   anchor: {anchor}   ideas: {len(session.ideas)}")
     if not ideas:
         print("\n(no ideas match)")
-        return 0
-    print("")
-    if ns.by == "cluster":
+    elif ns.by == "cluster":
+        print("")
         clusters: dict[str, list] = {}
         for i in ideas:
             clusters.setdefault(i.cluster_id or "(unclustered)", []).append(i)
         for cid, members in sorted(clusters.items(), key=lambda kv: (kv[0] == "(unclustered)", kv[0])):
             print(f"{cid}  ({len(members)})")
             _print_rows(members, verdicts=ns.show_verdicts)
-        return 0
-    _print_rows(ideas, verdicts=ns.show_verdicts)
+    else:
+        print("")
+        _print_rows(ideas, verdicts=ns.show_verdicts)
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -181,6 +194,7 @@ def _triage(ns: argparse.Namespace, status: str) -> int:
             idea.decision = None   # an earlier reject/park reason does not describe this decision
         print(f"[ok] {idea.id} {status}")
     write_session(root, session)
+    print(next_step(session, "triage"))
     return 0
 
 
@@ -218,6 +232,7 @@ def cmd_revise(ns: argparse.Namespace) -> int:
         idea.status = "revised"
     write_session(root, session)
     print(f"[ok] {idea.id} {idea.status} (recommendation: {idea.recommendation or '-'})")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -225,8 +240,9 @@ def cmd_recommend(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
     session.mode = "roadmap"
     write_session(root, session)
-    ppath = write_prompt(root, session, render_recommend_prompt(root, session))
+    ppath = write_prompt(root, session, render_recommend_prompt(root, session), pass_name="recommend")
     print(f"prompt: {ppath.relative_to(root)} ({len(session.ideas)} ideas to assess)")
+    print(next_step(session, "recommend"))
     return 0
 
 
@@ -252,10 +268,11 @@ def cmd_promote(ns: argparse.Namespace) -> int:
         parent = r.parent_id or "(root)"
         print(f"{prefix} {r.node_id} under {parent} — {r.title}  (from {r.idea_id})")
     if ns.dry_run:
-        print("\nDry run — nothing written. Re-run without --dry-run to apply.")
+        print("\nDry run — nothing written.")
+        print(next_step(session, "dry-run"))
     else:
-        print(f"\nPromoted {len(results)} idea(s). Refresh generated files:")
-        print("  specy-road export && specy-road digest")
+        print(f"\nPromoted {len(results)} idea(s).")
+        print(next_step(session, "promote"))
     return 0
 
 
@@ -264,6 +281,7 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
     slugs = list_slugs(root)
     if not slugs:
         print("no brainstorm sessions in work/")
+        print("next: `specy-road brainstorm start --topic '<question>'`")
         return 0
     unreadable = 0
     for slug in slugs:
@@ -275,6 +293,7 @@ def cmd_sessions(ns: argparse.Namespace) -> int:
             print(f"{slug}: unreadable — {e}", file=sys.stderr)
             continue
         print(f"  {slug:<24} {session.mode:<10} {len(session.ideas):>3} ideas")
+    print("next: `specy-road brainstorm list --slug SLUG` shows a session's ideas and its next step")
     return 1 if unreadable else 0
 
 
@@ -284,6 +303,7 @@ def cmd_close(ns: argparse.Namespace) -> int:
     for src, dst in close_session(root, slug):
         print(f"moved {src.relative_to(root).as_posix()} -> {dst.relative_to(root).as_posix()}")
     print(f"[ok] closed {slug}; it no longer counts as an open session")
+    print("done: nothing follows for this session; `specy-road brainstorm start --topic '<question>'` opens another")
     return 0
 
 
