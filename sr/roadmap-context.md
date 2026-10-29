@@ -36,7 +36,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.8` list-nodes --json, refresh-stubs --diff, move-node zone rewrite `graph-listing-and-moves` — task — **Not Started**
   - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
-  - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Not Started**
+  - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Not Started**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Not Started**

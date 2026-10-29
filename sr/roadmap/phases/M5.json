@@ -28,7 +28,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.1_rule-provenance_40829e1f-f1d9-4368-a53f-ee8f27cd2566.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Every managed AGENTS.md rule carries its provenance in the template",
       "touch_zones": [
         "specy_road/templates/specyrd/agents-md-block.md",
