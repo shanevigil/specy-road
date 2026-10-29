@@ -398,7 +398,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.12_a-baseline-gate-runs-on-the-integration-branch-before-pickup_b56ccb79-4cf4-496f-ab74-cd5710ab8add.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A baseline gate runs on the integration branch before pickup",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",

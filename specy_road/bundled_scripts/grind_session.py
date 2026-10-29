@@ -7,6 +7,8 @@ Each cycle reuses the existing primitives (never edits the registry directly):
                             ->  optional --pre-finish-cmd
                             ->  finish-this-task
 
+Pickup runs the optional --baseline-cmd on the integration branch first.
+
 Repeats until a stop condition (--until / --under / --max-leaves / no actionable
 work). ``--plan`` prints a read-only dependency/wave report instead of running.
 ``--step pickup|finish`` runs one phase and exits (``grind_session_step``).

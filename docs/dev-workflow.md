@@ -105,11 +105,14 @@ The CLI keeps the **integration branch** current (from **`roadmap/git-workflow.y
 
 Your working tree must be **clean**. The tool runs `git fetch`, checks out the integration branch, and `git merge --ff-only` to the remote tracking branch. If your local integration branch has diverged, resolve that before retrying. Set **`roadmap/git-workflow.yaml`** to your trunk (e.g. `dev`) or pass **`--base dev`**.
 
+**Baseline gate.** **`--baseline-cmd 'make test'`** (default: **`baseline_cmd`** in `roadmap/git-workflow.yaml`) runs on the integration branch after the sync and before anything is registered. A non-zero exit refuses the pickup, so a red base branch is caught and fixed first instead of being inherited by the leaf, whose implementer would otherwise "fix" unrelated failures against the no-scope-creep rule. **`--baseline-warn`** picks up anyway with a warning; **`--baseline-cmd ''`** skips a configured baseline for one run. It is the start-of-leaf counterpart of grind-session's **`--pre-finish-cmd`**, and like it must only check: a baseline that moves HEAD, switches branch, or leaves changes outside `work/` is refused, naming what moved.
+
 Optional **`roadmap/git-workflow.yaml`** field **`merge_request_requires_manual_approval`** reminds the CLI that MRs need human approval; align with your team’s process before merging.
 
 ```bash
 specy-road do-next-available-task
 # optional: specy-road do-next-available-task --base dev --remote origin --interactive
+# optional: specy-road do-next-available-task --baseline-cmd 'make test'   # refuse a red base
 # IDE slash command (after `specyrd init --ai <ide> --role dev`): /specyrd-do-next-task
 ```
 
@@ -140,8 +143,8 @@ Do **not** rely on editing the parent milestone’s JSON `status` to “Complete
 
 To run **many** leaf cycles without re-invoking pickup/finish by hand, use
 **`specy-road grind-session`** — it orchestrates the approved primitives
-(`do-next-available-task` → implement → optional `--pre-finish-cmd` →
-`finish-this-task`) until a stop condition, with stable exit codes and `--json`
+(`do-next-available-task` with optional `--baseline-cmd` → implement → optional
+`--pre-finish-cmd` → `finish-this-task`) until a stop condition, with stable exit codes and `--json`
 events, never editing the registry itself. **`--plan [--json]`** is a read-only
 planner reporting ready / blocked / active leaves plus dependency **waves** and
 **parallel batches**. Run it in a **terminal**, not an IDE pane; a **Claude CLI**

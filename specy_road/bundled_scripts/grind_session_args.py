@@ -143,6 +143,12 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                         "pickup tier (default: prefer_agentic_pick_order in "
                         "roadmap/git-workflow.yaml); applies to --plan and is passed through "
                         "to pickup.")
+    p.add_argument("--baseline-cmd", default=None, metavar="CMD",
+                   help="Passed through to pickup: run on the integration branch before "
+                        "each claim; a non-zero exit refuses the pickup (exit 5). "
+                        "Default: baseline_cmd in roadmap/git-workflow.yaml.")
+    p.add_argument("--baseline-warn", action="store_true",
+                   help="Passed through to pickup: a failing baseline only warns.")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
     p.add_argument("--delete-merged-branches", action="store_true",
@@ -213,6 +219,10 @@ def pickup_args(args, repo_root: Path) -> list[str]:
         out += ["--on-complete", args.on_complete]
     out += [flag for flag, on in (("--no-ci-skip-in-message", args.no_ci_skip_in_message),
                                   ("--allow-unauthored", args.allow_unauthored)) if on]
+    if args.baseline_cmd is not None:
+        out += ["--baseline-cmd", args.baseline_cmd]
+    if args.baseline_warn:
+        out.append("--baseline-warn")
     if args.prefer_agentic is not None:
         out.append("--prefer-agentic" if args.prefer_agentic else "--no-prefer-agentic")
     if args.milestone_subtree:

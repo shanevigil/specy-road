@@ -159,6 +159,19 @@ def resolve_prefer_agentic(repo_root: Path, *, cli: bool | None) -> bool:
     return _flag(repo_root, "prefer_agentic_pick_order", default=False)
 
 
+def resolve_baseline_cmd(repo_root: Path, *, cli: str | None) -> str | None:
+    """Baseline command run on the integration branch before pickup, or ``None``.
+
+    CLI ``--baseline-cmd`` wins, and an empty one turns a configured baseline
+    off for that run; then ``baseline_cmd`` in ``roadmap/git-workflow.yaml``.
+    """
+    cmd = cli
+    if cmd is None:
+        data, err = load_git_workflow_config(repo_root)
+        cmd = (data or {}).get("baseline_cmd") if not err else None
+    return (cmd or "").strip() or None
+
+
 def on_complete_from_git_workflow(repo_root: Path) -> str:
     """``on_complete`` from ``roadmap/git-workflow.yaml``; default ``pr`` if missing or invalid."""
     data, err = load_git_workflow_config(repo_root)
