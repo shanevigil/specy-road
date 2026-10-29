@@ -92,7 +92,8 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C90
             if not isinstance(s, dict) or not str(s.get("url", "")).strip():
                 raise _bad(ident, "each source needs a url")
             v = s.get("verification", "unverified")
-            v = VERIFICATION_ALIASES.get(v, v)
+            if isinstance(v, str):
+                v = VERIFICATION_ALIASES.get(v, v)
             if v not in VERIFICATIONS:
                 raise _bad(ident, f"verification {v!r} not one of {', '.join(VERIFICATIONS)}")
             stance = s.get("stance", "for")

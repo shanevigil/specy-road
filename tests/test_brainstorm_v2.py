@@ -134,6 +134,19 @@ def test_v2_field_validation(raw: dict, msg: str | None) -> None:
         idea_from_dict(raw)
 
 
+@pytest.mark.parametrize("verification_snippet", ["[]", "{}"])
+def test_read_session_rejects_non_scalar_source_verification(tmp_path: Path, verification_snippet: str) -> None:
+    session_path(tmp_path, "bad").parent.mkdir(parents=True)
+    session_path(tmp_path, "bad").write_text(
+        "version: 2\nslug: bad\ntopic: t\nmode: brainstorm\nideas:\n"
+        f"- id: B1\n  title: One\n  sources:\n  - url: https://a\n    quote: q\n"
+        f"    verification: {verification_snippet}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(BrainstormError, match=r"work/brainstorm-bad\.yaml.*verification"):
+        read_session(tmp_path, "bad")
+
+
 def test_parsers_for_origin_overlap_and_sources() -> None:
     assert parse_origin(None) is None and parse_origin("  ") is None
     assert parse_origin("claude-code/opus") == {"harness": "claude-code", "model": "opus"}

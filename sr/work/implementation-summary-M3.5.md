@@ -38,6 +38,10 @@ Sol blocked on runbook regression only (A1–A5 pass).
 
 - **Fixed:** `docs/agentic-sandbox-runbook.md` step 6 — `retrieved` → `matched` in the share-count and hand-check instructions. Touch zones updated in `sr/roadmap/phases/M3.json` and `sr/roadmap/registry.yaml`. Test `test_agentic_runbook_evidence_step_uses_matched_verification_state` locks step 6.
 
+## Review round 3 (gpt-6.1-sol)
+
+- **R1 fixed:** `VERIFICATION_ALIASES.get(v, v)` ran before type-checking and raised `TypeError` on `verification: []` or `{}`. Alias lookup now applies only when `v` is a `str`; invalid shapes still raise `BrainstormError` with the session file name via `read_session`. Test `test_read_session_rejects_non_scalar_source_verification` covers both through `read_session`.
+
 ## Added
 
 - Helper `_check_converge` in `brainstorm_cli.py`: `recommend --check`'s report and exit code (A1).
@@ -56,3 +60,5 @@ Sol blocked on runbook regression only (A1–A5 pass).
 - Extended `test_v1_session_files_still_read` (A4).
 - Updated `test_check_source_states` and `test_verify_asks_before_fetching_and_records_states` (A4).
 - Test `test_agentic_runbook_evidence_step_uses_matched_verification_state`: step 6 names `matched`, not `retrieved` (review round 2 regression).
+- Test `test_read_session_rejects_non_scalar_source_verification`: `verification: []` and `{}` raise `BrainstormError` through `read_session`, not `TypeError` (review round 3 R1).
+- Branch `if isinstance(v, str)` before `VERIFICATION_ALIASES` in `parse_extra`: legacy alias without hashing non-string YAML (R1).
