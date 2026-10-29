@@ -40,6 +40,7 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - Review round 2: the same pytest command — 19 passed; `specy-road file-limits` — OK
 - Review round 3: the same pytest command — 20 passed; `specy-road file-limits` — OK
 - Review round 5: the same pytest command — 21 passed; `specy-road file-limits` — OK
+- Merge of `origin/WIP/improvements-0-3-1` (M5.1 rule provenance): import-only conflicts in `agents_md_block.py` and its test, both imports kept. `pytest -q tests/test_agents_md_block.py tests/test_validate_strict.py` plus the M5.1 guide-block, refresh-stubs and lean-rules tests — 52 passed; `python -m pytest -q` — 2301 passed, 2 skipped; `specy-road file-limits` — OK
 
 ## Walkthrough
 
@@ -67,13 +68,12 @@ Final touch zones: as listed. `specy_road/agent_guide_block.py` was not edited; 
 - Test `test_context_warnings_fire_only_past_a_documented_limit`: no warning at exactly 32,768 bytes and at 199 lines; one warning each at 32,769 bytes and at 200 lines (review round 1 moved the Claude boundary from 201).
 - Test `test_dot_claude_claude_md_suppresses_the_agents_fallback`: with only `.claude/CLAUDE.md` as a Claude file (and an `AGENTS.md` present), Claude Code's line reports that file and its managed section, and Codex's line still reports `AGENTS.md`.
 - Test `test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents`: an ancestor `CLAUDE.md` and a `CLAUDE.local.md` are reported and suppress both `AGENTS.md` files; removing them makes the line report `AGENTS.md` and `.claude/AGENTS.md` (review round 2).
-- Test `test_user_claude_md_under_home_is_listed_once`: with the repo under `HOME`, the user path appears once, on the note, labelled user-level (this machine), and the repository line still reports `AGENTS.md` (review round 3; replaces the round-2 test of the same layout).
+- Test `test_user_claude_md_under_home_is_listed_once`: with the repo under `HOME`, the user path appears once, on the note, labelled user-level / machine-local, and the repository line still reports `AGENTS.md` (review round 3; replaces the round-2 test of the same layout).
 - Test `test_user_claude_outside_home_is_noted_and_does_not_fail_strict`: the repo is not under `HOME`, the user file is 201 lines, `validate --strict` exits 0 with an empty stderr, and stdout names the file once with the label (review round 3; the label is now user-level / machine-local).
 - Test `test_ancestor_claude_above_the_git_root_does_not_fail_strict`: a 201-line `CLAUDE.md` above the git root is a note and `validate --strict` exits 0. Replaces `test_strict_warns_when_an_ancestor_claude_file_hits_200_lines`, which asserted the opposite under the earlier A2 (review round 5).
 - Test `test_codex_user_layer_is_a_note`: `~/.codex/AGENTS.override.md` is the note and the oversized sibling `~/.codex/AGENTS.md` is neither reported nor warned (review round 5).
 - `test_context_meter_reports_what_each_harness_reads` sets `HOME` to an empty directory so its exact stdout does not pick up a real `~/.claude/CLAUDE.md`.
 - Test `test_codex_meters_a_nonempty_override_instead_of_agents_md`: an empty override leaves the over-budget `AGENTS.md` as the measured and warned file; a non-empty override replaces it in both the report and the warning (review round 2).
-- Test `test_strict_warns_when_an_ancestor_claude_file_hits_200_lines`: public `validate --strict` is clean at 199 lines of an ancestor `CLAUDE.md` and exits 1 at 200, naming that file (review round 2).
 - Test parametrization of `test_strict_fails_a_validation_that_warned` with `_overlong_claude_md`: `validate` itself emits the warning and `--strict` fails on it. The existing acceptance case is kept as the other parameter, so `_scaffold` lost its `acceptance` flag and that edit moved into `_clear_acceptance`.
 - Assertions added to `test_strict_passes_a_fresh_scaffold`: the `validate` command prints both `context:` lines, and a fresh scaffold stays warning-free.
 - Mocks: none. The user-file tests set `HOME` so `Path.home()` is the fixture; they do not patch a production name.
