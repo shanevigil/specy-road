@@ -173,6 +173,17 @@ Out of scope (amended A1 run-verb clause): ``run all the specy-road frob`` stays
 A1 names run verbs immediately before the product name, or before one noun-phrase word
 only; a verb farther left on the line is not a mandatory context under the line-based rule.
 
+## Review round 14
+
+Grok blocked A1 at `9225b6e`. `_mandatory_follower` kept scanning past the first plain word, so
+`other specy-road formats that accept --strict` warned on a later flag. It now classifies only
+the first meaningful follower (punctuation-only tokens and a glued `'s` skipped). `_noun_phrase`
+strips leading and trailing `*` / `_` from the preceding token, so `**the specy-road toolkit**
+is` stays a noun phrase. The unreachable `if match is None` in `_follower_tokens` is gone.
+
+Out of scope, same A1 run-verb clause as round 13: `run all the specy-road frob` stays quiet
+because the verb is not immediately before the product name.
+
 ## Touch zones
 
 Final list: `specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `tests/`,
@@ -186,7 +197,7 @@ calls `_split`.
 
 - `python -m pytest -q` (after review round 1): 2258 passed, 2 skipped. Not re-run after round 2.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 9): 8 passed.
-- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 13): 8 passed in 0.55s. `specy-road file-limits`: OK.
+- `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 14): 8 passed in 0.71s. `specy-road file-limits`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -212,7 +223,7 @@ calls `_split`.
 - Helper `unregistered_commands` (validate_roadmap.py, public): drops registered names and keeps every remaining occurrence. Its docstring states the precedence rule.
 - Helper `warn_unregistered_commands` (validate_roadmap.py, public): one warning per occurrence, with the file line number, wired into `validate_at`.
 - Helper `_backtick_run` / `_code_spans` (validate_roadmap.py): a CommonMark code span, N backticks closed by the next run of N. Replaces `_INLINE_CODE`, which stopped at the next single backtick (A1).
-- Helper `_follower_tokens` / `_strip_prose_punctuation` (validate_stale_commands.py): walk follower tokens after the command name; skip punctuation-only tokens and a glued ``'s``; mandatory and plain checks share normalization (A1, review round 13).
+- Helper `_first_meaningful_follower` (validate_stale_commands.py): the next real token after the command name. Mandatory and plain checks stop there, so a later flag does not cancel a noun phrase (A1, review round 14).
 - Helper `_opening_is_code_span` (validate_stale_commands.py): a line-start backtick run that closes on the same line is scanned as a code span, not a fence opener (A1, review round 13).
 - Regex `_MENTION` (validate_stale_commands.py): emphasis markers attached to the product name or the token are markup, so `_` directly before the name is not a word boundary (A1, review rounds 12–13).
 - Table `REPLACED_COMMANDS` (cli.py): the A2 alias/deprecated-name table, next to the command set it complements.

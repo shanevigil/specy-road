@@ -97,15 +97,13 @@ def _noun_phrase(line: str, start: int) -> bool:
     split_at = len(before)
     while split_at > 0 and not before[split_at - 1].isspace():
         split_at -= 1
-    return before[split_at:].lower() in _NOUN_PHRASE
+    return before[split_at:].strip("*_").lower() in _NOUN_PHRASE
 
 
 
 def _follower_tokens(line: str, start: int):
     """Each non-whitespace token after the command-shaped name, in order."""
     match = _MENTION.match(line, start)
-    if match is None:
-        return
     pos = match.end()
     while True:
         found = re.match(r"[ \t]*(\S+)", line[pos:])
@@ -123,25 +121,32 @@ def _strip_prose_punctuation(raw: str) -> str:
     return word
 
 
-def _mandatory_follower(line: str, start: int) -> bool:
-    """True for a flag, path, quote, id, or the word command/subcommand."""
+def _first_meaningful_follower(line: str, start: int) -> str:
+    """The first follower that is not punctuation-only or a glued possessive."""
     for raw in _follower_tokens(line, start):
-        if _PUNCT_ONLY.match(raw):
+        if _PUNCT_ONLY.match(raw) or not _strip_prose_punctuation(raw):
             continue
-        word = _strip_prose_punctuation(raw)
-        if not word:
-            continue
-        if raw[0] in "\"'":
-            return True
-        if re.match(r"-{1,2}[A-Za-z0-9]", raw):
-            return True
-        if word.lower() in {"command", "subcommand"}:
-            return True
-        if "/" in word or word.startswith(".") or re.search(r"\.[A-Za-z]", word):
-            return True
-        if re.search(r"\d", word):
-            return True
-    return False
+        return raw
+    return ""
+
+
+def _mandatory_follower(line: str, start: int) -> bool:
+    """True when the first meaningful follower is a flag, path, quote, id, or command/subcommand.
+
+    A later flag does not count once a plain word has already followed the token
+    (``other specy-road formats that accept --strict``).
+    """
+    raw = _first_meaningful_follower(line, start)
+    if not raw:
+        return False
+    word = _strip_prose_punctuation(raw)
+    if raw[0] in "\"'" or re.match(r"-{1,2}[A-Za-z0-9]", raw):
+        return True
+    if word.lower() in {"command", "subcommand"}:
+        return True
+    if "/" in word or word.startswith(".") or re.search(r"\.[A-Za-z]", word):
+        return True
+    return bool(re.search(r"\d", word))
 
 
 def _plain_follower(line: str, start: int) -> bool:
@@ -152,16 +157,10 @@ def _plain_follower(line: str, start: int) -> bool:
     does not count (``formats (templates...)``). Anything else cancels the
     exclusion (``the specy-road frob @agent``).
     """
-    for raw in _follower_tokens(line, start):
-        if _PUNCT_ONLY.match(raw):
-            continue
-        word = _strip_prose_punctuation(raw)
-        if not word:
-            continue
-        if _PLAIN_WORD.fullmatch(word) is not None:
-            return True
-        return False
-    return True
+    raw = _first_meaningful_follower(line, start)
+    if not raw:
+        return True
+    return _PLAIN_WORD.fullmatch(_strip_prose_punctuation(raw)) is not None
 
 
 def _reports(line: str, start: int) -> bool:

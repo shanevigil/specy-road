@@ -125,6 +125,11 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
         "the specy-road toolkit — a library",
         "the specy-road toolkit; see docs",
         "the **specy-road** toolkit is",
+        "other specy-road formats that accept --strict",
+        "the specy-road toolkit is the command we use",
+        "the specy-road toolkit in v2",
+        "**the specy-road toolkit** is",
+        "*the specy-road toolkit* is",
     ):
         assert unregistered_commands(quiet) == [], quiet
     for warn in (
