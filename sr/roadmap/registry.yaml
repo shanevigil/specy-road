@@ -11,3 +11,14 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: fixture-pollution-guard
+    node_id: M9.2
+    branch: feature/rm-fixture-pollution-guard
+    touch_zones:
+      - tests/conftest.py
+      - tests/fixture_guard.py
+      - tests/test_fixture_guard.py
+      - docs/contributor-guide.md
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
