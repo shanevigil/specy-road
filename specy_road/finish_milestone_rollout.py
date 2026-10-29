@@ -117,8 +117,9 @@ def retry_milestone_rollup_landing(
     if no_milestone_rollup:
         return False
     ms = read_milestone_session(milestone_session_path(repo / "work"))
-    nodes = load_roadmap(repo)["nodes"]
-    if ms is None or node_id not in subtree_node_ids(ms.parent_node_id, nodes):
+    if ms is None:
+        return False
+    if node_id not in subtree_node_ids(ms.parent_node_id, load_roadmap(repo)["nodes"]):
         return False
     refuse_unless_finish_tip(repo, branch)
     print(f"[info] {node_id} is already Complete on {branch}; landing it on {ms.rollup_branch}.")

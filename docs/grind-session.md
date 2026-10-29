@@ -15,7 +15,7 @@
 **Read further for:**
 - which mode fits your situation → "When to use it"
 - `ready`/`blocked`/`waves`, plan versus pickup, the JSON shape → "Planner first: `--plan`"
-- the cycle, in-flight claims, `why-blocked`, implement modes, step mode, Claude usage limits, the pre-finish hook, cleanup, hook-run requirements → "The loop"
+- the cycle, in-flight claims, `why-blocked`, implement modes, step mode, Claude usage limits, the baseline and pre-finish hooks, cleanup, hook-run requirements → "The loop"
 - flags, codes and JSONL events → "Stop conditions", "Exit codes", "JSON events (`--json`)"
 - yamllint and milestone rollup branches → "Registry / pre-commit (yamllint) compatibility", "Relationship to milestone sessions"
 
@@ -77,8 +77,8 @@ classification plus a dependency **wave** layout. No git, no pickup.
   own** dependencies are `Complete`, whatever else its wave's predecessors hold.
 - **`parallel_batches`** — per wave, the ready+unclaimed leaves you can dispatch
   **in parallel right now**, in the order pickup will claim them (the same order
-  as `ready`). `waves` stay sorted by id, because they are the dependency
-  layering you read rather than a dispatch order.
+  as `ready`). `waves` stay sorted by id, because they are the dependency layering you read rather than a dispatch order.
+  No set holds two leaves sharing a touch zone (the same path, or one a directory prefix of the other): the later one moves to the next set, and `zone_overlaps` (`node_id`, `waits_for`, `zones`) names the overlap; dispatch it once `waits_for` lands.
 - **`gated`** / **`gates_open`** — leaves stuck behind an open human gate, and
   the gate ids that need a PM decision.
 
@@ -151,18 +151,13 @@ dispatched until `M10.5` completes.
     {"node_id": "M10.5", "codename": "…", "waiting_on": ["M10.3", "M10.4"], "reason": "dependency"},
     {"node_id": "M11.1", "codename": "…", "waiting_on": ["M10.5"], "reason": "dependency"}
   ],
-  "active": [],
-  "closed": ["M10.1", "M10.2"],
-  "gated": [],
-  "gates_open": [],
-  "needs_codename": [],
-  "unauthored": [],
+  "active": [], "closed": ["M10.1", "M10.2"], "gated": [], "gates_open": [], "needs_codename": [], "unauthored": [],
   "waves": [
     {"index": 0, "node_ids": ["M10.3", "M10.4"]},
     {"index": 1, "node_ids": ["M10.5"]},
     {"index": 2, "node_ids": ["M11.1"]}
   ],
-  "parallel_batches": [["M10.3", "M10.4"]],
+  "parallel_batches": [["M10.3", "M10.4"]], "zone_overlaps": [],
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
@@ -175,7 +170,7 @@ Each cycle:
 flowchart LR
   plan[compute plan] --> ready{ready leaf?}
   ready -- no --> blocked[own claim? -> resume or exit 6\nblocked? -> exit 3\nelse no work -> exit 0/2]
-  ready -- yes --> pickup[do-next-available-task]
+  ready -- yes --> pickup[baseline-cmd? then do-next-available-task]
   pickup --> impl[implement: manual signal | hook cmd]
   impl --> pre[pre-finish-cmd?]
   pre --> finish[finish-this-task]
@@ -304,11 +299,16 @@ schedulers such as `/loop` stop with the session and are blocked by the same
 limit, so they can poll but cannot restart one. The installed
 `specyrd-grind-session` command carries the full protocol for the agent.
 
-### Pre-finish hook
+### Baseline and pre-finish hooks
 
-`--pre-finish-cmd "make test && specy-road validate"` runs after implementation,
-before `finish-this-task`. A non-zero exit stops the session (exit `4`) and leaves
-the feature branch intact so you can fix and resume.
+`--baseline-cmd "make test"` runs in each pickup on the integration branch, after
+the sync and before the claim: a red base is caught before a leaf inherits it, and
+no implementer "fixes" failures it did not cause. Failure claims nothing and stops
+the session (exit `5`); `--baseline-warn` only warns. Default: `baseline_cmd` in
+`git-workflow.yaml`. Writes under `work/` are allowed; any other file change, a new
+HEAD or a branch switch refuses the pickup, even with `--baseline-warn`.
+`--pre-finish-cmd "make test && specy-road validate"` runs before `finish-this-task`;
+a non-zero exit stops the session (exit `4`) and leaves the feature branch intact.
 
 ### Running Claude as the implementer
 
@@ -446,7 +446,7 @@ specy-road grind-session --max-leaves 1 --on-complete merge
 | `2` | No actionable leaves at start |
 | `3` | Blocked on a dependency or gate — human action required |
 | `4` | `--pre-finish-cmd` failed |
-| `5` | Pickup (`do-next-available-task`) register/commit/git failed |
+| `5` | Pickup (`do-next-available-task`) register/commit/git failed, or its `--baseline-cmd` failed |
 | `6` | Nothing pickable because **this worktree already holds a claim** |
 
 ## JSON events (`--json`)

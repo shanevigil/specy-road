@@ -157,7 +157,7 @@ def _executor_preamble(node_id: str, model: str, zones: list[str], family_lock: 
     ]
 
 
-def _reviewer_preamble(node_id: str, model: str) -> list[str]:
+def _reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[str]:
     return [
         "## Your role: reviewer",
         "",
@@ -173,7 +173,8 @@ def _reviewer_preamble(node_id: str, model: str) -> list[str]:
         *_EXCESS_CHECKLIST,
         "Write your verdict with the front matter in `work/review-record.template.md`, set `commit` to the "
         "packet's **Commit under review**, and file it:",
-        f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>`.",
+        f"`specy-road review record {node_id} --model {model} --verdict approve|block --file <notes.md>"
+        f"{f' --ref {ref}' if ref else ''}`.",
         "`approve` may not carry a failing item or required changes. Do not edit code, and do not run "
         "`mark-implementation-reviewed` or `finish-this-task`.",
         "",
@@ -236,8 +237,9 @@ def _profile_lines(prof: Profile | None, role: str, zones: list[str]) -> list[st
     return out
 
 
-def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[str, Profile | None, str | None]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
-    """``(text, profile, error)``."""
+def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+                 ref: str | None = None) -> tuple[str, Profile | None, str | None]:
+    """``(text, profile, error)``; ``ref`` names the branch or commit under review, as ``review-packet --ref``."""
     config, err = pinned_config(root)
     if err:
         return "", None, f"orchestration config: {err}"
@@ -250,7 +252,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
     if not is_available(entry):
         return "", None, f"{model!r} is marked unavailable until {entry.get('unavailable_until')} in the roster"
     try:
-        t = resolve_target(root, node_id)
+        t = resolve_target(root, node_id, ref)
     except ReviewTargetError as e:
         if role != "coordinator":
             return "", None, str(e)
@@ -282,7 +284,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str) -> tuple[st
         lines += _executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
                                     reviews_dir(root, node_id), prefix)
     elif role == "reviewer":
-        lines += _reviewer_preamble(node_id, model)
+        lines += _reviewer_preamble(node_id, model, ref)
     else:
         lines += _coordinator_preamble(node_id)
     lines += _profile_lines(prof, role, zones)
@@ -335,10 +337,11 @@ def main(argv: list[str] | None = None) -> None:
                    help="cli runs the profile's access.cli (<prompt> = the prompt text, {prompt} = its file path); "
                         "paste/subagent only write the file")
     p.add_argument("-o", "--output", type=Path)
+    p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
     root = resolve_repo_root(ns)
-    text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model)
+    text, prof, err = build_prompt(root, ns.node_id, role=ns.role, model=ns.model, ref=ns.ref)
     if err:
         print(f"error: {err}", file=sys.stderr)
         raise SystemExit(1)

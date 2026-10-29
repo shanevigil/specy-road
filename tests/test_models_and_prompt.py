@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo
+from tests.review_repo_helpers import NODE, git, make_review_repo
 
 from specy_road import model_profiles as mp
 from specy_road.bundled_scripts import models_cli, role_prompt
@@ -168,6 +168,21 @@ def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
     assert "# Work-packet brief" not in text
     # gitignored, so a glob tool may not list it: the prompt names the exact file to open
     assert f"absolute: `{d / PACKET_NAME}`" in text and f"directly (`ls {d / PACKET_NAME}`)" in text
+
+
+def test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
+    (repo / "roadmap" / "phases" / "M1.json").write_text(json.dumps({"nodes": [{**NODE, "status": "Complete"}]}))
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / PACKET_NAME).write_text("# Review packet: `M1.1`\n")
+    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--repo-root", str(repo)) == 1
+    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "reviewer", "--ref", "feature/rm-thing",
+                "--repo-root", str(repo)) == 0
+    text = (repo / "work" / "prompt-M1.1-reviewer-opus.md").read_text()
+    assert f"base: {git(repo, 'rev-parse', 'feature/rm-thing')}" in text
+    assert "--file <notes.md> --ref feature/rm-thing`" in text
 
 
 def test_prompt_refuses_unrostered_model_and_wrong_role(tmp_path: Path) -> None:

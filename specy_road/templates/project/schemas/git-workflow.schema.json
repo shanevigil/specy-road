@@ -40,6 +40,10 @@
       "enum": ["auto", "merge", "pr"],
       "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
     },
+    "baseline_cmd": {
+      "type": "string",
+      "description": "Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."
+    },
     "prefer_agentic_pick_order": {
       "type": "boolean",
       "description": "When true, do-next-available-task and grind-session order each pickup tier (Blocked, MR-rejected, the rest) Agentic-led, then Mixed, then unset, then Human-led, outline order within each (default false: outline order only). Eligibility is unchanged. CLI --prefer-agentic / --no-prefer-agentic wins."
