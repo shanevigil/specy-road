@@ -14,6 +14,7 @@ from specy_road.finish_land_integration import (
     integration_worktree,
     integration_worktree_problem,
     land_merge_feature_into_integration,
+    print_merge_push_notice,
 )
 from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
@@ -230,6 +231,9 @@ def retry_merge_landing(
         if delete_branch:
             delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
         raise SystemExit(0)
+    print_merge_push_notice(
+        repo, remote=remote, integration_branch=ib, feature_branch=branch,
+    )
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
     )
@@ -272,6 +276,9 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
+    print_merge_push_notice(
+        repo, remote=gw_remote, integration_branch=ib, feature_branch=branch,
+    )
     ok, err_msg = land_merge_feature_into_integration(
         repo,
         remote=gw_remote,

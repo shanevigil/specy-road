@@ -136,6 +136,41 @@ def _merge_and_push(
     return True, ""
 
 
+def integration_commits_ahead_of_remote(
+    repo: Path, *, remote: str, integration_branch: str,
+) -> int | None:
+    """How many commits on the local integration branch are not on ``remote/integration_branch``."""
+    local = f"refs/heads/{integration_branch}"
+    tracked = f"refs/remotes/{remote}/{integration_branch}"
+    if not _ref_exists_local(repo, local):
+        return None
+    if not _ref_exists_local(repo, tracked):
+        return None
+    code, out = git_code(["rev-list", "--count", f"{tracked}..{integration_branch}"], repo)
+    if code != 0 or not out.strip().isdigit():
+        return None
+    return int(out.strip())
+
+
+def print_merge_push_notice(
+    repo: Path, *, remote: str, integration_branch: str, feature_branch: str,
+) -> None:
+    """Tell the operator what merge mode will push before it runs."""
+    git_code(["fetch", remote], repo)
+    ahead = integration_commits_ahead_of_remote(repo, remote=remote, integration_branch=integration_branch)
+    print(
+        f"\nMerge mode will merge {feature_branch!r} into {integration_branch!r} "
+        f"and push {remote}/{integration_branch}."
+    )
+    if ahead is None:
+        return
+    word = "commit" if ahead == 1 else "commits"
+    print(
+        f"  {ahead} local {word} on {integration_branch} are not on {remote}/{integration_branch} yet "
+        f"(in addition to this leaf's merge)."
+    )
+
+
 def land_merge_feature_into_integration(
     repo: Path,
     *,

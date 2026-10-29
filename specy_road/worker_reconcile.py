@@ -12,12 +12,13 @@ from typing import Any
 
 import yaml
 
+from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
-from specy_road.finish_implementation_check import zone_matches
+from specy_road.finish_implementation_check import _clean, zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
 from specy_road.review_target import ReviewTargetError, resolve_target
-from specy_road.runtime_paths import project_prefix, rebase_to_project
+from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
     FLAG_RECONCILE,
@@ -59,6 +60,20 @@ def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
 _STATE_DIRS = ("work/reviews/", "work/.workers/", "work/.sessions/", "work/.worktrees/")
 
 
+def _delegated_brief(repo_root: Path, rec: WorkerRecord) -> Path:
+    wt = Path(rec.worktree)
+    return git_root(wt) / project_prefix(repo_root) / "work" / f"brief-{rec.node_id}.md"
+
+
+def _brief_unchanged(repo_root: Path, rec: WorkerRecord, nodes: list[dict]) -> bool:
+    """A fresh brief render matches the copy the worker was given in its worktree."""
+    brief = _delegated_brief(repo_root, rec)
+    if not brief.is_file():
+        return False
+    fresh = render_brief(rec.node_id, index(nodes), repo_root=repo_root, include_history=False)
+    return fresh == brief.read_text(encoding="utf-8")
+
+
 def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
     out (role_prompt), the prompts ``delegate`` writes, and the toolkit's state.
@@ -80,7 +95,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
     changed = _changed_since(Path(rec.worktree), since)
-    zones = t.touch_zones
+    zones = [z for z in (_clean(z) for z in t.touch_zones) if z]
     # A breach is judged over the worker's whole lifetime, not only since the
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
@@ -98,7 +113,12 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
     # A prompt that can no longer be built (the model lost the leaf's
     # sensitivity or class) is a contract change too, not a pass.
-    contract_changed = bool(rec.contract_hash and (err or hashlib.sha256(text.encode("utf-8")).hexdigest() != rec.contract_hash))
+    brief_same = _brief_unchanged(repo_root, rec, t.nodes)
+    prompt_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    contract_changed = bool(
+        rec.contract_hash
+        and (err or (prompt_hash != rec.contract_hash and not brief_same))
+    )
     off_branch = branch_mismatch(Path(rec.worktree), rec.branch)   # the tree moved off the worker's branch (B12)
     if outside or contract_changed or off_branch:
         add_flag(repo_root, rec, FLAG_RECONCILE)
@@ -163,7 +183,8 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
             out.append({"worker_id": rec.worker_id, "node_id": rec.node_id, "state": rec.state,
                         "lease": rec.lease.get("holder"), "flags": list(rec.flags), "epoch": rec.instruction_epoch,
                         "gaps": _gaps(mark, [e.seq for e in evs], last),
-                        "events": [{"seq": e.seq, "type": e.type, "source": e.source, "summary": e.summary} for e in evs]})
+                        "events": [{"seq": e.seq, "type": e.type, "source": e.source, "summary": e.summary,
+                                    "detail": e.detail} for e in evs]})
             if ack:
                 marks[rec.worker_id] = last
         if ack and out:

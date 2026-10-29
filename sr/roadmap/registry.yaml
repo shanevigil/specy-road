@@ -75,24 +75,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: worker-reconcile-and-status
-    node_id: M3.10
-    branch: feature/rm-worker-reconcile-and-status
-    touch_zones:
-      - specy_road/finish_modes.py
-      - specy_road/bundled_scripts/finish_task_args.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/worker_reconcile.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/finish_land_integration.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: roster-profiles-and-packet-path
     node_id: M3.11
     branch: feature/rm-roster-profiles-and-packet-path

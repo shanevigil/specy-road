@@ -240,7 +240,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
     cli, api_id = _cli_for(repo_root, entry, harness)
-    launch = adapter_for(harness).launch(prompt, wt, api_id, cli)
+    launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
@@ -284,7 +284,8 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
     prompt.write_text(text, encoding="utf-8")
-    launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli)
+    launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
+                            node_id=rec.node_id, repo_root=repo_root)
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)

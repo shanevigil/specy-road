@@ -290,9 +290,9 @@ session, which is the case the hook exists for.
 
 | Harness | Launch | Session id | Resume (`message`) | Interrupt / steer | Handoff command |
 |---|---|---|---|---|---|
-| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit) | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
-| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin) | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
-| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"` | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
+| `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit). In a **linked** worktree the default also passes `--add-dir` pointing at the main checkout's `work/reviews/<ID>/` so the executor can write its READY hand-off under `acceptEdits`. | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
+| `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin). The harness runs in the worktree; write READY under the main checkout's `work/reviews/<ID>/` (same path `reviews_root` resolves to from any linked worktree). | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
+| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"`. The agent's workspace is the linked worktree; READY still belongs in the main checkout's `work/reviews/<ID>/` (open or copy that path explicitly if the harness cannot reach it). | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
 | `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies) | none | unsupported | unsupported | none |
 
 Whatever the harness, the wrapper's own command line carries only the repo
@@ -336,7 +336,10 @@ must not edit files in that leaf's touch zones while the worker runs — the
 presence guard (`session guard`) already refuses the git operations that
 would collide. Finishing the leaf is still `finish-this-task` from the
 leaf's branch after the gate; `terminate` the idle worker afterwards so its
-record closes and the slot frees. From a linked worktree with
+record closes and the slot frees. With `--on-complete merge`, finish merges
+into the integration branch and **pushes that branch** (after stating how many
+local integration commits are not on the remote yet); `--push` only pushes
+the feature branch. From a linked worktree with
 `on_complete: merge`, finish cannot check the integration branch out while
 the coordinator's checkout holds it, so it merges and pushes **in that
 checkout** instead. That checkout must have no uncommitted changes to tracked
