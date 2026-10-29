@@ -102,22 +102,3 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-converge-checks
-    node_id: M3.5
-    branch: feature/rm-brainstorm-converge-checks
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_fields.py
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_cli_v2.py
-      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
-      - specy_road/bundled_scripts/brainstorm_prompt_evidence.py
-      - specy_road/bundled_scripts/brainstorm_verify.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - docs/brainstorming.md
-      - docs/agentic-sandbox-runbook.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T07:50:07+00:00'

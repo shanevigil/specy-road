@@ -162,7 +162,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.5_brainstorm-converge-checks_ac36c1fd-1afc-45b9-89f8-9f1e2cacda10.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Converge and evidence passes that cannot silently skip work",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_cli.py",
