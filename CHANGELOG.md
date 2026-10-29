@@ -11,110 +11,179 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
-### Fixed (rc1 upgrade feedback)
+## [v0.3.1-rc2] - 2026-10-29
 
-- `refresh-stubs` in a repo without a stub pack (never ran `specyrd init`)
-  printed `nothing to refresh` and wrote nothing, while `validate` kept
-  telling the operator to run it. It now re-applies the managed blocks in
-  `AGENTS.md`, `.gitignore` and `.cursorindexingignore`, says no pack is
-  installed, and still creates no manifest.
-- `validate` no longer warns that IDE stubs lag the installed version in a
-  repo that has no stub pack (0.2.x `init project` recorded a version with
-  no pack, so the warning could never clear).
-- `validate`'s missing-`AGENTS.md`-section warning no longer offers
-  `init project --force`, which overwrites the roadmap scaffold.
-- `.specyrd/cache/` ignores itself (a `.gitignore` of `*` inside it), so the
-  first `validate`, `search` or `brainstorm` after an upgrade no longer
-  leaves `?? .specyrd/` in a repo whose `.gitignore` predates the block.
-- `specyrd init` writes the `AGENTS.md` block when it finds a project.
-- `init project --force` keeps the consumer's `.gitignore` (and re-applies
-  its managed block); its help and its refusal message now say what
-  `--force` overwrites and point at the refresh commands.
-- `refresh-schemas` labels a schema that is new in this version (an
-  untracked file a schemas-only diff review misses).
-- The managed `.gitignore` block now carries the 0.3 run-time paths
-  (`work/reviews/`, `work/.sessions/`, `work/.workers/`, `work/.worktrees/`,
-  `work/brainstorm-*-prompt.md`, `work/brainstorm-closed/*-prompt.md`),
-  which upgraders had to add by hand.
-- `suggested_prompts/bootstrap-agents-md.md` no longer asks for a second load
-  order around the managed block, which already carries one.
-- `edit-node --set acceptance=a|b` stored one criterion while adopters
-  believed it set two. Repeating `--set` for a list field (`acceptance`,
-  `risks`, `touch_zones`, `dependencies`) now appends one item each; a
-  repeated scalar key is an error; `--set` has help text; `validate` warns
-  on an open node whose criterion contains `|`.
-- In the nested layout, the review gate compared git's repository-root paths
-  with `roadmap/registry.yaml`, so the registry-only commit that
-  `mark-implementation-reviewed` writes staled every review and `finish`
-  refused each approval; the deterministic merge of bookkeeping files and
-  the integration-registry reads had the same blind spot. All use the
-  project prefix now.
-- The review packet compared git's repository-root paths with project-relative
-  bookkeeping and policy paths, so in the nested layout the implementation
-  summary was flagged as a touch-zone breach; paths are rebased to the
-  project first.
-- `finish-this-task` from a linked worktree lands in the checkout that holds
-  the integration branch; in the nested layout it ran at that checkout's git
-  root, so the deterministic resolution of `registry.yaml` and the generated
-  files never engaged and the merge conflicted. It runs in the holder's
-  project root now.
-- Re-landing a finished branch whose merge had failed counted every
-  bookkeeping write as an unreviewed commit in the nested layout, for the
-  same reason; fixed.
-- In the nested layout (project under `sr/`), every read of a file *as
-  committed on a ref* — the review policy and roster from the integration
-  branch, pinned model profiles, the packet's committed summary, the roadmap
-  at a ref — resolved the path from the git root and silently found nothing:
-  routing offered only the human reviewer and the gate ran on defaults. The
-  reads now resolve from the project root.
-- `do-next-available-task` and `mark-implementation-reviewed` no longer stash
-  `work/` around the registry commit. The stash stack is shared by every
-  session in a checkout: files another session wrote under `work/` during a
-  pickup were stranded in the stash, and a failed restore only warned. The
-  clean-tree checks now ignore `work/`, and every registry commit names
-  `roadmap/registry.yaml` alone, so nothing else staged goes with it.
-- `validate` no longer reports touch zones that "match nothing" on Not
-  Started nodes: their zones name files the work will create, and agents
-  following the "fix" hint replaced such zones with planning-sheet paths.
-  In Progress and Blocked nodes are still checked, and the hint now says to
-  correct only a typo or a moved path, never to remove zones to silence it.
-  `roadmap-authoring.md` documents both list syntaxes.
-- Skills and the `AGENTS.md` block cited `docs/*.md` files that exist only in
-  the toolkit (e.g. `docs/brainstorming.md`). They now render as links to the
-  toolkit's GitHub docs at the installed version's tag (`main` for dev
-  builds); `docs/supply-chain-security.md`, which `init project` ships, stays
-  local. A test fails if a template cites a doc that does not exist.
-- Docs no longer offer `specy-road sync` as a way to refresh `roadmap.md` or
-  the digest without saying it fast-forwards the integration branch first.
-- `brainstorm sessions` no longer aborts on the first unreadable
-  `work/brainstorm-*.yaml`: it flags that session, lists the rest, and exits 1.
-  Session read errors now name the file and the edit that fixes it.
+Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path
+fixes, nested-layout corrections, orchestration and worker-loop hardening,
+and validation that catches stale commands and context budget drift.
 
-### Added (rc1 upgrade feedback)
+### Added
 
 - `specy-road upgrade [--dry-run] [--prune]`: `refresh-schemas`,
   `refresh-profiles`, `refresh-stubs`, then `validate` and `digest --check`,
   ending with what is left to do by hand. See *Upgrading from 0.2.x* in
   `docs/install-and-usage.md`.
-- `refresh-stubs --prune` deletes the stubs the manifest recorded that this
-  version no longer installs (the pre-0.3.0 `.cursor/commands/specyrd-*.md`
-  and `.claude/commands/specyrd-*.md`) instead of leaving an `rm` to copy.
-- `specy-road validate --strict` exits 1 when validation passes with
-  warnings or self-heal notes, for CI once an upgrade window closes.
+- `refresh-stubs --prune` deletes stub paths this version no longer installs
+  (pre-0.3.0 `.cursor/commands/specyrd-*.md` and
+  `.claude/commands/specyrd-*.md`) instead of leaving an `rm` for the operator.
+- `refresh-stubs --diff` previews stub, skill and managed-block changes before
+  `refresh-stubs` applies them.
+- `specy-road validate --strict` exits 1 when validation passes with warnings
+  or self-heal notes, for CI once an upgrade window closes.
+- `validate --generate-orchestration` writes the commented
+  `roadmap/orchestration.yaml` starter when the file is missing; `init project`
+  ships the same starter.
+- `validate` warns when `AGENTS.md` or `CLAUDE.md` names a command that does
+  not exist, and meters always-injected context per harness with line and byte
+  counts against each profile's documented limits.
+- Every managed rule in `AGENTS.md` and `CLAUDE.md` names its provenance
+  (`specy-road refresh-stubs`, a constitution file, or similar).
+- `specy-road doctor` lists merged or stale `feature/rm-*` branches, broken or
+  stale worktrees, registry rows without a live branch, and toolkit stashes;
+  `--fix` removes them after one prompt per kind.
+- `finish-this-task --delete-branch` (merge mode) and `specy-road branches
+  prune` drop merged feature branches locally and on the remote.
+- `do-next-available-task` and `grind-session` run a `--baseline-cmd` on the
+  integration branch before pickup (default from `git-workflow.yaml`; refuse on
+  failure, `--baseline-warn` to downgrade).
+- Review and finish trial-merge the integration branch first; `review-packet
+  --base` keeps that merge for the diff.
+- `review list`, `prompt --role reviewer --ref`, distinct `handoff status`
+  exit codes (`--json` includes `state: complete_no_claim`), and review-loop
+  root-cause analysis when blocking rounds repeat.
+- Roster `aliases` and profile `launch_model`; `session end <id>`; reviewer
+  precondition names the leaf worktree; `review-packet -o` also writes the
+  canonical packet path when given.
+- `brainstorm realize`, `list --summary`, and triage commands that validate
+  every id before any `[ok]` or save; `brainstorm promote` inherits
+  `execution_milestone` from the anchor node.
+- `brainstorm accept` / `reject` / `realize` batching; converge and evidence
+  checks that cannot silently skip work; per-command next-step hints.
+- `rebalance-chunks --normalize` rewrites chunks in canonical key order (one-time
+  normalisation after the first hand-authored edit).
+- `apply changes.yaml --dry-run`, `add-node --acceptance`, and display ids in
+  `dependencies`.
+- `list-nodes --json` without title truncation; `move-node` rewrites touch-zone
+  path segments equal to an old display id.
+- `do-next-available-task --prefer-agentic` / `--no-prefer-agentic` and
+  `prefer_agentic_pick_order` in `git-workflow.yaml` order ready leaves
+  Agentic-led first in `--plan` and auto-pick.
+- `grind-session` / `orchestrate plan` parallel waves omit ready leaves that
+  share a touch zone; overlaps land in separate waves with the overlap named.
+- `file-limits` applies the function-length cap to TypeScript and JavaScript.
+- `docs/context-regressions.yaml` and a replay step in
+  `docs/agentic-sandbox-runbook.md` for harness or model upgrades.
+- `docs/design-notes/harness-compatibility-triage.md` records harness-capability
+  research and the planned adapter hardening track.
 
 ### Changed
 
 - The `init project` sample roadmap is real onboarding work: phase M1
   *Adopt specy-road* and task M1.1 *Set up the project's specy-road basics*
-  (codename `project-setup`), with a goal, five acceptance criteria (purpose,
-  principles, vision, git workflow, first real work, generated files and
-  `validate --strict`), touch zones that exist, and filled planning sheets.
-  It replaces the placeholder milestone that `do-next-available-task` could
-  claim and that made a fresh project warn under the review gate. Existing
-  repos are unaffected.
+  (codename `project-setup`), with a goal, five acceptance criteria, touch
+  zones that exist, and filled planning sheets. It replaces the placeholder
+  milestone that `do-next-available-task` could claim and that made a fresh
+  project warn under the review gate. Existing repos are unaffected.
 - `specy-road brainstorm close [--slug SLUG]` moves a finished session and its
   prompts to `work/brainstorm-closed/`, so it stops counting as open and
   `--slug` stops being required for the others.
+- `brainstorm promote` validates the batch once, caps derived codenames at four
+  words, and records acceptance order and `sibling_order` across batches.
+- `upgrade`, `validate`, and related messages report schema drift, stub skew,
+  and migration steps plainly; generated files that `digest --check` already
+  covers are exempt from duplicate upgrade noise.
+- `finish-this-task` refuses a leaf whose planning sheet is still the scaffold
+  sentinel (`--allow-scaffold-planning` opts out); pickup warns; `validate`
+  notes Complete leaves with unfilled sheets.
+- `do-next-available-task` and `grind-session` skip leaves whose planning sheet
+  is still a placeholder; the gate blocks READY verifiers that fail unless a
+  reviewer marks them pre-existing on the integration branch.
+- `handoff status` lists review records on a Complete leaf with no claim and
+  labels executor-reported verify exits; `worker sync` reports event-sequence
+  gaps and shows the full harness message when READY is missing.
+
+### Fixed
+
+- `refresh-stubs` in a repo without a stub pack printed `nothing to refresh`
+  and wrote nothing while `validate` kept asking for it. It now re-applies the
+  managed blocks in `AGENTS.md`, `.gitignore` and `.cursorindexingignore`,
+  says no pack is installed, and still creates no manifest.
+- `validate` no longer warns that IDE stubs lag the installed version when no
+  stub pack exists; no skew warning when the manifest records no pack.
+- `validate`'s missing-`AGENTS.md`-section warning no longer offers
+  `init project --force`, which overwrites the roadmap scaffold.
+- `.specyrd/cache/` ignores itself, so the first `validate`, `search` or
+  `brainstorm` after an upgrade no longer leaves `?? .specyrd/` when
+  `.gitignore` predates the block.
+- `specyrd init` writes the `AGENTS.md` block when it finds a project.
+- `init project --force` keeps the consumer's `.gitignore` (and re-applies its
+  managed block); help and refusal text say what `--force` overwrites and point
+  at the refresh commands.
+- `refresh-schemas` labels a schema that is new in this version.
+- The managed `.gitignore` block carries 0.3 run-time paths (`work/reviews/`,
+  `work/.sessions/`, `work/.workers/`, `work/.worktrees/`,
+  `work/brainstorm-*-prompt.md`, `work/brainstorm-closed/*-prompt.md`).
+- `suggested_prompts/bootstrap-agents-md.md` no longer asks for a second load
+  order beside the managed block.
+- Repeating `--set` for list fields (`acceptance`, `risks`, `touch_zones`,
+  `dependencies`) appends one item; repeated scalar keys error; `validate`
+  warns on `|` inside a criterion.
+- Nested layout: registry, review gate, review packet, finish, land,
+  committed-copy reads (roster, policy, profiles, packet summary, roadmap at a
+  ref), worker reconcile, and orchestrate plan paths use the project prefix, not
+  the git root alone.
+- `do-next-available-task` and `mark-implementation-reviewed` no longer stash
+  `work/` around the registry commit; clean-tree checks ignore `work/`, and
+  registry commits touch `roadmap/registry.yaml` alone.
+- `validate` no longer reports touch zones that match nothing on Not Started
+  nodes; In Progress and Blocked nodes are still checked; the hint says to fix
+  typos or moved paths only.
+- Skills and the `AGENTS.md` block link toolkit-only `docs/*.md` at the
+  installed version's tag; `docs/supply-chain-security.md` stays local.
+- Docs no longer offer `specy-road sync` as a refresh without noting it
+  fast-forwards the integration branch.
+- `brainstorm sessions` survives a bad session file, names the fix, lists the
+  rest, and exits 1.
+- `brainstorm start` runs before roadmap reads; prompts carry proposed-answer
+  framing; `promote` warns when evidence is still unverified.
+- Review gate: `n/a` on an id outside the brief is not an error; review-loop
+  RCA folding, analyst prompt, and round identity are consistent.
+- `review-packet --base` keeps the trial merge on the integration branch;
+  `handoff status` classifies bookkeeping-only trial-merge conflicts.
+- `finish-this-task` checks the rollup session before loading the roadmap;
+  nested projects count code outside the project root toward the implementation
+  check.
+- Worker adapters: nested workers run at the checkout git root; resume
+  permissions, roster ref in text-mode `orchestrate plan`, project-relative zone
+  matching, and bookkeeping path rules for `work/` under the git root.
+- `worker sync` / reconcile report merge outcomes, retry push notices, and
+  full harness text on error exits.
+- `branches prune` / `finish --delete-branch` retry remote deletes, keep rollup
+  deletes on the integration branch, and read remote rollups when pruning.
+- Stale-command validation handles prose, list items, code spans, emphasis,
+  fences, TypeScript/JavaScript syntax in `gui/pm-gantt/`, and plain run
+  instructions.
+- Context-meter discovery matches Claude and Codex instruction files, including
+  paths outside the git root and `~/.claude/CLAUDE.md`.
+- Test suites clear `SPECY_ROAD_WORKER_ID` so a run inside a delegated worker
+  does not leak worker identity into guard tests.
+
+### Deferred past 0.3.1rc2
+
+If rc2 feedback is good enough to ship `0.3.1` to PyPI, these themes move to
+`0.3.2`; otherwise they land in rc3:
+
+- Promote and brainstorm editing features (structured promote, batch revise,
+  merge, cluster objects, richer sheet carry-forward).
+- Session-overlap warnings that name the other worktree and its edit state.
+- Review round counts, elapsed time, and detached worktrees in `doctor` /
+  `handoff status`.
+- Rule pointers in managed sections (provenance without the full M5.1 block).
+- Context-feedback pilot and managed-section measurement.
+- The research register and periodic harness-capability refresh.
+- Harness compatibility hardening (profiles from facts, adapter post-run checks,
+  structured review output, skill layout, guard hooks, candidate harnesses,
+  runtime verification).
 
 ## [v0.3.1-rc1] - 2026-10-28
 
