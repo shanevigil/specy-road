@@ -60,6 +60,10 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
         ("generic_class.ts", [("Store.find", 2, 6)]),
         # Every declarator of one statement, past plain values, annotations and patterns.
         ("declarators.ts", [("clamp", 1, 5), ("twice", 7, 1), ("reset", 7, 3)]),
+        # A grouped initializer `((x) => { … })` is the arrow, not a parameter list.
+        ("parenthesized.ts", [("wrapped", 1, 5), ("after", 6, 1)]),
+        # A typed arrow field keeps its name: `onChange: (x) => T = (x) => { … }`.
+        ("typed_field.ts", [("Handler.onChange", 2, 5)]),
         # An apostrophe or quote in JSX text is not a string; the following function stays separate.
         ("jsx_text.tsx", [("Greeting", 1, 5), ("next", 6, 2), ("after", 8, 3)]),
         # Braces inside strings, nested template literals and comments are ignored.
@@ -107,6 +111,10 @@ def test_scan_reports_over_cap_js_function_with_line(tmp_path: Path, suffix: str
         ("declarators.ts", "declarators.ts:1 function `clamp` 5 lines"),
         # `<p>Don't say "hello` must not hide the `}` on that line or swallow `next`.
         ("jsx_text.tsx", "jsx_text.tsx:1 function `Greeting` 5 lines"),
+        # `((x: number) => {` is a named arrow, so an over-cap one fails under its name.
+        ("parenthesized.ts", "parenthesized.ts:1 function `wrapped` 5 lines"),
+        # The report names `onChange`, not the `number` in its type.
+        ("typed_field.ts", "typed_field.ts:2 function `Handler.onChange` 5 lines"),
     ],
 )
 def test_scan_measures_concise_arrows_regexes_and_divisions(

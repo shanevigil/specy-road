@@ -213,13 +213,12 @@ def _type_end(s: str, j: int, stop: str) -> int | None:
                 return j
             j += 2
         elif s[j] == "{" and stop == "{":
-            # An object type goes on (`{…} | …`, `{…}[]`) or the body follows it.
             k = _ws(s, _close(s, j) + 1)
             if _ch(s, k) not in "{|&" and not s.startswith("[]", k):
                 return j
             j = k
         elif stop == "=" and s[j] in "=,":
-            return j  # `,` ends a declarator's annotation that has no initializer
+            return j
         elif s[j] in _OPEN:
             j = _close(s, j) + 1
         elif s[j] == "<":
@@ -255,7 +254,11 @@ def _arrow_body(s: str, j: int) -> int | None:
     if _ch(s, j) == "<":
         j = _ws(s, _angles_end(s, j))
     if _ch(s, j) == "(":
-        j = _close(s, j) + 1
+        # `((x) => body)` is grouped; `(x) => body` is the parameter list.
+        close, inner = _close(s, j), _arrow_body(s, j + 1)
+        if inner is not None and inner < close and not s.startswith("=>", _ws(s, close + 1)):
+            return inner
+        j = close + 1
     elif m := _IDENT_RE.match(s, j):
         j = m.end()
     else:
@@ -321,11 +324,7 @@ def _declarators(s: str, j: int) -> list[tuple[int, int, str]]:
 
 
 def _class_members(s: str, src: str, j: int, close: int) -> list[tuple[int, int, str]]:
-    """Methods and arrow-valued fields at the top level of a class body.
-
-    A computed or string name (``[Symbol.iterator]``, ``'my-key'``) is reported as
-    its source text on one line.
-    """
+    """Methods and arrow-valued fields at the top level of a class body."""
     found: list[tuple[int, int, str]] = []
     while j < close:
         m = None if _WORD_CHAR_RE.match(_ch(s, j - 1)) else _MEMBER_RE.match(s, j)
@@ -339,6 +338,8 @@ def _class_members(s: str, src: str, j: int, close: int) -> list[tuple[int, int,
             k = _close(s, a) + 1 if s[a] == "[" else _quoted_end(src, a)
             name = " ".join(src[a:k].split())
         k = _OPTIONAL_RE.match(s, k).end()
+        if _ch(s, k) == ":":  # `name: (x) => T = (x) => …` keeps `name`, not `T`
+            k = _type_end(s, k + 1, "=") or k
         if _ch(s, k) == "=":
             body = _arrow_body(s, k + 1)
         else:
