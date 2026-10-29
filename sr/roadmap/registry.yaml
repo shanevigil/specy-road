@@ -52,26 +52,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: a-baseline-gate-runs-on-the-integration-branch-before-pickup
-    node_id: M3.12
-    branch: feature/rm-a-baseline-gate-runs-on-the-integration-branch-before-pickup
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/bundled_scripts/grind_session_step.py
-      - specy_road/git_workflow_config.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - schemas/git-workflow.schema.json
-      - docs/dev-workflow.md
-      - docs/grind-session.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-10-29T03:19:22+00:00'
   - codename: a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
     node_id: M3.13
     branch: feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
