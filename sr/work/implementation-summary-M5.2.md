@@ -199,15 +199,27 @@ only immediately before the product name, or before one noun-phrase word. `the s
 toolkit **is** a library` is not changed: the emphasis exception is for markers attached to
 the product name, and the follower is not a plain word once those markers stay on it.
 
+## Review round 16
+
+`grok-4.7-high` blocked A1 and A3 at `ca6199b`: blanking inline spans to spaces dropped
+``specy-road `frob` `` mentions and glued the product name to the next word (`specy-road now`);
+``Use the specy-road `init` command.`` raised ``AttributeError`` in ``_follower_tokens`` and
+aborted ``validate``. Fixed by treating a same-line span immediately after the product whose
+content is one command-shaped token as that token (``_span_command_token``, ``_mention_at``),
+scanning prose on the original line only, and resolving followers through ``_mention_at`` /
+``_followers_after``. Node-id doc refs (``frob `M1.2.```) stay quiet under the noun phrase;
+``Use the specy-road `init` command.`` warns nothing and does not raise (A3). Moved
+``registered_agent_command_names`` to ``cli.py`` and ``agent_file_lines_outside_block`` to
+``managed_block.py`` for file limits.
+
 ## Touch zones
 
 Final list: `specy_road/bundled_scripts/validate_stale_commands.py`,
-`specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `tests/`,
-`docs/install-and-usage.md`, and `AGENTS.md` (the title needs the determiner `the` once a
+`specy_road/bundled_scripts/validate_roadmap.py`, `specy_road/cli.py`, `specy_road/managed_block.py`,
+`tests/`, `docs/install-and-usage.md`, and `AGENTS.md` (the title needs the determiner `the` once a
 heading is no longer an exclusion).
-`specy_road/managed_block.py` was listed but did not need changing. The scanner skips the
-managed block via `HTML_COMMENT` markers in `_lines_outside_block` and keeps the file's line
-numbers; it does not call `managed_block._split`.
+The scanner skips the managed block via ``agent_file_lines_outside_block`` (``HTML_COMMENT`` markers)
+and keeps the file's line numbers.
 
 ## Verification
 
@@ -215,6 +227,7 @@ numbers; it does not call `managed_block._split`.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 9): 8 passed.
 - `python -m pytest -q tests/test_validate_stale_commands.py` (after review round 15): 8 passed in 0.63s. `specy-road file-limits`: OK.
 - Executor `composer-2.5` at `ca6199b`: `python -m pytest -q tests/test_validate_stale_commands.py` (8 passed in 0.81s), `specy-road file-limits` OK, `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` OK, `specy-road validate --repo-root .` emits no stale-command warning.
+- Round 16 fix: `python -m pytest -q tests/test_validate_stale_commands.py` (10 passed), `specy-road file-limits` OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `specy-road digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -234,8 +247,8 @@ numbers; it does not call `managed_block._split`.
 - Helpers `_follower_tokens`, `_strip_prose_punctuation`, `_plain_follower`, `_mandatory_follower` (validate_stale_commands.py): mandatory follower detection and plain-word noun-phrase tail (A1).
 - Helper `_reports` (validate_stale_commands.py): mandatory contexts first; a noun phrase is the only exclusion. Code spans are yielded before this helper runs on plain text.
 - Helper `_occurrences` (validate_stale_commands.py): every unregistered mention with its line number, without collapsing repeats (A1).
-- Helper `_lines_outside_block` (validate_stale_commands.py): drops managed-block lines but keeps the file's line numbers for the warning.
-- Helper `_registered_names` (validate_stale_commands.py): the specy-road and specyrd command sets the filter uses.
+- Function `registered_agent_command_names` (cli.py): registered specy-road and specyrd names for the filter (A1).
+- Function `agent_file_lines_outside_block` (managed_block.py): managed-block skip with stable line numbers (A1).
 - Helper `_fence_marker` / `_fence_closes` (validate_stale_commands.py): fence character and length; a closer needs the same character, length >= the opener, and no info string after the run (A1, review rounds 10–11).
 - Helper `_command_mentions` (validate_stale_commands.py): walks every line and yields the tokens `_reports` keeps, including lines inside a fence that a shorter or different marker did not close (A1).
 - Helper `unregistered_commands` (validate_stale_commands.py, public): drops registered names and keeps every remaining occurrence. Its docstring states the precedence rule.
@@ -245,6 +258,7 @@ numbers; it does not call `managed_block._split`.
 - Helper `_first_meaningful_follower` (validate_stale_commands.py): the next real token after the command name. Mandatory and plain checks stop there, so a later flag does not cancel a noun phrase (A1, review round 14).
 - Helper `_opening_is_code_span` (validate_stale_commands.py): a line-start backtick run that closes on the same line is scanned as a code span, not a fence opener (A1, review round 13).
 - Regex `_MENTION` (validate_stale_commands.py): emphasis markers attached to the product name or the token are markup, so `_` directly before the name is not a word boundary, and a word character after the token is not trailing emphasis (A1, review rounds 12–15).
+- Helpers `_mention_at`, `_span_command_token`, `_product_before_span`, `_followers_after`, `_doc_ref_span_after`, `_looks_like_node_id` (validate_stale_commands.py): inline span as command token; follower resolution on the original line (A1/A3, review round 16).
 - Table `REPLACED_COMMANDS` (cli.py): the A2 alias/deprecated-name table, next to the command set it complements.
 - Guard `if not path.is_file(): continue`: most projects have only one of the two files, and the test's tmp git root has no `AGENTS.md`.
 - Guard `except UnicodeDecodeError: continue`: a non-UTF-8 agent file; reached by `test_an_agent_file_that_is_not_utf8_is_skipped`.
@@ -256,3 +270,5 @@ numbers; it does not call `managed_block._split`.
 - Test `test_each_replaced_name_is_unregistered_and_its_replacement_is_not` (parametrized over the table): keeps the alias table honest as commands change.
 - Test `test_the_toolkits_agent_files_report_nothing`: `unregistered_commands` on this repository's `AGENTS.md` and `CLAUDE.md` is empty (A3). Replaces `test_the_toolkits_agent_files_follow_the_mention_rule`, which expected the prose bullet `specy-road formats` under the wider list-item rule.
 - Test `test_an_agent_file_that_is_not_utf8_is_skipped`: reaches the `UnicodeDecodeError` guard.
+- Test `test_command_token_in_an_inline_span`: round-16 span-token warn/quiet matrix (A1, A3).
+- Test `test_registered_subcommand_in_a_span_does_not_abort_validate`: ``Use the specy-road `init` command.`` does not raise (A3).

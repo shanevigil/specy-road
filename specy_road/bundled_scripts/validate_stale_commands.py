@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import argparse
 import re
 import sys
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.cli import REPLACED_COMMANDS, _known_commands
-from specy_road.managed_block import HTML_COMMENT
+from specy_road.cli import REPLACED_COMMANDS, registered_agent_command_names
+from specy_road.managed_block import agent_file_lines_outside_block
 from specy_road.runtime_paths import git_root
-from specy_road.specyrd_cli import _build_parser as _specyrd_parser
 
 _FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 # Emphasis directly attached to the product name is markup, so "_" is not a word
@@ -27,33 +25,14 @@ _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
 # The product name is a noun phrase when one of these words is the token
 # immediately before it, with only whitespace between ("the specy-road toolkit").
 _NOUN_PHRASE = frozenset(
-    {
-        "the",
-        "a",
-        "an",
-        "this",
-        "that",
-        "these",
-        "those",
-        "other",
-        "any",
-        "all",
-        "every",
-        "each",
-        "its",
-        "our",
-        "your",
-        "their",
-        "own",
-        "of",
-        "with",
-        "in",
-        "for",
-        "from",
-        "about",
-    }
+    {"the", "a", "an", "this", "that", "these", "those", "other", "any", "all",
+     "every", "each", "its", "our", "your", "their", "own", "of", "with", "in",
+     "for", "from", "about"}
 )
 _RUN_VERB = frozenset({"run", "exec", "execute", "invoke", "uvx"})
+_PRODUCT = re.compile(
+    r"(?:(?<![A-Za-z0-9])[*_]+|(?<![\w/.-]))(?:[*_]+)?(specy-road|specyrd)(?:[*_]+)?"
+)
 
 
 def _preceding_words(text: str, start: int) -> list[str]:
@@ -62,11 +41,6 @@ def _preceding_words(text: str, start: int) -> list[str]:
 
 
 def _command_led_list_item(line: str, start: int) -> bool:
-    """A list item whose command is the first token, or sits after only a run verb.
-
-    Emphasis and backticks around that token do not count. A prose bullet that
-    mentions the product later in the sentence is not command-led.
-    """
     mark = _LIST_ITEM.match(line)
     if mark is None or start < mark.end():
         return False
@@ -84,13 +58,6 @@ def _run_verb(line: str, start: int) -> bool:
 
 
 def _noun_phrase(line: str, start: int) -> bool:
-    """True when the token immediately before the product name is a determiner or preposition.
-
-    Only whitespace, and emphasis markers (``*``, ``_``) attached to the product
-    name, may sit between that word and the name (``the **specy-road toolkit**``
-    is quiet). Any other token, including a digit or punctuation, cancels the
-    exclusion (``the 2 specy-road frob`` reports).
-    """
     before = line[:start].rstrip("*_").rstrip(" \t")
     if not before:
         return False
@@ -100,30 +67,99 @@ def _noun_phrase(line: str, start: int) -> bool:
     return before[split_at:].strip("*_").lower() in _NOUN_PHRASE
 
 
+def _product_before_span(line: str, span_start: int) -> tuple[int, str] | None:
+    match = re.search(_PRODUCT.pattern + r"[ \t]*$", line[:span_start])
+    if match is None:
+        return None
+    return match.start(), match.group(1)
 
-def _follower_tokens(line: str, start: int):
-    """Each non-whitespace token after the command-shaped name, in order."""
+
+def _mention_at(line: str, start: int) -> tuple[str, str, int] | None:
     match = _MENTION.match(line, start)
-    pos = match.end()
-    while True:
-        found = re.match(r"[ \t]*(\S+)", line[pos:])
-        if found is None:
-            return
-        yield found.group(1)
-        pos += found.end()
+    if match:
+        return match.group(1), match.group(2), match.end()
+    prefix = re.compile(_PRODUCT.pattern + r"[ \t]*").match(line, start)
+    if prefix is None:
+        return None
+    pos = prefix.end()
+    while pos < len(line) and line[pos] in " \t":
+        pos += 1
+    if pos >= len(line) or line[pos] != "`":
+        return None
+    for span_start, span_end, content in _code_spans(line):
+        if span_start != pos:
+            continue
+        token = content.strip()
+        if re.fullmatch(r"[a-z][a-z0-9-]*", token):
+            return prefix.group(1), token, span_end
+        return None
+    return None
+
+
+def _span_command_token(line: str, span_start: int, content: str) -> tuple[int, str, str] | None:
+    token = content.strip()
+    if not re.fullmatch(r"[a-z][a-z0-9-]*", token):
+        return None
+    product = _product_before_span(line, span_start)
+    if product is None:
+        return None
+    return product[0], product[1], token
 
 
 def _strip_prose_punctuation(raw: str) -> str:
-    """Drop prose punctuation and a glued possessive ``'s`` from a follower token."""
     if re.fullmatch(r"['\u2019]s", raw, re.IGNORECASE):
         return ""
     word = raw.strip("()[]{}.,;:!?…\"'`").strip(".")
     return word
 
 
+def _followers_after(line: str, mention_end: int):
+    pos = mention_end
+    while pos < len(line):
+        while pos < len(line) and line[pos] in " \t":
+            pos += 1
+        if pos >= len(line):
+            return
+        if line[pos] == "`":
+            advanced = False
+            for span_start, span_end, content in _code_spans(line):
+                if span_start == pos:
+                    yield content.strip()
+                    pos = span_end
+                    advanced = True
+                    break
+            if not advanced:
+                return
+            continue
+        found = re.match(r"(\S+)", line[pos:])
+        if not found:
+            return
+        yield found.group(1)
+        pos += found.end()
+
+
+def _looks_like_node_id(raw: str) -> bool:
+    word = _strip_prose_punctuation(raw)
+    return bool(re.match(r"M\d", word))
+
+
+def _doc_ref_span_after(line: str, mention_end: int) -> bool:
+    pos = mention_end
+    while pos < len(line) and line[pos] in " \t":
+        pos += 1
+    if pos >= len(line) or line[pos] != "`":
+        return False
+    for span_start, span_end, content in _code_spans(line):
+        if span_start == pos:
+            return _looks_like_node_id(content.strip())
+    return False
+
+
 def _first_meaningful_follower(line: str, start: int) -> str:
-    """The first follower that is not punctuation-only or a glued possessive."""
-    for raw in _follower_tokens(line, start):
+    resolved = _mention_at(line, start)
+    if resolved is None:
+        return ""
+    for raw in _followers_after(line, resolved[2]):
         if _PUNCT_ONLY.match(raw) or not _strip_prose_punctuation(raw):
             continue
         return raw
@@ -131,13 +167,16 @@ def _first_meaningful_follower(line: str, start: int) -> str:
 
 
 def _mandatory_follower(line: str, start: int) -> bool:
-    """True when the first meaningful follower is a flag, path, quote, id, or command/subcommand.
-
-    A later flag does not count once a plain word has already followed the token
-    (``other specy-road formats that accept --strict``).
-    """
+    resolved = _mention_at(line, start)
+    if resolved is None:
+        return False
     raw = _first_meaningful_follower(line, start)
     if not raw:
+        return False
+    pos = resolved[2]
+    while pos < len(line) and line[pos] in " \t":
+        pos += 1
+    if pos < len(line) and line[pos] == "`" and _looks_like_node_id(raw):
         return False
     word = _strip_prose_punctuation(raw)
     if raw[0] in "\"'" or re.match(r"-{1,2}[A-Za-z0-9]", raw):
@@ -150,13 +189,6 @@ def _mandatory_follower(line: str, start: int) -> bool:
 
 
 def _plain_follower(line: str, start: int) -> bool:
-    """True when nothing follows the token, or the next token is a plain word.
-
-    A plain word is letters only; a hyphen or apostrophe inside it is still
-    plain. Prose punctuation around that word (parentheses, sentence marks)
-    does not count (``formats (templates...)``). Anything else cancels the
-    exclusion (``the specy-road frob @agent``).
-    """
     raw = _first_meaningful_follower(line, start)
     if not raw:
         return True
@@ -164,15 +196,19 @@ def _plain_follower(line: str, start: int) -> bool:
 
 
 def _reports(line: str, start: int) -> bool:
-    """Mandatory contexts first. A noun phrase is the only exclusion."""
     if (
         _command_led_list_item(line, start)
         or _run_verb(line, start)
         or _mandatory_follower(line, start)
     ):
         return True
-    if _noun_phrase(line, start) and _plain_follower(line, start):
-        return False
+    if _noun_phrase(line, start):
+        resolved = _mention_at(line, start)
+        if resolved and (
+            _plain_follower(line, start)
+            or _doc_ref_span_after(line, resolved[2])
+        ):
+            return False
     return True
 
 
@@ -184,11 +220,6 @@ def _backtick_run(line: str, index: int) -> int:
 
 
 def _code_spans(line: str) -> list[tuple[int, int, str]]:
-    """CommonMark code spans: a run of N backticks closed by the next run of N.
-
-    A run of a different length does not close the span, so one backtick inside
-    a double-backtick span stays inside it.
-    """
     spans: list[tuple[int, int, str]] = []
     index = 0
     length = len(line)
@@ -219,7 +250,6 @@ def _code_spans(line: str) -> list[tuple[int, int, str]]:
 
 
 def _fence_marker(line: str) -> tuple[str, int, int] | None:
-    """The fence run at the start of a line: character, length, index after the run."""
     match = _FENCE.match(line)
     if match is None:
         return None
@@ -228,7 +258,6 @@ def _fence_marker(line: str) -> tuple[str, int, int] | None:
 
 
 def _opening_is_code_span(line: str) -> bool:
-    """True when a line-start backtick run closes as an inline code span on that line."""
     lead = len(line) - len(line.lstrip(" \t"))
     if lead >= len(line) or line[lead] != "`":
         return False
@@ -239,7 +268,6 @@ def _opening_is_code_span(line: str) -> bool:
 
 
 def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
-    """True when the line ends an open fence (same char, length >= opener, no info string)."""
     marker = _fence_marker(line)
     if marker is None:
         return False
@@ -249,8 +277,11 @@ def _fence_closes(line: str, open_fence: tuple[str, int]) -> bool:
     return not line[end:].strip()
 
 
+def _inside_span(index: int, spans: list[tuple[int, int, str]]) -> bool:
+    return any(start <= index < end for start, end, _ in spans)
+
+
 def _command_mentions(lines: list[tuple[int, str]]):
-    """``(line, tool, name)`` for each command-shaped token the rule keeps."""
     open_fence: tuple[str, int] | None = None
     for lineno, line in lines:
         if open_fence is not None:
@@ -265,31 +296,24 @@ def _command_mentions(lines: list[tuple[int, str]]):
             open_fence = (marker[0], marker[1])
             continue
         spans = _code_spans(line)
-        chars = list(line)
-        for start, end, content in spans:
-            for tool, name in _MENTION.findall(content):
-                yield lineno, tool, name
-            chars[start:end] = " " * (end - start)
-        plain = "".join(chars)
-        for match in _MENTION.finditer(plain):
+        for span_start, _, content in spans:
+            parsed = _span_command_token(line, span_start, content)
+            if parsed is not None:
+                product_start, tool, token = parsed
+                if _reports(line, product_start):
+                    yield lineno, tool, token
+            else:
+                for tool, name in _MENTION.findall(content):
+                    yield lineno, tool, name
+        for match in _MENTION.finditer(line):
+            if _inside_span(match.start(), spans):
+                continue
             if _reports(line, match.start()):
                 yield lineno, match.group(1), match.group(2)
 
 
-def _registered_names() -> dict[str, set[str]]:
-    specyrd = next(
-        a
-        for a in _specyrd_parser()._actions
-        if isinstance(a, argparse._SubParsersAction)
-    )
-    return {
-        "specy-road": {*_known_commands(), "version"},
-        "specyrd": set(specyrd.choices),
-    }
-
-
 def _occurrences(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
-    registered = _registered_names()
+    registered = registered_agent_command_names()
     found: list[tuple[int, str]] = []
     for lineno, tool, name in _command_mentions(lines):
         if name not in registered[tool]:
@@ -297,61 +321,13 @@ def _occurrences(lines: list[tuple[int, str]]) -> list[tuple[int, str]]:
     return found
 
 
-def _lines_outside_block(text: str) -> list[tuple[int, str]]:
-    """File lines that are not inside the managed block, with their file line numbers."""
-    start = text.find(HTML_COMMENT.start)
-    if start < 0:
-        stop = -1
-    else:
-        end = text.find(HTML_COMMENT.end, start)
-        stop = len(text) if end < 0 else end + len(HTML_COMMENT.end)
-    kept: list[tuple[int, str]] = []
-    offset = 0
-    for number, raw in enumerate(text.splitlines(keepends=True), 1):
-        line_end = offset + len(raw)
-        inside = start >= 0 and offset < stop and line_end > start
-        if not inside:
-            kept.append((number, raw.rstrip("\r\n")))
-        offset = line_end
-    return kept
-
-
 def unregistered_commands(text: str) -> list[str]:
-    """Each ``specy-road <name>`` / ``specyrd <name>`` that Markdown ``text`` names and no CLI registers, in order.
+    """Return each unregistered ``specy-road <name>`` / ``specyrd <name>`` in ``text``, in order.
 
-    Scanning is line-based and best-effort. Inline code spans are parsed only when
-    they open and close on the same line; code spans that span lines are out of
-    scope.
-
-    Every occurrence is returned. The same token on two lines is two entries
-    (``specy-road frob`` twice). A registered command is never returned
-    (``specy-road validate --strict``).
-
-    Mandatory contexts are decided first and win over a noun phrase: a code
-    span (a run of N backticks, N >= 1, closed by the next run of exactly N on
-    the same line; a line-start span such as ```the specy-road frob``` is not
-    treated as a fence opener; code spans that span lines are out of scope),
-    a fenced block (opened by a run of backticks or tildes and closed only by a line whose fence uses that
-    same character, is at least as long, and has nothing but whitespace after
-    the run, so `` ```bash `` does not close and ``` inside a four-backtick fence
-    and ~~~ inside a backtick fence stay inside), a command-led list item (the product name is the
-    first token after the marker, optionally in code or emphasis, or it is
-    preceded only by a run verb: ``- specy-road frob --x``, ``- Run specy-road
-    frob``), a run verb (run, exec, execute, invoke, uvx), and a token followed
-    by a flag, a path, a quoted argument, an id-like argument, or the word
-    command or subcommand (``## the specy-road frob --x``, ``Use the specy-road
-    frob M1.2.``, ``Use the specy-road frob command.``). A heading is not
-    special (``# Please specy-road frob`` warns). The only exclusion is a noun
-    phrase: the token immediately before the product name, with only whitespace
-    and emphasis markers attached to the name between them (``the
-    **specy-road toolkit** is``, ``Run **specy-road** frob`` warns via run verb), is a determiner, possessive, or preposition — the, a, an, this, that,
-    these, those, other, any, all, every, each, its, our, your, their, own,
-    of, with, in, for, from, about — and the token is followed by a plain
-    word or nothing. A plain word is letters only; a hyphen or apostrophe
-    inside it is still plain; prose punctuation, em dashes, and a glued ``'s`` do not count
-    (``the specy-road toolkit.``, ``the specy-road toolkit's design``). Mandatory
-    ``command`` after punctuation still warns (``Use the specy-road frob (command).``).
-    cancels the exclusion (``the specy-road frob @agent`` warns). A digit or any other token between the determiner and the name cancels it (``the 2 specy-road frob`` warns).
+    Line-based, best-effort scanning (same-line inline code spans only; multi-line spans
+    out of scope). A one-line span immediately after the product name whose content is
+    one command-shaped token is that token (``specy-road `frob` --flag``). Mandatory
+    contexts beat the noun-phrase exclusion; see ``docs/install-and-usage.md``.
     """
     return [
         mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))
@@ -359,12 +335,6 @@ def unregistered_commands(text: str) -> list[str]:
 
 
 def warn_unregistered_commands(root: Path) -> None:
-    """One non-fatal line per occurrence ``AGENTS.md`` / ``CLAUDE.md`` names, with that file's line number.
-
-    Repeated names are not collapsed. The managed block is skipped:
-    ``warn_if_agents_md_block_stale`` already reports one written by another
-    version.
-    """
     root = root.resolve()
     checkout = git_root(root) or root
     paths = dict.fromkeys(
@@ -378,7 +348,7 @@ def warn_unregistered_commands(root: Path) -> None:
         except UnicodeDecodeError:
             continue
         rel = path.relative_to(checkout)
-        for lineno, mention in _occurrences(_lines_outside_block(text)):
+        for lineno, mention in _occurrences(agent_file_lines_outside_block(text)):
             replacement = REPLACED_COMMANDS.get(mention)
             advice = (
                 f"use `{replacement}`"

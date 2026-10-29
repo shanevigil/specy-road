@@ -107,6 +107,21 @@ def _known_commands() -> list[str]:
     )
 
 
+def registered_agent_command_names() -> dict[str, set[str]]:
+    """Registered ``specy-road`` / ``specyrd`` subcommand names for agent-file checks."""
+    from specy_road.specyrd_cli import _build_parser as _specyrd_parser
+
+    specyrd = next(
+        a
+        for a in _specyrd_parser()._actions
+        if isinstance(a, argparse._SubParsersAction)
+    )
+    return {
+        "specy-road": {*_known_commands(), "version"},
+        "specyrd": set(specyrd.choices),
+    }
+
+
 def _did_you_mean(cmd: str) -> list[str]:
     """Closest known commands for an unrecognised one.
 

@@ -145,7 +145,6 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
         "Use the specy-road frob, --flag",
         "Use the specy-road frob, M1.2",
         "Use the specy-road frob, command",
-        "Use the specy-road frob `M1.2`.",
         "Use the specy-road frob `path/to/file`.",
         "Use the specy-road frob `--flag`.",
         "Use the specy-road frob `command`.",
@@ -155,6 +154,25 @@ def test_a_noun_phrase_is_quiet_and_a_command_is_not() -> None:
     assert unregistered_commands("foo_specy-road frob") == []
     assert unregistered_commands("specy-road validate --strict") == []
     assert unregistered_commands("specy-road frob; specy-road frob") == ["specy-road frob", "specy-road frob"]
+
+
+def test_command_token_in_an_inline_span() -> None:
+    for quiet in (
+        "Use the specy-road frob `M1.2`.",
+        "Use the specy-road `init` command.",
+        "the specy-road `toolkit` is",
+        "the specy-road toolkit `is`",
+    ):
+        assert unregistered_commands(quiet) == [], quiet
+    for warn in (
+        "run specy-road `frob`",
+        "- specy-road `frob`",
+        "specy-road `frob` --flag",
+        "Run specy-road `frob` now",
+        "Use the specy-road `frob` command.",
+    ):
+        assert unregistered_commands(warn) == ["specy-road frob"], warn
+    assert unregistered_commands("Run specy-road `grind` now.") == ["specy-road grind"]
 
 
 @pytest.mark.parametrize(("old", "new"), REPLACED_COMMANDS.items())
@@ -180,5 +198,11 @@ def test_the_toolkits_agent_files_report_nothing() -> None:
 
 def test_an_agent_file_that_is_not_utf8_is_skipped(tmp_path: Path, capsys) -> None:
     (tmp_path / "AGENTS.md").write_bytes(b"\xff\xfe `specy-road nope`")
+    warn_unregistered_commands(tmp_path)
+    assert capsys.readouterr().err == ""
+
+
+def test_registered_subcommand_in_a_span_does_not_abort_validate(tmp_path: Path, capsys) -> None:
+    (tmp_path / "AGENTS.md").write_text("Use the specy-road `init` command.\n", encoding="utf-8")
     warn_unregistered_commands(tmp_path)
     assert capsys.readouterr().err == ""
