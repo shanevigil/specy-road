@@ -153,3 +153,27 @@ def test_only_human_may_attest_coordinator(tmp_path: Path) -> None:
     assert not rf.load_review(_put(tmp_path, "REVIEW-a.md", text), ["A1", "A2"]).ok
     human = text.replace("model: claude-opus-5.5", "model: human")
     assert rf.load_review(_put(tmp_path, "REVIEW-human.md", human), ["A1", "A2"]).ok
+
+
+def test_ready_blocked_on_accepts_known_acceptance_ids(tmp_path: Path) -> None:
+    insert = (
+        "blocked_on:\n  - {acceptance: A1, reason: cannot without weakening a test}\n"
+    )
+    text = READY.replace(
+        '  - {cmd: pytest, exit: 0, tail: "3 passed"}\n---',
+        '  - {cmd: pytest, exit: 0, tail: "3 passed"}\n' + insert + "---",
+    )
+    ready = rf.load_ready(_put(tmp_path, "READY-x.md", text), "M1.1", acceptance_ids=["A1", "A2"])
+    assert ready.ok, ready.errors
+    assert ready.data["blocked_on"][0]["acceptance"] == "A1"
+
+
+def test_ready_blocked_on_rejects_unknown_acceptance_id(tmp_path: Path) -> None:
+    insert = "blocked_on:\n  - {acceptance: A9, reason: stuck}\n"
+    text = READY.replace(
+        '  - {cmd: pytest, exit: 0, tail: "3 passed"}\n---',
+        '  - {cmd: pytest, exit: 0, tail: "3 passed"}\n' + insert + "---",
+    )
+    ready = rf.load_ready(_put(tmp_path, "READY-x.md", text), "M1.1", acceptance_ids=["A1", "A2"])
+    assert not ready.ok
+    assert any("blocked_on: A9 not in the brief" in e for e in ready.errors)

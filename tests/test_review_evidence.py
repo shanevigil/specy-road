@@ -211,3 +211,54 @@ def test_empty_verify_is_reported_but_does_not_block_with_an_approval(
     st = _status(repo, capsys)
     assert st["policy_met"]
     assert "READY-exec.md (executor-reported): no verifier evidence recorded (verify is empty)" in st["problems"]
+
+
+# --- M9.4: executor blocked_on ---------------------------------------------------
+
+
+BLOCKED_ON = (
+    "blocked_on:\n"
+    "  - {acceptance: A1, reason: would require weakening an existing test}\n"
+    "  - {acceptance: A2, reason: baseline cap too low}\n"
+)
+
+
+def _ready_blocked(repo: Path) -> None:
+    _ready(repo, PASSED + BLOCKED_ON)
+
+
+def test_handoff_status_executor_blocked_lists_entries_and_exits_one(
+    tmp_path: Path, capsys
+) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready_blocked(repo)
+    capsys.readouterr()
+    code = _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "executor_blocked" in out
+    assert "A1: would require weakening an existing test" in out
+    assert "A2: baseline cap too low" in out
+
+
+def test_handoff_status_executor_blocked_json(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready_blocked(repo)
+    capsys.readouterr()
+    code = _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    st = json.loads(capsys.readouterr().out)["nodes"][0]
+    assert code == 1
+    assert st["state"] == "executor_blocked"
+    assert st["executor_blocked"] == [
+        "A1: would require weakening an existing test",
+        "A2: baseline cap too low",
+    ]
+
+
+def test_executor_blocked_keeps_gate_unmet_even_with_approval(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready_blocked(repo)
+    gate = _gate(repo, _review(repo))
+    assert not gate.passed
+    assert any("blocked on A1" in p for p in gate.problems())
+    assert any("blocked on A2" in p for p in gate.problems())

@@ -151,6 +151,28 @@ def test_yes_refuses_a_failing_ready_verifier(tmp_path: Path, capsys) -> None:
     assert _review_state(repo) == "pending"
 
 
+def _blocked_on_ready(repo: Path) -> None:
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "READY-exec.md").write_text(
+        f"---\nnode_id: M1.1\nagent: exec\nbranch: feature/rm-thing\n"
+        f"commit: {git(repo, 'rev-parse', 'HEAD')}\nbase: {git(repo, 'rev-parse', 'dev')}\n"
+        "changed_paths: [src/a.py]\nverify:\n  - {cmd: pytest, exit: 0}\n"
+        "blocked_on:\n  - {acceptance: A1, reason: cannot meet without weakening tests}\n---\n"
+    )
+
+
+def test_yes_refuses_while_ready_declares_blocked_on(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    _record(repo, "human")
+    _blocked_on_ready(repo)
+    assert _run(repo, "--yes") == 1
+    captured = capsys.readouterr()
+    assert "review gate is not met" in captured.err
+    assert "blocked on A1" in captured.out
+    assert _review_state(repo) == "pending"
+
+
 def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, capsys) -> None:
     from specy_road.bundled_scripts import finish_task as ft
     from tests.review_repo_helpers import NODE
@@ -165,6 +187,22 @@ def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, ca
     err = capsys.readouterr().err
     assert "no longer holds at this commit" in err
     assert "verifier `false` exited 1" in err
+
+
+def test_finish_refuses_while_ready_declares_blocked_on(tmp_path: Path, monkeypatch, capsys) -> None:
+    from specy_road.bundled_scripts import finish_task as ft
+    from tests.review_repo_helpers import NODE
+
+    repo = _repo(tmp_path)
+    _record(repo, "human")
+    _blocked_on_ready(repo)
+    monkeypatch.setattr(ft, "ROOT", repo)
+    with pytest.raises(SystemExit) as e:
+        ft._impl_review_or_exit({"implementation_review": "approved"}, NODE)
+    assert e.value.code == 1
+    err = capsys.readouterr().err
+    assert "no longer holds at this commit" in err
+    assert "blocked on A1" in err
 
 
 @pytest.mark.parametrize("case", ["clean", "bookkeeping", "code"])
