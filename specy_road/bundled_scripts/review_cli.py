@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status` and `specy-road review record`.
+"""CLI for `specy-road handoff status`, `specy-road review record` and `specy-road review list`.
 
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
 review record, and whether the review policy is met at the commit under
 review. Records with no registry claim are listed without a commit unless
-``--ref`` names one. ``review record`` validates one reviewer's notes, fills
-in the family from the roster, labels same-family independence, and files the
-record as ``REVIEW-<model>.md`` beside the READY file.
+``--ref`` names one. Given one node it exits 0 when the gate is met or the node
+is Complete, 1 when it is not met, and 2 when it cannot be determined.
+``review record`` validates one reviewer's notes, fills in the family from the
+roster, labels same-family independence, and files the record as
+``REVIEW-<model>.md`` beside the READY file. ``review list`` prints the filed
+records and the gate evaluation and writes nothing.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import (
     HUMAN,
@@ -94,14 +98,24 @@ def _render(st: dict[str, Any]) -> list[str]:
 
 
 def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
-    """Records without a claim are listed, not called leftover: a repository may never push claims."""
+    """Records without a claim are listed, not called leftover: a repository may never push claims.
+
+    A Complete node passed its gate before its claim was released, so it is
+    ``complete_no_claim``, not an undeterminable ``unclaimed``.
+    """
+    node = next(n for n in load_roadmap(root)["nodes"] if n.get("id") == nid)
+    complete = node.get("status") == "Complete"
     ready, reviews = list_ready(root, nid), list_reviews(root, nid)
-    if not ready and not reviews:
+    if not complete and not ready and not reviews:
         return {"node_id": nid, "state": "unclaimed",
                 "error": "no open claim and no READY or REVIEW records; the directory can be deleted"}
+    hint = ("Complete with no open claim: pass --ref <branch or commit> to check these records against it"
+            if complete else
+            f"no open claim: pass --ref <branch> to check these records against its commit, "
+            f"or claim the leaf in this checkout with `specy-road do-next-available-task --under {nid} --local`")
     return {
         "node_id": nid,
-        "state": "unclaimed",
+        "state": "complete_no_claim" if complete else "unclaimed",
         "ref": None,
         "commit": None,
         "ready": [{"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors} for r in ready],
@@ -112,10 +126,7 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
         ],
         "policy": "not evaluated: no claim names the commit under review",
         "policy_met": False,
-        "problems": [f"no open claim: pass --ref <branch> to check these records against its commit, "
-                     f"or claim the leaf in this checkout with `specy-road do-next-available-task "
-                     f"--under {nid} --local`"]
-                    + [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in reviews if not r.ok],
+        "problems": [hint] + [f"{r.path.name}: invalid — {'; '.join(r.errors)}" for r in reviews if not r.ok],
     }
 
 
@@ -132,7 +143,7 @@ def _status_or_error(root: Path, nid: str, ref: str | None = None) -> dict[str, 
 def cmd_handoff_status(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
     if ns.ref and not ns.node_id:
-        return _fail("--ref names one node's branch or commit; give the node id too")
+        return _fail("--ref names one node's branch or commit; give the node id too", 2)
     node_ids = [ns.node_id] if ns.node_id else node_ids_with_reviews(root)
     out = [_status_or_error(root, nid, ns.ref) for nid in node_ids]
     sessions = list_sessions(root)
@@ -151,14 +162,17 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
             print("No hand-offs under work/reviews/.")
         else:
             print("\n".join(line for st in out for line in _render(st)))
-    # Naming a node that cannot be resolved (unknown, or with neither a claim nor
-    # records) is a caller error; a stale directory in the sweep is only reported.
-    return 1 if ns.node_id and "error" in out[0] else 0
+    # A sweep only reports. For one named node a polling script reads the exit:
+    # 0 gate met (or Complete), 1 not met, 2 undeterminable; `state` says which.
+    return _EXIT.get(out[0]["state"], 1) if ns.node_id else 0
 
 
-def _fail(msg: str) -> int:
+_EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2}
+
+
+def _fail(msg: str, code: int = 1) -> int:
     print(f"error: {msg}", file=sys.stderr)
-    return 1
+    return code
 
 
 def _relabel_independence(root: Path, gate: GateResult) -> None:
@@ -242,6 +256,34 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
     return 0
 
 
+def cmd_review_list(ns: argparse.Namespace) -> int:
+    """Filed records, then the gate at the commit under review; reads only."""
+    root = resolve_repo_root(ns)
+    try:
+        t = resolve_target(root, ns.node_id, ns.ref)
+    except ReviewTargetError as e:
+        if not str(e).startswith("no registry claim"):
+            return _fail(str(e))
+        t = None
+    reviews = list_reviews(root, ns.node_id)
+    if not reviews:
+        print(f"No review records for {ns.node_id}.")
+    for r in reviews:
+        d = r.data
+        print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
+              f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
+              + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}"))
+    if t is None:
+        print("gate: not evaluated — no registry claim names the commit under review; "
+              "pass --ref <branch or commit>")
+        return 0
+    gate = evaluate_gate(root, t.node, t.commit)
+    print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
+    for p in gate.problems():
+        print(f"  - {p}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="specy-road")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -266,6 +308,11 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
+    ls = rsub.add_parser("list", help="Print a node's filed review records and the gate evaluation; writes nothing")
+    ls.add_argument("node_id")
+    ls.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_repo_root_arg(ls)
+    ls.set_defaults(func=cmd_review_list)
     return p
 
 

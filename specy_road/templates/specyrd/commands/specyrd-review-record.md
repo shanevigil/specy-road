@@ -5,6 +5,7 @@ description: "Use when a reviewer has read a review packet and must file a verdi
 ```bash
 cd "$(git rev-parse --show-toplevel)"
 specy-road review record <NODE_ID> --model <id> --verdict approve --file <notes.md>
+specy-road review list <NODE_ID>     # read-only: filed records, then the gate
 ```
 
 Before running it: read only `work/reviews/<NODE_ID>/PACKET.md` (from `/specyrd-review-packet`). Copy `work/review-record.template.md`, fill in its front matter with one `acceptance` entry per `A#` in the packet's brief, and set `commit` to the packet's **Commit under review** (quoted).
