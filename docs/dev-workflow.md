@@ -29,6 +29,8 @@ Canonical model: **execute leaves, contextualize with ancestors, roll up progres
 
 **Unauthored leaves are skipped.** A leaf whose planning sheet still carries the text `scaffold-planning` or `brainstorm promote` wrote (an unedited `## Intent` / `## Approach`, or promote's "Rewrite this section once the slice is properly scoped.") **and** whose node has no `acceptance` gives an agent nothing to build from, so pickup skips it and prints why. Write the sheet or set `acceptance` (`specy-road edit-node <ID> --set acceptance=...`), or pass **`--allow-unauthored`** to pick it anyway. `specy-road validate` lists every such open leaf in one block (first ten; **`validate --all`** for all of them), and `grind-session --plan` reports them as `unauthored`.
 
+**A scaffold sheet still has to be written.** `acceptance` alone gets such a leaf picked, but the sheet is still unwritten: pickup prints a `warning: picked <ID>, but <sheet> still has … placeholder` line, and **`finish-this-task` refuses** to close any leaf whose sheet still has that placeholder text, naming the sheet. Write `## Intent` and `## Approach` and commit the sheet on the feature branch, or pass **`--allow-scaffold-planning`** to finish anyway. `specy-road validate` prints one `notice:` on stdout (not a warning, so `--strict` ignores it) counting `Complete` leaves whose sheet is still the scaffold; **`validate --all`** lists them.
+
 ## Quick reference
 
 ```bash
@@ -234,7 +236,7 @@ specy-road finish-this-task
 
 `finish-this-task` will:
 
-1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`). If the implementation-review gate is on, the registry must already show **`implementation_review: approved`** (see `mark-implementation-reviewed` above).
+1. Read the current branch name to find the codename and registry entry (the registry `branch` must match `HEAD`). The node's planning sheet must not still be the scaffold (**`--allow-scaffold-planning`** opts out; see *A scaffold sheet still has to be written* above). If the implementation-review gate is on, the registry must already show **`implementation_review: approved`** (see `mark-implementation-reviewed` above).
 2. Resolve **`on_complete`** (`pr`, `merge`, or `auto`): CLI **`--on-complete`** wins, then **`work/.on-complete-<NODE_ID>.yaml`** from **`do-next-available-task`**, then **`SPECY_ROAD_ON_COMPLETE`**, then **`roadmap/git-workflow.yaml`**, else **`pr`**. See [git-workflow.md](git-workflow.md) (PR and MR are the same idea on different forges).
 3. Update the node `status` to `Complete` in the roadmap chunk file.
 4. Remove the registry entry.

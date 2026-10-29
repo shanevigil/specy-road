@@ -4,6 +4,10 @@ Unauthored: the node has no ``acceptance`` and its planning sheet still carries
 text the toolkit wrote itself (scaffold-planning's section bodies, or brainstorm
 promote's "Rewrite this section…" line). An agent handed such a leaf has
 nothing to build from.
+
+M3.14 adds the acceptance-independent check (``scaffold_sheet``): pickup warns
+on a picked leaf whose sheet is still the scaffold, and ``validate`` notes the
+Complete ones.
 """
 
 from __future__ import annotations
@@ -30,7 +34,8 @@ from specy_road.bundled_scripts.planning_sheet_bootstrap import (
 )
 from specy_road.bundled_scripts.session_plan import compute_session_plan, session_plan_to_dict
 from specy_road.bundled_scripts.session_plan_render import render_session_plan_text
-from specy_road.bundled_scripts.validate_roadmap import validate_at
+from specy_road.bundled_scripts.validate_roadmap import main as validate_main, validate_at
+from specy_road.planning_scaffold_check import scaffold_sheet
 
 FILLED = (
     "## Intent\n\nThe export writes one row per node.\n\n"
@@ -109,6 +114,9 @@ def test_promote_skeleton_is_a_placeholder(tmp_path: Path) -> None:
     _promote(root, nodes[0])
     reason = placeholder_sheet(root, nodes[0])
     assert reason is not None and "brainstorm promote's placeholder under ## Intent" in reason
+    assert scaffold_sheet(root, {**nodes[0], "acceptance": ["works"]}) == (
+        f"{nodes[0]['planning_dir']} still has brainstorm promote's placeholder under ## Intent"
+    )
 
 
 def test_a_leftover_scaffold_approach_is_a_placeholder(tmp_path: Path) -> None:
@@ -117,6 +125,9 @@ def test_a_leftover_scaffold_approach_is_a_placeholder(tmp_path: Path) -> None:
     root, nodes = _repo(tmp_path, {"M1": sheet})
     reason = placeholder_sheet(root, nodes[0])
     assert reason is not None and "## Approach" in reason
+    assert scaffold_sheet(root, nodes[0]) == (
+        f"{nodes[0]['planning_dir']} still has scaffold-planning's placeholder under ## Approach"
+    )
 
 
 def test_filled_sheet_or_acceptance_is_not_a_placeholder(tmp_path: Path) -> None:
@@ -124,12 +135,19 @@ def test_filled_sheet_or_acceptance_is_not_a_placeholder(tmp_path: Path) -> None
                         M2={"acceptance": ["one row per node"]})
     assert placeholder_sheet(root, nodes[0]) is None
     assert placeholder_sheet(root, nodes[1]) is None
+    # M3.14: acceptance does not make the sheet written.
+    assert scaffold_sheet(root, nodes[0]) is None
+    assert scaffold_sheet(root, nodes[1]) == (
+        f"{nodes[1]['planning_dir']} still has scaffold-planning's placeholder under ## Intent"
+    )
 
 
 def test_missing_sheet_is_not_reported_here(tmp_path: Path) -> None:
     root, nodes = _repo(tmp_path, {"M1": "scaffold"})
     (root / nodes[0]["planning_dir"]).unlink()
     assert placeholder_sheet(root, nodes[0]) is None
+    assert scaffold_sheet(root, nodes[0]) is None
+    assert scaffold_sheet(root, {**nodes[0], "planning_dir": None}) is None
 
 
 # --- A1: do-next-available-task ---------------------------------------------
@@ -161,6 +179,7 @@ def test_pickup_skips_an_unauthored_leaf_and_says_why(
     err = capsys.readouterr().err
     assert f"skipping M1: {nodes[0]['planning_dir']} still has scaffold-planning's placeholder" in err
     assert "--allow-unauthored" in err
+    assert "warning: picked" not in err
 
 
 def test_pickup_skips_a_promote_skeleton(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys) -> None:
@@ -177,9 +196,16 @@ def test_allow_unauthored_picks_it_anyway(monkeypatch: pytest.MonkeyPatch, tmp_p
     assert "skipping" not in capsys.readouterr().err
 
 
-def test_filled_sheet_or_acceptance_is_picked_as_before(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    root, _nodes = _repo(tmp_path, {"M1": "scaffold", "M2": FILLED}, M1={"acceptance": ["works"]})
+def test_filled_sheet_or_acceptance_is_picked_as_before(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys
+) -> None:
+    """M3.14: acceptance still gets the leaf picked, with a warning that the sheet is the scaffold."""
+    root, nodes = _repo(tmp_path, {"M1": "scaffold", "M2": FILLED}, M1={"acceptance": ["works"]})
     assert _pick(monkeypatch, root) == "M1"
+    err = capsys.readouterr().err
+    assert (f"warning: picked M1, but {nodes[0]['planning_dir']} still has scaffold-planning's "
+            "placeholder under ## Intent") in err
+    assert "--allow-scaffold-planning" in err
 
 
 def test_nothing_but_unauthored_leaves_exits_with_the_reason(
@@ -282,3 +308,26 @@ def test_validate_is_silent_for_authored_or_closed_leaves(tmp_path: Path, capsys
     root, _nodes = _repo(tmp_path, {"M1": FILLED, "M2": "scaffold", "M3": "scaffold"},
                          M2={"acceptance": ["works"]}, M3={"status": "Complete"})
     assert "placeholder planning sheet" not in _validate_err(root, capsys)
+
+
+@pytest.mark.parametrize("show_all", [False, True])
+def test_validate_notes_complete_leaves_still_on_the_scaffold(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys, show_all: bool
+) -> None:
+    """M3.14: one stdout notice (not a stderr warning) counting them; --all lists them."""
+    done = {"status": "Complete"}
+    root, nodes = _repo(tmp_path, {"M1": "scaffold", "M2": FILLED, "M3": "scaffold", "M4": "scaffold"},
+                        M1=done, M2=done, M3={**done, "acceptance": ["works"]})
+    argv = ["validate", "--repo-root", str(root), *(["--all"] if show_all else [])]
+    monkeypatch.setattr("sys.argv", argv)
+    capsys.readouterr()
+    validate_main()
+    out, err = capsys.readouterr()
+    hint = "" if show_all else " (specy-road validate --all lists them)"
+    assert out.count("notice:") == 1
+    assert f"notice: 2 Complete leaf/leaves have a planning sheet that is still the scaffold{hint}." in out
+    assert "still the scaffold" not in err
+    listed = [ln for ln in out.splitlines() if ln.startswith("  M")]
+    assert listed == ([f"  M1: {nodes[0]['planning_dir']} still has scaffold-planning's placeholder under ## Intent",
+                       f"  M3: {nodes[2]['planning_dir']} still has scaffold-planning's placeholder under ## Intent"]
+                      if show_all else [])

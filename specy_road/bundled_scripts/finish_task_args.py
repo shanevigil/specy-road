@@ -90,6 +90,15 @@ def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--allow-scaffold-planning",
+        action="store_true",
+        help=(
+            "Finish even though the node's planning sheet still has the "
+            "scaffold-planning or brainstorm promote placeholder text. "
+            "Otherwise write the sheet and commit it on this branch."
+        ),
+    )
+    p.add_argument(
         "--no-milestone-rollup",
         action="store_true",
         help=(

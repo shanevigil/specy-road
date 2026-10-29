@@ -27,6 +27,7 @@ from specy_road.generated_files import warn_if_generated_files_ignored
 from specy_road.git_workflow_config import load_git_workflow_config
 from specy_road.orchestration_config import load_orchestration_config
 from specy_road.orchestration_pinned import roster_source
+from specy_road.planning_scaffold_check import notice_complete_scaffold
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
 from specy_road.specyrd_init import _load_manifest
 from specy_road.bundled_scripts.validate_roadmap_checks import (
@@ -221,7 +222,8 @@ def main() -> None:
         "--all",
         action="store_true",
         help="List every open leaf with a placeholder planning sheet and no acceptance "
-        "(do-next-available-task skips them), not just the first ten.",
+        "(do-next-available-task skips them), not just the first ten, and every Complete "
+        "leaf whose planning sheet is still the scaffold.",
     )
     add_repo_root_arg(parser)
     args = parser.parse_args()
@@ -233,6 +235,7 @@ def main() -> None:
             require_registry=True,
             show_all=args.all,
         )
+        notice_complete_scaffold(root, load_roadmap(root)["nodes"], show_all=args.all)
         print_injected_context(root)
     if args.strict and stderr.lines:
         sys.stdout.flush()   # the OK line first, then why it does not count
