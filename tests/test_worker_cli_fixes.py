@@ -121,6 +121,41 @@ def test_sync_reports_a_gap_in_event_sequence_numbers(tmp_path: Path, capsys) ->
     assert ops.sync(repo)[0]["gaps"] == []   # reported once, then behind the mark
 
 
+
+def _logged(tmp_path: Path, n: int) -> tuple[Path, ws.WorkerRecord, Path]:
+    repo = make_review_repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    for i in range(n):
+        ws.append_event(repo, rec, "output", source="worker", summary=f"line {i}")
+    ws.set_state(repo, rec, "idle", pid=None)   # no wrapper to sweep, so sync appends no event of its own
+    return repo, rec, ws.events_path(repo, rec.worker_id)
+
+
+def test_sync_reports_a_lost_final_event(tmp_path: Path, capsys) -> None:
+    repo, rec, log = _logged(tmp_path, 3)
+    lines = log.read_text().splitlines()
+    final = json.loads(lines[-1])["seq"]
+    log.write_text("\n".join(lines[:-1]) + "\n")   # the last line never reached the log
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+    assert f"! gap: event(s) #{final} missing" in capsys.readouterr().out
+    assert ops.sync(repo, ack=True)[0]["gaps"] == [[final, final]]
+    assert ops.sync(repo) == []   # the ack moved past it
+
+
+def test_sync_lists_a_worker_whose_new_events_are_all_unreadable(tmp_path: Path, capsys) -> None:
+    repo, rec, log = _logged(tmp_path, 1)
+    ops.sync(repo, ack=True)
+    for i in range(2):
+        ws.append_event(repo, rec, "output", source="worker", summary=f"later {i}")
+    lines = log.read_text().splitlines()
+    first, second = (json.loads(ln)["seq"] for ln in lines[-2:])
+    log.write_text("\n".join([*lines[:-2], "{bad", "{bad"]) + "\n")
+    delta = ops.sync(repo)
+    assert [w["worker_id"] for w in delta] == [rec.worker_id]
+    assert delta[0]["events"] == [] and delta[0]["gaps"] == [[first, second]]
+    assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
+    assert f"! gap: event(s) #{first}–#{second} missing" in capsys.readouterr().out
+
 # --- A4: --path values ---------------------------------------------------------
 
 @pytest.mark.parametrize("cmd", ["start", "touch", "check"])
@@ -213,3 +248,20 @@ def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_pa
     assert "work/implementation-summary-M1.1.md" in delta["outside_touch_zones"]
     assert "sr/work/implementation-summary-M1.1.md" in delta["changed"]
     assert "sr/work/implementation-summary-M1.1.md" not in delta["outside_touch_zones"]
+
+
+
+def test_nested_reconcile_matches_zones_by_the_project_relative_name(tmp_path: Path) -> None:
+    top, project = _nested(tmp_path)   # the worker runs in sr/; the leaf's zone is `src`
+    rec, created = ops.delegate(project, "M1.1", "opus")
+    assert created
+    wait_for_worker(project, rec.worker_id)
+    (project / "src").mkdir()
+    (project / "src" / "new.py").write_text("ok\n")   # sr/src/new.py: inside zone src
+    _rec, delta = ops.reconcile(project, rec.worker_id)
+    assert "sr/src/new.py" in delta["changed"]
+    assert delta["outside_touch_zones"] == [] and not delta["needs_reconcile"]
+    (top / "other").mkdir()
+    (top / "other" / "x.py").write_text("stray\n")   # git root, under no zone
+    _rec, delta = ops.reconcile(project, rec.worker_id)
+    assert delta["outside_touch_zones"] == ["other/x.py"] and delta["needs_reconcile"]

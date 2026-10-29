@@ -182,7 +182,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | Command | Does |
 |---|---|
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. |
-| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`); compact, with state, lease, epoch and flags. A sequence number missing before an event it returns (a lost or unreadable line in the log) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`). |
+| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`); compact, with state, lease, epoch and flags. A sequence number between the last acknowledged one and the record's `last_event_seq` that no readable line carries (lost or unreadable, the final event included) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`); a worker whose new events are all unreadable is still listed, and `--ack` moves past its gaps. |
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
