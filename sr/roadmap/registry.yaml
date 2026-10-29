@@ -46,20 +46,6 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-promote-inherits-execution-milestone-from-the-anchor
-    node_id: M4.14
-    branch: feature/rm-brainstorm-promote-inherits-execution-milestone-from-the-anchor
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/brainstorm_promote.py
-      - specy_road/brainstorm_cli.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
   - codename: a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
     node_id: M3.17
     branch: feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch

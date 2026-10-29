@@ -318,8 +318,11 @@ slice is properly scoped — the seed is a starting point, not a spec.
 
 Options: `--under NODE_ID` overrides the anchor; `--type` is `milestone` by
 default (`vision`, `phase`, `task` also work; `gate` is refused — a gate is a
-human hold, not work); `--dry-run` writes nothing. An unusable anchor is
-rejected before anything is written. Afterwards:
+human hold, not work); `--dry-run` writes nothing. Promoted nodes copy the
+anchor's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
+`--set execution_milestone=…` only when a leaf should differ (typically
+`Human-led` under an agentic anchor). An unusable anchor is rejected before
+anything is written. Afterwards:
 
 ```bash
 specy-road export && specy-road digest
