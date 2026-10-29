@@ -119,7 +119,9 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
     if explicit:
         return _check_tree(Path(explicit), branch)
     if git_text(["branch", "--show-current"], repo_root) == branch:
-        return repo_root.resolve()
+        # The git root, not a nested project root: the harness runs in the recorded
+        # tree, and the prompt and brief give their paths from the git root.
+        return git_root(repo_root)
     wt = reviews_root(repo_root).parent / ".worktrees" / codename
     if not wt.exists():
         wt.parent.mkdir(parents=True, exist_ok=True)

@@ -24,6 +24,7 @@ from tests.test_orchestrate_plan import ROSTER, only_assignment, plan_repo
 from tests.test_worker_cli import FAKE, run_worker_cli, wait_for_worker, worker_roster
 
 from specy_road import orchestrate_plan as op
+from specy_road import tool_call_guard as tg
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
@@ -166,10 +167,13 @@ def test_path_takes_several_values_or_repeats(cmd: str) -> None:
 
 # --- A5: nested layout ---------------------------------------------------------
 
-def _nested(tmp_path: Path) -> tuple[Path, Path]:
-    """``(git root, project root)``: the review repo's tree under ``sr/``, the claim's branch checked out."""
+def _nested(tmp_path: Path, harness: str = FAKE) -> tuple[Path, Path]:
+    """``(git root, project root)``: the review repo's tree under ``sr/``, the claim's branch checked out.
+
+    ``harness`` is the script the roster's ``opus`` runs as ``<script> <prompt file> <session>``.
+    """
     script = tmp_path / "fake.py"
-    script.write_text(FAKE)
+    script.write_text(harness)
     flat = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
     top = tmp_path / "top"
     git(flat, "checkout", "-q", "dev")
@@ -237,9 +241,9 @@ def test_nested_delegate_counts_only_the_projects_work_as_bookkeeping(tmp_path: 
 
 
 def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_path: Path) -> None:
-    top, project = _nested(tmp_path)   # the claim's branch is checked out here: the worker runs in sr/
+    top, project = _nested(tmp_path)   # the claim's branch is checked out here: the worker runs at its git root
     rec, created = ops.delegate(project, "M1.1", "opus")
-    assert created and Path(rec.worktree) == project
+    assert created and Path(rec.worktree) == top
     wait_for_worker(project, rec.worker_id)
     (top / "work").mkdir()
     (top / "work" / "implementation-summary-M1.1.md").write_text("wrong place\n")
@@ -252,7 +256,7 @@ def test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects(tmp_pa
 
 
 def test_nested_reconcile_matches_zones_by_the_project_relative_name(tmp_path: Path) -> None:
-    top, project = _nested(tmp_path)   # the worker runs in sr/; the leaf's zone is `src`
+    top, project = _nested(tmp_path)   # the worker runs in this checkout; the leaf's zone is `src`
     rec, created = ops.delegate(project, "M1.1", "opus")
     assert created
     wait_for_worker(project, rec.worker_id)
@@ -265,3 +269,39 @@ def test_nested_reconcile_matches_zones_by_the_project_relative_name(tmp_path: P
     (top / "other" / "x.py").write_text("stray\n")   # git root, under no zone
     _rec, delta = ops.reconcile(project, rec.worker_id)
     assert delta["outside_touch_zones"] == ["other/x.py"] and delta["needs_reconcile"]
+
+
+#: A harness that does what the prompt says, from the directory it is started in: writes the summary at the path
+#: step 4 names (relative to its cwd), then reports success.
+FOLLOWS_THE_PROMPT = r'''
+import json, re, sys
+rel = re.search(r"4\. Write `([^`]+)`", open(sys.argv[1]).read()).group(1)
+open(rel, "w").write("summary\n")
+print(json.dumps({"type": "result", "subtype": "success", "result": "done", "session_id": "s"}), flush=True)
+'''
+
+#: A harness that stays in its turn long enough for the guard to see it.
+STAYS_RUNNING = """
+import json, sys, time
+print(json.dumps({"type": "system", "subtype": "init", "session_id": "slow"}), flush=True)
+time.sleep(30)
+"""
+
+
+def test_nested_worker_in_the_coordinators_checkout_runs_at_the_git_root(tmp_path: Path) -> None:
+    top, project = _nested(tmp_path, FOLLOWS_THE_PROMPT)   # the claim's branch is checked out in this checkout
+    rec, created = ops.delegate(project, "M1.1", "opus")
+    assert created and rec.worktree == str(top)   # the recorded tree is the harness's cwd (worker_runner)
+    wait_for_worker(project, rec.worker_id)
+    assert (project / "work" / "implementation-summary-M1.1.md").read_text() == "summary\n"
+    assert not (project / "sr").exists()   # not sr/sr/work: the prompt's path resolved from the git root
+
+
+def test_nested_guard_refuses_a_checkout_while_a_worker_runs_in_this_checkout(tmp_path: Path) -> None:
+    _top, project = _nested(tmp_path, STAYS_RUNNING)
+    rec, _ = ops.delegate(project, "M1.1", "opus")
+    try:
+        verdict = tg.decide(project, "git checkout dev", agent="me")
+        assert not verdict.allowed and f"worker {rec.worker_id}" in verdict.reason
+    finally:
+        ops.terminate(project, rec.worker_id)
