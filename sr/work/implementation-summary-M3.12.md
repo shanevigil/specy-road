@@ -66,6 +66,16 @@ Not touched, though it may want follow-up outside this leaf's zones:
 
 ## Verification
 
+- Round 2: focused tests (`test_baseline_gate`, `test_baseline_gate_cli`,
+  `test_do_next_task_pickup`, `test_grind_session`, `test_grind_session_step`,
+  `test_lean_gates`, `test_do_next_queue`, `test_unauthored_leaf_guard`): 118 passed,
+  2 skipped.
+  - `python scripts/check_test_private_imports.py`: exit 0, 0 new references. Its one
+    stale baseline entry, `test_review_round6_evidence.py`, predates this leaf.
+  - `file-limits` and `ruff` pass.
+  - To check the new CLI tests can fail, I temporarily made `run_baseline_gate`
+    return before it ran anything: 7 of the 8 CLI tests failed. The one that passed
+    is the passing-baseline grind step test, which is expected.
 - Round 1: focused tests (`test_baseline_gate`, `test_do_next_task_pickup`,
   `test_grind_session`, `test_grind_session_step`, `test_lean_gates`,
   `test_do_next_queue`): 102 passed, 2 skipped. `file-limits` passes
@@ -78,9 +88,7 @@ Not touched, though it may want follow-up outside this leaf's zones:
 - `specy-road file-limits`: OK.
 - `ruff check specy_road tests scripts`: OK.
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: OK.
-- `tests/test_lean_gates.py`, the private-import gate: passes. The tests that patch
-  `do_next_task` privates sit in `tests/test_do_next_task_pickup.py`, which already
-  had those references in its baseline. The baseline file is unchanged.
+- `tests/test_lean_gates.py`, the private-import gate: passes. The baseline file is unchanged.
 
 ## Added
 
@@ -97,20 +105,20 @@ Not touched, though it may want follow-up outside this leaf's zones:
 - Schema key `baseline_cmd`, in the bundled template and in `sr/schemas` (A2).
 
 ### Mocks
-- `tests/test_do_next_task_pickup._baseline_harness`: the existing pickup monkeypatch pattern, recording the order of sync, the on-base check and git calls, so the tests can show where the gate runs.
-- The grind step test reuses `tests.test_grind_session._Harness` with `pickup_rc=1` to stand in for a refused baseline.
+- none. Review round 2 removed the monkeypatch harness from `tests/test_do_next_task_pickup.py`; that file is back to its base content. It also removed the reuse of `tests.test_grind_session._Harness`. Every gate behaviour is now tested through the real CLIs.
 
 ### Tests
-- `tests/test_baseline_gate.py`:
-  - `test_schema_accepts_baseline_cmd`: A2 schema.
+- `tests/test_baseline_gate_cli.py`, end to end. Each test builds a disposable one-leaf project with a bare `origin`, runs `python -m specy_road.cli`, and checks only what a user can see: exit code, stdout and stderr text, the registry row on `main` and `origin/main`, whether `feature/rm-leaf-one` exists or is checked out, and HEAD.
+  - `test_passing_baseline_lets_the_pickup_through`: the claim is pushed and the feature branch is checked out (A1).
+  - `test_failing_baseline_refuses_and_claims_nothing`: exit 1 and the refusal text; HEAD, `main` and `origin/main` are unchanged; no row, no branch (A1).
+  - `test_baseline_warn_picks_up_from_a_red_base`: the warning text, and the claim lands (A1, `--baseline-warn`).
+  - `test_baseline_that_commits_is_refused`: the tree is clean, but HEAD moved. The refusal names `HEAD <old> -> <new>`, nothing is pushed, no row, no branch (review round 1).
+  - `test_baseline_that_moves_git_state_is_refused_even_when_warned`, parametrised over `checkout -b`, `checkout --detach` and a tracked-file write: the message names the moved field; HEAD is unchanged; nothing is claimed (review round 1).
+  - `test_baseline_may_write_under_work`: output under `work/` does not count as a change.
+  - `test_git_workflow_baseline_applies_and_an_empty_flag_turns_it_off`: the yaml `baseline_cmd` refuses with no flag, and `--baseline-cmd ''` claims (A2).
+  - `test_grind_step_pickup_refused_by_the_baseline_exits_5`: exit 5, a `hook_failed` event for `pickup`/`M1`, and nothing claimed.
+  - `test_grind_step_pickup_with_a_passing_baseline_claims`: a `picked` event and the branch is created.
+- `tests/test_baseline_gate.py`, configuration only, all through public functions:
+  - `test_schema_accepts_baseline_cmd`: the A2 schema.
   - `test_yaml_sets_the_default`, `test_cli_wins_over_yaml`, `test_empty_cli_turns_the_yaml_default_off`, `test_no_config_means_no_baseline`: A2 precedence.
-  - `test_passing_baseline_returns`, `test_failing_baseline_refuses`, `test_baseline_warn_downgrades_a_failure`: A1 refuse and warn, in a real git repo.
-  - `test_baseline_that_writes_is_refused_even_when_warned`, `test_baseline_may_write_under_work`: the tree part of the git-state guard; the message names `working tree`.
-  - `test_baseline_that_commits_is_refused`: a passing baseline that commits leaves the tree clean and is still refused, naming the HEAD move (review round 1).
-  - `test_baseline_that_switches_ref_is_refused` (`checkout -b`, `checkout --detach`): a branch switch is refused even with `--baseline-warn`, naming the old and new ref (review round 1).
-  - `test_yaml_baseline_runs_without_a_flag`: A2 end to end through the gate.
-  - `test_grind_passes_baseline_flags_to_pickup`, `test_grind_forwards_an_empty_baseline_to_turn_the_default_off`, `test_grind_without_baseline_flags_forwards_none`: grind pass-through.
-  - `test_grind_step_pickup_passes_baseline_through`: `--step pickup` forwards the flag, and a refused pickup gives exit 5.
-- `tests/test_do_next_task_pickup.py`:
-  - `test_pickup_runs_baseline_on_base_before_registering`: the gate runs after the sync and on-base check, before `git add`, and receives the CLI values.
-  - `test_pickup_refused_by_baseline_claims_nothing`: a refusal leaves no git calls and the registry unchanged.
+  - `test_grind_passes_baseline_flags_to_pickup`, `test_grind_forwards_an_empty_baseline_to_turn_the_default_off`, `test_grind_without_baseline_flags_forwards_none`: the argv grind-session forwards to pickup.
