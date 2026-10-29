@@ -49,3 +49,18 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: integrity-report
+    node_id: M9.5
+    branch: feature/rm-integrity-report
+    touch_zones:
+      - specy_road/integrity.py
+      - specy_road/bundled_scripts/integrity_cli.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/bundled_scripts/review_packet.py
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
