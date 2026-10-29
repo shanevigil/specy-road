@@ -6,7 +6,7 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
 
 - **A1:** a roster `channels.cli` may name `{session_flag}`. On claude-code it expands to `--session-id <id>` on launch and to `--resume <id>` on `message` / `resume`, so one command, with its permission flags, serves the whole leaf. Codex, cursor and generic refuse it rather than guess. `prompt --channel cli` has no session, so there it expands to nothing. `docs/orchestration-workers.md` documents the placeholder and the `.claude/settings.json` permissions route.
 - **A2:** text-mode `orchestrate plan` always prints `roster: roadmap/orchestration.yaml at <ref>` under the policy line (`in the working tree (not a git checkout)` outside git); `--json` carries `roster_ref`. When the working-tree `roadmap/orchestration.yaml` is absent at that ref or differs from it, the plan prints `! <sentence>` under that line (`roster_drift` in `--json`). An executor-less leaf then reports that sentence instead of the "needs a rostered executor with may_process …" hint. `validate` prints the same sentence as a warning.
-- **A3:** `worker sync` reports sequence numbers missing between the acknowledged mark and the events it returns. They appear as `! gap: event(s) #a–#b missing from the log` in text and as `gaps` in `--json`. A gap is reported once: after `--ack` it is behind the mark.
+- **A3:** `worker sync` checks every sequence number from the acknowledged mark up to the record's `last_event_seq`, and reports each one that no readable log line carries, including a lost final event. They appear as `! gap: event(s) #a–#b missing from the log` in text and as `gaps` in `--json`. A worker whose new events are all unreadable is still listed, with no events and its gap. `--ack` moves the mark to `last_event_seq`, so a gap is reported once.
 - **A4:** `session start|touch|check --path` take several values after one flag, and the flag still repeats.
 - **A5:** in the nested layout:
   - The executor prompt tells the worker to work from the git root and names the project root.
@@ -16,6 +16,7 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
   - The brief gains one `Project root` line with the same paths, deterministic and with no host paths.
   - `worker delegate` copies the brief to the worktree's project root (`<wt>/sr/work/brief-<ID>.md`), not the git root's `work/`.
   - Delegate's dirty check and `reconcile` both pass `_bookkeeping` paths named from the git root. `_bookkeeping` counts a path only when it is under the project prefix, so `sr/work/brief-<ID>.md` and `sr/work/implementation-summary-<ID>.md` are bookkeeping, and a git-root `work/implementation-summary-<ID>.md` is not: delegate refuses it and `reconcile` reports it outside the touch zones.
+  - `reconcile` matches touch zones the way the review packet does (`review_packet.changed_paths_section`). A path inside the project is matched by its project-relative name (`sr/src/new.py` against zone `src`), a path outside it by its git-root name. The registry exclusion uses the project-relative name too.
   - The embedded layout's prompt and brief are unchanged.
 
 ## Changes
@@ -25,7 +26,7 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
 - `specy_road/orchestrate_plan.py`: `roster_ref` / `roster_drift` on the plan; the drift replaces the executor hint.
 - `specy_road/bundled_scripts/orchestrate_cli.py`: `render()` prints the roster line and the drift.
 - `specy_road/bundled_scripts/validate_roadmap.py`: the drift warning.
-- `specy_road/worker_reconcile.py`: `gaps` in `sync`; prefix-aware `_bookkeeping`.
+- `specy_road/worker_reconcile.py`: `gaps` in `sync`; prefix-aware `_bookkeeping`; project-relative zone matching.
 - `specy_road/bundled_scripts/worker_cli.py`: prints gaps.
 - `specy_road/bundled_scripts/session_cli.py`: `--path` uses `extend` and `nargs="+"`.
 - `specy_road/bundled_scripts/role_prompt.py`, `specy_road/bundled_scripts/generate_brief.py`: nested-layout paths.
@@ -47,6 +48,16 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
     - `_bookkeeping` returns `False` for a path outside the project prefix.
     - Delegate's dirty check already read `git status --porcelain`, which names paths from the git root.
   - **Unreachable fallback removed:** `worker_ops._brief_into` drops its `or wt` fallback. Both `_worktree_for` results are checked git trees (`_check_tree`, or the coordinator's checkout once `git branch --show-current` has answered there), so `git_root(wt)` always resolves.
+- Review round 3 (Sol blocked `988717a` on two findings):
+  - **(1) Zone matching, a regression from round 2.** With untracked paths now named from the git root, `reconcile` compared `sr/src/new.py` directly with project-relative zones and flagged an allowed file.
+    - **Fix:** each path is rebased to the project before zone matching, so `sr/src/new.py` is matched as `src/new.py`.
+    - **Deliberate deviation from the finding's wording:** a path that does not rebase keeps its git-root name for zone matching, rather than being outside every zone. That is what the review packet does (`rebase_to_project(p, prefix) or p` in `changed_paths_section`), so `reconcile` and the packet agree on the boundary. It is also how this repository's own nested leaves are zoned: M3.9's zones (`specy_road/…`, `tests/`, `docs/…`) all lie outside `sr/`, and the literal rule would flag every change of every such leaf.
+    - **Unchanged by this:** bookkeeping. A git-root `work/` file is still never bookkeeping (round 2), and `other/x.py` at the git root, under no zone, is reported.
+  - **(2) A3 tail gaps.**
+    - **Range:** `sync` derives the expected range from the mark to the record's `last_event_seq`. That number is a logged sequence: `append_event` writes the line, under the workers lock, before it saves the record.
+    - **What it reports:** missing or unreadable numbers in that range, the final one included. A worker with only gaps is listed.
+    - **Ack:** `--ack` moves the mark to `last_event_seq`.
+    - **Docs:** `docs/orchestration-workers.md`'s `sync` row says so.
 
 Final touch zones: the ones on the integration branch (`b0c6d5c`, which added `specy_road/bundled_scripts/orchestrate_cli.py`). Every path this leaf changes is inside them; the merge commit `0a86214` carries the integration branch's own changes.
 
@@ -59,9 +70,13 @@ Every other path difference is still caught.
 
 ## Verification
 
+- Review round 3, focused: `pytest tests/test_worker_cli_fixes.py tests/test_project_layouts.py tests/test_review_round6_evidence.py tests/test_worker_cli.py tests/test_worker_review_round1.py tests/test_worker_review_round2.py tests/test_review_round5.py tests/test_review_round6_ops.py tests/test_worker_faults.py tests/test_worker_state.py tests/test_prerelease_workers.py`: 181 passed.
+- The three new round-3 tests fail against `988717a`'s `worker_reconcile.py` and pass with the fix.
+- `pytest` (full, round 3): 2272 passed, 2 skipped, 0 failed.
+- `ruff check specy_road tests scripts`, `specy-road file-limits`, `scripts/check_test_private_imports.py` (0 new): pass at round 3.
 - Review round 2, focused: `pytest tests/test_worker_cli_fixes.py tests/test_project_layouts.py tests/test_review_round6_evidence.py tests/test_worker_cli.py tests/test_worker_review_round1.py tests/test_worker_review_round2.py tests/test_review_round5.py tests/test_review_round6_ops.py tests/test_worker_faults.py`: 167 passed. `test_review_round6_evidence.py` pins `_changed_since`'s output in the embedded layout, which is unchanged.
 - The two new round-2 tests fail against `981d7f7`'s `worker_reconcile.py` and pass with the fix.
-- `pytest` (full): 2269 passed, 2 skipped, 0 failed.
+- `pytest` (full, round 2): 2269 passed, 2 skipped, 0 failed.
 - `pytest` over the renamed helpers' modules and the new tests (review round 1): 148 passed.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK. The fixture's `.specyrd/cache` written by these runs was removed afterwards.
 - `specy-road file-limits`: OK. `ruff check specy_road tests scripts`: OK.
@@ -73,9 +88,10 @@ Every other path difference is still caught.
 
 1. `tests/test_worker_cli_fixes.py::test_one_claude_command_launches_and_resumes_with_session_flag`: the same `channels.cli` gives `--session-id X` on launch and `--resume X` on resume.
 2. `::test_text_plan_always_names_the_roster_ref` (the text output, clean and drifted) and `::test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint` (the plan problem and the `validate` warning).
-3. `::test_sync_reports_a_gap_in_event_sequence_numbers`: two lost lines produce one gap, reported once.
+3. `::test_sync_reports_a_gap_in_event_sequence_numbers` (two lost lines produce one gap, reported once), `::test_sync_reports_a_lost_final_event` and `::test_sync_lists_a_worker_whose_new_events_are_all_unreadable`.
 4. `::test_nested_prompt_and_brief_give_paths_from_the_git_root` and `::test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`.
 5. `::test_nested_delegate_counts_only_the_projects_work_as_bookkeeping` (linked worktree) and `::test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (worker running in `sr/` itself): a git-root `work/implementation-summary-M1.1.md` is refused or reported, while `sr/work/implementation-summary-M1.1.md` is not.
+6. `::test_nested_reconcile_matches_zones_by_the_project_relative_name`: untracked `sr/src/new.py` under zone `src` is not flagged and leaves `needs_reconcile` off; a git-root `other/x.py` is reported and sets it.
 
 ## Added
 
@@ -88,7 +104,8 @@ Every other path difference is still caught.
 - `OrchestrationPlan.roster_ref` / `roster_drift`, `assign_leaf(drift=…)`, `_pick_executor(drift=…)` branch: the drift replaces the misleading hint.
 - `orchestrate_cli.render` roster line and `! <drift>` line: A2's "prints the ref" in text mode.
 - `validate_orchestration_contract` drift warning: "validate warns the same way".
-- `worker_reconcile._gaps` and the `gaps` key in `sync`; the gap line in `worker_cli.cmd_sync`: A3.
+- `worker_reconcile._gaps` and the `gaps` key in `sync`; the gap line in `worker_cli.cmd_sync`: A3. Since round 3, `_gaps` takes the range end (`last`), and `sync` lists a worker whose range is non-empty even with no readable event, acking to `last`.
+- `reconcile`'s `rebase_to_project(p, prefix) or p` in zone matching and the project-relative registry exclusion: round 3 finding (1), matching the review packet.
 - `_bookkeeping(prefix=…)` and its `rel is not None` guard: git names `sr/work/...`. Without the prefix the moved brief would be refused by delegate and flagged by reconcile; without the guard, a git-root `work/` file would pass as bookkeeping (review round 2).
 - `_changed_since`'s `--full-name -- ':(top)'`: untracked paths named from the git root, the form `_bookkeeping` and `git diff` use (review round 2).
 - `role_prompt._dirty_check(prefix)` (replaces `_DIRTY_CHECK`), `_where`, and the `prefix` parameters: A5. In the nested layout the old `:(top)work/...` excludes did not match the project's bookkeeping.
@@ -98,8 +115,8 @@ Every other path difference is still caught.
 - Tests, all in `tests/test_worker_cli_fixes.py` (new), one per behaviour:
   - A1: `test_one_claude_command_launches_and_resumes_with_session_flag`, `test_session_flag_is_refused_where_it_has_no_meaning` (×3 harnesses), `test_session_flag_must_be_whole_arguments` (×2 shapes).
   - A2: `test_text_plan_always_names_the_roster_ref` (with helper `_plan_text`), `test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint`, `test_a_roster_absent_on_the_integration_branch_is_named`.
-  - A3: `test_sync_reports_a_gap_in_event_sequence_numbers`.
+  - A3: `test_sync_reports_a_gap_in_event_sequence_numbers`, `test_sync_reports_a_lost_final_event`, `test_sync_lists_a_worker_whose_new_events_are_all_unreadable` (with helper `_logged`, which leaves the record `idle` so `sync`'s dead-wrapper sweep appends no event after the lost one). The last two are from review round 3.
   - A4: `test_path_takes_several_values_or_repeats` (×3 commands).
-  - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`, `test_nested_delegate_counts_only_the_projects_work_as_bookkeeping`, `test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (the last two from review round 2).
+  - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`, `test_nested_delegate_counts_only_the_projects_work_as_bookkeeping`, `test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (from review round 2), and `test_nested_reconcile_matches_zones_by_the_project_relative_name` (from review round 3).
   - Helper `_nested`: a two-branch nested review repo.
   - Public test helpers (review round 1, renamed from private, not added): `worker_roster`, `run_worker_cli`, `wait_for_worker`, `plan_repo`, `only_assignment`. They are what the new tests import, so `tests/test_worker_cli_fixes.py` imports no private name from another module or from `specy_road`.
