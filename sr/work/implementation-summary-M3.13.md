@@ -68,6 +68,15 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - **Inherited failures, not touched (outside M3.13's zones):** the file-limits failure above, plus `tests/test_unauthored_leaf_guard.py::test_validate_notes_complete_leaves_still_on_the_scaffold[False/True]`. There `validate` now prints two `notice:` lines (the scaffold notice and the orchestration-starter notice) where the test expects one. Both cases fail the same way in a clean worktree at WIP's `065e4cc`, and this branch's diff against `065e4cc` touches no validate code.
 - WIP is 1 commit past `065e4cc`. A trial merge against it is clean, so I did not merge again.
 
+## Merge with WIP (d927f96, after M4.17 landed)
+
+WIP moved ahead; a trial merge conflicted on `specy_road/bundled_scripts/review_cli.py` with M4.17. Merge `e76d5b4` keeps both behaviours. Everything else merged automatically.
+
+- `_node_status` still computes `trial_merge` and puts its blocking `problem()` first in `problems`, then M4.17's gate problems, executor-verify problems and `loop.problems()`. JSON still carries `trial_merge` (conflicts, blocking) beside M4.17's `escalation` / `escalated` state.
+- `_render` prints the trial-merge line, then the escalation line.
+- `_unclaimed` still sets `trial_merge: None`. `review list` and `archive_review` stay as M4.17 left them.
+- **Inherited, not touched:** `specy-road file-limits` reports `specy_road/bundled_scripts/role_prompt.py` at 407 lines. That is WIP's M3.18 work, outside this leaf's zones.
+
 ## Verification
 
 - At `26d9905`: full `pytest -q -p no:cacheprovider -rf` gave 2420 passed, 2 skipped and 3 failed (all inherited, listed above). `tests/test_review_packet.py` gave 12 passed, and `ruff check specy_road tests` passed.
@@ -83,6 +92,7 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - `specy-road file-limits` → OK. `ruff check specy_road tests` passed before the merge; after it, the only error is the inherited `tests/test_grind_session.py:57`.
 - Mutation check: with `merge_conflicts` forced to return `[]`, the six code-conflict and bookkeeping tests fail.
 - Composer-2.5 executor (at `c5ac660`): `pytest tests/test_review_packet.py tests/test_review_cli.py tests/test_mark_implementation_reviewed_gate.py tests/test_finish_task_commands.py tests/test_git_subprocess.py tests/test_review_gate.py tests/test_finish_bookkeeping_wiring.py tests/test_project_layouts.py -q -p no:cacheprovider -rf` → 118 passed; `specy-road file-limits` OK; `ruff check specy_road tests` passed.
+- After the d927f96 merge (`e76d5b4`): the same focused files plus `tests/test_review_rca.py` → 128 passed. `ruff check specy_road/bundled_scripts/review_cli.py tests/test_review_cli.py tests/test_review_rca.py` passed. `review_cli.py` is 376 lines.
 
 ## Notes for reviewers
 
@@ -112,3 +122,4 @@ After the round-3 fix, a trial merge against WIP conflicted on `specy_road/bundl
 - `tests/test_finish_task_commands.py::test_finish_refuses_while_a_trial_merge_conflicts_on_code` (bookkeeping / code): A2/A3 for finish. A code conflict refuses first; a bookkeeping conflict gets past it to the review gate; HEAD and the tree are unchanged.
 - Mocks: none.
 - ce4225e merge: nothing added; conflict resolution only.
+- d927f96 merge: nothing added; conflict resolution only (trial merge first, then M4.17 escalation/RCA).
