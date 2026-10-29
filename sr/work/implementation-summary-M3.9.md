@@ -31,8 +31,15 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
 - `specy_road/worker_ops.py`: brief location in a delegated worktree; prefix-aware dirty check.
 - `docs/orchestration-workers.md`, `docs/orchestration.md`: A1–A5 behaviour. `orchestration.md` is at its 400-line cap, so the roster-source text joins an existing paragraph.
 - `tests/test_worker_cli_fixes.py` (new); `tests/test_project_layouts.py` (see below).
+- Review round 1 (gpt-5.6-sol-high blocked `7fb5839` because the new test imported private helpers from other test modules). The helpers it needs are now public where they live, renamed in place with no aliases and no copies:
+  - `tests/test_worker_cli.py`: `_roster` → `worker_roster`, `_cli` → `run_worker_cli`, `_wait` → `wait_for_worker`.
+  - `tests/test_orchestrate_plan.py`: `_repo` → `plan_repo`, `_only` → `only_assignment`.
+  - Every existing importer of `_cli` / `_wait` was updated to the new names: `tests/test_review_round4_sol.py`, `tests/test_worker_review_round1.py`, `tests/test_review_round6_ops.py`, `tests/test_review_round6_runner.py`, `tests/test_worker_review_round2.py`.
+  - Only the names changed, so no assertion or test body changed. `test_worker_cli._repo` stays private because the new test does not use it.
+  - Moving them into `tests/helpers.py` was the other option offered. It would need `make_review_repo`, and `tests/review_repo_helpers.py` already imports `tests/helpers.py`, so that path means an import cycle or a copy the clone gate counts.
+- `WIP/improvements-0-3-1` (`b89715b`) merged in as `0a86214`, which brings the integration branch's fix for the two renamed-helper failures (`0f0c662`).
 
-Final touch zones: the ones on the integration branch (`b0c6d5c`, which added `specy_road/bundled_scripts/orchestrate_cli.py`). Every changed path is inside them.
+Final touch zones: the ones on the integration branch (`b0c6d5c`, which added `specy_road/bundled_scripts/orchestrate_cli.py`). Every path this leaf changes is inside them; the merge commit `0a86214` carries the integration branch's own changes.
 
 **Test changed, not loosened:** `test_the_brief_is_identical_across_layouts` pinned byte-identical briefs across layouts, and A5 deliberately adds one line to the nested brief. The test now asserts:
 - the embedded brief lacks that exact line;
@@ -43,12 +50,13 @@ Every other path difference is still caught.
 
 ## Verification
 
-- `pytest` (full): 2255 passed, 2 skipped, 2 failed. The two failures, `tests/test_review_round6_evidence.py::test_committed_rename_into_the_zone_is_reported_on_both_sides` and `::test_rename_out_of_the_zone_keeps_the_source_inside_it`, fail identically on base `16d36ef` in a clean detached worktree. They call `review_packet._changed`, which `03f81a7` renamed to `changed_paths_section`. Not touched here.
-- `pytest tests/test_worker_cli_fixes.py tests/test_orchestrate_plan.py tests/test_review_round6_policy.py`: 41 passed.
+- `pytest` (full, after merging `WIP/improvements-0-3-1`): 2267 passed, 2 skipped, 0 failed.
+- `pytest` over the renamed helpers' modules and the new tests (`tests/test_worker_cli_fixes.py`, `test_worker_cli.py`, `test_orchestrate_plan.py`, `test_review_round4_sol.py`, `test_worker_review_round1.py`, `test_review_round6_ops.py`, `test_review_round6_runner.py`, `test_worker_review_round2.py`, `test_review_round6_evidence.py`): 148 passed.
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood`: OK. The fixture's `.specyrd/cache` written by these runs was removed afterwards.
-- `specy-road file-limits`: OK. `ruff check specy_road tests scripts`: OK. `scripts/check_test_private_imports.py`: 0 new.
-- `scripts/check_clones.py`: **not run**, because `pylint` is not installed in this environment.
-- Live check on this checkout: `specy-road orchestrate plan` prints `roster: roadmap/orchestration.yaml at refs/remotes/origin/WIP/improvements-0-3-1`, and it and `specy-road validate` both report that `roadmap/orchestration.yaml` differs from `refs/remotes/origin/WIP/improvements-0-3-1`. That is true here: this branch's roster is older than the integration branch's.
+- `specy-road file-limits`: OK. `ruff check specy_road tests scripts`: OK.
+- `scripts/check_test_private_imports.py`: exit 0, 117 current, 118 baselined, 0 new. It also prints one stale entry, `tests/test_review_round6_evidence.py: …review_packet._changed`. The integration branch's own fix removed that reference; the baseline in `constraints/` is outside this leaf's zones and was left as is.
+- `scripts/check_clones.py --pylint <scratch venv>/bin/pylint` (pylint 4.1.3, as CI pins, in a throwaway venv): 12 current, 12 baselined, 0 new.
+- Live check on this checkout after the merge: `specy-road orchestrate plan` prints `roster: roadmap/orchestration.yaml at refs/remotes/origin/WIP/improvements-0-3-1` with no drift line, and `specy-road validate` prints no roster warning. That is correct: the merge brought the branch's roster level with the integration branch. Before the merge both reported the difference, which was real then.
 
 ## Walkthrough
 
@@ -81,3 +89,4 @@ Every other path difference is still caught.
   - A4: `test_path_takes_several_values_or_repeats` (×3 commands).
   - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`.
   - Helper `_nested`: a two-branch nested review repo.
+  - Public test helpers (review round 1, renamed from private, not added): `worker_roster`, `run_worker_cli`, `wait_for_worker`, `plan_repo`, `only_assignment`. They are what the new tests import, so `tests/test_worker_cli_fixes.py` imports no private name from another module or from `specy_road`.
