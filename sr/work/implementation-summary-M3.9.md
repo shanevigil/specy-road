@@ -17,6 +17,7 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
   - `worker delegate` copies the brief to the worktree's project root (`<wt>/sr/work/brief-<ID>.md`), not the git root's `work/`.
   - Delegate's dirty check and `reconcile` both pass `_bookkeeping` paths named from the git root. `_bookkeeping` counts a path only when it is under the project prefix, so `sr/work/brief-<ID>.md` and `sr/work/implementation-summary-<ID>.md` are bookkeeping, and a git-root `work/implementation-summary-<ID>.md` is not: delegate refuses it and `reconcile` reports it outside the touch zones.
   - `reconcile` matches touch zones the way the review packet does (`review_packet.changed_paths_section`). A path inside the project is matched by its project-relative name (`sr/src/new.py` against zone `src`), a path outside it by its git-root name. The registry exclusion uses the project-relative name too.
+  - A worker delegated into the coordinator's own checkout runs at that checkout's git root, and its record's `worktree` is that git root, so the prompt's `sr/work/...` paths resolve there (not to `sr/sr/work`). The shell-command guard still sees such a worker from the project root.
   - The embedded layout's prompt and brief are unchanged.
 
 ## Changes
@@ -30,7 +31,8 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
 - `specy_road/bundled_scripts/worker_cli.py`: prints gaps.
 - `specy_road/bundled_scripts/session_cli.py`: `--path` uses `extend` and `nargs="+"`.
 - `specy_road/bundled_scripts/role_prompt.py`, `specy_road/bundled_scripts/generate_brief.py`: nested-layout paths.
-- `specy_road/worker_ops.py`: brief location in a delegated worktree; prefix-aware dirty check.
+- `specy_road/worker_ops.py`: brief location in a delegated worktree; prefix-aware dirty check; the coordinator-checkout worktree is its git root.
+- `specy_road/tool_call_guard.py`: `shared_with_others` matches a worker by project root or git root.
 - `docs/orchestration-workers.md`, `docs/orchestration.md`: A1–A5 behaviour. `orchestration.md` is at its 400-line cap, so the roster-source text joins an existing paragraph.
 - `tests/test_worker_cli_fixes.py` (new); `tests/test_project_layouts.py` (see below).
 - Review round 1 (gpt-5.6-sol-high blocked `7fb5839` because the new test imported private helpers from other test modules). The helpers it needs are now public where they live, renamed in place with no aliases and no copies:
@@ -58,8 +60,15 @@ Worker and session CLI fixes from the 0.3.1rc1 triage (`docs/design-notes/v0-3-1
     - **What it reports:** missing or unreadable numbers in that range, the final one included. A worker with only gaps is listed.
     - **Ack:** `--ack` moves the mark to `last_event_seq`.
     - **Docs:** `docs/orchestration-workers.md`'s `sync` row says so.
+- Review round 4 (Sol blocked `119d220` on A5):
+  - **The defect:** with the claim's branch checked out in a nested checkout, `_worktree_for` returned the project root (`sr/`). `worker_runner` starts the harness with `cwd=rec.worktree`, so a harness following the prompt's git-root-relative `sr/work/...` paths wrote to `sr/sr/work`.
+  - **Fix 1:** `worker_ops._worktree_for` returns `git_root(repo_root)`, so the harness's cwd and the path convention agree. The record's `worktree` is that cwd, and `worker_runner` already launches there, so it is unchanged.
+  - **Fix 2, the guard:** found before committing the first fix, and why round 4 paused for a zone. `tool_call_guard.shared_with_others` counted a worker as running here only when `rec.worktree` equalled the project root it is given. With Fix 1 alone, a `git checkout` in the coordinator's nested checkout was no longer refused while a worker ran there (measured: `[]` instead of `['worker w-0001']`). The guard now matches a worker recorded at the project root or at its git root. Sessions are untouched.
+  - **Merge:** `origin/WIP/improvements-0-3-1` (`90f1ad3`, the zone widening) merged in as `f9d1082`.
+  - **Test update:** the round-2 test now expects the recorded tree to be the git root.
+  - **Docs:** `docs/orchestration-workers.md` says the worker runs at the checkout's git root, and that is the recorded `worktree`.
 
-Final touch zones: the ones on the integration branch (`b0c6d5c`, which added `specy_road/bundled_scripts/orchestrate_cli.py`). Every path this leaf changes is inside them; the merge commit `0a86214` carries the integration branch's own changes.
+Final touch zones: the ones on the integration branch (`90f1ad3`, which added `specy_road/tool_call_guard.py` after `b0c6d5c` added `specy_road/bundled_scripts/orchestrate_cli.py`). Every path this leaf changes is inside them; the merge commits `0a86214` and `f9d1082` carry the integration branch's own changes.
 
 **Test changed, not loosened:** `test_the_brief_is_identical_across_layouts` pinned byte-identical briefs across layouts, and A5 deliberately adds one line to the nested brief. The test now asserts:
 - the embedded brief lacks that exact line;
@@ -70,6 +79,10 @@ Every other path difference is still caught.
 
 ## Verification
 
+- Review round 4, focused: `pytest tests/test_worker_cli_fixes.py tests/test_project_layouts.py tests/test_tool_call_guard.py tests/test_worker_cli.py tests/test_worker_review_round1.py tests/test_worker_review_round2.py tests/test_review_round5.py tests/test_review_round6_ops.py tests/test_review_round6_evidence.py tests/test_worker_faults.py tests/test_worker_state.py tests/test_prerelease_workers.py`: 283 passed. `pytest tests/test_review_round6_guard.py tests/test_session_presence.py`: 87 passed.
+- The two new round-4 tests each fail on the old code. The cwd test fails with `119d220`'s `_worktree_for`; the guard test fails with `119d220`'s guard plus the new `_worktree_for`, the combination that would have shipped without Fix 2. Both pass with the fix.
+- `pytest` (full, round 4): 2312 passed, 2 skipped, 1 failed. The failure, `tests/test_roadmap_crud.py::test_list_nodes_json_is_the_full_untruncated_list`, is a `NameError` for `_fixture_repo` at line 242. The file arrived with the `origin/WIP` merge (`febadec`, `feature/rm-graph-listing-and-moves`), which renamed that helper to `crud_fixture_repo` and missed this call. The file is byte-identical to `origin/WIP/improvements-0-3-1`, so the integration branch fails the same way. It is not this leaf's and was left alone.
+- `ruff check specy_road tests scripts`, `specy-road file-limits`, `scripts/check_test_private_imports.py` (0 new): pass at round 4.
 - Review round 3, focused: `pytest tests/test_worker_cli_fixes.py tests/test_project_layouts.py tests/test_review_round6_evidence.py tests/test_worker_cli.py tests/test_worker_review_round1.py tests/test_worker_review_round2.py tests/test_review_round5.py tests/test_review_round6_ops.py tests/test_worker_faults.py tests/test_worker_state.py tests/test_prerelease_workers.py`: 181 passed.
 - The three new round-3 tests fail against `988717a`'s `worker_reconcile.py` and pass with the fix.
 - `pytest` (full, round 3): 2272 passed, 2 skipped, 0 failed.
@@ -92,6 +105,7 @@ Every other path difference is still caught.
 4. `::test_nested_prompt_and_brief_give_paths_from_the_git_root` and `::test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`.
 5. `::test_nested_delegate_counts_only_the_projects_work_as_bookkeeping` (linked worktree) and `::test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (worker running in `sr/` itself): a git-root `work/implementation-summary-M1.1.md` is refused or reported, while `sr/work/implementation-summary-M1.1.md` is not.
 6. `::test_nested_reconcile_matches_zones_by_the_project_relative_name`: untracked `sr/src/new.py` under zone `src` is not flagged and leaves `needs_reconcile` off; a git-root `other/x.py` is reported and sets it.
+7. `::test_nested_worker_in_the_coordinators_checkout_runs_at_the_git_root`: a harness that writes the summary at the path the prompt names, relative to its own cwd, lands it in `sr/work/`; the record's `worktree` is the git root, and no `sr/sr/` appears. `::test_nested_guard_refuses_a_checkout_while_a_worker_runs_in_this_checkout`: `git checkout dev` from the project root is refused, naming the worker.
 
 ## Added
 
@@ -111,12 +125,14 @@ Every other path difference is still caught.
 - `role_prompt._dirty_check(prefix)` (replaces `_DIRTY_CHECK`), `_where`, and the `prefix` parameters: A5. In the nested layout the old `:(top)work/...` excludes did not match the project's bookkeeping.
 - `generate_brief._project_root_line` and the `_section_metadata(prefix=…)` parameter: A5.
 - `worker_ops._brief_into` destination change and the dirty-check prefix: the brief sits where the nested prompt says.
+- `worker_ops._worktree_for` returning `git_root(repo_root)`: round 4, so the harness's cwd matches the prompt's git-root-relative paths.
+- `tool_call_guard.shared_with_others`'s `trees` set (project root or its git root): round 4, so the guard still sees a worker recorded at the git root.
 - Mocks: none.
 - Tests, all in `tests/test_worker_cli_fixes.py` (new), one per behaviour:
   - A1: `test_one_claude_command_launches_and_resumes_with_session_flag`, `test_session_flag_is_refused_where_it_has_no_meaning` (×3 harnesses), `test_session_flag_must_be_whole_arguments` (×2 shapes).
   - A2: `test_text_plan_always_names_the_roster_ref` (with helper `_plan_text`), `test_a_roster_that_differs_from_the_integration_branch_is_named_not_the_may_process_hint`, `test_a_roster_absent_on_the_integration_branch_is_named`.
   - A3: `test_sync_reports_a_gap_in_event_sequence_numbers`, `test_sync_reports_a_lost_final_event`, `test_sync_lists_a_worker_whose_new_events_are_all_unreadable` (with helper `_logged`, which leaves the record `idle` so `sync`'s dead-wrapper sweep appends no event after the lost one). The last two are from review round 3.
   - A4: `test_path_takes_several_values_or_repeats` (×3 commands).
-  - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`, `test_nested_delegate_counts_only_the_projects_work_as_bookkeeping`, `test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (from review round 2), and `test_nested_reconcile_matches_zones_by_the_project_relative_name` (from review round 3).
-  - Helper `_nested`: a two-branch nested review repo.
+  - A5: `test_nested_prompt_and_brief_give_paths_from_the_git_root`, `test_nested_delegate_puts_the_brief_under_the_worktrees_project_root`, `test_nested_delegate_counts_only_the_projects_work_as_bookkeeping`, `test_nested_reconcile_reports_a_git_root_summary_but_not_the_projects` (from review round 2), and `test_nested_reconcile_matches_zones_by_the_project_relative_name` (from review round 3), `test_nested_worker_in_the_coordinators_checkout_runs_at_the_git_root` and `test_nested_guard_refuses_a_checkout_while_a_worker_runs_in_this_checkout` (from review round 4, with harness scripts `FOLLOWS_THE_PROMPT` and `STAYS_RUNNING`).
+  - Helper `_nested`: a two-branch nested review repo. Since round 4 it takes the harness script the roster runs.
   - Public test helpers (review round 1, renamed from private, not added): `worker_roster`, `run_worker_cli`, `wait_for_worker`, `plan_repo`, `only_assignment`. They are what the new tests import, so `tests/test_worker_cli_fixes.py` imports no private name from another module or from `specy_road`.
