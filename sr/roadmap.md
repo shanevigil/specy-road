@@ -35,7 +35,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.7` | Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies | task | Agentic-led | Not Started |
 | `M4.8` | list-nodes --json, refresh-stubs --diff, move-node zone rewrite | task | Agentic-led | Not Started |
 | `M4.9` | Opt-in auto-pick ordering by execution milestone | task | Agentic-led | Not Started |
-| `M4.10` | Clean up merged feature branches after finish | task | Agentic-led | Not Started |
+| `M4.10` | Clean up merged feature branches after finish | task | Agentic-led | Complete |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Not Started |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Not Started |
