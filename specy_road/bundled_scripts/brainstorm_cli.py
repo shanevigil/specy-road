@@ -24,7 +24,6 @@ from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     next_step,
     print_idea_summary,
     stage,
-    validate_idea_ids,
     write_round_prompts,
 )
 from specy_road.bundled_scripts.brainstorm_close import close_session
@@ -194,9 +193,8 @@ def _triage(ns: argparse.Namespace, status: str) -> int:
         raise BrainstormError("reject needs --reason: the record of why is worth more than the reject")
     from datetime import date
 
-    validate_idea_ids(session, ns.idea_id)
-    for ident in ns.idea_id:
-        idea = set_status(session, ident, status)
+    ideas = [set_status(session, ident, status) for ident in ns.idea_id]
+    for idea in ideas:
         if reason:
             idea.decision = {"status": status, "reason": reason, "decided_at": date.today().isoformat()}
         elif idea.decision and idea.decision.get("status") != status:

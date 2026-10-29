@@ -306,8 +306,9 @@ specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing s
 specy-road brainstorm realize B1 --node M3.6   # node you added outside promote
 ```
 
-`accept`, `reject`, and `park` resolve every idea id before changing anything or
-printing `[ok]` — a bad id in a batch leaves the session untouched. The agent's
+`accept`, `reject`, and `park` resolve every idea before changing anything or
+printing `[ok]` — a missing or already-promoted id in a batch prints nothing
+and leaves the session untouched. The agent's
 judgement — verdicts, their reasoning and the critics'
 objections — is hidden by default so it does not steer you; clusters and
 source counts show first, and `--show-verdicts` adds the rest. `reject` and

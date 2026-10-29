@@ -56,6 +56,24 @@ def test_triage_checks_every_id_before_printing_or_saving(repo: Path) -> None:
     assert _session(repo).by_id("B1").status == "proposed"
 
 
+def test_triage_prints_nothing_when_a_batch_holds_a_promoted_idea(repo: Path) -> None:
+    _start(repo)
+    _cli(repo, "add-idea", "--title", "One")
+    _cli(repo, "add-idea", "--title", "Two")
+    assert _cli(repo, "realize", "B2", "--node", "M1")[0] == 0
+    before = _session(repo)
+    assert before.by_id("B1").status == "proposed" and before.by_id("B2").promoted_node_key
+    code, out, err = _cli(repo, "accept", "B1", "B2")
+    assert code == 1 and not out.strip() and "already on the roadmap" in err
+    assert _session(repo).by_id("B1").status == "proposed"
+    code, out, err = _cli(repo, "park", "B1", "B2", "--reason", "later")
+    assert code == 1 and not out.strip()
+    assert _session(repo).by_id("B1").status == "proposed"
+    code, out, err = _cli(repo, "reject", "B1", "B2", "--reason", "no")
+    assert code == 1 and not out.strip()
+    assert _session(repo).by_id("B1").status == "proposed"
+
+
 def test_realize_records_a_hand_built_node(repo: Path) -> None:
     _start(repo)
     _cli(repo, "add-idea", "--title", "Hand built")

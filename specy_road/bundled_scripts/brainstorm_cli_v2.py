@@ -33,11 +33,6 @@ from specy_road.runtime_paths import resolve_repo_root
 DEFAULT_COUNT = 20
 
 
-def validate_idea_ids(session: BrainstormSession, idents: list[str]) -> None:
-    for ident in idents:
-        session.by_id(ident)
-
-
 def print_idea_summary(session: BrainstormSession) -> None:
     from specy_road.bundled_scripts.brainstorm_session import IDEA_STATUSES, RECOMMENDATIONS
 
@@ -210,9 +205,8 @@ def cmd_verify(ns: argparse.Namespace) -> int:
 
 def cmd_park(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
-    validate_idea_ids(session, ns.idea_id)
-    for ident in ns.idea_id:
-        idea = set_status(session, ident, "parked")
+    ideas = [set_status(session, ident, "parked") for ident in ns.idea_id]
+    for idea in ideas:
         idea.decision = {"status": "parked", "reason": ns.reason.strip(), "decided_at": date.today().isoformat()}
         if ns.revisit_when.strip():
             idea.decision["revisit_when"] = ns.revisit_when.strip()
