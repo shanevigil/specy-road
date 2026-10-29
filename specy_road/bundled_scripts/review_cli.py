@@ -67,7 +67,6 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     gate = evaluate_gate(root, t.node, t.commit, branch=branch)
     ready = latest_ready(root, node_id, branch)
     ready_commit = ready.data["commit"] if ready else None
-    gate_problems = gate.problems()
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
     return {
@@ -88,8 +87,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         ],
         "policy": gate.summary(),
         "policy_met": gate.passed,
-        "problems": (gate_problems + non_gating_verify_problems(ready, gate_problems)
-                     + loop.problems()),
+        "problems": gate.problems() + non_gating_verify_problems(ready) + loop.problems(),
     }
 
 

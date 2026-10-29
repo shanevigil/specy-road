@@ -298,25 +298,11 @@ def verifier_gate_problems(ready: ReviewFile | None, approvals: list[Any]) -> li
     ]
 
 
-def verify_problems(ready: ReviewFile) -> list[str]:
-    """A READY's verifier evidence: failures, or none at all (handoff status notes)."""
-    name = ready.path.name
-    entries = ready.data.get("verify") or []
-    if not entries:
-        return [f"{name}: no verifier evidence recorded (verify is empty)"]
-    return [f"{name}: verifier `{v['cmd']}` exited {v['exit']}" for v in failing_verifier_entries(ready)]
-
-
-def non_gating_verify_problems(ready: ReviewFile | None, gate_problems: list[str]) -> list[str]:
+def non_gating_verify_problems(ready: ReviewFile | None) -> list[str]:
     """READY verifier notes that are reported but do not fail the gate (empty ``verify``)."""
-    if ready is None:
+    if ready is None or ready.data.get("verify"):
         return []
-    entries = ready.data.get("verify") or []
-    if entries:
-        return []
-    msg = f"{ready.path.name}: no verifier evidence recorded (verify is empty)"
-    labeled = msg.replace(f"{ready.path.name}:", f"{ready.path.name} (executor-reported):", 1)
-    return [] if labeled in gate_problems or msg in gate_problems else [labeled]
+    return [f"{ready.path.name} (executor-reported): no verifier evidence recorded (verify is empty)"]
 
 
 def node_ids_with_reviews(repo_root: Path) -> list[str]:
