@@ -13,11 +13,11 @@ from specy_road.managed_block import HTML_COMMENT
 from specy_road.runtime_paths import git_root
 from specy_road.specyrd_cli import _build_parser as _specyrd_parser
 
-_FENCE = re.compile(r"^[ \t]*(?:```|~~~)")
+_FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
 _MENTION = re.compile(r"(?<![\w/.-])(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
-# The product name is a noun phrase when one of these words is the last word
-# before it on the line ("the specy-road toolkit", "other specy-road formats").
+# The product name is a noun phrase when one of these words is the token
+# immediately before it, with only whitespace between ("the specy-road toolkit").
 _NOUN_PHRASE = frozenset(
     {
         "the",
@@ -76,8 +76,19 @@ def _run_verb(line: str, start: int) -> bool:
 
 
 def _noun_phrase(line: str, start: int) -> bool:
-    words = _preceding_words(line, start)
-    return bool(words) and words[-1] in _NOUN_PHRASE
+    """True when the token immediately before the product name is a determiner or preposition.
+
+    Only whitespace may sit between that word and the product name. Any other
+    token, including a digit or punctuation, cancels the exclusion
+    (``the 2 specy-road frob`` reports).
+    """
+    before = line[:start].rstrip(" \t")
+    if not before:
+        return False
+    split_at = len(before)
+    while split_at > 0 and not before[split_at - 1].isspace():
+        split_at -= 1
+    return before[split_at:].lower() in _NOUN_PHRASE
 
 
 def _next_token(line: str, start: int) -> str:
@@ -158,14 +169,26 @@ def _code_spans(line: str) -> list[tuple[int, int, str]]:
     return spans
 
 
+def _fence_run(line: str) -> tuple[str, int] | None:
+    """The opening marker on a fence line: its character and how long the run is."""
+    match = _FENCE.match(line)
+    if match is None:
+        return None
+    run = match.group(1)
+    return run[0], len(run)
+
+
 def _command_mentions(lines: list[tuple[int, str]]):
     """``(line, tool, name)`` for each command-shaped token the rule keeps."""
-    in_fence = False
+    open_fence: tuple[str, int] | None = None
     for lineno, line in lines:
-        if _FENCE.match(line):
-            in_fence = not in_fence
+        run = _fence_run(line)
+        if run is not None and (
+            open_fence is None or (run[0] == open_fence[0] and run[1] >= open_fence[1])
+        ):
+            open_fence = None if open_fence is not None else run
             continue
-        if in_fence:
+        if open_fence is not None:
             for tool, name in _MENTION.findall(line):
                 yield lineno, tool, name
             continue
@@ -231,7 +254,10 @@ def unregistered_commands(text: str) -> list[str]:
     Mandatory contexts are decided first and win over a noun phrase: a code
     span (a run of N backticks, N >= 1, closed by the next run of exactly N;
     ``the specy-road frob`` and ```the specy-road frob``` warn, and one
-    backtick inside a longer span does not end it), a fenced block, a command-led list item (the product name is the
+    backtick inside a longer span does not end it), a fenced block (opened by a
+    run of backticks or tildes and closed only by a line whose fence uses that
+    same character and is at least as long, so ``` inside a four-backtick fence
+    and ~~~ inside a backtick fence stay inside), a command-led list item (the product name is the
     first token after the marker, optionally in code or emphasis, or it is
     preceded only by a run verb: ``- specy-road frob --x``, ``- Run specy-road
     frob``), a run verb (run, exec, execute, invoke, uvx), and a token followed
@@ -239,13 +265,14 @@ def unregistered_commands(text: str) -> list[str]:
     command or subcommand (``## the specy-road frob --x``, ``Use the specy-road
     frob M1.2.``, ``Use the specy-road frob command.``). A heading is not
     special (``# Please specy-road frob`` warns). The only exclusion is a noun
-    phrase: the product name preceded on the same line (ignoring whitespace)
-    by a determiner, possessive, or preposition — the, a, an, this, that,
+    phrase: the token immediately before the product name, with only whitespace
+    between them, is a determiner, possessive, or preposition — the, a, an, this, that,
     these, those, other, any, all, every, each, its, our, your, their, own,
     of, with, in, for, from, about — when the token is followed by a plain
     word or nothing (``the specy-road toolkit is``, ``other specy-road
     formats``, and a prose bullet such as ``- **Adoption prompts** are kept
-    aligned with other specy-road formats``).
+    aligned with other specy-road formats``). A digit or any other token in
+    between cancels it (``the 2 specy-road frob`` warns).
     """
     return [
         mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))
