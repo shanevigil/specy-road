@@ -2,7 +2,8 @@
 """CLI for `specy-road session start|touch|end|list|check`.
 
 An agent announces itself before its first edit (``start``), renews on long
-work (``touch``), and withdraws when done (``end``). ``list`` is what the
+work (``touch``), and withdraws when done (``end``); ``end <id>`` retires a
+record the same user left behind (a closed terminal's). ``list`` is what the
 others read; ``handoff status`` shows the same. ``check`` is the commit guard:
 exit 1 when the staged paths (or ``--path`` ones) overlap another live
 session's, so a pre-commit hook can refuse a commit that would land on
@@ -20,9 +21,12 @@ from specy_road.git_subprocess import git_stdout
 from specy_road.session_presence import (
     DEFAULT_TTL_HOURS,
     conflicts,
+    current_user,
     default_agent_id,
     end_session,
     list_sessions,
+    load_session,
+    session_path,
     start_session,
     warn_lines,
 )
@@ -52,8 +56,31 @@ def cmd_start(ns: argparse.Namespace) -> int:
 
 def cmd_end(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
+    if ns.session_id:
+        return _retire(root, ns.session_id)
     agent = _agent(ns)
     print(f"session {agent}: {'ended' if end_session(root, agent) else 'no record'}")
+    return 0
+
+
+def _retire(root: Path, agent: str) -> int:
+    """``session end <id>``: remove another session's record, when the same user started it (a dead terminal's)."""
+    try:
+        path = session_path(root, agent)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    if not path.is_file():
+        print(f"session {agent}: no record")
+        return 0
+    s = load_session(path)
+    if s is None or s.user != current_user():
+        owner = f"user {s.user!r}" if s and s.user else "an unrecorded user"
+        print(f"error: session {agent} was started by {owner}, not {current_user()!r}; only its owner may end it "
+              f"(`specy-road session list` shows its branch and worktree)", file=sys.stderr)
+        return 1
+    end_session(root, agent)
+    print(f"session {agent}: ended")
     return 0
 
 
@@ -151,7 +178,10 @@ def build_parser() -> argparse.ArgumentParser:
         common(sp)
         sp.set_defaults(func=cmd_start)
 
-    sp = ssub.add_parser("end", help="Remove this session's record")
+    sp = ssub.add_parser("end", help="Remove this session's record, or <id>'s when the same user started it")
+    sp.add_argument("session_id", nargs="?", metavar="ID",
+                    help="Retire this session instead (one of yours that is no longer running, e.g. a closed "
+                         "terminal's); refused when another user started it")
     common(sp)
     sp.set_defaults(func=cmd_end)
 

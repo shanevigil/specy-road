@@ -105,6 +105,33 @@ policy:
   max_workers: 2                    # each worker draws on a plan quota
 ```
 
+**Cursor's CLI.** The `cursor` harness runs Cursor's agent CLI. Its binary is
+`agent` (`cursor agent` runs the same; `cursor-agent` is an older alias), not
+the `cursor` command, which launches the editor: a `channels.cli` or
+`preflight` naming `cursor -p …` starts no agent and the worker fails with no
+output to explain it. Log in once with `agent login` (a browser sign-in;
+`NO_OPEN_BROWSER=1` prints the link instead), or set `CURSOR_API_KEY` on a
+machine without a browser. The default command passes `--trust`: in a
+workspace it has not trusted yet, which every new worktree is, `agent -p`
+exits 1 asking to trust it unless given `--trust` or `--force` (checked on
+agent 2026.10.22 with a fresh worktree); keep `--trust` in a `channels.cli`
+that drops `--force`. Cursor's model ids carry the effort (`agent
+--list-models`: `gpt-5.6-sol-high`, `claude-opus-5-5-high`); list them in the
+profile's `aliases` so the prompt still carries the model notes
+([orchestration-models.md](orchestration-models.md#model-profiles-models-and-prompt)).
+
+```yaml
+  - id: gpt-5.6-sol-high            # Cursor's id for GPT-5.6 Sol at high effort
+    family: openai
+    roles: [reviewer]
+    harness: cursor
+    preflight: agent status         # fails (exit 127) when `agent` is not installed
+```
+
+`agent status` prints `Not logged in` but still exits 0 when signed out (agent
+2026.10.22), so it catches a missing binary, not a lapsed login; `preflight:
+agent status | grep -q "Logged in"` stops on both.
+
 **Claude and `{session}`.** Claude Code refuses `--session-id` for a session
 that already exists ("Session ID … is already in use", exit 1), so a
 `channels.cli` of the form `claude -p … --session-id {session} < {prompt}`
@@ -142,7 +169,7 @@ alike, so the default command and a custom one run under the same rules, and
 a linked worktree sees the committed file once its branch has it. Command-line
 flags still win over the file for that run.
 
-**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, and `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
+**Permissions.** The Claude Code default asks for the narrowest mode that lets it edit unattended (`--permission-mode acceptEdits`; `dontAsk` is stricter but denies every tool not allow-listed), so a first worker on a new repo may stop at a shell permission — set `channels.cli` on the roster entry to the command you want (for Claude, a create-or-resume wrapper as above, or `message` breaks). The Cursor default is the opposite: `agent -p` already has write and shell tools, `--force` (alias `--yolo`) force-allows every command that is not explicitly denied, and `--trust` accepts the new worktree as a workspace, so a `cursor` worker runs everything it decides to — a malformed `channels.cli` is an error, never a silent fall-back to that default. Codex runs with `-c sandbox_mode=workspace-write -c approval_policy=never`, as config overrides because `codex exec` and `exec resume` take no `--ask-for-approval` (and `exec resume` no `--sandbox` or `-C`); run on codex-cli 0.165.0.
 
 ## The loop
 
@@ -292,7 +319,7 @@ session, which is the case the hook exists for.
 |---|---|---|---|---|---|
 | `claude-code` | `claude -p --output-format stream-json --verbose --session-id <uuid> --model … --permission-mode acceptEdits` (prompt on stdin: a brief can exceed Linux's 128 KiB per-argument limit). In a **linked** worktree the default also passes `--add-dir` pointing at the main checkout's `work/reviews/<ID>/` so the executor can write its READY hand-off under `acceptEdits`. | chosen up front | `claude -p --resume <id> …` | unsupported | `claude --resume <id>` |
 | `codex` | `codex exec --json -m … -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> -` (prompt on stdin). The harness runs in the worktree; write READY under the main checkout's `work/reviews/<ID>/` (same path `reviews_root` resolves to from any linked worktree). | `thread.started` | `codex exec resume --json -c sandbox_mode=workspace-write -c approval_policy=never <id> -` (same policy, run in the worktree, prompt on stdin) | unsupported | `codex resume <id>` |
-| `cursor` | `agent -p --output-format stream-json --force --model … --workspace <worktree> "<prompt>"`. The agent's workspace is the linked worktree; READY still belongs in the main checkout's `work/reviews/<ID>/` (open or copy that path explicitly if the harness cannot reach it). | first event | `agent -p --resume <id> …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
+| `cursor` | `agent -p --output-format stream-json --force --trust --model … --workspace <worktree> "<prompt>"`. The agent's workspace is the linked worktree; READY still belongs in the main checkout's `work/reviews/<ID>/` (open or copy that path explicitly if the harness cannot reach it). | first event | `agent -p --resume <id> … --force --trust …` (print-mode resume with a new prompt is undocumented; verify on your install; the prompt is an argument, so a launch whose arguments exceed **100 KiB** is refused with the reason and the record marked `failed`) | unsupported | `agent --resume <id>` |
 | `generic` | `channels.cli` / profile `access.cli` with `{prompt}` (the prompt file path) or `<prompt>` (the prompt text, as the shipped profiles write it; the same 100 KiB argument limit applies) | none | unsupported | unsupported | none |
 
 Whatever the harness, the wrapper's own command line carries only the repo

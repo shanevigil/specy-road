@@ -98,11 +98,27 @@ def _committed_profile_paths(root: str, sha: str) -> tuple[str, ...]:
     return tuple(p for p in out.splitlines() if p.endswith(".md") and not p.endswith("/README.md"))
 
 
+def _pinned_for_id(repo_root: Path, sha: str, path: str, ref: str, model_id: Any) -> Profile | None:
+    """The pinned profile when it is ``model_id``, including one refused because the working tree differs.
+
+    A refusal carries no front matter, so :meth:`Profile.for_id` can see only the file name and an
+    alias or ``api_id`` would miss it. The committed text is what decides the match; the refusal
+    itself is what is returned, so dispatch still stops.
+    """
+    pinned = _pinned_at(repo_root, sha, path, ref)
+    if pinned.ok:
+        return pinned.for_id(model_id)
+    text = _blob(repo_root, sha, path)
+    if text is not None and parse_profile(pinned.path, text).for_id(model_id):
+        return pinned
+    return pinned.for_id(model_id)
+
+
 def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
     """The roster entry's profile as committed on the integration branch (working tree outside git).
 
-    ``profile:`` names the path; without it a committed profile whose ``api_id``
-    or file name is the entry's ``id`` is used, as :func:`profile_for_entry` does.
+    ``profile:`` names the path; without it a committed profile whose ``api_id``,
+    file name or ``aliases`` include the entry's ``id`` is used, as :func:`profile_for_entry` does.
     """
     ref, err = policy_source(repo_root)
     if err:
@@ -115,10 +131,9 @@ def pinned_profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile 
         why = profile_rel_problem(repo_root, str(rel))
         if why:
             return Profile(repo_root / str(rel), {}, errors=[why])
-        return _pinned_at(repo_root, sha, Path(str(rel)).as_posix(), ref)
-    for path in _committed_profile_paths(str(repo_root), sha):
-        prof = _pinned_at(repo_root, sha, path, ref)
-        if prof.api_id == entry.get("id") or prof.path.stem == entry.get("id"):
-            return prof
-    return None
+        prof = _pinned_at(repo_root, sha, Path(str(rel)).as_posix(), ref)
+        return prof.for_id(entry.get("id")) or prof
+    paths = _committed_profile_paths(str(repo_root), sha)
+    return next((m for path in paths
+                 if (m := _pinned_for_id(repo_root, sha, path, ref, entry.get("id")))), None)
 

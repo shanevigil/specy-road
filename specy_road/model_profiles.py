@@ -15,7 +15,7 @@ role prompt (proposal §4.4).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -36,6 +36,7 @@ class Profile:
     data: dict[str, Any]
     sections: dict[str, list[str]] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
+    alias: str | None = None   # the ``aliases`` entry a roster id matched, see :meth:`for_id`
 
     @property
     def ok(self) -> bool:
@@ -43,7 +44,22 @@ class Profile:
 
     @property
     def api_id(self) -> str:
-        return str(self.data.get("api_id") or self.path.stem)
+        """The id the harness is told: the matched alias, else the front matter's ``api_id``."""
+        return self.alias or str(self.data.get("api_id") or self.path.stem)
+
+    def for_id(self, model_id: Any) -> Profile | None:
+        """This profile when ``model_id`` is its ``api_id``, file name or one of its ``aliases``, else ``None``.
+
+        An alias is a harness's own id for the model, often with an effort suffix
+        (Cursor's ``gpt-5.6-sol-high``); the copy returned reports it as ``api_id``,
+        so a worker is launched with the id its harness lists.
+        """
+        if model_id in (self.api_id, self.path.stem):
+            return self
+        aliases = self.data.get("aliases")
+        if isinstance(aliases, list) and model_id in aliases:
+            return replace(self, alias=str(model_id))
+        return None
 
     @property
     def researched(self) -> date | None:
@@ -131,6 +147,9 @@ def _structure_errors(data: dict[str, Any]) -> list[str]:  # noqa: C901 — base
         for role, v in fit.items():
             if not isinstance(v, dict) or not isinstance(v.get("score"), int) or isinstance(v.get("score"), bool):
                 out.append(f"`role_fit.{role}` must be a mapping with an integer `score`")
+    aliases = data.get("aliases")
+    if "aliases" in data and not (isinstance(aliases, list) and all(isinstance(a, str) for a in aliases)):
+        out.append("`aliases` must be a list of model ids")
     if "cost_usd_per_mtok" in data and not isinstance(data["cost_usd_per_mtok"], dict):
         out.append("`cost_usd_per_mtok` must be a mapping")
     if "researched" in data and _as_date(data["researched"]) is None:
@@ -194,7 +213,8 @@ def display_rel(repo_root: Path, path: Path) -> str:
 
 
 def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
-    """The roster entry's profile **from the working tree**: its ``profile`` path, else a file named after its ``id``.
+    """The roster entry's profile **from the working tree**: its ``profile`` path, else the first
+    profile whose :meth:`Profile.for_id` matches its ``id``.
 
     Routing and dispatch use :func:`orchestration_pinned.pinned_profile_for_entry`,
     which reads the same path from the integration branch.
@@ -204,8 +224,6 @@ def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:
         why = profile_rel_problem(repo_root, str(rel))
         if why:
             return Profile(repo_root / str(rel), {}, errors=[why])
-        return load_profile((repo_root / str(rel)).resolve())
-    for p in list_profiles(repo_root):
-        if p.api_id == entry.get("id") or p.path.stem == entry.get("id"):
-            return p
-    return None
+        prof = load_profile((repo_root / str(rel)).resolve())
+        return prof.for_id(entry.get("id")) or prof
+    return next((m for p in list_profiles(repo_root) if (m := p.for_id(entry.get("id")))), None)
