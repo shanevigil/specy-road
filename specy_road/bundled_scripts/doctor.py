@@ -11,7 +11,8 @@ Four kinds, each its own section:
   one also says how many commits the integration branch lacks.
 - linked worktrees whose directory is missing, whose branch is gone (detached at
   a commit the integration branch contains, which is how ``finish
-  --delete-branch`` leaves a delegate worktree) or is one of the merged branches.
+  --delete-branch`` leaves a delegate worktree) or is merged, whether or not the
+  branch itself is listed (a claimed branch whose leaf is not Complete stays).
 - registry rows on the integration branch whose branch is in neither this clone
   nor the remote (advisory, as in ``registry-prune``: another clone's claim looks
   the same until its branch is pushed), or whose leaf is Complete.
@@ -133,19 +134,24 @@ def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str
 
 
 def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], set[str]]:
-    """Complete or unclaimed branches, and the local ones among them that are merged."""
+    """Complete or unclaimed branches, and every local ``feature/rm-*`` that is merged.
+
+    The merged set feeds the worktree section, which lists a worktree on a merged
+    branch even when the branch itself stays: it is still claimed and its leaf is
+    not Complete.
+    """
     found: list[Finding] = []
     merged_local: set[str] = set()
     for prefix, where in (("refs/heads/", "local"), (f"refs/remotes/{ctx.remote}/", ctx.remote)):
         for b in feature_branches(ctx.root, prefix):
             node_id = ctx.complete.get(b.removeprefix("feature/rm-"))
+            reason, merged = _branch_reason(ctx, prefix + b, b, node_id)
+            if where == "local" and merged:
+                merged_local.add(b)
             if b in ctx.live and not node_id:
                 continue
-            reason, merged = _branch_reason(ctx, prefix + b, b, node_id)
             sha = git_text(["rev-parse", prefix + b], ctx.root)
             if where == "local":
-                if merged:
-                    merged_local.add(b)
                 remove, done = partial(_delete_local, ctx.root, b, sha), f"deleted local branch {b}"
             else:
                 remove = partial(_delete_remote, ctx.root, b, sha, ctx.remote)
