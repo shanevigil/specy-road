@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce constraints/file-limits.yaml (line counts per glob, optional per-function for Python)."""
+"""Enforce file-limits.yaml (per-file counts; optional Python and TS/JS function counts)."""
 
 from __future__ import annotations
 
