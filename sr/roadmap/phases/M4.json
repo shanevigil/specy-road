@@ -374,7 +374,8 @@
         "tests/fixtures/specy_road_dogfood/constraints/README.md",
         "specy_road/file_limits_js.py",
         "specy_road/templates/project/constraints/README.md",
-        "specy_road/file_limits_jsx.py"
+        "specy_road/file_limits_jsx.py",
+        "specy_road/file_limits_js_mask.py"
       ],
       "type": "task"
     },
