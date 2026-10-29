@@ -94,13 +94,19 @@ def finish_already_done_on_branch(repo_root: Path, branch: str) -> dict | None:
 
 
 def report_finish_already_done_on_branch(
-    repo_root: Path, branch: str, on_complete: str | None = None
+    repo_root: Path,
+    branch: str,
+    on_complete: str | None = None,
+    *,
+    delete_branch: bool = False,
+    no_milestone_rollup: bool = False,
 ) -> None:
     """Explain a repeat ``finish-this-task`` after bookkeeping already committed.
 
     In merge mode the earlier run's landing may have failed after its
     bookkeeping commit; the re-run its error asks for retries the landing.
     """
+    from specy_road.finish_milestone_rollout import retry_milestone_rollup_landing
     from specy_road.finish_modes import print_pr_gated_state, retry_merge_landing
     from specy_road.git_workflow_config import (
         resolve_integration_defaults,
@@ -111,6 +117,11 @@ def report_finish_already_done_on_branch(
     if node is None:
         return
     node_id = node["id"]
+    if retry_milestone_rollup_landing(
+        repo_root, node_id=node_id, branch=branch, delete_branch=delete_branch,
+        no_milestone_rollup=no_milestone_rollup,
+    ):
+        raise SystemExit(0)
     ib, remote, _ = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )
@@ -118,7 +129,9 @@ def report_finish_already_done_on_branch(
     # git-workflow.yaml still say which mode this leaf finishes in.
     if resolve_on_complete(repo_root, cli=on_complete, session=None) == "merge":
         print(f"[info] {node_id} is already Complete on {branch}; landing it on {ib}.")
-        retry_merge_landing(repo_root, branch=branch, ib=ib, remote=remote)
+        retry_merge_landing(
+            repo_root, branch=branch, ib=ib, remote=remote, delete_branch=delete_branch,
+        )
     print(
         f"[info] {node_id} is already Complete on {branch}; "
         "finish-this-task ran on this branch and released the registry row here."
@@ -132,7 +145,12 @@ def report_finish_already_done_on_branch(
 
 
 def resolve_feature_rm_registry_context_for_finish(
-    repo_root: Path, branch: str, on_complete: str | None = None
+    repo_root: Path,
+    branch: str,
+    on_complete: str | None = None,
+    *,
+    delete_branch: bool = False,
+    no_milestone_rollup: bool = False,
 ) -> _Context:
     """Like :func:`resolve_feature_rm_registry_context`, with a repeat-finish hint."""
     if branch.startswith("feature/rm-"):
@@ -140,5 +158,8 @@ def resolve_feature_rm_registry_context_for_finish(
         entries = read_registry(registry_path(repo_root)).get("entries") or []
         if codename and not any(e.get("codename") == codename for e in entries):
             if finish_already_done_on_branch(repo_root, branch):
-                report_finish_already_done_on_branch(repo_root, branch, on_complete)
+                report_finish_already_done_on_branch(
+                    repo_root, branch, on_complete, delete_branch=delete_branch,
+                    no_milestone_rollup=no_milestone_rollup,
+                )
     return resolve_feature_rm_registry_context(repo_root, branch)

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from specy_road.runtime_paths import project_prefix
+from specy_road.runtime_paths import git_root, project_prefix
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
@@ -61,14 +61,21 @@ def holder_project_root(repo: Path, holder: Path) -> Path:
 
 
 def integration_worktree(repo: Path, integration_branch: str) -> Path | None:
-    """Another worktree with ``integration_branch`` checked out, or ``None``."""
+    """Another worktree with ``integration_branch`` checked out, or ``None``.
+
+    ``git worktree list`` names git roots. ``repo`` is the project root, which
+    in the nested layout sits below its git root. Compare those roots: this
+    checkout is not another worktree, so a later delete switches it onto the
+    integration branch instead of detaching.
+    """
+    here = git_root(repo)
     _ok, out = git_ok(["worktree", "list", "--porcelain"], repo)
     path: Path | None = None
     for line in out.splitlines():
         if line.startswith("worktree "):
             path = Path(line[len("worktree "):])
         elif line == f"branch refs/heads/{integration_branch}" and path is not None:
-            return None if path.resolve() == repo.resolve() else path
+            return None if path.resolve() == here else path
     return None
 
 

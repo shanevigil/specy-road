@@ -102,11 +102,7 @@ class _Harness:
         def fake_wait(repo_root, rel, timeout):
             return self.implement_rc == 0
 
-        def fake_git(git_args, repo_root):
-            self.git_calls.append(list(git_args))
-            return self.git_rc.get(git_args[0], 0), ""
-
-        monkeypatch.setattr(gsc, "git_code", fake_git)
+        monkeypatch.setattr(gsc, "git_code", self._fake_git)
         monkeypatch.setattr(gse, "_now_iso", lambda: TS)
         monkeypatch.setattr(gs, "CHILD_STDOUT_TO_STDERR", False)
         monkeypatch.setattr(gs, "gather_plan", fake_gather)
@@ -115,6 +111,12 @@ class _Harness:
         monkeypatch.setattr(gs, "current_branch", fake_current_branch)
         monkeypatch.setattr(gs, "_resolve_picked", fake_resolve)
         monkeypatch.setattr(gs, "_wait_for_signal", fake_wait)
+
+    def _fake_git(self, git_args, repo_root):
+        self.git_calls.append(list(git_args))
+        if git_args[0] == "rev-parse":
+            return 0, "a" * 40
+        return self.git_rc.get(git_args[0], 0), ""
 
 
 def _run(argv):

@@ -20,7 +20,7 @@ sub-agent work without trial-and-error pickup:
   ``M10.5`` is still in flight).
 * ``parallel_batches`` — per wave, the subset that is *ready and unclaimed*,
   i.e. the sets of independent leaves an orchestrator can dispatch in parallel,
-  wave by wave.
+  wave by wave; a leaf sharing a touch zone with an earlier one moves to the next set.
 
 Pure functions only: no git, no disk writes. Callers load the roadmap + registry
 and pass them in.
@@ -36,7 +36,7 @@ from specy_road.bundled_scripts.do_next_available import (
     _statuses_by_node_key,
 )
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
-from specy_road.bundled_scripts.session_plan_render import session_plan_to_dict
+from specy_road.bundled_scripts.session_plan_render import session_plan_to_dict, split_on_zone_overlap
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
 from specy_road.node_kinds import is_gate
@@ -71,6 +71,7 @@ class UnauthoredLeaf:
 class Wave:
     index: int
     node_ids: list[str]
+    touch_zones: dict[str, list[str]] = field(default_factory=dict)  # leaf id -> its zones
 
 
 @dataclass
@@ -313,9 +314,10 @@ def _compute_waves(nodes: list[dict], ctx: dict) -> list[Wave]:
 
     waves: list[Wave] = []
     max_wave = max(assigned.values(), default=-1)
+    zones = {n["id"]: list(n["touch_zones"]) for n in nodes if n.get("touch_zones")}
     for k in range(max_wave + 1):
         ids = _sorted_ids(nid for nid, w in assigned.items() if w == k)
-        waves.append(Wave(index=k, node_ids=ids))
+        waves.append(Wave(index=k, node_ids=ids, touch_zones={i: zones[i] for i in ids if i in zones}))
     return waves
 
 
@@ -325,7 +327,8 @@ def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[st
     Ordered as pickup will actually claim them (tier, then roadmap outline
     order), not by id: ``waves`` are id-sorted so the human wave listing reads
     predictably, but a reader who dispatches ``parallel_batches[0]`` in order
-    must see the same first leaf that ``grind-session`` takes.
+    must see the same first leaf that ``grind-session`` takes. Leaves sharing a
+    touch zone never share a set (:func:`split_on_zone_overlap`).
     """
     position = {nid: i for i, nid in enumerate(ready_order)}
     out: list[list[str]] = []
@@ -334,8 +337,7 @@ def _parallel_batches(waves: list[Wave], ready_order: list[str]) -> list[list[st
             (nid for nid in w.node_ids if nid in position),
             key=position.__getitem__,
         )
-        if dispatchable:
-            out.append(dispatchable)
+        out.extend(split_on_zone_overlap(dispatchable, w.touch_zones))
     return out
 
 

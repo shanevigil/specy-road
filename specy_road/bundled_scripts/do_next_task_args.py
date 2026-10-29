@@ -70,6 +70,26 @@ def _add_pick_order_arg(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_baseline_args(p: argparse.ArgumentParser) -> None:
+    """``--baseline-cmd`` / ``--baseline-warn``: is the integration branch green?"""
+    p.add_argument(
+        "--baseline-cmd",
+        default=None,
+        metavar="CMD",
+        help=(
+            "Shell command run on the integration branch after the sync and before "
+            "claiming a leaf (e.g. 'make test'). A non-zero exit refuses the pickup, "
+            "so a red base is fixed before a leaf inherits it. Default: baseline_cmd "
+            "in roadmap/git-workflow.yaml; an empty value turns that off for this run."
+        ),
+    )
+    p.add_argument(
+        "--baseline-warn",
+        action="store_true",
+        help="Pick up even when the baseline command fails, with a warning.",
+    )
+
+
 def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -116,6 +136,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
         ),
     )
     _add_pick_order_arg(p)
+    _add_baseline_args(p)
     _add_claim_visibility_args(p)
     add_repo_root_arg(p)
     p.add_argument(

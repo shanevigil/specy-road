@@ -25,8 +25,10 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.9` | Worker and session CLI: resume permissions, roster provenance, event gaps | task | Agentic-led | Complete |
 | `M3.10` | Worker hand-off, reconcile and finish report what actually happened | task | Agentic-led | Not Started |
 | `M3.11` | Roster ids with effort suffixes, packet path, stale sessions | task | Agentic-led | Not Started |
-| `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Not Started |
+| `M3.12` | A baseline gate runs on the integration branch before pickup | task | Agentic-led | Complete |
 | `M3.13` | A trial merge with the integration branch runs before review and before finish | task | Agentic-led | Not Started |
+| `M3.14` | finish-this-task and pickup detect a planning sheet that is still the scaffold | task | Agentic-led | Not Started |
+| `M3.15` | Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter | task | Agentic-led | Complete |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |
@@ -37,11 +39,14 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.7` | Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies | task | Agentic-led | Complete |
 | `M4.8` | list-nodes --json, refresh-stubs --diff, move-node zone rewrite | task | Agentic-led | Complete |
 | `M4.9` | Opt-in auto-pick ordering by execution milestone | task | Agentic-led | Complete |
-| `M4.10` | Clean up merged feature branches after finish | task | Agentic-led | Not Started |
-| `M4.11` | grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave | task | Agentic-led | Not Started |
+| `M4.10` | Clean up merged feature branches after finish | task | Agentic-led | Complete |
+| `M4.11` | grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave | task | Agentic-led | Complete |
 | `M4.12` | file-limits function-length check covers TypeScript and JavaScript | task | Agentic-led | Not Started |
 | `M4.13` | specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes | task | Agentic-led | Not Started |
 | `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Not Started |
+| `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Not Started |
+| `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Not Started |
+| `M4.17` | Review-loop escalation: a root-cause analysis runs when reviews keep blocking | task | Agentic-led | Not Started |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Not Started |
@@ -56,5 +61,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M7` | Keeping current: recurring research | phase | — | Not Started |
 | `M7.1` | A research register tracks deep-research topics with a refresh cadence | task | Agentic-led | Not Started |
 | `M7.2` | Run the harness-capabilities research and fold its findings | task | Human-led | Not Started |
+| `M8` | Harness compatibility | phase | — | Not Started |
+| `M8.1` | Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps | task | Agentic-led | Not Started |
+| `M8.2` | Worker adapters harden the launch and run a deterministic post-run check | task | Agentic-led | Not Started |
+| `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
+| `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Not Started |
+| `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
+| `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Human-led | Not Started |
+| `M8.7` | Runtime verification of the harness facts against installed binaries | task | Human-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

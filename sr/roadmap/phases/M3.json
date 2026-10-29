@@ -340,7 +340,9 @@
         "specy_road/finish_land_integration.py",
         "specy_road/bundled_scripts/finish_task.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/finish_task_args.py",
+        "specy_road/finish_modes.py"
       ],
       "type": "task"
     },
@@ -398,7 +400,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.12_a-baseline-gate-runs-on-the-integration-branch-before-pickup_b56ccb79-4cf4-496f-ab74-cd5710ab8add.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A baseline gate runs on the integration branch before pickup",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task.py",
@@ -443,6 +445,35 @@
         "tests/",
         "specy_road/bundled_scripts/review_cli.py",
         "specy_road/review_gate.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "finish-this-task refuses when the leaf's planning sheet still contains the scaffold or promote placeholder text, naming the sheet; --allow-scaffold-planning is the explicit opt-out, parallel to --allow-missing-summary",
+        "do-next-available-task and do-next-task warn at pickup when the sheet is still the scaffold even if the node has acceptance (M3.1 only refuses when it has none)",
+        "validate prints one notice (not a warning) counting Complete leaves whose sheet is still the scaffold, and lists them under --all"
+      ],
+      "codename": "finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.14",
+      "node_key": "7e4ea42a-408d-4399-a6b8-1febbc3a1386",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.14_finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold_7e4ea42a-408d-4399-a6b8-1febbc3a1386.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "finish-this-task and pickup detect a planning sheet that is still the scaffold",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/bundled_scripts/finish_task_args.py",
+        "specy_road/finish_implementation_check.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/planning_scaffold_check.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/dev-workflow.md",
+        "tests/"
       ],
       "type": "task"
     }

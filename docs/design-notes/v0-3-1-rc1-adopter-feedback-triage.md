@@ -40,6 +40,7 @@ and data are deliberately not recorded here.
 |---|---|---|
 | Nothing checks that the integration branch is healthy before pickup; a red base is inherited by every leaf, and an agent then "fixes" unrelated failures inside its own leaf against the no-scope-creep rule | Gap (`--pre-finish-cmd` only runs at the end) | `--baseline-cmd` on `do-next-*` and `grind-session`, with a `git-workflow.yaml` default, run on the integration branch before pickup; refuse on failure, `--baseline-warn` to downgrade |
 | Promoted and scaffolded leaves keep placeholder sheets, pass `validate`, and are pickable; `grind-session` would implement from one paragraph | Defect | Pickup and `grind-session` refuse a leaf whose sheet still has `promote`'s or `scaffold-planning`'s placeholder text and no `acceptance`; `validate` lists them once |
+| A leaf can finish with its planning sheet still the scaffold; `finish-this-task` checks for a missing summary but not for the sheet's placeholder text | Gate gap | `finish-this-task` refuses on the scaffold sentinel (`--allow-scaffold-planning` opts out, like `--allow-missing-summary`); pickup warns even when the node has acceptance; `validate` counts Complete leaves with unfilled sheets as a notice |
 | `handoff status` calls review records "leftover" and advises `do-next-available-task` (which pushes) where claims are never pushed | Defect | When records exist, say so and point to `--ref <branch>` and `do-next-available-task --local` |
 | Docs do not say where the gate reads review records from | Doc gap | Working tree, untracked by design; policy from the integration branch; approvals persist as `Reviewed-by` trailers |
 | The first `edit-node` on a hand-authored chunk reorders every node | Working as designed (canonical key order), undocumented | Document it; offer a deliberate one-time normalisation |
@@ -74,6 +75,10 @@ and data are deliberately not recorded here.
 | `prompt --role reviewer` and `worker delegate` need a registry claim, so a Complete node cannot get a second-family review through the dispatch layer (`review record --ref` works) | Gap | `prompt --ref` without a claim |
 | `review-packet` at the merge base yields an empty diff with no explanation | Gap | Warn; `--base <ref>` |
 | With no `roadmap/orchestration.yaml`, the default policy applies silently | Gap | One `validate` notice |
+| `prompt --role reviewer` does not accept `--ref` while `review-packet` and `review record` do, so the read-only step is the most restricted one and a second-family review of an unclaimed node needs a manual workaround | Defect | `prompt` takes `--ref` like the other review commands |
+| `handoff status` exits 1 both for "gate not met" and "no claim, cannot determine"; a polling script cannot tell them apart | Defect | Exit 0 with `state: complete_no_claim` for a Complete node, 1 for not met, 2 for undeterminable; the state is in `--json` |
+| No read-only way to list a node's filed review records and gate evaluation once it is Complete (re-running `review record` re-validates and prints the gate as a side effect) | Gap | `review list <ID> [--ref]` |
+| With no `roadmap/orchestration.yaml` there is only a notice; a correct file had to be built from the JSON schema | Gap | `init project` writes a commented starter; `validate --generate-orchestration` writes it when missing |
 | The cursor adapter's default launch omits `--trust`; untested whether a fresh worktree stalls | Check | Verify; add if needed |
 | `validate` advises lowering an honest In Progress parent to Not Started whenever the rollup is coarser | Noise | Warn only when a stored Complete disagrees with the rollup or vice versa |
 | `specy-road version` (bare) is an unknown command | Gap | Alias of `--version`; unknown commands exit non-zero |
@@ -102,6 +107,8 @@ and data are deliberately not recorded here.
 | The `file-limits` function cap still only covers Python, so it reports OK while a TypeScript function is far over the cap (open since 0.1.4rc3); extend the check to TS/JS |
 | A `doctor` command: merged or stale `feature/rm-*` branches (local and remote), stale worktrees, registry rows without a branch, toolkit stashes — detected by ancestry and, when history was rewritten, by patch content; dry-run by default |
 | `brainstorm promote` leaves inherit `execution_milestone` from the anchor instead of needing `--set` on every node |
+| A session-overlap warning names the other session and branch but not its worktree, nor whether that copy has uncommitted or unmerged edits to the path (the warning was the useful signal that a later merge would conflict) | Gap | Name the worktree and branch and the other copy's edit state; keep reporting the user's own other worktrees, labelled |
+| Nothing reports how many review rounds a leaf took or how long; adopters had no baseline for whether multiple blocking rounds were normal. Review recipes also left detached worktrees behind with no step that removes them | Gap | `handoff status` and `review list` show rounds and elapsed time; docs say two or more rounds is normal; `doctor` lists detached worktrees |
 
 ## Not acted on
 

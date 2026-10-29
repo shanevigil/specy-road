@@ -1,8 +1,8 @@
 """Resolve what a review is about: node, branch, commit under review, and base.
 
-Shared by ``review-packet``, ``handoff status``, ``review record``, and the
-``mark-implementation-reviewed`` gate so all four agree on which commit a review
-binds to.
+Shared by ``review-packet``, ``prompt``, ``handoff status``, ``review record``,
+``review list``, and the ``mark-implementation-reviewed`` gate so all of them
+agree on which commit a review binds to.
 
 The commit under review is the tip of the node's registered feature branch —
 the local branch, else its remote-tracking ref — minus trailing registry-only
@@ -78,7 +78,7 @@ def default_ref(repo_root: Path, entry: dict[str, Any] | None, remote: str) -> s
         node = (entry or {}).get("node_id", "this node")
         raise ReviewTargetError(
             f"no registry claim for {node}; pick it up first (`specy-road do-next-available-task --under {node}`)"
-            " — review-packet and review record also take --ref <branch or commit>"
+            " — review-packet, review record, review list and prompt also take --ref <branch or commit>"
         )
     if local_branch_exists(repo_root, branch):
         return branch

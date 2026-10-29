@@ -162,7 +162,7 @@ def _cli(*args: str) -> int:
 
 def test_status_exit_codes_and_leftover_directories(tmp_path: Path, capsys) -> None:
     repo = make_review_repo(tmp_path)
-    assert _cli("handoff", "status", "NOPE", "--repo-root", str(repo)) == 1
+    assert _cli("handoff", "status", "NOPE", "--repo-root", str(repo)) == 2
     reviews_dir(repo, "M1.1").mkdir(parents=True)
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
     capsys.readouterr()
@@ -249,10 +249,10 @@ def test_interactive_human_approval_from_a_linked_worktree(tmp_path: Path, monke
     assert "Reviewed-by: human" in git(wt, "log", "-1", "--format=%B")
 
 
-def test_naming_an_unclaimed_node_exits_1(tmp_path: Path) -> None:
+def test_naming_an_unclaimed_node_exits_2(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     (repo / "roadmap" / "registry.yaml").write_text("version: 1\nentries: []\n")
-    assert _cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 1
+    assert _cli("handoff", "status", "M1.1", "--repo-root", str(repo)) == 2
 
 
 def test_a_sha_lookalike_inside_a_multiline_string_is_not_the_sha(tmp_path: Path) -> None:
