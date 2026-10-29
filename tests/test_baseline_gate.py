@@ -100,7 +100,35 @@ def test_baseline_that_writes_is_refused_even_when_warned(tmp_path, capsys) -> N
     with pytest.raises(SystemExit) as ei:
         run_baseline_gate(root, "main", cli="echo y >> tracked.txt", warn_only=True)
     assert ei.value.code == 1
-    assert "must only check" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "must only check" in err
+    assert "working tree clean -> changed outside work/" in err
+
+
+def test_baseline_that_commits_is_refused(tmp_path, capsys) -> None:
+    """A clean tree is not enough: a new commit would be pushed with the claim."""
+    root = _git_repo(tmp_path)
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True,
+                          text=True, check=True).stdout.strip()
+    with pytest.raises(SystemExit) as ei:
+        run_baseline_gate(root, "main", cli="git commit -q --allow-empty -m sneaky",
+                          warn_only=False)
+    assert ei.value.code == 1
+    err = capsys.readouterr().err
+    assert f"HEAD {head} -> " in err
+    assert "branch refs/" not in err and "working tree" not in err
+
+
+@pytest.mark.parametrize("cmd, moved", [
+    ("git checkout -q -b elsewhere", "branch refs/heads/main -> refs/heads/elsewhere"),
+    ("git checkout -q --detach", "branch refs/heads/main -> (detached)"),
+])
+def test_baseline_that_switches_ref_is_refused(tmp_path, capsys, cmd, moved) -> None:
+    root = _git_repo(tmp_path)
+    with pytest.raises(SystemExit) as ei:
+        run_baseline_gate(root, "main", cli=cmd, warn_only=True)
+    assert ei.value.code == 1
+    assert moved in capsys.readouterr().err
 
 
 def test_baseline_may_write_under_work(tmp_path) -> None:
