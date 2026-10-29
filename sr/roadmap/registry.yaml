@@ -58,7 +58,8 @@ entries:
       - tests/
     started: '2026-10-28'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-10-29T07:29:19+00:00'
   - codename: specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes
     node_id: M4.13
     branch: feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes
