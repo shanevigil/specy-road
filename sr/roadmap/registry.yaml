@@ -93,3 +93,17 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
+    node_id: M3.17
+    branch: feature/rm-a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch
+    touch_zones:
+      - specy_road/review_gate.py
+      - specy_road/review_files.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/schemas/
+      - specy_road/templates/specyrd/
+      - docs/orchestration.md
+      - tests/
+    started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
