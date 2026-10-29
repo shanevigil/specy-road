@@ -230,7 +230,9 @@ def test_promoting_to_the_root_makes_a_top_level_node(repo: Path) -> None:
 
     result = promote_session(repo, s, node_type="phase")[0]
 
-    assert _by_id(repo)[result.node_id].get("parent_id") is None
+    node = _by_id(repo)[result.node_id]
+    assert node.get("parent_id") is None
+    assert "execution_milestone" not in node
 
 
 def test_promoted_nodes_inherit_the_anchor_execution_milestone(repo: Path) -> None:
@@ -255,3 +257,13 @@ def test_promoted_nodes_accept_execution_milestone_override(repo: Path) -> None:
     node_id = promote_session(repo, s, execution_milestone="Human-led")[0].node_id
 
     assert _by_id(repo)[node_id]["execution_milestone"] == "Human-led"
+
+
+def test_promoted_nodes_omit_execution_milestone_when_the_anchor_has_none(
+    repo: Path,
+) -> None:
+    s = _accepted_session(under="M0.3")
+
+    node_id = promote_session(repo, s)[0].node_id
+
+    assert "execution_milestone" not in _by_id(repo)[node_id]

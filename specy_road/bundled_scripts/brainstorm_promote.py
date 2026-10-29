@@ -146,16 +146,12 @@ def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
 
 
 def _anchor_execution_milestone(nodes: list[dict], parent_id: str | None) -> str | None:
-    """The anchor node's advisory execution type, when set."""
+    """The already-validated anchor's advisory execution type, when set."""
     if parent_id is None:
         return None
-    for n in nodes:
-        if n.get("id") == parent_id:
-            em = n.get("execution_milestone")
-            if em in EXEC_MILESTONES:
-                return em
-            return None
-    return None
+    anchor = next(n for n in nodes if n.get("id") == parent_id)
+    em = anchor.get("execution_milestone")
+    return em if em in EXEC_MILESTONES else None
 
 
 def _build_node(
