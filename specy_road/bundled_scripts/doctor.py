@@ -3,7 +3,8 @@
 
 Four kinds, each its own section:
 
-- ``feature/rm-*`` branches, local and on the remote, that nothing claims: no
+- ``feature/rm-*`` branches, local and on the remote, whose leaf is Complete on
+  the integration branch (registry row or not), or that nothing claims: no
   registry row (in this checkout or on the integration branch) and not an open
   milestone rollup — the same "live" test ``branches prune`` uses. Each row says
   why: merged, its leaf Complete, or only that its claim is gone; an unmerged
@@ -12,8 +13,8 @@ Four kinds, each its own section:
   a commit the integration branch contains, which is how ``finish
   --delete-branch`` leaves a delegate worktree) or is one of the merged branches.
 - registry rows on the integration branch whose branch is in neither this clone
-  nor the remote. Advisory, as in ``registry-prune``: another clone's claim looks
-  the same until its branch is pushed.
+  nor the remote (advisory, as in ``registry-prune``: another clone's claim looks
+  the same until its branch is pushed), or whose leaf is Complete.
 - stashes the toolkit pushed (``specy-road: …``; pickup and review used to stash
   ``work/``, and a failed restore left the entry behind).
 
@@ -104,14 +105,15 @@ def _complete_leaves(nodes: list[dict]) -> dict[str, str]:
     }
 
 
-def _branch_reason(ctx: _Ctx, ref: str, branch: str) -> tuple[str, bool]:
+def _branch_reason(ctx: _Ctx, ref: str, branch: str, node_id: str | None) -> tuple[str, bool]:
+    row = "; registry row remains" if branch in ctx.live else ""
     how = merged_how(ctx.root, ref, ctx.target)
     if how:
-        return how, True
+        leaf = f"; leaf {node_id} Complete" if row else ""
+        return f"{how}{leaf}{row}", True
     ahead = git_checked(["rev-list", "--count", f"{ctx.target}..{ref}"], ctx.root)
-    node_id = ctx.complete.get(branch.removeprefix("feature/rm-"))
     why = f"leaf {node_id} Complete" if node_id else "claim gone"
-    return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks", False
+    return f"{why}, not merged: {ahead} commit(s) {ctx.target} lacks{row}", False
 
 
 def _delete_local(root: Path, branch: str, sha: str | None) -> str | None:
@@ -131,14 +133,15 @@ def _delete_remote(root: Path, branch: str, sha: str | None, remote: str) -> str
 
 
 def _branch_findings(ctx: _Ctx) -> tuple[list[Finding], set[str]]:
-    """Unclaimed branches, and the local ones among them that are merged."""
+    """Complete or unclaimed branches, and the local ones among them that are merged."""
     found: list[Finding] = []
     merged_local: set[str] = set()
     for prefix, where in (("refs/heads/", "local"), (f"refs/remotes/{ctx.remote}/", ctx.remote)):
         for b in feature_branches(ctx.root, prefix):
-            if b in ctx.live:
+            node_id = ctx.complete.get(b.removeprefix("feature/rm-"))
+            if b in ctx.live and not node_id:
                 continue
-            reason, merged = _branch_reason(ctx, prefix + b, b)
+            reason, merged = _branch_reason(ctx, prefix + b, b, node_id)
             sha = git_text(["rev-parse", prefix + b], ctx.root)
             if where == "local":
                 if merged:
@@ -218,15 +221,21 @@ def _prune_row(ctx: _Ctx, codename: str) -> str | None:
 
 def _registry_findings(ctx: _Ctx) -> list[Finding]:
     reg = read_registry_at_ref(ctx.root, ctx.target, DEFAULT_TIMEOUT) or {}
-    return [
-        Finding(
-            "registry", e["codename"],
-            f"node {e['node_id']}: {e['branch']} is in neither this clone nor {ctx.remote}",
+    stale = {e["codename"] for e in detect_stale_claims(repo_root=ctx.root, reg=reg, remote=ctx.remote)}
+    found = []
+    for e in reg.get("entries") or []:
+        if e["codename"] in stale:
+            why = f"{e['branch']} is in neither this clone nor {ctx.remote}"
+        elif e["codename"] in ctx.complete:
+            why = f"leaf Complete; {e['branch']} is listed above"
+        else:
+            continue
+        found.append(Finding(
+            "registry", e["codename"], f"node {e['node_id']}: {why}",
             partial(_prune_row, ctx, e["codename"]),
             f"removed registry row {e['codename']} on {ctx.target}",
-        )
-        for e in detect_stale_claims(repo_root=ctx.root, reg=reg, remote=ctx.remote)
-    ]
+        ))
+    return found
 
 
 def _drop_stash(root: Path, sha: str) -> str | None:
@@ -255,10 +264,12 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
     """(kind, heading, findings) in report order."""
     branches, merged_local = _branch_findings(ctx)
     return [
-        ("branch", f"feature/rm-* branches nothing claims (against {ctx.target}):", branches),
+        ("branch", (f"feature/rm-* branches whose leaf is Complete or that nothing claims "
+                    f"(against {ctx.target}):"), branches),
         ("worktree", "Worktrees whose branch is gone or merged:", _worktree_findings(ctx, merged_local)),
         ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another "
-                      "clone's claim looks the same until it pushes its branch):"),
+                      "clone's claim looks the same until it pushes its branch) or whose "
+                      "leaf is Complete:"),
          _registry_findings(ctx)),
         ("stash", "Stashes specy-road left behind (git stash show -p --include-untracked <sha>):",
          _stash_findings(ctx.root)),
@@ -344,10 +355,10 @@ def build_parser() -> argparse.ArgumentParser:
         prog="specy-road doctor",
         description=(
             "After git fetch --prune, list feature/rm-* branches (local and "
-            "remote) nothing claims — merged by ancestry or patch content, "
-            "leaf Complete, or claim gone — worktrees whose branch is gone or "
-            "merged, registry rows with no branch, and stashes specy-road "
-            "pushed. Dry-run unless --fix."
+            "remote) whose leaf is Complete or that nothing claims — merged by "
+            "ancestry or patch content, leaf Complete, or claim gone — worktrees "
+            "whose branch is gone or merged, registry rows with no branch or a "
+            "Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
         ),
     )
     p.add_argument("--fix", action="store_true",

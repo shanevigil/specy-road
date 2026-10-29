@@ -40,17 +40,21 @@ def _has(repo: Path, ref: str) -> bool:
 
 
 def _graph_and_registry(repo: Path) -> None:
-    """A Complete leaf ``finished``, an open rollup ``roll``, a claim ``ghost`` with no branch."""
+    """Complete leaves ``finished`` and ``settled`` (still registered), an open rollup
+    ``roll``, a claim ``ghost`` with no branch."""
     chunk = repo / "roadmap" / "phases" / "M1.json"
     doc = json.loads(chunk.read_text())
     doc["nodes"][0]["milestone_execution"] = {"state": "active", "rollup_branch": "feature/rm-roll"}
     doc["nodes"].append({**NODE, "id": "M1.2", "codename": "finished", "status": "Complete",
                          "node_key": "22222222-2222-5222-8222-222222222222", "sibling_order": 2})
+    doc["nodes"].append({**NODE, "id": "M1.4", "codename": "settled", "status": "Complete",
+                         "node_key": "44444444-4444-5444-8444-444444444444", "sibling_order": 4})
     commit_file(repo, "roadmap/phases/M1.json", json.dumps(doc), "graph")
     reg = yaml.safe_load((repo / "roadmap" / "registry.yaml").read_text())
-    reg["entries"].append({"codename": "ghost", "node_id": "M1.3", "branch": "feature/rm-ghost",
-                           "touch_zones": ["ghost"]})
-    commit_file(repo, "roadmap/registry.yaml", yaml.safe_dump(reg), "ghost claim")
+    for codename, node_id in (("ghost", "M1.3"), ("settled", "M1.4")):
+        reg["entries"].append({"codename": codename, "node_id": node_id,
+                               "branch": f"feature/rm-{codename}", "touch_zones": [codename]})
+    commit_file(repo, "roadmap/registry.yaml", yaml.safe_dump(reg), "claims")
 
 
 @pytest.fixture
@@ -60,10 +64,10 @@ def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     git(repo, "checkout", "-q", "dev")
     _graph_and_registry(repo)
     git(repo, "branch", "feature/rm-roll")
-    for name in ("done", "rebased", "finished", "open", "gone"):
+    for name in ("done", "rebased", "finished", "open", "gone", "settled"):
         _branch_with_commits(repo, f"feature/rm-{name}", f"src/{name}.py")
     _branch_with_commits(repo, "feature/rm-squash", "src/s1.py", "src/s2.py")
-    for branch in ("feature/rm-done", "feature/rm-gone", "feature/rm-thing"):
+    for branch in ("feature/rm-done", "feature/rm-gone", "feature/rm-thing", "feature/rm-settled"):
         git(repo, "merge", "-q", "--no-ff", "--no-edit", branch)
     git(repo, "merge", "-q", "--squash", "feature/rm-squash")
     git(repo, "commit", "-qm", "squash")
@@ -82,6 +86,7 @@ def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-missing"), "feature/rm-squash")
     shutil.rmtree(tmp_path / "wt-missing")
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-thing"), "feature/rm-thing")
+    git(repo, "worktree", "add", "-q", str(tmp_path / "wt-settled"), "feature/rm-settled")
     git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-wip"), "feature/rm-open")
     git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-locked"), "dev")
     git(repo, "worktree", "lock", str(tmp_path / "wt-locked"))
@@ -99,6 +104,7 @@ LISTED_LOCAL = {
     "feature/rm-rebased": doctor.SAME_PATCH,
     "feature/rm-finished": "leaf M1.2 Complete, not merged: 1 commit(s) origin/dev lacks",
     "feature/rm-open": "claim gone, not merged: 1 commit(s) origin/dev lacks",
+    "feature/rm-settled": "merged; leaf M1.4 Complete; registry row remains",
 }
 KEPT = ("feature/rm-thing", "feature/rm-roll")
 KEPT_WORKTREES = ("wt-thing", "wt-wip", "wt-locked")
@@ -119,9 +125,11 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
     assert "wt-done  — branch feature/rm-done is merged; removing it deletes ignored work/" in out
     assert "wt-detached  — branch gone: detached at" in out
     assert "wt-missing  — directory missing" in out
+    assert "wt-settled  — branch feature/rm-settled is merged" in out
     for name in KEPT_WORKTREES:
         assert name not in out
     assert "ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin" in out
+    assert "settled  — node M1.4: leaf Complete; feature/rm-settled is listed above" in out
     assert TOOLKIT_STASH in out
     assert ": mine" not in out
     assert "Nothing removed. Re-run with --fix" in out
@@ -149,14 +157,15 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
             assert not _has(repo, f"refs/heads/{branch}")
         assert f"[ok] deleted {branch} on origin" in out
         assert not _has(bare, f"refs/heads/{branch}")
-    for name in ("wt-done", "wt-detached", "wt-missing"):
+    for name in ("wt-done", "wt-detached", "wt-missing", "wt-settled"):
         assert any(line.startswith("[ok] removed worktree ") and line.endswith(name)
                    for line in out.splitlines())
         assert name not in git(repo, "worktree", "list")
     for name in KEPT_WORKTREES:
         assert name in git(repo, "worktree", "list")
-    assert "[ok] removed registry row ghost on origin/dev" in out
-    assert "ghost" not in git(bare, "show", "dev:roadmap/registry.yaml")
+    for codename in ("ghost", "settled"):
+        assert f"[ok] removed registry row {codename} on origin/dev" in out
+        assert codename not in git(bare, "show", "dev:roadmap/registry.yaml")
     assert "[ok] dropped stash" in out
     stashes = git(repo, "stash", "list").splitlines()
     assert len(stashes) == 1 and stashes[0].endswith(": mine")

@@ -28,7 +28,7 @@ This will:
 
 Merge when CI is green (or after a successful local integration merge). No PM sign-off required.
 
-For merged branches left from earlier (PRs merged on the forge, finishes without the flag): `specy-road branches prune` lists the `feature/rm-*` branches, local and on the remote, that the remote integration branch contains, skipping claimed branches and open milestone rollups; `--delete` deletes them. Run it from the up-to-date integration branch. See `docs/git-workflow.md` ("Deleting merged feature branches"). For everything the loop leaves behind — those branches plus squash- or rebase-merged and unclaimed ones, worktrees whose branch is gone or merged, registry rows with no branch, and specy-road stashes — `specy-road doctor` lists them, and `--fix` removes them after asking once per kind ("Finding leftovers: `doctor`").
+For merged branches left from earlier (PRs merged on the forge, finishes without the flag): `specy-road branches prune` lists the `feature/rm-*` branches, local and on the remote, that the remote integration branch contains, skipping claimed branches and open milestone rollups; `--delete` deletes them. Run it from the up-to-date integration branch. See `docs/git-workflow.md` ("Deleting merged feature branches"). For everything the loop leaves behind — those branches plus squash- or rebase-merged, unclaimed and Complete-leaf ones, worktrees whose branch is gone or merged, registry rows with no branch or a Complete leaf, and specy-road stashes — `specy-road doctor` lists them, and `--fix` removes them after asking once per kind ("Finding leftovers: `doctor`").
 
 See `docs/dev-workflow.md` for the full task loop.
 
