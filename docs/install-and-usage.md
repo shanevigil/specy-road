@@ -261,7 +261,7 @@ specy-road sync
 
 Run all of these with `--repo-root /path/to/consumer/repo` if your shell is not already inside the consumer repo (for example when you're working in the toolkit clone and pointing at `playground/`).
 
-`validate` ends with one `context:` line per harness: the lines and bytes of each instruction file it injects into every session started in the project root, and of the specy-road section inside it. Codex reads every `AGENTS.md` from the git root down and truncates them at its 32 KiB `project_doc_max_bytes` budget; Claude Code reads `CLAUDE.md` (or `AGENTS.md` when there is none) and documents a target of under 200 lines per file. Exceeding either is a warning, so `validate --strict` fails on it.
+`validate` ends with one `context:` line per harness: the lines and bytes of each instruction file it injects into every session started in the project root, and of the specy-road section inside it. Codex reads every `AGENTS.md` from the git root down and truncates them at its 32 KiB `project_doc_max_bytes` budget; Claude Code reads `CLAUDE.md` or `.claude/CLAUDE.md` (or `AGENTS.md` when neither is on the path) and documents a target of under 200 lines per file. Exceeding either is a warning, so `validate --strict` fails on it.
 
 Shape the roadmap before authoring it: `specy-road brainstorm start --topic "…" --under <ID>`, hand the prompt to your agent, `next-round`, `recommend`, `evidence` + `verify`, then `accept` / `reject --reason` / `park` and `promote` ([brainstorming.md](brainstorming.md)).
 

@@ -152,17 +152,38 @@ def test_context_warnings_fire_only_past_a_documented_limit(tmp_path: Path, caps
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     agents, claude = tmp_path / AGENTS_MD, tmp_path / AGENT_GUIDE
     agents.write_text("x" * (CODEX_PROJECT_DOC_MAX_BYTES - 1) + "\n", encoding="utf-8")
-    claude.write_text("- rule\n" * CLAUDE_MD_TARGET_LINES, encoding="utf-8")
+    claude.write_text("- rule\n" * (CLAUDE_MD_TARGET_LINES - 1), encoding="utf-8")
     warn_if_context_over_limits(tmp_path)
     assert capsys.readouterr().err == ""
 
     agents.write_text("x" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
-    claude.write_text("- rule\n" * (CLAUDE_MD_TARGET_LINES + 1), encoding="utf-8")
+    claude.write_text("- rule\n" * CLAUDE_MD_TARGET_LINES, encoding="utf-8")
     warn_if_context_over_limits(tmp_path)
     err = capsys.readouterr().err.splitlines()
     assert len(err) == 2
     assert err[0].startswith("context: warning — AGENTS.md total 32,769 bytes, and Codex truncates")
-    assert err[1].startswith("context: warning — CLAUDE.md is 201 lines; Claude Code's documented target")
+    assert err[1].startswith("context: warning — CLAUDE.md is 200 lines; Claude Code's documented target")
+
+
+def test_dot_claude_claude_md_suppresses_the_agents_fallback(tmp_path: Path, capsys) -> None:
+    """`.claude/CLAUDE.md` is a project instruction, so Claude Code reads it and not AGENTS.md."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+    block = f"{HTML_COMMENT.start}\n- one rule\n{HTML_COMMENT.end}"
+    text = f"# Claude\n{block}\n"
+    path = tmp_path / ".claude" / AGENT_GUIDE
+    path.parent.mkdir()
+    path.write_text(text, encoding="utf-8")
+
+    print_injected_context(tmp_path)
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith(f"context: Codex reads AGENTS.md 6 lines, {len(HAND_AUTHORED)} bytes —")
+    assert "AGENTS.md" not in out[1]
+    assert out[1] == (
+        f"context: Claude Code reads .claude/CLAUDE.md {text.count(chr(10))} lines, "
+        f"{len(text.encode())} bytes (specy-road section 3 lines, {len(block.encode())} bytes) "
+        "— target under 200 lines per file"
+    )
 
 
 def test_block_text_is_the_full_rule_set() -> None:

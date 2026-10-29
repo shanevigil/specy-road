@@ -52,6 +52,10 @@ AGENTS_MD = "AGENTS.md"
 CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024
 #: "target under 200 lines per CLAUDE.md file": https://code.claude.com/docs/en/memory
 CLAUDE_MD_TARGET_LINES = 200
+#: A project instruction lives at either path. Either one, anywhere from the git root
+#: down to the working directory, is what Claude Code reads, and it suppresses the
+#: AGENTS.md fallback: https://code.claude.com/docs/en/memory
+_CLAUDE_PROJECT_DOCS = (AGENT_GUIDE, f".claude/{AGENT_GUIDE}")
 _TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
 _H1 = "# Agents — load order\n"
 
@@ -175,17 +179,25 @@ def injected_context(project_root: Path) -> tuple[list[InjectedFile], list[Injec
     """``(Codex, Claude Code)``: the files each injects into a session started in ``project_root``.
 
     Both walk from the git root down to the working directory. Claude Code reads
-    ``AGENTS.md`` only when no ``CLAUDE.md`` is on that path.
+    ``CLAUDE.md`` and ``.claude/CLAUDE.md``; it reads ``AGENTS.md`` only when
+    neither is on that path.
     """
     project_root = project_root.resolve()
     top = git_root(project_root) or project_root
     dirs = [d for d in reversed((project_root, *project_root.parents)) if d.is_relative_to(top)]
 
-    def found(name: str) -> list[InjectedFile]:
-        return [_measure(d / name, (d / name).relative_to(top).as_posix()) for d in dirs if (d / name).is_file()]
+    def found(rel: str) -> list[InjectedFile]:
+        return [_measure(d / rel, (d / rel).relative_to(top).as_posix())
+                for d in dirs if (d / rel).is_file()]
 
     agents = found(AGENTS_MD)
-    return agents, found(AGENT_GUIDE) or agents
+    claude = []
+    for d in dirs:   # root-down; within a directory, CLAUDE.md then .claude/CLAUDE.md
+        for rel in _CLAUDE_PROJECT_DOCS:
+            path = d / rel
+            if path.is_file():
+                claude.append(_measure(path, path.relative_to(top).as_posix()))
+    return agents, claude or agents
 
 
 def print_injected_context(project_root: Path) -> None:
@@ -213,7 +225,7 @@ def warn_if_context_over_limits(project_root: Path) -> None:
             file=sys.stderr,
         )
     for f in claude:
-        if f.lines > CLAUDE_MD_TARGET_LINES:
+        if f.lines >= CLAUDE_MD_TARGET_LINES:
             print(
                 f"context: warning — {f.rel} is {f.lines} lines; Claude Code's documented target is under "
                 f"{CLAUDE_MD_TARGET_LINES} per file, because every session pays for the rest in context "
