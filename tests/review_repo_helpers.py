@@ -16,6 +16,12 @@ import yaml
 
 from tests.helpers import DOGFOOD
 
+#: Git-root file changed on the nested-outside layout shape (outside ``sr/``).
+OUTSIDE_ROOT_FILE = "README.md"
+
+#: ``make_layout_finish_repo`` shapes exercised in ``test_project_layouts_outside.py``.
+LAYOUT_FINISH_SHAPES = ("embedded", "nested", "nested_outside")
+
 NODE = {
     "id": "M1.1",
     "node_key": "11111111-1111-5111-8111-111111111111",
@@ -70,6 +76,107 @@ def diverge(repo: Path, case: str) -> str:
         commit_file(repo, rel, "feature side\n", "feature edits it too")
     advance_dev(repo, rel, "dev side\n")
     return rel
+
+
+def layout_prefix(shape: str) -> str:
+    return "" if shape == "embedded" else "sr/"
+
+
+def touch_zones_for_layout(shape: str) -> list[str]:
+    if shape == "nested_outside":
+        return [OUTSIDE_ROOT_FILE]
+    return ["src"]
+
+
+def git_root_relative(git_top: Path, project: Path, project_rel: str) -> str:
+    from specy_road.runtime_paths import prefix_within
+
+    prefix = prefix_within(git_top, project)
+    return f"{prefix}{project_rel}" if prefix else project_rel
+
+
+def make_layout_finish_repo(tmp_path: Path, shape: str) -> tuple[Path, Path]:
+    """Minimal claimed leaf in ``shape``; returns ``(git_root, project_root)`` on ``feature/rm-thing``."""
+    if shape not in LAYOUT_FINISH_SHAPES:
+        raise ValueError(shape)
+    git_top = tmp_path / "checkout"
+    git_top.mkdir(parents=True, exist_ok=True)
+    prefix = layout_prefix(shape)
+    project = git_top / prefix.rstrip("/") if prefix else git_top
+    if prefix:
+        project.mkdir(parents=True)
+    shutil.copytree(DOGFOOD / "schemas", project / "schemas")
+    git(git_top, "init", "-q", "-b", "dev")
+    git(git_top, "config", "user.email", "t@e.com")
+    git(git_top, "config", "user.name", "T")
+    if prefix:
+        manifest = git_top / ".specyrd" / "manifest.json"
+        manifest.parent.mkdir(parents=True, exist_ok=True)
+        manifest.write_text(
+            json.dumps({"project_root": prefix.rstrip("/")}) + "\n",
+            encoding="utf-8",
+        )
+    rm = project / "roadmap"
+    rm.mkdir(parents=True)
+    (rm / "phases").mkdir(parents=True)
+    zones = touch_zones_for_layout(shape)
+    node = {**NODE, "touch_zones": zones}
+    (rm / "manifest.json").write_text(
+        json.dumps({"version": 1, "includes": ["phases/M1.json"]}), encoding="utf-8"
+    )
+    (rm / "phases" / "M1.json").write_text(json.dumps({"nodes": [node]}), encoding="utf-8")
+    sheet = project / NODE["planning_dir"]
+    sheet.parent.mkdir(parents=True, exist_ok=True)
+    sheet.write_text("# M1.1 Thing\n\n## Intent\n\nDo the thing.\n\n## References\n", encoding="utf-8")
+    (rm / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: dev\nremote: origin\n"
+        "require_implementation_review_before_finish: true\n",
+        encoding="utf-8",
+    )
+    entry = {
+        "codename": "thing",
+        "node_id": "M1.1",
+        "branch": "feature/rm-thing",
+        "touch_zones": zones,
+        "implementation_review": "pending",
+    }
+    (rm / "registry.yaml").write_text(
+        yaml.safe_dump({"version": 1, "entries": [entry]}), encoding="utf-8"
+    )
+    (project / ".gitignore").write_text("work/reviews/\n", encoding="utf-8")
+    git(git_top, "add", "-A")
+    git(git_top, "commit", "-qm", "graph")
+    git(git_top, "checkout", "-q", "-b", "feature/rm-thing")
+    commit_file(git_top, git_root_relative(git_top, project, "src/a.py"), "print('a')\n", "impl")
+    commit_file(git_top, git_root_relative(git_top, project, "docs/x.md"), "# x\n", "stray")
+    if shape == "nested_outside":
+        commit_file(git_top, OUTSIDE_ROOT_FILE, "# outside\n", "outside root")
+    return git_top.resolve(), project.resolve()
+
+
+def prepare_layout_merge_mode_remote(
+    git_top: Path, project: Path, tmp_path: Path
+) -> Path:
+    """Merge mode on ``dev``, feature branch merged with ``dev``, bare ``origin`` — repo stays on feature."""
+    wf = git_root_relative(git_top, project, "roadmap/git-workflow.yaml")
+    git(git_top, "checkout", "-q", "dev")
+    commit_file(
+        git_top,
+        wf,
+        "version: 1\nintegration_branch: dev\nremote: origin\non_complete: merge\n",
+        "merge mode",
+    )
+    gi = git_root_relative(git_top, project, ".gitignore")
+    commit_file(git_top, gi, "work/reviews/\n.specyrd/cache/\n", "gitignore")
+    git(git_top, "checkout", "-q", "feature/rm-thing")
+    git(git_top, "merge", "-q", "--no-edit", "dev")
+    bare = tmp_path / "remote.git"
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    git(tmp_path, "clone", "-q", "--bare", str(git_top), str(bare))
+    git(bare, "symbolic-ref", "HEAD", "refs/heads/dev")
+    git(git_top, "remote", "add", "origin", str(bare))
+    git(git_top, "fetch", "-q", "origin")
+    return bare
 
 
 def make_review_repo(tmp_path: Path, *, orchestration: str | None = None) -> Path:
