@@ -160,7 +160,9 @@ def test_accepting_a_rejected_idea_clears_the_stale_decision(tmp_path: Path) -> 
     assert _bs(repo, "reject", "B1", "--reason", "not now", "--slug", "grow") == 0
     assert read_session(repo, "grow").by_id("B1").decision["reason"] == "not now"
     assert _bs(repo, "accept", "B1", "--slug", "grow") == 0
-    assert read_session(repo, "grow").by_id("B1").decision is None
+    # Accepting records its own decision (accept order, M3.7); the stale reject is gone.
+    decision = read_session(repo, "grow").by_id("B1").decision
+    assert decision["status"] == "accepted" and "reason" not in decision
 
 
 def test_models_show_prints_harness_and_model(tmp_path: Path, capsys) -> None:

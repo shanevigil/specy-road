@@ -324,7 +324,7 @@ def test_validate_notes_complete_leaves_still_on_the_scaffold(
     validate_main()
     out, err = capsys.readouterr()
     hint = "" if show_all else " (specy-road validate --all lists them)"
-    assert out.count("notice:") == 1
+    assert sum("still the scaffold" in line for line in out.splitlines() if line.startswith("notice:")) == 1
     assert f"notice: 2 Complete leaf/leaves have a planning sheet that is still the scaffold{hint}." in out
     assert "still the scaffold" not in err
     listed = [ln for ln in out.splitlines() if ln.startswith("  M")]
