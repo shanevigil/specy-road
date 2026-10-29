@@ -135,12 +135,27 @@ def _type_args_end(s: str, j: int) -> int | None:
 
     A comparison's ``<`` can pair with a later ``>`` (``a < b, f = () => c > d``).
     That span holds ``=`` outside ``=>``. A type-argument list does not, even when
-    it holds a balanced ``{…}`` (``Map<{ id: string }, number>``).
+    it holds a balanced ``{…}`` with semicolons
+    (``Map<string, { id: string; n: number }>``). A ``;`` or ``=`` outside ``{}``
+    still rejects, so ``count < limit, oversized = () => count > 0`` still splits.
     """
     end = _angles_end(s, j)
-    span = s[j:end].replace("=>", "")
-    if end >= len(s) or any(c in span for c in ";="):
+    if end >= len(s):
         return None
+    k = j
+    while k < end:
+        if s.startswith("=>", k):
+            k += 2
+            continue
+        if s[k] == "{":
+            closed = _close(s, k)
+            if closed >= end:
+                return None
+            k = closed + 1
+            continue
+        if s[k] in ";=":
+            return None
+        k += 1
     return end
 
 

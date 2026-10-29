@@ -69,6 +69,17 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
             "object_type_arg.ts",
             [("oversized", 1, 5), ("short", 6, 1)],
         ),
+        # A `;` inside that `{…}` is still type syntax, not a statement end.
+        (
+            "semicolon_object_type.ts",
+            [
+                ("oversized", 1, 5),
+                ("short", 6, 1),
+                ("tiny", 7, 1),
+                ("also", 8, 8),
+                ("Handler.onChange", 17, 8),
+            ],
+        ),
         # The commas in `Map<string, number>` and `Foo<() => void, T>` do not end the declarator list.
         ("generic_declarator.ts", [("oversized", 1, 5), ("after", 6, 1), ("short", 7, 1)]),
         # A comparison `<` that pairs with a later `>` does not swallow the next declarator.
@@ -166,6 +177,7 @@ def test_js_function_hard_alert(tmp_path: Path) -> None:
         ("comparison_declarator.ts", "comparison_declarator.ts:1 function `oversized` 5 lines"),
         ("grouped_list.ts", "grouped_list.ts:1 function `after` 6 lines"),
         ("object_type_arg.ts", "object_type_arg.ts:1 function `oversized` 5 lines"),
+        ("semicolon_object_type.ts", "semicolon_object_type.ts:1 function `oversized` 5 lines"),
     ],
 )
 def test_validator_does_not_print_ok_with_over_cap_ts_function(
