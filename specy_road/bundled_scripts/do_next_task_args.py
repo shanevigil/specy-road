@@ -20,13 +20,16 @@ Selection order among eligible leaves:
      hold their dependents back.
   2. MR-rejected      — changes requested on the open PR/MR.
   3. everything else  — outline (tree) order.
+With --prefer-agentic (or prefer_agentic_pick_order: true in
+roadmap/git-workflow.yaml), each tier is ordered Agentic-led, Mixed, unset,
+Human-led, outline order within each. The tiers and eligibility do not change.
 
 A dependency on a phase or milestone is satisfied when that node's leaf
 descendants are all Complete (the F-013 rollup), not when its own status field
 says Complete.
 
-execution_milestone (Human-led / Agentic-led / Mixed) is advisory metadata for
-humans reading the roadmap. It does NOT gate pickup.
+execution_milestone (Human-led / Agentic-led / Mixed) is advisory metadata. It
+does NOT gate pickup; --prefer-agentic only reorders.
 
 A leaf whose planning sheet is still the scaffold-planning or brainstorm promote
 placeholder, and whose node has no acceptance, is skipped with the reason
@@ -51,6 +54,19 @@ def _add_claim_visibility_args(p: argparse.ArgumentParser) -> None:
         default=None,
         metavar="NAME",
         help="Who holds the claim, written to the registry row (default: git config user.name).",
+    )
+
+
+def _add_pick_order_arg(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--prefer-agentic",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help=(
+            "Order each selection tier by execution_milestone: Agentic-led, Mixed, "
+            "unset, Human-led (default: prefer_agentic_pick_order in "
+            "roadmap/git-workflow.yaml, else off)."
+        ),
     )
 
 
@@ -99,6 +115,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "(skipped by default, with the reason printed)."
         ),
     )
+    _add_pick_order_arg(p)
     _add_claim_visibility_args(p)
     add_repo_root_arg(p)
     p.add_argument(

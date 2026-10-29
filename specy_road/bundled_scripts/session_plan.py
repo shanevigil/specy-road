@@ -28,7 +28,7 @@ and pass them in.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 from specy_road.bundled_scripts.do_next_available import (
     _available,
@@ -36,9 +36,15 @@ from specy_road.bundled_scripts.do_next_available import (
     _statuses_by_node_key,
 )
 from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys, natural_id_sort_key
+from specy_road.bundled_scripts.session_plan_render import session_plan_to_dict
 from specy_road.milestone_subtree import subtree_node_ids
 from specy_road.milestone_subtree import leaf_ids_under_parent, structural_leaf_ids
 from specy_road.node_kinds import is_gate
+
+__all__ = [
+    "BlockedLeaf", "SessionPlan", "UnauthoredLeaf", "Wave",
+    "compute_session_plan", "session_plan_to_dict",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +89,9 @@ class SessionPlan:
     finished_claimed: list[str] = field(default_factory=list)
     unauthored: list[UnauthoredLeaf] = field(default_factory=list)
     totals: dict[str, int] = field(default_factory=dict)
+    #: ready leaf id -> its ``execution_milestone`` (``None`` when unset).
+    ready_execution: dict[str, str | None] = field(default_factory=dict)
+    prefer_agentic: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +155,7 @@ def _classify(
     *,
     under: str | None,
     unauthored: dict[str, str],
+    prefer_agentic: bool = False,
 ) -> dict:
     """Bucket scoped leaves into ready / unauthored / blocked / active / closed / gated."""
     by_key = {n["node_key"]: n for n in nodes if n.get("node_key")}
@@ -156,7 +166,8 @@ def _classify(
     claimed = _claimed_node_ids(reg)
     scope = _scope_leaf_ids(nodes, under)
 
-    pickable = [n for n in _available(nodes, reg) if n["id"] in scope]
+    available = _available(nodes, reg, prefer_agentic=prefer_agentic)
+    pickable = [n for n in available if n["id"] in scope]
     ready_order = [n["id"] for n in pickable if n["id"] not in unauthored]
     ready_set = {n["id"] for n in pickable}
 
@@ -339,13 +350,18 @@ def compute_session_plan(
     *,
     under: str | None = None,
     unauthored: dict[str, str] | None = None,
+    prefer_agentic: bool = False,
 ) -> SessionPlan:
     """``unauthored`` (id -> reason, from ``planning_sheet_bootstrap.unauthored_leaves``)
-    moves those leaves from ``ready`` to ``unauthored``; the caller reads the sheets."""
-    ctx = _classify(nodes, reg, under=under, unauthored=unauthored or {})
+    moves those leaves from ``ready`` to ``unauthored``; the caller reads the sheets.
+    ``prefer_agentic`` orders ``ready`` as pickup does with the same setting."""
+    ctx = _classify(
+        nodes, reg, under=under, unauthored=unauthored or {}, prefer_agentic=prefer_agentic
+    )
     buckets = ctx["buckets"]
     waves = _compute_waves(nodes, ctx)
     batches = _parallel_batches(waves, buckets["ready"])
+    ready_ids = set(buckets["ready"])
     plan = SessionPlan(
         under=under,
         ready=list(buckets["ready"]),
@@ -358,6 +374,10 @@ def compute_session_plan(
         waves=waves,
         parallel_batches=batches,
         unauthored=list(buckets["unauthored"]),
+        ready_execution={
+            n["id"]: n.get("execution_milestone") for n in nodes if n.get("id") in ready_ids
+        },
+        prefer_agentic=prefer_agentic,
     )
     plan.totals = {
         "ready": len(plan.ready),
@@ -372,23 +392,3 @@ def compute_session_plan(
     if plan.unauthored:
         plan.totals["unauthored"] = len(plan.unauthored)
     return plan
-
-
-def session_plan_to_dict(plan: SessionPlan) -> dict:
-    """JSON-serializable view of a :class:`SessionPlan`."""
-    return {
-        "under": plan.under,
-        "ready": list(plan.ready),
-        "blocked": [asdict(b) for b in plan.blocked],
-        "active": list(plan.active),
-        "closed": list(plan.closed),
-        "gated": list(plan.gated),
-        "gates_open": list(plan.gates_open),
-        "needs_codename": list(plan.needs_codename),
-        "waves": [asdict(w) for w in plan.waves],
-        "parallel_batches": [list(b) for b in plan.parallel_batches],
-        "finished_unmerged": list(plan.finished_unmerged),
-        "finished_claimed": list(plan.finished_claimed),
-        "unauthored": [asdict(u) for u in plan.unauthored],
-        "totals": dict(plan.totals),
-    }

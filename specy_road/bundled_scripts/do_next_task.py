@@ -49,6 +49,7 @@ from specy_road.git_workflow_config import (
     on_complete_from_git_workflow,
     require_implementation_review_before_finish,
     resolve_integration_defaults,
+    resolve_prefer_agentic,
 )
 from specy_road.milestone_subtree import filter_available_under_parent
 from specy_road.on_complete_pickup import print_pickup_footer, prompt_on_complete
@@ -108,11 +109,13 @@ def _resync_and_select(
     *,
     sync: bool = True,
     allow_unauthored: bool = False,
+    prefer_agentic_cli: bool | None = None,
 ) -> tuple[list[dict], dict, list[dict], dict[str, str]]:
     """Sync integration branch, recompute availability, exit if empty.
 
     ``sync=False`` (``--local``) skips only the fetch and merge. Unauthored
-    leaves are dropped here, after sync, because the sync may bring their sheet.
+    leaves are dropped here, after sync, because the sync may bring their sheet;
+    ``prefer_agentic_pick_order`` is read after it for the same reason.
     """
     if sync:
         sync_integration_branch(
@@ -142,6 +145,7 @@ def _resync_and_select(
         nodes, reg, enrich,
         status_overrides=status_overrides or None,
         virtual_complete_keys=virtual_keys or None,
+        prefer_agentic=resolve_prefer_agentic(ROOT, cli=prefer_agentic_cli),
     )
     available = _drop_finished_unmerged(available, base, remote)
     if parent_filter:
@@ -375,6 +379,7 @@ def main(argv: list[str] | None = None) -> None:
     nodes, reg, available, integration_statuses = _resync_and_select(
         base, remote, parent_filter, sync=not args.local,
         allow_unauthored=args.allow_unauthored,
+        prefer_agentic_cli=args.prefer_agentic,
     )
     _assert_current_branch_equals(base)
     node = _pick_node(args, nodes, reg, available, integration_statuses)

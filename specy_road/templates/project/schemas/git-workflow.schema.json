@@ -40,6 +40,10 @@
       "enum": ["auto", "merge", "pr"],
       "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
     },
+    "prefer_agentic_pick_order": {
+      "type": "boolean",
+      "description": "When true, do-next-available-task and grind-session order each pickup tier (Blocked, MR-rejected, the rest) Agentic-led, then Mixed, then unset, then Human-led, outline order within each (default false: outline order only). Eligibility is unchanged. CLI --prefer-agentic / --no-prefer-agentic wins."
+    },
     "grind_session_max_limit_waits": {
       "type": "integer",
       "minimum": 0,
