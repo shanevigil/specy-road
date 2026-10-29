@@ -231,6 +231,9 @@ def retry_merge_landing(
         if delete_branch:
             delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
         raise SystemExit(0)
+    print_merge_push_notice(
+        repo, remote=remote, integration_branch=ib, feature_branch=branch,
+    )
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
     )

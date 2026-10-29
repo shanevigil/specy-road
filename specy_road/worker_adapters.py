@@ -175,7 +175,7 @@ def linked_worktree(worktree: Path) -> bool:
     return bool(common and gitdir and Path(common).name == ".git" and Path(gitdir) != Path(common))
 
 
-def _reviews_handoff_dir(repo_root: Path, node_id: str) -> Path | None:
+def _reviews_handoff_dir(repo_root: Path, node_id: str) -> Path:
     from specy_road.review_files import reviews_dir  # noqa: PLC0415 — keeps adapter import graph small
 
     return reviews_dir(repo_root, node_id)
@@ -210,7 +210,10 @@ class Adapter:
         raise Unsupported(f"{self.harness}: resume is not supported")
 
     def parse(self, line: str) -> Parsed | None:
-        return Parsed("output", _snip(line)) if line.strip() else None
+        raw = line.strip()
+        if not raw:
+            return None
+        return Parsed("output", _snip(raw), detail={"message": raw})
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         raise Unsupported(f"{self.harness}: no native session to hand off")
@@ -260,8 +263,7 @@ class ClaudeCode(Adapter):
     def _add_dir(self, worktree: Path, repo_root: Path | None, node_id: str | None) -> list[str]:
         if not repo_root or not node_id or not linked_worktree(worktree):
             return []
-        handoff = _reviews_handoff_dir(repo_root, node_id)
-        return ["--add-dir", str(handoff)] if handoff is not None else []
+        return ["--add-dir", str(_reviews_handoff_dir(repo_root, node_id))]
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
                *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
@@ -353,7 +355,9 @@ class Codex(Adapter):
         if t == "item.completed":
             item = d.get("item") or {}
             if item.get("type") == "agent_message":
-                return Parsed("output", _snip(item.get("text") or "") or "(empty message)")
+                text = str(item.get("text") or "")
+                return Parsed("output", _snip(text) or "(empty message)",
+                              detail={"message": text} if text else None)
             return Parsed("output", f"{item.get('type', 'item')} done")
         if t == "turn.completed":
             return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")})
