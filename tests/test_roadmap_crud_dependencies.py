@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.test_roadmap_crud import _fixture_repo, _run_crud
+from tests.test_roadmap_crud import crud_fixture_repo, run_crud
 
 
 def test_list_dependencies_cli(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     nk991 = "10000000-0000-4000-8000-000000009902"
-    r = _run_crud(
+    r = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -23,8 +23,8 @@ def test_list_dependencies_cli(tmp_path: Path) -> None:
 
 
 def test_list_dependencies_empty_and_unknown(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
-    r = _run_crud(
+    crud_fixture_repo(tmp_path)
+    r = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -33,7 +33,7 @@ def test_list_dependencies_empty_and_unknown(tmp_path: Path) -> None:
     )
     assert r.returncode == 0, r.stderr
     assert "(none)" in r.stdout
-    r404 = _run_crud(
+    r404 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -45,9 +45,9 @@ def test_list_dependencies_empty_and_unknown(tmp_path: Path) -> None:
 
 
 def test_add_remove_dependency_cli(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     nk992 = "10000000-0000-4000-8000-000000009903"
-    r0 = _run_crud(
+    r0 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -56,7 +56,7 @@ def test_add_remove_dependency_cli(tmp_path: Path) -> None:
         "--clear",
     )
     assert r0.returncode == 0, r0.stderr
-    r = _run_crud(
+    r = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -65,7 +65,7 @@ def test_add_remove_dependency_cli(tmp_path: Path) -> None:
         nk992,
     )
     assert r.returncode == 0, r.stderr
-    r2 = _run_crud(
+    r2 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -73,7 +73,7 @@ def test_add_remove_dependency_cli(tmp_path: Path) -> None:
         "M99.1",
     )
     assert nk992 in r2.stdout
-    r3 = _run_crud(
+    r3 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -82,7 +82,7 @@ def test_add_remove_dependency_cli(tmp_path: Path) -> None:
         nk992,
     )
     assert r3.returncode == 0, r3.stderr
-    r4 = _run_crud(
+    r4 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -93,9 +93,9 @@ def test_add_remove_dependency_cli(tmp_path: Path) -> None:
 
 
 def test_set_dependencies_clear_and_restore(tmp_path: Path) -> None:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     nk991 = "10000000-0000-4000-8000-000000009902"
-    r = _run_crud(
+    r = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -104,7 +104,7 @@ def test_set_dependencies_clear_and_restore(tmp_path: Path) -> None:
         "--clear",
     )
     assert r.returncode == 0, r.stderr
-    r2 = _run_crud(
+    r2 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -112,7 +112,7 @@ def test_set_dependencies_clear_and_restore(tmp_path: Path) -> None:
         "M99.2",
     )
     assert "(none)" in r2.stdout
-    r3 = _run_crud(
+    r3 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),
@@ -122,7 +122,7 @@ def test_set_dependencies_clear_and_restore(tmp_path: Path) -> None:
         nk991,
     )
     assert r.returncode == 0, r.stderr
-    r4 = _run_crud(
+    r4 = run_crud(
         tmp_path,
         "--repo-root",
         str(tmp_path),

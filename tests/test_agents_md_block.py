@@ -9,8 +9,10 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE
+from specy_road.agent_guide_block import AGENT_GUIDE, PROVENANCE
 from specy_road.agents_md_block import (
     AGENTS_MD,
     CLAUDE_MD_TARGET_LINES,
@@ -27,6 +29,8 @@ from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.init_project import run_init_project
 from specy_road.managed_block import CREATED, HTML_COMMENT, UNCHANGED, UPDATED
 from specy_road.specyrd_init import run_init
+
+TEMPLATES = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "specyrd"
 
 HAND_AUTHORED = """# Our agents guide
 
@@ -284,3 +288,18 @@ def test_block_text_is_the_full_rule_set() -> None:
     for needle in ("### Load order", "## Finding things", "**Task pickup:**", "**Review roles:**",
                    "**Running many leaves:**", "**When nothing is pickable:**"):
         assert needle in text, needle
+    assert "<!--" not in text   # provenance stays in the template
+
+
+@pytest.mark.parametrize("name", ["agents-md-block.md", "claude-md-block.md"])
+def test_every_rule_in_a_block_template_is_followed_by_its_provenance(name: str) -> None:
+    lines = (TEMPLATES / name).read_text(encoding="utf-8").splitlines()
+    missing = []
+    for i, line in enumerate(lines):
+        if not line.startswith(("- ", "**")):
+            continue
+        end = next((j for j in range(i + 1, len(lines))
+                    if not lines[j].strip() or lines[j].startswith(("- ", "<!--"))), len(lines))
+        if end == len(lines) or not PROVENANCE.fullmatch(lines[end]):
+            missing.append(line[:60])
+    assert not missing, missing

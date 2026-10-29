@@ -38,6 +38,7 @@ and data are deliberately not recorded here.
 
 | Finding | Verdict | Planned change |
 |---|---|---|
+| Nothing checks that the integration branch is healthy before pickup; a red base is inherited by every leaf, and an agent then "fixes" unrelated failures inside its own leaf against the no-scope-creep rule | Gap (`--pre-finish-cmd` only runs at the end) | `--baseline-cmd` on `do-next-*` and `grind-session`, with a `git-workflow.yaml` default, run on the integration branch before pickup; refuse on failure, `--baseline-warn` to downgrade |
 | Promoted and scaffolded leaves keep placeholder sheets, pass `validate`, and are pickable; `grind-session` would implement from one paragraph | Defect | Pickup and `grind-session` refuse a leaf whose sheet still has `promote`'s or `scaffold-planning`'s placeholder text and no `acceptance`; `validate` lists them once |
 | `handoff status` calls review records "leftover" and advises `do-next-available-task` (which pushes) where claims are never pushed | Defect | When records exist, say so and point to `--ref <branch>` and `do-next-available-task --local` |
 | Docs do not say where the gate reads review records from | Doc gap | Working tree, untracked by design; policy from the integration branch; approvals persist as `Reviewed-by` trailers |
@@ -97,6 +98,10 @@ and data are deliberately not recorded here.
 | `list-nodes --json` without title truncation; `refresh-stubs --diff` |
 | `move-node` rewrites touch-zone path segments equal to an old display id |
 | Opt-in auto-pick ordering by `execution_milestone` (Agentic-led first); show the milestone beside the next auto-pick in `--plan` |
+| `grind-session --plan` and `orchestrate plan` offered ready leaves that share a touch zone in one "Dispatch now (parallel)" set; overlapping leaves go to separate waves with the overlap named |
+| The `file-limits` function cap still only covers Python, so it reports OK while a TypeScript function is far over the cap (open since 0.1.4rc3); extend the check to TS/JS |
+| A `doctor` command: merged or stale `feature/rm-*` branches (local and remote), stale worktrees, registry rows without a branch, toolkit stashes — detected by ancestry and, when history was rewritten, by patch content; dry-run by default |
+| `brainstorm promote` leaves inherit `execution_milestone` from the anchor instead of needing `--set` on every node |
 
 ## Not acted on
 

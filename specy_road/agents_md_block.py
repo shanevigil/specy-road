@@ -32,7 +32,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road import __version__
-from specy_road.agent_guide_block import AGENT_GUIDE
+from specy_road.agent_guide_block import AGENT_GUIDE, strip_provenance
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import (
@@ -65,7 +65,8 @@ _H1 = "# Agents — load order\n"
 
 
 def render_agents_lines() -> list[str]:
-    text = link_toolkit_docs(_TEMPLATE.read_text(encoding="utf-8").replace("{{SPECYRD_VERSION}}", __version__))
+    text = strip_provenance(_TEMPLATE.read_text(encoding="utf-8"))
+    text = link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__))
     return text.rstrip("\n").splitlines()
 
 

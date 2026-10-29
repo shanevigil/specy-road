@@ -5,7 +5,9 @@ Uses ``roadmap_gui_lib`` for registry/settings and ``roadmap_gui_remote`` for
 matches the PM GUI’s forge enrichment rules.
 
 Eligible-task order within each tier follows ``ordered_tree_rows`` (outline /
-``sibling_order``), not merged JSON chunk list order.
+``sibling_order``), not merged JSON chunk list order. With ``prefer_agentic``,
+each tier is ordered by execution milestone first (:data:`EXECUTION_PICK_RANK`)
+and outline second.
 """
 
 from __future__ import annotations
@@ -20,6 +22,15 @@ from specy_road.bundled_scripts.roadmap_layout import effective_dependency_keys,
 from specy_road.bundled_scripts.roadmap_load import compute_rollup_status
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
+
+
+#: ``prefer_agentic`` order: Agentic-led, Mixed, unset, then Human-led last,
+#: because Human-led is the one value that says an unattended loop should wait.
+EXECUTION_PICK_RANK = {"Agentic-led": 0, "Mixed": 1, None: 2, "Human-led": 3}
+
+
+def execution_pick_rank(node: dict) -> int:
+    return EXECUTION_PICK_RANK.get(node.get("execution_milestone"), EXECUTION_PICK_RANK[None])
 
 
 def _claimed_node_ids(reg: dict) -> set[str]:
@@ -168,12 +179,13 @@ def _outline_order_index(nodes: list[dict]) -> dict[str, int]:
 
 
 def _sort_by_outline(
-    items: list[dict], order_index: dict[str, int]
+    items: list[dict], order_index: dict[str, int], *, prefer_agentic: bool = False
 ) -> list[dict]:
     tail = 10**9
 
-    def key(n: dict) -> int:
-        return order_index.get(n["id"], tail)
+    def key(n: dict) -> tuple[int, int]:
+        rank = execution_pick_rank(n) if prefer_agentic else 0
+        return rank, order_index.get(n["id"], tail)
 
     return sorted(items, key=key)
 
@@ -284,10 +296,13 @@ def _available(
     *,
     status_overrides: dict[str, str] | None = None,
     virtual_complete_keys: set[str] | None = None,
+    prefer_agentic: bool = False,
 ) -> list[dict]:
     """Actionable leaf candidates: blocked first, then MR-rejected, then the rest.
 
     Within each tier, order follows outline (tree) order, not merged chunk order.
+    ``prefer_agentic`` sorts each tier by execution milestone before outline; the
+    tiers themselves, and which leaves are eligible, do not change.
 
     ``status_overrides`` merges into per-node_key statuses for dependency checks only
     (e.g. feature-branch tips Complete before PR merges into the integration branch).
@@ -325,9 +340,8 @@ def _available(
         else:
             rest_other.append(n)
 
-    return (
-        _sort_by_outline(blocked, order_index)
-        + _sort_by_outline(mr_rejected, order_index)
-        + _sort_by_outline(rest_dep, order_index)
-        + _sort_by_outline(rest_other, order_index)
-    )
+    return [
+        n
+        for tier in (blocked, mr_rejected, rest_dep, rest_other)
+        for n in _sort_by_outline(tier, order_index, prefer_agentic=prefer_agentic)
+    ]
