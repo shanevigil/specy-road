@@ -7,7 +7,7 @@ All nine acceptance items are covered. Item by item:
 - **A1:** done through profile `aliases`, not roster `launch_model`. A profile's front matter may list `aliases`, and a roster `id` that is one of them resolves to that profile, so `prompt` carries its notes. This works with or without `profile:`, from the working tree and from the pinned integration branch. A profile matched this way reports the alias as its `api_id`. That keeps `worker delegate` passing the harness the id it lists: Cursor only has effort-suffixed ids such as `claude-opus-5-5-high` and `gpt-5.6-sol-high`, with no bare `claude-opus-5-5` (`agent --list-models`, 2026.10.22). Before this change, such an id found no profile and launched as itself. Without that `api_id` rule it would have launched as the bare `api_id` and failed. A malformed `aliases` (not a list of strings) is a profile error, since a string would match by substring.
   - Why not `launch_model`: it would need `specy_road/templates/project/schemas/orchestration.schema.json`, where roster entries have `additionalProperties: false`, and `specy_road/worker_ops.py`. Both are outside the touch zones.
 - **A2:** `review-packet -o <path>` writes the copy and also always writes `work/reviews/<ID>/PACKET.md`. That is the only path `prompt --role reviewer` reads.
-- **A3:** the reviewer precondition now names the checkout to run its `git status` in: the one that has the leaf branch checked out (the registered branch, else `--ref`). That is usually the leaf's worktree, and `git worktree list` names it. If no checkout has it, the check is skipped. The check leaves out all of `work/`, so the coordinator's prompts and packets in the main checkout no longer make a reviewer report "not landed". The executor precondition is unchanged.
+- **A3:** the reviewer precondition now names the checkout to run its `git status` in: the one that has the leaf branch checked out (the registered branch, else `--ref`). That is usually the leaf's worktree, and `git worktree list` names it. If no checkout has it, the check is skipped. It leaves out only this leaf's exact brief, implementation summary, two prompt forms and review directory. Every other tracked or untracked path still counts. The executor precondition is unchanged.
 - **A4:** session records now keep the `$USER` that started them. `session end <id>` retires another session's record when the same user started it, and refuses otherwise, naming the owner. `session end` with no id, and `--agent`, behave as before.
 - **A5:** checked on fresh worktrees with agent 2026.10.22:
   - with neither `--trust` nor `--force`, `agent -p` exits 1 with "Pass --trust, --yolo, or -f if you trust this directory";
@@ -42,6 +42,17 @@ Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_ent
 
 `file-limits` fails on the integration branch itself: `specy_road/bundled_scripts/worker_cli.py` is 408 lines and `specy_road/worker_adapters.py` is 430, against a 400 cap. My `--trust` change had added 2 lines to `worker_adapters.py`. I folded the cursor notes string and the launch comment, so after the merge the file is 430 lines, the same as `origin/WIP`. I did not trim M3.10's overage. `worker_cli.py` is outside this leaf's touch zones, and taking 30 lines out of `worker_adapters.py` is a refactor this leaf did not ask for.
 
+### Review after the WIP merge
+
+Sol blocked A3 because the reviewer check excluded the entire project `work/` tree. That hid tracked files such as `work/README.md` and arbitrary untracked files. Fixed in `1e9793b`: the generated exclusions are now node-specific:
+
+- `work/brief-<ID>.md`
+- `work/implementation-summary-<ID>.md`
+- `work/prompt-<ID>.md` and `work/prompt-<ID>-*.md`
+- `work/reviews/<ID>/`
+
+The project prefix is retained for nested layouts. The behavioral test now proves all four generated forms are ignored, while a modified tracked `work/README.md`, another leaf's untracked prompt, and an untracked source file are reported. The docs now state the narrower contract. As requested, this review fix does not address the integration branch's `worker_cli.py` / `worker_adapters.py` file-limit issue.
+
 ## Changes
 
 - `specy_road/model_profiles.py`: `Profile.alias` field, `Profile.for_id`, an `aliases` shape check, and `profile_for_entry` matching through `for_id`.
@@ -58,6 +69,7 @@ Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_ent
 
 - `python -m pytest -q` ran the whole suite before the phrase was restored: 2378 passed, 2 skipped, 1 failed (`test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes`). The phrase is back in the committed wording. After that, and again after the round-1 fix: `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_review_round6_policy.py` — 36 passed. Earlier, `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_project_layouts.py` (61 passed) and `tests/test_review_packet.py`, `tests/test_review_hardening.py`, `tests/test_review_round6_evidence.py` (44 passed).
 - After the merge, 15 focused test files: 203 passed. They cover workers (adapters, the M3.10 reconcile/status tests, CLI, review rounds 1 and 2, prerelease), models and prompt, round-6 policy, prerelease §2, review packet, sessions, orchestration config, `validate --strict` and project layouts. After folding the cursor notes, `tests/test_worker_adapters.py`, `tests/test_worker_cli.py` and `tests/test_worker_m310_reconcile_status.py` were re-run: 25 passed.
+- After the A3 review fix: `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_project_layouts.py`, `tests/test_worker_cli_fixes.py` — 84 passed; focused `ruff` and `git diff --check` passed.
 - `ruff check specy_road tests scripts`: all checks passed.
 - `specy-road file-limits`: OK before the merge. After the merge it reports only `worker_cli.py` (408) and `worker_adapters.py` (430). Both counts are the same on `origin/WIP` (above).
 - `specy-road validate`, `export --check` and `digest --check` with `--repo-root tests/fixtures/specy_road_dogfood`: all OK.
@@ -71,7 +83,7 @@ Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_ent
 - helper `_pinned_for_id` (orchestration_pinned.py): the no-`profile:` search. A refused pinned copy has no front matter, so the committed text is what `for_id` sees, and the refusal is what is returned. Round-1 review finding.
 - field `Profile.alias`: lets an alias-matched profile report the harness's own id as `api_id`, so worker launch keeps passing a valid id without touching `worker_ops.py`.
 - guard: `aliases` must be a list of strings (`_structure_errors`). This is a profile-file boundary; `aliases: x-high` would otherwise match by substring. Tested in `test_broken_profile_reports_errors`.
-- helper `_reviewer_precondition` (role_prompt.py): the reviewer's precondition differs from the executor's in checkout and pathspec.
+- helper `_reviewer_precondition` (role_prompt.py): the reviewer's precondition differs from the executor's in checkout and uses node-specific generated bookkeeping pathspecs.
 - helper `_with_base` (review_packet.py) and its guard for a `--base` that does not resolve (CLI boundary; tested).
 - helper `_empty_diff_reason` (review_packet.py): one sentence used for both the stderr warning and the packet note.
 - helper `current_user()` (session_presence.py), extracted from `default_agent_id`, plus the `user` record field.
@@ -81,5 +93,5 @@ Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_ent
 - test `test_a_dirty_alias_matched_profile_is_refused`: a one-newline local edit of an alias-matched profile is the drift error for the alias and for the `api_id`, and `build_prompt` returns it. Round-1 regression.
 - test `test_an_empty_merge_base_diff_is_explained_and_base_sets_the_range`: A8.
 - test `test_cli_end_with_an_id_retires_only_the_same_users_session`: A4.
-- extended `test_main_writes_packet_file` (A2), `test_reviewer_prompt_needs_a_packet_and_embeds_it` and `test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim` (A3, A7), `test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes` (A3: a coordinator prompt under `work/` is ignored), `test_default_commands_follow_the_documented_cli_flags` (A5), `test_init_writes_the_starter_and_validate_generates_it_when_missing` (A9), and `test_broken_profile_reports_errors` (the aliases guard).
+- extended `test_main_writes_packet_file` (A2), `test_reviewer_prompt_needs_a_packet_and_embeds_it` and `test_reviewer_prompt_takes_ref_for_a_complete_node_without_a_claim` (A3, A7), `test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes` (A3: this leaf's generated files are ignored, while tracked `work/` files and another leaf's prompt remain visible), `test_default_commands_follow_the_documented_cli_flags` (A5), `test_init_writes_the_starter_and_validate_generates_it_when_missing` (A9), and `test_broken_profile_reports_errors` (the aliases guard).
 - mocks: none. The tests use `monkeypatch.setenv` for `USER` and `SPECY_ROAD_AGENT_ID`.
