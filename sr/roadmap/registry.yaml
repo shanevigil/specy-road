@@ -74,27 +74,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter
-    node_id: M3.15
-    branch: feature/rm-read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate.py
-      - specy_road/review_target.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/init_project.py
-      - specy_road/cli_init_argparse.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - specy_road/templates/project/roadmap/
-      - specy_road/templates/specyrd/commands/
-      - docs/orchestration.md
-      - docs/pm-llm-review.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold
     node_id: M3.14
     branch: feature/rm-finish-this-task-and-pickup-detect-a-planning-sheet-that-is-still-the-scaffold

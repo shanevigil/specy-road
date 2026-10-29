@@ -15,7 +15,7 @@
       "parent_id": "M3",
       "planning_dir": "planning/M3.15_read-only-review-commands-take-ref-handoff-status-exit-codes-are-distinct-review-list-and-an-orchestration-yaml-starter_106e6277-f3ec-46b6-939f-9a213b27c38f.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Read-only review commands take --ref, handoff status exit codes are distinct, review list, and an orchestration.yaml starter",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt.py",

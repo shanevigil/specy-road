@@ -50,7 +50,7 @@ The review gate applies when `roadmap/git-workflow.yaml` sets
 ## `roadmap/orchestration.yaml`
 
 Scaffolded by `specy-road init project`. A repo without the file gets exactly
-the defaults shown here, so upgrading does not strand a solo maintainer.
+the defaults shown here, so upgrading does not strand a solo maintainer. The commented starter that `init project` writes has this policy and one more roster entry, a placeholder executor (`my-executor`) to rename to the model you run; `specy-road validate --generate-orchestration` writes the same starter into a repo that has no file, and leaves an existing one alone.
 
 ```yaml
 version: 1
@@ -129,7 +129,7 @@ Plain files work across every harness, including IDE chats that cannot see each 
 The directory always resolves to the **main** worktree: an executor in a linked worktree writes its hand-off there by absolute path, and every command — including the gate run from that worktree — reads the same files. New scaffolds ship `work/handoff-ready.template.md` and `work/review-record.template.md`.
 
 Records are read from the working tree and are untracked by design (`work/reviews/` is gitignored), so they never travel with a push; the review policy, by contrast, comes from `roadmap/orchestration.yaml` on the integration branch. What persists is the outcome: the gate writes one `Reviewed-by:` trailer per approval into git history.
-A repository that never pushes claims still sees its records: `handoff status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only.
+A repository that never pushes claims still sees its records: `handoff status <NODE_ID>` on a leaf with no claim lists the READY and REVIEW files with their verdicts, `--ref <branch>` checks them against that branch's commit, and `do-next-available-task --local` claims the leaf in this checkout only. Every read-only review command takes the same `--ref <branch or commit>` in place of a claim: `review-packet`, `prompt` (so a second-family reviewer prompt for a Complete node needs no claim; the prompt passes the `--ref` on to the reviewer's `review record`), `handoff status`, and `review list <NODE_ID>`, which prints each filed record's verdict, model, family and commit, then the gate evaluation, and writes nothing.
 
 ### `READY-<agent>.md` — the executor's hand-off
 
@@ -297,10 +297,10 @@ process does not hold. Still self-attested: the session flags inside a signed re
 | `blocked` | A counted review blocks. |
 | `approved` | The policy is met. Run `mark-implementation-reviewed`. |
 | `stale` | The branch moved past the READY commit. |
-| `unclaimed` | Leftover files for a node with no open claim (finished or aborted); safe to delete. |
+| `complete_no_claim` | The node is Complete and its claim is released; its records are listed, not evaluated (`--ref` evaluates them). |
+| `unclaimed`, `error` | No open claim names a commit, so the gate cannot be evaluated and the records are only listed (pass `--ref`); `error`: the node or `--ref` does not resolve. |
 
-Below each node it lists every problem to fix. Naming a node that cannot be
-resolved exits 1.
+Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `stale`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0.
 
 ## Unattended loops
 
@@ -390,8 +390,8 @@ scaffold `AGENTS.md` repeats these rules; [design-notes/agent-guidance-and-share
 - With the review gate on, `mark-implementation-reviewed` now needs a review
   record, and `finish-this-task` re-checks it at the current commit. Interactive use
   works as before under the default policy, because **approve** files the human record. **`--yes` without a satisfying record now exits 1.**
-- `roadmap/orchestration.yaml` is optional; copy it from a fresh
-  `specy-road init project` to change the policy.
+- `roadmap/orchestration.yaml` is optional; `specy-road validate
+  --generate-orchestration` writes the commented starter to change the policy.
 - `work/reviews/` must be gitignored, as new scaffolds do (`specy-road
   upgrade` adds it to the managed `.gitignore` block): a review binds to
   the commit it read, so committing review files would move the branch past it
