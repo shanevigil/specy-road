@@ -62,7 +62,9 @@ classification plus a dependency **wave** layout. No git, no pickup.
 ### What the planner reports
 
 - **`ready`** — leaves whose dependencies are satisfied and that are unclaimed.
-  This is exactly the set/order `do-next-available-task` would claim.
+  This is exactly the set/order `do-next-available-task` would claim. Its head is
+  printed as **Next auto-pick** with that leaf's `execution_milestone`
+  (`ready_execution` in `--json`, for every ready leaf).
 - **`blocked`** — leaves with unmet effective dependencies. Each entry has
   `waiting_on` (the blocking node **display ids**) and a `reason`:
   `dependency` (waiting on other work) or `gate` (waiting on a human `type: gate`).
@@ -103,6 +105,11 @@ different, it is scope or timing rather than disagreement:
   earlier milestone wins over a later one even when both are ready. Pass the
   same `--under` to both, or pick by number with `--interactive`. There is no
   "prefer this subtree" flag: outline order is the delivery order by design.
+- **Agentic-led first is opt-in.** `--prefer-agentic` (or
+  `prefer_agentic_pick_order: true` in `roadmap/git-workflow.yaml`) orders each
+  pickup tier `Agentic-led`, `Mixed`, unset, `Human-led`. The plan, the loop and
+  `--step` read the same setting and pass an explicit `--prefer-agentic` /
+  `--no-prefer-agentic` through to pickup, so both orders still match.
 
 ### Orchestration pattern (sub-agents)
 

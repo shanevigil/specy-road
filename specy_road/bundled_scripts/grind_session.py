@@ -148,6 +148,8 @@ def _pickup_args(args, repo_root: Path) -> list[str]:
         out += ["--on-complete", args.on_complete]
     out += [flag for flag, on in (("--no-ci-skip-in-message", args.no_ci_skip_in_message),
                                   ("--allow-unauthored", args.allow_unauthored)) if on]
+    if args.prefer_agentic is not None:
+        out.append("--prefer-agentic" if args.prefer_agentic else "--no-prefer-agentic")
     if args.milestone_subtree:
         out.append("--milestone-subtree")
     elif args.under:
@@ -328,7 +330,10 @@ def _run_loop(
 ) -> tuple[int, bool]:
     """Drive cycles until a bound is hit. Returns (exit code, failed)."""
     for _cycle in range(max(1, args.max_cycles)):
-        nodes, reg, plan = gather_plan(repo_root, args.under, allow_unauthored=args.allow_unauthored)
+        nodes, reg, plan = gather_plan(
+            repo_root, args.under, allow_unauthored=args.allow_unauthored,
+            prefer_agentic=args.prefer_agentic,
+        )
         if plan.ready:
             node_id, branch, terminal = _do_cycle(
                 args, repo_root, emitter, nodes, plan.ready[0]
@@ -366,7 +371,10 @@ def run_session(args) -> int:
     CHILD_STDOUT_TO_STDERR = bool(args.json)
     emitter = EventEmitter(as_json=args.json)
     if args.plan:
-        _nodes, _reg, plan = gather_plan(repo_root, args.under, allow_unauthored=args.allow_unauthored)
+        _nodes, _reg, plan = gather_plan(
+            repo_root, args.under, allow_unauthored=args.allow_unauthored,
+            prefer_agentic=args.prefer_agentic,
+        )
         _emit_plan(emitter, plan)
         return EXIT_OK
     mode_error = _pin_loop_mode(repo_root, args)

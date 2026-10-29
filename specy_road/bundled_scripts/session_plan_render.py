@@ -70,7 +70,8 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
 
 
 def _render_next_pick(plan: SessionPlan) -> list[str]:
-    """Name the leaf pickup would claim, and say that this plan is a snapshot.
+    """Name the leaf pickup would claim, with its execution milestone, and say
+    that this plan is a snapshot.
 
     ``ready`` is the pickup queue itself, so its head is the answer to "what
     happens if I just run the loop". Printing it stops the plan from being read
@@ -81,9 +82,16 @@ def _render_next_pick(plan: SessionPlan) -> list[str]:
     if not plan.ready:
         return []
     scope = f" --under {plan.under}" if plan.under else ""
+    nxt = plan.ready[0]
+    execution = plan.ready_execution.get(nxt) or "no execution milestone"
+    order = (
+        " Ready leaves are ordered Agentic-led first (prefer_agentic_pick_order)."
+        if plan.prefer_agentic
+        else ""
+    )
     return [
-        f"**Next auto-pick:** `{plan.ready[0]}` — what "
-        f"`specy-road do-next-available-task{scope}` claims if you run it now.",
+        f"**Next auto-pick:** `{nxt}` ({execution}) — what "
+        f"`specy-road do-next-available-task{scope}` claims if you run it now.{order}",
         "",
         "_This plan reads feature-branch tips locally so ``ready`` and "
         "``Next auto-pick`` match what pickup skips after sync. Pickup still "

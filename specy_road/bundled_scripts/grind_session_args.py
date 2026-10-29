@@ -137,6 +137,11 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                    help="Treat leaves whose planning sheet is still a placeholder and "
                         "whose node has no acceptance as ready (--plan lists them as not "
                         "ready by default); passed through to pickup.")
+    p.add_argument("--prefer-agentic", action=argparse.BooleanOptionalAction, default=None,
+                   help="Order ready leaves Agentic-led, Mixed, unset, Human-led within each "
+                        "pickup tier (default: prefer_agentic_pick_order in "
+                        "roadmap/git-workflow.yaml); applies to --plan and is passed through "
+                        "to pickup.")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
     p.add_argument("--delete-merged-branches", action="store_true",
