@@ -14,7 +14,14 @@ from specy_road.runtime_paths import git_root
 from specy_road.specyrd_cli import _build_parser as _specyrd_parser
 
 _FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
-_MENTION = re.compile(r"(?<![\w/.-])(specy-road|specyrd)[ \t]+([a-z][a-z0-9-]*)")
+# Emphasis directly attached to the product name is markup, so "_" is not a word
+# boundary there. A "_" inside an identifier (foo_specy-road) still blocks.
+_MENTION = re.compile(
+    r"(?:(?<![A-Za-z0-9])[*_]+|(?<![\w/.-]))"
+    r"(specy-road|specyrd)[ \t]+(?:[*_]+)?"
+    r"([a-z][a-z0-9-]*)[*_]*"
+)
+_PLAIN_WORD = re.compile(r"[A-Za-z]+(?:[-'][A-Za-z]+)*")
 _LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+")
 # The product name is a noun phrase when one of these words is the token
 # immediately before it, with only whitespace between ("the specy-road toolkit").
@@ -115,6 +122,21 @@ def _mandatory_follower(line: str, start: int) -> bool:
     return bool(re.search(r"\d", word))
 
 
+def _plain_follower(line: str, start: int) -> bool:
+    """True when nothing follows the token, or the next token is a plain word.
+
+    A plain word is letters only; a hyphen or apostrophe inside it is still
+    plain. Prose punctuation around that word (parentheses, sentence marks)
+    does not count (``formats (templates...)``). Anything else cancels the
+    exclusion (``the specy-road frob @agent``).
+    """
+    raw = _next_token(line, start)
+    if not raw:
+        return True
+    word = raw.strip("()[]{}.,;:!?…").strip(".")
+    return _PLAIN_WORD.fullmatch(word) is not None
+
+
 def _reports(line: str, start: int) -> bool:
     """Mandatory contexts first. A noun phrase is the only exclusion."""
     if (
@@ -123,7 +145,7 @@ def _reports(line: str, start: int) -> bool:
         or _mandatory_follower(line, start)
     ):
         return True
-    if _noun_phrase(line, start):
+    if _noun_phrase(line, start) and _plain_follower(line, start):
         return False
     return True
 
@@ -287,11 +309,18 @@ def unregistered_commands(text: str) -> list[str]:
     and emphasis markers attached to the name between them (``the
     **specy-road toolkit** is``), is a determiner, possessive, or preposition — the, a, an, this, that,
     these, those, other, any, all, every, each, its, our, your, their, own,
-    of, with, in, for, from, about — when the token is followed by a plain
-    word or nothing (``the specy-road toolkit is``, ``other specy-road
-    formats``, and a prose bullet such as ``- **Adoption prompts** are kept
-    aligned with other specy-road formats``). A digit or any other token in
-    between cancels it (``the 2 specy-road frob`` warns).
+    of, with, in, for, from, about — and the token is followed by a plain
+    word or nothing. A plain word is letters only; a hyphen or apostrophe
+    inside it is still plain, and prose punctuation around it (parentheses,
+    sentence marks) does not count (``the specy-road toolkit is``, ``other
+    specy-road formats (templates...)``, and a prose bullet such as
+    ``- **Adoption prompts** are kept aligned with other specy-road formats``).
+    Anything else after the token cancels the exclusion (``the specy-road frob
+    @agent`` warns). Emphasis
+    markers attached to the product name or the token are markup
+    (``Run __specy-road frob__ now.`` and ``- __specy-road frob__`` warn). A
+    digit or any other token between the determiner and the name cancels it
+    (``the 2 specy-road frob`` warns).
     """
     return [
         mention for _, mention in _occurrences(list(enumerate(text.splitlines(), 1)))
