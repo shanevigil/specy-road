@@ -26,6 +26,7 @@ entries:
     node_id: M5.2
     branch: feature/rm-stale-command-check
     touch_zones:
+      - docs/install-and-usage.md
       - specy_road/bundled_scripts/validate_roadmap.py
       - specy_road/cli.py
       - specy_road/managed_block.py

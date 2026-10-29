@@ -60,7 +60,8 @@
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/cli.py",
         "specy_road/managed_block.py",
-        "tests/"
+        "tests/",
+        "docs/install-and-usage.md"
       ],
       "type": "task"
     },
