@@ -306,7 +306,8 @@
         "specy_road/bundled_scripts/generate_brief.py",
         "specy_road/worker_reconcile.py",
         "specy_road/bundled_scripts/worker_cli.py",
-        "specy_road/bundled_scripts/orchestrate_cli.py"
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "specy_road/tool_call_guard.py"
       ],
       "type": "task"
     },
@@ -380,6 +381,38 @@
         "tests/",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration-workers.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "do-next-available-task, do-next-task and grind-session accept --baseline-cmd; it runs on the integration branch before the pickup and refuses when it fails (--baseline-warn downgrades to a warning)",
+        "roadmap/git-workflow.yaml can set the default baseline command, mirroring pre_finish_cmd",
+        "Docs present it beside --pre-finish-cmd: a red base branch is caught before a leaf inherits it, so leaves never fix unrelated failures"
+      ],
+      "codename": "a-baseline-gate-runs-on-the-integration-branch-before-pickup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M3.12",
+      "node_key": "b56ccb79-4cf4-496f-ab74-cd5710ab8add",
+      "parent_id": "M3",
+      "planning_dir": "planning/M3.12_a-baseline-gate-runs-on-the-integration-branch-before-pickup_b56ccb79-4cf4-496f-ab74-cd5710ab8add.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "A baseline gate runs on the integration branch before pickup",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/bundled_scripts/grind_session_step.py",
+        "specy_road/git_workflow_config.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "schemas/git-workflow.schema.json",
+        "docs/dev-workflow.md",
+        "docs/grind-session.md",
+        "tests/"
       ],
       "type": "task"
     }

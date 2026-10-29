@@ -28,7 +28,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.1_rule-provenance_40829e1f-f1d9-4368-a53f-ee8f27cd2566.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Every managed AGENTS.md rule carries its provenance in the template",
       "touch_zones": [
         "specy_road/templates/specyrd/agents-md-block.md",
@@ -67,7 +67,7 @@
     {
       "acceptance": [
         "`validate` (or `specy-road context show`) prints lines and bytes of AGENTS.md, CLAUDE.md and the managed sections per harness, with the documented limits (Codex 32 KiB project-doc budget, Claude Code 200-line target)",
-        "A warning fires when a documented limit is exceeded"
+        "A warning fires when a documented limit is exceeded by a file in the repository; user-level files outside the repository (for example ~/.claude/CLAUDE.md) are listed as a note with their size and never produce a warning or fail --strict, so validate output does not depend on the developer's machine"
       ],
       "codename": "context-budget-meter",
       "dependencies": [],

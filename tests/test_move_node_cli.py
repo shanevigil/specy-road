@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from specy_road.bundled_scripts.roadmap_chunk_utils import write_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_move_node import move_node
 from tests.helpers import BUNDLED_SCRIPTS, REPO, SCHEMAS, script_subprocess_env
@@ -203,3 +203,50 @@ def test_a_rejected_move_leaves_the_working_tree_untouched(
     assert (chunk.read_bytes(), sheet.read_bytes(), registry.read_bytes()) == before
     assert sheet.is_file()
     assert not list((tmp_path / "planning").glob("M2.*_alpha-work_*.md"))
+
+
+def _set_zones(root: Path, zones_by_id: dict[str, list[str]]) -> None:
+    chunk = root / "roadmap" / "phases" / "T.json"
+    nodes = load_json_chunk(chunk)
+    for n in nodes:
+        n["touch_zones"] = zones_by_id.get(n["id"], n["touch_zones"])
+    write_json_chunk(chunk, nodes)
+
+
+def test_touch_zone_segments_naming_an_old_id_follow_the_node(tmp_path: Path) -> None:
+    """A renumber must not strand `docs/M1.1/` on whatever now sits at M1.1."""
+    _fixture(tmp_path)
+    _set_zones(tmp_path, {
+        "M1.1": ["docs/M1.1/", "src/M1.10/x.py", "notes/M1.1-old.md", "M1.1"],
+        "M2.1": ["docs/M2.1/", "shared/M1.1/api.md"],
+    })
+
+    # Index 0 makes a chain: M1.1 -> M2.1 while the old M2.1 -> M2.2.
+    r = _run(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2", "--index", "0")
+
+    assert r.returncode == 0, r.stderr
+    nodes = _by_key(tmp_path)
+    assert nodes[NK_A1]["id"] == "M2.1" and nodes[NK_B1]["id"] == "M2.2"
+    # Whole segments only: M1.10 and M1.1-old are other names.
+    assert nodes[NK_A1]["touch_zones"] == ["docs/M2.1/", "src/M1.10/x.py", "notes/M1.1-old.md", "M2.1"]
+    # Each zone follows the node it named, including one owned by another node.
+    assert nodes[NK_B1]["touch_zones"] == ["docs/M2.2/", "shared/M2.1/api.md"]
+    assert "touch-zone path segments" in r.stdout
+
+
+def test_a_registry_claims_touch_zones_follow_the_new_id(tmp_path: Path) -> None:
+    """The finish check reads the claim's copy of the zones first."""
+    _fixture(tmp_path)
+    _set_zones(tmp_path, {"M1.1": ["docs/M1.1/"]})
+    registry = tmp_path / "roadmap" / "registry.yaml"
+    registry.write_text(
+        registry.read_text(encoding="utf-8") + "    touch_zones:\n      - docs/M1.1/\n",
+        encoding="utf-8",
+    )
+
+    assert _run(tmp_path, "--repo-root", str(tmp_path), "M1.1", "--to-parent", "M2").returncode == 0
+
+    new_id = _by_key(tmp_path)[NK_A1]["id"]
+    text = registry.read_text(encoding="utf-8")
+    assert f"- docs/{new_id}/" in text
+    assert "docs/M1.1/" not in text

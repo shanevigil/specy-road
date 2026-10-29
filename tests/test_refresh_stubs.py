@@ -209,3 +209,68 @@ def test_a_dry_run_summarises_the_migration_in_one_line(
     n = len(OLD_DEV_STUBS)
     assert lines == [f"migration: {n} command stubs (*/commands/) become {n} skills under .agents/skills/"]
 
+
+
+def _diff_sections(out: str) -> dict[str, list[str]]:
+    """``{path: hunk lines}`` from a run of unified diffs."""
+    sections: dict[str, list[str]] = {}
+    current: list[str] = []
+    for line in out.splitlines():
+        if line.startswith("+++ b/"):
+            current = sections.setdefault(line[len("+++ b/"):], [])
+        elif not line.startswith("--- "):
+            current.append(line)
+    return sections
+
+
+def test_diff_previews_skills_and_managed_blocks_without_writing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+
+    main(["--diff", "--repo-root", str(root)])
+    out = capsys.readouterr().out
+
+    sections = _diff_sections(out)
+    assert ".agents/skills/specyrd-search/SKILL.md" in sections
+    assert {"CLAUDE.md", ".gitignore", ".cursorindexingignore", "AGENTS.md"} <= set(sections)
+    assert "--- a/CLAUDE.md" in out and "--- /dev/null" in out
+    assert "would write .claude/skills/specyrd-search (created)" in out   # a link has no text to diff
+    assert "(dry-run; no files written)" in out
+    assert not (root / ".agents").exists()
+    assert (root / "CLAUDE.md").read_text(encoding="utf-8") == CONSUMER_CLAUDE_MD
+    assert not (root / ".gitignore").exists()
+    assert _manifest(root)["specyrd_version"] == OLD_VERSION
+
+
+def test_the_diff_is_what_a_refresh_then_writes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+    main(["--diff", "--repo-root", str(root)])
+    sections = _diff_sections(capsys.readouterr().out)
+
+    refresh_stubs(root)
+
+    def added(rel: str) -> list[str]:
+        return [ln[1:] for ln in sections[rel] if ln.startswith("+")]
+
+    skill = ".agents/skills/specyrd-search/SKILL.md"
+    assert added(skill) == (root / skill).read_text(encoding="utf-8").splitlines()
+    claude = (root / "CLAUDE.md").read_text(encoding="utf-8")
+    assert added("CLAUDE.md") == claude[len(CONSUMER_CLAUDE_MD):].splitlines()
+    assert added(".gitignore") == (root / ".gitignore").read_text(encoding="utf-8").splitlines()
+
+
+def test_diff_on_a_current_repo_shows_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = _old_repo(tmp_path)
+    refresh_stubs(root)
+    capsys.readouterr()
+
+    main(["--diff", "--repo-root", str(root)])
+    out = capsys.readouterr().out
+
+    assert "+++" not in out
+    assert "already match" in out

@@ -211,7 +211,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.7_graph-apply_d1ffe271-ef17-495a-90de-74a35990666e.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
@@ -229,8 +229,7 @@
       "acceptance": [
         "`list-nodes --json` emits the full node list without title truncation",
         "`refresh-stubs --diff` shows the managed-block and skill changes before writing",
-        "move-node rewrites touch-zone path segments that equal the old display id",
-        "`finish-this-task` in merge mode can delete the merged feature branch locally and on the remote (`--delete-branch`), and `specy-road branches prune` lists or deletes merged feature/rm-* branches"
+        "move-node rewrites touch-zone path segments that equal the old display id"
       ],
       "codename": "graph-listing-and-moves",
       "dependencies": [],
@@ -241,7 +240,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.8_graph-listing-and-moves_b7f094e3-dce5-4ab0-9e14-e00f8f412609.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "list-nodes --json, refresh-stubs --diff, move-node zone rewrite",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
@@ -267,7 +266,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.9_pick-ordering_5bac319f-6749-4980-8576-248df4e287e7.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Opt-in auto-pick ordering by execution milestone",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_available.py",
@@ -277,7 +276,7 @@
         "docs/dev-workflow.md",
         "tests/",
         "specy_road/templates/project/schemas/git-workflow.schema.json",
-        "sr/schemas/git-workflow.schema.json",
+        "schemas/git-workflow.schema.json",
         "tests/fixtures/specy_road_dogfood/schemas/",
         "specy_road/bundled_scripts/do_next_task.py",
         "specy_road/bundled_scripts/session_plan.py",
@@ -286,6 +285,141 @@
         "specy_road/bundled_scripts/grind_session_args.py",
         "specy_road/bundled_scripts/grind_session_step.py",
         "docs/grind-session.md"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "`finish-this-task --delete-branch` in merge mode deletes the merged feature branch locally and on the remote after the merge, and says so",
+        "`specy-road branches prune [--delete]` lists merged feature/rm-* branches locally and on the remote, and deletes them only with --delete",
+        "docs/git-workflow.md and the specyrd-finish skill describe both"
+      ],
+      "codename": "branch-cleanup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "goal": "Merged feature branches stop accumulating locally and on the remote.",
+      "id": "M4.10",
+      "node_key": "34da74ce-0529-4465-ba64-ded0310e2814",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.10_branch-cleanup_34da74ce-0529-4465-ba64-ded0310e2814.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Clean up merged feature branches after finish",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/finish_modes.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/bundled_scripts/",
+        "docs/git-workflow.md",
+        "specy_road/templates/specyrd/commands/specyrd-finish.md",
+        "tests/",
+        "specy_road/feature_rm_registry.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "grind-session --plan never offers two ready leaves that share a touch zone (same path, or one a prefix of the other) in the same Dispatch now (parallel) set; the later leaf moves to the next wave and the overlap is named",
+        "orchestrate plan applies the same rule",
+        "Tests cover a shared file path and a shared directory prefix"
+      ],
+      "codename": "grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.11",
+      "node_key": "6ccb7a27-68e2-4fc8-ab53-346b7e885151",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.11_grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave_6ccb7a27-68e2-4fc8-ab53-346b7e885151.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "grind-session --plan keeps ready leaves with overlapping touch zones out of the same parallel wave",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/session_plan_render.py",
+        "specy_road/bundled_scripts/orchestrate_plan.py",
+        "docs/grind-session.md",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The function cap applies to .ts, .tsx, .js, .jsx and .mjs functions: declarations, named arrow functions and class methods",
+        "file-limits reports an over-cap function with file and line in the same format as Python, and no longer prints OK while one exists",
+        "Tests use a fixture per syntax form; the policy file documents which languages the function cap covers"
+      ],
+      "codename": "file-limits-function-length-check-covers-typescript-and-javascript",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.12",
+      "node_key": "abeedb0d-ada4-407d-8cf3-3a8263670370",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.12_file-limits-function-length-check-covers-typescript-and-javascript_abeedb0d-ada4-407d-8cf3-3a8263670370.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "file-limits function-length check covers TypeScript and JavaScript",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_file_limits.py",
+        "specy_road/file_limits/",
+        "constraints/file-limits.yaml",
+        "specy_road/templates/project/constraints/file-limits.yaml",
+        "docs/file-limits.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor lists local and remote feature/rm-* branches whose leaf is Complete or whose claim is gone, worktrees whose branch is gone or merged, registry rows with no branch, and toolkit-tagged stashes",
+        "Merged detection uses ancestry and, when ancestry fails, patch content, so a rewritten history still matches",
+        "Dry-run by default; --fix removes what it listed after confirmation and reports each action"
+      ],
+      "codename": "specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes",
+      "dependencies": [
+        "34da74ce-0529-4465-ba64-ded0310e2814"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.13",
+      "node_key": "9bd48271-4b15-475a-b3a1-3fae67e10fb7",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.13_specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes_9bd48271-4b15-475a-b3a1-3fae67e10fb7.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/branches_cli.py",
+        "specy_road/feature_rm_registry.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "specy_road/templates/specyrd/commands/",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Promoted leaves carry the anchor's execution_milestone unless --set execution_milestone overrides it",
+        "A Human-led leaf is the only one that needs --set; tests cover inherit and override"
+      ],
+      "codename": "brainstorm-promote-inherits-execution-milestone-from-the-anchor",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M4.14",
+      "node_key": "9ea6aab2-3241-428e-81a7-fc329d4ae8ba",
+      "parent_id": "M4",
+      "planning_dir": "planning/M4.14_brainstorm-promote-inherits-execution-milestone-from-the-anchor_9ea6aab2-3241-428e-81a7-fc329d4ae8ba.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "brainstorm promote inherits execution_milestone from the anchor",
+      "touch_zones": [
+        "specy_road/brainstorm_promote.py",
+        "specy_road/brainstorm_cli.py",
+        "docs/brainstorming.md",
+        "tests/"
       ],
       "type": "task"
     }

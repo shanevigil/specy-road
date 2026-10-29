@@ -1,38 +1,39 @@
-# Work-packet brief: `M4.9` — Opt-in auto-pick ordering by execution milestone `pick-ordering`
+# Work-packet brief: `M5.1` — Every managed AGENTS.md rule carries its provenance in the template `rule-provenance`
 
 _This is a deterministic compilation of every artifact the implementer needs. Read top to bottom._
 
 ## 1. Execution target
 
-- **Node id:** `M4.9`
-- **Title:** Opt-in auto-pick ordering by execution milestone
-- **Codename:** `pick-ordering`
+- **Node id:** `M5.1`
+- **Title:** Every managed AGENTS.md rule carries its provenance in the template
+- **Codename:** `rule-provenance`
 - **Type:** task
 - **Status (own):** Not Started
 - **Status (rollup):** Not Started
 - **Execution (milestone hint):** Agentic-led
-- **Touch zones:** specy_road/bundled_scripts/do_next_available.py, specy_road/bundled_scripts/do_next_task_args.py, specy_road/bundled_scripts/session_plan_render.py, specy_road/git_workflow_config.py, docs/dev-workflow.md, tests/
+- **Touch zones:** specy_road/templates/specyrd/agents-md-block.md, specy_road/templates/specyrd/claude-md-block.md, specy_road/agents_md_block.py, specy_road/agent_guide_block.py, tests/
 
 ### Goal
 
-An unattended loop can prefer Agentic-led leaves without changing the default order.
+Each rule the toolkit ships can name the failure it prevents, without costing consumers a byte of context.
 
 ### Acceptance criteria
 
-- **A1:** `do-next-available-task --prefer-agentic` (and a git-workflow.yaml default) orders Agentic-led before Mixed before Human-led within the same tree position
-- **A2:** grind-session --plan prints the execution milestone next to the next auto-pick
+- **A1:** Every rule bullet in the managed AGENTS.md and CLAUDE.md templates is followed by an HTML comment naming the failure it prevents, where it is enforced, and a reference
+- **A2:** The renderer strips those comments, so rendered sections are byte-identical to today's apart from intended text
+- **A3:** A test fails when a rule bullet has no provenance comment
 
 ## 2. Ancestor context chain
 
-- **M4** (phase) — Brainstorm and roadmap editing features _(rollup: Not Started)_
+- **M5** (phase) — Agent context and outcomes _(rollup: Not Started)_
 
 ## 3. Planning context (inlined)
 
-### Ancestor planning sheet: `planning/M4_brainstorm-editing-features_4e85b231-476a-4c86-89a2-9c224c0dfbf9.md`
+### Ancestor planning sheet: `planning/M5_context-and-outcomes_0e8ca94e-4046-47b3-ab39-50e2c9bad986.md`
 
 ## Intent
 
-The larger requests from rc1 adopters: promote carries the converge judgement into the graph, batch input, structured placement, decisions, repo evidence and scriptable graph editing.
+The research-backed additions chosen from the PM-role and agent-context studies: rules that carry their provenance, measurable always-injected context, a stale-command check, and an outcome record that closes the loop from shipped to learned.
 
 ## Approach
 
@@ -46,26 +47,25 @@ Leaves under this phase are picked by agents through the task loop; each leaf's 
 
 - `docs/design-notes/v0-3-1-rc1-adopter-feedback-triage.md`
 
-### This node's planning sheet: `planning/M4.9_pick-ordering_5bac319f-6749-4980-8576-248df4e287e7.md`
+### This node's planning sheet: `planning/M5.1_rule-provenance_40829e1f-f1d9-4368-a53f-ee8f27cd2566.md`
 
 ## Intent
 
-An unattended loop can prefer Agentic-led leaves without changing the default order.
+Each rule the toolkit ships can name the failure it prevents, without costing consumers a byte of context.
 
 ## Approach
 
-The tiering lives in do_next_available; add a stable secondary key. The milestone stays advisory for gating.
+Format: `<!-- prevents: ... | enforced: ... | ref: ... -->` after each bullet. Strip in render_agents_lines and the guide renderer with one shared helper.
 
 ## Tasks / checklist
 
-- [ ] flag + config default
-- [ ] plan line
-- [ ] Tests
+- [ ] Provenance comments on every rule
+- [ ] Shared stripping helper
+- [ ] Test
 
 ## References
 
-- `docs/design-notes/v0-3-1-rc1-adopter-feedback-triage.md`
-- `docs/dev-workflow.md`
+- `docs/design-notes/agent-guidance-and-shared-checkouts.md`
 
 ## 4. Shared contracts (cited)
 
@@ -91,7 +91,7 @@ _**Effective** dependencies below — this node's explicit `dependencies` plus e
 
 ## 7. Touch zones — implementing agent instruction
 
-The PM listed these touch zones: `specy_road/bundled_scripts/do_next_available.py`, `specy_road/bundled_scripts/do_next_task_args.py`, `specy_road/bundled_scripts/session_plan_render.py`, `specy_road/git_workflow_config.py`, `docs/dev-workflow.md`, `tests/`.
+The PM listed these touch zones: `specy_road/templates/specyrd/agents-md-block.md`, `specy_road/templates/specyrd/claude-md-block.md`, `specy_road/agents_md_block.py`, `specy_road/agent_guide_block.py`, `tests/`.
 
 **TODO (DEV agent):** confirm these touch zones are accurate by scanning the codebase. Add or remove zones as appropriate, then report the final list in your implementation summary.
 

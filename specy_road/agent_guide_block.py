@@ -19,6 +19,7 @@ marker would render as a top-level heading in the middle of someone's document.
 
 from __future__ import annotations
 
+import re
 from importlib import resources
 from pathlib import Path
 
@@ -36,6 +37,14 @@ _TEMPLATE_NAME = "claude-md-block.md"
 # `.cursor/rules/` and `.cursorindexingignore` instead, and `generic` has no
 # convention to hook into.
 GUIDE_AGENTS = frozenset({"claude-code"})
+
+#: The line after each rule in a block template: why the rule exists, for maintainers only.
+PROVENANCE = re.compile(r"<!-- prevents: [^|]+ \| enforced: [^|]+ \| ref: [^|]+ -->")
+
+
+def strip_provenance(text: str) -> str:
+    """``text`` without its provenance lines, so agents never pay for them in context."""
+    return "".join(ln for ln in text.splitlines(keepends=True) if not PROVENANCE.fullmatch(ln.rstrip("\n")))
 
 
 def _read_block_template() -> str:
@@ -59,7 +68,7 @@ def render_guide_lines(project_prefix: str = "") -> list[str]:
     embedded layout — so without this a nested repo got a guide in which every
     pointer was wrong.
     """
-    text = _read_block_template()
+    text = strip_provenance(_read_block_template())
     text = text.replace("{{SPECYRD_VERSION}}", __version__)
     text = text.replace("{{PROJECT_PREFIX}}", project_prefix)
     return text.rstrip("\n").splitlines()

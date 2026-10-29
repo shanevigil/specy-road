@@ -32,11 +32,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Not Started**
   - `M4.5` Repository files as evidence; null results; quotes on research-born ideas `brainstorm-repo-evidence` — task — **Not Started**
   - `M4.6` Lenses from the frame and a ranked node list in the recommend prompt `brainstorm-lenses` — task — **Not Started**
-  - `M4.7` Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies `graph-apply` — task — **Not Started**
-  - `M4.8` list-nodes --json, refresh-stubs --diff, move-node zone rewrite `graph-listing-and-moves` — task — **Not Started**
-  - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Not Started**
+  - `M4.7` Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies `graph-apply` — task — **Complete**
+  - `M4.8` list-nodes --json, refresh-stubs --diff, move-node zone rewrite `graph-listing-and-moves` — task — **Complete**
+  - `M4.9` Opt-in auto-pick ordering by execution milestone `pick-ordering` — task — **Complete**
+  - `M4.10` Clean up merged feature branches after finish `branch-cleanup` — task — **Not Started**
 - `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
-  - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Not Started**
+  - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Not Started**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Not Started**
@@ -52,9 +53,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M3.9` on `feature/rm-worker-cli-fixes` since 2026-10-28
-- `M4.7` on `feature/rm-graph-apply` since 2026-10-28
-- `M4.8` on `feature/rm-graph-listing-and-moves` since 2026-10-28
-- `M4.9` on `feature/rm-pick-ordering` since 2026-10-28
+- `M4.10` on `feature/rm-branch-cleanup` since 2026-10-28
+- `M5.2` on `feature/rm-stale-command-check` since 2026-10-28
+- `M5.3` on `feature/rm-context-budget-meter` since 2026-10-28
+- `M5.5` on `feature/rm-context-regression-set` since 2026-10-28
 
 ## Reaching the detail behind this
 
