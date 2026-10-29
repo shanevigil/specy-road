@@ -32,6 +32,16 @@ Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_ent
 
 `test_prerelease_s2.py::test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes` does not fail on this branch. The READY's exit 1 was a full-suite run taken while the reviewer wording had dropped the phrase "lists changes you did not make", which that test searches for. The phrase was put back in `ce265b4`, before the summary commit, and the test was re-run then (61 passed, including it). Re-run again with this fix: `tests/test_prerelease_s2.py` passes. It does not fail on `origin/WIP/improvements-0-3-1` (`87bcca`) or on this branch's base (`81d9be1`): both still contain that phrase in `role_prompt.py`, and neither changes the test. The branch caused the failure only in that uncommitted wording.
 
+### Merge of origin/WIP/improvements-0-3-1 (M3.10 landed)
+
+`ca77525` merges `origin/WIP/improvements-0-3-1` at `73f7b23`. The only conflict was the adapter table in `docs/orchestration-workers.md`. The resolution keeps both:
+- M3.10's text: `--add-dir` for claude-code in a linked worktree, and the codex and cursor notes on where READY goes;
+- this leaf's `--trust` on the cursor launch and resume.
+
+`specy_road/worker_adapters.py` merged cleanly, with both M3.10's `--add-dir` and `--trust`.
+
+`file-limits` fails on the integration branch itself: `specy_road/bundled_scripts/worker_cli.py` is 408 lines and `specy_road/worker_adapters.py` is 430, against a 400 cap. My `--trust` change had added 2 lines to `worker_adapters.py`. I folded the cursor notes string and the launch comment, so after the merge the file is 430 lines, the same as `origin/WIP`. I did not trim M3.10's overage. `worker_cli.py` is outside this leaf's touch zones, and taking 30 lines out of `worker_adapters.py` is a refactor this leaf did not ask for.
+
 ## Changes
 
 - `specy_road/model_profiles.py`: `Profile.alias` field, `Profile.for_id`, an `aliases` shape check, and `profile_for_entry` matching through `for_id`.
@@ -47,8 +57,9 @@ Grok blocked on one correctness finding, which is fixed. `pinned_profile_for_ent
 ## Verification
 
 - `python -m pytest -q` ran the whole suite before the phrase was restored: 2378 passed, 2 skipped, 1 failed (`test_reviewer_precondition_ignores_bookkeeping_but_not_source_changes`). The phrase is back in the committed wording. After that, and again after the round-1 fix: `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_review_round6_policy.py` — 36 passed. Earlier, `tests/test_prerelease_s2.py`, `tests/test_models_and_prompt.py`, `tests/test_project_layouts.py` (61 passed) and `tests/test_review_packet.py`, `tests/test_review_hardening.py`, `tests/test_review_round6_evidence.py` (44 passed).
+- After the merge, 15 focused test files: 203 passed. They cover workers (adapters, the M3.10 reconcile/status tests, CLI, review rounds 1 and 2, prerelease), models and prompt, round-6 policy, prerelease §2, review packet, sessions, orchestration config, `validate --strict` and project layouts. After folding the cursor notes, `tests/test_worker_adapters.py`, `tests/test_worker_cli.py` and `tests/test_worker_m310_reconcile_status.py` were re-run: 25 passed.
 - `ruff check specy_road tests scripts`: all checks passed.
-- `specy-road file-limits`: OK.
+- `specy-road file-limits`: OK before the merge. After the merge it reports only `worker_cli.py` (408) and `worker_adapters.py` (430). Both counts are the same on `origin/WIP` (above).
 - `specy-road validate`, `export --check` and `digest --check` with `--repo-root tests/fixtures/specy_road_dogfood`: all OK.
 - `python scripts/check_test_private_imports.py`: 0 new. Its one stale baseline entry is in `test_review_round6_evidence.py`, which this leaf does not touch.
 - `python scripts/check_clones.py` could not run: `pylint` is not installed in this environment.
