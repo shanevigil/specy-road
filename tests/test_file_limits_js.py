@@ -44,6 +44,10 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
                 ("Store.onChange", 26, 3),
             ],
         ),
+        # Braces in a type parameter's constraint or the heritage clause do not open the body.
+        ("generic_class.ts", [("Store.find", 2, 6)]),
+        # Every declarator of one statement, past plain values, annotations and patterns.
+        ("declarators.ts", [("clamp", 1, 5), ("twice", 7, 1), ("reset", 7, 3)]),
         # Braces inside strings, nested template literals and comments are ignored.
         ("literals.mjs", [("render", 5, 5), ("after", 10, 3)]),
         # Braces inside regex literals are ignored; a `/` after an operand is a division.
@@ -83,6 +87,10 @@ def test_scan_reports_over_cap_js_function_with_line(tmp_path: Path, suffix: str
         ("regex.js", "regex.js:1 function `strip` 5 lines"),
         # Read as a regex, `/ 2 }; const r = height /` would hide a `}` and swallow `next`.
         ("division.js", "division.js:1 function `layout` 5 lines"),
+        # A method of `class Store<T extends { id: string }>`.
+        ("generic_class.ts", "generic_class.ts:2 function `Store.find` 6 lines"),
+        # An arrow after the first declarator: `const limit = 10, clamp = (x) => {`.
+        ("declarators.ts", "declarators.ts:1 function `clamp` 5 lines"),
     ],
 )
 def test_scan_measures_concise_arrows_regexes_and_divisions(

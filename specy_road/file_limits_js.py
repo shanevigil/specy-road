@@ -22,8 +22,8 @@ _IDENT = r"[A-Za-z_$][\w$]*"
 _IDENT_RE = re.compile(_IDENT)
 _NOT_AFTER = r"(?<![\w$.#])"
 _DECL_RE = re.compile(rf"{_NOT_AFTER}function\b\s*\*?\s*({_IDENT})")
-_BINDING_RE = re.compile(rf"{_NOT_AFTER}(?:const|let|var)\s+({_IDENT})")
-_CLASS_RE = re.compile(rf"{_NOT_AFTER}class\b(?:\s+({_IDENT}))?[^{{;]*\{{")
+_BINDING_RE = re.compile(rf"{_NOT_AFTER}(?:const|let|var)\s+")
+_CLASS_RE = re.compile(rf"{_NOT_AFTER}class\b(?:\s+({_IDENT}))?")
 _MEMBER_RE = re.compile(
     r"(?:(?:public|private|protected|static|async|readonly|override|abstract"
     rf"|accessor|get|set)\s+)*(?:\*\s*)?(#?{_IDENT})\s*\??\s*"
@@ -208,7 +208,7 @@ def _angles_end(s: str, i: int) -> int:
 
 
 def _type_end(s: str, j: int, stop: str) -> int | None:
-    """Index of ``stop`` (``=>``, ``=`` or a body ``{``) after a type annotation at ``j``."""
+    """Index of ``stop`` (``=>``, ``=``/``,`` or a body ``{``) after a type annotation at ``j``."""
     while j < len(s):
         if s.startswith("=>", j):
             if stop == "=>":
@@ -220,8 +220,8 @@ def _type_end(s: str, j: int, stop: str) -> int | None:
             if _ch(s, k) not in "{|&" and not s.startswith("[]", k):
                 return j
             j = k
-        elif s[j] == "=" and stop == "=":
-            return j
+        elif stop == "=" and s[j] in "=,":
+            return j  # `,` ends a declarator's annotation that has no initializer
         elif s[j] in _OPEN:
             j = _close(s, j) + 1
         elif s[j] == "<":
@@ -294,6 +294,34 @@ def _body_end(s: str, j: int) -> int:
     return min(last, len(s) - 1)
 
 
+def _declarators(s: str, j: int) -> list[tuple[int, int, str]]:
+    """Arrow-valued declarators of the ``const`` / ``let`` / ``var`` list starting at ``j``."""
+    found: list[tuple[int, int, str]] = []
+    while True:
+        name = None
+        if _ch(s, j) in "[{":  # a destructuring pattern names no function
+            k = _ws(s, _close(s, j) + 1)
+        elif name := _IDENT_RE.match(s, j):
+            k = _ws(s, name.end())
+        else:
+            break
+        if _ch(s, k) == ":" and (k := _type_end(s, k + 1, "=")) is None:
+            break
+        if _ch(s, k) == "=":
+            body = _arrow_body(s, k + 1)
+            start = _ws(s, k + 1) if body is None else body
+            if start >= len(s):
+                break
+            end = _body_end(s, start)
+            if body is not None and name is not None:
+                found.append((name.start(), end, name.group()))
+            k = _ws(s, end + 1)
+        if _ch(s, k) != ",":
+            break
+        j = _ws(s, k + 1)
+    return found
+
+
 def _class_members(s: str, j: int, close: int) -> list[tuple[int, int, str]]:
     """Methods and arrow-valued fields at the top level of a class body."""
     found: list[tuple[int, int, str]] = []
@@ -330,17 +358,15 @@ def _spans(s: str) -> tuple[list[tuple[int, int, str]], list[tuple[int, int, str
         if body is not None:
             funcs.append((m.start(), _close(s, body), m.group(1)))
     for m in _BINDING_RE.finditer(s):
-        j = _ws(s, m.end())
-        if _ch(s, j) == ":":
-            j = _type_end(s, j + 1, "=")
-        body = _arrow_body(s, j + 1) if j is not None and _ch(s, j) == "=" else None
-        if body is not None:
-            funcs.append((m.start(), _body_end(s, body), m.group(1)))
+        funcs.extend(_declarators(s, m.end()))
     for m in _CLASS_RE.finditer(s):
-        close = _close(s, m.end() - 1)
+        # Past type parameters (`<T extends { id: string }>`) and the heritage clause.
+        if (body := _type_end(s, m.end(), "{")) is None:
+            continue
+        close = _close(s, body)
         if m.group(1):
             classes.append((m.start(), close, m.group(1)))
-        funcs.extend(_class_members(s, m.end(), close))
+        funcs.extend(_class_members(s, body + 1, close))
     return funcs, classes
 
 
