@@ -41,7 +41,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Not Started**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Not Started**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Not Started**
-  - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Not Started**
+  - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**

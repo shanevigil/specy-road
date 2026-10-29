@@ -131,7 +131,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.5_context-regression-set_6bea8860-1394-4fff-9094-c781dc86a11a.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A replayable context regression set for the sandbox runbook",
       "touch_zones": [
         "docs/agentic-sandbox-runbook.md",
