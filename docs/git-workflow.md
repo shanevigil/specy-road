@@ -19,6 +19,7 @@
 - the registration commit and `registry-prune` → "Registration commit (mandatory)"
 - touch zones and worktrees while implementing → "While working"
 - landing, then revert vs follow-up → "Merge back" and "Correcting merged work: revert vs follow-up"
+- deleting merged `feature/rm-*` branches (`finish-this-task --delete-branch`, `branches prune`) → "Deleting merged feature branches"
 
 **Related:** [`dev-workflow.md`](dev-workflow.md), [`grind-session.md`](grind-session.md), [`pm-workflow.md`](pm-workflow.md), [`orchestration.md`](orchestration.md).
 
@@ -170,7 +171,19 @@ specy-road registry-prune --remove trash-soft-delete # drop one, commit, push
 
 1. Remove your registry entry (or table row) before merge.
 2. Merge via PR/MR; green validation (e.g. `specy-road validate`) should pass.
-3. Delete the feature branch after merge.
+3. Delete the feature branch after merge — see below.
+
+### Deleting merged feature branches
+
+Both commands delete only a branch the integration branch already contains, and the remote copy only when the remote branch is contained too, so a commit someone pushed after the merge is never lost.
+
+- **`specy-road finish-this-task --delete-branch`** — once the merge lands (`on_complete: merge`, or `auto` when its merge succeeds), deletes the feature branch locally and on the remote and prints each deletion. A checked-out branch cannot be deleted, so the checkout moves to the integration branch first; when another worktree holds the integration branch (the `worker delegate` layout), it detaches at it instead. A failed deletion is a warning, not a failed finish: the work has already landed. Refused under **`pr`**, before the bookkeeping commit, because there the branch is the only copy of the work until the PR merges.
+- **`specy-road branches prune`** — for the backlog (PRs merged on the forge, earlier finishes). After `git fetch --prune`, lists every `feature/rm-*` branch, local and on the remote, that `<remote>/<integration-branch>` contains. **`--delete`** deletes them; without it nothing changes. Two kinds of branch look merged and are skipped: one with a registry row (locally or on the integration branch) — a fresh pickup's tip *is* an integration-branch commit — and an open milestone rollup branch (`milestone_execution.rollup_branch` with a state other than `closed`). Run it from the up-to-date integration branch: `git branch -d` also wants `HEAD`, or the branch's upstream, to contain the branch. A failed fetch stops it, since a stale remote-tracking ref could delete work pushed since.
+
+```bash
+specy-road branches prune            # list only
+specy-road branches prune --delete   # delete locally and on the remote
+```
 
 ## Correcting merged work: revert vs follow-up
 

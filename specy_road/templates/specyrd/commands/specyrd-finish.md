@@ -24,8 +24,11 @@ This will:
 5. Remove the per-node **`work/`** session files listed above (unless skipped), staging deletions if tracked.
 6. Commit the bookkeeping changes.
 7. Land work per **`on_complete`**: **`pr`** — print `git push` + `gh pr create` (or push first if `--push`); **`merge`** / **`auto`** — merge the feature branch into the integration branch locally and push, or exit **merge pending** with PR/MR hints (**`auto`** falls back on failure).
+8. With **`--delete-branch`**, once the merge lands: delete the feature branch locally and on the remote, saying so (checks out the integration branch first, or detaches at it when another worktree holds it). Refused under **`pr`** — there the branch is the only copy of the work until the PR merges.
 
 Merge when CI is green (or after a successful local integration merge). No PM sign-off required.
+
+For merged branches left from earlier (PRs merged on the forge, finishes without the flag): `specy-road branches prune` lists the `feature/rm-*` branches, local and on the remote, that the remote integration branch contains, skipping claimed branches and open milestone rollups; `--delete` deletes them. Run it from the up-to-date integration branch. See `docs/git-workflow.md` ("Deleting merged feature branches").
 
 See `docs/dev-workflow.md` for the full task loop.
 

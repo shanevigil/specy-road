@@ -321,6 +321,7 @@ def test_specy_road_finish_this_task_help() -> None:
     assert "--push" in r.stdout
     assert "--no-cleanup-work" in r.stdout
     assert "--no-milestone-rollup" in r.stdout
+    assert "--delete-branch" in r.stdout
 
 
 def test_specy_road_start_milestone_session_help() -> None:

@@ -7,9 +7,11 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
+from specy_road.bundled_scripts.grind_session_cleanup import delete_merged_branch
 from specy_road.finish_land_deterministic import codename_from_branch
 from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_integration import (
+    integration_worktree,
     integration_worktree_problem,
     land_merge_feature_into_integration,
 )
@@ -118,6 +120,40 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
         raise SystemExit(1)
 
 
+def delete_branch_preflight(on_mode: str, *, delete_branch: bool) -> None:
+    """Exit 1 before the bookkeeping commit when --delete-branch could delete unlanded work."""
+    if delete_branch and on_mode == "pr":
+        print(
+            "error: --delete-branch needs a merge landing (--on-complete merge "
+            "or auto). Under pr the feature branch is the only copy of the "
+            "work until the PR merges; delete it after that with "
+            "`specy-road branches prune --delete`.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
+def delete_landed_branch(repo: Path, *, branch: str, ib: str, remote: str) -> None:
+    """Delete ``branch`` here and on ``remote`` now that ``ib`` contains it.
+
+    A checked-out branch cannot be deleted, so this checkout moves to ``ib``
+    first -- or, when another worktree holds ``ib``, detaches at it. Failures
+    are reported, never fatal: the work has already landed.
+    """
+    holder = integration_worktree(repo, ib)
+    # A failed checkout needs no check of its own: git branch -d then refuses and says why.
+    git_ok(["checkout", "--detach", ib] if holder else ["checkout", ib], repo)
+    pushed, _ = git_ok(["rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}"], repo)
+    local_ok, remote_ok, failure = delete_merged_branch(repo, branch, ib, remote, push=pushed)
+    if local_ok:
+        where = f"detached at {ib} ({ib} is checked out in {holder})" if holder else f"on {ib}"
+        print(f"[ok] deleted local branch {branch}; this checkout is now {where}")
+    if remote_ok:
+        print(f"[ok] deleted {branch} on {remote}")
+    if failure is not None:
+        print(f"[warn] --delete-branch: {failure['message']}", file=sys.stderr)
+
+
 # What finish-this-task's bookkeeping commit writes; anything else in that commit was never reviewed.
 _FINISH_WRITES = ("roadmap/", "roadmap.md", "roadmap-context.md", "work/", "planning/")
 
@@ -208,6 +244,8 @@ def apply_on_complete_mode(
     if ok:
         print(f"\n[ok] merged {branch} into {ib} and pushed to {gw_remote}")
         remove_on_complete_session(sess_path)
+        if args.delete_branch:
+            delete_landed_branch(repo, branch=branch, ib=ib, remote=gw_remote)
         return
 
     if on_mode == "merge":
