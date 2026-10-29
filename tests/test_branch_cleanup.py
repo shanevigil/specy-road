@@ -53,11 +53,18 @@ def _has_branch(repo: Path, ref: str) -> bool:
 # --- finish-this-task --delete-branch ------------------------------------------
 
 
-@pytest.mark.parametrize("delegated", [False, True], ids=["same-checkout", "delegate-worktree"])
+@pytest.mark.parametrize(
+    "delegated, on_remote",
+    [(False, True), (True, True), (False, False)],
+    ids=["same-checkout", "delegate-worktree", "never-pushed"],
+)
 def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
-    tmp_path: Path, monkeypatch, capsys, delegated: bool
+    tmp_path: Path, monkeypatch, capsys, delegated: bool, on_remote: bool
 ) -> None:
     repo, bare = _merge_mode_repo(tmp_path, monkeypatch)
+    if not on_remote:
+        git(bare, "branch", "-D", BR)
+        git(repo, "fetch", "-q", "--prune", "origin")
     here = repo
     if delegated:   # dev held by the coordinator checkout, the leaf in a linked worktree
         git(repo, "checkout", "-q", "dev")
@@ -66,9 +73,10 @@ def test_finish_delete_branch_deletes_it_locally_and_on_the_remote(
 
     assert _exit(finish_task.main, ["--delete-branch", "--repo-root", str(here)]) == 0
 
-    out = capsys.readouterr().out
+    out, err = capsys.readouterr()
     assert f"[ok] merged {BR} into dev and pushed to origin" in out
-    assert f"[ok] deleted {BR} on origin" in out
+    assert (f"[ok] deleted {BR} on origin" in out) is on_remote
+    assert "--delete-branch:" not in err   # a branch never pushed has nothing to delete there
     assert not _has_branch(repo, f"refs/heads/{BR}")
     assert not _has_branch(bare, f"refs/heads/{BR}")
     if delegated:
@@ -161,6 +169,18 @@ def test_prune_delete_removes_only_the_listed_branches(prune_repo, capsys) -> No
         assert _has_branch(bare, f"refs/heads/{branch}")
     assert _exit(branches_cli.main, ["branches", "prune", "--repo-root", str(repo)]) == 0
     assert "Nothing to prune" in capsys.readouterr().out
+
+
+def test_prune_delete_reports_a_refused_delete_and_exits_1(prune_repo, capsys) -> None:
+    repo, bare = prune_repo
+    git(repo, "checkout", "-q", "feature/rm-done")   # git branch -d refuses the checked-out branch
+
+    code = _exit(branches_cli.main, ["branches", "prune", "--delete", "--repo-root", str(repo)])
+
+    assert code == 1
+    assert "[warn] feature/rm-done:" in capsys.readouterr().err
+    assert _has_branch(repo, "refs/heads/feature/rm-done")
+    assert not _has_branch(bare, "refs/heads/feature/rm-done")
 
 
 def test_prune_refuses_without_a_fresh_fetch(prune_repo, capsys) -> None:
