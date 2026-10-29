@@ -28,6 +28,8 @@ entries:
     node_id: M4.10
     branch: feature/rm-branch-cleanup
     touch_zones:
+      - specy_road/finish_implementation_check.py
+      - specy_road/finish_land_integration.py
       - specy_road/finish_milestone_rollout.py
       - specy_road/feature_rm_registry.py
       - specy_road/bundled_scripts/finish_task.py

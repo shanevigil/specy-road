@@ -315,7 +315,9 @@
         "specy_road/templates/specyrd/commands/specyrd-finish.md",
         "tests/",
         "specy_road/feature_rm_registry.py",
-        "specy_road/finish_milestone_rollout.py"
+        "specy_road/finish_milestone_rollout.py",
+        "specy_road/finish_implementation_check.py",
+        "specy_road/finish_land_integration.py"
       ],
       "type": "task"
     },
