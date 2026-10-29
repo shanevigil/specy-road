@@ -7,9 +7,11 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
+from specy_road.bundled_scripts.grind_session_cleanup import delete_merged_branch
 from specy_road.finish_land_deterministic import codename_from_branch
 from specy_road.runtime_paths import project_prefix
 from specy_road.finish_land_integration import (
+    integration_worktree,
     integration_worktree_problem,
     land_merge_feature_into_integration,
 )
@@ -96,15 +98,18 @@ def print_pr_gated_state(
     )
 
 
-def merge_landing_failed(ib: str, err_msg: str) -> NoReturn:
+def merge_landing_failed(ib: str, err_msg: str, *, delete_branch: bool = False) -> NoReturn:
     """Exit 1 after a failed merge landing, naming the re-run that retries it."""
+    again = "specy-road finish-this-task --on-complete merge"
+    if delete_branch:
+        again += " --delete-branch"
     print(f"\nerror: could not land merge to {ib}: {err_msg}", file=sys.stderr)
     print(
         "\n--on-complete merge cannot fall back to PR instructions. "
-        "Fix the integration branch (see error above), then run "
-        "`specy-road finish-this-task --on-complete merge` again on this "
-        "branch: the bookkeeping is already committed, so it retries only "
-        "the landing. Or rerun with --on-complete pr to open a PR instead.",
+        f"Fix the integration branch (see error above), then run `{again}` "
+        "again on this branch: the bookkeeping is already committed, so it "
+        "retries only the landing. Or rerun with --on-complete pr to open a "
+        "PR instead.",
         file=sys.stderr,
     )
     raise SystemExit(1)
@@ -116,6 +121,50 @@ def merge_landing_preflight(repo: Path, ib: str) -> None:
     if problem is not None:
         print(f"error: cannot land merge to {ib}: {problem}", file=sys.stderr)
         raise SystemExit(1)
+
+
+def delete_branch_preflight(on_mode: str, *, delete_branch: bool, rollup: bool = False) -> None:
+    """Exit 1 before the bookkeeping commit when --delete-branch could delete unlanded work.
+
+    A milestone rollup finish merges the leaf into the rollup branch, so ``pr``
+    does not leave that leaf as the only copy.
+    """
+    if delete_branch and on_mode == "pr" and not rollup:
+        print(
+            "error: --delete-branch needs a merge landing (--on-complete merge "
+            "or auto). Under pr the feature branch is the only copy of the "
+            "work until the PR merges; delete it after that with "
+            "`specy-road branches prune --delete`.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+
+def delete_landed_branch(
+    repo: Path, *, branch: str, ib: str, remote: str, contained_in: str | None = None,
+) -> None:
+    """Delete ``branch`` here and on ``remote`` now that it has landed.
+
+    ``contained_in`` is the ref that holds the branch (the rollup branch, when
+    the leaf merged there instead of into ``ib``). The checkout still moves to
+    ``ib``, because a checked-out branch cannot be deleted; when another
+    worktree holds ``ib``, this checkout detaches at it. Failures are reported,
+    never fatal: the work has already landed.
+    """
+    holder = integration_worktree(repo, ib)
+    # A failed checkout needs no check of its own: git branch -d then refuses and says why.
+    git_ok(["checkout", "--detach", ib] if holder else ["checkout", ib], repo)
+    pushed, _ = git_ok(["rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}"], repo)
+    local_ok, remote_ok, failure = delete_merged_branch(
+        repo, branch, contained_in or ib, remote, push=pushed,
+    )
+    if local_ok:
+        where = f"detached at {ib} ({ib} is checked out in {holder})" if holder else f"on {ib}"
+        print(f"[ok] deleted local branch {branch}; this checkout is now {where}")
+    if remote_ok:
+        print(f"[ok] deleted {branch} on {remote}")
+    if failure is not None:
+        print(f"[warn] --delete-branch: {failure['message']}", file=sys.stderr)
 
 
 # What finish-this-task's bookkeeping commit writes; anything else in that commit was never reviewed.
@@ -140,31 +189,55 @@ def _holds_claim_row(repo: Path, ref: str, codename: str | None) -> bool:
     return any(isinstance(e, dict) and e.get("codename") == codename for e in entries)
 
 
-def retry_merge_landing(repo: Path, *, branch: str, ib: str, remote: str) -> NoReturn:
+def refuse_unless_finish_tip(repo: Path, branch: str) -> None:
+    """Exit 1 unless ``branch``'s tip is the finish bookkeeping commit.
+
+    A commit added after it was never reviewed. The tip must be the commit
+    that removed this leaf's registry row, and that commit must change only
+    paths finish itself writes.
+    """
+    codename = codename_from_branch(branch)
+    moved = (
+        stray_finish_paths(repo, branch)
+        or _holds_claim_row(repo, branch, codename)
+        or not _holds_claim_row(repo, f"{branch}^", codename)
+    )
+    if not moved:
+        return
+    print(
+        f"error: {branch} has moved past its finish-this-task commit; new commits "
+        "need review before they land. Re-pick the leaf or open a new leaf for them.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def retry_merge_landing(
+    repo: Path, *, branch: str, ib: str, remote: str, delete_branch: bool = False,
+) -> NoReturn:
     """Land a branch whose finish bookkeeping is committed but whose merge failed.
 
     Only the finish commit itself -- the tip that removed this leaf's registry
     row -- is landed: a commit added after it was never reviewed or checked.
+    ``--delete-branch`` on this re-run still deletes the branch once it is on
+    ``remote/ib``, including when an earlier run already got it there.
     """
-    codename = codename_from_branch(branch)
-    stray = stray_finish_paths(repo, branch)
-    if stray or _holds_claim_row(repo, branch, codename) or not _holds_claim_row(repo, f"{branch}^", codename):
-        print(
-            f"error: {branch} has moved past its finish-this-task commit; new commits "
-            "need review before they land. Re-pick the leaf or open a new leaf for them.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
+    refuse_unless_finish_tip(repo, branch)
     git_ok(["fetch", "-q", remote, ib], repo)
     if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
-        print(f"\n[ok] {branch} is already merged into {ib} on {remote}; nothing to do")
+        done = "" if delete_branch else "; nothing to do"
+        print(f"\n[ok] {branch} is already merged into {ib} on {remote}{done}")
+        if delete_branch:
+            delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
         raise SystemExit(0)
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
     )
     if not ok:
-        merge_landing_failed(ib, err_msg)
+        merge_landing_failed(ib, err_msg, delete_branch=delete_branch)
     print(f"\n[ok] merged {branch} into {ib} and pushed to {remote}")
+    if delete_branch:
+        delete_landed_branch(repo, branch=branch, ib=ib, remote=remote)
     raise SystemExit(0)
 
 
@@ -208,12 +281,14 @@ def apply_on_complete_mode(
     if ok:
         print(f"\n[ok] merged {branch} into {ib} and pushed to {gw_remote}")
         remove_on_complete_session(sess_path)
+        if args.delete_branch:
+            delete_landed_branch(repo, branch=branch, ib=ib, remote=gw_remote)
         return
 
     if on_mode == "merge":
         # F-012: --on-complete merge means MERGE. Do NOT print PR
         # instructions as a fallback — that's exactly the bug being fixed.
-        merge_landing_failed(ib, err_msg)
+        merge_landing_failed(ib, err_msg, delete_branch=args.delete_branch)
 
     print(
         f"\nerror: could not land merge to {ib}: {err_msg}",

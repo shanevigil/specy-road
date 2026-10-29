@@ -116,7 +116,7 @@ must name itself in its own committed copy, and with remotes only `refs/remotes/
 read. If any of this is missing, unfetched or disagrees, the gate fails closed (on, and nothing passes
 it). Outside this protection: a remote whose default branch the feature author can push to, and anyone who can run git in the
 finishing clone (they can retarget `refs/remotes/<remote>/HEAD`); unsigned, the gate is cooperative attestation. Change policy on the integration branch; an edit on
-a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale.
+a feature branch is ignored by the gate, flagged in the review packet, and, like any commit that touches more than `roadmap/registry.yaml`, makes that branch's reviews stale. Routing reads the roster from the same ref: `orchestrate plan` names it (`roster_ref` in `--json`) and, when the working tree's `roadmap/orchestration.yaml` is absent there or differs, says so (`roster_drift`) in place of the "needs a rostered executor with may_process …" hint, which would send you to a file routing does not read; `validate` warns the same. Commit the roster to the integration branch to clear it.
 
 ## Choosing and prompting models
 
@@ -333,7 +333,7 @@ The registry shows claimed leaves; work that is not a claim — a design note, a
 merge, a review, a verifier's experiments — was invisible to every other agent in the checkout. A session announces itself instead:
 
 ```bash
-specy-road session start --path src/api --path docs/api.md --note "rate limits"
+specy-road session start --path src/api docs/api.md --note "rate limits"   # or repeat --path
 specy-road session touch            # renew; records expire after 4 hours by default
 specy-road session end
 specy-road session list [--all]

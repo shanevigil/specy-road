@@ -111,7 +111,7 @@ def test_with_push_it_also_deletes_the_remote_branch(monkeypatch, capsys):
     _run([*BASE, "--push", "--delete-merged-branches", "--max-leaves", "1",
           "--base", "dev", "--remote", "up"])
 
-    assert ["push", "up", "--delete", BR1] in h.git_calls
+    assert ["push", "up", f"--force-with-lease=refs/heads/{BR1}:{'a' * 40}", "--delete", BR1] in h.git_calls
     event = _event(_events(capsys), "cleanup")
     assert event["integration_branch"] == "dev"
     assert event["remote"] == "up"

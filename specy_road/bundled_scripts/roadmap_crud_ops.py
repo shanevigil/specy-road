@@ -106,25 +106,24 @@ def cmd_list(args: object) -> None:
     ``STATUS`` is the node's own field as written in the chunk; ``ROLLUP`` is
     what ``roadmap.md`` and the PM GUI show (a parent rolls up from its leaf
     descendants). One unlabelled column let the two disagree silently.
+    ``--json`` prints each kept node whole (title untruncated) plus ``chunk``.
     """
     root = repo_root(args)
-    merged = load_roadmap(root)["nodes"]
     chunk_map = build_node_chunk_map(root)
     wanted = {s.lower() for s in (getattr(args, "status", None) or [])}
+    rows = []
+    for n in sorted(load_roadmap(root)["nodes"], key=lambda x: natural_id_sort_key(x["id"])):
+        rollup = str(n.get("rollup_status") or n.get("status", ""))
+        if not wanted or rollup.lower() in wanted:
+            ch = chunk_map.get(n["id"])
+            rows.append((n, rollup, ch.relative_to(root).as_posix() if ch else None))
+    if getattr(args, "as_json", False):
+        print(json.dumps([{**n, "chunk": rel} for n, _, rel in rows], indent=2, ensure_ascii=False))
+        return
     print(f"{'ID':12}  {'TYPE':10}  {'STATUS':12}  {'ROLLUP':12}  TITLE  [CHUNK]")
-    for n in sorted(merged, key=lambda x: natural_id_sort_key(x["id"])):
-        nid = n["id"]
-        ch = chunk_map.get(nid)
-        rel = ch.relative_to(root) if ch else "(unknown)"
-        title = str(n.get("title", ""))[:60]
-        own = str(n.get("status", ""))
-        rollup = str(n.get("rollup_status") or own)
-        if wanted and rollup.lower() not in wanted:
-            continue
-        print(
-            f"{nid:12}  {n.get('type', ''):10}  "
-            f"{own:12}  {rollup:12}  {title}  [{rel}]",
-        )
+    for n, rollup, rel in rows:
+        print(f"{n['id']:12}  {n.get('type', ''):10}  {str(n.get('status', '')):12}  "
+              f"{rollup:12}  {str(n.get('title', ''))[:60]}  [{rel or '(unknown)'}]")
 
 
 def cmd_show(args: object) -> None:
@@ -177,11 +176,8 @@ def cmd_add(args: object) -> None:
         print(f"error: duplicate node id {nid!r}", file=sys.stderr)
         raise SystemExit(1)
     parent_val = _resolve_parent(args, root)
-    # Refuse to add a node under a parent that lives inside an active or
-    # pending_mr milestone subtree — adding new work mid-milestone is a
-    # silent scope expansion. Mirrors the cmd_edit / cmd_set_gate_status
-    # guards. The check fires only when the parent is a real node (root
-    # phases pass through with parent_val=None).
+    # Adding work under an active or pending_mr milestone subtree is a silent
+    # scope expansion; same guard as cmd_edit. Root phases (None) pass through.
     if isinstance(parent_val, str) and parent_val.strip():
         _refuse_if_milestone_locked(root, parent_val)
     if args.codename and not CODENAME_PATTERN.match(args.codename):
@@ -201,6 +197,7 @@ def cmd_add(args: object) -> None:
         "status": args.status,
         "touch_zones": list(args.touch_zone or []),
         "dependencies": list(args.dependency or []),
+        "acceptance": [a.strip() for a in getattr(args, "acceptance", None) or [] if a.strip()] or None,
         "parallel_tracks": args.parallel_tracks,
         "sensitivity": getattr(args, "sensitivity", None), "executor_eligibility": getattr(args, "executor_eligibility", None),
         # Unset sorts as 0 and jumped the pickup queue; append instead.
@@ -208,7 +205,9 @@ def cmd_add(args: object) -> None:
     }
     node = {k: v for k, v in node.items() if v is not None}
 
+    from specy_road.bundled_scripts.roadmap_crud_dependency_ops import resolve_dependency_refs
     try:
+        node["dependencies"] = resolve_dependency_refs(root, node["dependencies"])
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)

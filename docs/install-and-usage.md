@@ -193,35 +193,13 @@ and bumps the recorded `specyrd_version`. `specy-road validate` warns while the
 manifest lags. In a repo with no stub pack it still re-applies the managed
 blocks, says no pack is installed, and creates no manifest.
 
-Stubs this version no longer installs for your recorded `--role` are
-**listed, not deleted**, unless you pass `--prune`. They are paths the
+Stubs this version no longer installs for your recorded `--role` are **listed, not deleted**, unless you pass `--prune`. They are paths the
 manifest recorded as the kit's, so `--prune` deletes exactly the list shown
 (and a directory it leaves empty).
 
-Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any
-warning) can gate CI next to `export --check` and `digest --check`.
+Once the upgrade is committed, `specy-road validate --strict` (exit 1 on any warning) can gate CI next to `export --check` and `digest --check`.
 
-`validate` also warns when `AGENTS.md` or `CLAUDE.md`, outside the managed
-block, names a `specy-road` or `specyrd` subcommand this version does not
-register. Each occurrence is its own warning and names the file line
-(`AGENTS.md:4`); the same name on two lines is two warnings. A registered
-command never warns (`specy-road validate --strict`).
-
-These contexts always warn: a code span, a fenced block, a command-led list
-item, a run verb (run, exec, execute, invoke, uvx), and a token followed by a
-flag, a path, a quoted argument, an id-like argument, or the word command or
-subcommand. A list item is command-led when the product name is the first
-token after the marker, optionally in code or emphasis, or is preceded only
-by a run verb (`- specy-road frob --x` and `- Run specy-road frob` warn). A
-heading is not a special case (`# Please specy-road frob` warns). The only
-exclusion is a noun phrase: the product name is preceded by a determiner,
-possessive, or preposition — the, a, an, this, that, these, those, other, any,
-all, every, each, its, our, your, their, own, of, with, in, for, from, about —
-and the token is followed by a plain word or nothing ("the specy-road toolkit
-is" and "other specy-road formats (templates...)" do not warn). A prose bullet
-that names the product mid-sentence is that same exclusion ("- **Adoption
-prompts** are kept aligned with other specy-road formats that ..." does not
-warn).
+`validate` also warns once per occurrence, naming the file line (`AGENTS.md:4`), when `AGENTS.md` or `CLAUDE.md` outside the managed block names an unregistered `specy-road` or `specyrd` subcommand. The same name on two lines is two warnings. A registered command never warns (`specy-road validate --strict`). These always warn, and they win over a noun phrase: a code span (a run of N backticks closed by the next run of exactly N), a fenced block, a command-led list item (the product name is the first token after the marker, optionally in code or emphasis, or only a run verb precedes it: `- specy-road frob --x`, `- Run specy-road frob`), a run verb (run, exec, execute, invoke, uvx), and a token followed by a flag, a path, a quoted argument, an id-like argument, or the word command or subcommand. A heading is not special (`# Please specy-road frob` warns). The only exclusion is a noun phrase: the product name is preceded by the, a, an, this, that, these, those, other, any, all, every, each, its, our, your, their, own, of, with, in, for, from, or about, and the token is followed by a plain word or nothing ("the specy-road toolkit is", "other specy-road formats", and a mid-sentence bullet such as "- **Adoption prompts** are kept aligned with other specy-road formats" do not warn).
 
 #### Upgrading from 0.2.x
 
@@ -281,9 +259,9 @@ specy-road show-node M1.2.1
 specy-road sync
 ```
 
-Run all of these with `--repo-root /path/to/consumer/repo` if your shell is
-not already inside the consumer repo (for example when you're working in
-the toolkit clone and pointing at `playground/`).
+Run all of these with `--repo-root /path/to/consumer/repo` if your shell is not already inside the consumer repo (for example when you're working in the toolkit clone and pointing at `playground/`).
+
+`validate` ends with one `context:` line per harness: the lines and bytes of each instruction file it injects into every session started in the project root, and of the specy-road section inside it. Codex reads, in each directory from the git root down, the first non-empty of `AGENTS.override.md` then `AGENTS.md`, and truncates them at its 32 KiB `project_doc_max_bytes` budget; Claude Code reads `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` from the working directory up to the filesystem root (or `AGENTS.md` and `.claude/AGENTS.md` when none of those is present) and documents a target of under 200 lines per file. Only files inside the git root count toward those limits, so exceeding one there is a warning and `validate --strict` fails on it. Files outside the git root — ancestor instructions, `~/.claude/CLAUDE.md`, and `AGENTS.override.md` or `AGENTS.md` in the Codex home (`$CODEX_HOME`, else `~/.codex`) — are notes labelled user-level / machine-local and are never a warning.
 
 Shape the roadmap before authoring it: `specy-road brainstorm start --topic "…" --under <ID>`, hand the prompt to your agent, `next-round`, `recommend`, `evidence` + `verify`, then `accept` / `reject --reason` / `park` and `promote` ([brainstorming.md](brainstorming.md)).
 

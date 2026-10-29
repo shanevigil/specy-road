@@ -151,6 +151,14 @@ def should_cleanup_work_artifacts_on_finish(
     return cleanup_work_artifacts_on_finish(repo_root)
 
 
+def resolve_prefer_agentic(repo_root: Path, *, cli: bool | None) -> bool:
+    """Pickup order: CLI ``--prefer-agentic`` / ``--no-prefer-agentic`` wins, then
+    ``prefer_agentic_pick_order`` in ``roadmap/git-workflow.yaml``, else off."""
+    if cli is not None:
+        return cli
+    return _flag(repo_root, "prefer_agentic_pick_order", default=False)
+
+
 def on_complete_from_git_workflow(repo_root: Path) -> str:
     """``on_complete`` from ``roadmap/git-workflow.yaml``; default ``pr`` if missing or invalid."""
     data, err = load_git_workflow_config(repo_root)

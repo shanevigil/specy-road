@@ -6,21 +6,31 @@ Mirrors tests/test_specyrd_init_guide_block.py for `CLAUDE.md`.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
+import pytest
+
 from specy_road import __version__
+from specy_road.agent_guide_block import AGENT_GUIDE, PROVENANCE
 from specy_road.agents_md_block import (
     AGENTS_MD,
+    CLAUDE_MD_TARGET_LINES,
+    CODEX_PROJECT_DOC_MAX_BYTES,
     agents_md_block_state,
     apply_agents_md_block,
+    print_injected_context,
     render_agents_lines,
     warn_if_agents_md_block_stale,
+    warn_if_context_over_limits,
     warn_missing_load_order_paths,
 )
 from specy_road.bundled_scripts.refresh_stubs import refresh_stubs
 from specy_road.init_project import run_init_project
-from specy_road.managed_block import CREATED, UNCHANGED, UPDATED
+from specy_road.managed_block import CREATED, HTML_COMMENT, UNCHANGED, UPDATED
 from specy_road.specyrd_init import run_init
+
+TEMPLATES = Path(__file__).resolve().parent.parent / "specy_road" / "templates" / "specyrd"
 
 HAND_AUTHORED = """# Our agents guide
 
@@ -117,8 +127,203 @@ def test_refresh_stubs_reapplies_the_block(tmp_path: Path) -> None:
     assert agents_md_block_state(tmp_path) == "current"
 
 
+def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys, monkeypatch) -> None:
+    """Codex reads every AGENTS.md from the git root down; Claude Code reads CLAUDE.md, else those."""
+    monkeypatch.setenv("HOME", str(tmp_path / "no-user-claude"))
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+    block = f"{HTML_COMMENT.start}\n- one rule\n{HTML_COMMENT.end}"
+    (tmp_path / "sr").mkdir()
+    (tmp_path / "sr" / AGENTS_MD).write_text(f"# Ours\n{block}\n", encoding="utf-8")
+    size = len(block.encode("utf-8"))
+    agents = (f"AGENTS.md 6 lines, {len(HAND_AUTHORED)} bytes; "
+              f"sr/AGENTS.md 4 lines, {size + 8} bytes (specy-road section 3 lines, {size} bytes)")
+
+    print_injected_context(tmp_path / "sr")
+    assert capsys.readouterr().out == (
+        f"context: Codex reads {agents} — {len(HAND_AUTHORED) + size + 8:,} of its 32,768-byte "
+        "project_doc_max_bytes budget\n"
+        f"context: Claude Code reads {agents} — target under 200 lines per file\n"
+    )
+
+    (tmp_path / AGENT_GUIDE).write_text("# Claude\n\n", encoding="utf-8")
+    print_injected_context(tmp_path / "sr")
+    assert capsys.readouterr().out.splitlines()[1] == (
+        "context: Claude Code reads CLAUDE.md 2 lines, 10 bytes — target under 200 lines per file"
+    )
+
+
+def test_context_warnings_fire_only_past_a_documented_limit(tmp_path: Path, capsys) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    agents, claude = tmp_path / AGENTS_MD, tmp_path / AGENT_GUIDE
+    agents.write_text("x" * (CODEX_PROJECT_DOC_MAX_BYTES - 1) + "\n", encoding="utf-8")
+    claude.write_text("- rule\n" * (CLAUDE_MD_TARGET_LINES - 1), encoding="utf-8")
+    warn_if_context_over_limits(tmp_path)
+    assert capsys.readouterr().err == ""
+
+    agents.write_text("x" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
+    claude.write_text("- rule\n" * CLAUDE_MD_TARGET_LINES, encoding="utf-8")
+    warn_if_context_over_limits(tmp_path)
+    err = capsys.readouterr().err.splitlines()
+    assert len(err) == 2
+    assert err[0].startswith("context: warning — AGENTS.md total 32,769 bytes, and Codex truncates")
+    assert err[1].startswith("context: warning — CLAUDE.md is 200 lines; Claude Code's documented target")
+
+
+def test_dot_claude_claude_md_suppresses_the_agents_fallback(tmp_path: Path, capsys) -> None:
+    """`.claude/CLAUDE.md` is a project instruction, so Claude Code reads it and not AGENTS.md."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+    block = f"{HTML_COMMENT.start}\n- one rule\n{HTML_COMMENT.end}"
+    text = f"# Claude\n{block}\n"
+    path = tmp_path / ".claude" / AGENT_GUIDE
+    path.parent.mkdir()
+    path.write_text(text, encoding="utf-8")
+
+    print_injected_context(tmp_path)
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith(f"context: Codex reads AGENTS.md 6 lines, {len(HAND_AUTHORED)} bytes —")
+    assert "AGENTS.md" not in out[1]
+    assert out[1] == (
+        f"context: Claude Code reads .claude/CLAUDE.md {text.count(chr(10))} lines, "
+        f"{len(text.encode())} bytes (specy-road section 3 lines, {len(block.encode())} bytes) "
+        "— target under 200 lines per file"
+    )
+
+
+def test_claude_walks_ancestors_and_falls_back_to_dot_claude_agents(tmp_path: Path, capsys) -> None:
+    """Above the git root, CLAUDE.local.md, and .claude/AGENTS.md are launch-time files."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    above = tmp_path / "CLAUDE.md"
+    above.write_text("# above\n", encoding="utf-8")
+    (repo / "CLAUDE.local.md").write_text("# local\n", encoding="utf-8")
+    (repo / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+    (repo / ".claude").mkdir()
+    (repo / ".claude" / AGENTS_MD).write_text("# nested\n", encoding="utf-8")
+
+    print_injected_context(repo)
+    out = capsys.readouterr().out
+    reads = [ln for ln in out.splitlines() if ln.startswith("context: Claude Code reads ")][0]
+    assert above.resolve().as_posix() not in reads
+    assert "CLAUDE.local.md 1 lines" in reads
+    assert "AGENTS.md" not in reads
+    assert f"{above.resolve().as_posix()} 1 lines" in out and "user-level / machine-local" in out
+
+    above.unlink()
+    (repo / "CLAUDE.local.md").unlink()
+    print_injected_context(repo)
+    claude = capsys.readouterr().out.splitlines()[1]
+    assert claude.startswith("context: Claude Code reads AGENTS.md ")
+    assert ".claude/AGENTS.md 1 lines" in claude
+
+
+def test_user_claude_md_under_home_is_listed_once(tmp_path: Path, monkeypatch, capsys) -> None:
+    """A repo under HOME finds the user file on the ancestor walk; the report names it once."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    user = tmp_path / ".claude" / AGENT_GUIDE
+    user.parent.mkdir()
+    user.write_text("# user\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / AGENTS_MD).write_text(HAND_AUTHORED, encoding="utf-8")
+
+    print_injected_context(repo)
+    out = capsys.readouterr().out
+    shown = user.resolve().as_posix()
+    assert out.count(shown) == 1
+    assert f"{shown} 1 lines" in out and "user-level / machine-local" in out
+    reads = [ln for ln in out.splitlines() if ln.startswith("context: Claude Code reads ")][0]
+    assert shown not in reads and "AGENTS.md " in reads
+
+
+def test_codex_user_layer_is_a_note(tmp_path: Path, monkeypatch, capsys) -> None:
+    """``~/.codex`` is reported and not metered, even when the file is past the budget."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("CODEX_HOME", raising=False)
+    codex = tmp_path / "home" / ".codex"
+    codex.mkdir(parents=True)
+    (codex / AGENTS_MD).write_text("x" * (CODEX_PROJECT_DOC_MAX_BYTES + 1), encoding="utf-8")
+    override = codex / "AGENTS.override.md"
+    override.write_text("# home override\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / AGENTS_MD).write_text("# repo\n", encoding="utf-8")
+
+    print_injected_context(repo)
+    warn_if_context_over_limits(repo)
+    out, err = capsys.readouterr()
+    shown = override.resolve().as_posix()
+    assert out.splitlines()[0].startswith("context: Codex reads AGENTS.md ")
+    assert (codex / AGENTS_MD).resolve().as_posix() not in out
+    assert f"{shown} 1 lines" in out and "user-level / machine-local" in out
+    assert err == ""
+
+
+def test_codex_home_env_moves_the_user_layer(tmp_path: Path, monkeypatch, capsys) -> None:
+    """With ``CODEX_HOME`` set, its AGENTS.md is the note and ``~/.codex`` is not read."""
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    default = tmp_path / "home" / ".codex" / AGENTS_MD
+    default.parent.mkdir(parents=True)
+    default.write_text("# default home\n", encoding="utf-8")
+    codex_home = tmp_path / "codex-home"
+    codex_home.mkdir()
+    (codex_home / AGENTS_MD).write_text("# profile\n# rules\n", encoding="utf-8")
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / AGENTS_MD).write_text("# repo\n", encoding="utf-8")
+
+    print_injected_context(repo)
+    out = capsys.readouterr().out
+    shown = (codex_home / AGENTS_MD).resolve().as_posix()
+    assert f"context: note — {shown} 2 lines" in out and "user-level / machine-local" in out
+    assert default.resolve().as_posix() not in out
+
+
+def test_codex_meters_a_nonempty_override_instead_of_agents_md(tmp_path: Path, capsys) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    agents, override = tmp_path / AGENTS_MD, tmp_path / "AGENTS.override.md"
+    agents.write_text("x" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
+    override.write_text("", encoding="utf-8")
+    print_injected_context(tmp_path)
+    warn_if_context_over_limits(tmp_path)
+    out, err = capsys.readouterr()
+    assert out.splitlines()[0].startswith("context: Codex reads AGENTS.md ")
+    assert err.startswith("context: warning — AGENTS.md total")
+
+    override.write_text("y" * CODEX_PROJECT_DOC_MAX_BYTES + "\n", encoding="utf-8")
+    print_injected_context(tmp_path)
+    warn_if_context_over_limits(tmp_path)
+    out, err = capsys.readouterr()
+    assert out.splitlines()[0].startswith("context: Codex reads AGENTS.override.md ")
+    assert "AGENTS.md " not in out.splitlines()[0]
+    assert err.startswith("context: warning — AGENTS.override.md total")
+    assert "AGENTS.md" not in err
+
+
 def test_block_text_is_the_full_rule_set() -> None:
     text = "\n".join(render_agents_lines())
     for needle in ("### Load order", "## Finding things", "**Task pickup:**", "**Review roles:**",
                    "**Running many leaves:**", "**When nothing is pickable:**"):
         assert needle in text, needle
+    assert "<!--" not in text   # provenance stays in the template
+
+
+@pytest.mark.parametrize("name", ["agents-md-block.md", "claude-md-block.md"])
+def test_every_rule_in_a_block_template_is_followed_by_its_provenance(name: str) -> None:
+    lines = (TEMPLATES / name).read_text(encoding="utf-8").splitlines()
+    missing = []
+    for i, line in enumerate(lines):
+        if not line.startswith(("- ", "**")):
+            continue
+        end = next((j for j in range(i + 1, len(lines))
+                    if not lines[j].strip() or lines[j].startswith(("- ", "<!--"))), len(lines))
+        if end == len(lines) or not PROVENANCE.fullmatch(lines[end]):
+            missing.append(line[:60])
+    assert not missing, missing

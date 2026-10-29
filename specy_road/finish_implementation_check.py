@@ -34,6 +34,7 @@ from pathlib import Path
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import require_implementation_before_finish
+from specy_road.runtime_paths import project_prefix, rebase_to_project
 
 _GLOB_CHARS = "*?["
 
@@ -102,7 +103,9 @@ def implementation_paths(
     paths = changed_paths(repo_root, ref)
     if paths is None:
         return None
-    return [p for p in paths if any(zone_matches(z, p) for z in cleaned)]
+    prefix = project_prefix(repo_root)
+    project_paths = [p for p in (rebase_to_project(path, prefix) for path in paths) if p]
+    return [p for p in project_paths if any(zone_matches(z, p) for z in cleaned)]
 
 
 def implementation_gate_error(

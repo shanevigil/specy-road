@@ -24,7 +24,11 @@ import time
 from pathlib import Path
 
 
-from specy_road.bundled_scripts.grind_session_args import parse_grind_session_args
+from specy_road.bundled_scripts.grind_session_args import (
+    finish_args as _finish_args,
+    parse_grind_session_args,
+    pickup_args as _pickup_args,
+)
 from specy_road.bundled_scripts.grind_session_cleanup import run_session_cleanup
 from specy_road.bundled_scripts.grind_session_implement import run_implement_hook
 from specy_road.bundled_scripts.grind_session_limits import (
@@ -131,39 +135,6 @@ def _wait_for_signal(repo_root: Path, rel: str, timeout: float) -> bool:
             return False
         time.sleep(interval)
         waited += interval
-
-
-# ---------------------------------------------------------------------------
-# Argument builders for pass-through
-# ---------------------------------------------------------------------------
-
-
-def _pickup_args(args, repo_root: Path) -> list[str]:
-    out = ["do-next-available-task", "--repo-root", str(repo_root)]
-    if args.base:
-        out += ["--base", args.base]
-    if args.remote:
-        out += ["--remote", args.remote]
-    if args.on_complete:
-        out += ["--on-complete", args.on_complete]
-    out += [flag for flag, on in (("--no-ci-skip-in-message", args.no_ci_skip_in_message),
-                                  ("--allow-unauthored", args.allow_unauthored)) if on]
-    if args.milestone_subtree:
-        out.append("--milestone-subtree")
-    elif args.under:
-        out += ["--under", args.under]
-    return out
-
-
-def _finish_args(args, repo_root: Path) -> list[str]:
-    out = ["finish-this-task", "--repo-root", str(repo_root)]
-    if args.on_complete:
-        out += ["--on-complete", args.on_complete]
-    if args.remote:
-        out += ["--remote", args.remote]
-    if args.push:
-        out.append("--push")
-    return out
 
 
 def _hook_env(repo_root: Path, node_id: str, branch: str, brief: str, prompt: str) -> dict:
@@ -328,7 +299,10 @@ def _run_loop(
 ) -> tuple[int, bool]:
     """Drive cycles until a bound is hit. Returns (exit code, failed)."""
     for _cycle in range(max(1, args.max_cycles)):
-        nodes, reg, plan = gather_plan(repo_root, args.under, allow_unauthored=args.allow_unauthored)
+        nodes, reg, plan = gather_plan(
+            repo_root, args.under, allow_unauthored=args.allow_unauthored,
+            prefer_agentic=args.prefer_agentic,
+        )
         if plan.ready:
             node_id, branch, terminal = _do_cycle(
                 args, repo_root, emitter, nodes, plan.ready[0]
@@ -366,7 +340,10 @@ def run_session(args) -> int:
     CHILD_STDOUT_TO_STDERR = bool(args.json)
     emitter = EventEmitter(as_json=args.json)
     if args.plan:
-        _nodes, _reg, plan = gather_plan(repo_root, args.under, allow_unauthored=args.allow_unauthored)
+        _nodes, _reg, plan = gather_plan(
+            repo_root, args.under, allow_unauthored=args.allow_unauthored,
+            prefer_agentic=args.prefer_agentic,
+        )
         _emit_plan(emitter, plan)
         return EXIT_OK
     mode_error = _pin_loop_mode(repo_root, args)

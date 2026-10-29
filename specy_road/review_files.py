@@ -189,7 +189,9 @@ def review_semantic_errors(
             errs.append("verdict: approve with required_changes listed; use block")
     if acceptance_ids is not None:
         missing = [a for a in acceptance_ids if a not in results]
-        unknown = sorted(set(results) - set(acceptance_ids))
+        # An `n/a` on an id the brief lacks (a criterion moved to another leaf and
+        # still named in the summary) carries no judgment; a pass or fail on one does.
+        unknown = sorted(k for k in set(results) - set(acceptance_ids) if results[k] != "n/a")
         if missing:
             errs.append(f"acceptance: no result for {', '.join(missing)}")
         if unknown:

@@ -64,6 +64,7 @@ _FORWARDED = {
     "session": "session_cli.py",
     "review": "review_cli.py",
     "worker": "worker_cli.py",
+    "branches": "branches_cli.py",
 }
 
 _CRUD_COMMANDS = (
@@ -77,6 +78,7 @@ _CRUD_COMMANDS = (
     "set-dependencies",
     "add-dependency",
     "remove-dependency",
+    "apply",
 )
 
 _ARCHIVE_COMMANDS = (

@@ -1,96 +1,105 @@
 version: 1
 entries:
-  - codename: worker-cli-fixes
-    node_id: M3.9
-    branch: feature/rm-worker-cli-fixes
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/orchestrate_plan.py
-      - specy_road/orchestration_pinned.py
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/orchestration-workers.md
-      - docs/orchestration.md
-      - tests/
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - specy_road/worker_reconcile.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
-  - codename: graph-apply
-    node_id: M4.7
-    branch: feature/rm-graph-apply
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/roadmap_crud_dependency_ops.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
-  - codename: graph-listing-and-moves
-    node_id: M4.8
-    branch: feature/rm-graph-listing-and-moves
-    touch_zones:
-      - specy_road/bundled_scripts/roadmap_crud_ops.py
-      - specy_road/bundled_scripts/roadmap_crud_argparse.py
-      - specy_road/bundled_scripts/refresh_stubs.py
-      - specy_road/bundled_scripts/roadmap_move_node.py
-      - docs/pm-workflow.md
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
-  - codename: pick-ordering
-    node_id: M4.9
-    branch: feature/rm-pick-ordering
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/git_workflow_config.py
-      - docs/dev-workflow.md
-      - tests/
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - sr/schemas/git-workflow.schema.json
-      - tests/fixtures/specy_road_dogfood/schemas/
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/session_plan_git.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/bundled_scripts/grind_session_step.py
-      - docs/grind-session.md
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
-  - codename: rule-provenance
-    node_id: M5.1
-    branch: feature/rm-rule-provenance
-    touch_zones:
-      - specy_road/templates/specyrd/agents-md-block.md
-      - specy_road/templates/specyrd/claude-md-block.md
-      - specy_road/agents_md_block.py
-      - specy_road/agent_guide_block.py
-      - tests/
-    started: '2026-10-28'
-    owner: savigil
-    implementation_review: pending
   - codename: stale-command-check
     node_id: M5.2
     branch: feature/rm-stale-command-check
     touch_zones:
+      - AGENTS.md
+      - docs/install-and-usage.md
       - specy_road/bundled_scripts/validate_roadmap.py
       - specy_road/cli.py
       - specy_road/managed_block.py
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: project-setup
+    node_id: M1.1
+    branch: feature/rm-project-setup
+    touch_zones:
+      - constitution/
+      - vision.md
+      - roadmap/
+      - planning/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: a-baseline-gate-runs-on-the-integration-branch-before-pickup
+    node_id: M3.12
+    branch: feature/rm-a-baseline-gate-runs-on-the-integration-branch-before-pickup
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/bundled_scripts/do_next_available.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/bundled_scripts/grind_session_step.py
+      - specy_road/git_workflow_config.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - schemas/git-workflow.schema.json
+      - docs/dev-workflow.md
+      - docs/grind-session.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
+    node_id: M3.13
+    branch: feature/rm-a-trial-merge-with-the-integration-branch-runs-before-review-and-before-finish
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/bundled_scripts/finish_task.py
+      - specy_road/finish_land_integration.py
+      - specy_road/git_subprocess.py
+      - docs/orchestration.md
+      - docs/dev-workflow.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave
+    node_id: M4.11
+    branch: feature/rm-grind-session-plan-keeps-ready-leaves-with-overlapping-touch-zones-out-of-the-same-parallel-wave
+    touch_zones:
+      - specy_road/bundled_scripts/session_plan.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/orchestrate_plan.py
+      - docs/grind-session.md
+      - docs/orchestration.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: file-limits-function-length-check-covers-typescript-and-javascript
+    node_id: M4.12
+    branch: feature/rm-file-limits-function-length-check-covers-typescript-and-javascript
+    touch_zones:
+      - specy_road/file_limits_js.py
+      - specy_road/file_limits_engine.py
+      - constraints/README.md
+      - tests/fixtures/specy_road_dogfood/constraints/README.md
+      - specy_road/bundled_scripts/validate_file_limits.py
+      - constraints/file-limits.yaml
+      - specy_road/templates/project/constraints/file-limits.yaml
+      - docs/file-limits.md
+      - tests/
+    started: '2026-10-28'
+    owner: savigil
+    implementation_review: pending
+  - codename: specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes
+    node_id: M4.13
+    branch: feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/bundled_scripts/branches_cli.py
+      - specy_road/feature_rm_registry.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/templates/specyrd/commands/
+      - docs/git-workflow.md
       - tests/
     started: '2026-10-28'
     owner: savigil

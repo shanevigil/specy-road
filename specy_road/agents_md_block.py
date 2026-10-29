@@ -19,15 +19,21 @@ add to them, never relax them (design note
 Unlike the ``CLAUDE.md`` block, this one is harness-neutral and lives at the
 **project** root, next to ``roadmap/``: Cursor, Codex and Claude Code all read
 ``AGENTS.md``, and the ``CLAUDE.md`` block points at it rather than copying it.
+
+``validate`` also meters what those files cost: the lines and bytes each harness
+injects into every session, against the limit its vendor documents.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from specy_road import __version__
+from specy_road.agent_guide_block import AGENT_GUIDE, strip_provenance
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import (
@@ -37,14 +43,31 @@ from specy_road.managed_block import (
     apply_managed_block,
     render_block,
 )
+from specy_road.runtime_paths import git_root
 
 AGENTS_MD = "AGENTS.md"
+
+#: Codex, per directory from the git root down, takes the first non-empty of
+#: ``AGENTS.override.md`` then ``AGENTS.md`` and truncates the result at
+#: ``project_doc_max_bytes``, 32 KiB by default:
+#: https://developers.openai.com/codex/guides/agents-md
+CODEX_PROJECT_DOC_MAX_BYTES = 32 * 1024
+_CODEX_CANDIDATES = ("AGENTS.override.md", AGENTS_MD)
+#: "target under 200 lines per CLAUDE.md file". Loaded from the working directory and
+#: every ancestor, root-down; within a directory ``CLAUDE.local.md`` follows ``CLAUDE.md``:
+#: https://code.claude.com/docs/en/memory
+CLAUDE_MD_TARGET_LINES = 200
+_CLAUDE_CANDIDATES = (AGENT_GUIDE, f".claude/{AGENT_GUIDE}", "CLAUDE.local.md")
+#: Read only when no candidate above is present. ``~/.claude/CLAUDE.md`` loads too, but
+#: it does not count toward that check: https://code.claude.com/docs/en/memory
+_CLAUDE_AGENTS_FALLBACK = (AGENTS_MD, f".claude/{AGENTS_MD}")
 _TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
 _H1 = "# Agents — load order\n"
 
 
 def render_agents_lines() -> list[str]:
-    text = link_toolkit_docs(_TEMPLATE.read_text(encoding="utf-8").replace("{{SPECYRD_VERSION}}", __version__))
+    text = strip_provenance(_TEMPLATE.read_text(encoding="utf-8"))
+    text = link_toolkit_docs(text.replace("{{SPECYRD_VERSION}}", __version__))
     return text.rstrip("\n").splitlines()
 
 
@@ -134,3 +157,164 @@ def apply_agents_and_report(project_root: Path, written: list[str], *, dry_run: 
     outcome = apply_agents_md_block(project_root, dry_run=dry_run)
     if outcome != UNCHANGED:
         written.append(f"{prefix}{AGENTS_MD} ({outcome})")
+
+
+@dataclass(frozen=True)
+class InjectedFile:
+    """One instruction file a harness injects into every session, and its specy-road section."""
+
+    rel: str
+    lines: int
+    size: int
+    block_lines: int
+    block_size: int
+
+    def describe(self) -> str:
+        own = f" (specy-road section {self.block_lines} lines, {self.block_size:,} bytes)" if self.block_size else ""
+        return f"{self.rel} {self.lines} lines, {self.size:,} bytes{own}"
+
+
+def _measure(path: Path, rel: str) -> InjectedFile:
+    data = path.read_bytes()
+    _before, block, _after = _split(data.decode("utf-8", errors="replace"), HTML_COMMENT)
+    own = (block or "").encode("utf-8")
+    return InjectedFile(rel, len(data.splitlines()), len(data), len(own.splitlines()), len(own))
+
+
+def _dirs_from_root(start: Path) -> list[Path]:
+    """``start`` and every ancestor, filesystem root first."""
+    return list(reversed((start, *start.parents)))
+
+
+def _display(path: Path, top: Path) -> str:
+    """Repo-relative inside the checkout; absolute for a file above the git root."""
+    try:
+        return path.relative_to(top).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
+def _present(dirs: list[Path], names: tuple[str, ...]) -> list[Path]:
+    return [d / name for d in dirs for name in names if (d / name).is_file()]
+
+
+def _codex_paths(start: Path, top: Path) -> list[Path]:
+    """One non-empty file per directory: ``AGENTS.override.md``, else ``AGENTS.md``."""
+    chosen = []
+    for d in (d for d in _dirs_from_root(start) if d.is_relative_to(top)):
+        for name in _CODEX_CANDIDATES:
+            path = d / name
+            if path.is_file() and path.stat().st_size > 0:
+                chosen.append(path)
+                break
+    return chosen
+
+
+def _inside(path: Path, top: Path) -> bool:
+    """True when ``path`` is inside the git root. Only those files are metered."""
+    return path.resolve().is_relative_to(top)
+
+
+def _user_claude_path() -> Path:
+    """``~/.claude/CLAUDE.md`` on this machine, whether or not the repo sits under it."""
+    return Path.home() / ".claude" / AGENT_GUIDE
+
+
+def _codex_home_file() -> Path | None:
+    """The non-empty Codex-home file Codex reads before the project, or None.
+
+    The Codex home is ``CODEX_HOME`` when set, else ``~/.codex``. Same order as a
+    project directory: ``AGENTS.override.md``, then ``AGENTS.md``.
+    https://developers.openai.com/codex/guides/agents-md
+    """
+    root = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
+    for name in _CODEX_CANDIDATES:
+        path = root / name
+        if path.is_file() and path.stat().st_size > 0:
+            return path
+    return None
+
+
+def _claude_paths(start: Path) -> list[Path]:
+    """Launch-time Claude files, ancestors included.
+
+    A project ``CLAUDE.md``, ``.claude/CLAUDE.md`` or ``CLAUDE.local.md`` suppresses
+    the ``AGENTS.md`` fallback. ``~/.claude/CLAUDE.md`` does not.
+    """
+    dirs = _dirs_from_root(start)
+    claude = _present(dirs, _CLAUDE_CANDIDATES)
+    user = _user_claude_path().resolve()
+    if any(p.resolve() != user for p in claude):
+        return claude
+    return _present(dirs, (*_CLAUDE_CANDIDATES, *_CLAUDE_AGENTS_FALLBACK))
+
+
+def _machine_local_paths(start: Path, top: Path) -> list[Path]:
+    """Instruction files outside the git root. Each is a note, never a warning.
+
+    The ancestor walk and the explicit home candidates can name one file; it is listed once.
+    """
+    discovered = _claude_paths(start)
+    outside = [p for p in discovered if not _inside(p, top)]
+    seen = {p.resolve() for p in discovered}
+    user = _user_claude_path()
+    if user.is_file() and user.resolve() not in seen and not _inside(user, top):
+        outside.append(user)
+    codex = _codex_home_file()
+    if codex is not None and codex.resolve() not in seen and not _inside(codex, top):
+        outside.append(codex)
+    return outside
+
+
+def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
+    return [_measure(p, _display(p, top)) for p in paths]
+
+
+def injected_context(project_root: Path) -> tuple[list[InjectedFile], list[InjectedFile]]:
+    """``(Codex, Claude Code)``: repository files a session started in ``project_root`` injects.
+
+    Only paths inside the git root. Anything outside is :func:`_machine_local_paths`.
+    """
+    project_root = project_root.resolve()
+    top = git_root(project_root) or project_root
+    claude = [p for p in _claude_paths(project_root) if _inside(p, top)]
+    return _measured(_codex_paths(project_root, top), top), _measured(claude, top)
+
+
+def print_injected_context(project_root: Path) -> None:
+    """One line per harness: what every session pays, against the documented limit."""
+    codex, claude = injected_context(project_root)
+    if codex:
+        print(f"context: Codex reads {'; '.join(f.describe() for f in codex)} — "
+              f"{sum(f.size for f in codex):,} of its {CODEX_PROJECT_DOC_MAX_BYTES:,}-byte "
+              "project_doc_max_bytes budget")
+    if claude:
+        print(f"context: Claude Code reads {'; '.join(f.describe() for f in claude)} — "
+              f"target under {CLAUDE_MD_TARGET_LINES} lines per file")
+    root = project_root.resolve()
+    top = git_root(root) or root
+    for note in _measured(_machine_local_paths(root, top), top):
+        print(f"context: note — {note.describe()}, user-level / machine-local; "
+              "not counted toward this repository's limit")
+
+
+def warn_if_context_over_limits(project_root: Path) -> None:
+    """A non-fatal line for each documented limit the injected files exceed."""
+    codex, claude = injected_context(project_root)
+    total = sum(f.size for f in codex)
+    if total > CODEX_PROJECT_DOC_MAX_BYTES:
+        print(
+            f"context: warning — {', '.join(f.rel for f in codex)} total {total:,} bytes, and Codex "
+            f"truncates project instructions at {CODEX_PROJECT_DOC_MAX_BYTES:,} (project_doc_max_bytes), "
+            "so its sessions here never see the rest. Shorten them, or raise project_doc_max_bytes "
+            "in ~/.codex/config.toml.",
+            file=sys.stderr,
+        )
+    for f in claude:
+        if f.lines >= CLAUDE_MD_TARGET_LINES:
+            print(
+                f"context: warning — {f.rel} is {f.lines} lines; Claude Code's documented target is under "
+                f"{CLAUDE_MD_TARGET_LINES} per file, because every session pays for the rest in context "
+                "and adherence. Move what only some tasks need into a doc it links to.",
+                file=sys.stderr,
+            )

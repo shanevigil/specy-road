@@ -1,9 +1,10 @@
-"""Argument parser for ``specy-road grind-session``."""
+"""Argument parser for ``specy-road grind-session``, and the pickup/finish argv it passes through."""
 
 from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
@@ -137,6 +138,11 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                    help="Treat leaves whose planning sheet is still a placeholder and "
                         "whose node has no acceptance as ready (--plan lists them as not "
                         "ready by default); passed through to pickup.")
+    p.add_argument("--prefer-agentic", action=argparse.BooleanOptionalAction, default=None,
+                   help="Order ready leaves Agentic-led, Mixed, unset, Human-led within each "
+                        "pickup tier (default: prefer_agentic_pick_order in "
+                        "roadmap/git-workflow.yaml); applies to --plan and is passed through "
+                        "to pickup.")
     p.add_argument("--push", action="store_true",
                    help="Pass --push through to finish-this-task.")
     p.add_argument("--delete-merged-branches", action="store_true",
@@ -190,3 +196,38 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
         if value is not None and value < 0:
             p.error(f"--{name.replace('_', '-')} must not be negative")
     return ns
+
+
+# ---------------------------------------------------------------------------
+# Argument builders for pass-through
+# ---------------------------------------------------------------------------
+
+
+def pickup_args(args, repo_root: Path) -> list[str]:
+    out = ["do-next-available-task", "--repo-root", str(repo_root)]
+    if args.base:
+        out += ["--base", args.base]
+    if args.remote:
+        out += ["--remote", args.remote]
+    if args.on_complete:
+        out += ["--on-complete", args.on_complete]
+    out += [flag for flag, on in (("--no-ci-skip-in-message", args.no_ci_skip_in_message),
+                                  ("--allow-unauthored", args.allow_unauthored)) if on]
+    if args.prefer_agentic is not None:
+        out.append("--prefer-agentic" if args.prefer_agentic else "--no-prefer-agentic")
+    if args.milestone_subtree:
+        out.append("--milestone-subtree")
+    elif args.under:
+        out += ["--under", args.under]
+    return out
+
+
+def finish_args(args, repo_root: Path) -> list[str]:
+    out = ["finish-this-task", "--repo-root", str(repo_root)]
+    if args.on_complete:
+        out += ["--on-complete", args.on_complete]
+    if args.remote:
+        out += ["--remote", args.remote]
+    if args.push:
+        out.append("--push")
+    return out

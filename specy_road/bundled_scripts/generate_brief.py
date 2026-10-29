@@ -4,7 +4,9 @@
 F-004: ``specy-road brief`` is a deterministic agent-handoff document that
 inlines all the context an implementer needs (no separate file-opening):
 
-* node metadata (id, codename, title, status, rollup, touch zones), then its
+* node metadata (id, codename, title, status, rollup, touch zones; in the
+  nested layout the project root, with the summary and hand-off paths from
+  the git root), then its
   ``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records
   cite those ids — see ``brief_acceptance``)
 * ancestor context chain (program -> phase -> milestone -> task)
@@ -44,7 +46,7 @@ from specy_road.bundled_scripts.planning_artifacts import (
 )
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.bundled_scripts.roadmap_node_keys import build_key_to_node
-from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
+from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix
 
 
 def load_nodes(root: Path | None = None) -> list[dict]:
@@ -86,7 +88,16 @@ def _section_header(node_id: str, title: str, codename: str | None) -> list[str]
     ]
 
 
-def _section_metadata(node: dict) -> list[str]:
+def _project_root_line(nid: str, prefix: str) -> list[str]:
+    """Nested layout only: a worker runs at the git root, where ``work/`` is not the project's."""
+    if not prefix:
+        return []
+    return [f"- **Project root:** `{prefix}` under the git root. Work from the git root; from there this "
+            f"leaf's implementation summary is `{prefix}work/implementation-summary-{nid}.md` and its review "
+            f"hand-offs go in `{prefix}work/reviews/{nid}/` of the main checkout — never in the git root's `work/`."]
+
+
+def _section_metadata(node: dict, prefix: str = "") -> list[str]:
     nid = node["id"]
     rollup = node.get("rollup_status") or node.get("status")
     tz = node.get("touch_zones") or []
@@ -102,6 +113,7 @@ def _section_metadata(node: dict) -> list[str]:
         f"- **Status (rollup):** {rollup}",
         f"- **Execution (milestone hint):** {node.get('execution_milestone') or '—'}",
         f"- **Touch zones:** {tz_str}",
+        *_project_root_line(nid, prefix),
         "",
     ] + render_goal_and_acceptance(node)
 
@@ -321,7 +333,7 @@ def render_brief(
 
     parts: list[list[str]] = [
         _section_header(node_id, n.get("title", ""), n.get("codename")),
-        _section_metadata(n),
+        _section_metadata(n, project_prefix(root)),
         _section_ancestor_chain(chain),
         _inline_planning(n, root, by_id),
         _inline_shared_contracts(root, cited, inline_all=all_contracts),

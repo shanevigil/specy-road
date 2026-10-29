@@ -1,4 +1,4 @@
-"""Human-readable rendering of a :class:`session_plan.SessionPlan`.
+"""Human-readable rendering (and the JSON view) of a :class:`session_plan.SessionPlan`.
 
 Kept separate from ``session_plan.py`` so both stay under the file-line cap.
 The rendered text is oriented toward sub-agent orchestration: a "Dispatch now"
@@ -9,7 +9,11 @@ sub-agent for work whose dependencies are unmet.
 
 from __future__ import annotations
 
-from specy_road.bundled_scripts.session_plan import SessionPlan
+from dataclasses import asdict
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # annotations only: session_plan re-exports session_plan_to_dict from here
+    from specy_road.bundled_scripts.session_plan import SessionPlan
 
 
 def _fmt(ids) -> str:
@@ -70,7 +74,8 @@ def _render_dispatch(plan: SessionPlan) -> list[str]:
 
 
 def _render_next_pick(plan: SessionPlan) -> list[str]:
-    """Name the leaf pickup would claim, and say that this plan is a snapshot.
+    """Name the leaf pickup would claim, with its execution milestone, and say
+    that this plan is a snapshot.
 
     ``ready`` is the pickup queue itself, so its head is the answer to "what
     happens if I just run the loop". Printing it stops the plan from being read
@@ -81,9 +86,16 @@ def _render_next_pick(plan: SessionPlan) -> list[str]:
     if not plan.ready:
         return []
     scope = f" --under {plan.under}" if plan.under else ""
+    nxt = plan.ready[0]
+    execution = plan.ready_execution.get(nxt) or "no execution milestone"
+    order = (
+        " Ready leaves are ordered Agentic-led first (prefer_agentic_pick_order)."
+        if plan.prefer_agentic
+        else ""
+    )
     return [
-        f"**Next auto-pick:** `{plan.ready[0]}` — what "
-        f"`specy-road do-next-available-task{scope}` claims if you run it now.",
+        f"**Next auto-pick:** `{nxt}` ({execution}) — what "
+        f"`specy-road do-next-available-task{scope}` claims if you run it now.{order}",
         "",
         "_This plan reads feature-branch tips locally so ``ready`` and "
         "``Next auto-pick`` match what pickup skips after sync. Pickup still "
@@ -154,3 +166,25 @@ def _render_misc(plan: SessionPlan) -> list[str]:
         )
         lines.append("")
     return lines
+
+
+def session_plan_to_dict(plan: SessionPlan) -> dict:
+    """JSON-serializable view of a :class:`SessionPlan`."""
+    return {
+        "under": plan.under,
+        "ready": list(plan.ready),
+        "blocked": [asdict(b) for b in plan.blocked],
+        "active": list(plan.active),
+        "closed": list(plan.closed),
+        "gated": list(plan.gated),
+        "gates_open": list(plan.gates_open),
+        "needs_codename": list(plan.needs_codename),
+        "waves": [asdict(w) for w in plan.waves],
+        "parallel_batches": [list(b) for b in plan.parallel_batches],
+        "finished_unmerged": list(plan.finished_unmerged),
+        "finished_claimed": list(plan.finished_claimed),
+        "unauthored": [asdict(u) for u in plan.unauthored],
+        "totals": dict(plan.totals),
+        "ready_execution": {i: plan.ready_execution.get(i) for i in plan.ready},
+        "prefer_agentic": plan.prefer_agentic,
+    }
