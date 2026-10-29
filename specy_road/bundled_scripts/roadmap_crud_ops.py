@@ -215,18 +215,14 @@ def cmd_add(args: object) -> None:
     print(f"[ok] appended node {nid} to {chunk_path.relative_to(root)}")
 
 
-def append_node_to_chunk(root: Path, chunk_arg: str | None, node: dict) -> Path:
-    """Append ``node`` to a roadmap chunk, auto-routing if the hint chunk would overflow.
+def append_node_to_chunk(
+    root: Path, chunk_arg: str | None, node: dict, *, validate: bool = True,
+) -> Path:
+    """Append ``node`` to a chunk (``chunk_arg`` is a hint); auto-route on overflow.
 
-    ``chunk_arg`` is treated as a *hint*: if supplied and the chunk has room,
-    the node lands there (today's behavior). If no hint or the hint is full,
-    the chunk router picks a same-phase chunk, then any chunk, then auto-creates
-    a new chunk and updates the manifest.
-
-    Atomic: the node's planning sheet is staged alongside the chunk and manifest,
-    so a validation failure rolls back all three. Scaffolding the sheet outside
-    the transaction used to leave an orphan behind that ``validate`` rejects,
-    turning a refused ``add-node`` into a repo that cannot validate at all.
+    Atomic: the planning sheet is staged with the chunk and manifest so a
+    validation failure rolls all three back. ``validate=False`` skips the
+    post-write check so a batch can validate once after every node is written.
     """
     from specy_road.bundled_scripts.roadmap_chunk_router import write_with_routing
 
@@ -236,7 +232,9 @@ def append_node_to_chunk(root: Path, chunk_arg: str | None, node: dict) -> Path:
     parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
     planned_sheet = plan_planning_sheet_for_new_node(root, node)
     extra = {planned_sheet[0]: planned_sheet[1]} if planned_sheet else None
-    return write_with_routing(root, parent_id, chunk_arg, node, extra_files=extra)
+    return write_with_routing(
+        root, parent_id, chunk_arg, node, extra_files=extra, validate=validate,
+    )
 
 
 def _planning_rename_plan(

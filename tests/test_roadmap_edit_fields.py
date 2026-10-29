@@ -119,6 +119,8 @@ def test_a_json_looking_list_value_is_noted_and_stored_as_text(value: str, noted
               notify=notes.append)
     assert node["acceptance"] == [value]
     assert bool(notes) is noted
+    if noted:
+        assert "--set acceptance=" in notes[0]
 
 
 def test_title_to_codename_honors_max_words() -> None:

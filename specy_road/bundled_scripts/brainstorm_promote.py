@@ -27,14 +27,13 @@ from specy_road.bundled_scripts.planning_artifacts import (
     normalize_planning_dir,
     planning_artifact_paths,
 )
-from specy_road.bundled_scripts.planning_sheet_bootstrap import (
-    PROMOTE_PLACEHOLDER,
-    plan_planning_sheet_for_new_node,
+from specy_road.bundled_scripts.planning_sheet_bootstrap import PROMOTE_PLACEHOLDER
+from specy_road.bundled_scripts.roadmap_crud_ops import (
+    append_node_to_chunk,
+    run_validate_raise,
 )
-from specy_road.bundled_scripts.roadmap_crud_ops import run_validate_raise
 from specy_road.bundled_scripts.roadmap_crud_prepare import (
     derive_codename_with_collision_suffix,
-    heal_before_mutation,
 )
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
@@ -160,13 +159,6 @@ def _accept_order_key(idea: Idea) -> tuple[str, str]:
     return (when, idea.id)
 
 
-def _title_for_promote_codename(title: str) -> str:
-    parts = (title or "").split()
-    if not parts:
-        return title or ""
-    return " ".join(parts[:PROMOTE_CODENAME_MAX_WORDS])
-
-
 def _promote_codename(
     idea: Idea,
     existing: set[str],
@@ -185,50 +177,11 @@ def _promote_codename(
             )
         return raw
     return derive_codename_with_collision_suffix(
-        _title_for_promote_codename(idea.title),
+        idea.title,
         node_key,
         existing,
+        max_words=PROMOTE_CODENAME_MAX_WORDS,
     )
-
-
-def _write_promoted_node(root: Path, node: dict, *, validate: bool) -> Path:
-    """Stage one promoted node like ``add-node``, optionally skipping ``validate``."""
-    from specy_road.bundled_scripts.roadmap_chunk_router import (
-        PHASE_ROOT_REASON,
-        default_chunk_for_parent,
-        insert_include_in_manifest,
-        pick_target_chunk,
-        validate_callback,
-    )
-    from specy_road.bundled_scripts.roadmap_chunk_atomic import AtomicWritePlan
-    from specy_road.bundled_scripts.roadmap_chunk_utils import load_manifest_mapping
-
-    heal_before_mutation(root)
-    parent_id_raw = node.get("parent_id")
-    parent_id = parent_id_raw if isinstance(parent_id_raw, str) else None
-    planned_sheet = plan_planning_sheet_for_new_node(root, node)
-    extra = {planned_sheet[0]: planned_sheet[1]} if planned_sheet else None
-    decision = pick_target_chunk(root, parent_id, None, node)
-    plan = AtomicWritePlan(root=root)
-    plan.stage_chunk(decision.chunk_path, decision.nodes_after)
-    for path, text in (extra or {}).items():
-        plan.stage_text(path, text)
-    if decision.is_new_chunk:
-        manifest_doc = load_manifest_mapping(root)
-        top_level = decision.new_chunk_reason == PHASE_ROOT_REASON and parent_id is None
-        base_for_insert = None if top_level else (
-            default_chunk_for_parent(root, parent_id) or decision.chunk_rel
-        )
-        insert_include_in_manifest(manifest_doc, decision.chunk_rel, base_for_insert)
-        plan.stage_manifest(manifest_doc)
-        print(
-            f"[chunk-router] auto-created chunk roadmap/{decision.chunk_rel} "
-            f"(node {node.get('id')!r} {decision.new_chunk_reason})",
-            file=sys.stderr,
-        )
-    check = validate_callback(root) if validate else (lambda: None)
-    plan.commit(check)
-    return decision.chunk_path
 
 
 def _report_promoted_missing_fields(root: Path, promotions: list[Promotion]) -> None:
@@ -260,6 +213,21 @@ def _anchor_execution_milestone(nodes: list[dict], parent_id: str | None) -> str
     anchor = next(n for n in nodes if n.get("id") == parent_id)
     em = anchor.get("execution_milestone")
     return em if em in EXEC_MILESTONES else None
+
+
+def _promote_execution_milestone(
+    nodes: list[dict], parent_id: str | None, execution_milestone: object
+) -> str | None:
+    if execution_milestone is INHERIT_EXECUTION_MILESTONE:
+        return _anchor_execution_milestone(nodes, parent_id)
+    if execution_milestone is None:
+        return None
+    if execution_milestone not in EXEC_MILESTONES:
+        raise BrainstormError(
+            "execution_milestone must be one of "
+            f"{sorted(EXEC_MILESTONES)} (got {execution_milestone!r})"
+        )
+    return execution_milestone
 
 
 def _build_node(
@@ -368,22 +336,9 @@ def promote_session(
     parent_id = under if under is not None else session.under
     nodes = _load_nodes(root)
     _assert_parent(root, nodes, parent_id)
-    if execution_milestone is INHERIT_EXECUTION_MILESTONE:
-        resolved_em = _anchor_execution_milestone(nodes, parent_id)
-    elif execution_milestone is None:
-        resolved_em = None
-    elif execution_milestone not in EXEC_MILESTONES:
-        raise BrainstormError(
-            "execution_milestone must be one of "
-            f"{sorted(EXEC_MILESTONES)} (got {execution_milestone!r})"
-        )
-    else:
-        resolved_em = execution_milestone
-
+    resolved_em = _promote_execution_milestone(nodes, parent_id, execution_milestone)
     out: list[Promotion] = []
-    existing_codenames = {
-        n.get("codename") for n in nodes if n.get("codename")
-    }
+    existing = {n.get("codename") for n in nodes if n.get("codename")}
     for order, idea in enumerate(todo, start=1):
         node = _build_node(
             nodes,
@@ -393,15 +348,15 @@ def promote_session(
             execution_milestone=resolved_em,
             sibling_order=order,
         )
-        derived = _promote_codename(idea, existing_codenames, node["node_key"])
+        derived = _promote_codename(idea, existing, node["node_key"])
         if derived:
             node["codename"] = derived
-            existing_codenames.add(derived)
+            existing.add(derived)
         if dry_run:
             nodes = [*nodes, node]
             chunk = "(not written)"
         else:
-            chunk_path = _write_promoted_node(root, node, validate=False)
+            chunk_path = append_node_to_chunk(root, None, node, validate=False)
             seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
             idea.promoted_node_key = node["node_key"]
             write_session(root, session)

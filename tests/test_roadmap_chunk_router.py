@@ -282,6 +282,26 @@ def test_write_with_routing_rolls_back_on_validation_failure(
     assert extras == []
 
 
+def test_write_with_routing_skip_validate_still_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _seed_repo(tmp_path, {"phases/M0.json": [_phase_M0()]})
+    new = _task("M0.99", "M0", n_index=99)
+    _write_planning(tmp_path, new)
+    from specy_road.bundled_scripts import roadmap_chunk_router as router_mod
+
+    def boom(root):  # noqa: ANN001
+        def do() -> None:
+            raise ValueError("synthetic validate failure")
+        return do
+
+    monkeypatch.setattr(router_mod, "validate_callback", boom)
+    chunk = write_with_routing(tmp_path, "M0", "phases/M0.json", new, validate=False)
+    assert chunk.is_file()
+    ids = {n["id"] for n in load_json_chunk(chunk) if isinstance(n, dict)}
+    assert "M0.99" in ids
+
+
 def test_write_node_update_relocates_on_overflow(tmp_path: Path) -> None:
     """When edit-node growth pushes a chunk over, the edited node moves out."""
     nodes = [_phase_M0()] + [_milestone(f"M0.{i}", "M0", n_index=10 + i) for i in range(1, 6)]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -30,24 +31,20 @@ def _by_id(root: Path) -> dict[str, dict]:
     return {n["id"]: n for n in load_roadmap(root)["nodes"]}
 
 
-def test_promote_runs_full_validation_once_for_a_batch(
-    repo: Path, monkeypatch: pytest.MonkeyPatch
+def test_promote_prints_pin_warnings_once_for_a_multi_node_batch(
+    repo: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import specy_road.bundled_scripts.brainstorm_promote as mod
-
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "requirements.txt").write_text("specy-road==0.0.1\n", encoding="utf-8")
     s = BrainstormSession(slug="pay", topic="t", under="M1")
     for title in ("One", "Two", "Three"):
         add_idea(s, title=title).status = "accepted"
-    calls = {"n": 0}
-    real = mod.run_validate_raise
 
-    def _count(*a, **k):
-        calls["n"] += 1
-        return real(*a, **k)
-
-    monkeypatch.setattr(mod, "run_validate_raise", _count)
     promote_session(repo, s)
-    assert calls["n"] == 1
+
+    err = capsys.readouterr().err
+    assert err.count("pins specy-road") == 1
+    assert "pins specy-road 0.0.1" in err
 
 
 def test_promote_derives_codename_from_the_first_four_title_words(repo: Path) -> None:

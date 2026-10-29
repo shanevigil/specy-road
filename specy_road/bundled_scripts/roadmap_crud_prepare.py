@@ -35,7 +35,11 @@ def heal_before_mutation(root: Path) -> None:
 
 
 def derive_codename_with_collision_suffix(
-    title: str, node_key: str, existing: set[str]
+    title: str,
+    node_key: str,
+    existing: set[str],
+    *,
+    max_words: int | None = None,
 ) -> str | None:
     """
     Derive a kebab-case codename from ``title``; if a collision exists,
@@ -43,11 +47,12 @@ def derive_codename_with_collision_suffix(
 
     Returns ``None`` when no valid codename can be derived from the title
     (e.g. empty or all-punctuation titles); callers may leave the node
-    unnamed so ``validate`` can re-visit it later.
+    unnamed so ``validate`` can re-visit it later. ``max_words`` is passed
+    through to ``title_to_codename`` (promote caps derived slugs).
     """
     from specy_road.bundled_scripts.roadmap_edit_fields import title_to_codename
 
-    slug = title_to_codename(title)
+    slug = title_to_codename(title, max_words=max_words)
     if not slug:
         return None
     if slug not in existing:

@@ -116,7 +116,7 @@ def test_a_failure_mid_batch_does_not_duplicate_on_the_next_run(
     add_idea(s, title="Second idea").status = "accepted"
     add_idea(s, title="Third idea").status = "accepted"
 
-    real = mod._write_promoted_node
+    real = mod.append_node_to_chunk
     calls = {"n": 0}
 
     def _fail_on_third(*a, **k):
@@ -125,7 +125,7 @@ def test_a_failure_mid_batch_does_not_duplicate_on_the_next_run(
             raise RuntimeError("chunk write blew up")
         return real(*a, **k)
 
-    monkeypatch.setattr(mod, "_write_promoted_node", _fail_on_third)
+    monkeypatch.setattr(mod, "append_node_to_chunk", _fail_on_third)
     with pytest.raises(RuntimeError):
         promote_session(repo, s)
 
