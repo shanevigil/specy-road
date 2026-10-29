@@ -24,6 +24,7 @@ Limits, all deliberate and kept small:
 - `specy_road/cli_usage.py`: `apply`, `--acceptance`, display-id deps, `add-dependency <DEP>`.
 - `docs/roadmap-authoring.md`: quickstart bullets, the `dependencies` and `acceptance` field rows, the Tooling list, and a new "Batch edits (`apply`)" section.
 - `tests/test_roadmap_apply.py`: new.
+- Review fix (gpt-5.6-sol-high block on `e62d652`): `tests/test_roadmap_crud.py` renames its shared helpers `_fixture_repo` → `crud_fixture_repo` and `_run_crud` → `run_crud`. Its importers (`test_roadmap_apply.py`, `test_roadmap_crud_dependencies.py`, `test_roadmap_edit_fields.py`, `test_scaffold_planning.py`) follow, so no test imports a `_`-prefixed name from another module. This is a pure rename with no behaviour change. The unrelated local `_fixture_repo` in `test_roadmap_crud_ops.py` and `_run_crud` in `test_set_gate_status.py` are module-private and untouched.
 
 **Touch zones, final list:** the given zones minus `session_plan.py`, which was reused unchanged. Used: `roadmap_crud_argparse.py`, `roadmap_crud_ops.py`, `roadmap_crud_dependency_ops.py`, `cli.py`, `cli_usage.py`, `docs/roadmap-authoring.md`, `tests/`.
 
@@ -32,6 +33,7 @@ Limits, all deliberate and kept small:
 ## Verification
 
 - `pytest tests/test_roadmap_apply.py`: 14 passed.
+- After the review fix: `pytest tests/test_roadmap_apply.py tests/test_roadmap_crud.py tests/test_roadmap_crud_dependencies.py tests/test_roadmap_edit_fields.py tests/test_scaffold_planning.py`: 49 passed.
 - `pytest` (full suite): 2254 passed, 2 skipped, 2 failed. Both failures are in `tests/test_review_round6_evidence.py`, which calls `review_packet._changed`; that function does not exist at base `d13ed8d`. Neither file is in this diff or the touch zones, so they fail without this change and were left alone.
 - `python specy_road/bundled_scripts/validate_roadmap.py --repo-root tests/fixtures/specy_road_dogfood`: OK.
 - `python specy_road/bundled_scripts/export_roadmap_md.py --check --repo-root tests/fixtures/specy_road_dogfood`: OK.
@@ -67,6 +69,7 @@ Limits, all deliberate and kept small:
 - `cmd_apply`: the CLI entry, with `ValueError` → `error:` + exit 1.
 - `_p_apply` subparser, plus `--acceptance` and the `--dependency` / `DEP` help: CLI surface for A1–A3.
 - `"apply"` in `_CRUD_COMMANDS`: dispatches `specy-road apply`.
+- `crud_fixture_repo` / `run_crud` (renamed, not new): public names for the shared CRUD test helpers, so the new test does not import private names (review fix).
 - Mocks: none.
 - Tests (`tests/test_roadmap_apply.py`):
   - `test_add_node_acceptance_is_repeatable`: A3, repeatable `--acceptance`.

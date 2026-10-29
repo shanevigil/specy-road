@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from tests.helpers import script_subprocess_env
-from tests.test_roadmap_crud import _fixture_repo, _run_crud
+from tests.test_roadmap_crud import crud_fixture_repo, run_crud
 
 NK991 = "10000000-0000-4000-8000-000000009902"
 NK992 = "10000000-0000-4000-8000-000000009903"
@@ -43,7 +43,7 @@ changes:
 
 @pytest.fixture()
 def repo(tmp_path: Path) -> Path:
-    _fixture_repo(tmp_path)
+    crud_fixture_repo(tmp_path)
     return tmp_path
 
 
@@ -56,7 +56,7 @@ def _tree(root: Path) -> dict[str, bytes]:
 
 
 def _crud(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return _run_crud(root, "--repo-root", str(root), *args)
+    return run_crud(root, "--repo-root", str(root), *args)
 
 
 def _node(root: Path, nid: str) -> dict:
