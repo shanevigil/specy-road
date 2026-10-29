@@ -2,6 +2,12 @@
 
 Branch `feature/rm-specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes`, base `6bcfeb8` (registration). The branch carries two checkpoint commits from worker w-0029 (`037f20b` code and docs, `23a36cf` draft tests), which this session took over at `23a36cf`, plus `8ff98f9` (review of that draft against the lean-change rules and the gates).
 
+## Review round 2
+
+`gpt-5.6-sol-high` blocked on A1 again. The merged-branch set that the worktree section reads was filled only for branches that the branch section lists, so a worktree on a merged branch was omitted when that branch is still claimed and its leaf is not Complete. The fixture's `wt-thing` is exactly that case, and the tests asserted it stayed, which codified the omission.
+
+The merged set is now recorded before the claim check, so it holds every local `feature/rm-*` branch the integration branch contains. The branch section is unchanged: a claimed branch whose leaf is not Complete is still kept, and `--fix` removes only the worktree. `docs/git-workflow.md` says so. The dry-run test now requires the `wt-thing` row and the `--fix` test requires its removal, while both still require the `feature/rm-thing` branch to survive.
+
 ## Review round 1 (`19e2a2a`)
 
 `gpt-5.6-sol-high` blocked on A1. A branch with a registry row was skipped before doctor checked whether its leaf was Complete. That also hid the merged worktree on that branch, because the merged-worktree check uses the listed branches. The reproduction (Complete leaf, merged branch locally and on the remote, registry row kept, worktree on the branch) printed `Nothing to tidy`.
@@ -15,7 +21,7 @@ Regression coverage: the reviewer's case is a new fixture leaf `settled` (M1.4, 
 `specy-road doctor [--fix [--yes]] [--base B] [--remote R] [--repo-root DIR]` runs `git fetch --prune` (the same helper as `branches prune`), reads the roadmap and registry at `<remote>/<base>`, and lists four sections:
 
 - **A1 branches**: local and remote `feature/rm-*` branches whose leaf is Complete on the integration branch (claimed or not), or that nothing claims. The test for "nothing claims" is the same one `branches prune` uses: no registry row (local or remote) and not an open milestone rollup. Each row gives a reason: `merged`, `merged (same patch content)`, `leaf <ID> Complete, not merged: N commit(s) … lacks`, or `claim gone, not merged: …`.
-- **A1 worktrees**: linked worktrees whose directory is missing, that are detached at a commit the integration branch contains (how `finish --delete-branch` leaves a delegate worktree), or whose branch is a listed merged branch. The main worktree, the current worktree and locked worktrees are never listed. A row names the ignored files that `git worktree remove` would delete.
+- **A1 worktrees**: linked worktrees whose directory is missing, that are detached at a commit the integration branch contains (how `finish --delete-branch` leaves a delegate worktree), or whose branch is merged, whether or not the branch is listed. The main worktree, the current worktree and locked worktrees are never listed. A row names the ignored files that `git worktree remove` would delete.
 - **A1 registry rows** on the integration branch whose branch exists neither locally nor on the remote (`detect_stale_claims`; advisory), or whose leaf is Complete.
 - **A1 stashes** whose message starts `On <branch>: specy-road: `. That is the form older pickup and review pushed with `-m`.
 - **A2**: a branch is "merged" first by ancestry (`merged_into`). When ancestry fails, it is merged if `git cherry` shows every commit upstream (a rebase or cherry-pick). Failing that, doctor builds a probe commit of the whole branch tree on its merge base and checks whether `git cherry` shows that commit upstream (a squash merge). An orphan branch has no merge base and counts as not merged.
@@ -57,6 +63,7 @@ Notes for reviewers:
 - `branches_cli.fetch_integration`: shared resolve-defaults and `fetch --prune` for prune and doctor (it removes the clone the gate flagged).
 - `branches_cli.feature_branches` / `live_branches`: these existing helpers were made public for cross-module use. No new logic.
 - `doctor.py` (from the checkpoint, kept): `merged_how` and `_all_upstream` for A2. `_complete_leaves` for the "leaf Complete" reason. The remover helpers: `_delete_local` (tip check), `_delete_remote` (lease), `_remove_worktree`, `_drop_stash` (find again by sha), `_prune_row` (reuses `registry-prune --remove`). `_ignored_note` warns before `worktree remove` deletes ignored files. `_confirm` and `_fix` handle the per-kind questions and the report (A3). `_PROBE_IDENT` exists because `commit-tree` needs an identity on CI runners that have none.
+- Round 2: in `_branch_findings` the merged set is filled before the claim skip, so the worktree section sees a merged branch the branch section keeps. The `wt-thing` assertions in the dry-run and `--fix` tests reach it.
 - Round 1 branches, each reached by the `settled` fixture leaf in the dry-run and `--fix` tests:
   - In `_branch_findings`, a claimed branch is skipped only when its leaf is not Complete. This fixes the reviewer's A1 finding.
   - In `_branch_reason`, a `registry row remains` suffix, plus the leaf id on a merged branch, says why a claimed branch is listed.
