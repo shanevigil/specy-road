@@ -46,6 +46,7 @@ entries:
     node_id: M4.12
     branch: feature/rm-file-limits-function-length-check-covers-typescript-and-javascript
     touch_zones:
+      - specy_road/file_limits_jsx.py
       - specy_road/templates/project/constraints/README.md
       - specy_road/file_limits_js.py
       - specy_road/file_limits_engine.py
