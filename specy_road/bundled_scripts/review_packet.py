@@ -7,7 +7,10 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
 2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
 3. every changed path since the merge base (with the integration branch, or
    ``--base``), with paths outside the node's touch zones called out;
-4. ``git diff <base>...<ref>``, with a warning when it is empty;
+4. ``git diff <base>...<ref>``, with a warning when it is empty; past
+   ``--max-diff-lines`` (default 1500) the first files that fit are inlined
+   whole, the rest are listed with their ``+``/``-`` counts, and the full
+   diff is written to ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap);
 5. verifier output — the newest valid READY file's ``verify`` tails, plus any
    ``--verify-cmd`` run now.
 
@@ -35,6 +38,8 @@ from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resol
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
 TAIL_LINES = 60
+MAX_DIFF_LINES = 1500
+DIFF_NAME = "DIFF.patch"   # beside PACKET.md when the diff is capped
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
 # work/ holds the brief, implementation summary, and session files the scaffold
 # tracks on the feature branch on purpose.
@@ -173,7 +178,45 @@ def _empty_diff_reason(t: ReviewTarget) -> str:
             "before the leaf)")
 
 
-def _diff(root: Path, t: ReviewTarget, paths: list[str]) -> list[str]:
+def _split_files(diff: str) -> list[str]:
+    """One chunk per file, each starting at its ``diff --git`` header."""
+    chunks: list[str] = []
+    for line in diff.splitlines(keepends=True):
+        if line.startswith("diff --git ") or not chunks:
+            chunks.append(line)
+        else:
+            chunks[-1] += line
+    return chunks
+
+
+def _numstat(root: Path, t: ReviewTarget) -> list[tuple[str, str, str]]:
+    """``(added, removed, path)`` per file, in diff order (``-`` for binary)."""
+    rows = (git_stdout(["diff", "--numstat", f"{t.base}...{t.commit}"], root) or "").splitlines()
+    return [tuple(r.split("\t", 2)) for r in rows if r.count("\t") == 2]
+
+
+def _capped_diff(root: Path, t: ReviewTarget, diff: str, cap: int) -> list[str]:
+    """Inline whole files up to ``cap`` lines, list the rest, write the full diff to DIFF.patch."""
+    chunks = _split_files(diff)
+    kept, lines = 0, 0
+    for c in chunks:
+        n = c.count("\n")
+        if lines + n > cap:
+            break
+        kept, lines = kept + 1, lines + n
+    stats = _numstat(root, t)
+    rest = stats[kept:] if len(stats) == len(chunks) else \
+        [("?", "?", c.split("\n", 1)[0].removeprefix("diff --git ")) for c in chunks[kept:]]
+    patch = reviews_dir(root, t.node_id) / DIFF_NAME
+    patch.parent.mkdir(parents=True, exist_ok=True)
+    patch.write_text(diff, encoding="utf-8")
+    out = [f"**Diff capped at {cap} lines** ({diff.count(chr(10))} in all): the first {kept} of "
+           f"{len(chunks)} changed file(s) are inlined whole below; the full diff is at `{patch}`.", ""]
+    out += [f"- `{path}` (+{a} -{r}) — not inlined" for a, r, path in rest] + [""]
+    return out + (_fence("".join(chunks[:kept]), "diff") if kept else [])
+
+
+def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = MAX_DIFF_LINES) -> list[str]:
     out = ["## Diff", ""]
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
@@ -182,6 +225,8 @@ def _diff(root: Path, t: ReviewTarget, paths: list[str]) -> list[str]:
     if not diff.strip():
         print(f"warning: {_empty_diff_reason(t)}", file=sys.stderr)
         return out + [_computed(t), ""] + note + [f"_({_empty_diff_reason(t)})_", ""]
+    if max_diff_lines and diff.count("\n") > max_diff_lines:
+        return out + [_computed(t), ""] + note + _capped_diff(root, t, diff, max_diff_lines)
     return out + [_computed(t), ""] + note + _fence(diff, "diff")
 
 
@@ -225,7 +270,7 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 
 
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
-                 base: str | None = None) -> str:
+                 base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES) -> str:
     t = resolve_target_or_exit(root, node_id, ref)
     integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
     if base:
@@ -238,7 +283,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         changed,
-        _diff(root, t, paths),
+        _diff(root, t, paths, max_diff_lines),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
@@ -253,13 +298,18 @@ def main(argv: list[str] | None = None) -> None:
                         "(e.g. the commit before the leaf, when its branch is already merged)")
     p.add_argument("--verify-cmd", action="append", default=[], metavar="CMD",
                    help="Run CMD now and include its exit code and output tail (repeatable)")
+    p.add_argument("--max-diff-lines", type=int, default=MAX_DIFF_LINES, metavar="N",
+                   help=f"Inline at most N diff lines (default {MAX_DIFF_LINES}): whole files up to the cap, "
+                        f"the rest listed with +/- counts and the full diff written to "
+                        f"work/reviews/<NODE_ID>/{DIFF_NAME}; 0 = no cap and no {DIFF_NAME}")
     p.add_argument("-o", "--output", type=Path,
                    help=f"Also write here; work/reviews/<NODE_ID>/{PACKET_NAME} is always written, "
                         "since `prompt --role reviewer` reads only that path")
     add_repo_root_arg(p)
     args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
-    text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base)
+    text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,
+                        max_diff_lines=args.max_diff_lines)
     for out in [reviews_dir(root, args.node_id) / PACKET_NAME, *([args.output] if args.output else [])]:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text, encoding="utf-8")

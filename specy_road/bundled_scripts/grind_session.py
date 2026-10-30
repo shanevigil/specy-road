@@ -289,9 +289,9 @@ def _pin_loop_mode(repo_root: Path, args) -> str | None:
     return None
 
 
-def _emit_plan(emitter: EventEmitter, plan: SessionPlan) -> None:
+def _emit_plan(emitter: EventEmitter, plan: SessionPlan, fields: list[str] | None = None) -> None:
     if emitter.as_json:
-        emitter.emit("plan", **session_plan_to_dict(plan))
+        emitter.emit("plan", **session_plan_to_dict(plan, fields))
     else:
         emitter.emit("plan", text=render_session_plan_text(plan).rstrip())
 
@@ -346,7 +346,7 @@ def run_session(args) -> int:
             repo_root, args.under, allow_unauthored=args.allow_unauthored,
             prefer_agentic=args.prefer_agentic,
         )
-        _emit_plan(emitter, plan)
+        _emit_plan(emitter, plan, args.fields)
         return EXIT_OK
     mode_error = _pin_loop_mode(repo_root, args)
     if mode_error is not None:

@@ -6,6 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from specy_road.bundled_scripts.session_plan_render import PLAN_FIELDS
 from specy_road.git_workflow_config import ON_COMPLETE_MODES
 from specy_road.runtime_paths import add_repo_root_arg
 
@@ -160,6 +161,9 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true",
                    help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
                         "stdout carries only JSON; sub-command output goes to stderr.")
+    p.add_argument("--fields", default=None, metavar="KEY,...",
+                   help="With --plan --json: print only these top-level plan keys (event and ts "
+                        f"stay). Valid: {', '.join(PLAN_FIELDS)}.")
 
 
 def _reject_step_conflicts(p: argparse.ArgumentParser, ns) -> None:
@@ -172,6 +176,20 @@ def _reject_step_conflicts(p: argparse.ArgumentParser, ns) -> None:
     ):
         if present:
             p.error(f"--step cannot be combined with {flag}")
+
+
+def _plan_fields(p: argparse.ArgumentParser, ns) -> list[str] | None:
+    """``--fields`` as a list of valid plan keys; an unknown key is an error naming the valid ones."""
+    if ns.fields is None:
+        return None
+    if not (ns.plan and ns.json):
+        p.error("--fields requires --plan --json")
+    keys = [k.strip() for k in ns.fields.split(",") if k.strip()]
+    unknown = [k for k in keys if k not in PLAN_FIELDS]
+    if unknown or not keys:
+        p.error(f"--fields: unknown key(s) {', '.join(unknown) or '(none given)'}; "
+                f"valid keys: {', '.join(PLAN_FIELDS)}")
+    return keys
 
 
 def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
@@ -188,6 +206,7 @@ def parse_grind_session_args(argv: list[str] | None) -> argparse.Namespace:
     _add_implement_limit_args(p)
     _add_passthrough_args(p)
     ns = p.parse_args(argv if argv is not None else sys.argv[1:])
+    ns.fields = _plan_fields(p, ns)
     if ns.step:
         _reject_step_conflicts(p, ns)
     elif ns.implement_mode == "hook" and not ns.implement_cmd and not ns.plan:
