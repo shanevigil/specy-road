@@ -95,7 +95,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Not Started**
   - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Not Started**
-  - `M10.10` Position the docs on governance, not on CLI workers `position-the-docs-on` — task — **Not Started**
+  - `M10.10` Position the docs on governance, not on CLI workers `position-the-docs-on` — task — **Complete**
   - `M10.11` Document the harness-subagent recipe for parallel work inside a leaf `document-the-harness-subagent-recipe` — task — **Not Started**
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
@@ -106,7 +106,6 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
-- `M10.10` on `feature/rm-position-the-docs-on` since 2026-10-30
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M9.2` on `feature/rm-fixture-pollution-guard` since 2026-10-29

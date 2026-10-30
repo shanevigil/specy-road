@@ -19,6 +19,7 @@
 - **Right-sized context** — `specy-road brief` pulls the relevant planning sheets and contracts for one roadmap item instead of the whole repository story.
 - **Safer parallel work** — Stable IDs, **touch zones**, and `roadmap/registry.yaml` show who is working on what before files collide.
 - **Your tools, your workflow** — The kit is about roadmaps and specs, not a particular IDE or agent ritual. See [docs/philosophy-and-scope.md](docs/philosophy-and-scope.md).
+- **Governance, not another agent runner** — Other tools already drive coding-agent CLIs as workers. specy-road's part is the roadmap graph in the repo, separated roles with fresh-session distinct-family reviewers, reviews bound to a commit, and tracked files plus shell commands as the only surface. See [Where specy-road sits](docs/philosophy-and-scope.md#where-specy-road-sits).
 
 ## Getting started
 

@@ -22,7 +22,7 @@
 **Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
 
 specy-road separates three roles around a roadmap leaf and prescribes how work passes
-between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit.
+between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit. Other tools also drive those CLIs as workers; what is specy-road's is the governance around them, set out in [Where specy-road sits](philosophy-and-scope.md#where-specy-road-sits).
 
 - **Coordinator** — picks the leaf, creates the branch or worktree, assembles the review packet, closes the review gate, finishes the leaf, and changes roadmap status.
 - **Executor** — reads the brief, changes only the leaf's touch zones, runs the verifiers, commits, writes a hand-off file, and **stops**.
