@@ -88,3 +88,20 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
+  - codename: record-phase-timestamps-in
+    node_id: M10.1
+    branch: feature/rm-record-phase-timestamps-in
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_state.py
+      - specy_road/worker_ops.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - tests/test_worker_state.py
+      - tests/test_worker_cli.py
+      - tests/test_worker_faults.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
