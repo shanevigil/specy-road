@@ -19,9 +19,26 @@ reported as `new-skip`, because `_decorator_skips` only recognised pytest marks 
 existing `_is_pytest_mark` check, and a fixture-repo test asserting the exact `new-skip` line. No other
 behaviour changed.
 
+## Review round 2 fix (claude-fable-5-1)
+
+The gpt-6.1-sol review of `eb34aa1` blocked on four items, fixed in commit `a3d2b3f`:
+
+- **A3** — `_decorator_skips` now matches only `pytest.mark.skip` / `skipif` / `xfail` and `unittest.skip` /
+  `skipIf` / `skipUnless` (attribute on `unittest`, or the bare imported name), bare or called. An unrelated
+  `@custom.skip` is no longer a finding. `expectedFailure`, which the acceptance text does not name, is no
+  longer matched.
+- **A4** — `_assert_count` counts `pytest.raises` as a `Call` node, so the context-manager and callable forms
+  each count exactly once; the `With` branch is gone.
+- **A5** — `_pytest_table_text` strips each line before matching a `[tool.pytest*]` or following table header,
+  so indented TOML headers are seen.
+- **A6** — a parametrized CLI test runs every finding form (removed-test, removed-test-file, new-skip,
+  assert-loss, config-change) and asserts the complete stdout and exit 1; a text-mode unchanged ref asserts
+  exit 0 and empty output. A deleted Python test file prints both its `removed-test-file` line and one
+  `removed-test` line per function, as the round-1 review noted.
+
 ## Verification
 
-- `pytest tests/test_integrity.py tests/test_review_packet.py` — 27 passed
+- `pytest tests/test_integrity.py tests/test_review_packet.py` — 36 passed
 - `specy-road file-limits` — OK
 - `python scripts/check_test_private_imports.py` — 0 new; one stale baseline entry predates this leaf
   (`review_packet._changed`, also absent on the integration branch) and `constraints/` is outside the zones
@@ -39,4 +56,11 @@ behaviour changed.
 - `test_new_skip_bare_xfail_decorator` — pins the A3 no-argument `@pytest.mark.xfail` form the review found missing.
 - `Attribute` branch in `_decorator_skips` for `pytest.mark.xfail` / `skipif` — the fix itself; one guard, no new helper.
 - `test_packet_test_integrity_section_is_stable_and_lists_findings` — byte-stable section and assert-loss in packet.
+- `_UNITTEST_SKIPS` constant — the three unittest decorator names shared by the bare-name and `unittest.` branches.
+- `test_unrelated_decorator_named_skip_is_not_a_skip` — A3 false-positive regression (`@custom.skip`).
+- `test_assert_loss_counts_callable_pytest_raises` — A4 callable-form regression.
+- `test_config_change_indented_pyproject_pytest_table` — A5 indented-header regression.
+- `_TEST_SRC` / `_CLI_FORMS` table and `test_cli_prints_exact_line_and_exits_one_for_each_form` — A6 per-form CLI
+  coverage with exact output and exit 1.
+- `test_cli_text_mode_unchanged_ref_exits_zero_silently` — A6 unchanged-ref text-mode case.
 - none — no new mocks; tests use real git repos under `tmp_path`.
