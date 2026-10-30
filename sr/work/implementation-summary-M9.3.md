@@ -31,7 +31,9 @@ No product code changes.
 pytest tests/test_project_layouts_outside.py -v
 ```
 
-All 11 tests passed (2026-10-29).
+All 11 tests passed (2026-10-29); re-run 2026-10-30 after the review fix below, together with `tests/test_prerelease_s2.py` and `tests/test_finish_implementation_check.py`: 33 passed.
+
+Manual A2 check performed 2026-10-30: with `specy_road/finish_implementation_check.py` at `79eaff3^`, `test_implementation_check_sees_work_in_each_layout[nested_outside]`, `test_nested_outside_would_fail_the_pre_79eaff3_implementation_paths` and `test_finish_merge_rerun_is_idempotent[nested_outside]` fail with "nothing was implemented"; the other 8 pass. The file was restored and `git status` on `specy_road/` is clean.
 
 Manual A2 check (optional, matches planning sheet):
 
@@ -45,7 +47,9 @@ cp /tmp/fic_new.py specy_road/finish_implementation_check.py
 
 ## Commits
 
-Implementation: `189d825f5cd1d7061864baf02fa466b62504a77f` (checkpoint on this branch). Summary: commit that adds this file.
+Implementation: `189d825f5cd1d7061864baf02fa466b62504a77f` (checkpoint on this branch), first summary `b4fc138`.
+
+Review round 1 (2026-10-30): `cursor-grok-4.6-high` approved; `gpt-6.1-sol` blocked on E1, an unreachable `ValueError` guard for an unknown shape in `make_layout_finish_repo` (every caller passes a `LAYOUT_FINISH_SHAPES` member). Fixed in `47665c4` by deleting the two guard lines; no other change. Summary: commit that adds this revision of the file.
 
 ## Added
 
