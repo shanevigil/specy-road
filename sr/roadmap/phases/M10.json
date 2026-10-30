@@ -130,6 +130,8 @@
       "title": "Pin harness discovery mode per profile",
       "touch_zones": [
         "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_runner.py",
         "specy_road/model_profiles.py",
         "specy_road/templates/project/model-profiles/",
         "docs/orchestration-models.md",
