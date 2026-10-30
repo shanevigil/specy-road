@@ -85,7 +85,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.3_layout-with-outside-change_1bd6720b-14cb-488d-8058-2346f0b6640e.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project",
       "touch_zones": [
         "tests/test_project_layouts_outside.py",
