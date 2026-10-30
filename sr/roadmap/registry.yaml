@@ -74,3 +74,17 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
+  - codename: pin-harness-discovery-mode
+    node_id: M10.4
+    branch: feature/rm-pin-harness-discovery-mode
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/model_profiles.py
+      - specy_road/templates/project/model-profiles/
+      - docs/orchestration-models.md
+      - suggested_prompts/
+      - tests/test_worker_adapters.py
+      - tests/test_models_and_prompt.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
