@@ -105,6 +105,10 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
+- `M10.10` on `feature/rm-position-the-docs-on` since 2026-10-30
+- `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
+- `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M9.2` on `feature/rm-fixture-pollution-guard` since 2026-10-29
 - `M9.3` on `feature/rm-layout-with-outside-change` since 2026-10-29
 - `M9.4` on `feature/rm-executor-blocked-on` since 2026-10-29
