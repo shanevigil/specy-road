@@ -97,8 +97,6 @@ def git_root_relative(git_top: Path, project: Path, project_rel: str) -> str:
 
 def make_layout_finish_repo(tmp_path: Path, shape: str) -> tuple[Path, Path]:
     """Minimal claimed leaf in ``shape``; returns ``(git_root, project_root)`` on ``feature/rm-thing``."""
-    if shape not in LAYOUT_FINISH_SHAPES:
-        raise ValueError(shape)
     git_top = tmp_path / "checkout"
     git_top.mkdir(parents=True, exist_ok=True)
     prefix = layout_prefix(shape)
