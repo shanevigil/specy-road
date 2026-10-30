@@ -14,6 +14,23 @@ This document is for **humans and coding agents** adopting or working on specy-r
 - **Harness-native, no model calls** — The coordination CLI (claims, briefs, workers, the review gate, brainstorm sessions) never calls a model or search API; the harness does. The named exceptions are the opt-in `review-node` command (an advisory LLM review against your own API key), `brainstorm verify` (fetches one URL and asks first), and the GUI's configured search and LLM providers. specy-road reaches each harness through one-shot CLI adapters, hooks and skills — no daemon, no MCP server — and augments the harness's own tools, skills and review commands with roadmap-specific prompts and records instead of reinventing generic agent tooling ([`design-notes/v0-3-1-worker-orchestration.md`](design-notes/v0-3-1-worker-orchestration.md)).
 - **Planning as narrative spine** — Nodes with **`planning_dir`** point at a **single** feature sheet [`planning/<id>_<slug>_<node_key>.md`](../specy_road/templates/project/planning/README.md) in the repo. Session scratch and generated briefs may still live under [`work/`](../specy_road/templates/project/work/README.md).
 
+## Where specy-road sits
+
+Driving a vendor's coding-agent CLI as a worker is no longer rare, and specy-road does not compete on it. Three neighbours, each described only in the words of its own documentation (read 2026-10-30):
+
+- **Microsoft Agent Framework** — <https://github.com/microsoft/agent-framework>. Its `agent-framework-claude` package "enables integration with Claude Agent SDK" and its `agent-framework-github-copilot` package "enables integration with GitHub Copilot", each exposing that agent's "agentic capabilities through the Agent Framework" (package READMEs under [`python/packages/`](https://github.com/microsoft/agent-framework/tree/main/python/packages/claude); the Claude package installs as a pre-release).
+- **LiteLLM harness** (`litellm.agent()`) — <https://docs.litellm.ai/docs/harness>. Drives "Claude Code, Codex, OpenCode, Deep Agents or Tool Loop from Python with one API"; the page marks the feature as beta, "the API may change between releases".
+- **Bernstein** — <https://github.com/saketh-bandi/bernstein>. A deterministic scheduler with "no model in the coordination loop" that runs CLI coding agents (Claude Code, Codex, Gemini CLI and more) in parallel, each coding task in its own git worktree behind merge gates.
+
+What is specy-road's is the **combination** of four commitments, none of which is about which CLI it can launch:
+
+1. **The roadmap graph lives in the repo** — `roadmap/` (manifest plus JSON chunks) is the canonical plan: stable ids, dependencies, gates, touch zones. Work is picked, briefed and finished against that graph, not against a task queue the orchestrator owns.
+2. **Separated roles, with fresh-session reviewers from a distinct family** — the executor never reviews its own leaf; each reviewer reads the review packet in a fresh session, and `reviewers_distinct_families` counts approvals by vendor family, so two sessions of one family count once ([`orchestration.md`](orchestration.md)).
+3. **Reviews are bound to a commit** — a review is a tracked file under `work/reviews/<NODE_ID>/` that names the commit it read; any later commit makes it stale and the gate says so.
+4. **Tracked files plus shell commands are the only surface** — claims, briefs, prompts, hand-offs and reviews are files in git, driven by one-shot `specy-road` commands the harness runs; no daemon, no MCP server, no model call in the coordination loop.
+
+Evaluate the kit on that axis — whether your roadmap, roles and review records are governed — and reach for one of the tools above when what you need is a generic agent runner.
+
 ## What specy-road does not prescribe
 
 - **Which coding agent or IDE** you use (Cursor, Claude Code, Copilot, none, etc.), or which model fills the coordinator, executor, or reviewer role.
