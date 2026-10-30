@@ -64,3 +64,13 @@ entries:
     started: '2026-10-29'
     owner: savigil
     implementation_review: pending
+  - codename: position-the-docs-on
+    node_id: M10.10
+    branch: feature/rm-position-the-docs-on
+    touch_zones:
+      - docs/philosophy-and-scope.md
+      - README.md
+      - docs/orchestration.md
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
