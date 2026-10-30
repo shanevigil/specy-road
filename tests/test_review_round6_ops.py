@@ -335,7 +335,13 @@ def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
     t.join(5)
     assert done and done[0] >= t0
     marks = yaml.safe_load((ws.workers_dir(repo) / "sync.yaml").read_text())
-    assert marks == {rec.worker_id: ws.load_record(repo, rec.worker_id).last_event_seq}
+    last = ws.load_record(repo, rec.worker_id).last_event_seq
+    assert set(marks) == {rec.worker_id} and marks[rec.worker_id]["seq"] == last
+    assert marks[rec.worker_id]["acked_at"].startswith("20")   # when the ack happened
+    assert wrc.sync(repo) == []                                 # the mark still reads as acknowledged
+    # A file from before acked_at was recorded (a bare integer per worker) is still a mark.
+    (ws.workers_dir(repo) / "sync.yaml").write_text(f"{rec.worker_id}: {last}\n")
+    assert wrc.sync_marks(repo) == {rec.worker_id: {"seq": last, "acked_at": None}} and wrc.sync(repo) == []
 
 
 # --- G3 ------------------------------------------------------------------------
