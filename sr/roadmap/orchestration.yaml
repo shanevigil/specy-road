@@ -13,6 +13,13 @@ roster:
     billing_route: claude_subscription
     channels:
       cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/claude-worker.sh {session} {prompt}"
+  - id: claude-fable-5-1
+    family: anthropic
+    roles: [executor]
+    harness: claude-code
+    billing_route: claude_subscription
+    channels:
+      cli: "/Users/savigil/WORKSPACE/specy-road/sr/tools/fable-worker.sh {session} {prompt}"
   - id: claude-opus-5-5-high
     family: anthropic
     roles: [executor]

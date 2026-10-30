@@ -86,16 +86,16 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
 | `M10` | Agent loop performance and observability | phase | — | Not Started |
-| `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | — | Not Started |
+| `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Not Started |
 | `M10.2` | Normalised usage event in the worker log | task | — | Not Started |
 | `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | — | Not Started |
-| `M10.4` | Pin harness discovery mode per profile | task | — | Not Started |
+| `M10.4` | Pin harness discovery mode per profile | task | Agentic-led | Not Started |
 | `M10.5` | Per-role effort in model profiles | task | — | Not Started |
 | `M10.6` | Measure whether lower reviewer effort changes verdicts | task | — | Not Started |
-| `M10.7` | Output budgets with --full on packets, briefs and plans | task | — | Not Started |
+| `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Not Started |
 | `M10.8` | Reviewers launch without repo hooks or MCP | task | — | Not Started |
 | `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | — | Not Started |
-| `M10.10` | Position the docs on governance, not on CLI workers | task | — | Not Started |
+| `M10.10` | Position the docs on governance, not on CLI workers | task | Agentic-led | Not Started |
 | `M10.11` | Document the harness-subagent recipe for parallel work inside a leaf | task | — | Not Started |
 | `M10.12` | Visual explorer for worker event logs in the PM GUI | task | — | Not Started |
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | — | Not Started |

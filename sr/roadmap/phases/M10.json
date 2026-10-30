@@ -14,7 +14,14 @@
       "type": "phase"
     },
     {
+      "acceptance": [
+        "The event schema gains the types launched and first_output; the wrapper appends launched (detail: argv[0], harness, resumed flag) right after the harness process starts and first_output on the first stdout line it reads; both carry the existing at timestamp and nothing else new",
+        "worker sync --ack records, per worker, the time the ack happened and the highest seq acked, in the existing sync state file, without changing what sync returns",
+        "specy-road worker timeline <worker id or NODE_ID> prints one line per phase with its duration: delegated to launched, launched to first output, first output to the turn's end (turn_completed, completion or error), and end to acked, each marked unknown when an event is missing; --json prints the same as an object; the rendering lives in worker_cli_render.py so worker_cli.py stays under the 400-line cap",
+        "docs/orchestration-workers.md lists the two new events in its event list and documents worker timeline in the command table; tests cover A1 to A3"
+      ],
       "codename": "record-phase-timestamps-in",
+      "execution_milestone": "Agentic-led",
       "goal": "If we do this, active wall-clock per leaf by phase moves from unmeasured to measured, which is the precondition for every other idea here being checked",
       "id": "M10.1",
       "node_key": "375aed3f-58a5-499c-a6be-4506de779a83",
@@ -23,6 +30,18 @@
       "sibling_order": 1,
       "status": "Not Started",
       "title": "Record phase timestamps in the event log and print a per-leaf timeline",
+      "touch_zones": [
+        "specy_road/worker_runner.py",
+        "specy_road/worker_state.py",
+        "specy_road/worker_ops.py",
+        "specy_road/schemas/worker-event.schema.json",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "docs/orchestration-workers.md",
+        "tests/test_worker_state.py",
+        "tests/test_worker_cli.py",
+        "tests/test_worker_faults.py"
+      ],
       "type": "task"
     },
     {
@@ -50,7 +69,15 @@
       "type": "task"
     },
     {
+      "acceptance": [
+        "A model profile's access block accepts launch_mode with the values full or bare (absent means full); model_profiles rejects any other value with a message naming the profile, and specy-road models show prints it",
+        "The Claude Code adapter passes --bare on launch and on resume when the profile says bare and never passes it when the profile says full; a custom channels.cli is left as written",
+        "The started event the adapter parses from the system/init line carries detail with the harness version when the line has one, the tool names, the MCP server names and the plugin names reported, and inferred_mode set to bare when the tool list is only the bare-mode set, else full",
+        "When inferred_mode differs from the profile's launch_mode, the adapter also yields an error event naming both modes, so worker sync shows it on the next turn",
+        "docs/orchestration-models.md documents launch_mode, the vendor's bare-by-default note with its URL and the date read, and the API-key consequence of bare; the model-profiles README schema lists the field; the two shipped Claude profiles set launch_mode: full; tests cover A1 to A4"
+      ],
       "codename": "pin-harness-discovery-mode",
+      "execution_milestone": "Agentic-led",
       "goal": "If we do this, a vendor default change cannot silently strip workers of their harness tools",
       "id": "M10.4",
       "node_key": "04b6ef0b-1f8d-4227-b577-b4721aec8b86",
@@ -59,6 +86,15 @@
       "sibling_order": 4,
       "status": "Not Started",
       "title": "Pin harness discovery mode per profile",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/model_profiles.py",
+        "specy_road/templates/project/model-profiles/",
+        "docs/orchestration-models.md",
+        "suggested_prompts/",
+        "tests/test_worker_adapters.py",
+        "tests/test_models_and_prompt.py"
+      ],
       "type": "task"
     },
     {
@@ -86,7 +122,15 @@
       "type": "task"
     },
     {
+      "acceptance": [
+        "review-packet inlines at most --max-diff-lines lines of diff (default 1500); past the cap the packet keeps the first files whole, lists every remaining changed path with its added and removed line counts, and names the full diff it wrote to work/reviews/<NODE_ID>/DIFF.patch; --max-diff-lines 0 means no cap and no DIFF.patch; a packet under the cap is byte-identical to today's",
+        "brief writes one header line with the brief's total size in bytes and its three largest sections by size, and prints a warning on stderr naming them when the total exceeds 65536 bytes",
+        "grind-session --plan --json --fields <comma list> prints only those top-level keys; an unknown key is an error naming the valid keys",
+        "validate prints the no-acceptance warnings as one line per class, counting the leaves and listing their ids, instead of one line per leaf; the per-leaf fix hint appears once",
+        "docs/dev-workflow.md documents the diff cap, DIFF.patch and the brief size line; docs/grind-session.md documents --fields; tests cover A1 to A4"
+      ],
       "codename": "output-budgets-with-full",
+      "execution_milestone": "Agentic-led",
       "goal": "If we do this, uncached input per turn shrinks because dumps become summaries with a pointer",
       "id": "M10.7",
       "node_key": "fee43265-aa53-4b5e-bd66-2a198519e20d",
@@ -95,6 +139,21 @@
       "sibling_order": 7,
       "status": "Not Started",
       "title": "Output budgets with --full on packets, briefs and plans",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/generate_brief.py",
+        "specy_road/bundled_scripts/brief_acceptance.py",
+        "specy_road/bundled_scripts/session_plan_render.py",
+        "specy_road/bundled_scripts/grind_session_args.py",
+        "specy_road/bundled_scripts/grind_session.py",
+        "specy_road/cli_usage.py",
+        "docs/dev-workflow.md",
+        "docs/grind-session.md",
+        "tests/test_review_packet.py",
+        "tests/test_generate_brief.py",
+        "tests/test_session_plan.py",
+        "tests/test_validate_acceptance_coverage.py"
+      ],
       "type": "task"
     },
     {
@@ -122,7 +181,14 @@
       "type": "task"
     },
     {
+      "acceptance": [
+        "docs/philosophy-and-scope.md gains a section titled Where specy-road sits that says other tools now drive coding-agent CLIs as workers, names Microsoft Agent Framework, LiteLLM's harness feature and Bernstein each with a primary URL and the date read, and states the four commitments that together are specy-road's: the roadmap graph in the repo, separated roles with fresh-session distinct-family reviewers, reviews bound to a commit, and tracked files plus shell commands as the only surface",
+        "README.md's Why teams use it list gains one bullet with that positioning, linking the new section; the What it is paragraph is otherwise unchanged",
+        "docs/orchestration.md's opening paragraph gains one sentence pointing at the new section",
+        "Every statement about another tool is one its own documentation makes; nothing from the secondary-source list in docs/design-notes/agent-performance-research-triage.md section 5 is repeated as fact"
+      ],
       "codename": "position-the-docs-on",
+      "execution_milestone": "Agentic-led",
       "goal": "If we do this, adopters evaluate specy-road on the right axis and fewer feature requests ask for a generic agent runner",
       "id": "M10.10",
       "node_key": "8878a402-7f4b-4e1b-9f39-d46b4d064364",
@@ -131,6 +197,11 @@
       "sibling_order": 10,
       "status": "Not Started",
       "title": "Position the docs on governance, not on CLI workers",
+      "touch_zones": [
+        "docs/philosophy-and-scope.md",
+        "README.md",
+        "docs/orchestration.md"
+      ],
       "type": "task"
     },
     {
