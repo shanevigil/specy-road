@@ -105,3 +105,23 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
+  - codename: output-budgets-with-full
+    node_id: M10.7
+    branch: feature/rm-output-budgets-with-full
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - specy_road/bundled_scripts/brief_acceptance.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/cli_usage.py
+      - docs/dev-workflow.md
+      - docs/grind-session.md
+      - tests/test_review_packet.py
+      - tests/test_generate_brief.py
+      - tests/test_session_plan.py
+      - tests/test_validate_acceptance_coverage.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
