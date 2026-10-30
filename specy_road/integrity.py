@@ -134,14 +134,15 @@ def _pytest_table_text(text: str | None) -> str:
     lines: list[str] = []
     in_table = False
     for line in text.splitlines():
-        if line.startswith("[tool.pytest"):
+        head = line.strip()   # TOML allows indented table headers
+        if head.startswith("[tool.pytest"):
             in_table = True
             lines.append(line)
             continue
         if in_table:
-            if line.startswith("[") and not line.startswith("[tool.pytest"):
+            if head.startswith("["):
                 in_table = False
-            elif in_table:
+            else:
                 lines.append(line)
     return "\n".join(lines)
 
@@ -180,24 +181,20 @@ def _has_skip(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+_UNITTEST_SKIPS = frozenset({"skip", "skipIf", "skipUnless"})
+
+
 def _decorator_skips(dec: ast.expr) -> bool:
-    if isinstance(dec, ast.Name) and dec.id in {"skip", "skipIf", "skipUnless", "expectedFailure"}:
-        return True
-    if isinstance(dec, ast.Attribute) and dec.attr in {"skip", "skipIf", "skipUnless", "expectedFailure"}:
-        return True
-    if isinstance(dec, ast.Attribute) and dec.attr in {"skipif", "xfail"} and _is_pytest_mark(dec.value):
-        return True   # bare @pytest.mark.xfail / skipif, no call parentheses
-    if not isinstance(dec, ast.Call):
+    """``@pytest.mark.skip|skipif|xfail`` or ``@unittest.skip|skipIf|skipUnless``, bare or called."""
+    target = dec.func if isinstance(dec, ast.Call) else dec
+    if isinstance(target, ast.Name):
+        return target.id in _UNITTEST_SKIPS   # from unittest import skip
+    if not isinstance(target, ast.Attribute):
         return False
-    target = dec.func
-    if isinstance(target, ast.Name) and target.id in {"skip", "skipIf", "skipUnless", "expectedFailure"}:
+    if target.attr in {"skip", "skipif", "xfail"} and _is_pytest_mark(target.value):
         return True
-    if isinstance(target, ast.Attribute):
-        if target.attr in {"skip", "skipif", "xfail"} and _is_pytest_mark(target.value):
-            return True
-        if target.attr in {"skip", "skipIf", "skipUnless", "expectedFailure"}:
-            return True
-    return False
+    return (target.attr in _UNITTEST_SKIPS and isinstance(target.value, ast.Name)
+            and target.value.id == "unittest")
 
 
 def _is_pytest_mark(value: ast.expr) -> bool:
@@ -216,13 +213,13 @@ def _assert_count(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
     for sub in ast.walk(node):
         if isinstance(sub, ast.Assert):
             count += 1
-        elif isinstance(sub, ast.With):
-            for item in sub.items:
-                ctx = item.context_expr
-                if isinstance(ctx, ast.Call) and isinstance(ctx.func, ast.Attribute):
-                    if ctx.func.attr == "raises" and isinstance(ctx.func.value, ast.Name) and ctx.func.value.id == "pytest":
-                        count += 1
         elif isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute):
-            if sub.func.attr.startswith("assert") and isinstance(sub.func.value, ast.Name) and sub.func.value.id == "self":
+            owner = sub.func.value
+            if not isinstance(owner, ast.Name):
+                continue
+            # ``with pytest.raises(...)`` and ``pytest.raises(E, f, *a)`` are one Call node each
+            if (owner.id == "pytest" and sub.func.attr == "raises") or (
+                owner.id == "self" and sub.func.attr.startswith("assert")
+            ):
                 count += 1
     return count

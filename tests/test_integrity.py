@@ -183,6 +183,21 @@ def test_new_skip_call(tmp_path: Path) -> None:
     )
 
 
+def test_unrelated_decorator_named_skip_is_not_a_skip(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    _on_dev(repo)
+    _commit(repo, "tests/test_x.py", "def test_x():\n    assert 1\n", "on dev")
+    _merge_dev(repo)
+    _commit(
+        repo,
+        "tests/test_x.py",
+        "class custom:\n    skip = staticmethod(lambda f: f)\n\n"
+        "@custom.skip\ndef test_x():\n    assert 1\n",
+        "identity decorator",
+    )
+    assert compare_integrity(repo, _merge_base(repo), _git(repo, "rev-parse", "HEAD")) == []
+
+
 def test_assert_loss(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     _on_dev(repo)
@@ -210,6 +225,22 @@ def test_assert_loss_counts_pytest_raises(tmp_path: Path) -> None:
     assert line == "assert-loss: tests/test_x.py::test_raises 1->0"
 
 
+def test_assert_loss_counts_callable_pytest_raises(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    _on_dev(repo)
+    _commit(
+        repo,
+        "tests/test_x.py",
+        "import pytest\n\ndef test_x():\n    pytest.raises(ValueError, int, 'bad')\n",
+        "callable raises on dev",
+    )
+    _merge_dev(repo)
+    _commit(repo, "tests/test_x.py", "def test_x():\n    pass\n", "gone")
+    assert [f.line() for f in compare_integrity(repo, _merge_base(repo), _git(repo, "rev-parse", "HEAD"))] == [
+        "assert-loss: tests/test_x.py::test_x 1->0"
+    ]
+
+
 def test_config_change_conftest(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     _on_dev(repo)
@@ -232,6 +263,17 @@ def test_config_change_pyproject_pytest_table(tmp_path: Path) -> None:
         "[project]\nname = 'x'\n\n[tool.pytest.ini_options]\naddopts = '-q'\n",
         "pytest",
     )
+    assert compare_integrity(repo, _merge_base(repo), _git(repo, "rev-parse", "HEAD"))[0].line() == (
+        "config-change: pyproject.toml"
+    )
+
+
+def test_config_change_indented_pyproject_pytest_table(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    _on_dev(repo)
+    _commit(repo, "pyproject.toml", "  [tool.pytest.ini_options]\n  addopts = '-q'\n", "indented on dev")
+    _merge_dev(repo)
+    _commit(repo, "pyproject.toml", "  [tool.pytest.ini_options]\n  addopts = '--ignore=tests'\n", "edit")
     assert compare_integrity(repo, _merge_base(repo), _git(repo, "rev-parse", "HEAD"))[0].line() == (
         "config-change: pyproject.toml"
     )
@@ -278,3 +320,48 @@ def test_cli_text_line_and_exit_one(tmp_path: Path, capsys) -> None:
     assert ex.value.code == 1
     out = capsys.readouterr().out.strip().splitlines()
     assert "removed-test-file: tests/test_x.py" in out
+
+
+
+_TEST_SRC = "def test_a():\n    assert 1\n"
+_CLI_FORMS = {
+    "removed-test": ("tests/test_x.py", _TEST_SRC + "\ndef test_b():\n    assert 2\n", _TEST_SRC,
+                     "removed-test: tests/test_x.py::test_b"),
+    # a deleted Python test file reports the file and each test it held, sorted
+    "removed-test-file": ("tests/test_x.py", _TEST_SRC, None,
+                          "removed-test-file: tests/test_x.py\nremoved-test: tests/test_x.py::test_a"),
+    "new-skip": ("tests/test_x.py", _TEST_SRC, "import pytest\n\n@pytest.mark.skip\n" + _TEST_SRC,
+                 "new-skip: tests/test_x.py::test_a"),
+    "assert-loss": ("tests/test_x.py", _TEST_SRC, "def test_a():\n    pass\n",
+                    "assert-loss: tests/test_x.py::test_a 1->0"),
+    "config-change": ("pytest.ini", "[pytest]\n", "[pytest]\naddopts = -q\n", "config-change: pytest.ini"),
+}
+
+
+@pytest.mark.parametrize("form", sorted(_CLI_FORMS))
+def test_cli_prints_exact_line_and_exits_one_for_each_form(tmp_path: Path, capsys, form: str) -> None:
+    rel, base_text, ref_text, expected = _CLI_FORMS[form]
+    repo = _repo(tmp_path, roadmap=True)
+    _on_dev(repo)
+    _commit(repo, rel, base_text, "on dev")
+    _merge_dev(repo)
+    if ref_text is None:
+        _git(repo, "rm", "-q", rel)
+        _git(repo, "commit", "-qm", "delete")
+    else:
+        _commit(repo, rel, ref_text, "change")
+    with pytest.raises(SystemExit) as ex:
+        integrity_cli.main(["T1", "--repo-root", str(repo), "--ref", _git(repo, "rev-parse", "HEAD")])
+    assert ex.value.code == 1
+    assert capsys.readouterr().out == expected + "\n"
+
+
+def test_cli_text_mode_unchanged_ref_exits_zero_silently(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path, roadmap=True)
+    _on_dev(repo)
+    _commit(repo, "tests/test_x.py", _TEST_SRC, "on dev")
+    _merge_dev(repo)
+    with pytest.raises(SystemExit) as ex:
+        integrity_cli.main(["T1", "--repo-root", str(repo), "--ref", _git(repo, "rev-parse", "HEAD")])
+    assert ex.value.code == 0
+    assert capsys.readouterr().out == ""
