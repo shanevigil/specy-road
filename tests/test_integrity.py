@@ -149,6 +149,23 @@ def test_new_skip_decorator(tmp_path: Path) -> None:
     )
 
 
+def test_new_skip_bare_xfail_decorator(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    _on_dev(repo)
+    _commit(repo, "tests/test_x.py", "def test_later():\n    assert 1\n", "on dev")
+    _merge_dev(repo)
+    _commit(
+        repo,
+        "tests/test_x.py",
+        "import pytest\n\n@pytest.mark.xfail\n"
+        "def test_later():\n    assert 1\n",
+        "bare xfail",
+    )
+    assert [f.line() for f in compare_integrity(repo, _merge_base(repo), _git(repo, "rev-parse", "HEAD"))] == [
+        "new-skip: tests/test_x.py::test_later"
+    ]
+
+
 def test_new_skip_call(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     _on_dev(repo)

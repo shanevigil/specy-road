@@ -185,6 +185,8 @@ def _decorator_skips(dec: ast.expr) -> bool:
         return True
     if isinstance(dec, ast.Attribute) and dec.attr in {"skip", "skipIf", "skipUnless", "expectedFailure"}:
         return True
+    if isinstance(dec, ast.Attribute) and dec.attr in {"skipif", "xfail"} and _is_pytest_mark(dec.value):
+        return True   # bare @pytest.mark.xfail / skipif, no call parentheses
     if not isinstance(dec, ast.Call):
         return False
     target = dec.func
