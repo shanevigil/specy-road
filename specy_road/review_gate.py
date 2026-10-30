@@ -267,10 +267,9 @@ def evaluate_gate(
         else:
             _count(result, counted)
     ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))
-    result.verifier_problems = (
-        verifier_gate_problems(ready, result.approvals)
-        + executor_blocked_gate_problems(ready)
-    )
+    result.verifier_problems = verifier_gate_problems(ready, result.approvals)
+    if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
+        result.verifier_problems += executor_blocked_gate_problems(ready)
     return result
 
 

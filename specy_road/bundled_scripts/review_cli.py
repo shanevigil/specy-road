@@ -29,7 +29,6 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
 from specy_road.review_files import (
     HUMAN,
-    ReviewFile,
     archive_review,
     latest_ready,
     list_ready,
@@ -50,19 +49,16 @@ from specy_road.session_presence import list_sessions
 from specy_road.worker_state import list_records
 
 
-def _state(root: Path, t: ReviewTarget, gate: GateResult, ready: ReviewFile | None) -> str:
+def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | None) -> str:
     """Counted reviews outrank the READY file: they bind to the current commit."""
     if gate.blocks:
         return "blocked"
     if gate.passed:
         return "approved"
-    ready_commit = ready.data["commit"] if ready else None
     if ready_commit is None:
         return "waiting"
     if not same_commit(root, ready_commit, t.commit):
         return "stale"
-    if executor_blocked_display_lines(ready):
-        return "executor_blocked"
     return "in-review"
 
 
@@ -72,14 +68,22 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     aids = acceptance_ids(t.node)
     gate = evaluate_gate(root, t.node, t.commit, branch=branch)
     ready = latest_ready(root, node_id, branch, aids)
-    blocked_lines = executor_blocked_display_lines(ready)
+    ready_commit = ready.data["commit"] if ready else None
+    # A current READY's blocked_on outranks reviewer blocks and escalation (A3).
+    blocked_lines = (
+        executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
+    )
     tm = trial_merge(root, t.ref, t.base_ref)
     merge_problem = [tm.problem()] if tm and tm.problem() else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
+    if blocked_lines:
+        state = "executor_blocked"
+    else:
+        state = "escalated" if escalated else _state(root, t, gate, ready_commit)
     return {
         "node_id": node_id,
-        "state": "escalated" if escalated else _state(root, t, gate, ready),
+        "state": state,
         "escalation": loop.escalation.to_dict() if escalated else None,
         "ref": t.ref,
         "commit": gate.commit,

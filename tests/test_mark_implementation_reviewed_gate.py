@@ -151,12 +151,12 @@ def test_yes_refuses_a_failing_ready_verifier(tmp_path: Path, capsys) -> None:
     assert _review_state(repo) == "pending"
 
 
-def _blocked_on_ready(repo: Path) -> None:
+def _blocked_on_ready(repo: Path, commit: str | None = None) -> None:
     d = reviews_dir(repo, "M1.1")
     d.mkdir(parents=True, exist_ok=True)
     (d / "READY-exec.md").write_text(
         f"---\nnode_id: M1.1\nagent: exec\nbranch: feature/rm-thing\n"
-        f"commit: {git(repo, 'rev-parse', 'HEAD')}\nbase: {git(repo, 'rev-parse', 'dev')}\n"
+        f"commit: {commit or git(repo, 'rev-parse', 'HEAD')}\nbase: {git(repo, 'rev-parse', 'dev')}\n"
         "changed_paths: [src/a.py]\nverify:\n  - {cmd: pytest, exit: 0}\n"
         "blocked_on:\n  - {acceptance: A1, reason: cannot meet without weakening tests}\n---\n"
     )
@@ -189,20 +189,23 @@ def test_finish_refuses_a_failing_ready_verifier(tmp_path: Path, monkeypatch, ca
     assert "verifier `false` exited 1" in err
 
 
-def test_finish_refuses_while_ready_declares_blocked_on(tmp_path: Path, monkeypatch, capsys) -> None:
-    from specy_road.bundled_scripts import finish_task as ft
-    from tests.review_repo_helpers import NODE
+def test_finish_refuses_while_ready_declares_blocked_on(tmp_path: Path, capsys) -> None:
+    """The public command: an approved row does not get past a READY that is blocked at the reviewed commit."""
+    from specy_road.bundled_scripts import finish_task
 
     repo = _repo(tmp_path)
     _record(repo, "human")
-    _blocked_on_ready(repo)
-    monkeypatch.setattr(ft, "ROOT", repo)
+    reviewed = git(repo, "rev-parse", "HEAD")
+    assert _run(repo, "--yes") == 0
+    _blocked_on_ready(repo, commit=reviewed)  # the approval commit is bookkeeping, not new work
+    before = git(repo, "rev-parse", "HEAD")
     with pytest.raises(SystemExit) as e:
-        ft._impl_review_or_exit({"implementation_review": "approved"}, NODE)
+        finish_task.main(["--repo-root", str(repo)])
     assert e.value.code == 1
     err = capsys.readouterr().err
     assert "no longer holds at this commit" in err
     assert "blocked on A1" in err
+    assert git(repo, "rev-parse", "HEAD") == before
 
 
 @pytest.mark.parametrize("case", ["clean", "bookkeeping", "code"])

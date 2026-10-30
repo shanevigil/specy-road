@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.review_repo_helpers import git, make_review_repo, review_text
+from tests.review_repo_helpers import commit_file, git, make_review_repo, review_text
 
 from specy_road.bundled_scripts import review_cli
 from specy_road.bundled_scripts import review_packet as rp
@@ -262,3 +262,34 @@ def test_executor_blocked_keeps_gate_unmet_even_with_approval(tmp_path: Path) ->
     assert not gate.passed
     assert any("blocked on A1" in p for p in gate.problems())
     assert any("blocked on A2" in p for p in gate.problems())
+
+
+def test_a_stale_blocked_ready_does_not_block_a_later_commit(tmp_path: Path, capsys) -> None:
+    """blocked_on binds to the READY commit: a later implementation commit is judged on its own."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _ready_blocked(repo)
+    commit_file(repo, "src/b.py", "b = 1\n", "address the block")
+    gate = _gate(repo, _review(repo))
+    assert gate.passed, gate.problems()
+    assert not any("blocked on" in p for p in gate.problems())
+    st = _status(repo, capsys)
+    assert st["state"] == "approved" and st["executor_blocked"] == []
+
+
+def test_executor_blocked_outranks_a_reviewer_block_and_escalation(tmp_path: Path, capsys) -> None:
+    """A3 holds even when a counted review blocks and the loop is escalated; both stay reported."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI + "policy: {escalate_review_rounds: 1}\n")
+    notes = repo.parent / "notes.md"
+    text = review_text(git(repo, "rev-parse", "HEAD"), model="opus", verdict="block", a1="fail")
+    notes.write_text(text.replace("notes\n", "round 1: the heading case still warns\n"))
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", "block",
+                "--file", str(notes), "--repo-root", str(repo)) == 0
+    _ready_blocked(repo)
+    st = _status(repo, capsys)
+    assert st["state"] == "executor_blocked"
+    assert st["executor_blocked"] == [
+        "A1: would require weakening an existing test",
+        "A2: baseline cap too low",
+    ]
+    assert st["escalation"] is not None
+    assert [r["verdict"] for r in st["reviews"]] == ["block"]
