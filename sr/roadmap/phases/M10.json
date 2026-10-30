@@ -195,7 +195,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.10_position-the-docs-on_8878a402-7f4b-4e1b-9f39-d46b4d064364.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Position the docs on governance, not on CLI workers",
       "touch_zones": [
         "docs/philosophy-and-scope.md",
