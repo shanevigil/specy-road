@@ -34,13 +34,15 @@
         "specy_road/worker_runner.py",
         "specy_road/worker_state.py",
         "specy_road/worker_ops.py",
+        "specy_road/worker_reconcile.py",
         "specy_road/schemas/worker-event.schema.json",
         "specy_road/bundled_scripts/worker_cli.py",
         "specy_road/bundled_scripts/worker_cli_render.py",
         "docs/orchestration-workers.md",
         "tests/test_worker_state.py",
         "tests/test_worker_cli.py",
-        "tests/test_worker_faults.py"
+        "tests/test_worker_faults.py",
+        "tests/test_review_round6_ops.py"
       ],
       "type": "task"
     },
