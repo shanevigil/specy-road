@@ -85,12 +85,30 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Not Started**
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Not Started**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Not Started**
+- `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
+  - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Not Started**
+  - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
+  - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
+  - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Not Started**
+  - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Not Started**
+  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
+  - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
+  - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Not Started**
+  - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Not Started**
+  - `M10.10` Position the docs on governance, not on CLI workers `position-the-docs-on` — task — **Not Started**
+  - `M10.11` Document the harness-subagent recipe for parallel work inside a leaf `document-the-harness-subagent-recipe` — task — **Not Started**
+  - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
+  - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M9.2` on `feature/rm-fixture-pollution-guard` since 2026-10-29
+- `M9.3` on `feature/rm-layout-with-outside-change` since 2026-10-29
+- `M9.4` on `feature/rm-executor-blocked-on` since 2026-10-29
+- `M9.5` on `feature/rm-integrity-report` since 2026-10-29
 
 ## Reaching the detail behind this
 

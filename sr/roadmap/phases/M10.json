@@ -1,0 +1,180 @@
+{
+  "nodes": [
+    {
+      "codename": "agent-loop-performance",
+      "dependencies": [],
+      "id": "M10",
+      "node_key": "deb4dfb7-d5f2-4cdb-8dd6-36dcf3212bd9",
+      "notes": "Promoted 2026-10-30 from brainstorm agentic-performance (13 accepted of 70). Research triage: docs/design-notes/agent-performance-research-triage.md. Acceptance and touch zones still to author per leaf; M10.13 defaults to logs untracked.",
+      "planning_dir": "planning/M10_agent-loop-performance_deb4dfb7-d5f2-4cdb-8dd6-36dcf3212bd9.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Agent loop performance and observability",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "codename": "record-phase-timestamps-in",
+      "goal": "If we do this, active wall-clock per leaf by phase moves from unmeasured to measured, which is the precondition for every other idea here being checked",
+      "id": "M10.1",
+      "node_key": "375aed3f-58a5-499c-a6be-4506de779a83",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.1_record-phase-timestamps-in_375aed3f-58a5-499c-a6be-4506de779a83.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "Record phase timestamps in the event log and print a per-leaf timeline",
+      "type": "task"
+    },
+    {
+      "codename": "normalised-usage-event-in",
+      "goal": "If we do this, cost per role becomes comparable across harnesses because every adapter writes the same shape",
+      "id": "M10.2",
+      "node_key": "7c0843ea-e75c-4530-be57-aea557152bc9",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.2_normalised-usage-event-in_7c0843ea-e75c-4530-be57-aea557152bc9.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "Normalised usage event in the worker log",
+      "type": "task"
+    },
+    {
+      "codename": "replace-per-worker-polling-with",
+      "goal": "If we do this, coordination latency between an event being written and the coordinator observing it moves from one coordinator turn to sub-second because the coordinator stops guessing when to look",
+      "id": "M10.3",
+      "node_key": "77ecca98-cf46-4640-a984-89a62cca9517",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.3_replace-per-worker-polling-with_77ecca98-cf46-4640-a984-89a62cca9517.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "Replace per-worker polling with a single mailbox flag file and a foreground --wait",
+      "type": "task"
+    },
+    {
+      "codename": "pin-harness-discovery-mode",
+      "goal": "If we do this, a vendor default change cannot silently strip workers of their harness tools",
+      "id": "M10.4",
+      "node_key": "04b6ef0b-1f8d-4227-b577-b4721aec8b86",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.4_pin-harness-discovery-mode_04b6ef0b-1f8d-4227-b577-b4721aec8b86.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "Pin harness discovery mode per profile",
+      "type": "task"
+    },
+    {
+      "codename": "per-role-effort-in-model",
+      "goal": "If we do this, reviewer and coordinator turns get cheaper and faster without touching executor quality",
+      "id": "M10.5",
+      "node_key": "a3d7a8a8-fd07-45f5-910d-185aac952e86",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.5_per-role-effort-in-model_a3d7a8a8-fd07-45f5-910d-185aac952e86.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "Per-role effort in model profiles",
+      "type": "task"
+    },
+    {
+      "codename": "measure-whether-lower-reviewer",
+      "goal": "If we do this, the per-role effort defaults rest on a measurement instead of the seed article's general claim",
+      "id": "M10.6",
+      "node_key": "333e7bf2-fef8-4737-a445-a2c61a230d10",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.6_measure-whether-lower-reviewer_333e7bf2-fef8-4737-a445-a2c61a230d10.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "Measure whether lower reviewer effort changes verdicts",
+      "type": "task"
+    },
+    {
+      "codename": "output-budgets-with-full",
+      "goal": "If we do this, uncached input per turn shrinks because dumps become summaries with a pointer",
+      "id": "M10.7",
+      "node_key": "fee43265-aa53-4b5e-bd66-2a198519e20d",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.7_output-budgets-with-full_fee43265-aa53-4b5e-bd66-2a198519e20d.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "Output budgets with --full on packets, briefs and plans",
+      "type": "task"
+    },
+    {
+      "codename": "reviewers-launch-without-repo",
+      "goal": "If we do this, reviewer start-up is faster and a hostile branch cannot run code in the reviewer's session",
+      "id": "M10.8",
+      "node_key": "d49d09d3-7368-42a6-9c72-7839e29b3447",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.8_reviewers-launch-without-repo_d49d09d3-7368-42a6-9c72-7839e29b3447.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "Reviewers launch without repo hooks or MCP",
+      "type": "task"
+    },
+    {
+      "codename": "emit-a-stalled-event",
+      "goal": "If we do this, active wall-clock per leaf moves because dead time inside a stalled worker is surfaced at the next sync instead of at the end of the night",
+      "id": "M10.9",
+      "node_key": "fb1329c3-3849-44a6-a4cf-48a50cfd6857",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.9_emit-a-stalled-event_fb1329c3-3849-44a6-a4cf-48a50cfd6857.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Emit a stalled event when a worker goes silent past a threshold",
+      "type": "task"
+    },
+    {
+      "codename": "position-the-docs-on",
+      "goal": "If we do this, adopters evaluate specy-road on the right axis and fewer feature requests ask for a generic agent runner",
+      "id": "M10.10",
+      "node_key": "8878a402-7f4b-4e1b-9f39-d46b4d064364",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.10_position-the-docs-on_8878a402-7f4b-4e1b-9f39-d46b4d064364.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "Position the docs on governance, not on CLI workers",
+      "type": "task"
+    },
+    {
+      "codename": "document-the-harness-subagent-recipe",
+      "goal": "If we do this, executor wall-clock falls on test-heavy leaves because the harness already parallelises",
+      "id": "M10.11",
+      "node_key": "3d4d93d9-aefe-4ef9-8543-d47fccf14594",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.11_document-the-harness-subagent-recipe_3d4d93d9-aefe-4ef9-8543-d47fccf14594.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "Document the harness-subagent recipe for parallel work inside a leaf",
+      "type": "task"
+    },
+    {
+      "codename": "visual-explorer-for-worker",
+      "dependencies": [
+        "375aed3f-58a5-499c-a6be-4506de779a83",
+        "7c0843ea-e75c-4530-be57-aea557152bc9"
+      ],
+      "goal": "If we do this, maintainers find slow or wrong leaf runs in minutes because the log is browsable instead of read as JSONL",
+      "id": "M10.12",
+      "node_key": "19dc4036-f6f2-4877-a8e0-94775e7b36fc",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.12_visual-explorer-for-worker_19dc4036-f6f2-4877-a8e0-94775e7b36fc.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "Visual explorer for worker event logs in the PM GUI",
+      "type": "task"
+    },
+    {
+      "codename": "a-project-setting-decides",
+      "dependencies": [
+        "375aed3f-58a5-499c-a6be-4506de779a83"
+      ],
+      "goal": "If we do this, teams that want an audit trail get one without a side system, and teams that do not keep their repo clean",
+      "id": "M10.13",
+      "node_key": "673b14b9-f262-48ea-a804-941fbf405bd1",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.13_a-project-setting-decides_673b14b9-f262-48ea-a804-941fbf405bd1.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "A project setting decides whether agent logs are tracked in git",
+      "type": "task"
+    }
+  ]
+}

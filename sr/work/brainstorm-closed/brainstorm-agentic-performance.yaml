@@ -1,0 +1,2275 @@
+version: 2
+slug: agentic-performance
+topic: How should specy-road make its CLI-driven agent orchestration faster and better
+  coordinated, in keeping with its philosophy?
+under: null
+mode: roadmap
+round: 2
+rounds: 2
+profile: technical
+panel: 2
+count: 20
+frame:
+  outcome: 'assumed: a roadmap leaf moves from pickup to finish with less dead time
+    and fewer wasted tokens, and a maintainer can see from tracked files alone where
+    each leaf''s time and cost went; all without specy-road calling a model, running
+    a daemon or serving MCP. (Neutralised: what dead time actually exists per leaf,
+    and what would show the loop is already fast enough?)'
+  metric: 'assumed: active wall-clock per leaf by phase; tokens and cost per role
+    and model; coordination latency between an event being written and the coordinator
+    observing it; count of specy-road shell invocations per leaf. None measured today.'
+  served: 'assumed: solo maintainers and small teams running coordinator, executor
+    and reviewer sessions across Claude Code, Codex and Cursor, plus the coding agents
+    themselves. Not served: teams wanting a hosted orchestration platform, an API-level
+    agent framework, or an LLM router in the coordination loop.'
+  assumed-vs-known: 'known: inference is usually not the dominant cost of an agent
+    task (seed article). assumed: polling dead time and harness cold start dominate
+    a specy-road leaf (unmeasured); per-role effort reduction does not cost review
+    quality (untested); adopters run headless workers at all rather than only IDE-driven
+    loops (unknown). (Neutralised: what would disconfirm each?)'
+  tried: 'nothing stopped. Already in place: sync returns only unacknowledged events;
+    resume re-passes permission mode and output format; Claude cost and Codex usage
+    land in event detail; grind-session computes parallel waves. Absent: timing instrumentation,
+    per-role effort, discovery-mode pinning, blocking wait, wave fan-out, output caps.'
+  fixed-or-choice: no daemon (D3) is fixed, but a foreground wait inside one CLI call
+    is a choice; full-harness discovery for workers is a design intent that becomes
+    a choice once claude -p defaults to bare; one Python process per specy-road command
+    is a choice; one worker per leaf is a choice.
+  not-the-question: if human review wait dwarfs everything else, or adopters mostly
+    drive loops from an IDE chat without headless workers, then speeding the worker
+    loop is the wrong target and the question is about the review packet or the IDE
+    loop instead; also wrong if the real ask is a hosted platform, which the constitution
+    rules out.
+  do-nothing: Claude Code flips -p to bare mode and workers silently lose skills,
+    hooks and MCP; token cost per leaf stays invisible so nobody can tell cheap configurations
+    from expensive ones; the polling gap scales with fan-out.
+  budget: maintainer time on the 0.3 line in small leaves; no new daemon, MCP server,
+    model call, vendor SDK dependency or resident process; version numbers human-owned.
+allocation: 's1: Failure modes x technical layers, Ordinary personas, 6
+
+  s2: Platform leverage x a competing team''s PM, Analogical transfer, 6
+
+  Operability x user segments, Random constraints (no network; one engineer; must
+  be free), 4
+
+  Migration paths x technical layers, Low typicality, 3
+
+  Debt and leverage x technical layers, Unoccupied regions, 3
+
+  Dependency risk x risk and compliance, Low typicality, 3
+
+  Security and compliance x business model, Ordinary personas, 2
+
+  Failure modes x business model (cost and budget), Random constraints, 2'
+ideas:
+- id: B1
+  title: Leaf timeline from files already written
+  rationale: Reconstruct a per-phase timeline for one leaf from git commit times,
+    READY and review file mtimes and the worker event log; works offline with no new
+    instrumentation
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: operability-random-constraints
+    round: '1'
+  cluster_id: C1
+  overlap:
+  - node_id: M4.16
+    relation: adjacent
+  critic:
+    feasibility: mtimes are lost on clone and rewritten by checkout; git times only
+      cover commits
+  hypothesis: If we do this, maintainers see where a leaf's wall-clock went because
+    the data is already on disk
+  verdict_why: Zero-instrumentation first slice of B28; worth doing only if B28 is
+    deferred (principle 9).
+- id: B2
+  title: Opt-in per-invocation CLI timing log
+  rationale: SPECY_ROAD_TIMING=1 appends import and run milliseconds per specy-road
+    call to a gitignored jsonl; doctor summarises it
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: operability-random-constraints
+    round: '1'
+  cluster_id: C1
+  critic:
+    value: Python start-up is estimated at 0.2-0.8 s per call and second-order; the
+      number is worth one measurement, not a permanent feature
+  hypothesis: If we do this, the shell-spawn cost per leaf becomes a number instead
+    of a guess
+  verdict_why: Measure once with hyperfine before adding an opt-in logger; prerequisite
+    for C12 verdicts (principle 9).
+- id: B3
+  title: Blocking worker sync --wait
+  rationale: A foreground wait inside one CLI call (file watch with stat-loop fallback
+    and --timeout) replaces model-written sleep loops; it lives only as long as the
+    tool call, so no daemon
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: operability-random-constraints
+    round: '1'
+  cluster_id: C3
+  hypothesis: If we do this, coordination latency per hand-off drops from a turn gap
+    to under a second
+  verdict_why: Duplicate of B44 within this session; B44 adds the single flag file
+    that makes the wait cheap.
+- id: B4
+  title: Cost estimate before launch in orchestrate plan
+  rationale: Multiply brief and packet sizes by profile prices to print an expected
+    token and dollar range per leaf and role before any worker starts
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: operability-random-constraints
+    round: '1'
+  cluster_id: C2
+  critic:
+    evidence: an estimate from brief size times price ignores turns and tool output,
+      the actual drivers; it could mislead
+  hypothesis: If we do this, one-engineer teams pick cheaper executor configurations
+    because the cost is visible up front
+  verdict_why: Only after B10 gives real per-leaf numbers to calibrate against.
+- id: B5
+  title: Pin harness discovery mode per profile
+  rationale: A launch_mode field (full, bare, explicit) that the Claude adapter asserts
+    against the init event, recording CLI version, so workers keep skills, hooks and
+    MCP when the vendor flips the headless default
+  kind: capability
+  effort: S
+  evidence:
+  - https://code.claude.com/docs/en/headless
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 04b6ef0b-1f8d-4227-b577-b4721aec8b86
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: migration-paths-low-typicality
+    round: '1'
+  cluster_id: C4
+  sources:
+  - url: https://code.claude.com/docs/en/headless
+    quote: --bare is the recommended mode for scripted and SDK calls, and will become
+      the default for -p in a future release.
+    supports: Bare mode will become the -p default, so the discovery mode must be
+      pinned
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: Add --bare to reduce startup time by skipping auto-discovery of hooks,
+      skills, custom commands, subagents, installed plugins, MCP servers, auto memory,
+      and CLAUDE.md.
+    supports: What workers lose if bare becomes default
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  overlap:
+  - node_id: M8.2
+    relation: prerequisite
+  critic:
+    value: protects the design intent (workers keep skills, hooks, MCP) against a
+      vendor default change
+    feasibility: the opt-out flag name once bare is default is not confirmed; assert
+      from the init event instead of guessing flags
+    evidence: the bare-by-default statement comes from Claude's headless docs; verify
+      in the evidence pass
+  hypothesis: If we do this, a vendor default change cannot silently strip workers
+    of their harness tools
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '4'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 5 (harness-native) depends on it; prerequisite to M8.2''s
+    hardened launch. Docs: orchestration-models.md profile fields; model-profiles
+    README; suggested_prompts if the profile schema gains a field.'
+- id: B6
+  title: Harness version drift check in doctor
+  rationale: Adapters record the CLI versions they were verified against; doctor compares
+    with installed versions and warns on drift
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: migration-paths-low-typicality
+    round: '1'
+  cluster_id: C4
+  overlap:
+  - node_id: M8.7
+    relation: same-problem-same-solution
+  hypothesis: If we do this, adapter breakage is found before a leaf is delegated
+    rather than mid-run
+  verdict_why: M8.7 already verifies harness facts against installed binaries.
+- id: B7
+  title: Recorded stream fixtures per adapter in CI
+  rationale: A captured stream-json or JSONL sample per harness drives adapter parser
+    and flag tests, so a dropped resume flag or a renamed event fails CI without a
+    real CLI
+  kind: refactor
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: migration-paths-low-typicality
+    round: '1'
+  cluster_id: C13
+  overlap:
+  - node_id: M8.1
+    relation: adjacent
+  - node_id: M9.2
+    relation: adjacent
+  critic:
+    feasibility: recorded samples go stale with vendor versions; M8.1's classified
+      diff is the refresh path
+  hypothesis: If we do this, adapter regressions are caught in CI because the vendor
+    output shape is pinned
+  verdict_why: Build as part of M8.1 so the samples and the facts fixture move together.
+- id: B8
+  title: One aggregated status --json for executors
+  rationale: A single read-only call returning what an executor otherwise gathers
+    from several commands, plus lazy imports in the entrypoint
+  kind: refactor
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: debt-leverage-unoccupied
+    round: '1'
+  cluster_id: C12
+  critic:
+    evidence: invocation count per leaf is unmeasured
+  hypothesis: If we do this, shell invocations per leaf fall by a third because the
+    common queries collapse into one
+  verdict_why: After B2's one-off measurement; may be a handoff status --json extension
+    (principle 3).
+- id: B9
+  title: Content-hash validation cache
+  rationale: Cache validate results keyed on the hash of manifest, chunks and registry,
+    so repeated validation of an unchanged graph is near free
+  kind: refactor
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: debt-leverage-unoccupied
+    round: '1'
+  cluster_id: C12
+  critic:
+    feasibility: stale-cache bugs; key on content hashes, and the dogfood fixture
+      already shows cache files breaking tests
+  hypothesis: If we do this, validator time per leaf drops because most runs see an
+    unchanged graph
+  verdict_why: Only if validator time shows up in B28's timeline.
+- id: B10
+  title: Normalised usage event in the worker log
+  rationale: A vendor-neutral usage event with nullable token, cost and turn fields,
+    filled by per-adapter parsers from Claude result, Codex turn.completed and Gemini
+    stats; a worker usage report per leaf, role and model
+  kind: platform
+  effort: M
+  evidence:
+  - https://code.claude.com/docs/en/headless
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 7c0843ea-e75c-4530-be57-aea557152bc9
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: debt-leverage-unoccupied
+    round: '1'
+  cluster_id: C2
+  sources:
+  - url: https://code.claude.com/docs/en/headless
+    quote: With --output-format json, the response payload includes total_cost_usd
+      and a per-model cost breakdown, so scripted callers can track spend without
+      consulting the usage dashboard.
+    supports: Cost is already available per run from the harness
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: When you continue an earlier conversation with --continue or --resume,
+      the run reports the conversation's whole total, earlier runs' spend included.
+      Both figures are client-side estimates and can differ from your actual bill.
+    supports: Harness cost figures are estimates and cumulative on resume, so a ledger
+      must store deltas and flag estimates
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: not-found
+  - url: https://code.claude.com/docs/en/headless
+    quote: Both figures are client-side estimates and can differ from your actual
+      bill.
+    supports: Harness cost figures are estimates
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  overlap:
+  - node_id: M3.9
+    relation: adjacent
+  critic:
+    value: cost is already in event detail for Claude and Codex; the gain is comparability
+      and a report, not new data
+    feasibility: nullable fields and per-adapter parsers; Cursor exposes little
+    evidence: vendor cost figures are client-side estimates and cumulative on resume
+  hypothesis: If we do this, cost per role becomes comparable across harnesses because
+    every adapter writes the same shape
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '2'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'States C2 best; extends what M3.9 adapters already capture (principle
+    3, 9). Docs: orchestration-workers.md field table; orchestration-models.md prices
+    section.'
+- id: B11
+  title: Adapter capability manifests as data
+  rationale: Each adapter declares what it supports (effort flag, interrupt, usage,
+    hooks, resume) so models list shows unsupported instead of silently skipping
+  kind: platform
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: dependency-risk-low-typicality
+    round: '1'
+  cluster_id: C4
+  overlap:
+  - node_id: M8.1
+    relation: same-problem-different-solution
+  critic:
+    feasibility: M8.1's harness facts fixture is the data; a second manifest format
+      would drift from it
+  hypothesis: If we do this, users stop assuming a flag worked when the harness ignored
+    it
+  verdict_why: 'Fold into M8.1: the facts fixture should carry per-adapter support
+    flags that models list reads.'
+- id: B12
+  title: Keep raw harness lines and allow reparse
+  rationale: Retain raw stream lines beside the event log and add worker reparse so
+    a later adapter fix recovers events lost to vendor schema drift
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: dependency-risk-low-typicality
+    round: '1'
+  cluster_id: C13
+  critic:
+    value: the raw output log already exists per worker; only reparse is new
+  hypothesis: If we do this, a vendor output change costs a parser patch, not lost
+    history
+  verdict_why: Small; worth it when the first schema drift bites.
+- id: B13
+  title: Child-environment guard for effort overrides
+  rationale: Adapters clear or set vendor effort environment variables in the worker's
+    environment so the roster profile wins; doctor warns when such variables are set
+    in the shell
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: dependency-risk-low-typicality
+    round: '1'
+  cluster_id: C4
+  critic:
+    evidence: 'that the env var overrides the flag is a secondary source; confirm
+      before building a guard (principle 9: no guard without a reachable trigger)'
+  hypothesis: If we do this, the effort a profile asks for is the effort the worker
+    runs at
+  verdict_why: Cheap, but only once B18 exists and the override is confirmed.
+- id: B14
+  title: Per-leaf spend ceiling from the profile
+  rationale: Profile fields max_budget_usd and max_turns passed through to harness
+    flags where they exist; the wrapper records a budget-hit event; a regulated buyer
+    gets a hard per-leaf cap
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: security-compliance-ordinary-personas
+    round: '1'
+  cluster_id: C8
+  critic:
+    feasibility: only Claude documents a budget flag; others need the wrapper (B27)
+  hypothesis: If we do this, procurement can approve agent use because spend per leaf
+    is bounded by configuration
+  verdict_why: Pass-through where a flag exists, recorded as unsupported elsewhere;
+    combine with B27 in one leaf.
+- id: B15
+  title: Reviewers launch without repo hooks or MCP
+  rationale: A fresh-session reviewer should not execute untrusted repository hooks
+    or servers; launch reviewers with explicit config only and record the launch mode
+    in the review file
+  kind: capability
+  effort: S
+  evidence:
+  - https://code.claude.com/docs/en/headless
+  status: accepted
+  recommendation: strong
+  promoted_node_key: d49d09d3-7368-42a6-9c72-7839e29b3447
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: security-compliance-ordinary-personas
+    round: '1'
+  cluster_id: C9
+  sources:
+  - url: https://code.claude.com/docs/en/headless
+    quote: Without --bare, a -p session runs the hooks in a project's .claude/settings.json
+      and connects the servers in its .mcp.json, even in a folder you've never trusted.
+    supports: A fresh-session reviewer under -p runs untrusted repo hooks and MCP
+      servers unless launched explicitly
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: not-found
+  - url: https://code.claude.com/docs/en/headless
+    quote: Set ANTHROPIC_API_KEY before running it, because bare mode doesn't use
+      your subscription login
+    supports: Bare mode costs subscription users an API key
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: not-found
+  - url: https://code.claude.com/docs/en/headless
+    quote: A -p session shows no workspace trust dialog and no per-server approval
+      prompt.
+    supports: A -p session runs repo hooks and servers with no trust prompt
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: In bare mode, Claude Code never reads OAuth credentials or the system keychain.
+    supports: Bare mode costs subscription users an API key
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  overlap:
+  - node_id: M8.3
+    relation: prerequisite
+  critic:
+    value: faster reviewer start and no untrusted repo hooks in a fresh session; both
+      the frame's metric and principle 6
+    feasibility: explicit config means an API key for Claude bare mode; subscription
+      users need an alternative
+    evidence: which hooks run under -p without bare is from Claude docs; verify
+  hypothesis: If we do this, reviewer start-up is faster and a hostile branch cannot
+    run code in the reviewer's session
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '8'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 6 (fresh-session reviewer) and M8.3 (read-only reviewer)
+    point the same way; record launch mode in the review file. Docs: orchestration-review.md
+    record fields; orchestration-workers.md roster setup.'
+- id: B16
+  title: Throttle events and deterministic failover
+  rationale: Map harness retry and rate-limit output to a throttled event; the planner
+    delays the next delegate and a substitution rule may route the leaf to another
+    rostered model, with no LLM in the loop
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes-cost-random-constraints
+    round: '1'
+  cluster_id: C8
+  critic:
+    constitution: substitutions are recorded human decisions with scope and expiry;
+      an automatic trigger strains principle 7
+  hypothesis: If we do this, an unattended loop survives a usage limit instead of
+    burning its retry budget
+  verdict_why: Throttled event yes; automatic rerouting only through an existing substitution
+    the human already recorded.
+- id: B17
+  title: Output budgets with --full on packets, briefs and plans
+  rationale: Default caps with counts and a file path for the rest on review-packet,
+    brief, validate diagnostics and plan --json field selection
+  kind: refactor
+  effort: S
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  status: accepted
+  recommendation: strong
+  promoted_node_key: fee43265-aa53-4b5e-bd66-2a198519e20d
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes-cost-random-constraints
+    round: '1'
+  cluster_id: C7
+  sources:
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: Tool output size matters too.
+    supports: Large tool output raises uncached input and TTFT
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: as mentioned before uncached input tokens directly impact TTFT.
+    supports: Uncached input drives time to first token
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  critic:
+    value: uncached input per turn is the TTFT driver the seed article names; packets
+      and briefs are the biggest emitters
+    feasibility: a cap hides context a reviewer needed; always print the path to the
+      full file
+    evidence: no measurement of current packet sizes yet
+  hypothesis: If we do this, uncached input per turn shrinks because dumps become
+    summaries with a pointer
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '7'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 9 smallest change; one cap plus --full per command. Docs:
+    orchestration.md packet section, dev-workflow.md brief section, grind-session.md
+    JSON shape.'
+- id: B18
+  title: Per-role effort in model profiles
+  rationale: Extend access.effort_map with effort_by_role; prompt and worker delegate
+    emit the harness flag, or record unsupported
+  kind: feature
+  effort: S
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  - https://code.claude.com/docs/en/headless
+  - https://learn.chatgpt.com/docs/config-file/config-reference
+  status: accepted
+  recommendation: strong
+  promoted_node_key: a3d7a8a8-fd07-45f5-910d-185aac952e86
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes-cost-random-constraints
+    round: '1'
+  cluster_id: C5
+  sources:
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: Check thinking budgets! This is overwhelmingly the lowest hanging fruit
+    supports: Thinking budget is the cheapest latency lever
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: /model, /effort, /fast, /color, and /rename accept the value as an argument,
+      for example /model sonnet
+    supports: Effort is settable in a -p run
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://learn.chatgpt.com/docs/config-file/config-reference
+    quote: Reasoning effort advertised by the selected model, such as low, medium,
+      high, xhigh, max, or ultra.
+    supports: Codex exposes a per-model effort setting adapters can pass
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  overlap:
+  - node_id: M3.11
+    relation: adjacent
+  critic:
+    value: the seed article calls thinking budget the lowest-hanging fruit; reviewers
+      and coordinators are the obvious targets
+    feasibility: Claude has --effort, Codex a config key, Cursor nothing documented;
+      adapters must record unsupported
+    evidence and constitution: lowering reviewer effort could change verdicts; principle
+      7 keeps the gate human-owned, so defaults must be conservative until B63 reports
+  hypothesis: If we do this, reviewer and coordinator turns get cheaper and faster
+    without touching executor quality
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '5'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Extends the existing access.effort_map (principle 3); M3.11 already
+    handles effort-suffixed ids. Docs: orchestration-models.md, model-profiles README,
+    the profile schema section.'
+- id: B19
+  title: Dispatch a whole wave from one command
+  rationale: grind-session or worker delegate takes a batch from parallel_batches
+    up to max_workers, serialises registry writes with a lock file, and finishes in
+    plan order
+  kind: feature
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes-cost-random-constraints
+    round: '1'
+  cluster_id: C6
+  hypothesis: If we do this, fan-out stops depending on the coordinator model issuing
+    N correct commands
+  verdict_why: Same bet as B48; B48 adds the slot and wave record.
+- id: B20
+  title: Event log as a replayable checkpoint
+  rationale: Give every event a phase and an idempotency key and let worker reconcile
+    recompute state purely from the log, so the log is the durable record and a crashed
+    wrapper leaves nothing ambiguous
+  kind: platform
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: debt-leverage-unoccupied
+    round: '1'
+  cluster_id: C10
+  overlap:
+  - node_id: M3.10
+    relation: adjacent
+  critic:
+    value: the log is already authoritative and reconcile exists; idempotency keys
+      add rigor without a known failure
+  hypothesis: If we do this, recovery after a crash is deterministic because state
+    is a function of the log
+  verdict_why: Document the replay property of the existing log before adding fields.
+- id: B21
+  title: Pre-compute the review packet when READY appears
+  rationale: The wrapper builds the packet and records its hash in the event log at
+    READY time, so a reviewer's only cost is its own start-up and staleness is detectable
+    without re-reading
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: operability-random-constraints
+    round: '1'
+  cluster_id: C9
+  critic:
+    constitution: the coordinator assembles the packet today; a wrapper doing it blurs
+      the role table in orchestration.md
+  hypothesis: If we do this, review latency drops by the packet assembly time and
+    stale reviews are caught by hash
+  verdict_why: Keep assembly with the coordinator; the packet hash in the event log
+    is the useful part.
+- id: B22
+  title: Benchmark leaf in the dogfood fixture
+  rationale: A fixed leaf run in CI against a stub harness that records phase timings
+    and invocation counts, with thresholds that fail on regression
+  kind: experiment
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: migration-paths-low-typicality
+    round: '1'
+  cluster_id: C1
+  overlap:
+  - node_id: M5.5
+    relation: adjacent
+  critic:
+    feasibility: needs a stub harness (B55) and stable thresholds; CI timing is noisy
+  hypothesis: If we do this, a slowdown in the loop is caught at PR time rather than
+    by an adopter
+  verdict_why: Adjacent to M5.5's replayable regression set; decide after B28 produces
+    real numbers.
+- id: B23
+  title: Sandbox and shell preflight script
+  rationale: 'A short runbook script: AAAA DNS probe, disk write throughput, CPU class,
+    shell rc start-up time and harness time-to-first-output; documents minimal rc
+    files'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: operability-random-constraints
+    round: '1'
+  cluster_id: C11
+  critic:
+    value: environmental slowness is real but rare among the served segment
+  hypothesis: If we do this, environmental slowness is found in thirty seconds instead
+    of blamed on the model
+  verdict_why: Add to agentic-sandbox-runbook.md as a short section when someone hits
+    it.
+- id: B24
+  title: Emit a stalled event when a worker goes silent past a threshold
+  rationale: 'Night-shift persona: a harness parked on a permission prompt or a hung
+    tool burns wall-clock with no signal; the wrapper already sees every output line,
+    so it can timestamp the last one and sync can flag silence.'
+  kind: feature
+  effort: S
+  evidence:
+  - https://code.claude.com/docs/en/headless
+  status: accepted
+  recommendation: strong
+  promoted_node_key: fb1329c3-3849-44a6-a4cf-48a50cfd6857
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  sources:
+  - url: https://code.claude.com/docs/en/headless
+    quote: When you pass --mcp-config with -p, Claude Code waits for still-pending
+      servers before running the first turn, up to the MCP_TIMEOUT startup timeout,
+      30 seconds by default.
+    supports: Silent waits exist at startup
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: In a Manual mode claude -p run, a call that needs approval is denied unless
+      something approves it, such as a PermissionRequest hook or a --permission-prompt-tool.
+    supports: On Claude, a permission prompt in -p is denied rather than hung, so
+      the stall case is narrower than assumed
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  critic:
+    value: a parked permission prompt is the commonest silent failure; the wrapper
+      already sees every line
+    feasibility: one timestamp and one threshold; threshold per harness
+    evidence: stall frequency unmeasured, but the cost of the flag is near zero
+  hypothesis: If we do this, active wall-clock per leaf moves because dead time inside
+    a stalled worker is surfaced at the next sync instead of at the end of the night
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '9'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 9: one observable behaviour, one test. Docs: orchestration-workers.md
+    states and flags table.'
+- id: B25
+  title: Classify worker exits into typed failure reasons with a next step
+  rationale: 'First-week persona: a worker that dies with exit 1 and a stderr nobody
+    reads looks like a specy-road bug; mapping auth-expired, rate-limited, model-not-found
+    and session-in-use patterns per adapter to a reason and a hint removes a class
+    of support questions.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  overlap:
+  - node_id: M3.9
+    relation: adjacent
+  critic:
+    feasibility: per-adapter stderr patterns drift with vendor versions
+  hypothesis: If we do this, coordination latency moves because the coordinator can
+    act on the failure in the same turn instead of asking the human to open the log
+  verdict_why: Useful; keep patterns in the harness facts fixture (M8.1) so they are
+    versioned.
+- id: B26
+  title: Tolerate and repair torn lines in the worker event log
+  rationale: Under fan-out several wrappers append to jsonl files while sync reads
+    them; one partial trailing line today can make the authoritative log unreadable.
+    Skip-and-flag on read plus a worker fsck that truncates the torn tail keeps the
+    log authoritative under load.
+  kind: refactor
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  critic:
+    evidence: small appends are atomic on local filesystems; no torn line has been
+      observed
+  hypothesis: If we do this, shell invocations per leaf move because a corrupted log
+    no longer forces a terminate-and-redelegate cycle
+  verdict_why: 'Principle 9: no guard without a reachable trigger; add skip-and-flag
+    on read only if a case appears.'
+- id: B27
+  title: Give every worker a wall-clock and token budget enforced by the wrapper
+  rationale: 'Procurement persona: a runaway loop is the one cost nobody can explain
+    afterwards. delegate --max-minutes / --max-tokens recorded on the worker; the
+    wrapper sends a wrap-up message once, then terminates and emits budget_exceeded
+    with the spend so far.'
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C8
+  critic:
+    feasibility: a wrapper that sends a wrap-up message then terminates loses the
+      turn on adapters without interrupt
+  hypothesis: If we do this, tokens and cost per role move because the worst-case
+    leaf is capped instead of open-ended
+  verdict_why: Vendor-neutral form of B14; needs the interrupt capability flag per
+    adapter first.
+- id: B28
+  title: Record phase timestamps in the event log and print a per-leaf timeline
+  rationale: Nothing is measured today. Pickup, prompt written, launch, first output,
+    first tool call, READY, review recorded and gate closed are all moments specy-road
+    already passes through; stamping them lets worker timeline show where a leaf's
+    time went from tracked files alone.
+  kind: platform
+  effort: M
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 375aed3f-58a5-499c-a6be-4506de779a83
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C1
+  sources:
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: On a standard tier it takes 60 active seconds - 6s provisioning, 24s inference,
+      18s tool and MCP calls, 12s suspend/resume.
+    supports: Phase timing matters because inference is a minority of a task's active
+      time
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: not-found
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: 6s provisioning, 24s inference, 18s tool and MCP calls, 12s suspend/resume
+    supports: Inference is a minority of active time
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: not-found
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: halving inference time only takes 20% off the task when provisioning, tools
+      and suspend/resume stay the same.
+    supports: Inference is a minority of a task's active time, so the other phases
+      must be measured
+    stance: for
+    tool: curl
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  overlap:
+  - node_id: M4.16
+    relation: prerequisite
+  critic:
+    value: a timeline nobody reads is noise; needs one consumer (M4.16 elapsed time)
+      on day one
+    feasibility: timestamps must be written by the wrapper and by CLI commands the
+      coordinator runs; two writers, one log
+    evidence: frame says nothing is measured; this is the measurement, so it precedes
+      every speed claim
+  hypothesis: If we do this, active wall-clock per leaf by phase moves from unmeasured
+    to measured, which is the precondition for every other idea here being checked
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '1'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 9 (docs win, smallest change): states C1 best; M4.16 needs
+    the same timestamps. Docs: orchestration-workers.md event table and fields.'
+- id: B29
+  title: Aggregate cost per leaf, role and model into a tracked ledger
+  rationale: 'Procurement persona: Claude cost and Codex usage already land in event
+    detail but die with the gitignored worker record. A worker cost command that rolls
+    them into work/ledger or the implementation summary gives the buyer an invoice-shaped
+    answer and the maintainer a way to compare configurations.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C2
+  overlap:
+  - node_id: M2.2
+    relation: adjacent
+  critic:
+    evidence and constitution: a tracked ledger of costs is a metric file, and M2.2
+      deliberately stores pointers and verdicts, never the metric
+  hypothesis: If we do this, tokens and cost per role and model move from invisible
+    to comparable, so cheap configurations can be chosen on evidence
+  verdict_why: Decide what is tracked versus gitignored; B47's per-leaf block in the
+    summary may be the tracked form.
+- id: B30
+  title: Detect harness version drift between delegate and resume
+  rationale: 'Do-nothing case: claude -p flips to bare and workers silently lose skills
+    and hooks. Record the harness CLI version at launch; on resume or sync, warn when
+    it changed and name the adapter behaviours that depend on it.'
+  kind: risk
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C4
+  overlap:
+  - node_id: M8.2
+    relation: adjacent
+  critic:
+    feasibility: version at launch is one line in the record; the warning on resume
+      is the only logic
+  hypothesis: If we do this, the count of leaves run with degraded discovery moves
+    because the flip is noticed the first time, not after a bad review
+  verdict_why: Small addition to B5 or M8.2; not a node of its own (principle 9).
+- id: B31
+  title: Add worker doctor to probe each roster harness for the flags the adapters
+    rely on
+  rationale: 'Night-shift persona: a vendor upgrade at 2 a.m. breaks a flag and every
+    delegate after it fails the same way. A doctor that runs each harness CLI with
+    --help or --version and checks the flags, login state and worktree trust the adapter
+    assumes turns the outage into one line.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C4
+  overlap:
+  - node_id: M8.7
+    relation: same-problem-same-solution
+  hypothesis: If we do this, coordination latency on vendor breakage moves because
+    the failure is found before a leaf is claimed rather than after
+  verdict_why: M8.7 covers probing installed harnesses for the flags adapters rely
+    on.
+- id: B32
+  title: Add delegate --dry-run that prints the command, worktree, permission mode
+    and prompt hash
+  rationale: 'First-week persona: the first worker stops on a permission prompt and
+    the user cannot see why. Showing exactly what would run, where, and under which
+    permissions, with no process launched, removes the most common first failure.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  critic:
+    value: first-run permission failures are common in adopter feedback
+  hypothesis: If we do this, wasted launches per new adopter move because the misconfiguration
+    is seen before any tokens are spent
+  verdict_why: Small; pairs with B5's init-event check.
+- id: B33
+  title: Let sync block in the foreground until an event arrives or a timeout passes
+  rationale: Fixed-or-choice says a foreground wait inside one CLI call is allowed.
+    sync --wait --timeout N watching the event log (os-level file notification where
+    available, sleep-poll otherwise) replaces the coordinator's poll loop with one
+    invocation that returns the moment something happens.
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C3
+  hypothesis: If we do this, coordination latency and shell invocations per leaf move
+    because the gap between an event being written and observed collapses to the notification
+    delay
+  verdict_why: Duplicate of B44 within this session.
+- id: B34
+  title: Cap and ring-buffer worker output so sync never floods the coordinator context
+  rationale: A verbose stream-json worker produces megabytes; the coordinator session
+    that reads sync output is the component that fails first when that lands in its
+    context. The wrapper keeps the raw log but the completion event carries a bounded
+    excerpt with a pointer to the rest.
+  kind: refactor
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C7
+  hypothesis: If we do this, tokens per coordinator turn move because sync output
+    is bounded regardless of how chatty the worker was
+  verdict_why: 'Already the design: event summaries are capped at 500 characters and
+    the transcript never enters the log (orchestration-workers.md).'
+- id: B35
+  title: Sweep orphaned worktrees, locks and leases with worker gc
+  rationale: 'Night-shift persona: killed harnesses leave .git/index.lock files, linked
+    worktrees with stray edits and human leases nobody reclaimed; the next delegate
+    refuses with a wall of paths. A gc that lists them with age and removes what belongs
+    to closed workers makes the morning start clean.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  overlap:
+  - node_id: M4.13
+    relation: same-problem-same-solution
+  hypothesis: If we do this, dead time at pickup moves because delegate refusals caused
+    by leftovers disappear
+  verdict_why: M4.13 doctor already lists stale worktrees, registry rows and stashes;
+    extend it for leases if needed.
+- id: B36
+  title: Retry a rate-limited or overloaded worker once with backoff inside the wrapper
+  rationale: A 429 or overloaded exit today closes the worker as failed and the leaf
+    waits for the next coordinator turn; the wrapper can wait, resume the same session
+    and emit a retried event, so the leaf keeps moving without anyone watching.
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C8
+  overlap:
+  - node_id: M3.9
+    relation: adjacent
+  critic:
+    feasibility: grind-session hook mode already waits out usage limits; the wrapper
+      does not
+  hypothesis: If we do this, active wall-clock per leaf moves because a transient
+    vendor error no longer costs a full coordinator round-trip
+  verdict_why: Bring the existing limit-wait logic to the wrapper rather than a new
+    retry policy (principle 3).
+- id: B37
+  title: Make the wrapper crash-only so a reboot or killed shell resumes workers from
+    the event log
+  rationale: 'Night-shift persona: a laptop sleep or reboot kills every wrapper and
+    each worker is marked failed with the harness session still resumable. A worker
+    resume-all that rebuilds state from the log and resumes the recorded provider
+    sessions turns a lost night into a lost minute.'
+  kind: capability
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  overlap:
+  - node_id: M3.10
+    relation: adjacent
+  critic:
+    feasibility: resume-all must respect leases and max_workers
+  hypothesis: If we do this, wasted tokens per leaf move because work already done
+    in a session is resumed instead of redone from a fresh delegate
+  verdict_why: Worth a small leaf after B44; the recorded provider session is already
+    there.
+- id: B38
+  title: Expire a human lease automatically after a configurable idle period
+  rationale: A handoff taken at the end of a day and never reclaimed blocks message
+    and resume for that worker indefinitely with WORKER_LEASED_BY_HUMAN. A roster-level
+    lease ttl plus reclaim --stale lets the coordinator take the worker back the next
+    morning with a recorded reason.
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  critic:
+    constitution: an automatic reclaim of a human lease is the agent overriding a
+      human hand-off; principle 7
+  hypothesis: If we do this, dead time per leaf moves because an abandoned lease no
+    longer stalls a leaf until a human remembers it
+  verdict_why: Only as reclaim --stale run by a human with a recorded reason, never
+    automatic.
+- id: B39
+  title: Treat the registry claim as a lease with a heartbeat so a dead worker's leaf
+    is reclaimable
+  rationale: 'Change of direction: the claim is a static registry entry while the
+    worker is a process; when both the wrapper and the harness are gone the leaf stays
+    claimed and the pickup path refuses it. A heartbeat stamped by sync and a documented
+    reclaim rule for claims whose worker is closed closes the loop between registry
+    and process layers.'
+  kind: platform
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  critic:
+    feasibility: the registry is tracked; heartbeats would churn commits or need an
+      untracked side file
+  hypothesis: If we do this, dead time between a worker dying and the leaf being picked
+    up again moves because the registry can see the process died
+  verdict_why: Change of direction; a side file heartbeat keyed by claim could work,
+    decide with B37.
+- id: B40
+  title: 'Ship a plain-text 3 a.m. runbook view: worker tail with the last N tool
+    calls and the stall reason'
+  rationale: 'Night-shift persona without an IDE: she has a terminal and the raw log.
+    A tail that extracts the last tool calls, the last assistant text and the typed
+    failure or stall reason from stream-json lets her decide terminate, message or
+    leave-it without reading megabytes.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: ordinary-personas
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  critic:
+    value: the raw log exists; a tail extractor is a formatting command
+  hypothesis: If we do this, time-to-decision on a stuck worker moves because the
+    evidence is one command instead of a log read
+  verdict_why: Fold into worker status output rather than a new command (principle
+    3).
+- id: B41
+  title: Detect a worker that finished on the wrong branch or outside its touch zone
+    before READY is believed
+  rationale: 'First-week persona: the worker commits on the main worktree branch or
+    edits files outside the leaf''s declared touch zone and the completion event looks
+    fine. sync can diff the worker branch against the declared zones and emit a scope_violation
+    event instead of completed.'
+  kind: risk
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: failure-modes
+    round: '1'
+    shard: s1
+  cluster_id: C10
+  overlap:
+  - node_id: M8.2
+    relation: same-problem-same-solution
+  - node_id: M3.10
+    relation: adjacent
+  hypothesis: If we do this, wasted review time moves because a scope violation is
+    caught by sync, not by the reviewer
+  verdict_why: reconcile already flags needs_reconcile for edits outside touch zones;
+    M8.2 adds the post-run check.
+- id: B42
+  title: Add a flight-recorder timing ledger every command appends to
+  rationale: 'Aviation black box mapped onto the leaf loop: every specy-road command
+    (pickup, brief, delegate, sync, finish) appends one line {command, node, phase,
+    started, ended, exit} to work/.timing/<node>.jsonl without being asked. The loop
+    then measures itself; nobody has to instrument phases one at a time, and ''is
+    it already fast enough'' becomes a file read.'
+  kind: platform
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C1
+  critic:
+    feasibility: every command appending to a per-node file duplicates the worker
+      event log for commands that already emit events
+  hypothesis: If we do this, active wall-clock per leaf by phase moves from unmeasured
+    to measured because every phase boundary is already a CLI invocation that can
+    stamp itself
+  verdict_why: Same bet as B28 at command level; fold its command-level entries into
+    B28's design rather than a second ledger (principle 9).
+- id: B43
+  title: Normalise every harness turn into one turn-envelope JSONL at the wrapper
+    boundary
+  rationale: 'Intermodal shipping containers: the wrapper translates each vendor''s
+    stream output into one schema (model, tokens_in, tokens_out, cached, cost, duration,
+    tool_calls, output_bytes) before anything else reads it. Cost reports, output
+    caps, per-role effort tuning and a fake harness all become one-off consumers of
+    the same box.'
+  kind: platform
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: platform-leverage
+    round: '1'
+    shard: s2
+  cluster_id: C2
+  critic:
+    feasibility: a full turn envelope with tool_calls and output_bytes is B10 plus
+      per-tool parsing; bigger surface for the same first consumer
+  hypothesis: If we do this, tokens and cost per role and model move from vendor-specific
+    detail blobs to a comparable number because every adapter fills the same fields
+  verdict_why: Superset of B10; adopt once B10 has a consumer (principle 9).
+- id: B44
+  title: Replace per-worker polling with a single mailbox flag file and a foreground
+    --wait
+  rationale: 'Rural mailbox flag: every event write also touches one file, work/.workers/FLAG.
+    worker sync --wait --timeout N blocks inside one CLI call on that one mtime (kqueue/inotify
+    where available, stat every 250ms otherwise) and only then parses the event logs.
+    No daemon; the wait lives and dies with the call.'
+  kind: feature
+  effort: M
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 77ecca98-cf46-4640-a984-89a62cca9517
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C3
+  sources:
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: Often agents will poll for something that is quick but they tend to set
+      a 10 or 20s minimum wait on the for loop.
+    supports: Model-driven polling adds fixed dead time; a callback-style wait removes
+      it
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  critic:
+    value: removes the largest-variance row in the leaf timeline (coordination latency)
+      for unattended and fan-out loops
+    feasibility: one flag file touched by every writer plus a stat loop fallback;
+      platform watch APIs are optional
+    evidence and constitution: principle 5 forbids a daemon; a wait that lives inside
+      one CLI call is not one, but the maintainer should say so in writing
+  hypothesis: If we do this, coordination latency between an event being written and
+    the coordinator observing it moves from one coordinator turn to sub-second because
+    the coordinator stops guessing when to look
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '3'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'States C3 best (B3 and B33 are the same bet). Principle 5 holds: foreground
+    only. Docs: orchestration-workers.md loop and command table; grind-session.md
+    step mode.'
+- id: B45
+  title: Keep a one-screen ticket board the wrapper updates instead of N worker records
+  rationale: 'Restaurant kitchen ticket rail with an expediter: the wrapper maintains
+    work/.workers/board.yaml with one line per worker (state, last seq, cost so far,
+    minutes since last output). The coordinator reads one small file per turn; the
+    records and logs stay authoritative for detail.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C3
+  critic:
+    feasibility: a board file the wrapper rewrites is a second source of truth beside
+      the authoritative log
+  hypothesis: If we do this, count of specy-road shell invocations per leaf moves
+    down because one board read replaces a sync plus a show per worker
+  verdict_why: Derive the board from the log on read instead of maintaining it; then
+    it is a sync output format, not a file.
+- id: B46
+  title: Pre-stage worktrees, deps and briefs for the next wave before any delegation
+  rationale: 'F1 pit stop: tyres are warmed before the car arrives. grind-session
+    --plan already names parallel_batches[0]; a prestage step creates worktrees, runs
+    the test baseline, inlines contracts and writes the prompt bundle for every leaf
+    in that wave while the coordinator is still thinking, so harness cold start is
+    the only serial cost left.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C6
+  overlap:
+  - node_id: M3.12
+    relation: adjacent
+  critic:
+    feasibility: pre-created worktrees that are never delegated need cleanup (M4.13
+      doctor)
+  hypothesis: If we do this, active wall-clock per leaf by phase moves because setup
+    that needs no model overlaps with coordinator time instead of sitting on the critical
+    path
+  verdict_why: Only worth it with B48; baseline gate M3.12 already runs at pickup.
+- id: B47
+  title: Stamp a unit-price label on every leaf in its tracked summary
+  rationale: 'Supermarket unit pricing: the implementation summary and READY file
+    carry a fixed block (tokens, cost, wall-clock by phase, model and effort per role)
+    derived from the turn envelope and timing ledger. Cheap and expensive configurations
+    become visible in git history and diffable across leaves, with no dashboard.'
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: platform-leverage
+    round: '1'
+    shard: s2
+  cluster_id: C2
+  critic:
+    value: diffable cost per leaf in git history is the buyer's view; noise risk if
+      every summary carries it
+  hypothesis: If we do this, tokens and cost per role move from invisible to compared
+    because the number sits next to the work it paid for in a tracked file
+  verdict_why: Tracked form of C2; needs B10 first and a decision on what belongs
+    in tracked files (principle 9).
+- id: B48
+  title: Fan out a whole wave with one delegate --wave call under slot allocation
+  rationale: Air-traffic flow management assigns departure slots. orchestrate plan
+    assigns each ready leaf a slot (worker, model, effort) from policy and max_workers;
+    delegate --wave launches parallel_batches[0] in one command and writes one wave
+    record the board and sync key on. One worker per leaf stays; one call per leaf
+    goes.
+  kind: capability
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C6
+  overlap:
+  - node_id: M4.11
+    relation: prerequisite
+  critic:
+    value: the seed article prefers tools that parallelise internally over asking
+      the model to; this is that tool
+    feasibility: registry write contention, merge ordering, rate limits on shared
+      accounts; L effort
+    evidence: fan-out value is unmeasured until B28 and B44 exist
+  hypothesis: If we do this, count of specy-road shell invocations per leaf and coordinator
+    dead time move because the coordinator issues one launch per wave instead of one
+    per leaf
+  verdict_why: Right shape (one wave record, slots from policy) but after C1 and C3
+    land; M4.11 waves are the prerequisite.
+- id: B49
+  title: Run many subcommands in one Python process via a stdin batch primitive
+  rationale: io_uring batches syscalls into one submission. specy-road batch - reads
+    a list of subcommands from stdin, loads the roadmap once, runs them in order and
+    prints one JSON array. Agents already chain five commands per turn; the interpreter
+    start-up and graph parse are paid five times for nothing.
+  kind: refactor
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C12
+  critic:
+    constitution: a stdin batch mode is a new entrypoint shape; principle 3 prefers
+      extending
+  hypothesis: If we do this, count of specy-road shell invocations per leaf and per-command
+    overhead move because the process boundary becomes one per turn instead of one
+    per command
+  verdict_why: Premature without measurement; B8 is the smaller form.
+- id: B50
+  title: Declare per-role effort in the roster as a contract the adapters translate
+  rationale: A jazz lead sheet fixes the changes, each player decides the intensity.
+    orchestration.yaml gains effort per role (executor high, reviewer medium, summariser
+    low); each adapter maps it to its harness's way (Cursor model-id suffix, Claude
+    effort flag, prompt header elsewhere). Review quality against effort becomes testable
+    instead of argued.
+  kind: capability
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: platform-leverage
+    round: '1'
+    shard: s2
+  cluster_id: C5
+  hypothesis: If we do this, tokens and cost per role move because reviewers and summarisers
+    stop running at the executor's effort by default
+  verdict_why: Same bet as B18; B18 states it against the existing effort_map field.
+- id: B51
+  title: Route leaves by a triage size tag to cheaper modes with capped output
+  rationale: 'START triage tags on a planning sheet: size XS|S|M|L. Policy routes
+    XS leaves to a cheap model, bare mode and an output cap, and L leaves to full
+    discovery on the strongest model. A competing PM would ship routing first and
+    measure after; the tag is one field and the router one table.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C5
+  critic:
+    constitution: routing by a size tag is still deterministic, but a wrong tag silently
+      under-reviews a leaf
+  hypothesis: If we do this, tokens and cost per leaf move because most leaves are
+    small and currently pay the large-leaf configuration
+  verdict_why: Depends on B62 and B63; park the routing until the measurement exists.
+- id: B52
+  title: Fingerprint harness capabilities at launch and fail loudly on discovery drift
+  rationale: 'Vaccination: expose the system to a harmless probe so it recognises
+    the pathogen later. The first turn of every worker asks the harness to list its
+    skills, hooks and MCP servers; the wrapper records the fingerprint. When claude
+    -p flips to bare and the fingerprint shrinks, delegate raises HARNESS_CAPABILITY_DRIFT
+    and pins the full-discovery flag instead of letting workers silently lose tools.'
+  kind: risk
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C4
+  hypothesis: If we do this, the do-nothing outcome of workers silently losing skills
+    moves to a named failure because the capability set is checked, not assumed
+  verdict_why: Same bet as B5 stated from the other side; B5 names the profile field
+    and the init-event check.
+- id: B53
+  title: Merge all worker events into one ticker tape read by byte offset
+  rationale: 'Trading-floor ticker tape: besides per-worker logs, the wrapper appends
+    every event to one work/.workers/tape.jsonl. sync keeps a byte-offset cursor per
+    coordinator and reads only the new tail; ack becomes advancing the cursor. One
+    file, one seek, whatever the fan-out.'
+  kind: platform
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C3
+  critic:
+    feasibility: several wrappers appending to one file need atomic appends; per-worker
+      logs exist to avoid that
+  hypothesis: If we do this, coordination latency and sync cost stop scaling with
+    the number of workers because one tail read replaces N log parses
+  verdict_why: Conflicts with the per-worker authoritative log design in orchestration-workers.md;
+    B44 gets the same latency win.
+- id: B54
+  title: Cache the brief bundle by hash and resend only the delta on resume
+  rationale: 'A library reserve shelf: the material a course needs is staged once
+    and students fetch it, not the whole library. The brief plus inlined contracts
+    is hashed into a prompt bundle; message and resume reference the hash and send
+    only what changed since (new events, review notes), so a long leaf does not re-pay
+    its context on every turn.'
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C7
+  critic:
+    feasibility: resume reuses the harness session; the brief is not resent, so there
+      is no delta to send
+  hypothesis: If we do this, tokens per leaf move because resume turns stop re-sending
+    an unchanged brief and contract set
+  verdict_why: Rests on a wrong model of resume.
+- id: B55
+  title: Ship a fake harness adapter and a loop benchmark that replays a recorded
+    leaf
+  rationale: 'Wind tunnel and crash-test dummy: a ''fake'' harness is a shell script
+    that replays a recorded stream-json transcript with timed pauses. specy-road bench-loop
+    runs a dogfood leaf through pickup, delegate, sync, finish against it and reports
+    specy-road''s own overhead per phase. Every speed feature (wait, fan-out, batch,
+    caps) then has a test that calls no model.'
+  kind: experiment
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: platform-leverage
+    round: '1'
+    shard: s2
+  cluster_id: C1
+  overlap:
+  - node_id: M8.1
+    relation: adjacent
+  - node_id: M5.5
+    relation: adjacent
+  critic:
+    feasibility: a fake adapter must track three vendors' output shapes; the harness
+      facts fixture (M8.1) is the natural source
+  hypothesis: If we do this, active wall-clock per leaf by phase becomes attributable
+    to specy-road versus the harness because the harness side is held constant
+  verdict_why: Platform piece behind B22 and B7; build it as part of M8.1 rather than
+    alone.
+- id: B56
+  title: Expose waves as a makefile-style target graph that any runner can execute
+  rationale: GNU make maps a dependency graph to parallel jobs with -j. grind-session
+    --plan --format make emits targets per leaf with their dependency edges and a
+    recipe that is the delegate plus a sync --wait; make -j2 or any task runner then
+    does the scheduling, the blocking, and the fan-out, and specy-road adds nothing
+    resident.
+  kind: capability
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: analogical-transfer
+    round: '1'
+    shard: s2
+  cluster_id: C6
+  critic:
+    constitution: a makefile target graph is a generic runner, principle 8 says do
+      not reinvent agent tooling
+  hypothesis: If we do this, coordinator dead time moves because a fifty-year-old
+    scheduler with blocking waits runs the wave instead of a chat turn
+  verdict_why: Off-purpose; grind-session --plan --json already exposes the graph
+    to any runner.
+- id: B57
+  title: Order briefs and prompts static-first for prompt caching
+  rationale: Put constitution, contracts and shared rules before the leaf-specific
+    tail so the cached prefix is shared across leaves and roles on the same harness
+  kind: refactor
+  effort: S
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C7
+  critic:
+    evidence: the seed article found prompt caching mattered less than expected and
+      harnesses already handle it
+  hypothesis: If we do this, uncached input tokens per launch fall because the long
+    static prefix hits the harness cache
+  verdict_why: Cheap reordering, but gain is unproven; try after B28 can show it.
+- id: B58
+  title: Sparse worktrees limited to touch zones
+  rationale: Create executor worktrees with sparse checkout of the leaf's touch zones
+    plus declared verifier paths, so creation is faster and the agent's file surface
+    is smaller
+  kind: experiment
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C6
+  critic:
+    feasibility: verifiers and tests often live outside touch zones; a sparse tree
+      breaks them
+  hypothesis: If we do this, worktree creation and agent exploration time fall because
+    the tree only holds what the leaf may touch
+  verdict_why: Breaks the verifier contract in the brief; no evidence worktree creation
+    is a bottleneck.
+- id: B59
+  title: Incremental re-review packet after a block
+  rationale: On review round two and later, the packet carries the diff since the
+    last reviewed commit and the prior block reasons, with the full diff behind a
+    path
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C9
+  overlap:
+  - node_id: M4.17
+    relation: adjacent
+  - node_id: M4.16
+    relation: adjacent
+  critic:
+    feasibility: a delta packet needs the prior reviewed commit, which review records
+      already bind
+  hypothesis: If we do this, reviewer prefill per round shrinks because repeat rounds
+    read only what changed
+  verdict_why: Natural extension once M4.16 tracks review rounds.
+- id: B60
+  title: Service tier field in model profiles
+  rationale: Profiles record vendor service tiers (fast, standard, flex) and prices;
+    adapters pass the tier where a flag exists so reviewers can run cheap and executors
+    fast
+  kind: capability
+  effort: S
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: research
+    round: '2'
+  cluster_id: C5
+  critic:
+    evidence: vendor service tiers for CLI harnesses are unverified; the seed article
+      discusses API tiers
+  hypothesis: If we do this, cost per leaf falls because non-critical roles run on
+    cheaper tiers
+  verdict_why: Research item for M7.2's harness-capabilities refresh, not a feature
+    yet.
+- id: B61
+  title: Move a leaf to another harness mid-way from the summary, not the transcript
+  rationale: A worker handoff across vendors rebuilds context from the brief, the
+    implementation summary and git state, since transcripts are vendor-internal
+  kind: capability
+  effort: L
+  evidence: []
+  status: proposed
+  recommendation: park
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: low-typicality
+    round: '2'
+  cluster_id: C8
+  critic:
+    feasibility: L effort; rebuilding context from the summary is what a fresh pickup
+      already does
+  hypothesis: If we do this, a rate-limited or failing harness no longer stalls a
+    leaf because another rostered harness picks it up
+  verdict_why: Equivalent to terminate plus re-delegate on another harness, which
+    exists.
+- id: B62
+  title: Adaptive reviewer effort by diff size
+  rationale: The packet header classifies the diff (lines, files, touch-zone breadth)
+    and the reviewer launch picks effort from a per-profile table keyed on that class
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: low-typicality
+    round: '2'
+  cluster_id: C5
+  critic:
+    evidence: no measurement yet that small diffs need less reviewer effort
+  hypothesis: If we do this, small leaves get reviewed in a fraction of the time with
+    no measured verdict change
+  verdict_why: After B63; then a small table in the profile.
+- id: B63
+  title: Measure whether lower reviewer effort changes verdicts
+  rationale: Replay recorded review packets from the dogfood fixture at two effort
+    levels per family and compare verdicts and block reasons before any effort default
+    is lowered
+  kind: research
+  effort: M
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 333e7bf2-fef8-4737-a445-a2c61a230d10
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: research
+    round: '2'
+  cluster_id: C5
+  sources:
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: Check thinking budgets! This is overwhelmingly the lowest hanging fruit
+    supports: The effort claim comes from one practitioner post, not a measurement
+      on review quality; it needs testing before defaults change
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  overlap:
+  - node_id: M5.5
+    relation: adjacent
+  critic:
+    feasibility: replaying packets needs recorded packets and reviewer runs per family;
+      cost is real but bounded
+  hypothesis: If we do this, the per-role effort defaults rest on a measurement instead
+    of the seed article's general claim
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '6'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 7 and the frame''s assumed-vs-known: the effort claim is
+    untested; this is the test before any default is lowered. Docs: a design note
+    under docs/design-notes.'
+- id: B64
+  title: Position the docs on governance, not on CLI workers
+  rationale: Philosophy and orchestration docs state that roadmap-first governance
+    (roles, commit-bound reviews, distinct-family reviewers, tracked files) is the
+    differentiator now that other tools drive coding CLIs as workers, and name the
+    neighbours
+  kind: feature
+  effort: S
+  evidence:
+  - https://docs.litellm.ai/docs/harness
+  - https://github.com/saketh-bandi/bernstein
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 8878a402-7f4b-4e1b-9f39-d46b4d064364
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: research
+    round: '2'
+  cluster_id: C11
+  sources:
+  - url: https://docs.litellm.ai/docs/harness
+    quote: drive Claude Code, Codex, OpenCode, Deep Agents or Tool Loop from Python
+      with one API.
+    supports: Other tools now drive coding CLIs as workers
+    stance: for
+    tool: claude WebFetch
+    source_type: competitor
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://docs.litellm.ai/docs/harness
+    quote: litellm.agent() is in beta. The API may change between releases.
+    supports: The nearest API-level neighbour is still beta
+    stance: against
+    tool: claude WebFetch
+    source_type: competitor
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://github.com/saketh-bandi/bernstein
+    quote: Deterministic orchestrator for CLI coding agents (Claude Code, Codex, Gemini
+      CLI, +40 more).
+    supports: A deterministic CLI-agent orchestrator exists; the differentiator is
+      governance, not CLI workers
+    stance: for
+    tool: claude WebFetch
+    source_type: competitor
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://github.com/saketh-bandi/bernstein
+    quote: No model in the coordination loop, so parallel runs in per-task git worktrees
+      replay byte-identically.
+    supports: Neighbour shares the no-model-in-the-loop stance
+    stance: for
+    tool: claude WebFetch
+    source_type: competitor
+    retrieved_at: '2026-10-30'
+    verification: matched
+  critic:
+    value: adopters comparing tools need the right axis; the research shows CLI workers
+      are now common
+    feasibility: a docs leaf, no code
+    evidence: LiteLLM harness docs and Bernstein README are primary sources; quote
+      them in the evidence pass
+  hypothesis: If we do this, adopters evaluate specy-road on the right axis and fewer
+    feature requests ask for a generic agent runner
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '10'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 9, docs win. Docs: philosophy-and-scope.md, orchestration.md
+    intro, README positioning line.'
+- id: B65
+  title: Document the harness-subagent recipe for parallel work inside a leaf
+  rationale: Instead of building intra-leaf parallelism, the executor prompt and docs
+    show how to use the harness's own subagents for tests and search, per principle
+    8
+  kind: feature
+  effort: S
+  evidence:
+  - https://martinalderson.com/posts/making-agents-fast/
+  - https://code.claude.com/docs/en/headless
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 3d4d93d9-aefe-4ef9-8543-d47fccf14594
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C11
+  sources:
+  - url: https://martinalderson.com/posts/making-agents-fast/
+    quote: providing tools (CLI or MCP) that do the parallel steps for the agent can
+      be worthwhile.
+    supports: Parallel steps belong in tools the agent calls, not in model instructions
+    stance: for
+    tool: claude WebFetch
+    source_type: news
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: Messages from subagents and from skills that run in a subagent appear in
+      the stream as assistant and user messages. Their parent_tool_use_id field says
+      which run each one belongs to.
+    supports: Harness subagents are visible in the stream, so a worker may use them
+    stance: for
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  - url: https://code.claude.com/docs/en/headless
+    quote: 'Background tasks: Claude can''t run background commands or background
+      subagents'
+    supports: Bare-mode workers cannot use background subagents, so B15-style launches
+      conflict with this recipe for executors
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: not-found
+  - url: https://code.claude.com/docs/en/headless
+    quote: In bare mode Claude has access to the Bash, file read, and file edit tools.
+    supports: Bare-mode workers have a reduced tool set
+    stance: against
+    tool: claude WebFetch
+    source_type: official-doc
+    retrieved_at: '2026-10-30'
+    verification: matched
+  critic:
+    evidence: that harness subagents cut executor wall-clock is plausible, unmeasured
+  hypothesis: If we do this, executor wall-clock falls on test-heavy leaves because
+    the harness already parallelises
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '11'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'Principle 8 (use the harness''s tools) in its purest form; a prompt
+    and docs change. Docs: executor prompt template, orchestration.md ''Choosing and
+    prompting models''.'
+- id: B66
+  title: A global stop file every wrapper honours at its next turn boundary
+  rationale: Touching work/.workers/STOP makes every wrapper finish its current turn,
+    record a stopped event and exit; worker stop-all writes it; no signal handling
+    across platforms needed
+  kind: feature
+  effort: S
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C10
+  critic:
+    feasibility: a stop file is trivial, but turn boundaries are only visible on adapters
+      that stream
+  hypothesis: If we do this, an operator halts a runaway fan-out in one command without
+    losing in-flight turns
+  verdict_why: Small operability win; pair with B24.
+- id: B67
+  title: Export the event log as trace spans for external viewers
+  rationale: A read-only exporter turns phase and tool events into an OpenTelemetry-style
+    JSON file so adopters open a leaf in the tracing viewer they already have
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: unoccupied-regions
+    round: '2'
+  cluster_id: C1
+  critic:
+    value: adopters with a tracing viewer are few among the small teams served
+  hypothesis: If we do this, adopters diagnose slow leaves with existing tooling instead
+    of reading JSONL
+  verdict_why: 'Re-opened as the cheaper fallback to B69: an export of the same events
+    to an existing trace viewer if the GUI panel is too costly.'
+- id: B68
+  title: One coordinator-turn command
+  rationale: specy-road turn runs sync, re-plans, reports blocked and ready leaves
+    and prints the single next action, so a coordinator spends one tool call per turn
+    instead of four
+  kind: feature
+  effort: M
+  evidence: []
+  status: proposed
+  recommendation: consider
+  promoted_node_key: null
+  origin:
+    harness: claude-code
+    model: claude-fable-5-1
+    lens: low-typicality
+    round: '2'
+  cluster_id: C3
+  overlap:
+  - node_id: M4.16
+    relation: adjacent
+  critic:
+    feasibility: grind-session --step already compresses the IDE loop; a turn command
+      risks a third entrypoint
+  hypothesis: If we do this, coordinator tokens per leaf fall because the orchestration
+    boilerplate collapses into one call
+  verdict_why: 'Principle 3 (extend before adding): try it as grind-session --step
+    sync or a sync --plan flag first.'
+- id: B69
+  title: Visual explorer for worker event logs in the PM GUI
+  rationale: A panel in the existing PM GUI that reads work/.workers event logs and
+    the phase and usage events from B28 and B10 and shows a per-leaf timeline, tool-call
+    sequence, cost per role and stall points, the way LangGraph Studio and LangSmith
+    let you audit an agent run step by step
+  kind: feature
+  effort: L
+  evidence:
+  - https://docs.langchain.com/langsmith/trace-observability
+  - https://docs.langchain.com/langsmith/observability
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 19dc4036-f6f2-4877-a8e0-94775e7b36fc
+  origin:
+    harness: human
+    model: pm
+    lens: operability
+    round: triage
+  cluster_id: C1
+  sources:
+  - url: https://docs.langchain.com/langsmith/observability
+    quote: Traces are the record of what your agents did in production.
+    supports: Comparable products treat the run record as the primary audit surface
+    stance: for
+    tool: claude WebFetch
+    source_type: competitor
+    retrieved_at: '2026-10-30'
+    verification: matched
+  critic:
+    value: the first consumer of B28 and B10 that a human actually uses; without it
+      the timeline is a file nobody opens
+    feasibility: L effort in gui/pm-gantt (React); depends on B28 and B10 landing
+      first, and on a stable event schema; the GUI reads gitignored files from the
+      main worktree
+    evidence and constitution: principle 8 says do not reinvent generic agent tooling,
+      but this reads specy-road's own event log, which no external viewer understands;
+      B67 (export spans to an existing viewer) is the cheaper fallback if the GUI
+      panel stalls
+  hypothesis: If we do this, maintainers find slow or wrong leaf runs in minutes because
+    the log is browsable instead of read as JSONL
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:11:29.828+00:00'
+    seq: '12'
+    reason: 'PM: accepted the strong shortlist and the log explorer, 2026-10-30'
+  verdict_why: 'PM-requested; prerequisite B28 and B10 in this session; the PM GUI
+    already exists so it is an extension, not a new surface (principle 3). Docs: pm-gui.md
+    panel section, orchestration-workers.md pointer to the viewer.'
+- id: B70
+  title: A project setting decides whether agent logs are tracked in git
+  rationale: 'Worker records and event logs are gitignored today by design and stay
+    that way by default: a project config key (for example track_worker_logs: off,
+    events, full; default off) lets a team opt in to keeping the event log, or the
+    raw harness output too, in the repository so a leaf''s run history travels with
+    the code and the log explorer can read it from any clone. Off by default because
+    the logs get very long.'
+  kind: capability
+  effort: M
+  evidence:
+  - https://code.claude.com/docs/en/headless
+  status: accepted
+  recommendation: strong
+  promoted_node_key: 673b14b9-f262-48ea-a804-941fbf405bd1
+  origin:
+    harness: human
+    model: pm
+    lens: operability
+    round: triage
+  cluster_id: C2
+  overlap:
+  - node_id: M2.2
+    relation: adjacent
+  critic:
+    value: an audit trail in git is what a regulated buyer and a solo maintainer both
+      ask for; B29 and B47 were the same need without the opt-in switch
+    feasibility: raw harness output is large and may hold secrets or prompts; events-only
+      is the safe default to track, and the ignore rules the toolkit writes must follow
+      the setting
+    evidence and constitution: principle 9 says tracked docs win, but M2.2 chose pointers
+      over metrics; tracking events (what happened) and not transcripts keeps both
+  hypothesis: If we do this, teams that want an audit trail get one without a side
+    system, and teams that do not keep their repo clean
+  decision:
+    status: accepted
+    decided_at: '2026-10-30T20:12:10.525+00:00'
+    seq: '13'
+    reason: 'PM: tracked-logs preference, 2026-10-30'
+  verdict_why: 'PM-requested; resolves the open decision on B29 and B47 by making
+    it a per-project setting with a conservative default. Docs: install-and-usage.md
+    or git-workflow.md config keys, orchestration-workers.md ''Records live in work/.workers/
+    (gitignored)'' sentence, archiving.md if logs are archived with the leaf.
+
+    PM decision 2026-10-30: default off; opting in is per project.'
