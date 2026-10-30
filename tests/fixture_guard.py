@@ -27,10 +27,13 @@ def fixtures_git_lines(repo_root: Path) -> list[str]:
 
 
 def path_from_porcelain(line: str) -> str:
-    if line.startswith("!! "):
-        return line[3:].strip()
-    body = line[3:] if len(line) >= 3 else line
-    if " -> " in body:
+    """Path of a porcelain v1 line, as git prints it (quoted when git quotes it).
+
+    Only a rename or copy record (``R``/``C`` in the two status columns) carries
+    ``old -> new``; an ordinary filename may itself contain `` -> ``.
+    """
+    code, body = line[:2], line[3:]
+    if " -> " in body and ("R" in code or "C" in code):
         body = body.split(" -> ", 1)[1]
     return body.strip()
 

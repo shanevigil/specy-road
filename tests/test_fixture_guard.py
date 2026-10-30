@@ -44,6 +44,9 @@ def _git(repo: Path, *args: str) -> None:
 def _mini_repo(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "tests" / "fixtures" / "sample").mkdir(parents=True)
+    # A tracked fixture file, as in the dogfood tree: git then names the ignored
+    # directory inside it instead of collapsing to ``tests/fixtures/``.
+    (root / "tests" / "fixtures" / "sample" / "tracked.txt").write_text("x\n", encoding="utf-8")
     (root / ".gitignore").write_text("**/.specyrd/cache/\n")
     shutil.copy(_GUARD, root / "tests" / "fixture_guard.py")
     (root / "tests" / "__init__.py").write_text("")
@@ -85,7 +88,7 @@ def test_refuses_start_when_ignored_cache_sits_in_fixtures(tmp_path: Path) -> No
     combined = proc.stdout + proc.stderr
 
     assert proc.returncode != 0
-    assert "tests/fixtures" in combined
+    assert "  tests/fixtures/sample/.specyrd/\n" in combined
     assert "git clean -fdX tests/fixtures" in combined
     assert "1 passed" not in combined
     assert "1 failed" not in combined
@@ -98,7 +101,9 @@ def test_fails_session_when_a_run_pollutes_the_fixture_tree(tmp_path: Path) -> N
         "def test_leaves_cache():\n"
         "    p = Path(__file__).resolve().parent / 'fixtures' / 'sample' / '.specyrd' / 'cache'\n"
         "    p.mkdir(parents=True, exist_ok=True)\n"
-        "    (p / 'x').write_text('pollution')\n",
+        "    (p / 'x').write_text('pollution')\n"
+        "    # An ordinary filename containing ' -> ' is not a rename record.\n"
+        "    (p.parents[2] / 'a -> b.txt').write_text('pollution')\n",
         encoding="utf-8",
     )
 
@@ -107,7 +112,8 @@ def test_fails_session_when_a_run_pollutes_the_fixture_tree(tmp_path: Path) -> N
 
     assert proc.returncode != 0
     assert "tests/fixtures git status changed during the run" in combined
-    assert "tests/fixtures" in combined
+    assert '  "tests/fixtures/a -> b.txt"\n' in combined
+    assert "  tests/fixtures/sample/.specyrd/\n" in combined
 
 
 def test_clean_fixture_tree_leaves_exit_status_and_output_unchanged(tmp_path: Path) -> None:
