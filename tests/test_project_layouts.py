@@ -17,6 +17,7 @@ from now.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -130,6 +131,7 @@ def test_the_brief_is_identical_across_layouts(tmp_path: Path) -> None:
     wrong root shows up here as a diff. The one deliberate difference (M3.9):
     a nested brief names its project root, with the summary and hand-off
     paths from the git root, in one line the embedded brief does not have.
+    The ``_Size:`` header line (M10.7) counts that line, so it differs too.
     """
     briefs = []
     for prefix in ("", "sr/"):
@@ -150,7 +152,9 @@ def test_the_brief_is_identical_across_layouts(tmp_path: Path) -> None:
                  "implementation summary is `sr/work/implementation-summary-M0.3.md` and its review hand-offs go "
                  "in `sr/work/reviews/M0.3/` of the main checkout — never in the git root's `work/`.\n")
     assert root_line not in briefs[0] and briefs[1].count(root_line) == 1
-    assert briefs[0] == briefs[1].replace(root_line, "")
+    size_line = re.compile(r"^_Size: \d+ bytes\. Largest sections: .*_\n", re.M)
+    assert all(len(size_line.findall(b)) == 1 for b in briefs)
+    assert size_line.sub("", briefs[0]) == size_line.sub("", briefs[1].replace(root_line, ""))
 
 
 def test_ignore_blocks_land_at_the_git_root_and_match(
