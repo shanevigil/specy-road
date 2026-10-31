@@ -77,7 +77,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9` | Regression prevention | phase | — | Not Started |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Not Started |
 | `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Not Started |
-| `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Not Started |
+| `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Complete |
 | `M9.4` | An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet | task | Agentic-led | Not Started |
 | `M9.5` | specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them | task | Agentic-led | Not Started |
 | `M9.6` | With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup | task | Agentic-led | Not Started |

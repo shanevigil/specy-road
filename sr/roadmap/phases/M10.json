@@ -42,7 +42,8 @@
         "tests/test_worker_state.py",
         "tests/test_worker_cli.py",
         "tests/test_worker_faults.py",
-        "tests/test_review_round6_ops.py"
+        "tests/test_review_round6_ops.py",
+        "tests/test_worker_adapters.py"
       ],
       "type": "task"
     },
