@@ -99,7 +99,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.11` Document the harness-subagent recipe for parallel work inside a leaf `document-the-harness-subagent-recipe` — task — **Not Started**
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
-  - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Not Started**
+  - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
