@@ -94,3 +94,16 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
+  - codename: claim-zones-follow-edit-node
+    node_id: M10.14
+    branch: feature/rm-claim-zones-follow-edit-node
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/registry_claim_zones.py
+      - specy_road/finish_implementation_check.py
+      - docs/dev-workflow.md
+      - tests/test_roadmap_crud_edit_claim_zones.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
