@@ -76,7 +76,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
 - `M9` Regression prevention `regression-prevention` — phase — **Not Started**
   - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Not Started**
-  - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Not Started**
+  - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Complete**
   - `M9.3` Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project `layout-with-outside-change` — task — **Not Started**
   - `M9.4` An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet `executor-blocked-on` — task — **Not Started**
   - `M9.5` specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them `integrity-report` — task — **Not Started**
