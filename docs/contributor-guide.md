@@ -210,6 +210,8 @@ Run these from the toolkit repo root before pushing:
 
 The `--repo-root tests/fixtures/specy_road_dogfood` checks exercise the dogfood test fixture, not a canonical toolkit product roadmap.
 
+`tests/conftest.py` wires a **fixture-pollution guard** (`tests/fixture_guard.py`): pytest refuses to start while `git status --porcelain --ignored -- tests/fixtures` lists ignored paths (for example `.specyrd/cache` left by a manual CLI run), naming each path and `git clean -fdX tests/fixtures`, and fails the session if that status changes during the run. If you see either message, clean the tree before pushing.
+
 ```bash
 source .venv/bin/activate
 pip install -e ".[dev,gui-next]"

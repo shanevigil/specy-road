@@ -60,7 +60,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.2_fixture-pollution-guard_99049793-0a79-4a99-a632-8023399c2dcb.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree",
       "touch_zones": [
         "tests/conftest.py",
