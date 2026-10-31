@@ -234,7 +234,8 @@
         "tests/test_review_packet.py",
         "tests/test_generate_brief.py",
         "tests/test_session_plan.py",
-        "tests/test_validate_acceptance_coverage.py"
+        "tests/test_validate_acceptance_coverage.py",
+        "tests/test_project_layouts.py"
       ],
       "type": "task"
     },
