@@ -42,6 +42,8 @@ entries:
     branch: feature/rm-pin-harness-discovery-mode
     touch_zones:
       - specy_road/worker_adapters.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
       - specy_road/model_profiles.py
       - specy_road/templates/project/model-profiles/
       - docs/orchestration-models.md
@@ -58,6 +60,7 @@ entries:
       - specy_road/worker_runner.py
       - specy_road/worker_state.py
       - specy_road/worker_ops.py
+      - specy_road/worker_reconcile.py
       - specy_road/schemas/worker-event.schema.json
       - specy_road/bundled_scripts/worker_cli.py
       - specy_road/bundled_scripts/worker_cli_render.py
@@ -65,6 +68,8 @@ entries:
       - tests/test_worker_state.py
       - tests/test_worker_cli.py
       - tests/test_worker_faults.py
+      - tests/test_review_round6_ops.py
+      - tests/test_worker_adapters.py
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
@@ -85,6 +90,7 @@ entries:
       - tests/test_generate_brief.py
       - tests/test_session_plan.py
       - tests/test_validate_acceptance_coverage.py
+      - tests/test_project_layouts.py
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
