@@ -129,7 +129,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
         except OSError as e:
-            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}")
+            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
+                         detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             set_state(repo_root, rec, "failed", pid=None)
             return 127
         def seen(r: WorkerRecord) -> None:
