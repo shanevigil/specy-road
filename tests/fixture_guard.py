@@ -26,15 +26,38 @@ def fixtures_git_lines(repo_root: Path) -> list[str]:
     return [ln for ln in proc.stdout.splitlines() if ln.strip()]
 
 
+def _source_token_end(body: str) -> int:
+    """Index just past the first path token of ``body``.
+
+    Git quotes any path holding a space, so an unquoted token ends at the first
+    `` -> `` and a quoted one at its closing unescaped quote.
+    """
+    if not body.startswith('"'):
+        sep = body.find(" -> ")
+        return len(body) if sep < 0 else sep
+    i = 1
+    while i < len(body):
+        if body[i] == "\\":
+            i += 2
+            continue
+        if body[i] == '"':
+            return i + 1
+        i += 1
+    return len(body)
+
+
 def path_from_porcelain(line: str) -> str:
     """Path of a porcelain v1 line, as git prints it (quoted when git quotes it).
 
     Only a rename or copy record (``R``/``C`` in the two status columns) carries
-    ``old -> new``; an ordinary filename may itself contain `` -> ``.
+    ``old -> new``; the separator is looked for after the source token, so a
+    quoted source (or an ordinary filename) containing `` -> `` is left intact.
     """
     code, body = line[:2], line[3:]
-    if " -> " in body and ("R" in code or "C" in code):
-        body = body.split(" -> ", 1)[1]
+    if "R" in code or "C" in code:
+        rest = body[_source_token_end(body):]
+        if rest.startswith(" -> "):
+            body = rest[4:]
     return body.strip()
 
 

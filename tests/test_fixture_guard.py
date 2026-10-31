@@ -47,6 +47,8 @@ def _mini_repo(tmp_path: Path) -> Path:
     # A tracked fixture file, as in the dogfood tree: git then names the ignored
     # directory inside it instead of collapsing to ``tests/fixtures/``.
     (root / "tests" / "fixtures" / "sample" / "tracked.txt").write_text("x\n", encoding="utf-8")
+    # A tracked name git must quote; the A2 test renames it during the run.
+    (root / "tests" / "fixtures" / "sample" / "old -> src.txt").write_text("y\n", encoding="utf-8")
     (root / ".gitignore").write_text("**/.specyrd/cache/\n")
     shutil.copy(_GUARD, root / "tests" / "fixture_guard.py")
     (root / "tests" / "__init__.py").write_text("")
@@ -97,13 +99,17 @@ def test_refuses_start_when_ignored_cache_sits_in_fixtures(tmp_path: Path) -> No
 def test_fails_session_when_a_run_pollutes_the_fixture_tree(tmp_path: Path) -> None:
     root = _mini_repo(tmp_path)
     (root / "tests" / "test_pollutes.py").write_text(
+        "import subprocess\n"
         "from pathlib import Path\n\n"
         "def test_leaves_cache():\n"
         "    p = Path(__file__).resolve().parent / 'fixtures' / 'sample' / '.specyrd' / 'cache'\n"
         "    p.mkdir(parents=True, exist_ok=True)\n"
         "    (p / 'x').write_text('pollution')\n"
         "    # An ordinary filename containing ' -> ' is not a rename record.\n"
-        "    (p.parents[2] / 'a -> b.txt').write_text('pollution')\n",
+        "    (p.parents[2] / 'a -> b.txt').write_text('pollution')\n"
+        "    # A rename whose quoted source contains ' -> ' must report the destination.\n"
+        "    subprocess.run(['git', 'mv', 'tests/fixtures/sample/old -> src.txt',\n"
+        "                    'tests/fixtures/sample/new.txt'], cwd=p.parents[4], check=True)\n",
         encoding="utf-8",
     )
 
@@ -114,6 +120,8 @@ def test_fails_session_when_a_run_pollutes_the_fixture_tree(tmp_path: Path) -> N
     assert "tests/fixtures git status changed during the run" in combined
     assert '  "tests/fixtures/a -> b.txt"\n' in combined
     assert "  tests/fixtures/sample/.specyrd/\n" in combined
+    assert "  tests/fixtures/sample/new.txt\n" in combined
+    assert 'src.txt"' not in combined
 
 
 def test_clean_fixture_tree_leaves_exit_status_and_output_unchanged(tmp_path: Path) -> None:
