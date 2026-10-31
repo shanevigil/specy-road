@@ -18,6 +18,7 @@ As widened in `39504ef` and `6e7b291` (`tests/test_worker_adapters.py` added); e
 - `specy-road file-limits` → `OK: file limits satisfied.`
 - `pytest tests/test_worker_state.py tests/test_worker_cli.py tests/test_worker_faults.py tests/test_review_round6_ops.py` → 48 passed (first run had one failure in my own new test from an unread capsys buffer; fixed, re-run green).
 - Review round 1 (gpt-6.1-sol TI1): the sync-lock test in `tests/test_review_round6_ops.py` compares the whole `sync.yaml` mapping exactly again, `{worker: {seq, acked_at}}`. It checks first that `acked_at` parses as ISO and falls between the lock release and the end of the check. After the fix, `pytest tests/test_worker_state.py tests/test_worker_cli.py tests/test_worker_faults.py tests/test_review_round6_ops.py tests/test_worker_adapters.py -q` → 56 passed; `specy-road file-limits` OK.
+- Review round 2 (gpt-6.1-sol C1): when `Popen` raises `OSError`, `worker_runner.run` now gives its `error` event `detail.exit = 127`, the code it returns. That makes it the wrapper's exit record, so the timeline counts it as the turn end and `end_to_acked` is timed after the ack. The timeline still does not end the turn on an `error` without `exit` (such as an ignored READY). The `worker timeline` row in `docs/orchestration-workers.md` says which errors end a turn. After the fix, the same five-file pytest run → 56 passed; `specy-road file-limits` OK. Before the runner change the extended test failed.
 - `pytest tests/test_worker_adapters.py` → 8 passed, after `test_run_records_session_id_events_and_a_clean_exit` (line 129) was updated to expect `launched` and `first_output` after the delegation's `started`; its other assertions are unchanged. The only other sequence check in that file (`[-2:] == ["error", "error"]`, line 151) is a tail and still holds.
 
 ## Not done / needs the coordinator
@@ -37,6 +38,7 @@ As widened in `39504ef` and `6e7b291` (`tests/test_worker_adapters.py` added); e
 - `worker_cli.cmd_timeline` — target resolution and emit only (argparse wiring in `build_parser`).
 
 ### Branches or guards
+- `worker_runner.run`: the `OSError` branch's `error` event carries `detail={"exit": 127}` (C1: a startup failure is the turn's end).
 - `worker_runner.run`: `first` flag so `first_output` is appended once, on the first stdout line.
 - `worker_reconcile.sync_marks`: dict vs integer value per worker (legacy file shape).
 - `worker_cli_render._boundaries`: the ack counts only when `marks.seq >= end.seq` (an earlier turn's ack is not this turn's).
@@ -51,4 +53,5 @@ As widened in `39504ef` and `6e7b291` (`tests/test_worker_adapters.py` added); e
 - `tests/test_worker_faults.py` (existing test extended) — a killed harness still logs `launched` < `first_output` < `error`.
 - `tests/test_worker_state.py` (existing test extended) — the schema accepts `launched` with its detail and `first_output`; count adjusted.
 - `tests/test_review_round6_ops.py` (existing sync-lock test extended) — exact equality on the new `{seq, acked_at}` shape, with `acked_at` parsed and bracketed by the lock release and the check; the mark still acknowledges; a legacy integer file reads via `sync_marks`.
+- `tests/test_worker_adapters.py::test_run_reports_a_missing_binary_as_failed` (existing test extended) — the error's `detail` is exactly `{exit: 127}`; after `sync --ack`, `worker timeline --json` gives a numeric `end_to_acked` and null for the three earlier phases.
 - `tests/test_worker_adapters.py::test_run_records_session_id_events_and_a_clean_exit` (existing test, one line) — the expected event sequence gains `launched`, `first_output` between the broker's `started` and the harness's; nothing loosened.
