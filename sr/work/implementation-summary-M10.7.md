@@ -14,7 +14,7 @@ Each output specy-road writes into a model's context now carries a budget with a
 
 ## Changes
 
-Touch zones as listed by the PM, all confirmed accurate; nothing outside them was edited:
+Touch zones as listed by the PM, plus `tests/test_project_layouts.py`, which the roadmap added to this leaf's zones after the first review blocked on it; nothing outside them was edited:
 
 - `specy_road/bundled_scripts/review_packet.py` — `MAX_DIFF_LINES`, `DIFF_NAME`, `_split_files`, `_numstat`, `_capped_diff`; `_diff`/`build_packet`/`main` take `max_diff_lines`.
 - `specy_road/bundled_scripts/brief_acceptance.py` — grouped warnings; the size helpers (`section_sizes`, `with_size_line`, `size_warning`, `print_size_warning`, `SIZE_WARN_BYTES`) live here because `generate_brief.py` sits at its 400-line cap (it is now exactly 400).
@@ -23,17 +23,18 @@ Touch zones as listed by the PM, all confirmed accurate; nothing outside them wa
 - `specy_road/bundled_scripts/grind_session_args.py` — `--fields`, `_plan_fields` validation.
 - `specy_road/bundled_scripts/grind_session.py` — `_emit_plan(..., fields)`.
 - `specy_road/cli_usage.py`, `docs/dev-workflow.md`, `docs/grind-session.md`.
+- `tests/test_project_layouts.py` — `test_the_brief_is_identical_across_layouts` also strips the `_Size:` line (asserting each brief has exactly one) before comparing, since A2's total counts the nested-only `Project root` line and so legitimately differs by layout (review round 1, `cursor-grok-4.6-high`, required change).
 - Tests: `tests/test_review_packet.py`, `tests/test_generate_brief.py`, `tests/test_session_plan.py`, `tests/test_validate_acceptance_coverage.py` (the last one's three assertions on the old per-leaf wording were updated to the grouped format A4 specifies; `test_the_warning_is_capped` became `test_the_warning_is_one_line_per_class_with_one_hint`).
 
 Not done, on purpose: the planning sheet's "orchestration.md packet section" note. `docs/orchestration.md` is outside the touch zones and A5 does not require it; a one-sentence pointer to the cap in its `PACKET.md` section is a follow-up for the coordinator.
 
 ## Verification
 
-- `pytest tests/test_review_packet.py tests/test_generate_brief.py tests/test_session_plan.py tests/test_validate_acceptance_coverage.py` — 60 passed.
+- `pytest tests/test_review_packet.py tests/test_generate_brief.py tests/test_session_plan.py tests/test_validate_acceptance_coverage.py tests/test_project_layouts.py` — 103 passed.
 - `specy-road file-limits` — OK (grind-session.md 500/500, generate_brief.py 400/400).
 - `specy-road validate|export --check|digest --check --repo-root tests/fixtures/specy_road_dogfood` — OK.
 - `python scripts/check_test_private_imports.py` — 0 new (ruff and pylint are not installed in this environment, so the C901 and clone gates were not run locally).
-- Full `pytest`: 2529 passed, 2 skipped, **1 failed outside the touch zones**: `tests/test_project_layouts.py::test_the_brief_is_identical_across_layouts`. It compares a flat and a nested (`sr/`) brief after stripping the nested one's `Project root` line; with A2 the size line's total now legitimately differs by that line's length. The fix is a one-line change in that test (also strip or normalise the `_Size: … bytes` line); the file is not in this leaf's touch zones, so it is left for the coordinator rather than edited here. Every other test passes at the committed state.
+- Full `pytest`: 2532 passed, 2 skipped, 0 failed. The round-1 failure (`tests/test_project_layouts.py::test_the_brief_is_identical_across_layouts`) is fixed by normalising the `_Size:` line in that test.
 
 ## Walkthrough
 
@@ -77,3 +78,4 @@ Not done, on purpose: the planning sheet's "orchestration.md packet section" not
 - `test_fields_flag_parses_and_rejects_unknown_keys` — A3 parsing, unknown key error naming valid keys, flag without `--plan --json`.
 - `test_plan_json_fields_prints_only_those_keys` — A3 end to end through `run_session`.
 - `test_the_warning_is_one_line_per_class_with_one_hint` — A4 (replaces the per-leaf cap test).
+- `test_the_brief_is_identical_across_layouts` (changed, not added) — strips the layout-dependent `_Size:` line on both briefs, after asserting each has exactly one; the rest stays byte-identical.
