@@ -110,7 +110,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.4_executor-blocked-on_4ae51fbf-5470-4827-bb06-59fbc3088f41.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet",
       "touch_zones": [
         "specy_road/schemas/handoff.schema.json",

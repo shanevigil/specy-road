@@ -78,7 +78,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Not Started**
   - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Not Started**
   - `M9.3` Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project `layout-with-outside-change` — task — **Not Started**
-  - `M9.4` An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet `executor-blocked-on` — task — **Not Started**
+  - `M9.4` An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet `executor-blocked-on` — task — **Complete**
   - `M9.5` specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them `integrity-report` — task — **Not Started**
   - `M9.6` With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup `integrity-gate-and-waivers` — task — **Not Started**
   - `M9.7` specy-road integrity also reports new lint suppressions and widened baseline files `suppression-and-ratchet-findings` — task — **Not Started**
@@ -91,6 +91,8 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M9.2` on `feature/rm-fixture-pollution-guard` since 2026-10-29
+- `M9.3` on `feature/rm-layout-with-outside-change` since 2026-10-29
 
 ## Reaching the detail behind this
 
