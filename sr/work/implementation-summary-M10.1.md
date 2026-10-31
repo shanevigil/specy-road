@@ -17,6 +17,7 @@ As widened in `39504ef` and `6e7b291` (`tests/test_worker_adapters.py` added); e
 
 - `specy-road file-limits` → `OK: file limits satisfied.`
 - `pytest tests/test_worker_state.py tests/test_worker_cli.py tests/test_worker_faults.py tests/test_review_round6_ops.py` → 48 passed (first run had one failure in my own new test from an unread capsys buffer; fixed, re-run green).
+- Review round 1 (gpt-6.1-sol TI1): the sync-lock test in `tests/test_review_round6_ops.py` compares the whole `sync.yaml` mapping exactly again, `{worker: {seq, acked_at}}`. It checks first that `acked_at` parses as ISO and falls between the lock release and the end of the check. After the fix, `pytest tests/test_worker_state.py tests/test_worker_cli.py tests/test_worker_faults.py tests/test_review_round6_ops.py tests/test_worker_adapters.py -q` → 56 passed; `specy-road file-limits` OK.
 - `pytest tests/test_worker_adapters.py` → 8 passed, after `test_run_records_session_id_events_and_a_clean_exit` (line 129) was updated to expect `launched` and `first_output` after the delegation's `started`; its other assertions are unchanged. The only other sequence check in that file (`[-2:] == ["error", "error"]`, line 151) is a tail and still holds.
 
 ## Not done / needs the coordinator
@@ -49,5 +50,5 @@ As widened in `39504ef` and `6e7b291` (`tests/test_worker_adapters.py` added); e
 - `tests/test_worker_cli.py::test_timeline_arithmetic_and_unknown_phases` — fixed log: exact seconds, text lines, ack short of the end, `error` with `exit` as turn end, missing `first_output`, adopted worker all unknown.
 - `tests/test_worker_faults.py` (existing test extended) — a killed harness still logs `launched` < `first_output` < `error`.
 - `tests/test_worker_state.py` (existing test extended) — the schema accepts `launched` with its detail and `first_output`; count adjusted.
-- `tests/test_review_round6_ops.py` (existing sync-lock test extended) — new `{seq, acked_at}` shape, the mark still acknowledges, a legacy integer file reads via `sync_marks`.
+- `tests/test_review_round6_ops.py` (existing sync-lock test extended) — exact equality on the new `{seq, acked_at}` shape, with `acked_at` parsed and bracketed by the lock release and the check; the mark still acknowledges; a legacy integer file reads via `sync_marks`.
 - `tests/test_worker_adapters.py::test_run_records_session_id_events_and_a_clean_exit` (existing test, one line) — the expected event sequence gains `launched`, `first_output` between the broker's `started` and the harness's; nothing loosened.
