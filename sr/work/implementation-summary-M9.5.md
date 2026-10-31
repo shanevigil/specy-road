@@ -36,19 +36,38 @@ The gpt-6.1-sol review of `eb34aa1` blocked on four items, fixed in commit `a3d2
   exit 0 and empty output. A deleted Python test file prints both its `removed-test-file` line and one
   `removed-test` line per function, as the round-1 review noted.
 
+## Review round 3 fix (claude-opus-5.5)
+
+The gpt-6.1-sol review of `799ef95` blocked on two defects and one excess, fixed in commit `44dba2a`:
+
+- **R1 (A1-A4, A7)** — `_tree_paths` runs `git ls-tree --full-tree`, so a nested project root (`sr/` under the
+  git root) lists every test with git-root-relative paths, matching what `git show <sha>:<path>` and
+  `diff_paths` already use. It reads raw stdout (`git_stdout`) so the NUL-split names are never stripped.
+  `test_nested_project_root_reports_git_root_paths` puts the roadmap under `sr/`, weakens a test inside it and
+  deletes one outside it, and asserts the exact CLI output, exit 1 and the same lines in the packet's
+  `test_integrity_section`. It fails on `799ef95`.
+- **R2 (A5)** — the line-based `[tool.pytest` header scan is replaced by `_pytest_tables`, which parses
+  `pyproject.toml` with `tomllib` and compares the `tool` keys starting with `pytest`, so quoted
+  (`["tool"."pytest"."ini_options"]`), dotted and indented spellings are all one table. A `pyproject.toml` that
+  does not parse is compared as raw text, so any edit to it still reports. `test_config_change_quoted_pyproject_pytest_table`
+  fails on `799ef95`; the indented and non-pytest-table tests still pass.
+- **E1** — `test_cli_text_line_and_exit_one` is deleted; its input class is covered, with exact stdout and exit 1,
+  by `test_cli_prints_exact_line_and_exits_one_for_each_form[removed-test-file]`.
+
 ## Verification
 
-- `pytest tests/test_integrity.py tests/test_review_packet.py` — 36 passed
+- `pytest tests/test_integrity.py tests/test_review_packet.py` — 37 passed (round 3); full `pytest` — 2547 passed, 2 skipped
 - `specy-road file-limits` — OK
 - `python scripts/check_test_private_imports.py` — 0 new; one stale baseline entry predates this leaf
   (`review_packet._changed`, also absent on the integration branch) and `constraints/` is outside the zones
 - `python scripts/check_clones.py` — not run (`pylint` missing in this shell)
+- `specy-road integrity M9.5 --repo-root sr` on this branch — exit 0, no output
 
 ## Added
 
 - `Finding` dataclass and `line()` / `as_json()` — stable text and JSON shapes for A2–A6.
 - `compare_integrity()` — orchestrates file-tree, AST, and config diff findings.
-- `_pytest_table_text()` — limits `config-change` on `pyproject.toml` to `[tool.pytest*]` tables.
+- `_pytest_table_text()` — limited `config-change` on `pyproject.toml` to `[tool.pytest*]` tables; replaced in round 3 by `_pytest_tables()`.
 - `_test_functions()` / skip and assert helpers — AST extraction for Python test modules.
 - `findings_to_json()` — JSON envelope for `--json`.
 - `test_integrity_section()` in `review_packet.py` — packet section after changed paths.
@@ -63,4 +82,12 @@ The gpt-6.1-sol review of `eb34aa1` blocked on four items, fixed in commit `a3d2
 - `_TEST_SRC` / `_CLI_FORMS` table and `test_cli_prints_exact_line_and_exits_one_for_each_form` — A6 per-form CLI
   coverage with exact output and exit 1.
 - `test_cli_text_mode_unchanged_ref_exits_zero_silently` — A6 unchanged-ref text-mode case.
+- `--full-tree` on `_tree_paths` (and `git_stdout` in place of `git_text`) — R1: git-root-relative paths from a nested project root.
+- `_pytest_tables()` (replaces `_pytest_table_text()`) — R2: tomllib reads every TOML spelling of `tool.pytest*`.
+- raw-text fallback in `_pytest_tables()` on `TOMLDecodeError` — an unparseable `pyproject.toml` in a commit still reports an edit.
+- `isinstance(tool, dict)` guard in `_pytest_tables()` — `tool = 1` is valid TOML and has no pytest tables.
+- `project` parameter on the `_roadmap` / `_repo` test fixtures — builds the roadmap under a nested project directory.
+- `test_nested_project_root_reports_git_root_paths` — R1 regression through the CLI and the packet section.
+- `test_config_change_quoted_pyproject_pytest_table` — R2 regression.
+- removed: `test_cli_text_line_and_exit_one` — E1, covered by the parametrized `removed-test-file` form.
 - none — no new mocks; tests use real git repos under `tmp_path`.
