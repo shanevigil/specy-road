@@ -11,6 +11,14 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ## [Unreleased]
 
+### Added
+
+- READY hand-offs may declare optional `blocked_on` (`{acceptance, reason}` per
+  brief acceptance id). `handoff status` reports `executor_blocked` while that
+  READY is current; `mark-implementation-reviewed` and `finish-this-task`
+  refuse until it is cleared. The executor prompt directs agents to use
+  `blocked_on` instead of weakening tests or raising baselines or caps.
+
 ## [v0.3.1-rc2] - 2026-10-29
 
 Second prerelease for v0.3.1 (TestPyPI). Builds on rc1 with upgrade-path
