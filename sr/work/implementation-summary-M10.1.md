@@ -1,6 +1,6 @@
 # Implementation summary: M10.1 — Record phase timestamps in the event log and print a per-leaf timeline
 
-Branch `feature/rm-record-phase-timestamps-in`, base `39504ef` (WIP after the touch-zone widening), implementation commit `1922d6e`.
+Branch `feature/rm-record-phase-timestamps-in`, base `6e7b291` (WIP after the second touch-zone widening), implementation commits `1922d6e` (A1 to A4) and the follow-up that updates `tests/test_worker_adapters.py`.
 
 ## What changed, per acceptance criterion
 
@@ -11,17 +11,17 @@ Branch `feature/rm-record-phase-timestamps-in`, base `39504ef` (WIP after the to
 
 ## Touch zones
 
-As widened in `39504ef`; every changed path is inside them. One **out-of-zone** path still needs a change (below).
+As widened in `39504ef` and `6e7b291` (`tests/test_worker_adapters.py` added); every changed path is inside them.
 
 ## Verification
 
 - `specy-road file-limits` → `OK: file limits satisfied.`
 - `pytest tests/test_worker_state.py tests/test_worker_cli.py tests/test_worker_faults.py tests/test_review_round6_ops.py` → 48 passed (first run had one failure in my own new test from an unread capsys buffer; fixed, re-run green).
-- `pytest tests/test_worker_adapters.py` → **1 failed**: `test_run_records_session_id_events_and_a_clean_exit` (line 129) asserts the exact event sequence `["started", "started", "output", "turn_completed", "completion"]`; A1 inserts `launched`, `first_output` after the first `started`. **`tests/test_worker_adapters.py` is outside the touch zones, so it is not edited here.** The fix is that one expected list; nothing else in that file is affected.
+- `pytest tests/test_worker_adapters.py` → 8 passed, after `test_run_records_session_id_events_and_a_clean_exit` (line 129) was updated to expect `launched` and `first_output` after the delegation's `started`; its other assertions are unchanged. The only other sequence check in that file (`[-2:] == ["error", "error"]`, line 151) is a tail and still holds.
 
 ## Not done / needs the coordinator
 
-- `tests/test_worker_adapters.py:129` expected list → `["started", "launched", "first_output", "started", "output", "turn_completed", "completion"]` (out of zone).
+- none.
 
 ## Added
 
@@ -50,3 +50,4 @@ As widened in `39504ef`; every changed path is inside them. One **out-of-zone** 
 - `tests/test_worker_faults.py` (existing test extended) — a killed harness still logs `launched` < `first_output` < `error`.
 - `tests/test_worker_state.py` (existing test extended) — the schema accepts `launched` with its detail and `first_output`; count adjusted.
 - `tests/test_review_round6_ops.py` (existing sync-lock test extended) — new `{seq, acked_at}` shape, the mark still acknowledges, a legacy integer file reads via `sync_marks`.
+- `tests/test_worker_adapters.py::test_run_records_session_id_events_and_a_clean_exit` (existing test, one line) — the expected event sequence gains `launched`, `first_output` between the broker's `started` and the harness's; nothing loosened.

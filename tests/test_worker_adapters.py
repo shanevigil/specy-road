@@ -126,7 +126,7 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.provider_session_id == "s-42" and rec.state == "idle" and rec.pid is None   # no READY file yet
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
-    assert types == ["started", "started", "output", "turn_completed", "completion"]
+    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "completion"]
     assert "working" in wr.log_path(repo, rec.worker_id).read_text()
 
 
