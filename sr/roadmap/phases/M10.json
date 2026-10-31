@@ -431,6 +431,33 @@
         "tests/test_agent_ignores.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "When edit-node changes touch_zones on a node that has a claim row in roadmap/registry.yaml, it rewrites that row's touch_zones to the node's new list in the same command, validates, and prints one line naming the claim it updated; a node without a claim is unchanged in behaviour",
+        "The finish implementation check's hint and the review packet both read the updated zones without further steps; a test widens a claimed leaf's zones with edit-node and shows a file in the new zone is no longer flagged outside touch zones in the packet",
+        "The hint in finish_implementation_check names edit-node as sufficient only because of A1; docs/dev-workflow.md says that editing a claimed leaf's zones updates its claim and should be committed on the integration branch",
+        "roadmap_crud_ops.py stays under the 400-line cap: the claim rewrite lives in a helper module reused from move-node's _rewrite_touch_zones where it fits; tests cover A1 and A2"
+      ],
+      "codename": "claim-zones-follow-edit-node",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.14",
+      "node_key": "1470222f-268f-4e15-9d0a-73d498e6fc7d",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.14_claim-zones-follow-edit-node_1470222f-268f-4e15-9d0a-73d498e6fc7d.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "edit-node keeps an active claim's touch zones in step with the node",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/roadmap_move_node.py",
+        "specy_road/bundled_scripts/registry_claim_zones.py",
+        "specy_road/finish_implementation_check.py",
+        "docs/dev-workflow.md",
+        "tests/test_roadmap_crud_edit_claim_zones.py"
+      ],
+      "type": "task"
     }
   ]
 }

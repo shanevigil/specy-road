@@ -99,5 +99,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.11` | Document the harness-subagent recipe for parallel work inside a leaf | task | Agentic-led | Not Started |
 | `M10.12` | Visual explorer for worker event logs in the PM GUI | task | Agentic-led | Not Started |
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
+| `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
