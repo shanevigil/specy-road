@@ -447,7 +447,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.14_claim-zones-follow-edit-node_1470222f-268f-4e15-9d0a-73d498e6fc7d.md",
       "sibling_order": 14,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "edit-node keeps an active claim's touch zones in step with the node",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",

@@ -99,7 +99,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.11` Document the harness-subagent recipe for parallel work inside a leaf `document-the-harness-subagent-recipe` — task — **Not Started**
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
-  - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Not Started**
+  - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
 
 ## Claimed and in flight
 
@@ -107,7 +107,6 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
-- `M10.14` on `feature/rm-claim-zones-follow-edit-node` since 2026-10-30
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M9.5` on `feature/rm-integrity-report` since 2026-10-29
