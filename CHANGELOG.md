@@ -17,6 +17,11 @@ body. Keep section bodies focused; link to PRs for detail.
   objects only and reports removed tests, new skips, lost asserts and pytest
   config edits; `review-packet` includes the same findings under **Test
   integrity** after **Changed paths** (`--json` on the CLI).
+- READY hand-offs may declare optional `blocked_on` (`{acceptance, reason}` per
+  brief acceptance id). `handoff status` reports `executor_blocked` while that
+  READY is current; `mark-implementation-reviewed` and `finish-this-task`
+  refuse until it is cleared. The executor prompt directs agents to use
+  `blocked_on` instead of weakening tests or raising baselines or caps.
 
 ## [v0.3.1-rc2] - 2026-10-29
 

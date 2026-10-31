@@ -161,7 +161,27 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     return data, body, []
 
 
-def load_ready(path: Path, node_id: str | None = None, branch: str | None = None) -> ReviewFile:
+def ready_semantic_errors(
+    data: dict[str, Any], acceptance_ids: list[str] | None = None
+) -> list[str]:
+    """Rules the handoff schema cannot express. ``acceptance_ids`` comes from the brief."""
+    errs: list[str] = []
+    blocked = data.get("blocked_on") or []
+    if acceptance_ids is not None and blocked:
+        known = set(acceptance_ids)
+        for entry in blocked:
+            aid = entry.get("acceptance")
+            if aid not in known:
+                errs.append(f"blocked_on: {aid} not in the brief")
+    return errs
+
+
+def load_ready(
+    path: Path,
+    node_id: str | None = None,
+    branch: str | None = None,
+    acceptance_ids: list[str] | None = None,
+) -> ReviewFile:
     """Parse one READY file; with ``node_id`` / ``branch``, bind it to that provenance.
 
     A file under ``work/reviews/M1.1/`` whose front matter names another node
@@ -175,6 +195,8 @@ def load_ready(path: Path, node_id: str | None = None, branch: str | None = None
         errs.append(f"node_id is {data.get('node_id')!r}, not {node_id!r} (misfiled hand-off)")
     if not errs and branch is not None and data.get("branch") != branch:
         errs.append(f"branch is {data.get('branch')!r}, not the registered {branch!r}")
+    if not errs:
+        errs = ready_semantic_errors(data, acceptance_ids)
     return ReviewFile(path, data, body, errs)
 
 
@@ -222,9 +244,17 @@ def _files(repo_root: Path, node_id: str, prefix: str) -> list[Path]:
     return sorted(p for p in d.glob(f"{prefix}*.md") if p.is_file())
 
 
-def list_ready(repo_root: Path, node_id: str, branch: str | None = None) -> list[ReviewFile]:
+def list_ready(
+    repo_root: Path,
+    node_id: str,
+    branch: str | None = None,
+    acceptance_ids: list[str] | None = None,
+) -> list[ReviewFile]:
     """Every READY under the node's directory, bound to that node (and ``branch`` when known)."""
-    return [load_ready(p, node_id, branch) for p in _files(repo_root, node_id, READY_PREFIX)]
+    return [
+        load_ready(p, node_id, branch, acceptance_ids)
+        for p in _files(repo_root, node_id, READY_PREFIX)
+    ]
 
 
 def list_reviews(
@@ -260,9 +290,14 @@ def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
     return out
 
 
-def latest_ready(repo_root: Path, node_id: str, branch: str | None = None) -> ReviewFile | None:
+def latest_ready(
+    repo_root: Path,
+    node_id: str,
+    branch: str | None = None,
+    acceptance_ids: list[str] | None = None,
+) -> ReviewFile | None:
     """The most recently modified valid READY file for this node (and ``branch``), if any."""
-    valid = [r for r in list_ready(repo_root, node_id, branch) if r.ok]
+    valid = [r for r in list_ready(repo_root, node_id, branch, acceptance_ids) if r.ok]
     if not valid:
         return None
     return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))
@@ -303,6 +338,27 @@ def non_gating_verify_problems(ready: ReviewFile | None) -> list[str]:
     if ready is None or ready.data.get("verify"):
         return []
     return [f"{ready.path.name} (executor-reported): no verifier evidence recorded (verify is empty)"]
+
+
+def executor_blocked_entries(ready: ReviewFile | None) -> list[dict[str, Any]]:
+    """Non-empty ``blocked_on`` on a READY file, when present."""
+    if ready is None:
+        return []
+    return list(ready.data.get("blocked_on") or [])
+
+
+def executor_blocked_display_lines(ready: ReviewFile | None) -> list[str]:
+    """One ``A<n>: <reason>`` line per ``blocked_on`` entry (handoff status)."""
+    return [f"{e['acceptance']}: {e['reason']}" for e in executor_blocked_entries(ready)]
+
+
+def executor_blocked_gate_problems(ready: ReviewFile | None) -> list[str]:
+    """Gate failures while the current READY declares ``blocked_on``."""
+    name = ready.path.name if ready else "READY"
+    return [
+        f"{name} (executor-blocked): blocked on {e['acceptance']}"
+        for e in executor_blocked_entries(ready)
+    ]
 
 
 def node_ids_with_reviews(repo_root: Path) -> list[str]:

@@ -38,6 +38,7 @@ from specy_road.review_files import (
     render_front_matter,
     review_path,
     non_gating_verify_problems,
+    executor_blocked_display_lines,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_rca import LoopState, loop_state
@@ -64,22 +65,32 @@ def _state(root: Path, t: ReviewTarget, gate: GateResult, ready_commit: str | No
 def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, Any]:
     t = resolve_target(root, node_id, ref)
     branch = (t.entry or {}).get("branch")
+    aids = acceptance_ids(t.node)
     gate = evaluate_gate(root, t.node, t.commit, branch=branch)
-    ready = latest_ready(root, node_id, branch)
+    ready = latest_ready(root, node_id, branch, aids)
     ready_commit = ready.data["commit"] if ready else None
+    # A current READY's blocked_on outranks reviewer blocks and escalation (A3).
+    blocked_lines = (
+        executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
+    )
     tm = trial_merge(root, t.ref, t.base_ref)
     merge_problem = [tm.problem()] if tm and tm.problem() else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
+    if blocked_lines:
+        state = "executor_blocked"
+    else:
+        state = "escalated" if escalated else _state(root, t, gate, ready_commit)
     return {
         "node_id": node_id,
-        "state": "escalated" if escalated else _state(root, t, gate, ready_commit),
+        "state": state,
         "escalation": loop.escalation.to_dict() if escalated else None,
         "ref": t.ref,
         "commit": gate.commit,
+        "executor_blocked": blocked_lines,
         "ready": [
             {"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors}
-            for r in list_ready(root, node_id, branch)
+            for r in list_ready(root, node_id, branch, aids)
         ],
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
@@ -114,6 +125,8 @@ def _render(st: dict[str, Any]) -> list[str]:
         lines.append(f"  trial merge with {tm['ref']}: conflicts on {', '.join(tm['conflicts'])}{kind}")
     if st.get("escalation"):
         lines.append(_escalation_line(st["node_id"], st["escalation"]["describe"]))
+    for line in st.get("executor_blocked") or []:
+        lines.append(f"  {line}")
     lines += [f"  - {p}" for p in st["problems"]]
     return lines
 
@@ -204,7 +217,7 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
     return _EXIT.get(out[0]["state"], 1) if ns.node_id else 0
 
 
-_EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2}
+_EXIT = {"approved": 0, "complete_no_claim": 0, "unclaimed": 2, "error": 2, "executor_blocked": 1}
 
 
 def _fail(msg: str, code: int = 1) -> int:

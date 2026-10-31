@@ -11,44 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: fixture-pollution-guard
-    node_id: M9.2
-    branch: feature/rm-fixture-pollution-guard
-    touch_zones:
-      - tests/conftest.py
-      - tests/fixture_guard.py
-      - tests/test_fixture_guard.py
-      - docs/contributor-guide.md
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: layout-with-outside-change
-    node_id: M9.3
-    branch: feature/rm-layout-with-outside-change
-    touch_zones:
-      - tests/test_project_layouts_outside.py
-      - tests/helpers.py
-      - tests/review_repo_helpers.py
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: executor-blocked-on
-    node_id: M9.4
-    branch: feature/rm-executor-blocked-on
-    touch_zones:
-      - specy_road/schemas/handoff.schema.json
-      - specy_road/templates/project/work/handoff-ready.template.md
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/review_files.py
-      - specy_road/review_gate.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/templates/specyrd/commands/specyrd-handoff-status.md
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
   - codename: integrity-report
     node_id: M9.5
     branch: feature/rm-integrity-report
@@ -62,5 +24,75 @@ entries:
       - CHANGELOG.md
       - tests/
     started: '2026-10-29'
+    owner: savigil
+    implementation_review: pending
+  - codename: pin-harness-discovery-mode
+    node_id: M10.4
+    branch: feature/rm-pin-harness-discovery-mode
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/model_profiles.py
+      - specy_road/templates/project/model-profiles/
+      - docs/orchestration-models.md
+      - suggested_prompts/
+      - tests/test_worker_adapters.py
+      - tests/test_models_and_prompt.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
+  - codename: record-phase-timestamps-in
+    node_id: M10.1
+    branch: feature/rm-record-phase-timestamps-in
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_state.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_reconcile.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - tests/test_worker_state.py
+      - tests/test_worker_cli.py
+      - tests/test_worker_faults.py
+      - tests/test_review_round6_ops.py
+      - tests/test_worker_adapters.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
+  - codename: output-budgets-with-full
+    node_id: M10.7
+    branch: feature/rm-output-budgets-with-full
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/bundled_scripts/generate_brief.py
+      - specy_road/bundled_scripts/brief_acceptance.py
+      - specy_road/bundled_scripts/session_plan_render.py
+      - specy_road/bundled_scripts/grind_session_args.py
+      - specy_road/bundled_scripts/grind_session.py
+      - specy_road/cli_usage.py
+      - docs/dev-workflow.md
+      - docs/grind-session.md
+      - tests/test_review_packet.py
+      - tests/test_generate_brief.py
+      - tests/test_session_plan.py
+      - tests/test_validate_acceptance_coverage.py
+      - tests/test_project_layouts.py
+    started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
+  - codename: claim-zones-follow-edit-node
+    node_id: M10.14
+    branch: feature/rm-claim-zones-follow-edit-node
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_move_node.py
+      - specy_road/bundled_scripts/registry_claim_zones.py
+      - specy_road/finish_implementation_check.py
+      - docs/dev-workflow.md
+      - tests/test_roadmap_crud_edit_claim_zones.py
+    started: '2026-10-30'
     owner: savigil
     implementation_review: pending

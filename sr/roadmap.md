@@ -76,14 +76,29 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Human-led | Not Started |
 | `M9` | Regression prevention | phase | — | Not Started |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Not Started |
-| `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Not Started |
-| `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Not Started |
-| `M9.4` | An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet | task | Agentic-led | Not Started |
+| `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Complete |
+| `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Complete |
+| `M9.4` | An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet | task | Agentic-led | Complete |
 | `M9.5` | specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them | task | Agentic-led | Not Started |
 | `M9.6` | With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup | task | Agentic-led | Not Started |
 | `M9.7` | specy-road integrity also reports new lint suppressions and widened baseline files | task | Agentic-led | Not Started |
 | `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Not Started |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
+| `M10` | Agent loop performance and observability | phase | — | Not Started |
+| `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Not Started |
+| `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Not Started |
+| `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | Agentic-led | Not Started |
+| `M10.4` | Pin harness discovery mode per profile | task | Agentic-led | Not Started |
+| `M10.5` | Per-role effort in model profiles | task | Agentic-led | Not Started |
+| `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Mixed | Not Started |
+| `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Not Started |
+| `M10.8` | Reviewers launch without repo hooks or MCP | task | Agentic-led | Not Started |
+| `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | Agentic-led | Not Started |
+| `M10.10` | Position the docs on governance, not on CLI workers | task | Agentic-led | Complete |
+| `M10.11` | Document the harness-subagent recipe for parallel work inside a leaf | task | Agentic-led | Not Started |
+| `M10.12` | Visual explorer for worker event logs in the PM GUI | task | Agentic-led | Not Started |
+| `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
+| `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

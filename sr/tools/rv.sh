@@ -10,7 +10,7 @@ B=$(git -C "sr/work/.worktrees/$WT" branch --show-current)
 if ! git -C "sr/work/.worktrees/$WT" merge-tree --write-tree --name-only origin/WIP/improvements-0-3-1 HEAD >/dev/null 2>&1; then
   echo "$ID: MERGE CONFLICT with WIP"; exit 3; fi
 $S review-packet "$ID" --ref "$B" >/dev/null 2>&1
-Z=$(grep 'outside touch zones\*\*' "sr/work/reviews/$ID/PACKET.md" | sed 's/  \*\*.*//')
+Z=$(grep '^- `.*outside touch zones\*\*' "sr/work/reviews/$ID/PACKET.md" | sed 's/  \*\*.*//')
 if [ -n "$Z" ]; then echo "$ID: OUT OF ZONE: $Z"; exit 4; fi
 cd "sr/work/.worktrees/$WT/sr" || exit 2
 $S prompt "$ID" --role reviewer --model ${R1:-cursor-grok-4.6-high} --channel cli --repo-root "$PWD" > "$LOG/$ID-r1.log" 2>&1
