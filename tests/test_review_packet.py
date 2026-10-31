@@ -160,11 +160,15 @@ def test_diff_past_the_cap_keeps_first_files_whole_lists_the_rest_and_writes_the
 
 
 def test_max_diff_lines_zero_means_no_cap_and_no_patch(tmp_path: Path) -> None:
+    """A1: 0 inlines everything and removes a DIFF.patch left by an earlier capped run."""
     repo = make_review_repo(tmp_path)
     commit_file(repo, "src/big.py", "".join(f"x{i} = {i}\n" for i in range(2000)), "big")
+    patch = reviews_dir(repo, "M1.1") / rp.DIFF_NAME
+    rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=1)
+    assert patch.is_file()
     text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=0)
-    assert "x1999 = 1999" in text and "Diff capped" not in text
-    assert not (reviews_dir(repo, "M1.1") / rp.DIFF_NAME).exists()
+    assert all(s in text for s in ("+print('a')", "x0 = 0", "x1999 = 1999")) and "Diff capped" not in text
+    assert rp.DIFF_NAME not in text and not patch.exists()
 
 
 def test_a_packet_under_the_cap_is_byte_identical_to_an_uncapped_one(tmp_path: Path) -> None:

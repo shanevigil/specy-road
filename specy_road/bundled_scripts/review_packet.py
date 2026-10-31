@@ -218,6 +218,7 @@ def _capped_diff(root: Path, t: ReviewTarget, diff: str, cap: int) -> list[str]:
 
 def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = MAX_DIFF_LINES) -> list[str]:
     out = ["## Diff", ""]
+    (reviews_dir(root, t.node_id) / DIFF_NAME).unlink(missing_ok=True)   # only a capped packet names one
     if not t.base or not t.commit:
         return out + ["_(cannot compute)_", ""]
     note = [BOOKKEEPING_NOTE, ""] if REGISTRY_REL in paths else []
