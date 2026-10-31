@@ -8,11 +8,12 @@ and pytest-related config edits. Python per-function checks use AST over
 from __future__ import annotations
 
 import ast
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_stdout, git_text
+from specy_road.git_subprocess import git_stdout
 
 _CONFIG_NAMES = frozenset({"pytest.ini", "tox.ini", "setup.cfg"})
 
@@ -73,7 +74,8 @@ def findings_to_json(findings: list[Finding]) -> dict[str, list[dict[str, str]]]
 
 
 def _tree_paths(root: Path, commit: str) -> set[str]:
-    out = git_text(["ls-tree", "-r", "--name-only", "-z", commit], root)
+    # --full-tree: git-root-relative paths even when ``root`` is a nested project directory
+    out = git_stdout(["ls-tree", "-r", "--full-tree", "--name-only", "-z", commit], root)
     if not out:
         return set()
     return {p for p in out.split("\0") if p}
@@ -125,26 +127,20 @@ def _config_findings(root: Path, base: str, ref: str) -> list[Finding]:
 
 
 def _pytest_table_changed(base_text: str | None, ref_text: str | None) -> bool:
-    return _pytest_table_text(base_text) != _pytest_table_text(ref_text)
+    return _pytest_tables(base_text) != _pytest_tables(ref_text)
 
 
-def _pytest_table_text(text: str | None) -> str:
+def _pytest_tables(text: str | None) -> object:
+    """``tool.pytest*`` tables however TOML spells them; the raw text when it does not parse."""
     if not text:
-        return ""
-    lines: list[str] = []
-    in_table = False
-    for line in text.splitlines():
-        head = line.strip()   # TOML allows indented table headers
-        if head.startswith("[tool.pytest"):
-            in_table = True
-            lines.append(line)
-            continue
-        if in_table:
-            if head.startswith("["):
-                in_table = False
-            else:
-                lines.append(line)
-    return "\n".join(lines)
+        return {}
+    try:
+        tool = tomllib.loads(text).get("tool", {})
+    except tomllib.TOMLDecodeError:
+        return text
+    if not isinstance(tool, dict):
+        return {}
+    return {k: v for k, v in tool.items() if k.startswith("pytest")}
 
 
 def _test_functions(source: str | None) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
