@@ -28,7 +28,9 @@ _MEMBER_RE = re.compile(
     r"(?:(?:public|private|protected|static|async|readonly|override|abstract"
     rf"|accessor|get|set)\s+)*(?:\*\s*)?(?:(#?{_IDENT}|\d[\w.]*)|([\[\"]))"
 )
-_OPTIONAL_RE = re.compile(r"\s*\??\s*")
+# `name?` (optional) or `name!` (definite assignment) before a field's type or `=`.
+_OPTIONAL_RE = re.compile(r"\s*[?!]?\s*")
+_CAST_RE = re.compile(r"(?:as|satisfies)\b")
 _ASYNC_RE = re.compile(r"async\b\s*")
 # A concise arrow body goes on past a line break when the line ends with, or
 # the next one starts with, one of these.
@@ -185,6 +187,17 @@ def _body_end(s: str, j: int) -> int:
     return min(last, len(s) - 1)
 
 
+def _initializer_end(s: str, init: int, body: int | None, end: int) -> int:
+    """Index after a declarator's initializer at ``init``, whose value ends at ``end``."""
+    # `(x => x + 1), next`: the body ends at the group, the comma is after it.
+    # `(x) => x + 1, next` is a parameter list; its body starts past that `(`.
+    if body is None or _ch(s, init) != "(" or body >= _close(s, init):
+        return _ws(s, end + 1)
+    k = _ws(s, _close(s, init) + 1)
+    # `((x) => x + 1) as Foo, next`: the cast's type comes before the comma.
+    return _ws(s, _body_end(s, k) + 1) if _CAST_RE.match(s, k) else k
+
+
 def _declarators(s: str, j: int) -> list[tuple[int, int, str]]:
     """Arrow-valued declarators of the ``const`` / ``let`` / ``var`` list starting at ``j``."""
     found: list[tuple[int, int, str]] = []
@@ -207,11 +220,7 @@ def _declarators(s: str, j: int) -> list[tuple[int, int, str]]:
             end = _body_end(s, start)
             if body is not None and name is not None:
                 found.append((name.start(), end, name.group()))
-            k = _ws(s, end + 1)
-            # `(x => x + 1), next`: the body ends at the group, the comma is after it.
-            # `(x) => x + 1, next` is a parameter list; its body starts past that `(`.
-            if body is not None and _ch(s, init) == "(" and body < _close(s, init):
-                k = _ws(s, _close(s, init) + 1)
+            k = _initializer_end(s, init, body, end)
         if _ch(s, k) != ",":
             break
         j = _ws(s, k + 1)
