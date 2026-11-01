@@ -8,6 +8,7 @@ import contextlib
 import re
 import shutil
 import sys
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -15,6 +16,7 @@ import yaml
 from specy_road import __version__
 from specy_road.bundled_scripts.refresh_schemas import warn_if_schemas_stale
 from specy_road.bundled_scripts.refresh_stubs import MANIFEST_REL, warn_if_stubs_stale
+from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.bundled_scripts.roadmap_chunk_utils import (
     discover_manifest_path,
     load_manifest_mapping,
@@ -70,6 +72,7 @@ __all__ = [
     "unregistered_commands",
     "warn_stale_parent_status",
     "warn_if_pin_differs",
+    "warn_research_register",
     "warn_touch_zones_match_nothing",
     "warn_unregistered_commands",
 ]
@@ -113,6 +116,50 @@ def warn_if_pin_differs(start: Path) -> None:
         f"is running. If the upgrade is deliberate, update the pin; otherwise install {pin}.",
         file=sys.stderr,
     )
+
+
+def _register_entry_problems(root: Path, data: dict, today: date) -> list[str]:
+    """Why one register entry's front matter ``data`` needs attention; empty when it does not."""
+    problems = []
+    prompt = data.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        problems.append("no `prompt` file named")
+    elif not (root / prompt).is_file():
+        problems.append(f"prompt file {prompt} does not exist")
+    elif not (root / prompt).resolve().is_relative_to((root / "research").resolve()):
+        problems.append(f"prompt file {prompt} is not under research/; move it there so it is tracked")
+    cadence, last = data.get("cadence_days"), data.get("last_run")
+    if type(cadence) is not int or cadence < 1:
+        problems.append(f"`cadence_days` is not a whole number of days: {cadence!r}")
+    elif last is None:
+        problems.append("due: never run (`last_run` is empty)")
+    else:
+        try:
+            when = date.fromisoformat(str(last))
+        except ValueError:
+            return [*problems, f"`last_run` is not a date (YYYY-MM-DD): {last!r}"]
+        if (today - when).days > cadence:
+            problems.append(f"past its cadence: last run {when}, every {cadence} days")
+    return problems
+
+
+def warn_research_register(root: Path, today: date | None = None) -> None:
+    """One non-fatal line per ``research/<topic>.md`` register entry that needs attention.
+
+    An entry is due when more than ``cadence_days`` have passed since ``last_run``
+    (or it has never run). Its ``prompt`` must be a file under ``research/``:
+    a prompt in ``work/`` is scratch that ``finish-this-task`` may clean up.
+    """
+    research = root / "research"
+    if not research.is_dir():
+        return
+    for entry in sorted(research.glob("*.md")):
+        if entry.name == "README.md":
+            continue
+        data, _body = split_frontmatter(entry.read_text(encoding="utf-8"))
+        for why in _register_entry_problems(root, data, today or date.today()):
+            print(f"research: warning — research/{entry.name}: {why} (see research/README.md)",
+                  file=sys.stderr)
 
 
 def validate_git_workflow_contract(root: Path) -> None:
@@ -205,6 +252,7 @@ def validate_at(
     warn_unregistered_commands(root)
     warn_if_context_over_limits(root)
     warn_if_generated_files_ignored(root)
+    warn_research_register(root)
 
     if auto_heal:
         changed, _logs = auto_heal_roadmap(root)
