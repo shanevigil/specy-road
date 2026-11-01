@@ -63,10 +63,13 @@ def test_events_are_sequenced_validated_and_read_back_after_a_fresh_load(tmp_pat
     assert ws.events_since(repo, rec.worker_id, 3) == []
     with pytest.raises(ws.WorkerError, match="type"):
         ws.append_event(repo, rec, "not-a-type", source="worker", summary="x")
+    ws.append_event(repo, rec, "launched", source="system", summary="up", detail={"argv0": "claude", "harness": "claude-code", "resumed": False})
+    ws.append_event(repo, rec, "first_output", source="system", summary="first line")
+    assert [e.type for e in ws.events_since(repo, rec.worker_id, 3)] == ["launched", "first_output"]
     # A corrupt line is skipped, not fatal.
     with ws.events_path(repo, rec.worker_id).open("a") as f:
         f.write("{not json\n")
-    assert len(ws.events_since(repo, rec.worker_id)) == 3
+    assert len(ws.events_since(repo, rec.worker_id)) == 5
 
 
 def test_lease_blocks_the_broker_until_reclaimed(tmp_path: Path) -> None:

@@ -42,26 +42,6 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
-  - codename: record-phase-timestamps-in
-    node_id: M10.1
-    branch: feature/rm-record-phase-timestamps-in
-    touch_zones:
-      - specy_road/worker_runner.py
-      - specy_road/worker_state.py
-      - specy_road/worker_ops.py
-      - specy_road/worker_reconcile.py
-      - specy_road/schemas/worker-event.schema.json
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - docs/orchestration-workers.md
-      - tests/test_worker_state.py
-      - tests/test_worker_cli.py
-      - tests/test_worker_faults.py
-      - tests/test_review_round6_ops.py
-      - tests/test_worker_adapters.py
-    started: '2026-10-30'
-    owner: savigil
-    implementation_review: pending
   - codename: output-budgets-with-full
     node_id: M10.7
     branch: feature/rm-output-budgets-with-full
@@ -94,6 +74,9 @@ entries:
       - docs/git-workflow.md
       - CHANGELOG.md
       - tests/
+      - specy_road/finish_modes.py
+      - specy_road/feature_rm_registry.py
+      - specy_road/bundled_scripts/finish_task.py
     started: '2026-10-31'
     owner: savigil
     implementation_review: pending
@@ -105,6 +88,52 @@ entries:
       - specy_road/bundled_scripts/brainstorm_prompt.py
       - specy_road/templates/specyrd/commands/specyrd-brainstorm.md
       - docs/brainstorming.md
+      - tests/
+      - specy_road/bundled_scripts/brainstorm_close.py
+    started: '2026-10-31'
+    owner: savigil
+    implementation_review: pending
+  - codename: session-overlap-warnings-name-the-other-worktree-and-its-edit-state
+    node_id: M4.15
+    branch: feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state
+    touch_zones:
+      - specy_road/bundled_scripts/session_cli.py
+      - specy_road/session_presence.py
+      - specy_road/session_overlap.py
+      - docs/dev-workflow.md
+      - tests/
+    started: '2026-10-31'
+    owner: savigil
+    implementation_review: pending
+  - codename: further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review
+    node_id: M4.18
+    branch: feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review
+    touch_zones:
+      - specy_road/file_limits_js.py
+      - specy_road/file_limits_js_mask.py
+      - specy_road/file_limits_jsx.py
+      - tests/
+    started: '2026-10-31'
+    owner: savigil
+    implementation_review: pending
+  - codename: further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
+    node_id: M5.8
+    branch: feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
+    touch_zones:
+      - specy_road/bundled_scripts/validate_stale_commands.py
+      - tests/
+    started: '2026-10-31'
+    owner: savigil
+    implementation_review: pending
+  - codename: a-research-register-tracks-deep-research-topics-with-a-refresh-cadence
+    node_id: M7.1
+    branch: feature/rm-a-research-register-tracks-deep-research-topics-with-a-refresh-cadence
+    touch_zones:
+      - specy_road/templates/project/research/
+      - specy_road/init_project.py
+      - specy_road/bundled_scripts/validate_roadmap.py
+      - docs/roadmap-authoring.md
+      - research/
       - tests/
     started: '2026-10-31'
     owner: savigil

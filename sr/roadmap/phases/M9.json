@@ -41,7 +41,10 @@
         "specy_road/templates/project/schemas/git-workflow.schema.json",
         "docs/git-workflow.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "specy_road/finish_modes.py",
+        "specy_road/feature_rm_registry.py",
+        "specy_road/bundled_scripts/finish_task.py"
       ],
       "type": "task"
     },

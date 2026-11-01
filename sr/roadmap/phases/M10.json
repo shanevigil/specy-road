@@ -28,7 +28,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.1_record-phase-timestamps-in_375aed3f-58a5-499c-a6be-4506de779a83.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Record phase timestamps in the event log and print a per-leaf timeline",
       "touch_zones": [
         "specy_road/worker_runner.py",
@@ -241,7 +241,7 @@
     },
     {
       "acceptance": [
-        "review record accepts --launch-mode full|bare|explicit and stores it on the review record; the schema allows the field and handoff status prints it per review",
+        "review record accepts --launch-mode with the value full, bare or explicit and stores it on the review record; the schema allows the field and handoff status prints it per review",
         "prompt --role reviewer for a Claude Code roster entry without channels.cli builds the command with --bare, --add-dir for the reviews directory and no repository hooks or MCP servers, and prints that bare mode needs an API key",
         "The reviewer prompt tells the reviewer to pass --launch-mode with the mode it ran under; sr/tools/claude-review.sh in this repository runs with --bare",
         "docs/orchestration-review.md documents the field and why a fresh-session reviewer runs without repository hooks; tests cover A1 and A2"
@@ -456,6 +456,29 @@
         "specy_road/finish_implementation_check.py",
         "docs/dev-workflow.md",
         "tests/test_roadmap_crud_edit_claim_zones.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor preamble's verify step tells the executor to run the verifier and test suite in the foreground and not to end its turn while a command it started is still running, because a headless worker turn ends when the agent replies and nothing resumes it when a background job finishes",
+        "docs/orchestration-workers.md names this failure (completion with READY missing after a reply that says a background run is still going) and the coordinator's recovery: worker message telling the executor to rerun in the foreground",
+        "role_prompt_rca.py stays under the 400-line cap; a test asserts the rendered executor prompt carries the foreground rule, and any pinned prompt text in the context regression set is updated rather than loosened"
+      ],
+      "codename": "foreground-long-commands",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.15",
+      "node_key": "2d5b98da-b88b-44b1-90c2-0b0542250006",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.15_foreground-long-commands_2d5b98da-b88b-44b1-90c2-0b0542250006.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-workers.md",
+        "tests/"
       ],
       "type": "task"
     }

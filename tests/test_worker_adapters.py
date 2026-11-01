@@ -10,8 +10,10 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo
+from tests.test_worker_cli import run_worker_cli
 
 from specy_road import worker_adapters as wa
+from specy_road import worker_reconcile as wrc
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 
@@ -126,7 +128,7 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.provider_session_id == "s-42" and rec.state == "idle" and rec.pid is None   # no READY file yet
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
-    assert types == ["started", "started", "output", "turn_completed", "completion"]
+    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "completion"]
     assert "working" in wr.log_path(repo, rec.worker_id).read_text()
 
 
@@ -151,12 +153,21 @@ def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_pa
     assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-2:] == ["error", "error"]
 
 
-def test_run_reports_a_missing_binary_as_failed(tmp_path: Path) -> None:
+def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     repo = make_review_repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
     assert wr.run(repo, rec.worker_id, wa.Launch(["/no/such/binary"])) == 127
     assert ws.load_record(repo, rec.worker_id).state == "failed"
-    assert "cannot start" in ws.events_since(repo, rec.worker_id)[-1].summary
+    last = ws.events_since(repo, rec.worker_id)[-1]
+    assert "cannot start" in last.summary and last.detail == {"exit": 127}
+    # The startup failure is the turn's end, so its ack is timed; the harness never launched or spoke.
+    assert [d["worker_id"] for d in wrc.sync(repo, ack=True)] == [rec.worker_id]
+    capsys.readouterr()
+    assert run_worker_cli("worker", "timeline", rec.worker_id, "--json", "--repo-root", str(repo)) == 0
+    phases = json.loads(capsys.readouterr().out)["phases"]
+    assert isinstance(phases["end_to_acked"], float) and phases["end_to_acked"] >= 0
+    assert phases["delegated_to_launched"] is None and phases["launched_to_first_output"] is None
+    assert phases["first_output_to_end"] is None
 
 
 def test_spawn_returns_before_the_worker_ends_and_the_record_catches_up(tmp_path: Path) -> None:

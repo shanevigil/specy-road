@@ -86,7 +86,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
 | `M10` | Agent loop performance and observability | phase | — | Not Started |
-| `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Not Started |
+| `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Not Started |
 | `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | Agentic-led | Not Started |
 | `M10.4` | Pin harness discovery mode per profile | task | Agentic-led | Not Started |
@@ -100,5 +100,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.12` | Visual explorer for worker event logs in the PM GUI | task | Agentic-led | Not Started |
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |
+| `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

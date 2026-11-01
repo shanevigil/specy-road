@@ -39,7 +39,8 @@
         "specy_road/bundled_scripts/brainstorm_prompt.py",
         "specy_road/templates/specyrd/commands/specyrd-brainstorm.md",
         "docs/brainstorming.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brainstorm_close.py"
       ],
       "type": "task"
     },
