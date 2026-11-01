@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from specy_road.bundled_scripts import brainstorm_promote
+from specy_road.bundled_scripts.brainstorm_close import close_session, closed_dir
 from specy_road.bundled_scripts.brainstorm_promote import promote_session
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormSession,
     add_idea,
     prompt_path,
+    write_session,
 )
 from specy_road.bundled_scripts.planning_sheet_bootstrap import placeholder_sheet
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -176,3 +178,16 @@ def test_a_failed_validation_writes_no_authoring_prompt_or_frame(
 
     assert not prompt_path(repo, "pay", "authoring").exists()
     assert _sheet(repo, "M1") == before
+
+
+def test_close_archives_the_authoring_prompt_with_its_session(repo: Path) -> None:
+    root = repo.resolve()
+    s = _judged_session()
+    promote_session(root, s)
+    write_session(root, s)
+
+    close_session(root, "pay")
+
+    assert not prompt_path(root, "pay", "authoring").exists()
+    assert (closed_dir(root) / "brainstorm-pay-authoring-prompt.md").is_file()
+    assert (closed_dir(root) / "brainstorm-pay.yaml").is_file()
