@@ -8,15 +8,23 @@
   `run_land_check(tree, cmd)`. The check creates a detached worktree of
   `tree`'s HEAD (the new merge commit) in a temp dir and runs `cmd` once through
   the shell at `<worktree>/<project prefix>`. Output is streamed to stdout and the
-  last 20 lines are kept. The worktree is always removed (`worktree remove
-  --force`, `worktree prune`, rmtree). Returns `None` on exit 0. Otherwise it
+  last 20 lines are kept. Only this invocation's worktree is removed
+  (`worktree remove --force`, which also works when the directory is gone,
+  then rmtree of its temp dir). Nothing repository-wide such as
+  `worktree prune` runs, so other checkouts' stale registrations stay. Returns `None` on exit 0. Otherwise it
   returns an error naming the command, the exit code and the 20-line tail.
 - **`specy_road/finish_land_integration.py`**: `_merge_and_push` records HEAD
   before the fast-forward and runs the check after
   `merge_feature_deterministically` and before `git push`. A failed check or a
   failed push runs `git reset --keep <pre>` in the tree holding the integration
   branch, adds the outcome to the error and pushes nothing. The push error says
-  a re-run merges onto the new tip and checks it again.
+  a re-run merges onto the new tip and checks it again. A failed check also
+  restores `refs/remotes/<remote>/<integration>` to `tracking_before`,
+  deleting it if it was absent. That undoes finish's fetches.
+  `tracking_ref_snapshot` takes the snapshot before finish's first fetch:
+  in `apply_on_complete_mode` before the push notice fetches, in
+  `retry_merge_landing` before its fetch, and otherwise at the entry of
+  `land_merge_feature_into_integration`.
   `land_merge_feature_into_integration` gains `land_check_cmd=None` (the CLI
   value) and resolves it once for both the holder path and the checkout path.
 - **`finish_modes.py`**: `apply_on_complete_mode` and `retry_merge_landing` pass
@@ -40,9 +48,11 @@
 - **Reset target:** HEAD as recorded before `merge --ff-only`. This is the
   commit the local integration branch had before finish ran (A3). It is also
   pre-merge for A4.
-- **Remote-tracking ref (A3):** finish never pushes on failure, so the tracking
-  ref does not move. The fetch at the start of finish can still advance it
-  when the remote really did move; that is the existing behaviour.
+- **Remote-tracking ref (A3, review R1):** on a failed check, the tracking
+  ref is put back at the commit it had before finish's first fetch, even
+  when that fetch found newer remote commits. A rejected push (A4) does not
+  restore it: the re-run fetches anyway, and A4 asks only for the local
+  reset.
 - **Rejected push resets even when no check is configured.** A4 is stated
   unconditionally, and without the reset a re-run fails its `--ff-only`
   against the diverged local merge. Existing finish tests are unaffected.
@@ -70,8 +80,17 @@ it.
 
 ## Verification
 
-- `pytest tests/test_finish_land_check.py` (18 tests, both layouts): pass.
-- Full `pytest` at `063825f` (2569 tests, 223 files): all passed, none failed
+- Review round 1 (`gpt-6.1-sol`, block) is addressed in `b50ee33`. R1 is the
+  tracking-ref restore. R2 drops `git worktree prune`. X1 iterates
+  `proc.stdout` directly. The first round's count of "18 tests" was wrong:
+  that file had 16.
+- `pytest -q -p no:cacheprovider tests/test_finish_land_check.py` at
+  `b50ee33`: 22 passed (10 scenarios × 2 layouts + 2).
+- Full `pytest` at `b50ee33`: not completed. Three foreground attempts (one
+  serial run, one as 8 parallel file shards, and the four finish test files
+  alone) were each killed at the tool's 20-minute ceiling. Load was 70–124
+  from other agents' concurrent suites.
+- Full `pytest` at `063825f`, before the review fixes (2569 tests, 223 files): all passed, none failed
   or errored. The machine had a load average of 30–90 from other agents, and
   Microsoft Defender scans every process spawn, so a serial run would have
   taken about 9 h. That is past the tool's 2 h background cap, and a single
@@ -90,6 +109,15 @@ it.
 - `finish_land_check._run_streaming`: shows a long gate's output live and keeps the 20-line tail A3 prints.
 - `finish_land_check.run_land_check`: the detached-worktree check at the project root, with removal guaranteed (A1, A5).
 - `finish_land_check.TAIL_LINES`: the 20 in A3, named once.
+- `finish_land_integration.tracking_ref_snapshot`: records the tracking ref before finish's first fetch (R1/A3).
+- `finish_land_integration._restore_tracking`: puts the tracking ref back on a failed check; it deletes the ref when it was absent (R1/A3).
+- `tracking_before` keyword on `land_merge_feature_into_integration` and `_merge_and_push`, and the snapshot calls in `apply_on_complete_mode` and `retry_merge_landing`: carry the pre-fetch snapshot to the rollback (R1).
+- `tests/test_finish_land_check.py::_other_lane`: a second clone that pushes to origin, shared by the race and stale-tracking inputs.
+- Input added to `test_failing_check_pushes_nothing_and_restores_both_refs`: origin moved before finish, so the fetch advances origin/main (R1, both layouts).
+- `test_finish_restores_the_tracking_ref_its_notice_fetched`: the same input through `apply_on_complete_mode`, whose push notice fetches first (R1, both layouts).
+- `test_failing_check_leaves_an_absent_tracking_ref_absent`: the delete branch of `_restore_tracking` (R1, both layouts).
+- `test_a_stale_registration_elsewhere_survives_the_check`: a pre-existing stale registration survives a failing and a passing check (R2/A5, both layouts).
+- Removed: `git worktree prune` (R2) and the `or ()` fallback on `proc.stdout` (X1).
 - `finish_land_integration._reset_integration`: `reset --keep` back to the pre-finish commit on check failure and on a rejected push (A3, A4).
 - Branch in `_merge_and_push`: `if land_check_cmd` runs the check only when one resolved (A6).
 - `land_check_cmd` keyword on `land_merge_feature_into_integration`, `_merge_and_push`, `retry_merge_landing`, `merge_landing_failed`, `report_finish_already_done_on_branch`, `resolve_feature_rm_registry_context_for_finish`, `finish_task._resolve_context`: carries `--land-check-cmd` to the landing on first finish and on re-run (A6).
