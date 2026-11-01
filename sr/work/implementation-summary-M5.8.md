@@ -26,20 +26,30 @@ the noun-phrase exclusion does not apply inside a fence, matching the existing
 tokens that are not command-shaped (`M1.2`) stay quiet. `docs/install-and-usage.md`
 already says a fenced block always warns, so no doc change.
 
+Round 2 (gpt-6.1-sol, R1): plain and span-token mentions on one fenced line
+were yielded spans-first, so `specy-road nope && specy-road `frob`` came back
+reversed. Both kinds are now collected with their start position (the plain
+match start; the product-name start for a span token) and yielded sorted, so
+`unregistered_commands` and the warnings keep source order.
+
 ## Touch zones (final)
 
 `specy_road/bundled_scripts/validate_stale_commands.py`, `tests/` — accurate; nothing else needed.
 
 ## Verification
 
-- `python -m pytest -q tests/test_validate_stale_commands.py` — 11 passed (the new test failed before the fix).
-- `specy-road file-limits` — OK.
-- `specy-road validate --repo-root tests/fixtures/specy_road_dogfood` — exit 0.
-- `python -m pytest -q -p no:cacheprovider tests/test_validate_stale_commands.py tests/test_validate_roadmap.py` — 40 passed (`validate_roadmap.py` is the only importer of the changed module).
-- **Full suite not completed.** The host's load average was 68–80 from other agents, and subprocess-heavy tests ran niced: the full `pytest -q -p no:cacheprovider` was about 3% done after 32 minutes, with no failures up to that point, before I stopped it. A wider set did finish: `pytest -q -p no:cacheprovider tests/test_init_project.py tests/test_generated_files.py tests/test_validate_gates.py tests/test_validate_acceptance_coverage.py tests/test_project_layouts.py` — 68 passed (22 minutes wall-clock under that load). The change only adds yields for fenced lines in `_mentions_in_fenced_line`, but a full-suite run is still owed.
+Round 2, at `b3ce194`:
+
+- `python -m pytest -q -p no:cacheprovider tests/test_validate_stale_commands.py tests/test_validate_roadmap.py` — exit 0, 40 passed. These are the touched test file plus the tests of `validate_roadmap.py`, the only module that imports the changed one. The new plain-before-span assertion failed before the fix: the reviewer reproduced it, and it returned `['specy-road frob', 'specy-road nope']`.
+- `specy-road file-limits` — exit 0.
+- Full suite `python -m pytest -q -p no:cacheprovider`: **not completed**. The host load average was 6–113 from other agents. Started in the foreground, it was moved to the background at 600s and killed at the time limit after 2,512 of 2,554 tests. All 2,512 passed except 2 skips; there were no failures. Caveat: while this round was running, my then-uncommitted edits disappeared from the worktree, which was not my doing (another session or a test). So I cannot prove that every one of those 2,512 tests ran against the fix. I re-applied the same edits, and the focused run above is at the committed `b3ce194`.
+- The other 42 tests (`tests/test_worker_review_round1.py` from `test_concurrent_delegates_on_one_leaf_launch_once` on, plus `tests/test_worker_review_round2.py` and `tests/test_worker_state.py`) are worker-orchestration tests that do not import the stale-command module. Re-run on their own, 4 passed in about 15 minutes at load 113, and I stopped the run. A full-suite run on a quiet host is still owed.
+
+Round 1, at `e0065f1`: `test_validate_stale_commands.py` + `test_validate_roadmap.py` 40 passed; `test_init_project`, `test_generated_files`, `test_validate_gates`, `test_validate_acceptance_coverage`, `test_project_layouts` 68 passed; dogfood `validate` exit 0.
 
 ## Added
 
-- Branch in `_mentions_in_fenced_line`: yield a span command token on a fenced line — the recorded M5.8 form.
-- Test `test_command_token_in_an_inline_span_inside_a_fence`: the form with ``` and ~~~ fences, a noun-phrase line, a flag follower, a span token followed by a plain mention on the same line (both warn), plus the registered (`init`) and not-command-shaped (`M1.2`) span tokens staying quiet.
+- Branch in `_mentions_in_fenced_line`: collect a span command token on a fenced line — the recorded M5.8 form.
+- Position sort in `_mentions_in_fenced_line`: yields plain and span-token mentions in source order (round 2, R1).
+- Test `test_command_token_in_an_inline_span_inside_a_fence`: the form with ``` and ~~~ fences, a noun-phrase line, a flag follower, a span token and a plain mention on the same line in both orders (both warn, in source order), plus the registered (`init`) and not-command-shaped (`M1.2`) span tokens staying quiet.
 - Helpers: none. Guards: none. Mocks: none.
