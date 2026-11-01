@@ -37,12 +37,17 @@ def _in_overlap(path: str, hits: list[tuple[str, str]], prefix: str) -> bool:
 
 
 def _uncommitted(top: Path) -> list[str] | None:
-    """Tracked changes against ``HEAD`` (staged or not) plus untracked, non-ignored files."""
-    changed = diff_paths(top, "HEAD")
+    """Staged changes, unstaged changes and untracked, non-ignored files.
+
+    Staged and unstaged are separate comparisons: a single ``git diff HEAD``
+    misses a staged edit whose working file was put back to ``HEAD``'s content.
+    """
+    staged = diff_paths(top, "--cached", "HEAD")
+    unstaged = diff_paths(top)
     untracked = git_stdout(["ls-files", "--others", "--exclude-standard", "-z"], top)
-    if changed is None or untracked is None:
+    if staged is None or unstaged is None or untracked is None:
         return None
-    return sorted(set(changed) | {p for p in untracked.split("\0") if p})
+    return sorted(set(staged) | set(unstaged) | {p for p in untracked.split("\0") if p})
 
 
 def _few(paths: list[str]) -> str:

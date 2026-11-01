@@ -48,6 +48,23 @@ def test_warning_names_worktree_branch_and_uncommitted_edits(tmp_path: Path, cap
     assert "committed, not merged" not in err
 
 
+def test_staged_edit_with_working_file_restored_is_uncommitted(tmp_path: Path, capsys, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    wt = _other_worktree(tmp_path, repo)
+    wf = wt / "roadmap" / "git-workflow.yaml"
+    original = wf.read_text()
+    wf.write_text(original + "# staged\n")
+    git(wt, "add", "roadmap/git-workflow.yaml")
+    wf.write_text(original)                      # working file equals HEAD; the index does not
+    assert git(wt, "status", "--porcelain").startswith("MM roadmap/git-workflow.yaml")
+    monkeypatch.setenv("USER", "alice")
+    sp.start_session(repo, "alice", paths=["roadmap/git-workflow.yaml"], worktree=wt)
+    monkeypatch.chdir(repo)
+    assert _start_as(monkeypatch, "bob", repo, "--agent", "bob", "--path", "roadmap") == 0
+    err = capsys.readouterr().err
+    assert "edits there: uncommitted: roadmap/git-workflow.yaml" in err and "neither" not in err
+
+
 def test_warning_reports_committed_edits_not_merged(tmp_path: Path, capsys, monkeypatch) -> None:
     repo = make_review_repo(tmp_path)  # feature/rm-thing commits src/a.py and docs/x.md on top of dev
     monkeypatch.setenv("USER", "alice")
