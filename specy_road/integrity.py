@@ -59,10 +59,9 @@ def compare_integrity(repo_root: Path, base: str, ref: str) -> list[Finding]:
             if qual not in ref_tests:
                 findings.append(Finding("removed-test", path, qual))
         for qual in sorted(set(base_tests) & set(ref_tests)):
-            b_node, r_node = base_tests[qual], ref_tests[qual]
-            if not _has_skip(b_node) and _has_skip(r_node):
+            (b_skips, b_count), (r_skips, r_count) = base_tests[qual], ref_tests[qual]
+            if r_skips > b_skips:
                 findings.append(Finding("new-skip", path, qual))
-            b_count, r_count = _assert_count(b_node), _assert_count(r_node)
             if r_count < b_count:
                 findings.append(Finding("assert-loss", path, qual, f"{b_count}->{r_count}"))
     findings.extend(_config_findings(root, base, ref))
@@ -143,27 +142,49 @@ def _pytest_tables(text: str | None) -> object:
     return {k: v for k, v in tool.items() if k.startswith("pytest")}
 
 
-def _test_functions(source: str | None) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+def _test_functions(source: str | None) -> dict[str, tuple[int, int]]:
+    """``qualname -> (skipped definitions, assert count)`` for tests at module or class scope.
+
+    Control-flow blocks (``if``, ``try``, ``with``, ``for``, ``while``, ``match``) run in the
+    enclosing scope, so the tests they define count; a function body is its own scope and is
+    not searched. A name defined more than once (``if``/``else`` branches) sums its definitions,
+    so skipping or weakening any one of them is a finding.
+    """
     if not source:
         return {}
     try:
         tree = ast.parse(source)
     except SyntaxError:
         return {}
-    out: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
+    out: dict[str, tuple[int, int]] = {}
 
-    def visit_class(class_node: ast.ClassDef, prefix: str) -> None:
-        for item in class_node.body:
-            if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name.startswith("test_"):
-                out[f"{prefix}::{item.name}"] = item
-            elif isinstance(item, ast.ClassDef):
-                visit_class(item, f"{prefix}::{item.name}")
+    def scan(stmts: list[ast.stmt], prefix: str, class_skip: bool) -> None:
+        for stmt in stmts:
+            if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if stmt.name.startswith("test_"):
+                    skips, count = out.get(prefix + stmt.name, (0, 0))
+                    skipped = class_skip or _has_skip(stmt)
+                    out[prefix + stmt.name] = (skips + skipped, count + _assert_count(stmt))
+            elif isinstance(stmt, ast.ClassDef):
+                # pytest applies a class's skip mark to every method in it
+                inherited = class_skip or any(_decorator_skips(d) for d in stmt.decorator_list)
+                scan(stmt.body, f"{prefix}{stmt.name}::", inherited)
+            else:
+                scan(_block_statements(stmt), prefix, class_skip)
 
-    for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
-            out[node.name] = node
-        elif isinstance(node, ast.ClassDef):
-            visit_class(node, node.name)
+    scan(tree.body, "", False)
+    return out
+
+
+def _block_statements(stmt: ast.stmt) -> list[ast.stmt]:
+    """Statements nested in a control-flow block; empty for a simple statement."""
+    out: list[ast.stmt] = []
+    for field in ("body", "orelse", "finalbody"):
+        out.extend(getattr(stmt, field, []))
+    for handler in getattr(stmt, "handlers", []):   # try / try*
+        out.extend(handler.body)
+    for case in getattr(stmt, "cases", []):   # match
+        out.extend(case.body)
     return out
 
 
