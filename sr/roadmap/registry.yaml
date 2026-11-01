@@ -83,3 +83,17 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
+  - codename: land-check-on-merge-commit
+    node_id: M9.1
+    branch: feature/rm-land-check-on-merge-commit
+    touch_zones:
+      - specy_road/finish_land_integration.py
+      - specy_road/finish_land_check.py
+      - specy_road/bundled_scripts/finish_task_args.py
+      - specy_road/templates/project/schemas/git-workflow.schema.json
+      - docs/git-workflow.md
+      - CHANGELOG.md
+      - tests/
+    started: '2026-10-31'
+    owner: savigil
+    implementation_review: pending
