@@ -185,6 +185,9 @@ def test_command_token_in_an_inline_span_inside_a_fence() -> None:
     assert unregistered_commands("```\nspecy-road `frob` && specy-road nope\n```") == [
         "specy-road frob", "specy-road nope",
     ]
+    assert unregistered_commands("```\nspecy-road nope && specy-road `frob`\n```") == [
+        "specy-road nope", "specy-road frob",
+    ]
     assert unregistered_commands("```\nspecy-road `init`\n```") == []
     assert unregistered_commands("```\nspecy-road `M1.2`\n```") == []
 
