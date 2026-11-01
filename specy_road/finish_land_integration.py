@@ -27,6 +27,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from specy_road.runtime_paths import git_root, project_prefix
+from specy_road.finish_land_check import resolve_land_check_cmd, run_land_check
 from specy_road.finish_land_deterministic import (
     merge_feature_deterministically,
 )
@@ -107,10 +108,26 @@ def integration_worktree_problem(repo: Path, integration_branch: str) -> str | N
     )
 
 
+def _reset_integration(tree: Path, integration_branch: str, pre: str) -> str:
+    """Put ``integration_branch`` (checked out in ``tree``) back at ``pre``; a note on failure."""
+    code, out = git_code(["reset", "--keep", pre], tree)
+    if code == 0:
+        return f"Local {integration_branch} is back at {pre[:12]}."
+    return f"Resetting local {integration_branch} to {pre[:12]} also failed: {out}"
+
+
 def _merge_and_push(
-    tree: Path, *, remote: str, integration_branch: str, feature_branch: str
+    tree: Path, *, remote: str, integration_branch: str, feature_branch: str,
+    land_check_cmd: str | None = None,
 ) -> tuple[bool, str]:
-    """Fast-forward, merge and push ``integration_branch``, checked out in ``tree``."""
+    """Fast-forward, merge, land-check and push ``integration_branch``, checked out in ``tree``.
+
+    A failed land check or a rejected push resets the local integration branch
+    to where it was before this landing, so a re-run merges onto the remote's
+    new tip and checks that commit instead. The push is the compare-and-swap:
+    a tip that moved since the check makes it fail.
+    """
+    _ok, pre = git_ok(["rev-parse", "HEAD"], tree)
     rr = f"{remote}/{integration_branch}"
     if _ref_exists_local(tree, f"refs/remotes/{rr}"):
         code, out = git_code(["merge", "--ff-only", rr], tree)
@@ -127,11 +144,17 @@ def _merge_and_push(
     )
     if not ok:
         return False, out
+    if land_check_cmd:
+        problem = run_land_check(tree, land_check_cmd)
+        if problem is not None:
+            return False, f"{problem}\n  {_reset_integration(tree, integration_branch, pre)}"
     code, out = git_code(["push", remote, integration_branch], tree)
     if code != 0:
         return (
             False,
-            f"git push {remote} {integration_branch} failed (local merge may exist): {out}",
+            f"git push {remote} {integration_branch} failed: {out}\n  "
+            f"{_reset_integration(tree, integration_branch, pre)} If {rr} moved, "
+            "re-running merges onto its new tip and runs the land check again.",
         )
     return True, ""
 
@@ -177,12 +200,17 @@ def land_merge_feature_into_integration(
     remote: str,
     integration_branch: str,
     feature_branch: str,
+    land_check_cmd: str | None = None,
 ) -> tuple[bool, str]:
     """
     Fetch, checkout integration, fast-forward to remote tracking ref, merge feature,
     push integration, checkout feature. When another worktree has the
     integration branch checked out, merge and push there instead (refusing if
     it has uncommitted changes) and leave this checkout alone.
+
+    ``land_check_cmd`` is the ``--land-check-cmd`` value: ``None`` falls back
+    to ``land_check_cmd`` in ``roadmap/git-workflow.yaml``, ``""`` skips the
+    check (:mod:`specy_road.finish_land_check`).
 
     Returns (True, "") on success, (False, message) on failure. Failure
     messages are structured so callers can surface a hard error rather than
@@ -211,11 +239,13 @@ def land_merge_feature_into_integration(
     problem = integration_worktree_problem(repo, integration_branch)
     if problem is not None:
         return False, problem
+    check = resolve_land_check_cmd(repo, cli=land_check_cmd)
     holder = integration_worktree(repo, integration_branch)
     if holder is not None:
         return _merge_and_push(
             holder_project_root(repo, holder), remote=remote,
             integration_branch=integration_branch, feature_branch=feature_branch,
+            land_check_cmd=check,
         )
 
     code, out = git_code(["checkout", integration_branch], repo)
@@ -224,6 +254,7 @@ def land_merge_feature_into_integration(
     ok, err = _merge_and_push(
         repo, remote=remote,
         integration_branch=integration_branch, feature_branch=feature_branch,
+        land_check_cmd=check,
     )
     code, out = git_code(["checkout", feature_branch], repo)
     if not ok:

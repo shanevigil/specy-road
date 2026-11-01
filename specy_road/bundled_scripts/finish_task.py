@@ -81,11 +81,12 @@ def _resolve_context(
     *,
     delete_branch: bool = False,
     no_milestone_rollup: bool = False,
+    land_check_cmd: str | None = None,
 ) -> tuple[str, dict, dict, list[dict]]:
     """Return (codename, registry_doc, entry, nodes) or raise SystemExit."""
     return resolve_feature_rm_registry_context_for_finish(
         ROOT, branch, on_complete, delete_branch=delete_branch,
-        no_milestone_rollup=no_milestone_rollup,
+        no_milestone_rollup=no_milestone_rollup, land_check_cmd=land_check_cmd,
     )
 
 
@@ -150,7 +151,7 @@ def _resolve_main_context(args: argparse.Namespace, branch: str) -> dict:
     """Resolve all main-time context in one call (keeps main() under cap)."""
     codename, reg, entry, nodes = _resolve_context(
         branch, args.on_complete, delete_branch=args.delete_branch,
-        no_milestone_rollup=args.no_milestone_rollup,
+        no_milestone_rollup=args.no_milestone_rollup, land_check_cmd=args.land_check_cmd,
     )
     node_id = entry["node_id"]
     node = next(n for n in nodes if n["id"] == node_id)

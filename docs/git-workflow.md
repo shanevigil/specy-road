@@ -75,6 +75,23 @@ This is what makes **concurrent lanes** against one integration branch safe; see
 [grind-session.md](grind-session.md). Merging by hand still means removing your
 own row yourself.
 
+**Land check on the merge commit.** Optional field **`land_check_cmd`** (string):
+a shell command `merge` (and `auto`) runs on the local merge commit before it
+pushes, e.g. the project's full test and lint gate. Each leaf is reviewed on its
+own branch, but the tree that lands is the merge of it with everything that
+landed since, and nobody ran that. finish therefore creates the merge commit,
+runs the command once at the project root of a detached temporary worktree of
+that commit (`<worktree>/sr` in the nested layout), and pushes only if it exits
+0, so the pushed tip is exactly the commit the check ran on. A non-zero exit
+pushes nothing, resets the local integration branch to where it was before
+finish ran, and prints the command, its exit code and the last 20 lines of its
+output. A rejected push resets the local branch the same way; the re-run the
+error names merges onto the remote's new tip and checks that commit, so the push
+itself is the compare-and-swap. The temporary worktree is always removed.
+**`--land-check-cmd CMD`** overrides the field for one run and
+**`--land-check-cmd ''`** skips it. `pr` never runs it: there CI owns the merge
+result.
+
 ### What `pr` leaves behind (read this before re-running pickup)
 
 Under **`pr`**, `finish-this-task` commits everything on the **feature branch** and touches the integration branch not at all. So the moment it returns, one node has two truths:
