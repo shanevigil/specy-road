@@ -62,9 +62,11 @@ one. The review gate is the boundary: READY and `completed` approve nothing.
 | `flags` | `possibly_modified_externally` (a human session returned without hook evidence), `needs_reconcile` (changes outside the touch zones, the brief changed, or the worktree is off the worker's branch), `wrapper_gone_harness_alive` (the wrapper died; the harness or its group did not — the leaf stays owned until `terminate`). |
 
 Events (`seq`, `type`, `source`, `authority`, `summary`, `epoch`): `started`,
-`output`, `turn_completed`, `completion`, `error`, `message`, `resumed`,
-`intervention`, `handoff`, `reclaim`, `terminated`, `adopted`, `reconcile`.
-Summaries are at most 500 characters; a transcript never goes in the log.
+`launched` (the harness process is up; detail `argv0`, `harness`, `resumed`),
+`first_output` (its first stdout line), `output`, `turn_completed`,
+`completion`, `error`, `message`, `resumed`, `intervention`, `handoff`,
+`reclaim`, `terminated`, `adopted`, `reconcile`. Summaries are at most 500
+characters; a transcript never goes in the log.
 
 `authority` says who vouches for an event. `system` is a fact the toolkit
 itself observed: the launch, the exit code, whether a new READY exists, a
@@ -211,7 +213,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | Command | Does |
 |---|---|
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. |
-| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`); compact, with state, lease, epoch and flags. A sequence number between the last acknowledged one and the record's `last_event_seq` that no readable line carries (lost or unreadable, the final event included) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`); a worker whose new events are all unreadable is still listed, and `--ack` moves past its gaps. |
+| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`, per worker the acked `seq` and `acked_at`); compact, with state, lease, epoch and flags. A sequence number between the last acknowledged one and the record's `last_event_seq` that no readable line carries (lost or unreadable, the final event included) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`); a worker whose new events are all unreadable is still listed, and `--ack` moves past its gaps. |
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |
@@ -219,6 +221,7 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 | `handoff W` / `reclaim W [--note]` | Lease to a human and back; below. |
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker, and for an id that is not the harness's own shape (a UUID for Claude Code and Codex; shell-safe characters for all). |
 | `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. The leaf's brief, summary and prompts, the toolkit's state under `work/`, and `roadmap/registry.yaml` never count; any other `work/` file does. |
+| `timeline W\|NODE_ID` | Seconds per phase of the latest turn (a node id means its latest worker): delegated → `launched`, `launched` → `first_output`, `first_output` → turn end (`turn_completed`, `completion`, or an `error` carrying `detail.exit`, which includes a harness that could not start), end → the `sync --ack` that covered it; `unknown` when a boundary event is missing. `--json` prints the same object. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human

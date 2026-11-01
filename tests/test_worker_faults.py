@@ -43,5 +43,8 @@ def test_a_killed_harness_leaves_the_worker_failed(tmp_path: Path) -> None:
     assert after.state == "failed" and after.pid is None and after.provider_session_id == "s-killed"
     err = [e for e in ws.events_since(repo, rec.worker_id) if e.type == "error"]
     assert len(err) == 1 and err[0].source == "worker" and err[0].detail["exit"] == code
+    # The launch was timed before the kill: launched, then the one line it printed, then the error.
+    types = [e.type for e in ws.events_since(repo, rec.worker_id)]
+    assert types.index("launched") < types.index("first_output") < types.index("error")
     with pytest.raises(ws.WorkerError, match="is failed; delegate again instead"):
         ops.resume(repo, rec.worker_id)

@@ -86,7 +86,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Not Started**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Not Started**
 - `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
-  - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Not Started**
+  - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Not Started**
@@ -100,15 +100,21 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
+  - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Not Started**
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
+- `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
+- `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
+- `M4.18` on `feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` since 2026-10-31
+- `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
+- `M7.1` on `feature/rm-a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` since 2026-10-31
+- `M9.1` on `feature/rm-land-check-on-merge-commit` since 2026-10-31
 - `M9.5` on `feature/rm-integrity-report` since 2026-10-29
 
 ## Reaching the detail behind this

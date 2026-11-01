@@ -129,12 +129,15 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
         except OSError as e:
-            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}")
+            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
+                         detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             set_state(repo_root, rec, "failed", pid=None)
             return 127
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
         mutate(repo_root, rec, seen)
+        append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
+                     detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed})
         if launch.stdin is not None and proc.stdin:
             try:
                 proc.stdin.write(launch.stdin)
@@ -142,9 +145,13 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
                 raw.write(f"[wrapper] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
+        first = True
         for line in proc.stdout:
             raw.write(line)
             raw.flush()
+            if first:
+                first = False
+                append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
                 _consume(repo_root, rec, adapter, line)
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
