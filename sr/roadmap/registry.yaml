@@ -94,6 +94,9 @@ entries:
       - docs/git-workflow.md
       - CHANGELOG.md
       - tests/
+      - specy_road/finish_modes.py
+      - specy_road/feature_rm_registry.py
+      - specy_road/bundled_scripts/finish_task.py
     started: '2026-10-31'
     owner: savigil
     implementation_review: pending
