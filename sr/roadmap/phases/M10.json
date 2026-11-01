@@ -28,7 +28,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.1_record-phase-timestamps-in_375aed3f-58a5-499c-a6be-4506de779a83.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Record phase timestamps in the event log and print a per-leaf timeline",
       "touch_zones": [
         "specy_road/worker_runner.py",

@@ -86,7 +86,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Not Started**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Not Started**
 - `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
-  - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Not Started**
+  - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Not Started**
@@ -100,12 +100,17 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M9.2` on `feature/rm-fixture-pollution-guard` since 2026-10-29
