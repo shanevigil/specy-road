@@ -241,7 +241,7 @@
     },
     {
       "acceptance": [
-        "review record accepts --launch-mode full|bare|explicit and stores it on the review record; the schema allows the field and handoff status prints it per review",
+        "review record accepts --launch-mode with the value full, bare or explicit and stores it on the review record; the schema allows the field and handoff status prints it per review",
         "prompt --role reviewer for a Claude Code roster entry without channels.cli builds the command with --bare, --add-dir for the reviews directory and no repository hooks or MCP servers, and prints that bare mode needs an API key",
         "The reviewer prompt tells the reviewer to pass --launch-mode with the mode it ran under; sr/tools/claude-review.sh in this repository runs with --bare",
         "docs/orchestration-review.md documents the field and why a fresh-session reviewer runs without repository hooks; tests cover A1 and A2"
