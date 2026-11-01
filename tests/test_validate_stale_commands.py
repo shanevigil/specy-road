@@ -175,6 +175,20 @@ def test_command_token_in_an_inline_span() -> None:
     assert unregistered_commands("Run specy-road `grind` now.") == ["specy-road grind"]
 
 
+def test_command_token_in_an_inline_span_inside_a_fence() -> None:
+    for warn in (
+        "```\nspecy-road `frob`\n```",
+        "~~~\nthe specy-road `frob` is\n~~~",
+        "```\n$ specy-road `frob` --flag\n```",
+    ):
+        assert unregistered_commands(warn) == ["specy-road frob"], warn
+    assert unregistered_commands("```\nspecy-road `frob` && specy-road nope\n```") == [
+        "specy-road frob", "specy-road nope",
+    ]
+    assert unregistered_commands("```\nspecy-road `init`\n```") == []
+    assert unregistered_commands("```\nspecy-road `M1.2`\n```") == []
+
+
 @pytest.mark.parametrize(("old", "new"), REPLACED_COMMANDS.items())
 def test_each_replaced_name_is_unregistered_and_its_replacement_is_not(old: str, new: str) -> None:
     assert unregistered_commands(f"`{old}`") == [old]
