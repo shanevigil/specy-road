@@ -64,7 +64,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **Not Started**
-  - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Not Started**
+  - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
 - `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
   - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Not Started**
@@ -113,7 +113,6 @@ Do not pick these up.
 - `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
 - `M4.18` on `feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` since 2026-10-31
 - `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
-- `M7.1` on `feature/rm-a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` since 2026-10-31
 - `M9.1` on `feature/rm-land-check-on-merge-commit` since 2026-10-31
 - `M9.5` on `feature/rm-integrity-report` since 2026-10-29
 

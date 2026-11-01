@@ -125,16 +125,3 @@ entries:
     started: '2026-10-31'
     owner: savigil
     implementation_review: pending
-  - codename: a-research-register-tracks-deep-research-topics-with-a-refresh-cadence
-    node_id: M7.1
-    branch: feature/rm-a-research-register-tracks-deep-research-topics-with-a-refresh-cadence
-    touch_zones:
-      - specy_road/templates/project/research/
-      - specy_road/init_project.py
-      - specy_road/bundled_scripts/validate_roadmap.py
-      - docs/roadmap-authoring.md
-      - research/
-      - tests/
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
