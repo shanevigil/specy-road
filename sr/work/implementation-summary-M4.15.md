@@ -18,8 +18,10 @@ sessions: warning — your paths overlap live session 'peer2' on feature/rm-thin
 ```
 
 - **A1** — the second line names the other session's recorded worktree path and branch.
-- **A2** — the third line runs git in that worktree: `uncommitted` is `git diff HEAD` (staged or
-  not) plus untracked non-ignored files; `committed, not merged into <integration>` is the
+- **A2** — the third line runs git in that worktree: `uncommitted` is staged paths
+  (`git diff --cached HEAD`), unstaged paths (`git diff`, working tree vs index) and untracked
+  non-ignored files, each collected separately so a staged edit whose working file was restored to
+  `HEAD` still counts (review round 1, gpt-6.1-sol); any of them failing makes the piece `unknown`; `committed, not merged into <integration>` is the
   merge-base diff `<integration ref>...HEAD`, where the ref is the remote-tracking integration
   branch, else the local one (`finish_implementation_check.base_ref`, the same choice finish makes).
   Only files inside both sides of an overlapping pair are listed (first four, then `+N more`).
@@ -47,7 +49,21 @@ lives outside the touch zones.
 
 ## Verification
 
-- `python -m pytest -q -p no:cacheprovider tests/test_session_overlap.py tests/test_session_presence.py` — 15 passed (re-run after the final edit)
+### Round 2 (after the gpt-6.1-sol block)
+
+- `python -m pytest -q -p no:cacheprovider tests/test_session_overlap.py tests/test_session_presence.py` — exit 0, 16 passed in 7.28s
+- `ruff check specy_road tests scripts` — exit 0, all checks passed
+- `specy-road file-limits` — exit 0, OK
+- **Full `pytest -q -p no:cacheprovider` again not completed.** The full run was moved to the
+  background at the 10-minute foreground limit and then stopped at its 20-minute background limit,
+  with no result. Running the files in chunks of 14, the first chunk (`test_abort_task_pickup` …
+  `test_brainstorm_promote`) passed 61 tests with no failures before it too was stopped at 20 minutes.
+  The load average climbed from 4 to about 100 during the run as other agents' suites started. The full
+  suite still needs a run on a quiet machine.
+
+### Round 1
+
+- `python -m pytest -q -p no:cacheprovider tests/test_session_overlap.py tests/test_session_presence.py` — 15 passed
 - **Full `pytest` not completed.** The machine was shared with many other agents' test runs
   (load average 50–85). Each test file ran in seconds of pytest time but minutes of wall
   time, so every full or chunked run went past the 10-minute command limit and was stopped.
@@ -65,13 +81,14 @@ lives outside the touch zones.
 
 - `specy_road/session_overlap.py` `overlap_warning_lines` — start/touch warning: `warn_lines` per session plus owner/worktree/branch and edit state (A1–A3).
 - `specy_road/session_overlap.py` `edit_state` — one line on the other worktree's uncommitted and unmerged edits inside the overlap (A2).
-- `specy_road/session_overlap.py` `_uncommitted` — tracked changes vs `HEAD` plus untracked files; `None` when git cannot answer.
+- `specy_road/session_overlap.py` `_uncommitted` — staged, unstaged and untracked paths, collected separately (round 2 fix); `None` when git cannot answer.
 - `specy_road/session_overlap.py` `_in_overlap` — a changed file counts when it lies inside both sides of an overlapping pair, in git-root or project-relative form.
 - `specy_road/session_overlap.py` `_owner` — `yours` for the same `$USER` (A3), else the recorded user.
 - `specy_road/session_overlap.py` `_few` — caps listed files at four so the warning stays short.
 - Guard in `edit_state`: worktree missing or not a git checkout → `unknown`, not clean.
 - Branch in `edit_state`: no integration ref → the unmerged piece is `unknown`.
 - `tests/test_session_overlap.py::test_warning_names_worktree_branch_and_uncommitted_edits` — A1 + A2 uncommitted; files outside the overlap not listed.
+- `tests/test_session_overlap.py::test_staged_edit_with_working_file_restored_is_uncommitted` — round 2: staged edit with the working file back at `HEAD` (`MM`) is reported as uncommitted, not `neither`.
 - `tests/test_session_overlap.py::test_warning_reports_committed_edits_not_merged` — A2 committed-not-merged; out-of-overlap commit not listed.
 - `tests/test_session_overlap.py::test_warning_says_neither_when_the_other_copy_is_clean` — A2 neither.
 - `tests/test_session_overlap.py::test_own_session_in_another_worktree_is_reported_as_yours_on_touch` — A3, via `touch`.
