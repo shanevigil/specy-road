@@ -116,16 +116,38 @@ def _reset_integration(tree: Path, integration_branch: str, pre: str) -> str:
     return f"Resetting local {integration_branch} to {pre[:12]} also failed: {out}"
 
 
+def tracking_ref_snapshot(repo: Path, *, remote: str, integration_branch: str) -> str:
+    """The commit ``remote/integration_branch`` names, or ``""`` when that ref does not exist.
+
+    Taken before finish's first fetch, so a failed land check can put the ref
+    back where finish found it.
+    """
+    ref = f"refs/remotes/{remote}/{integration_branch}"
+    ok, sha = git_ok(["rev-parse", "--verify", "--quiet", ref], repo)
+    return sha if ok else ""
+
+
+def _restore_tracking(tree: Path, remote: str, integration_branch: str, before: str) -> str:
+    """Put ``remote/integration_branch`` back at ``before`` (absent when ``""``); a note either way."""
+    ref = f"refs/remotes/{remote}/{integration_branch}"
+    code, out = git_code(["update-ref", ref, before] if before else ["update-ref", "-d", ref], tree)
+    if code != 0:
+        return f"Restoring {remote}/{integration_branch} also failed: {out}"
+    return f"{remote}/{integration_branch} is back at {before[:12] or 'its absence'}."
+
+
 def _merge_and_push(
     tree: Path, *, remote: str, integration_branch: str, feature_branch: str,
-    land_check_cmd: str | None = None,
+    land_check_cmd: str | None = None, tracking_before: str = "",
 ) -> tuple[bool, str]:
     """Fast-forward, merge, land-check and push ``integration_branch``, checked out in ``tree``.
 
     A failed land check or a rejected push resets the local integration branch
     to where it was before this landing, so a re-run merges onto the remote's
     new tip and checks that commit instead. The push is the compare-and-swap:
-    a tip that moved since the check makes it fail.
+    a tip that moved since the check makes it fail. A failed land check also
+    puts ``remote/integration_branch`` back at ``tracking_before``, undoing
+    finish's fetch, because it pushed nothing.
     """
     _ok, pre = git_ok(["rev-parse", "HEAD"], tree)
     rr = f"{remote}/{integration_branch}"
@@ -147,7 +169,10 @@ def _merge_and_push(
     if land_check_cmd:
         problem = run_land_check(tree, land_check_cmd)
         if problem is not None:
-            return False, f"{problem}\n  {_reset_integration(tree, integration_branch, pre)}"
+            return False, (
+                f"{problem}\n  {_reset_integration(tree, integration_branch, pre)} "
+                f"{_restore_tracking(tree, remote, integration_branch, tracking_before)}"
+            )
     code, out = git_code(["push", remote, integration_branch], tree)
     if code != 0:
         return (
@@ -201,6 +226,7 @@ def land_merge_feature_into_integration(
     integration_branch: str,
     feature_branch: str,
     land_check_cmd: str | None = None,
+    tracking_before: str | None = None,
 ) -> tuple[bool, str]:
     """
     Fetch, checkout integration, fast-forward to remote tracking ref, merge feature,
@@ -210,12 +236,18 @@ def land_merge_feature_into_integration(
 
     ``land_check_cmd`` is the ``--land-check-cmd`` value: ``None`` falls back
     to ``land_check_cmd`` in ``roadmap/git-workflow.yaml``, ``""`` skips the
-    check (:mod:`specy_road.finish_land_check`).
+    check (:mod:`specy_road.finish_land_check`). ``tracking_before`` is the
+    :func:`tracking_ref_snapshot` the caller took before its own first fetch;
+    ``None`` takes it here, before this function's fetch.
 
     Returns (True, "") on success, (False, message) on failure. Failure
     messages are structured so callers can surface a hard error rather than
     silently falling back to PR instructions (F-012).
     """
+    if tracking_before is None:
+        tracking_before = tracking_ref_snapshot(
+            repo, remote=remote, integration_branch=integration_branch,
+        )
     code, out = git_code(["fetch", remote], repo)
     if code != 0:
         return False, f"git fetch {remote} failed: {out}"
@@ -245,7 +277,7 @@ def land_merge_feature_into_integration(
         return _merge_and_push(
             holder_project_root(repo, holder), remote=remote,
             integration_branch=integration_branch, feature_branch=feature_branch,
-            land_check_cmd=check,
+            land_check_cmd=check, tracking_before=tracking_before,
         )
 
     code, out = git_code(["checkout", integration_branch], repo)
@@ -254,7 +286,7 @@ def land_merge_feature_into_integration(
     ok, err = _merge_and_push(
         repo, remote=remote,
         integration_branch=integration_branch, feature_branch=feature_branch,
-        land_check_cmd=check,
+        land_check_cmd=check, tracking_before=tracking_before,
     )
     code, out = git_code(["checkout", feature_branch], repo)
     if not ok:

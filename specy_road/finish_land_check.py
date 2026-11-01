@@ -49,7 +49,7 @@ def _run_streaming(cmd: str, cwd: Path) -> tuple[int, list[str]]:
         cmd, shell=True, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, errors="replace",
     )
-    for line in proc.stdout or ():
+    for line in proc.stdout:
         sys.stdout.write(line)
         tail.append(line.rstrip("\n"))
     return proc.wait(), list(tail)
@@ -62,7 +62,8 @@ def run_land_check(tree: Path, cmd: str) -> str | None:
     in the nested layout the command runs in ``<worktree>/<project prefix>``,
     just as it would from the project root of a normal checkout. The worktree
     is always removed. Returns ``None`` when the command exits 0, else the
-    error to report.
+    error to report. Only this worktree is removed: a repository-wide
+    ``git worktree prune`` would also drop other checkouts' stale registrations.
     """
     _ok, sha = git_ok(["rev-parse", "HEAD"], tree)
     holder = Path(tempfile.mkdtemp(prefix="specy-road-land-check-"))
@@ -76,7 +77,6 @@ def run_land_check(tree: Path, cmd: str) -> str | None:
         rc, tail = _run_streaming(cmd, worktree / project_prefix(tree))
     finally:
         git_code(["worktree", "remove", "--force", str(worktree)], tree)
-        git_code(["worktree", "prune"], tree)
         shutil.rmtree(holder, ignore_errors=True)
     if rc == 0:
         return None

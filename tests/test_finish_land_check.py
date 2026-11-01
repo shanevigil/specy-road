@@ -6,14 +6,16 @@ Every test runs in both layouts: embedded (project root == git root) and nested
 
 from __future__ import annotations
 
+import argparse
 import shlex
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
 from specy_road.finish_land_integration import land_merge_feature_into_integration
-from specy_road.finish_modes import merge_landing_failed
+from specy_road.finish_modes import apply_on_complete_mode, merge_landing_failed
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -79,6 +81,16 @@ def _land(sb: dict, cli: str | None) -> tuple[bool, str]:
     )
 
 
+def _other_lane(sb: dict) -> Path:
+    """A second clone of origin holding one unpushed commit on ``main``."""
+    other = sb["tmp"] / "other"
+    _git(sb["tmp"], "clone", "-q", str(sb["bare"]), str(other))
+    _git(other, "config", "user.email", "o@e.com")
+    _git(other, "config", "user.name", "O")
+    _commit(other, other / "other.txt", "other\n", "other lane")
+    return other
+
+
 def _assert_ran_in_detached_worktree(sb: dict, run: list[str]) -> None:
     cwd, toplevel, prefix, _sha, ref, _remote_main = run
     assert ref == "detached"
@@ -105,9 +117,12 @@ def test_passing_check_runs_once_on_the_merge_commit_then_pushes(sandbox: dict) 
 
 
 def test_failing_check_pushes_nothing_and_restores_both_refs(sandbox: dict) -> None:
-    """A3, A5, A7."""
+    """A3, A5, A7. Origin moved before finish, so its fetch advances origin/main."""
     top = sandbox["top"]
+    _git(_other_lane(sandbox), "push", "-q", "origin", "main")
+    remote_tip = _git(top, f"--git-dir={sandbox['bare']}", "rev-parse", "main")
     local, tracking = _git(top, "rev-parse", "main"), _git(top, "rev-parse", "origin/main")
+    assert tracking != remote_tip
     before_wt = _worktrees(sandbox)
     noisy = "; for i in $(seq 1 25); do echo line$i; done; exit 3"
     ok, err = _land(sandbox, _recorder(sandbox, noisy))
@@ -120,18 +135,59 @@ def test_failing_check_pushes_nothing_and_restores_both_refs(sandbox: dict) -> N
     assert "line6" in shown and "line5" not in shown
     assert _git(top, "rev-parse", "main") == local
     assert _git(top, "rev-parse", "origin/main") == tracking
-    assert _git(top, f"--git-dir={sandbox['bare']}", "rev-parse", "main") == tracking
+    assert _git(top, f"--git-dir={sandbox['bare']}", "rev-parse", "main") == remote_tip
     assert _worktrees(sandbox) == before_wt
     assert _git(top, "status", "--porcelain", "--untracked-files=no") == ""
 
 
+def test_finish_restores_the_tracking_ref_its_notice_fetched(sandbox: dict) -> None:
+    """A3 through finish's merge path, whose push notice fetches before the landing does."""
+    top = sandbox["top"]
+    _git(_other_lane(sandbox), "push", "-q", "origin", "main")
+    local, tracking = _git(top, "rev-parse", "main"), _git(top, "rev-parse", "origin/main")
+    args = argparse.Namespace(land_check_cmd="exit 3", delete_branch=False, push=False)
+    with pytest.raises(SystemExit) as exc:
+        apply_on_complete_mode(
+            sandbox["project"], args, on_mode="merge", branch="feature/rm-x",
+            sess_path=sandbox["tmp"] / "session.yaml", ib="main", gw_remote="origin",
+            mr_manual=False, node_id="M1", node={},
+        )
+    assert exc.value.code == 1
+    assert _git(top, "rev-parse", "main") == local
+    assert _git(top, "rev-parse", "origin/main") == tracking
+
+
+def test_failing_check_leaves_an_absent_tracking_ref_absent(sandbox: dict) -> None:
+    """A3 when finish's fetch is what creates origin/main."""
+    top = sandbox["top"]
+    _git(top, "update-ref", "-d", "refs/remotes/origin/main")
+    ok, _err = _land(sandbox, "exit 3")
+    assert not ok
+    shown = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", "refs/remotes/origin/main"],
+        cwd=top, capture_output=True, check=False,
+    )
+    assert shown.returncode == 1
+
+
+def test_a_stale_registration_elsewhere_survives_the_check(sandbox: dict) -> None:
+    """A5: only the check's own worktree is cleaned up, never another one's registration."""
+    stale = sandbox["tmp"] / "stale"
+    _git(sandbox["top"], "worktree", "add", "-q", "--detach", str(stale), "main")
+    shutil.rmtree(stale)
+    before_wt = _worktrees(sandbox)
+    assert any(line.startswith("prunable") for line in before_wt)
+    ok, _err = _land(sandbox, "exit 3")
+    assert not ok
+    assert _worktrees(sandbox) == before_wt
+    ok, err = _land(sandbox, "true")
+    assert ok, err
+    assert _worktrees(sandbox) == before_wt
+
+
 def test_rejected_push_resets_and_a_rerun_checks_the_new_tip(sandbox: dict) -> None:
     """A4, A5, A7: the check lets another lane land first, so the push is rejected."""
-    other = sandbox["tmp"] / "other"
-    _git(sandbox["tmp"], "clone", "-q", str(sandbox["bare"]), str(other))
-    _git(other, "config", "user.email", "o@e.com")
-    _git(other, "config", "user.name", "O")
-    _commit(other, other / "other.txt", "other\n", "other lane")
+    other = _other_lane(sandbox)
     marker = sandbox["tmp"] / "raced"
     race = (
         f"; if [ ! -e {shlex.quote(str(marker))} ]; then touch {shlex.quote(str(marker))}; "

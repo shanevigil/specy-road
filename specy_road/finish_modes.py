@@ -16,6 +16,7 @@ from specy_road.finish_land_integration import (
     integration_worktree_problem,
     land_merge_feature_into_integration,
     print_merge_push_notice,
+    tracking_ref_snapshot,
 )
 from specy_road.git_subprocess import git_ok
 from specy_road.on_complete_session import remove_on_complete_session
@@ -230,6 +231,7 @@ def retry_merge_landing(
     ``remote/ib``, including when an earlier run already got it there.
     """
     refuse_unless_finish_tip(repo, branch)
+    tracking_before = tracking_ref_snapshot(repo, remote=remote, integration_branch=ib)
     git_ok(["fetch", "-q", remote, ib], repo)
     if git_ok(["merge-base", "--is-ancestor", branch, f"refs/remotes/{remote}/{ib}"], repo)[0]:
         done = "" if delete_branch else "; nothing to do"
@@ -242,7 +244,7 @@ def retry_merge_landing(
     )
     ok, err_msg = land_merge_feature_into_integration(
         repo, remote=remote, integration_branch=ib, feature_branch=branch,
-        land_check_cmd=land_check_cmd,
+        land_check_cmd=land_check_cmd, tracking_before=tracking_before,
     )
     if not ok:
         merge_landing_failed(
@@ -285,6 +287,7 @@ def apply_on_complete_mode(
         remove_on_complete_session(sess_path)
         return
 
+    tracking_before = tracking_ref_snapshot(repo, remote=gw_remote, integration_branch=ib)
     print_merge_push_notice(
         repo, remote=gw_remote, integration_branch=ib, feature_branch=branch,
     )
@@ -294,6 +297,7 @@ def apply_on_complete_mode(
         integration_branch=ib,
         feature_branch=branch,
         land_check_cmd=args.land_check_cmd,
+        tracking_before=tracking_before,
     )
     if ok:
         print(f"\n[ok] merged {branch} into {ib} and pushed to {gw_remote}")
