@@ -458,6 +458,29 @@
         "tests/test_roadmap_crud_edit_claim_zones.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor preamble's verify step tells the executor to run the verifier and test suite in the foreground and not to end its turn while a command it started is still running, because a headless worker turn ends when the agent replies and nothing resumes it when a background job finishes",
+        "docs/orchestration-workers.md names this failure (completion with READY missing after a reply that says a background run is still going) and the coordinator's recovery: worker message telling the executor to rerun in the foreground",
+        "role_prompt_rca.py stays under the 400-line cap; a test asserts the rendered executor prompt carries the foreground rule, and any pinned prompt text in the context regression set is updated rather than loosened"
+      ],
+      "codename": "foreground-long-commands",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.15",
+      "node_key": "2d5b98da-b88b-44b1-90c2-0b0542250006",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.15_foreground-long-commands_2d5b98da-b88b-44b1-90c2-0b0542250006.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
