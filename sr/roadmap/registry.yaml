@@ -105,17 +105,6 @@ entries:
     started: '2026-10-31'
     owner: savigil
     implementation_review: pending
-  - codename: further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review
-    node_id: M4.18
-    branch: feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review
-    touch_zones:
-      - specy_road/file_limits_js.py
-      - specy_road/file_limits_js_mask.py
-      - specy_road/file_limits_jsx.py
-      - tests/
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
   - codename: further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
     node_id: M5.8
     branch: feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review

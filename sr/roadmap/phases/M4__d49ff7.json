@@ -84,7 +84,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.18_further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review_e2c438ba-5f47-4f6c-b386-7e454c8cda72.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Further TS/JS syntax forms for the function cap found in M4.12 review",
       "touch_zones": [
         "specy_road/file_limits_js.py",
