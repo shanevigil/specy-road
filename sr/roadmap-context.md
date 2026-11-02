@@ -75,7 +75,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Not Started**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
 - `M9` Regression prevention `regression-prevention` — phase — **Not Started**
-  - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Not Started**
+  - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Complete**
   - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Complete**
   - `M9.3` Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project `layout-with-outside-change` — task — **Complete**
   - `M9.4` An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet `executor-blocked-on` — task — **Complete**
@@ -101,6 +101,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
@@ -109,6 +115,11 @@ Do not pick these up.
 - `M10.1` on `feature/rm-record-phase-timestamps-in` since 2026-10-30
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
+- `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
+- `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
+- `M4.18` on `feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` since 2026-10-31
+- `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
+- `M7.1` on `feature/rm-a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` since 2026-10-31
 - `M9.5` on `feature/rm-integrity-report` since 2026-10-29
 
 ## Reaching the detail behind this

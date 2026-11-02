@@ -32,7 +32,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.1_land-check-on-merge-commit_a0b87812-67a0-40b9-87f5-e16c178aa6d9.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "finish-this-task runs a configured land check on the merge commit before it pushes",
       "touch_zones": [
         "specy_road/finish_land_integration.py",
