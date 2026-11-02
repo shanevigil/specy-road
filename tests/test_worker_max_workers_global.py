@@ -160,7 +160,7 @@ def test_an_unreachable_remote_refuses_unless_offline(tmp_path: Path, capsys) ->
     assert "cannot reach origin to count other checkouts' workers" in err and "--offline" in err
     assert ws.list_records(repo) == []
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--repo-root", str(repo)) == 0
-    assert capsys.readouterr().err.count("--offline: max_workers counted this checkout's workers only") == 1
+    assert capsys.readouterr().err.count("--offline: other checkouts' workers were counted from the lease refs last fetched") == 1
     rec = wait_for_worker(repo, "w-0001")
     assert rec.state == "idle"
     with pytest.raises(ws.WorkerError, match="cannot reach origin to push the lease for w-0001.*--offline"):
@@ -215,7 +215,7 @@ def test_sync_keeps_a_lease_created_after_its_first_read(tmp_path: Path, monkeyp
     real, late = lease.run, []
 
     def run(args, cwd, **kw):
-        if args[0] == "ls-remote" and args[-1] == f"{lease.LEASES}{cid}/*" and not late:
+        if args[0] == "fetch" and args[-1].startswith(f"+{lease.LEASES}") and not late:   # the sweep's read
             late.append(_idle(repo, "M1.2", "sid-2"))   # a launch between the sweep's start and its delete
             lease.acquire_lease(repo, late[0], new=True)
         return real(args, cwd, **kw)
@@ -241,24 +241,53 @@ def test_a_missing_checkout_id_is_created_and_the_count_still_holds(tmp_path: Pa
 
 
 @pytest.mark.parametrize("content", ["", "\n", "half-writ"])
-def test_an_empty_or_unusable_checkout_id_refuses_launch_and_resume(tmp_path: Path, capsys, content: str) -> None:
-    """An id file with no uuid in it never reads as "no id, so no leases": every turn is refused until it is removed."""
+def test_an_empty_or_unusable_checkout_id_is_rewritten_and_the_limit_holds(tmp_path: Path, capsys,
+                                                                           content: str) -> None:
+    """An id file with no uuid in it is uninitialized, never "no id, so no leases": a new id is written and counted."""
     repo, _ = _repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     _foreign_worker(clone)
-    rec = _idle(repo, "M1.1")   # a worker from before the id went bad
     _id_file(repo).write_text(content, encoding="utf-8")
-    assert run_worker_cli("worker", "delegate", "M1.2", "--model", "opus", "--repo-root", str(repo)) == 1
-    assert "holds no checkout id" in capsys.readouterr().err
-    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--repo-root", str(repo)) == 1
-    assert "holds no checkout id" in capsys.readouterr().err
-    with pytest.raises(ws.WorkerError, match="holds no checkout id.*remove it"):
-        ops.resume(repo, rec.worker_id)
-    assert [r.worker_id for r in ws.list_records(repo)] == [rec.worker_id]
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "0 workers active (and 1 leased by other checkouts" in capsys.readouterr().err
+    assert re.fullmatch(r"[0-9a-f]{32}", _id_file(repo).read_text(encoding="utf-8").strip())
+    assert ws.list_records(repo) == []
+
+
+def test_a_launch_after_an_empty_checkout_id_leases_under_the_new_one(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
+    remote, _clone = _remote_and_clone(tmp_path, repo)
+    _id_file(repo).write_text("", encoding="utf-8")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, "w-0001")
+    assert _leases(remote) == [f"{_id_file(repo).read_text(encoding='utf-8').strip()}/w-0001"]
+
+
+def test_a_checkout_id_that_cannot_be_written_refuses_the_launch(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    _remote_and_clone(tmp_path, repo)
+    (_id_file(repo) / "x").mkdir(parents=True)   # not a file, and not one that can be set aside and removed
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "cannot write the checkout id" in capsys.readouterr().err
+    assert ws.list_records(repo) == []
+
+
+def test_offline_still_counts_the_lease_refs_last_fetched(tmp_path: Path, capsys) -> None:
+    """--offline skips the push and the fetch, never the limit: a foreign worker known from the last fetch counts."""
+    repo, _ = _repo(tmp_path, max_workers=1)
+    _, clone = _remote_and_clone(tmp_path, repo)
+    _foreign_worker(clone)
+    ops.sync(repo)   # an online worker command: fetches the lease refs into this checkout
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--repo-root", str(repo)) == 1
+    err = capsys.readouterr().err
+    assert "0 workers active (and 1 leased by other checkouts" in err and "last fetched" in err
+    assert ws.list_records(repo) == []
+    rec = _idle(repo, "M1.1")   # an idle worker here: resuming it offline is refused at the limit too
+    assert run_worker_cli("worker", "resume", rec.worker_id, "--offline", "--repo-root", str(repo)) == 1
+    assert "leased by other checkouts" in capsys.readouterr().err
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--offline", "--repo-root", str(repo)) == 1
+    assert "leased by other checkouts" in capsys.readouterr().err
     assert ws.load_record(repo, rec.worker_id).state == "idle"
-    assert [e.type for e in ws.events_since(repo, rec.worker_id)].count("message") == 0
-    _id_file(repo).unlink()   # the way out the message names
-    assert re.fullmatch(r"[0-9a-f]{32}", lease.checkout_id(repo))
 
 
 def test_concurrent_first_calls_agree_on_one_checkout_id(tmp_path: Path) -> None:

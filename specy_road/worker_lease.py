@@ -12,6 +12,7 @@ intervention twice; a retry after that write only repairs the missing events.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -182,36 +183,51 @@ _UNREACHABLE: set[str] = set()   # remote URLs a release timed out on: releases 
 
 def checkout_id(repo_root: Path) -> str:
     """This repository's stable id, a uuid in ``<git-common-dir>/specy-road-checkout-id``; a :class:`WorkerError`
-    when there is none to be had, never an empty id (with one, a checkout would count other checkouts' leases as
-    nobody's and push none of its own).
+    when none can be had, never an empty id (with one, a checkout would count no leases and push none).
 
-    Created whole or not at all: the uuid is written to a private temporary file that is then hard-linked into
-    place, so a racing caller reads the winner's complete id, and an interrupted one leaves no file behind. A file
-    that exists but holds no uuid (an older toolkit's interrupted write, a hand edit) is refused, not replaced:
-    which id other checkouts saw is unknown, so a person removes it."""
+    A missing, empty, unreadable or malformed file is uninitialized: no lease can have been pushed under it, so a
+    new id is safe. The uuid is written to a private temporary file; a bad file is first renamed aside, then the
+    temporary file is hard-linked into place, which never overwrites. Racing callers therefore all read the one
+    id that won, an interrupted call leaves a whole id or none, and a call that still finds no usable id refuses."""
     common = git_text(["rev-parse", "--git-common-dir"], repo_root)
     if not common:
         raise WorkerError(f"cannot find git's common dir from {repo_root}, so this checkout has no id for its leases")
     path = Path(repo_root, common) / "specy-road-checkout-id"
-    if not path.exists():
+    for _attempt in range(4):
+        cid = _read_id(path)
+        if cid:
+            return cid
         tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
         try:
+            if path.exists() or path.is_symlink():   # uninitialized: set it aside (another caller may already have)
+                aside = tmp.with_suffix(".bad")
+                with contextlib.suppress(FileNotFoundError):
+                    os.rename(path, aside)
+                if _read_id(aside):   # a racing caller's id landed between our read and the rename: put it back
+                    with contextlib.suppress(FileExistsError):
+                        os.link(aside, path)
+                aside.unlink(missing_ok=True)
+                continue
             tmp.write_text(uuid.uuid4().hex + "\n", encoding="utf-8")
             os.link(tmp, path)
         except FileExistsError:
-            pass   # another caller's id won; it is read below
+            pass   # another caller's id won; it is read on the next pass
         except OSError as e:
-            raise WorkerError(f"cannot create the checkout id {path}: {e}; nothing was launched") from None
+            raise WorkerError(f"cannot write the checkout id {path}: {e}; nothing was launched") from None
         finally:
             tmp.unlink(missing_ok=True)
+    cid = _read_id(path)
+    if not cid:
+        raise WorkerError(f"{path} holds no usable checkout id after rewriting it; nothing was launched")
+    return cid
+
+
+def _read_id(path: Path) -> str | None:
     try:
         cid = path.read_text(encoding="utf-8").strip()
-    except OSError as e:
-        raise WorkerError(f"cannot read the checkout id {path}: {e}") from None
-    if not _CHECKOUT_ID.fullmatch(cid):
-        raise WorkerError(f"{path} holds no checkout id ({cid[:40]!r}); remove it, and the next delegate, message "
-                          "or resume writes a new one")
-    return cid
+    except (OSError, UnicodeDecodeError):
+        return None
+    return cid if _CHECKOUT_ID.fullmatch(cid) else None
 
 
 def _remote(repo_root: Path) -> tuple[str, str] | None:
@@ -224,34 +240,43 @@ def _remote(repo_root: Path) -> tuple[str, str] | None:
 def _warn_offline(url: str, remote: str) -> None:
     if url not in _WARNED:
         _WARNED.add(url)
-        print(f"warning: --offline: max_workers counted this checkout's workers only; other checkouts' leases on "
-              f"{remote} were not read, and this checkout's launches push none", file=sys.stderr)
+        print(f"warning: --offline: other checkouts' workers were counted from the lease refs last fetched from "
+              f"{remote}, and this checkout's launches push none", file=sys.stderr)
 
 
 def _why(r) -> str:
     return r.message.splitlines()[-1] if r.message else str(r.failure)
 
 
-def _lease_refs(repo_root: Path, remote: str, prefix: str) -> list[str]:
-    """``<checkout-id>/<worker-id>`` per lease ref under ``prefix``; a :class:`WorkerError` when unreachable."""
-    r = run(["ls-remote", remote, prefix + "*"], repo_root, timeout=LEASE_TIMEOUT)
-    if not r.ok:
-        raise WorkerError(f"cannot reach {remote} to count other checkouts' workers ({_why(r)}); {OFFLINE_HINT}")
-    return sorted(line.split("\t", 1)[1][len(LEASES):] for line in r.out.splitlines() if "\t" in line)
+def _known(remote: str) -> str:
+    return f"refs/specy-road/known-leases/{remote}/"
+
+
+def _lease_refs(repo_root: Path, remote: str, prefix: str, *, fetch: bool = True) -> list[str]:
+    """``<checkout-id>/<worker-id>`` per lease ref under ``prefix``, from a local mirror that ``fetch`` refreshes
+    (and prunes) from the remote first; a :class:`WorkerError` when it cannot. Without ``fetch``: as last fetched."""
+    if fetch:
+        r = run(["fetch", "--quiet", "--prune", "--no-tags", remote, f"+{LEASES}*:{_known(remote)}*"], repo_root,
+                timeout=LEASE_TIMEOUT)
+        if not r.ok:
+            raise WorkerError(f"cannot reach {remote} to count other checkouts' workers ({_why(r)}); {OFFLINE_HINT}")
+    out = git_text(["for-each-ref", "--format=%(refname)", _known(remote)], repo_root) or ""
+    names = sorted(line[len(_known(remote)):] for line in out.splitlines())
+    return [n for n in names if (LEASES + n).startswith(prefix)]
 
 
 def foreign_leases(repo_root: Path, *, offline: bool = False) -> list[str]:
     """Live workers of other checkouts: their lease refs on the integration remote (none without that remote).
 
-    Refused when the remote cannot be read, unless ``offline``: then none, with one warning."""
+    Refused when the remote cannot be read. ``offline`` reads no remote: the lease refs as last fetched are counted
+    (one warning), so the limit still holds against every worker this checkout has heard of."""
     rm = _remote(repo_root)
     if not rm:
         return []
+    cid = checkout_id(repo_root)   # raises: with no id, every lease would look like another checkout's
     if offline:
         _warn_offline(rm[1], rm[0])
-        return []
-    cid = checkout_id(repo_root)   # raises: with no id, every lease would look like another checkout's
-    return [n for n in _lease_refs(repo_root, rm[0], LEASES) if not n.startswith(cid + "/")]
+    return [n for n in _lease_refs(repo_root, rm[0], LEASES, fetch=not offline) if not n.startswith(cid + "/")]
 
 
 def max_workers(repo_root: Path) -> int:
@@ -283,31 +308,29 @@ def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: boo
     (both may be refused; never one too many). ``new``: no lease existed, so a refusal deletes the one pushed.
     ``count=False`` pushes without the recount (``adopt``: the session already runs, refusing would not stop it).
 
-    A push the remote rejects, or a remote that cannot be reached, refuses the turn; ``offline`` skips the
-    lease (one warning), so other checkouts do not count this worker until ``sync`` pushes it. Run under the
+    A push the remote rejects, or a remote that cannot be reached, refuses the turn; ``offline`` skips the push
+    but still counts the lease refs last fetched (one warning); other checkouts count this worker once ``sync``
+    pushes its lease. Run under the
     workers lock, as every caller does: ``sync_leases`` takes it too, so it cannot remove a lease being acquired."""
     rm = _remote(repo_root)
     if not rm:
         return
-    remote = rm[0]
-    if offline:
-        _warn_offline(rm[1], remote)
-        return
-    cid = checkout_id(repo_root)   # refuses the turn when there is no usable id
-    r = _push_lease(repo_root, remote, cid, rec)
-    if not r.ok:
-        if run(["ls-remote", remote, LEASES + "*"], repo_root, timeout=LEASE_TIMEOUT).ok:   # reachable: a rejection
-            raise WorkerError(f"{remote} rejected the lease for {rec.worker_id} ({_why(r)}); nothing was launched")
-        raise WorkerError(f"cannot reach {remote} to push the lease for {rec.worker_id} ({_why(r)}); {OFFLINE_HINT}")
+    remote, cid = rm[0], checkout_id(repo_root)   # refuses the turn when there is no usable id
+    if not offline:
+        r = _push_lease(repo_root, remote, cid, rec)
+        if not r.ok:
+            if run(["ls-remote", remote, LEASES + "*"], repo_root, timeout=LEASE_TIMEOUT).ok:   # reachable: rejected
+                raise WorkerError(f"{remote} rejected the lease for {rec.worker_id} ({_why(r)}); nothing was launched")
+            raise WorkerError(f"cannot reach {remote} to push the lease for {rec.worker_id} ({_why(r)}); {OFFLINE_HINT}")
     if not count:
         return
     try:
-        limit, foreign = max_workers(repo_root), foreign_leases(repo_root)
+        limit, foreign = max_workers(repo_root), foreign_leases(repo_root, offline=offline)
         local = [r for r in list_records(repo_root, active_only=True) if r.worker_id != rec.worker_id]
         if len(local) + len(foreign) >= limit:
             raise slot_error(len(local), foreign, limit)
     except WorkerError:
-        if new:
+        if new and not offline:
             release_lease(repo_root, rec.worker_id)
         raise
 
