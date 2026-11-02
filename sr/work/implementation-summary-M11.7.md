@@ -6,6 +6,12 @@
 - **A2:** an attempt that fails (non-zero exit or an error event) with capacity or rate-limit wording (`429`, `529`, `overloaded`, `rate limit`, `usage limit`, `quota`, `RESOURCE_EXHAUSTED`) is retried at most `--retries` times (default 3). The wait is `--backoff` seconds (default 30), doubled each time. A retry resumes the reported session, or starts fresh when the harness reported none. The run is `complete` only when a valid `REVIEW-<model>.md` for the commit under review exists afterwards (exit 0). Otherwise it is `incomplete` with a reason (exit 1). An interrupt or a launch refusal also closes the record as incomplete. `handoff status` lists each run (`review_runs` in `--json`, with `current`) and adds a problem for an incomplete run at the commit under review. Without a claim, each record line now names its commit (`at <sha>, not evaluated`). `review list` marks a record that is not for the commit under review `stale` and prints the runs. With a claim, an old record was already shown only as a stale problem, never in `reviews`, and the tests now cover that after a failed delegated run.
 - **A3:** `docs/orchestration-review.md` has a new section, "Delegating a reviewer". `tests/test_review_delegate.py` uses a fake claude-code harness (`channels.cli` with `{session_flag}`) for success, a capacity error then success (with backoff and session resume), bounded retries, a run that writes no record (including an older block left in place), resume, and the refusals.
 
+## Review round 1 (gpt-5.6-sol-high blocked A2)
+
+The block was valid. `--retries` and `--backoff` took any int or float: `--retries -1` made no harness attempt at all, and a negative `--backoff` raised `ValueError` from `time.sleep` after a capacity error. Both are now checked by argparse before anything runs. `--retries` must be a whole number, 0 or more. `--backoff` must be a finite number of seconds, 0 or more (`nan` and `inf` are refused). A bad value exits 2 with an `argument --retries` / `argument --backoff` message, launches no harness and writes no run file. Public CLI tests cover each refused value, and a `--retries 0 --backoff 0` capacity run that makes its one attempt and ends incomplete (exit 1) without crashing.
+
+Verification for this round: `.conda/bin/pytest -q tests/test_review_delegate.py` gave 15 passed. `specy-road file-limits` is OK and `ruff check` on the two touched files is clean.
+
 ## Touch zones (confirmed)
 
 `specy_road/review_delegate.py` (new), `specy_road/bundled_scripts/review_cli.py`, `specy_road/worker_adapters.py`, `docs/orchestration-review.md`, `tests/test_review_delegate.py`. `specy_road/review_files.py` needed no change: run files use their own `RUN-` prefix, which its listers already ignore. Nothing outside the touch zones was changed.
@@ -35,6 +41,7 @@
 - `delegate` — the operation. A `BaseException` guard closes the record as incomplete on an interrupt or a launch refusal.
 - `run_states`, `run_lines`, `run_problems` — the run listing for `handoff status` and `review list` (A2).
 - `cmd_review_delegate`, `add_parser` — CLI entry and `review delegate` arguments.
+- `_count`, `_seconds` (round 1) — argparse types: `--retries` a whole number 0 or more, `--backoff` finite and 0 or more, so the first attempt always runs and the backoff wait cannot crash.
 - `ClaudeCode.reviewer_launch(..., session=)` — the optional session flag and stream-json output; behaviour without it is unchanged.
 - `review_cli`: `review_runs` and run problems in `_node_status`; `review_runs` and each record's `commit` in `_unclaimed`; the `at <sha>, not evaluated` and run lines in `_render`; the stale marker and run lines in `cmd_review_list`; the subparser loop (line budget).
 - `tests/test_review_delegate.py` — fake claude-code harness script `FAKE` (mock harness, a step per call, logs argv). Tests:
@@ -47,3 +54,5 @@
   - `test_refusals`: unrostered model; resume unsupported → exit 2.
   - `test_bare_reviewer_launch_tracks_a_session_only_when_asked`: adapter change.
   - `test_capacity_error_reads_provider_wording`: classifier.
+  - `test_invalid_retry_controls_are_refused_before_any_launch` (round 1, parametrised): `--retries -1`/`1.5` and `--backoff -1`/`nan`/`inf` exit 2 with no launch and no run file.
+  - `test_zero_retries_still_makes_the_first_attempt_and_ends_incomplete` (round 1): a capacity run with `--retries 0` makes one attempt and ends incomplete, with no crash.
