@@ -221,16 +221,17 @@ def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None,
 
 
 def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None = None,
-             worktree: Path | None = None) -> tuple[WorkerRecord, bool]:
+             worktree: Path | None = None, offline: bool = False) -> tuple[WorkerRecord, bool]:
     """``(record, created)``: an active worker on the leaf is returned, not duplicated.
 
     The existing-worker check, the cap and the launch happen under the workers
     lock, so two concurrent delegates on one leaf launch one harness. The
     roster's ``preflight`` and the prompt build run **between** two lock
     sections, not under one: a hook witness must never queue behind them.
+    ``offline`` counts this checkout's workers only and pushes no lease (worker_lease).
     """
     entry, harness = _entry_and_harness(repo_root, model, harness)
-    foreign = foreign_leases(repo_root)   # other checkouts' workers: a network read, so outside the lock
+    foreign = foreign_leases(repo_root, offline=offline)   # other checkouts' workers: a network read, so outside the lock
     with workers_lock(repo_root):
         existing = _slot_or_existing(repo_root, node_id, foreign=foreign)
     if existing:
@@ -245,11 +246,11 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
         existing = _slot_or_existing(repo_root, node_id, foreign=foreign)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
-        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree), True
+        return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree, offline), True
 
 
 def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entry: dict[str, Any], t,
-                   text: str, worktree: Path | None) -> WorkerRecord:
+                   text: str, worktree: Path | None, offline: bool = False) -> WorkerRecord:
     branch = str(t.entry["branch"])
     wt = _worktree_for(repo_root, branch, str(t.node.get("codename") or node_id), worktree)
     # The worker edits this tree: uncommitted work in it could be overwritten, and
@@ -275,7 +276,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
     try:
-        acquire_lease(repo_root, rec, new=True)   # before the harness starts: another checkout may have won the slot
+        acquire_lease(repo_root, rec, new=True, offline=offline)   # before the harness: another checkout may hold the slot
     except WorkerError as e:
         append_event(repo_root, rec, "error", source="system", summary=str(e))
         set_state(repo_root, rec, "failed", pid=None)
@@ -295,7 +296,7 @@ def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
     return wrapper_gone(repo_root, rec)
 
 
-def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRecord:
+def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str, offline: bool = False) -> WorkerRecord:
     require_writer(rec)
     _wrapper_gone(repo_root, rec)   # a crashed turn is recorded as failed, then resumed below like any failed one
     if rec.state == "terminated" or (rec.state == "failed" and not rec.provider_session_id):   # failed keeps its session
@@ -324,21 +325,21 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     prompt.write_text(text, encoding="utf-8")
     launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
                             node_id=rec.node_id, repo_root=repo_root, launch_mode=mode, effort=effort)
-    acquire_lease(repo_root, rec, new=rec.state == "failed")   # a failed worker's lease was released with it
+    acquire_lease(repo_root, rec, new=rec.state == "failed", offline=offline)   # a failed worker's was released
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)
     return rec
 
 
-def message(repo_root: Path, worker_id: str, text: str) -> WorkerRecord:
+def message(repo_root: Path, worker_id: str, text: str, *, offline: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):   # check, event and spawn as one transition
-        return _send(repo_root, load_record(repo_root, worker_id), text, "message")
+        return _send(repo_root, load_record(repo_root, worker_id), text, "message", offline)
 
 
-def resume(repo_root: Path, worker_id: str) -> WorkerRecord:
+def resume(repo_root: Path, worker_id: str, *, offline: bool = False) -> WorkerRecord:
     with workers_lock(repo_root):
-        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume")
+        return _send(repo_root, load_record(repo_root, worker_id), CONTINUE_PROMPT, "resume", offline)
 
 
 def interrupt(repo_root: Path, worker_id: str) -> None:

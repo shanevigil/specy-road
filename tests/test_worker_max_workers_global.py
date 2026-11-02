@@ -135,15 +135,90 @@ def test_sync_releases_a_dead_or_stale_workers_lease(tmp_path: Path) -> None:
     assert ws.load_record(repo, dead.worker_id).state == "failed" and _leases(remote) == []
 
 
-def test_an_unreachable_remote_counts_local_workers_and_warns_once(tmp_path: Path, capsys) -> None:
-    repo, _ = _repo(tmp_path)
+def _unreachable(tmp_path: Path, repo: Path) -> None:
     git(repo, "remote", "add", "origin", str(tmp_path / "missing.git"))
     git(repo, "update-ref", "refs/remotes/origin/dev", "dev")   # as last fetched, before the remote went away
     git(repo, "remote", "set-head", "origin", "dev")
-    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 0
+
+
+def _rejecting(remote: Path) -> None:
+    """The remote stays readable but refuses every lease ref push."""
+    hook = remote / "hooks" / "update"
+    hook.write_text('#!/bin/sh\ncase "$1" in refs/specy-road/*) echo "no leases here" >&2; exit 1;; esac\nexit 0\n')
+    hook.chmod(0o755)
+
+
+def test_an_unreachable_remote_refuses_unless_offline(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    _unreachable(tmp_path, repo)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
-    assert err.count("max_workers counted this checkout's workers only, not other checkouts'") == 1
-    assert wait_for_worker(repo, "w-0001").state == "idle"   # offline work goes on
+    assert "cannot reach origin to count other checkouts' workers" in err and "--offline" in err
+    assert ws.list_records(repo) == []
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--repo-root", str(repo)) == 0
+    assert capsys.readouterr().err.count("--offline: max_workers counted this checkout's workers only") == 1
+    rec = wait_for_worker(repo, "w-0001")
+    assert rec.state == "idle"
+    with pytest.raises(ws.WorkerError, match="cannot reach origin to push the lease for w-0001.*--offline"):
+        ops.resume(repo, rec.worker_id)
+    assert run_worker_cli("worker", "resume", rec.worker_id, "--offline", "--repo-root", str(repo)) == 0
+    assert wait_for_worker(repo, rec.worker_id).state == "idle"
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--offline", "--repo-root", str(repo)) == 0
+    assert wait_for_worker(repo, rec.worker_id).state == "idle"
+
+
+def test_offline_is_bound_into_the_op_id(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    _unreachable(tmp_path, repo)
+    args = ("worker", "delegate", "M1.1", "--model", "opus", "--op-id", "op-1", "--repo-root", str(repo))
+    assert run_worker_cli(*args, "--offline") == 0
+    wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    assert run_worker_cli(*args) != 0
+    assert "ran with different arguments" in capsys.readouterr().err
+
+
+def test_a_rejected_lease_push_refuses_message_and_resume(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    remote, _clone = _remote_and_clone(tmp_path, repo)
+    _rejecting(remote)
+    rec = _idle(repo, "M1.1")
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--repo-root", str(repo)) == 1
+    assert f"origin rejected the lease for {rec.worker_id}" in capsys.readouterr().err
+    with pytest.raises(ws.WorkerError, match=f"origin rejected the lease for {rec.worker_id}"):
+        ops.resume(repo, rec.worker_id)
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+    assert [e.type for e in ws.events_since(repo, rec.worker_id)].count("message") == 0
+
+
+def test_a_rejected_lease_push_refuses_a_launch(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    remote, _clone = _remote_and_clone(tmp_path, repo)
+    _rejecting(remote)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "origin rejected the lease for w-0001" in capsys.readouterr().err
+    assert ws.load_record(repo, "w-0001").state == "failed" and _leases(remote) == []
+
+
+def test_sync_keeps_a_lease_created_after_its_first_read(tmp_path: Path, monkeypatch) -> None:
+    """The sweep reads the remote, then a launch lands before it deletes: the new worker's lease survives."""
+    repo, _ = _repo(tmp_path)
+    remote, _clone = _remote_and_clone(tmp_path, repo)
+    cid = lease.checkout_id(repo)
+    stale = _idle(repo, "M1.1")
+    lease.acquire_lease(repo, stale, new=True)
+    ws.set_state(repo, stale, "failed", pid=None)   # closed without its lease released
+    real, late = lease.run, []
+
+    def run(args, cwd, **kw):
+        if args[0] == "ls-remote" and args[-1] == f"{lease.LEASES}{cid}/*" and not late:
+            late.append(_idle(repo, "M1.2", "sid-2"))   # a launch between the sweep's start and its delete
+            lease.acquire_lease(repo, late[0], new=True)
+        return real(args, cwd, **kw)
+
+    monkeypatch.setattr(lease, "run", run)
+    ops.sync(repo)
+    assert _leases(remote) == [f"{cid}/{late[0].worker_id}"]
 
 
 def test_a_linked_worktree_counts_the_main_checkouts_workers(tmp_path: Path, capsys) -> None:
