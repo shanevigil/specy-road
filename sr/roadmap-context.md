@@ -118,7 +118,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Not Started**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
-  - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
+  - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
 
 ## Claimed and in flight
@@ -126,7 +126,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
-- `M11.12` on `feature/rm-ready-command` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.7` on `feature/rm-review-delegate` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
