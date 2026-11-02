@@ -100,6 +100,7 @@ entries:
       - tests/test_worker_state.py
       - specy_road/bundled_scripts/worker_cli.py
       - specy_road/worker_reconcile.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
