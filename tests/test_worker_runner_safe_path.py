@@ -12,7 +12,8 @@ import json
 import sys
 from pathlib import Path
 
-from tests.test_worker_cli import _repo, wait_for_worker
+from tests.review_repo_helpers import make_review_repo
+from tests.test_worker_cli import wait_for_worker
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_runner as wr
@@ -20,7 +21,7 @@ from specy_road import worker_state as ws
 
 
 def test_a_broken_runner_in_the_worktree_is_not_imported(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
+    repo = make_review_repo(tmp_path)
     stale = repo / "specy_road"
     stale.mkdir()
     (stale / "__init__.py").write_text("")
