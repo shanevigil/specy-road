@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -174,23 +175,43 @@ def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[Work
 LEASES = "refs/specy-road/leases/"
 LEASE_TIMEOUT = 20.0
 OFFLINE_HINT = "retry, or pass --offline to count this checkout's workers only"
+_CHECKOUT_ID = re.compile(r"[0-9a-f]{32}")
 _WARNED: set[str] = set()        # remote URLs already warned about in this process (--offline)
 _UNREACHABLE: set[str] = set()   # remote URLs a release timed out on: releases are not retried in this process
 
 
-def checkout_id(repo_root: Path) -> str | None:
-    """This repository's stable id (a uuid written once to ``<git-common-dir>/specy-road-checkout-id``)."""
+def checkout_id(repo_root: Path) -> str:
+    """This repository's stable id, a uuid in ``<git-common-dir>/specy-road-checkout-id``; a :class:`WorkerError`
+    when there is none to be had, never an empty id (with one, a checkout would count other checkouts' leases as
+    nobody's and push none of its own).
+
+    Created whole or not at all: the uuid is written to a private temporary file that is then hard-linked into
+    place, so a racing caller reads the winner's complete id, and an interrupted one leaves no file behind. A file
+    that exists but holds no uuid (an older toolkit's interrupted write, a hand edit) is refused, not replaced:
+    which id other checkouts saw is unknown, so a person removes it."""
     common = git_text(["rev-parse", "--git-common-dir"], repo_root)
     if not common:
-        return None
+        raise WorkerError(f"cannot find git's common dir from {repo_root}, so this checkout has no id for its leases")
     path = Path(repo_root, common) / "specy-road-checkout-id"
+    if not path.exists():
+        tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+        try:
+            tmp.write_text(uuid.uuid4().hex + "\n", encoding="utf-8")
+            os.link(tmp, path)
+        except FileExistsError:
+            pass   # another caller's id won; it is read below
+        except OSError as e:
+            raise WorkerError(f"cannot create the checkout id {path}: {e}; nothing was launched") from None
+        finally:
+            tmp.unlink(missing_ok=True)
     try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-    except FileExistsError:
-        return path.read_text(encoding="utf-8").strip() or None
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(uuid.uuid4().hex + "\n")
-    return path.read_text(encoding="utf-8").strip()
+        cid = path.read_text(encoding="utf-8").strip()
+    except OSError as e:
+        raise WorkerError(f"cannot read the checkout id {path}: {e}") from None
+    if not _CHECKOUT_ID.fullmatch(cid):
+        raise WorkerError(f"{path} holds no checkout id ({cid[:40]!r}); remove it, and the next delegate, message "
+                          "or resume writes a new one")
+    return cid
 
 
 def _remote(repo_root: Path) -> tuple[str, str] | None:
@@ -223,12 +244,13 @@ def foreign_leases(repo_root: Path, *, offline: bool = False) -> list[str]:
     """Live workers of other checkouts: their lease refs on the integration remote (none without that remote).
 
     Refused when the remote cannot be read, unless ``offline``: then none, with one warning."""
-    rm, cid = _remote(repo_root), checkout_id(repo_root)
-    if not rm or not cid:
+    rm = _remote(repo_root)
+    if not rm:
         return []
     if offline:
         _warn_offline(rm[1], rm[0])
         return []
+    cid = checkout_id(repo_root)   # raises: with no id, every lease would look like another checkout's
     return [n for n in _lease_refs(repo_root, rm[0], LEASES) if not n.startswith(cid + "/")]
 
 
@@ -252,13 +274,14 @@ def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: boo
     A push the remote rejects, or a remote that cannot be reached, refuses the turn; ``offline`` skips the
     lease (one warning), so other checkouts do not count this worker. Run under the workers lock, as every
     caller does: the stale sweep's delete takes it too, so it cannot remove a lease being acquired."""
-    rm, cid = _remote(repo_root), checkout_id(repo_root)
-    if not rm or not cid:
+    rm = _remote(repo_root)
+    if not rm:
         return
     remote = rm[0]
     if offline:
         _warn_offline(rm[1], remote)
         return
+    cid = checkout_id(repo_root)   # refuses the turn when there is no usable id
     tree = git_text(["hash-object", "-w", "-t", "tree", os.devnull], repo_root)   # the empty tree: nothing to upload
     sha = tree and git_text(["-c", "user.name=specy-road", "-c", "user.email=specy-road@localhost", "commit-tree", tree,
                              "-m", f"specy-road lease {rec.worker_id} {rec.node_id} {rec.harness}/{rec.model}"], repo_root)
@@ -283,9 +306,13 @@ def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: boo
 
 def release_lease(repo_root: Path, *worker_ids: str) -> None:
     """Delete these workers' lease refs; best effort (a ref left behind over-counts, and ``sync`` retries it)."""
-    rm, cid = _remote(repo_root), checkout_id(repo_root)
-    if not rm or not cid or not worker_ids or rm[1] in _UNREACHABLE:
+    rm = _remote(repo_root)
+    if not rm or not worker_ids or rm[1] in _UNREACHABLE:
         return
+    try:
+        cid = checkout_id(repo_root)
+    except WorkerError:
+        return   # no id: this checkout never pushed a lease under one
     r = run(["push", "--quiet", rm[0], "--delete", *(f"{LEASES}{cid}/{w}" for w in worker_ids)], repo_root,
             timeout=LEASE_TIMEOUT)
     if r.failure == "timeout":
@@ -305,13 +332,14 @@ def release_stale_leases(repo_root: Path) -> list[str]:
 
     The remote is read unlocked; each candidate's record is then checked again, and its ref deleted, under the
     workers lock, so a launch or resume (which pushes its lease under the same lock) cannot interleave."""
-    rm, cid = _remote(repo_root), checkout_id(repo_root)
-    if not rm or not cid:
+    rm = _remote(repo_root)
+    if not rm:
         return []
     try:
+        cid = checkout_id(repo_root)
         candidates = [n.split("/", 1)[1] for n in _lease_refs(repo_root, rm[0], f"{LEASES}{cid}/")]
     except WorkerError:
-        return []   # unreachable: sync still reports; the next sync retries
+        return []   # unreachable, or no usable id: sync still reports; the next sync retries
     with workers_lock(repo_root):
         stale = [w for w in candidates if _closed(repo_root, w)]
         release_lease(repo_root, *stale)

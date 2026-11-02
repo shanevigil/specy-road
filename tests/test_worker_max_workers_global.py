@@ -8,7 +8,9 @@ locally and whoever owns the claims.
 
 from __future__ import annotations
 
+import re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -219,6 +221,50 @@ def test_sync_keeps_a_lease_created_after_its_first_read(tmp_path: Path, monkeyp
     monkeypatch.setattr(lease, "run", run)
     ops.sync(repo)
     assert _leases(remote) == [f"{cid}/{late[0].worker_id}"]
+
+
+def _id_file(repo: Path) -> Path:
+    return repo / ".git" / "specy-road-checkout-id"
+
+
+def test_a_missing_checkout_id_is_created_and_the_count_still_holds(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path, max_workers=1)
+    _, clone = _remote_and_clone(tmp_path, repo)
+    _foreign_worker(clone)
+    _id_file(repo).unlink(missing_ok=True)
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "0 workers active (and 1 leased by other checkouts" in capsys.readouterr().err
+    assert re.fullmatch(r"[0-9a-f]{32}", _id_file(repo).read_text(encoding="utf-8").strip())
+    assert ws.list_records(repo) == []
+
+
+@pytest.mark.parametrize("content", ["", "\n", "half-writ"])
+def test_an_empty_or_unusable_checkout_id_refuses_launch_and_resume(tmp_path: Path, capsys, content: str) -> None:
+    """An id file with no uuid in it never reads as "no id, so no leases": every turn is refused until it is removed."""
+    repo, _ = _repo(tmp_path, max_workers=1)
+    _, clone = _remote_and_clone(tmp_path, repo)
+    _foreign_worker(clone)
+    rec = _idle(repo, "M1.1")   # a worker from before the id went bad
+    _id_file(repo).write_text(content, encoding="utf-8")
+    assert run_worker_cli("worker", "delegate", "M1.2", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "holds no checkout id" in capsys.readouterr().err
+    assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--repo-root", str(repo)) == 1
+    assert "holds no checkout id" in capsys.readouterr().err
+    with pytest.raises(ws.WorkerError, match="holds no checkout id.*remove it"):
+        ops.resume(repo, rec.worker_id)
+    assert [r.worker_id for r in ws.list_records(repo)] == [rec.worker_id]
+    assert ws.load_record(repo, rec.worker_id).state == "idle"
+    assert [e.type for e in ws.events_since(repo, rec.worker_id)].count("message") == 0
+    _id_file(repo).unlink()   # the way out the message names
+    assert re.fullmatch(r"[0-9a-f]{32}", lease.checkout_id(repo))
+
+
+def test_concurrent_first_calls_agree_on_one_checkout_id(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
+    with ThreadPoolExecutor(8) as pool:
+        ids = list(pool.map(lambda _i: lease.checkout_id(repo), range(32)))
+    assert len(set(ids)) == 1 and ids[0] == _id_file(repo).read_text(encoding="utf-8").strip()
+    assert list(_id_file(repo).parent.glob(".specy-road-checkout-id.*")) == []   # no temporary file left behind
 
 
 def test_a_linked_worktree_counts_the_main_checkouts_workers(tmp_path: Path, capsys) -> None:
