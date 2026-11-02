@@ -111,7 +111,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.4_enforced-rules-pointers_71602a0f-024d-45ca-9161-efe5b0570658.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Rules the CLI or hooks enforce shrink to one-line pointers in the managed block",
       "touch_zones": [
         "specy_road/templates/specyrd/agents-md-block.md",

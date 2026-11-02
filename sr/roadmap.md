@@ -55,7 +55,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Complete |
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Complete |
-| `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Not Started |
+| `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Complete |
 | `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
 | `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Mixed | Not Started |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Human-led | Not Started |
@@ -85,6 +85,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Not Started |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
+| `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Not Started |
 | `M10` | Agent loop performance and observability | phase | — | Not Started |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Not Started |
@@ -101,5 +102,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |
 | `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Complete |
+| `M10.16` | The worker wrapper imports the launching specy-road, not the worktree's copy | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
