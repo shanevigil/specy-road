@@ -88,12 +88,21 @@ findings, and `test_integrity_section`'s `_none_` wording in
   - not handled: submodule gitlinks have no file lines, and repo-local config
     or environment set by whoever runs the command is out of scope (the
     leaf's commit cannot carry either).
+- Escalation fix (RCA-4, round 5): `_changed_files` read `--name-status -z`
+  through the strict `git_stdout`, so one non-UTF-8 file name dropped every
+  path and an ordinary `# noqa` went unreported. It now reads bytes
+  (`_git_bytes`, shared with `_patch`), splits on NUL and decodes each name.
+  A name that is not UTF-8 is skipped. A rename whose source name is not UTF-8
+  keeps its destination alone, so all of that file's lines count. Observed and
+  left alone, as instructed (no other encoding class opened): the M9.5 code
+  paths (`_tree_paths` via `ls-tree`, and `diff_paths` for config changes) still
+  read names through the strict `git_stdout`.
 - Renames are detected (`--find-renames`), so moving a file that already holds
   a suppression does not report it; edits inside the moved file still do.
 
 ## Verification
 
-- Round 4: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 88 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
+- Round 5: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 89 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -105,8 +114,10 @@ findings, and `test_integrity_section`'s `_none_` wording in
 ### Helpers
 - `integrity.integration_ratchet_paths` — reads `policy.ratchet_paths` from the integration branch so a leaf cannot drop its own baselines from the list (A2).
 - `integrity._added_lines` — added lines with their REF line numbers, one diff per changed file (A1, A2; R1).
-- `integrity._patch` — runs that per-file diff and decodes the bytes leniently, so a non-UTF-8 line keeps its file's count and markers (round 2); never raises, empty on failure or timeout.
-- `integrity._changed_files` — changed paths and rename pairs from `--name-status -z`, so paths with spaces or quotes are exact (R2).
+- `integrity._patch` — runs that per-file diff and decodes the bytes leniently, so a non-UTF-8 line keeps its file's count and markers (round 2).
+- `integrity._git_bytes` — raw git stdout, never raises, empty on failure or timeout; used by `_patch` and `_changed_files` (round 5).
+- `integrity._utf8` — strict decode of one file name, `None` when it is not UTF-8 (round 5).
+- `integrity._changed_files` — changed paths and rename pairs from `--name-status -z` read as bytes, so paths with spaces or quotes are exact (R2) and a non-UTF-8 name drops only itself (round 5).
 - `integrity._hunk_additions` — the `+` lines of one file's `-U0` patch after its first hunk header.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
 - `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines, each diffed with `--no-renames` (A2; round 3).
@@ -117,7 +128,8 @@ findings, and `test_integrity_section`'s `_none_` wording in
 ### Branches / guards
 - `Finding.line` gains the `new-suppression` and `baseline-widened` forms (A1, A2).
 - `_hunk_additions` ignores everything before the first `@@`, so header lines are never content; a deleted or binary file has no hunks and adds nothing.
-- `_patch` returns `""` when git fails, times out or cannot start, so that file adds nothing.
+- `_git_bytes` returns `b""` when git fails, times out or cannot start, so that file adds nothing.
+- `_changed_files` skips a record whose destination name is not UTF-8 and drops an undecodable rename source (round 5).
 - `integration_ratchet_paths` returns `[]` when the policy ref or file is unreadable, and drops non-string entries.
 
 ### Mocks
@@ -134,3 +146,4 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `test_paths_with_spaces_are_reported_and_matched_exactly` — R2: exact suppression line and baseline match for paths with spaces, exit 1.
 - `test_attributes_and_diff_drivers_do_not_hide_additions` (×4: `-diff`, `binary`, textconv driver, external diff command) — round 3: a configured baseline the leaf hides from diff still gives `baseline-widened ... +1` and its `new-suppression`, exit 1.
 - `test_file_renamed_onto_a_new_ratchet_path_widens_it` — round 3 audit: `git mv` onto a not-yet-existing ratchet path gives `+<all lines>`, exit 1.
+- `test_non_utf8_file_name_hides_no_other_finding` — round 5: a committed name with a 0xff byte beside `src/mod.py`'s added `# noqa`; prints `new-suppression: src/mod.py:1`, exit 1.
