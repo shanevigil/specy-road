@@ -307,14 +307,17 @@ def _read_records(path: str, command: str) -> list:
 
 
 def _record_argv(record: dict, command: str) -> list[str]:
-    """``{flag: value}`` -> the argv the single command would take; ``id`` is revise's IDEA_ID."""
-    argv = []
+    """``{flag: value}`` -> the argv the single command would take; ``id`` is revise's IDEA_ID.
+
+    Every value stays data: flags are ``--flag=value``, and the id follows ``--``, so an id or a
+    value such as ``--help`` can never be read as an option."""
+    argv, ident = [], []
     for key, value in record.items():
         flag = str(key).replace("_", "-")
         if flag in _NOT_RECORD_KEYS or (flag == "id" and command == "add-idea"):
             raise BrainstormError(f"key {key!r} is not allowed in a record")
         if flag == "id":
-            argv.insert(0, str(value))
+            ident = ["--", str(value)]
             continue
         values = value if isinstance(value, list) else [value]
         for v in values:
@@ -324,7 +327,7 @@ def _record_argv(record: dict, command: str) -> list[str]:
                 argv.append(f"--{flag}")
             elif v is not None and v is not False:
                 argv.append(f"--{flag}={v}")
-    return argv
+    return argv + ident
 
 
 def file_namespaces(ns: argparse.Namespace, command: str) -> list[argparse.Namespace]:

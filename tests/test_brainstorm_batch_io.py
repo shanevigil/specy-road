@@ -80,6 +80,7 @@ def test_add_idea_from_file_records_every_idea_with_flag_names_as_keys(repo: Pat
     ({"title": "Bad", "id": "B9"}, "not allowed"),
     ({"rationale": "no title"}, "missing a title"),
     ("just text", "expected a mapping"),
+    ({"title": "Bad", "help=x": True}, "ignored explicit argument"),
 ])
 def test_add_idea_from_file_writes_nothing_when_any_record_is_bad(repo: Path, tmp_path: Path, bad, message) -> None:
     _start(repo, "Existing")
@@ -135,6 +136,8 @@ def test_revise_from_file_applies_every_verdict(repo: Path, tmp_path: Path) -> N
     ({"id": "B2", "recommendation": "maybe"}, "invalid choice"),
     ({"recommendation": "strong"}, "needs `id`"),
     ({"id": "B2", "overlap": ["M1:sideways"]}, "overlap relation"),
+    ({"id": "--help", "recommendation": "strong"}, "no idea '--help'"),
+    ({"id": "-h", "recommendation": "strong"}, "no idea '-h'"),
 ])
 def test_revise_from_file_applies_nothing_when_any_record_is_bad(repo: Path, tmp_path: Path, bad, message) -> None:
     _start(repo, "One", "Two")
@@ -143,6 +146,17 @@ def test_revise_from_file_applies_nothing_when_any_record_is_bad(repo: Path, tmp
     code, out, err = _cli(repo, "revise", "--from-file", path)
     assert code == 1 and not out.strip() and message in err
     assert session_path(repo, SLUG).read_text(encoding="utf-8") == before
+
+
+def test_add_idea_from_file_keeps_option_like_values_as_data(repo: Path, tmp_path: Path) -> None:
+    _start(repo)
+    path = _file(tmp_path, "ideas.yaml", [{"title": "--help", "rationale": "-h", "evidence": ["--slug"],
+                                           "assumption": ["--from-file=x"]}])
+    code, out, _err = _cli(repo, "add-idea", "--from-file", path)
+    assert code == 0 and "usage:" not in out
+    idea = _session(repo).by_id("B1")
+    assert (idea.title, idea.rationale, idea.evidence, idea.assumptions) == ("--help", "-h", ["--slug"],
+                                                                              ["--from-file=x"])
 
 
 def test_revise_needs_an_id_or_a_file_but_not_both(repo: Path, tmp_path: Path) -> None:
