@@ -24,16 +24,15 @@ from typing import Any
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
-from specy_road.git_workflow_config import git_config_user_name, resolve_integration_defaults
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
 from specy_road.orchestration_config import DEFAULT_POLICY, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
-from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix
 from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import Unsupported, adapter_for
+from specy_road.worker_lease import acquire_lease, foreign_leases, max_workers, release_lease, slot_error
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
 from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_runner import spawn
@@ -207,31 +206,17 @@ def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[Worke
     return out
 
 
-def claimed_elsewhere(repo_root: Path, skip: set[str]) -> list[str]:
-    """Leaves this checkout's ``user.name`` claims on the integration branch (local and remote-tracking, as last
-    fetched) on a branch this repository has no local branch for: another clone's, each counted as a worker."""
-    me = git_config_user_name(repo_root)
-    base, remote, _ = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
-    heads = set((git_text(["for-each-ref", "--format=%(refname:short)", "refs/heads/"], repo_root) or "").split())
-    found = {str(e.get("node_id")) for ref in (f"refs/heads/{base}", f"refs/remotes/{remote}/{base}")
-             for e in (read_registry_at_ref(repo_root, ref, 30.0) or {}).get("entries") or []
-             if me and isinstance(e, dict) and e.get("owner") == me and e.get("branch") not in heads}
-    return sorted(found - skip)
-
-
-def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None) -> WorkerRecord | None:
+def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None,
+                      foreign: list[str] | None = None) -> WorkerRecord | None:
     """Under the lock: the leaf's live worker other than ``own``, else ``None`` once a ``max_workers`` slot is free;
-    counted are every other active record (linked worktrees share this directory) and :func:`claimed_elsewhere`."""
-    limit = int(pinned_config(repo_root)[0]["policy"]["max_workers"])
+    counted are every other active record (linked worktrees share this directory) and ``foreign`` lease refs."""
+    limit, foreign = max_workers(repo_root), foreign or []
     sweep_dead_wrappers(repo_root)   # a dead wrapper on another leaf must not hold a slot
     active = [r for r in list_records(repo_root, active_only=True) if r.worker_id != own]
     if existing := next((r for r in active if r.node_id == node_id), None):
         return existing
-    elsewhere = claimed_elsewhere(repo_root, {node_id} | {r.node_id for r in active})
-    if len(active) + len(elsewhere) >= limit:
-        where = f" (and {len(elsewhere)} claimed in other clones: {', '.join(elsewhere)})" if elsewhere else ""
-        raise WorkerError(f"{len(active)} workers active{where}, policy max_workers is {limit}; "
-                          "wait for one to finish or raise the limit")
+    if len(active) + len(foreign) >= limit:
+        raise slot_error(len(active), foreign, limit)
     return None
 
 
@@ -245,8 +230,9 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     sections, not under one: a hook witness must never queue behind them.
     """
     entry, harness = _entry_and_harness(repo_root, model, harness)
+    foreign = foreign_leases(repo_root)   # other checkouts' workers: a network read, so outside the lock
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id)
+        existing = _slot_or_existing(repo_root, node_id, foreign=foreign)
     if existing:
         return existing, False
     t = _target(repo_root, node_id)
@@ -256,7 +242,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     if err:
         raise WorkerError(err)
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id)   # re-checked: another delegate may have landed
+        existing = _slot_or_existing(repo_root, node_id, foreign=foreign)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
         return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree), True
@@ -289,10 +275,17 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
     try:
+        acquire_lease(repo_root, rec, new=True)   # before the harness starts: another checkout may have won the slot
+    except WorkerError as e:
+        append_event(repo_root, rec, "error", source="system", summary=str(e))
+        set_state(repo_root, rec, "failed", pid=None)
+        raise
+    try:
         spawn(repo_root, rec, launch)
     except OSError as e:
         append_event(repo_root, rec, "error", source="system", summary=f"cannot start the wrapper: {e}")
         set_state(repo_root, rec, "failed", pid=None)
+        release_lease(repo_root, rec.worker_id)
         raise WorkerError(f"{rec.worker_id}: cannot start the wrapper: {e}") from None
     return rec
 
@@ -331,6 +324,7 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     prompt.write_text(text, encoding="utf-8")
     launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
                             node_id=rec.node_id, repo_root=repo_root, launch_mode=mode, effort=effort)
+    acquire_lease(repo_root, rec, new=rec.state == "failed")   # a failed worker's lease was released with it
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)
@@ -356,7 +350,9 @@ def interrupt(repo_root: Path, worker_id: str) -> None:
 
 def terminate(repo_root: Path, worker_id: str) -> WorkerRecord:
     with workers_lock(repo_root):
-        return _terminate_locked(repo_root, load_record(repo_root, worker_id))
+        rec = _terminate_locked(repo_root, load_record(repo_root, worker_id))
+    release_lease(repo_root, rec.worker_id)   # a network call: after the lock
+    return rec
 
 
 def _terminate_locked(repo_root: Path, rec: WorkerRecord) -> WorkerRecord:

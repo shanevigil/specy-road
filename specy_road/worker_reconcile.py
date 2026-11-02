@@ -20,6 +20,7 @@ from specy_road.git_subprocess import git_text
 from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
+from specy_road.worker_lease import release_stale_leases
 from specy_road.worker_process import branch_mismatch
 from specy_road.worker_state import (
     FLAG_RECONCILE,
@@ -213,4 +214,5 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
         if ack and out:
             path.parent.mkdir(parents=True, exist_ok=True)
             _write_atomic(path, yaml.safe_dump(marks, sort_keys=True))
+    release_stale_leases(repo_root)   # this checkout's lease refs whose worker is gone; a network call, after the lock
     return out

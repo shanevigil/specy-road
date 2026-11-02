@@ -29,6 +29,7 @@ from specy_road.review_target import same_commit
 from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
+from specy_road.worker_lease import release_lease
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
     branch_mismatch,
@@ -115,6 +116,7 @@ def _payload_file(repo_root: Path, rec: WorkerRecord, token: str, payload: str) 
 def _refuse(repo_root: Path, rec: WorkerRecord, why: str) -> None:
     append_event(repo_root, rec, "error", source="system", summary=why[:500])
     set_state(repo_root, rec, "failed", pid=None)
+    release_lease(repo_root, rec.worker_id)
     raise WorkerError(f"{rec.worker_id}: {why}")
 
 
@@ -193,6 +195,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                          detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             mirror_logs(repo_root, rec)
             set_state(repo_root, rec, "failed", pid=None)
+            release_lease(repo_root, rec.worker_id)
             return 127
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
@@ -331,6 +334,8 @@ def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
         r.state = state
         r.pid = r.pgid = r.harness_pid = r.harness_start = None
     mutate(repo_root, rec, fn)
+    if state == "failed":   # the slot lease follows the record: idle and completed keep it
+        release_lease(repo_root, rec.worker_id)
 
 
 def main(argv: list[str] | None = None) -> None:

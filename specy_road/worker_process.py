@@ -191,6 +191,8 @@ def wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
     append_event(repo_root, rec, "error", source="system",
                  summary=f"wrapper pid {rec.pid or '-'} is gone without recording an exit; marked failed")
     set_state(repo_root, rec, "failed", pid=None)
+    from specy_road.worker_lease import release_lease   # noqa: PLC0415 — worker_lease imports this module
+    release_lease(repo_root, rec.worker_id)
     return True
 
 

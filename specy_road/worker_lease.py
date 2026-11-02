@@ -1,4 +1,5 @@
 """The human lease: ``worker handoff`` / ``reclaim`` (slice 7c); the hook witness is :mod:`worker_witness`.
+Below them, the slot lease other checkouts count against ``max_workers`` (M11.4).
 
 Split from :mod:`specy_road.worker_ops` for the file limit; the CLI reaches
 these through that module. Each transition runs under the workers lock as
@@ -12,11 +13,16 @@ intervention twice; a retry after that write only repairs the missing events.
 from __future__ import annotations
 
 import json
+import os
+import sys
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_subprocess import git_text
+from specy_road.git_subprocess import git_text, run
+from specy_road.git_workflow_config import resolve_integration_defaults
+from specy_road.orchestration_pinned import pinned_config
 from specy_road.worker_adapters import Unsupported, adapter_for
 from specy_road.worker_process import process_alive, require_branch, wrapper_gone
 from specy_road.worker_sessions import check_session_id, render_command
@@ -27,6 +33,7 @@ from specy_road.worker_state import (
     WorkerRecord,
     append_event,
     events_since,
+    list_records,
     load_record,
     mutate,
     require_writer,
@@ -154,3 +161,122 @@ def _reclaim_locked(repo_root: Path, rec: WorkerRecord, note: str) -> tuple[Work
     append_event(repo_root, rec, "reclaim", source="orchestrator", authority="orchestrator",
                  summary=f"lease back to broker; epoch {rec.instruction_epoch}")
     return rec, detail
+
+
+# --- the slot lease: one ref per live worker on the integration remote (M11.4) ---------------------------------
+#
+# ``refs/specy-road/leases/<checkout-id>/<worker-id>``, pushed when a turn launches or resumes and deleted when the
+# record goes ``failed`` or ``terminated`` (never on ``idle`` or ``completed``: those still hold their slot). A
+# checkout counts its own ``work/.workers/`` records plus every lease ref whose checkout id is not its own, so a
+# clone's workers count wherever their branches happen to exist and whoever owns them. One id per repository:
+# it lives in git's common dir, which linked worktrees share with the main checkout, as they share the records.
+
+LEASES = "refs/specy-road/leases/"
+LEASE_TIMEOUT = 20.0
+_OFFLINE: set[str] = set()   # remote URLs that failed in this process: warned once, not tried again
+
+
+def checkout_id(repo_root: Path) -> str | None:
+    """This repository's stable id (a uuid written once to ``<git-common-dir>/specy-road-checkout-id``)."""
+    common = git_text(["rev-parse", "--git-common-dir"], repo_root)
+    if not common:
+        return None
+    path = Path(repo_root, common) / "specy-road-checkout-id"
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except FileExistsError:
+        return path.read_text(encoding="utf-8").strip() or None
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(uuid.uuid4().hex + "\n")
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _remote(repo_root: Path) -> str | None:
+    """The integration remote, when this repository has it configured and it has not failed in this process."""
+    remote = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)[1]
+    url = git_text(["remote", "get-url", remote], repo_root)
+    return remote if url and url not in _OFFLINE else None
+
+
+def _offline(repo_root: Path, remote: str, why: str) -> None:
+    url = git_text(["remote", "get-url", remote], repo_root) or remote
+    if url not in _OFFLINE:
+        _OFFLINE.add(url)
+        print(f"warning: {why}; max_workers counted this checkout's workers only, not other checkouts'",
+              file=sys.stderr)
+
+
+def _lease_refs(repo_root: Path, remote: str, prefix: str) -> list[str] | None:
+    """``<checkout-id>/<worker-id>`` per lease ref under ``prefix``; ``None`` (warned) when the remote is unreachable."""
+    r = run(["ls-remote", remote, prefix + "*"], repo_root, timeout=LEASE_TIMEOUT)
+    if not r.ok:
+        why = r.message.splitlines()[-1] if r.message else r.failure
+        _offline(repo_root, remote, f"cannot read worker leases from {remote} ({why})")
+        return None
+    return sorted(line.split("\t", 1)[1][len(LEASES):] for line in r.out.splitlines() if "\t" in line)
+
+
+def foreign_leases(repo_root: Path) -> list[str]:
+    """Live workers of other checkouts: their lease refs on the integration remote (none without that remote)."""
+    remote, cid = _remote(repo_root), checkout_id(repo_root)
+    if not remote or not cid:
+        return []
+    return [n for n in _lease_refs(repo_root, remote, LEASES) or [] if not n.startswith(cid + "/")]
+
+
+def max_workers(repo_root: Path) -> int:
+    config, err = pinned_config(repo_root)
+    if err:
+        raise WorkerError(f"orchestration config: {err}")
+    return int(config["policy"]["max_workers"])
+
+
+def slot_error(active: int, foreign: list[str], limit: int) -> WorkerError:
+    where = f" (and {len(foreign)} leased by other checkouts: {', '.join(foreign)})" if foreign else ""
+    return WorkerError(f"{active} workers active{where}, policy max_workers is {limit}; "
+                       "wait for one to finish or raise the limit")
+
+
+def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool) -> None:
+    """Push ``rec``'s lease, then count again, so of two checkouts launching at once neither goes over the limit
+    (both may be refused; never one too many). ``new``: no lease existed, so a refusal deletes the one pushed."""
+    remote, cid = _remote(repo_root), checkout_id(repo_root)
+    if not remote or not cid:
+        return
+    tree = git_text(["hash-object", "-w", "-t", "tree", os.devnull], repo_root)   # the empty tree: nothing to upload
+    sha = tree and git_text(["-c", "user.name=specy-road", "-c", "user.email=specy-road@localhost", "commit-tree", tree,
+                             "-m", f"specy-road lease {rec.worker_id} {rec.node_id} {rec.harness}/{rec.model}"], repo_root)
+    r = run(["push", "--quiet", "--force", remote, f"{sha}:{LEASES}{cid}/{rec.worker_id}"], repo_root,
+            timeout=LEASE_TIMEOUT) if sha else None
+    if r is None or not r.ok:
+        _offline(repo_root, remote, f"cannot push the lease for {rec.worker_id} to {remote}; other checkouts will "
+                 "not count it")
+        return
+    limit, foreign = max_workers(repo_root), foreign_leases(repo_root)
+    local = [r for r in list_records(repo_root, active_only=True) if r.worker_id != rec.worker_id]
+    if len(local) + len(foreign) >= limit:
+        if new:
+            release_lease(repo_root, rec.worker_id)
+        raise slot_error(len(local), foreign, limit)
+
+
+def release_lease(repo_root: Path, *worker_ids: str) -> None:
+    """Delete these workers' lease refs; best effort (a ref left behind over-counts, and ``sync`` retries it)."""
+    remote, cid = _remote(repo_root), checkout_id(repo_root)
+    if remote and cid and worker_ids:
+        r = run(["push", "--quiet", remote, "--delete", *(f"{LEASES}{cid}/{w}" for w in worker_ids)], repo_root,
+                timeout=LEASE_TIMEOUT)
+        if r.failure == "timeout":
+            _offline(repo_root, remote, f"cannot reach {remote} to release worker leases")
+
+
+def release_stale_leases(repo_root: Path) -> list[str]:
+    """Delete this checkout's lease refs whose worker is no longer active here; returns the worker ids released."""
+    remote, cid = _remote(repo_root), checkout_id(repo_root)
+    if not remote or not cid:
+        return []
+    live = {r.worker_id for r in list_records(repo_root, active_only=True)}
+    stale = [n.split("/", 1)[1] for n in _lease_refs(repo_root, remote, f"{LEASES}{cid}/") or []]
+    stale = [w for w in stale if w not in live]
+    release_lease(repo_root, *stale)
+    return stale
