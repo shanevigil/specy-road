@@ -45,7 +45,6 @@ from specy_road.runtime_paths import resolve_repo_root
 
 RED_GREEN_NAME = "RED-GREEN.md"
 PRESERVE = "preserve: "
-_OUTCOMES = frozenset({"pass", "fail", "error"})
 
 
 def tests_under_check(repo_root: Path, base: str, head: str) -> list[str]:
@@ -182,7 +181,9 @@ def red_green_problems(repo_root: Path, node_id: str, base: str, commit: str, de
     if not same_commit(repo_root, recorded, commit):
         return [f"red-green: stale ({recorded[:12]})"]
     rows = data.get("tests") if isinstance(data.get("tests"), list) else []
-    rows = [r for r in rows if isinstance(r, dict) and {r.get("base"), r.get("head")} <= _OUTCOMES]
+    # An outcome that is not a string (a YAML list or mapping) is no evidence for that side.
+    rows = [{**r, **{k: r.get(k) if isinstance(r.get(k), str) else None for k in ("base", "head")}}
+            for r in rows if isinstance(r, dict)]
     return outcome_problems(rows, tests_under_check(repo_root, base, commit), declared)
 
 

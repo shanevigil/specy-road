@@ -22,7 +22,7 @@ from specy_road.integrity_gate import integrity_gate_problems
 from specy_road.orchestration_config import validate_orchestration_dict
 from specy_road import red_green
 from specy_road.red_green import RED_GREEN_NAME, outcome_problems
-from specy_road.review_files import reviews_dir
+from specy_road.review_files import render_front_matter, reviews_dir
 from specy_road.review_gate import evaluate_gate
 from specy_road.review_target import resolve_target
 
@@ -131,6 +131,20 @@ def test_gate_flags_a_stale_record(tmp_path: Path) -> None:
     (d / RED_GREEN_NAME).write_text(f"---\ncommit: {old}\nbase: {old}\ntests: []\n---\n")
     commit_file(repo, "src/calc.py", "def add(a, b):\n    return b + a\n", "later work")
     assert _red_green_problems(repo) == [f"red-green: stale ({old[:12]})"]
+
+
+@pytest.mark.parametrize(("side", "bad", "problem"), [
+    ("base", [], "not-red"), ("base", {"x": 1}, "not-red"), ("head", [], "not-green"), ("head", {"x": 1}, "not-green"),
+])
+def test_gate_reports_a_non_string_outcome_as_a_per_test_problem(tmp_path: Path, side: str, bad, problem: str) -> None:
+    repo = _leaf(tmp_path)
+    head = git(repo, "rev-parse", "HEAD")
+    rows = [{"test": t, "base": "pass" if t.endswith("test_kept") else "fail", "head": "pass"} for t in UNDER_CHECK]
+    rows[2][side] = bad   # test_red
+    d = reviews_dir(repo, "M1.1")
+    d.mkdir(parents=True)
+    (d / RED_GREEN_NAME).write_text(render_front_matter({"commit": head, "base": head, "tests": rows}))
+    assert integrity_gate_problems(repo, {"red_green": True}, "M1.1", head, "dev") == [f"{problem}: {UNDER_CHECK[2]}"]
 
 
 def test_preserve_must_pass_on_both_and_others_must_go_red_to_green() -> None:

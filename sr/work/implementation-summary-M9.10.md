@@ -55,6 +55,8 @@ description mentions only integrity finding lines, not `preserve: <id>`).
 
 ## Verification
 
+- Round 2 (after the A4 block): `python -m pytest -q -p no:cacheprovider tests/test_red_green.py tests/test_integrity_gate.py` — 26 passed; `specy-road file-limits` — OK; `ruff check specy_road/red_green.py tests/test_red_green.py` — all passed.
+
 - `pytest tests/test_red_green.py tests/test_integrity_gate.py tests/test_review_pre_existing.py` — 28 passed.
 - `specy-road file-limits` — OK. `ruff check specy_road tests scripts` — all passed.
 - `scripts/check_clones.py` (pylint 4.1.3 via uvx) — 0 new. `scripts/check_test_private_imports.py` — 0 new.
@@ -74,7 +76,7 @@ description mentions only integrity finding lines, not `preserve: <id>`).
 
 ### Branches and guards
 - `integrity_gate_problems`: red-green branch when `policy.red_green`; shared merge-base fail-closed with a `red-green:` prefix when only red-green is on.
-- `red_green_problems`: rows whose outcomes are not in {pass, fail, error} are dropped (no evidence), so a malformed record cannot raise.
+- `red_green_problems`: non-dict rows are dropped, and a `base` or `head` outcome that is not a string (a YAML list or mapping) is read as no evidence for that side, so a malformed record yields a per-test `not-red` / `not-green` instead of raising (round 2 fix for the gpt-6.1-sol A4 block: the earlier set-membership filter hashed the outcomes and raised TypeError on a list or mapping).
 - `cmd_red_green`: lazy import of `integrity_gate.planned_test_changes` (that module imports `red_green`).
 - `_outcomes_at`: worktree creation failure returns an error and removes the temp dir.
 
@@ -88,5 +90,6 @@ description mentions only integrity finding lines, not `preserve: <id>`).
 - `test_gate_flags_a_missing_record_and_ignores_evidence_with_the_policy_off` — A4 `red-green: missing`; policy off leaves the gate unchanged.
 - `test_gate_flags_a_stale_record` — A4 `red-green: stale (<sha>)`.
 - `test_preserve_must_pass_on_both_and_others_must_go_red_to_green` — A3 preserve failing at head, regular failing at head, test without a row.
+- `test_gate_reports_a_non_string_outcome_as_a_per_test_problem` — A4 round 2: a current-commit record whose `base` or `head` is a YAML list or mapping gives `not-red` / `not-green` for that test through `integrity_gate_problems`, not a TypeError.
 - `test_no_integration_ref_fails_closed` — gate fails closed with only red-green on.
 - `test_schema_accepts_the_policy` — schema accepts boolean `red_green`, rejects a string.
