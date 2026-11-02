@@ -131,8 +131,8 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
     return _check_tree(wt, branch)
 
 
-def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str | None]:
-    """``(custom cli, model id the harness is told)``.
+def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str | None, str]:
+    """``(custom cli, model id the harness is told, profile's access.launch_mode)``.
 
     ``channels.cli`` wins; a profile's ``access.cli`` stands in only for ``generic``, since a named
     harness's default command is what gives it JSON events and a session id.
@@ -144,8 +144,9 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     if not cli and harness == "generic" and prof is not None:
         cli = prof.cli()
     if prof is None:
-        return cli, str(entry["id"])
-    return cli, (None if prof.api_id.strip().lower() == "unknown" else prof.api_id)   # unknown: harness default
+        return cli, str(entry["id"]), "full"
+    api_id = None if prof.api_id.strip().lower() == "unknown" else prof.api_id   # unknown: harness default
+    return cli, api_id, prof.launch_mode()
 
 
 def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
@@ -239,8 +240,9 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     prompt.parent.mkdir(parents=True, exist_ok=True)
     prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
-    cli, api_id = _cli_for(repo_root, entry, harness)
-    launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root)
+    cli, api_id, mode = _cli_for(repo_root, entry, harness)
+    launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
+                                         launch_mode=mode)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
@@ -279,13 +281,13 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
-    cli, api_id = _cli_for(repo_root, entry, rec.harness)
+    cli, api_id, mode = _cli_for(repo_root, entry, rec.harness)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
     prompt.write_text(text, encoding="utf-8")
     launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
-                            node_id=rec.node_id, repo_root=repo_root)
+                            node_id=rec.node_id, repo_root=repo_root, launch_mode=mode)
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)

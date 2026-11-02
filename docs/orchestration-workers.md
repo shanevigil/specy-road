@@ -210,6 +210,15 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 `review-packet`, reviewer prompts, `review record`, `handoff status`,
 `mark-implementation-reviewed`, `finish-this-task`.
 
+**Backgrounded tests.** A `completion` with exit 0 and READY missing, after
+a final reply saying a test or verifier run is still going in the background
+("I'll be notified when it finishes"), is a lost turn: a headless turn ends
+when the agent replies, and nothing resumes the session when the background
+job finishes. The executor prompt tells the executor to run the verifier and
+tests in the foreground for this reason. To recover, `worker message W
+--text` telling the executor to rerun them in the foreground, wait for them
+to finish, and then complete its steps.
+
 | Command | Does |
 |---|---|
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. |

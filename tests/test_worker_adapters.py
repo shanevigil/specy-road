@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -192,3 +193,77 @@ def test_custom_cli_resume_needs_the_session_placeholder(tmp_path: Path) -> None
     assert cc.resume("sid", p, tmp_path, "m", "wrapper {prompt}").argv[:2] == ["claude", "-p"]   # no {session}: default
     r = cc.resume("sid", p, tmp_path, "m", "wrapper {prompt} --resume {session}")
     assert r.argv[0] == "sh" and "--resume sid" in r.argv[2] and r.session_id == "sid"
+
+
+# --- access.launch_mode (M10.4) -------------------------------------------------
+
+FULL_INIT = {"type": "system", "subtype": "init", "session_id": "s1", "model": "opus", "claude_code_version": "2.1.300",
+             "tools": ["Bash", "Read", "Edit", "Write", "Skill"], "mcp_servers": [{"name": "docs", "status": "connected"}],
+             "plugins": [{"name": "lint", "path": "/p"}]}
+BARE_INIT = {"type": "system", "subtype": "init", "session_id": "s1", "tools": ["Bash", "Read", "Edit"],
+             "mcp_servers": [], "plugins": []}
+
+
+def test_claude_passes_bare_only_when_the_profile_says_bare(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cc = wa.adapter_for("claude-code")
+    bare = cc.launch(p, tmp_path, "m", None, launch_mode="bare")
+    assert "--bare" in bare.argv and bare.launch_mode == "bare"
+    assert "--bare" in cc.resume("sid", p, tmp_path, "m", None, launch_mode="bare").argv
+    for launch in (cc.launch(p, tmp_path, "m", None, launch_mode="full"), cc.launch(p, tmp_path, "m", None),
+                   cc.resume("sid", p, tmp_path, "m", None, launch_mode="full")):
+        assert "--bare" not in launch.argv and launch.launch_mode == "full"
+    # A custom command is run as written; it only carries the mode for the init check.
+    custom = cc.launch(p, tmp_path, "m", "wrapper {prompt}", launch_mode="bare")
+    assert custom.argv == ["sh", "-c", f"wrapper {p}"] and custom.launch_mode == "bare"
+    resumed = cc.resume("sid", p, tmp_path, "m", "wrapper {prompt} --resume {session}", launch_mode="bare")
+    assert "--bare" not in resumed.argv[2] and resumed.launch_mode == "bare"
+
+
+def test_claude_init_detail_reports_what_loaded_and_the_inferred_mode() -> None:
+    cc = wa.adapter_for("claude-code")
+    full = cc.parse(json.dumps(FULL_INIT))
+    assert full.type == "started" and full.detail == {
+        "tools": ["Bash", "Read", "Edit", "Write", "Skill"], "mcp_servers": ["docs"], "plugins": ["lint"],
+        "version": "2.1.300", "inferred_mode": "full"}
+    bare = cc.parse(json.dumps(BARE_INIT)).detail
+    assert bare["inferred_mode"] == "bare" and "version" not in bare
+    assert cc.parse(json.dumps({**BARE_INIT, "version": "2.1.301"})).detail["version"] == "2.1.301"
+    # No tool list reported: nothing to infer from, so no mode and no mismatch.
+    quiet = cc.parse('{"type":"system","subtype":"init","session_id":"s1"}').detail
+    assert "inferred_mode" not in quiet
+
+
+def test_claude_init_mismatch_adds_an_error_naming_both_modes(tmp_path: Path) -> None:
+    cc = wa.adapter_for("claude-code")
+    full, bare = wa.Launch(["claude"]), wa.Launch(["claude"], launch_mode="bare")
+    assert [e.type for e in cc.parse_events(json.dumps(FULL_INIT), full)] == ["started"]
+    assert [e.type for e in cc.parse_events(json.dumps(BARE_INIT), bare)] == ["started"]
+    started, err = cc.parse_events(json.dumps(BARE_INIT), full)
+    assert started.type == "started" and err.type == "error" and err.session_id == "s1"
+    assert "bare mode" in err.summary and "launch_mode is full" in err.summary
+    assert err.detail == {"inferred_mode": "bare", "launch_mode": "full"}
+    assert [e.type for e in cc.parse_events(json.dumps(FULL_INIT), bare)] == ["started", "error"]
+    assert cc.parse_events('{"type":"user"}', full) == []
+    # Other harnesses never check the mode.
+    assert [e.type for e in wa.adapter_for("cursor").parse_events(json.dumps(BARE_INIT), full)] == ["started"]
+
+
+def test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    prompt, cli = _fake(tmp_path, [FULL_INIT, {"type": "result", "subtype": "success", "result": "ok", "session_id": "s1"}])
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    launch = wa.adapter_for("claude-code").launch(prompt, repo, "opus", cli, launch_mode="bare")
+    payload = tmp_path / "payload.json"   # what `spawn` writes and `main` reads back
+    payload.write_text(json.dumps({"launch": asdict(launch)}))
+    with pytest.raises(SystemExit) as e:
+        wr.main([str(repo), rec.worker_id, "tok", str(payload)])
+    assert e.value.code == 0
+    events = ws.events_since(repo, rec.worker_id)
+    assert [x.type for x in events] == ["started", "launched", "first_output", "started", "error", "turn_completed",
+                                        "completion"]
+    mismatch = events[4]
+    assert mismatch.detail == {"inferred_mode": "full", "launch_mode": "bare"}
+    assert "exit" not in mismatch.detail   # not a turn end: the turn goes on
+    assert ws.load_record(repo, rec.worker_id).provider_session_id == "s1"

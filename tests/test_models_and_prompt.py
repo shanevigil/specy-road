@@ -99,6 +99,19 @@ def test_broken_profile_reports_errors(tmp_path: Path) -> None:
     assert prof.for_id("x-high") is None
 
 
+def test_launch_mode_is_full_or_bare_and_absent_means_full(tmp_path: Path) -> None:
+    head = "---\nprofile_schema: 2\nfamily: f\nmodel: m\napi_id: m\nversion_rank: latest\nresearched: 2026-10-30\n"
+    p = tmp_path / "my-model.md"
+    for access, mode in (("{}", "full"), ("{launch_mode: full}", "full"), ("{launch_mode: bare}", "bare")):
+        p.write_text(head + f"access: {access}\nrole_fit: {{}}\n---\n")
+        prof = mp.load_profile(p)
+        assert prof.ok and prof.launch_mode() == mode
+    p.write_text(head + "access: {launch_mode: minimal}\nrole_fit: {}\n---\n")
+    assert mp.load_profile(p).errors == ["profile my-model: `access.launch_mode` must be full or bare, not 'minimal'"]
+    for name in ("claude-opus-5-5", "claude-fable-5-1"):   # the shipped Claude profiles pin the design intent
+        assert mp.load_profile(TEMPLATE_PROFILES / "anthropic-claude" / f"{name}.md").data["access"]["launch_mode"] == "full"
+
+
 # --- models CLI ---------------------------------------------------------------
 
 def test_models_list_json_shows_roster_and_unrostered(tmp_path: Path, capsys) -> None:
@@ -120,6 +133,29 @@ def test_models_show_prints_fields_and_section(tmp_path: Path, capsys) -> None:
     out = capsys.readouterr().out
     assert "api_id: claude-opus-5-5" in out and "## Failure modes" in out and "mitigation in prompt" in out
     assert _run(models_cli, "models", "show", "nope", "--repo-root", str(repo)) == 1
+
+
+def test_models_show_prints_a_bad_launch_mode_and_delegate_reads_a_good_one(tmp_path: Path, capsys,
+                                                                            monkeypatch) -> None:
+    from specy_road import worker_ops as ops  # noqa: PLC0415 — only this test needs the worker side
+    from specy_road import worker_state as ws  # noqa: PLC0415
+    repo = _repo(tmp_path)
+    launches = []
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
+    rec, _ = ops.delegate(repo, "M1.1", "opus", harness="claude-code")
+    assert launches[0].launch_mode == "full" and "--bare" not in launches[0].argv
+    ws.mutate(repo, rec, lambda r: setattr(r, "provider_session_id", "sid-1"))
+    ws.set_state(repo, rec, "idle", pid=None)
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    prof_path.write_text(prof_path.read_text().replace("launch_mode: full", "launch_mode: bare", 1))
+    _commit_profile(repo)
+    ops.message(repo, rec.worker_id, "go on")   # the resume reads the pinned profile again
+    assert launches[1].launch_mode == "bare" and launches[1].argv[:4] == ["claude", "-p", "--bare", "--resume"]
+    prof_path.write_text(prof_path.read_text().replace("launch_mode: bare", "launch_mode: lean", 1))
+    _commit_profile(repo)
+    assert _run(models_cli, "models", "show", "opus", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out
+    assert "INVALID:" in out and "profile claude-opus-5-5: `access.launch_mode` must be full or bare, not 'lean'" in out
 
 
 def test_models_stale_exits_1_only_for_rostered(tmp_path: Path, capsys) -> None:
@@ -152,6 +188,14 @@ def test_executor_prompt_has_precondition_boundary_rules_and_brief(tmp_path: Pat
     assert "Known failure modes of this model" in text
     assert "Effort for implementation: `medium`" in text
     assert "# Work-packet brief: `M1.1`" in text and "- **A1:** a.py exists" in text
+
+
+def test_executor_prompt_keeps_verifier_and_tests_in_the_foreground(tmp_path: Path) -> None:
+    text = role_prompt.build_prompt(_repo(tmp_path), "M1.1", role="executor", model="opus")[0]
+    step = next(line for line in text.splitlines() if line.startswith("3. "))
+    assert "Run the verifier and tests the brief names in the foreground" in step
+    assert "do not end your turn while a command you started is still running" in step
+    assert "nothing resumes it when a background job finishes" in step   # why: a headless turn ends on reply
 
 
 def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:

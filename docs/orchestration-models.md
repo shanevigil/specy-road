@@ -31,6 +31,36 @@ api_id: claude-opus-5-5
 aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
 ```
 
+A profile's `access.launch_mode` pins how much of its harness a Claude Code
+worker gets: `full` (the default when absent) or `bare`. Any other value makes
+the profile invalid, and `models show` prints the error naming the profile.
+
+```yaml
+access:
+  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
+```
+
+- **`full`** — `worker delegate` and `message`/`resume` never pass `--bare`, so
+  `claude -p` loads hooks, skills, custom commands, subagents, plugins, MCP
+  servers, auto memory and CLAUDE.md as an interactive session would. This is
+  the design intent (a worker keeps its harness's native tools), and the
+  shipped Claude profiles set it.
+- **`bare`** — the default command adds `--bare` on launch and on resume.
+  Bare mode never reads OAuth credentials or the keychain, so the worker needs
+  `ANTHROPIC_API_KEY` (or an `apiKeyHelper`) instead of your subscription
+  login; Bedrock, Google Cloud and Foundry credentials still work.
+
+A roster `channels.cli` is run as written: the mode adds no flag to it.
+Claude Code's headless docs say `--bare` "will become the default for `-p` in a
+future release" ([code.claude.com/docs/en/headless](https://code.claude.com/docs/en/headless),
+read 2026-11-01), so the mode is checked as well as set: the worker's `started`
+event records what the harness reported in its `system/init` line (`version`,
+`tools`, `mcp_servers`, `plugins`) and an `inferred_mode` — `bare` when the tool
+list is no more than `Bash`, `Read` and `Edit`, else `full`. When that differs
+from the profile's `launch_mode` the worker also records an `error` event naming
+both, which `worker sync` shows on the next turn. The check applies to a custom
+`channels.cli` too, since its output is still parsed as Claude Code's.
+
 The roster `id` stays the label review records and the gate count. When the
 `id` is one of the profile's aliases (found that way or named by `profile:`),
 the alias is what `worker delegate` passes the harness as the model, since it is

@@ -11,37 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: integrity-report
-    node_id: M9.5
-    branch: feature/rm-integrity-report
-    touch_zones:
-      - specy_road/integrity.py
-      - specy_road/bundled_scripts/integrity_cli.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/review_packet.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: pin-harness-discovery-mode
-    node_id: M10.4
-    branch: feature/rm-pin-harness-discovery-mode
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/worker_runner.py
-      - specy_road/model_profiles.py
-      - specy_road/templates/project/model-profiles/
-      - docs/orchestration-models.md
-      - suggested_prompts/
-      - tests/test_worker_adapters.py
-      - tests/test_models_and_prompt.py
-    started: '2026-10-30'
-    owner: savigil
-    implementation_review: pending
   - codename: output-budgets-with-full
     node_id: M10.7
     branch: feature/rm-output-budgets-with-full
@@ -63,73 +32,117 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
-  - codename: land-check-on-merge-commit
-    node_id: M9.1
-    branch: feature/rm-land-check-on-merge-commit
-    touch_zones:
-      - specy_road/finish_land_integration.py
-      - specy_road/finish_land_check.py
-      - specy_road/bundled_scripts/finish_task_args.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - docs/git-workflow.md
-      - CHANGELOG.md
-      - tests/
-      - specy_road/finish_modes.py
-      - specy_road/feature_rm_registry.py
-      - specy_road/bundled_scripts/finish_task.py
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
-  - codename: promote-judgement
-    node_id: M4.1
-    branch: feature/rm-promote-judgement
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/brainstorm_prompt.py
-      - specy_road/templates/specyrd/commands/specyrd-brainstorm.md
-      - docs/brainstorming.md
-      - tests/
-      - specy_road/bundled_scripts/brainstorm_close.py
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
-  - codename: session-overlap-warnings-name-the-other-worktree-and-its-edit-state
-    node_id: M4.15
-    branch: feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state
-    touch_zones:
-      - specy_road/bundled_scripts/session_cli.py
-      - specy_road/session_presence.py
-      - specy_road/session_overlap.py
-      - docs/dev-workflow.md
-      - tests/
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
-  - codename: further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
-    node_id: M5.8
-    branch: feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - tests/
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
-  - codename: foreground-long-commands
-    node_id: M10.15
-    branch: feature/rm-foreground-long-commands
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - docs/orchestration-workers.md
-      - tests/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: enforced-rules-pointers
     node_id: M5.4
     branch: feature/rm-enforced-rules-pointers
     touch_zones:
       - specy_road/templates/specyrd/agents-md-block.md
       - specy_road/templates/specyrd/claude-md-block.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: per-role-effort-in-model
+    node_id: M10.5
+    branch: feature/rm-per-role-effort-in-model
+    touch_zones:
+      - specy_road/model_profiles.py
+      - specy_road/worker_adapters.py
+      - specy_road/worker_sessions.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - specy_road/templates/project/model-profiles/
+      - docs/orchestration-models.md
+      - tests/test_models_and_prompt.py
+      - tests/test_worker_adapters.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/worker_adapter_parsers.py
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: emit-a-stalled-event
+    node_id: M10.9
+    branch: feature/rm-emit-a-stalled-event
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_state.py
+      - specy_road/worker_ops.py
+      - specy_road/orchestration_config.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - docs/orchestration.md
+      - tests/test_worker_faults.py
+      - tests/test_worker_state.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_reconcile.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees
+    node_id: M4.16
+    branch: feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_files.py
+      - specy_road/bundled_scripts/doctor.py
+      - docs/orchestration.md
+      - docs/pm-llm-review.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: integrity-gate-and-waivers
+    node_id: M9.6
+    branch: feature/rm-integrity-gate-and-waivers
+    touch_zones:
+      - specy_road/integrity_gate.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/templates/project/schemas/roadmap.schema.json
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/
+      - docs/roadmap-authoring.md
+      - docs/orchestration-review.md
+      - suggested_prompts/
+      - CHANGELOG.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: promote-structured
+    node_id: M4.2
+    branch: feature/rm-promote-structured
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: brainstorm-lenses
+    node_id: M4.6
+    branch: feature/rm-brainstorm-lenses
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_lenses.py
+      - specy_road/bundled_scripts/brainstorm_prompt_diverge.py
+      - specy_road/bundled_scripts/brainstorm_prompt.py
+      - specy_road/search_index.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: wrapper-imports-launcher
+    node_id: M10.16
+    branch: feature/rm-wrapper-imports-launcher
+    touch_zones:
+      - specy_road/worker_runner.py
       - tests/
     started: '2026-11-01'
     owner: savigil

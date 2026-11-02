@@ -33,7 +33,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.17` A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch `a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` — task — **Complete**
   - `M3.18` Bring role_prompt under the file cap and clear the ruff complexity error `bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error` — task — **Complete**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
-  - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
+  - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Complete**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**
   - `M4.3` Batch ideas and verdicts from a file, merge, and gap ideas `brainstorm-batch-io` — task — **Not Started**
   - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Not Started**
@@ -47,7 +47,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Complete**
   - `M4.13` specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes `specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` — task — **Complete**
   - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Complete**
-  - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Not Started**
+  - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Complete**
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Not Started**
   - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
   - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Complete**
@@ -59,7 +59,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
-  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Not Started**
+  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
@@ -75,11 +75,11 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Not Started**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
 - `M9` Regression prevention `regression-prevention` — phase — **Not Started**
-  - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Not Started**
+  - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Complete**
   - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Complete**
   - `M9.3` Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project `layout-with-outside-change` — task — **Complete**
   - `M9.4` An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet `executor-blocked-on` — task — **Complete**
-  - `M9.5` specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them `integrity-report` — task — **Not Started**
+  - `M9.5` specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them `integrity-report` — task — **Complete**
   - `M9.6` With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup `integrity-gate-and-waivers` — task — **Not Started**
   - `M9.7` specy-road integrity also reports new lint suppressions and widened baseline files `suppression-and-ratchet-findings` — task — **Not Started**
   - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Not Started**
@@ -89,7 +89,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
-  - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Not Started**
+  - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Not Started**
   - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
@@ -100,20 +100,18 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
-  - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Not Started**
+  - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
+- `M10.5` on `feature/rm-per-role-effort-in-model` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
-- `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
-- `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
-- `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
-- `M9.1` on `feature/rm-land-check-on-merge-commit` since 2026-10-31
-- `M9.5` on `feature/rm-integrity-report` since 2026-10-29
+- `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
+- `M4.16` on `feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` since 2026-11-01
+- `M5.4` on `feature/rm-enforced-rules-pointers` since 2026-11-01
 
 ## Reaching the detail behind this
 

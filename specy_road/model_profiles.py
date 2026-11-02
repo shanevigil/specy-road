@@ -1,7 +1,7 @@
 """Read model profiles (``model-profiles/<family>/<api_id>.md``) for the roster.
 
 A profile is Markdown with a schema-2 YAML front matter (the machine part: ids,
-limits, prices, ``role_fit``, ``access.cli``, ``effort_map``) and body sections
+limits, prices, ``role_fit``, ``access.cli``, ``effort_map``, ``launch_mode``) and body sections
 (``## Strengths``, ``## Failure modes``, ``## Prompting rules``, …). The
 toolkit ships a canonical set and ``init project`` scaffolds them into the
 adopter's repo, where a roster entry's ``profile`` key points at one; the team
@@ -28,6 +28,9 @@ PROFILE_SCHEMA = 2
 DEFAULT_MAX_AGE_DAYS = 180
 ROLES = ("coordinator", "executor", "reviewer")
 _REQUIRED = ("profile_schema", "family", "model", "api_id", "version_rank", "researched", "access", "role_fit")
+#: ``access.launch_mode``: ``full`` lets the harness discover its hooks, skills, MCP servers and
+#: CLAUDE.md; ``bare`` (Claude Code's ``--bare``) skips them. Absent means ``full``.
+LAUNCH_MODES = ("full", "bare")
 
 
 @dataclass
@@ -75,6 +78,11 @@ class Profile:
         access = self.data.get("access")
         cli = access.get("cli") if isinstance(access, dict) else None
         return None if not isinstance(cli, str) or cli.strip().lower() == "none" else cli
+
+    def launch_mode(self) -> str:
+        """``access.launch_mode``, ``full`` when absent (an invalid value is a profile error)."""
+        access = self.data.get("access")
+        return str((access.get("launch_mode") if isinstance(access, dict) else None) or "full")
 
     def bullets(self, section: str) -> list[str]:
         """The ``- `` items under ``## <section>``, without the dash."""
@@ -129,7 +137,7 @@ def _as_date(raw: Any) -> date | None:
         return None
 
 
-def _structure_errors(data: dict[str, Any]) -> list[str]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
+def _structure_errors(data: dict[str, Any], name: str) -> list[str]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Shapes the readers assume: wrong ones made ``profile_ok`` true and then raised."""
     out = []
     access = data.get("access")
@@ -140,6 +148,8 @@ def _structure_errors(data: dict[str, Any]) -> list[str]:  # noqa: C901 — base
             out.append("`access.cli` must be a string")
         if "effort_map" in access and not isinstance(access["effort_map"], dict):
             out.append("`access.effort_map` must be a mapping")
+        if "launch_mode" in access and access["launch_mode"] not in LAUNCH_MODES:
+            out.append(f"profile {name}: `access.launch_mode` must be full or bare, not {access['launch_mode']!r}")
     fit = data.get("role_fit")
     if "role_fit" in data and not isinstance(fit, dict):
         out.append("`role_fit` must be a mapping of role → {score, reason}")
@@ -171,7 +181,7 @@ def parse_profile(path: Path, text: str) -> Profile:
     errors = [f"missing `{k}`" for k in _REQUIRED if k not in data]
     if data.get("profile_schema") != PROFILE_SCHEMA:
         errors.append(f"profile_schema is {data.get('profile_schema')!r}, expected {PROFILE_SCHEMA}")
-    return Profile(path, data, _sections(body), errors + _structure_errors(data))
+    return Profile(path, data, _sections(body), errors + _structure_errors(data, path.stem))
 
 
 def load_profile(path: Path) -> Profile:

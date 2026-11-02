@@ -92,8 +92,8 @@ readable.
 
 The prompt files next to it are one per pass — `work/brainstorm-<slug>-r1-prompt.md`,
 `…-r2-prompt.md` and so on per diverge round, `…-r1-sN-prompt.md` per panel
-shard, `…-recommend-prompt.md`, `…-evidence-prompt.md` — so a later pass never
-overwrites an earlier one and every prompt an agent ran stays available for
+shard, `…-recommend-prompt.md`, `…-evidence-prompt.md`, `…-authoring-prompt.md`
+(after promote) — so a later pass never overwrites an earlier one and every prompt an agent ran stays available for
 audit. They are regenerated from the session plus the current graph, so they
 are gitignored.
 
@@ -347,11 +347,9 @@ about to promote on a `strong` verdict that no `matched` source backs — its
 sources are unverified, not found or blocked, or it has none — and names
 `verify` or `evidence` as the fix. It warns; the call is yours.
 
-The new sheet's `## Intent` is seeded from the idea's rationale; its
-`## References` gains the sources (with quote and verification state), the
-hypothesis and assumptions, and the cluster's rejected or parked siblings as
-"alternatives considered" with their reasons. Rewrite the Intent once the
-slice is properly scoped — the seed is a starting point, not a spec.
+The new sheet's `## Intent` is seeded from the idea's rationale; its `## Approach` opens with the critics' objections and the verdict reasoning (`revise --critic`, `--why`) as constraints; its `## References` gains the overlaps with existing nodes (id and relation), the sources (with quote and verification state), the hypothesis and assumptions, and the cluster's rejected or parked siblings as "alternatives considered" with their reasons. When the session has a recorded frame, the anchor's sheet gains a `## Brainstorm frame` section with it (a later promote replaces it). Rewrite the Intent once the slice is properly scoped — the seed is a starting point, not a spec, and pickup skips the node until then.
+
+A successful promote also writes `work/brainstorm-<slug>-authoring-prompt.md` (gitignored) and prints its path: hand it to your agent to draft each promoted node's Intent, Approach steps, tasks, acceptance, touch zones and references from the session and the repo, for you to approve. It covers that promote call's nodes; `--dry-run` writes none.
 
 Options: `--under NODE_ID` overrides the anchor; `--type` is `milestone` by
 default (`vision`, `phase`, `task` also work; `gate` is refused — a gate is a

@@ -129,7 +129,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.4_pin-harness-discovery-mode_04b6ef0b-1f8d-4227-b577-b4721aec8b86.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pin harness discovery mode per profile",
       "touch_zones": [
         "specy_road/worker_adapters.py",
@@ -172,7 +172,11 @@
         "specy_road/templates/project/model-profiles/",
         "docs/orchestration-models.md",
         "tests/test_models_and_prompt.py",
-        "tests/test_worker_adapters.py"
+        "tests/test_worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/models_cli.py",
+        "specy_road/worker_adapter_parsers.py"
       ],
       "type": "task"
     },
@@ -306,7 +310,10 @@
         "docs/orchestration-workers.md",
         "docs/orchestration.md",
         "tests/test_worker_faults.py",
-        "tests/test_worker_state.py"
+        "tests/test_worker_state.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },
@@ -473,7 +480,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.15_foreground-long-commands_2d5b98da-b88b-44b1-90c2-0b0542250006.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",

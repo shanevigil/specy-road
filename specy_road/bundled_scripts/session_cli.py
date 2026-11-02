@@ -30,6 +30,7 @@ from specy_road.session_presence import (
     start_session,
     warn_lines,
 )
+from specy_road.session_overlap import overlap_warning_lines
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import ADAPTERS, decide, read_payload
 
@@ -49,7 +50,7 @@ def cmd_start(ns: argparse.Namespace) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
     print(f"session {s.agent}: {len(s.paths)} path(s), until {s.expires} ({s.path})")
-    for line in warn_lines(conflicts(root, s.paths, exclude=s.agent), what="your paths"):
+    for line in overlap_warning_lines(root, conflicts(root, s.paths, exclude=s.agent), what="your paths"):
         print(line, file=sys.stderr)
     return 0
 
