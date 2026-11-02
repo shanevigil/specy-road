@@ -67,7 +67,7 @@ policy:
   reviewer_fresh_session: true
   signed_reviews: false
   reviewer_reruns_required: true
-  max_workers: 10
+  max_workers: 16
   # Baseline files a leaf may only shrink; `specy-road integrity` reports any it adds lines to.
   ratchet_paths:
     - constraints/clone-baseline.json
