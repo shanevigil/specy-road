@@ -162,7 +162,7 @@
       ],
       "codename": "runtime-verification-of-the-harness-facts-against-installed-binaries",
       "dependencies": [],
-      "execution_milestone": "Human-led",
+      "execution_milestone": "Agentic-led",
       "id": "M8.7",
       "node_key": "431d31bb-d8bd-4b7f-8259-66c9c756be94",
       "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
