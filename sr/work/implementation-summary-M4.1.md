@@ -34,6 +34,14 @@ Branch `feature/rm-promote-judgement`, base `d703de1`.
   `tests/test_brainstorm_promote_judgement.py` covers each section.
 - **Docs.** `docs/brainstorming.md` §5 and the prompt-file list;
   `specyrd-brainstorm.md` stub section 5.
+- **Close archives the authoring prompt (review round 1 fix).**
+  `brainstorm_close.PROMPT_PASS_RE` now matches `-authoring`, so
+  `brainstorm close` moves `work/brainstorm-<slug>-authoring-prompt.md` into
+  `work/brainstorm-closed/` with its session (gpt-6.1-sol's required change;
+  `brainstorm_close.py` was added to the touch zones in `dc2d134`). The
+  existing ownership rule still applies: an open session whose slug is
+  `<slug>-authoring` keeps the bare prompt name it shares with `<slug>`'s
+  authoring prompt.
 
 `_reference_lines` moved from `brainstorm_promote.py` to `brainstorm_prompt.py`
 as `reference_lines` (same output plus overlaps) so the sheet and the authoring
@@ -43,6 +51,13 @@ in that file were joined onto one line (formatting only). Path resolution in
 `seed_planning_sheet` became `_sheet_path`, reused for the anchor.
 
 ## Verification
+
+Fix round (at `c9dcb74`): the targeted suite below **404 passed** (the 403
+plus the new close test), `specy-road file-limits` OK, `ruff check
+specy_road tests` clean, dogfood `validate` / `export --check` /
+`digest --check` OK. Full `pytest -q -p no:cacheprovider`: **2565 passed, 2 skipped**, exit 0 (18 min).
+
+Round 1 (at `d35209c`):
 
 - **Full `pytest` did not complete.** The machine was shared with several
   other agents' test runs (load average 40–78); three attempts were killed at
@@ -67,14 +82,12 @@ in that file were joined onto one line (formatting only). Path resolution in
 
 Used: `specy_road/bundled_scripts/brainstorm_promote.py`,
 `specy_road/bundled_scripts/brainstorm_prompt.py`,
+`specy_road/bundled_scripts/brainstorm_close.py`,
 `specy_road/templates/specyrd/commands/specyrd-brainstorm.md`,
 `docs/brainstorming.md`, `tests/`.
 
-Not touched, worth a follow-up: `specy_road/bundled_scripts/brainstorm_close.py`
-— its `PROMPT_PASS_RE` does not know `-authoring`, so `brainstorm close` leaves
-the authoring prompt in `work/` (gitignored, so harmless, but not moved to
-`work/brainstorm-closed/` with the other prompts). The CLI's `next_step` after
-promote (`brainstorm_cli_v2.py`) also does not mention the prompt; promote's
+Not touched, worth a follow-up: the CLI's `next_step` after promote
+(`brainstorm_cli_v2.py`) does not mention the authoring prompt; promote's
 stderr line does.
 
 ## Added
@@ -103,3 +116,8 @@ stderr line does.
   - `test_promote_writes_the_authoring_prompt` — A3 path, content and stderr line.
   - `test_a_dry_run_writes_no_authoring_prompt` — dry run writes nothing.
   - `test_a_failed_validation_writes_no_authoring_prompt_or_frame` — rollback covers both.
+  - `test_close_archives_the_authoring_prompt_with_its_session` — review fix: promote then close moves the authoring prompt.
+- `brainstorm_close.PROMPT_PASS_RE` gains `-authoring` — review fix: close archives the new prompt pass.
+- Test edits (`tests/test_brainstorm_cli.py`, extended, nothing removed):
+  - `test_close_moves_the_session_and_its_prompts_and_nothing_else` — adds an `-authoring` prompt to the set close must move.
+  - `test_close_leaves_a_name_another_open_session_could_own` — adds an open `a-authoring` session whose bare prompt name close of `a` must leave.
