@@ -190,12 +190,31 @@ def test_plan_allow_unauthored_makes_them_ready(tmp_path: Path, capsys) -> None:
     assert "unauthored" not in plan["totals"]
 
 
+def test_plan_allow_unauthored_keeps_acceptance_scaffold_not_ready(
+    tmp_path: Path, capsys
+) -> None:
+    """Pickup --allow-unauthored still skips acceptance + leftover scaffold Approach."""
+    sheet = FILLED.replace("Extend the writer; a golden file test proves it.",
+                           "Constraints, major steps, and how you will verify done.")
+    root, nodes = unauthored_repo(
+        tmp_path, {"M1": sheet, "M2": FILLED}, M1={"acceptance": ["works"]}
+    )
+    capsys.readouterr()
+    plan_json(root, "--allow-unauthored")
+    plan = json.loads(capsys.readouterr().out.splitlines()[0])
+    assert plan["ready"] == ["M2"]
+    assert [u["node_id"] for u in plan["unauthored"]] == ["M1"]
+    assert "placeholder under ## Approach" in plan["unauthored"][0]["reason"]
+    assert nodes[0]["planning_dir"] in plan["unauthored"][0]["reason"]
+
+
 def test_plan_text_names_the_reason(tmp_path: Path, capsys) -> None:
     root, nodes = unauthored_repo(tmp_path, {"M1": "scaffold"})
     capsys.readouterr()
     run_session(parse_grind_session_args(["--plan", "--repo-root", str(root)]))
     out = capsys.readouterr().out
-    assert "**Not ready — placeholder planning sheet, no acceptance" in out
+    heading = next(ln for ln in out.splitlines() if ln.startswith("**Not ready"))
+    assert heading == "**Not ready — unwritten planning sheet (pickup skips these):**"
     assert f"- `M1`: {nodes[0]['planning_dir']} still has" in out
 
 

@@ -238,6 +238,10 @@ def _push_integration_branch(remote: str, base: str) -> None:
     git_run(ROOT, "push", remote, base)
 
 
+def _write_brief(node: dict, nodes: list[dict]) -> Path:
+    return _do_write_brief(ROOT / "work", node, nodes)
+
+
 def _push_and_branch_with_self_heal(**kwargs) -> None:
     _do_push_and_branch(
         repo_root=ROOT,
@@ -278,7 +282,7 @@ def _finalize_pickup(
     codename = node["codename"]
     print_pickup_header(node, branch, ROOT)
 
-    brief_path = _do_write_brief(ROOT / "work", node, nodes)
+    brief_path = _write_brief(node, nodes)
     reg = read_registry(registry_path(ROOT))
     commit_msg = registration_commit_message(
         codename,

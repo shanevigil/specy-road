@@ -234,8 +234,8 @@ def _render_misc(plan: SessionPlan) -> list[str]:
     lines: list[str] = []
     if plan.unauthored:
         lines.append(
-            "**Not ready — placeholder planning sheet, no acceptance "
-            "(pickup skips these; --allow-unauthored picks them):**"
+            "**Not ready — unwritten planning sheet "
+            "(pickup skips these):**"
         )
         lines.extend(f"- `{u.node_id}`: {u.reason}" for u in plan.unauthored)
         lines.append("")

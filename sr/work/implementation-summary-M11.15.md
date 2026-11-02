@@ -21,6 +21,7 @@ PM list plus files required for A2 wiring:
 - `specy_road/bundled_scripts/do_next_task_args.py`
 - `specy_road/bundled_scripts/do_next_task_leaf_guards.py`
 - `specy_road/bundled_scripts/session_plan_git.py`
+- `specy_road/bundled_scripts/session_plan_render.py`
 - `docs/roadmap-authoring.md`
 - `tests/test_unauthored_leaf_guard.py`
 - `tests/test_one_readiness_rule.py`
@@ -33,6 +34,10 @@ PM list plus files required for A2 wiring:
 - `--allow-scaffold-planning` on do-next-available-task — opt-in warn-and-pick for acceptance plus unwritten sheet; finish unchanged.
 - Second branch in `drop_unauthored` — scaffold skip when `acceptance_ids` non-empty and flag off.
 - `session_plan_git` import from `do_next_available.unauthored_leaves` — plan/orchestrate match pickup without changing validate's bootstrap helper.
+- `gather_session_plan` keeps acceptance+scaffold in `unauthored` when only `--allow-unauthored` is set — matches `drop_unauthored` / grind-session help.
+- `--plan` unauthored heading no longer says "no acceptance" or that `--allow-unauthored` picks those rows.
+- Restored `do_next_task._write_brief(node, nodes)` — `_finalize_pickup` call site the pickup tests patch.
 - `test_filled_sheet_or_acceptance_with_scaffold_still_skipped_at_pickup` — A1 default refuse.
 - `test_allow_scaffold_planning_warns_and_picks` — A1 flag restores prior pickup behaviour.
 - `test_plan_lists_scaffold_approach_with_acceptance_as_unauthored` — A2 plan JSON lists leaf with scaffold Approach and acceptance.
+- `test_plan_allow_unauthored_keeps_acceptance_scaffold_not_ready` — `--plan --allow-unauthored` still lists leftover scaffold Approach with acceptance as unauthored.
