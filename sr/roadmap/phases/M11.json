@@ -159,7 +159,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.6_reconcile-current-contract_6fdec849-e299-453b-a5e7-369c210b6e05.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker reconcile judges a worker against the leaf's current contract",
       "touch_zones": [
         "specy_road/worker_reconcile.py",
@@ -314,7 +314,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.12_ready-command_28811e9e-94e6-4934-b182-a79d5d0ceca5.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road ready writes a valid READY hand-off",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
@@ -350,6 +350,125 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "sr/schemas/",
         "docs/orchestration-review.md",
+        "tests/",
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/orchestration_config.py"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker message W --text ... on a worker with a live turn records the message as queued instead of refusing, and the wrapper delivers it as the next turn when the current one ends (a --no-queue flag keeps today's refusal)",
+        "worker list and sync show a queued message; terminating the worker drops the queue with a note; tests cover queue, delivery and terminate"
+      ],
+      "codename": "queue-worker-message",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.14",
+      "node_key": "41e44d38-974f-486c-9eef-5ff224c74ff0",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.14_queue-worker-message_41e44d38-974f-486c-9eef-5ff224c74ff0.md",
+      "sibling_order": 14,
+      "status": "Not Started",
+      "title": "worker message queues a follow-up for a worker whose turn is still running",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "Pickup refuses a leaf whose planning sheet still has the scaffold or promote placeholder under Intent or Approach, even when the leaf has acceptance criteria, naming the sheet and the section to write (an --allow-scaffold-planning flag keeps today's behaviour)",
+        "grind-session --plan and orchestrate plan list such leaves as unauthored, matching pickup; tests cover a leaf with acceptance and a scaffold Approach"
+      ],
+      "codename": "pickup-refuses-scaffold-sheet",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.15",
+      "node_key": "f12c077c-a36d-4aa1-937d-28152012cf2e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.15_pickup-refuses-scaffold-sheet_f12c077c-a36d-4aa1-937d-28152012cf2e.md",
+      "sibling_order": 15,
+      "status": "Not Started",
+      "title": "Pickup and finish agree on unwritten planning sheets",
+      "touch_zones": [
+        "specy_road/planning_scaffold_check.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the only paths changed since an approved commit are the leaf's own planning sheet or specy-road bookkeeping (implementation summary, review hand-offs), the gate still counts the earlier approvals and handoff status says so",
+        "Any other changed path makes the approvals stale as today; tests cover a sheet-only delta, a summary-only delta, and a mixed delta"
+      ],
+      "codename": "sheet-edits-keep-approvals",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.16",
+      "node_key": "4bc4501a-7a1b-446d-876f-6b22b3902a6a",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.16_sheet-edits-keep-approvals_4bc4501a-7a1b-446d-876f-6b22b3902a6a.md",
+      "sibling_order": 16,
+      "status": "Not Started",
+      "title": "A commit that changes only planning or bookkeeping files keeps existing approvals",
+      "touch_zones": [
+        "specy_road/review_gate.py",
+        "specy_road/review_files.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "edit-node (and add-node) print the chunk file the node was read from and every file written; when the chunk router moves a node, the output says moved from X to Y and lists all files to commit, including the manifest",
+        "Tests cover an in-place edit and a relocation, checking the printed file names match the files on disk"
+      ],
+      "codename": "edit-node-names-chunks",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.17",
+      "node_key": "b0dc8ed9-8928-426b-9cd7-0adb92ee713c",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.17_edit-node-names-chunks_b0dc8ed9-8928-426b-9cd7-0adb92ee713c.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "edit-node names every chunk file it changes, and relocation is loud",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/roadmap_crud_argparse.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "add-node and edit-node print overlap warnings only for claims that overlap the node being added or edited; validate keeps the full list, collapsed to one line per pair",
+        "Broad shared zones such as tests/ are reported once as a summary instead of once per claim pair; tests cover each case"
+      ],
+      "codename": "quieter-overlap-warnings",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.18",
+      "node_key": "bc246e83-fbbc-4125-b4a1-41e415bf6a70",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.18_quieter-overlap-warnings_bc246e83-fbbc-4125-b4a1-41e415bf6a70.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Registry overlap warnings show only what concerns the command at hand",
+      "touch_zones": [
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "tests/"
       ],
       "type": "task"

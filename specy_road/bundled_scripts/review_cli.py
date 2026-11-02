@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status`, `specy-road review record` and `specy-road review list`.
+"""CLI for `specy-road handoff status`, `specy-road review record`, `specy-road review list` and `specy-road ready`.
 
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
@@ -35,6 +35,7 @@ from specy_road.review_files import (
     review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
@@ -383,6 +384,7 @@ def build_parser() -> argparse.ArgumentParser:
     rg.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(rg)
     rg.set_defaults(func=cmd_red_green)
+    add_ready_parser(sub)
     return p
 
 

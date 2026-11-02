@@ -174,7 +174,7 @@
     },
     {
       "acceptance": [
-        "Three sandbox apps x three harnesses x three runs with and without the managed section, same task list",
+        "One small app (made with init project) x three harnesses (Claude Code, Codex, Cursor agent) x two runs, with and without the managed section, same task list: 12 runs, as the maintainer reduced the study on 2026-11-02",
         "Turns, tokens, cost and first-round review outcomes recorded per cell in a design note",
         "The note states what the numbers justify: trim, keep, or test further"
       ],
