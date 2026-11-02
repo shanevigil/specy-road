@@ -54,7 +54,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.2_resume-failed-workers_37fbae4e-2d6f-42a8-8b7b-1465e680776d.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker message resumes a failed or stalled worker whose native session id is known",
       "touch_zones": [
         "specy_road/worker_ops.py",
