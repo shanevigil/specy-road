@@ -104,7 +104,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Complete |
 | `M10.16` | The worker wrapper imports the launching specy-road, not the worktree's copy | task | Agentic-led | Complete |
 | `M10.17` | The review packet caps its inlined diff by bytes too and lists generated bundles by size only | task | Agentic-led | Complete |
-| `M10.18` | Review records are found and written with the canonical file name on case-insensitive filesystems | task | Agentic-led | Not Started |
+| `M10.18` | Review records are found and written with the canonical file name on case-insensitive filesystems | task | Agentic-led | Complete |
 | `M10.19` | The executor prompt forbids killing processes the executor did not start | task | Agentic-led | Complete |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
