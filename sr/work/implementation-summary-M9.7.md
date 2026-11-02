@@ -57,12 +57,20 @@ findings, and `test_integrity_section`'s `_none_` wording in
   UTF-8 loses only its own lines, and paths come from `--name-status -z`, never
   from a `+++` header. Origin `WIP/improvements-0-3-1` was merged in (1ae66df),
   which brings the `docs/brainstorming.md` file-limits fix (9b82c16).
+- Review round 2 (gpt-6.1-sol) fixed: that file still lost all its own added
+  lines, so a non-UTF-8 line in a configured baseline hid its widening and its
+  suppressions. The per-file diff is now read as bytes and decoded with
+  `errors="replace"`, so line counts and ASCII markers survive. `integrity.py`
+  spawns this one git call itself (`_patch`) because `git_subprocess.run`
+  decodes strictly. The `git_subprocess` module docstring, which lists the
+  callers that spawn git themselves, is outside this leaf's touch zones and
+  does not mention this one yet.
 - Renames are detected (`--find-renames`), so moving a file that already holds
   a suppression does not report it; edits inside the moved file still do.
 
 ## Verification
 
-- Round 2: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 83 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
+- Rounds 2 and 3: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 83 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -73,7 +81,8 @@ findings, and `test_integrity_section`'s `_none_` wording in
 
 ### Helpers
 - `integrity.integration_ratchet_paths` — reads `policy.ratchet_paths` from the integration branch so a leaf cannot drop its own baselines from the list (A2).
-- `integrity._added_lines` — added lines with their REF line numbers, one diff per changed file so an undecodable file hides nothing else (A1, A2; R1).
+- `integrity._added_lines` — added lines with their REF line numbers, one diff per changed file (A1, A2; R1).
+- `integrity._patch` — runs that per-file diff and decodes the bytes leniently, so a non-UTF-8 line keeps its file's count and markers (round 2); never raises, empty on failure or timeout.
 - `integrity._changed_files` — changed paths and rename pairs from `--name-status -z`, so paths with spaces or quotes are exact (R2).
 - `integrity._hunk_additions` — the `+` lines of one file's `-U0` patch after its first hunk header.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
@@ -83,7 +92,7 @@ findings, and `test_integrity_section`'s `_none_` wording in
 ### Branches / guards
 - `Finding.line` gains the `new-suppression` and `baseline-widened` forms (A1, A2).
 - `_hunk_additions` ignores everything before the first `@@`, so header lines are never content; a deleted or binary file has no hunks and adds nothing.
-- `_added_lines` skips a file whose diff git output cannot decode (`git_stdout` is `None`).
+- `_patch` returns `""` when git fails, times out or cannot start, so that file adds nothing.
 - `integration_ratchet_paths` returns `[]` when the policy ref or file is unreadable, and drops non-string entries.
 
 ### Mocks
@@ -96,5 +105,5 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `test_baseline_removal_only_exits_zero` — A2/A4 removal-only gives exit 0.
 - `test_ratchet_paths_listed_only_on_the_leaf_branch_are_ignored` — the list comes from the integration branch, not the leaf.
 - `test_nested_project_ratchet_path_outside_the_project` — git-root-relative path outside a nested project root (the regression-2 shape).
-- `test_non_utf8_file_in_the_diff_hides_no_other_finding` — R1: a non-UTF-8 file in the same diff; both findings still print, exit 1.
+- `test_non_utf8_file_in_the_diff_hides_no_other_finding` — R1 and round 2: an unrelated non-UTF-8 file, and non-UTF-8 text plus a suppression in the configured baseline itself; `baseline-widened ... +2`, the baseline's `new-suppression` and the other file's, exit 1.
 - `test_paths_with_spaces_are_reported_and_matched_exactly` — R2: exact suppression line and baseline match for paths with spaces, exit 1.
