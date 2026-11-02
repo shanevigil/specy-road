@@ -82,14 +82,14 @@ The 12 new cases fail on `6b5484c` (10 control-flow forms, the branch-duplicate 
 ## Verification
 
 - round 4: `pytest tests/test_integrity.py tests/test_integrity_python.py tests/test_review_packet.py` — 50 passed
-- round 4: full `pytest` — FULL_SUITE_RESULT
+- round 4: full `pytest` on `4a95383` — 2583 passed, 2 skipped
 - round 3: `pytest tests/test_integrity.py tests/test_review_packet.py` — 37 passed; full `pytest` — 2547 passed, 2 skipped
 - `specy-road file-limits` — OK (round 4, after the test split)
 - `ruff check --select F` on the touched files — clean
 - `python scripts/check_test_private_imports.py` — 0 new; one stale baseline entry predates this leaf
   (`review_packet._changed`, also absent on the integration branch) and `constraints/` is outside the zones
 - `python scripts/check_clones.py` — not run (`pylint` missing in this shell)
-- `specy-road integrity M9.5 --repo-root sr` on this branch — exit 0, no output
+- `specy-road integrity M9.5 --repo-root sr` on this branch — exit 0, no output (round 4)
 
 ## Added
 
