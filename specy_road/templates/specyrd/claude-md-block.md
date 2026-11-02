@@ -65,8 +65,8 @@ specy-road brief <NODE_ID> -o {{PROJECT_PREFIX}}work/brief-<NODE_ID>.md
   worktree. Full rule in `{{PROJECT_PREFIX}}AGENTS.md`.
 <!-- prevents: one session's branch switch or git add -A landing on another session's uncommitted work | enforced: session check exits 1 when staged paths overlap another live session's | ref: docs/design-notes/agent-guidance-and-shared-checkouts.md -->
 - **Roadmap-linked implementation.** `specy-road do-next-available-task`
-  registers the claim, then creates `feature/rm-<codename>`; don't rename a
-  node's title mid-flight.
+  registers the claim on the integration branch, then creates
+  `feature/rm-<codename>`; don't rename a node's title mid-flight.
 <!-- prevents: unregistered work two agents both pick up, and branch names that drift from the node | enforced: do-next-available-task registers, pushes, then creates feature/rm-codename | ref: docs/git-workflow.md -->
 
 ### Common commands
