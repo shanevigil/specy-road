@@ -47,6 +47,7 @@ def test_fresh_init_project_writes_agents_md_with_the_block(tmp_path: Path) -> N
     assert text.startswith("# Agents — load order\n")
     assert "specy-road managed block" in text
     assert f"Written by specy-road {__version__}" in text
+    assert f"**Minimum specy-road version:** {__version__}." in text
     assert "**Precedence.**" in text and "stop\nand ask a human" in text
     assert "**Shared checkouts and other agents.**" in text
     assert agents_md_block_state(tmp_path) == "current"

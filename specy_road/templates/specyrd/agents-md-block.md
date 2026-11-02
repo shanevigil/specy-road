@@ -2,6 +2,9 @@
 
 Written by specy-road {{SPECYRD_VERSION}}; `specy-road refresh-stubs` rewrites only this section. The rest of this file is the project's own.
 
+**Minimum specy-road version:** {{SPECYRD_VERSION}}.
+<!-- prevents: an older specy-road on PATH shadows commands this block documents | enforced: `specy-road doctor` and other CLI commands warn once per run (specy_road/cli.py) | ref: planning/M11.29 doctor-version-skew -->
+
 **Precedence.** These rules on the registry, branches, review, and a shared working tree are a floor: project rules may add to them, never relax them. If a project rule conflicts with one here, stop
 and ask a human which applies; do not pick one.
 <!-- prevents: a project rule quietly relaxing the toolkit's registry, branch, review or shared-tree rules, or an agent picking a side on a conflict | enforced: advisory; validate warns when this block is missing or differs from the installed version | ref: docs/design-notes/agent-guidance-and-shared-checkouts.md decision 4 -->

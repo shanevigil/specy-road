@@ -6,21 +6,78 @@ import argparse
 import difflib
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
+from specy_road import __version__
+from specy_road.agents_md_block import AGENTS_MD
 from specy_road.cli_init_argparse import build_specy_road_init_parser
 from specy_road.cli_usage import USAGE_TEXT
-from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, resolve_repo_root
+from specy_road.managed_block import HTML_COMMENT, _split
+from specy_road.runtime_paths import add_repo_root_arg, bundled_scripts_dir, git_root, project_root, resolve_repo_root
+from specy_road.specyrd_init import _load_manifest
 
 _PKG_DIR = Path(__file__).resolve().parent
 _PM_GANTT_INDEX = _PKG_DIR / "pm_gantt_static" / "index.html"
+_VERSION = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$", re.IGNORECASE)
+_AGENTS_WRITTEN = re.compile(r"Written by specy-road (\S+);")
+_MINIMUM_LINE = re.compile(r"\*\*Minimum specy-road version:\*\* (\S+)")
+_PRE = {"a": 0, "b": 1, "rc": 2}
 
 
-# Commands that are exactly "run this script with these args". A table rather
-# than a chain of elifs: the chain was one branch from the per-function line cap
-# and every new command pushed it over.
+def _version_sort_key(version: str) -> tuple[int, ...]:
+    stem = version.strip().split("+", 1)[0]
+    m = _VERSION.match(stem)
+    if not m:
+        return (0,)
+    release = tuple(int(p) for p in m.group(1).split("."))
+    pre = m.group(2)
+    return (*release, 3, 0) if pre is None else (*release, _PRE[pre.lower()], int(m.group(3)))
+
+
+def recorded_toolkit_version(project: Path) -> tuple[str, str] | None:
+    checkout = git_root(project) or project.resolve()
+    candidates: list[tuple[str, str]] = []
+    recorded = str(_load_manifest(checkout).get("specyrd_version") or "").strip()
+    if recorded:
+        candidates.append((recorded, ".specyrd/manifest.json"))
+    path = project / AGENTS_MD
+    try:
+        text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    except (OSError, UnicodeDecodeError):
+        text = ""
+    _before, block, _after = _split(text, HTML_COMMENT)
+    if block:
+        for pattern in (_AGENTS_WRITTEN, _MINIMUM_LINE):
+            m = pattern.search(block)
+            if m:
+                candidates.append((m.group(1), AGENTS_MD))
+    if not candidates:
+        return None
+    best = max(candidates, key=lambda item: _version_sort_key(item[0]))
+    sources = sorted({where for ver, where in candidates if ver == best[0]})
+    where = sources[0] if len(sources) == 1 else " and ".join(sources)
+    return best[0], where
+
+
+def warn_if_running_version_older(project: Path) -> None:
+    found = recorded_toolkit_version(project)
+    if found is None:
+        return
+    recorded, where = found
+    if _version_sort_key(__version__) >= _version_sort_key(recorded):
+        return
+    print(
+        f"specy-road: warning — specy-road {__version__} is running but this project records "
+        f"{recorded} ({where}); an older install earlier on PATH is the usual cause. "
+        "Check `which specy-road` and `specy-road --version`, then reinstall with "
+        "`pipx install specy-road` or `uv tool install specy-road`.",
+        file=sys.stderr,
+    )
+
+
 _SCRIPTS = {
     "validate": "validate_roadmap.py",
     "brief": "generate_brief.py",
@@ -52,8 +109,6 @@ _SCRIPTS = {
     "doctor": "doctor.py",
 }
 
-# Commands whose bundled script owns its own argparse. The command name is
-# forwarded so `specy-road <cmd> -h` prints that subcommand's help.
 _FORWARDED = {
     "history": "history_cli.py",
     "digest": "digest_cli.py",
@@ -94,9 +149,6 @@ _ARCHIVE_COMMANDS = (
 )
 
 
-# Commands an agent file may still name that are not registered, each with what
-# to run instead ("" when nothing replaces it). `validate` names the replacement
-# when AGENTS.md or CLAUDE.md mentions one.
 REPLACED_COMMANDS = {
     "specy-road grind": "specy-road grind-session",
     "specy-road pm-sync": "specy-road sync",
@@ -112,7 +164,6 @@ def _known_commands() -> list[str]:
 
 
 def registered_agent_command_names() -> dict[str, set[str]]:
-    """Registered ``specy-road`` / ``specyrd`` subcommand names for agent-file checks."""
     from specy_road.specyrd_cli import _build_parser as _specyrd_parser
 
     specyrd = next(
@@ -127,14 +178,6 @@ def registered_agent_command_names() -> dict[str, set[str]]:
 
 
 def _did_you_mean(cmd: str) -> list[str]:
-    """Closest known commands for an unrecognised one.
-
-    Prefixes are offered ahead of what ``difflib`` scores as similar, and that
-    ordering is what makes the motivating case work: everyone types ``grind``
-    first, but against ``grind-session`` the similarity ratio is 0.55 — under
-    ``get_close_matches``'s default cutoff, so it would suggest nothing at all.
-    A guess that is the first word of a real command is not a misspelling.
-    """
     known = _known_commands()
     prefixed = [c for c in known if c.startswith(cmd)]
     if prefixed:
@@ -183,7 +226,6 @@ def _gui_static_ok() -> bool:
 
 
 def _args_repo_root_first(args: list[str]) -> list[str]:
-    """``roadmap_crud`` expects ``--repo-root`` before the subcommand."""
     out: list[str] = []
     i = 0
     while i < len(args):
@@ -203,13 +245,6 @@ def _args_repo_root_first(args: list[str]) -> list[str]:
 
 
 def _run(script: str, args: list[str]) -> None:
-    """Run a bundled entrypoint in its own process.
-
-    ``-m`` on the installed package, so the child resolves imports the same way
-    the parent did. This used to exec the file by path with a hand-built
-    PYTHONPATH prefix, which was the only thing making the scripts'
-    bare-module-name imports resolve.
-    """
     module = f"specy_road.bundled_scripts.{script.removesuffix('.py')}"
     if not (bundled_scripts_dir() / script).is_file():
         print(
@@ -219,8 +254,6 @@ def _run(script: str, args: list[str]) -> None:
         raise SystemExit(2)
     proc = subprocess.run([sys.executable, "-m", module, *args])
     if proc.returncode != 0:
-        # Avoid chaining from CalledProcessError: bundled scripts already print
-        # stderr messages; surfacing subprocess.check_call adds a noisy traceback.
         raise SystemExit(proc.returncode) from None
 
 
@@ -229,10 +262,7 @@ def _cmd_scaffold_constitution(rest: list[str]) -> None:
 
     p = argparse.ArgumentParser(
         prog="specy-road scaffold-constitution",
-        description=(
-            "Create starter constitution/purpose.md and constitution/principles.md "
-            "(human judgment; not validated by specy-road). Skips files that already exist unless --force."
-        ),
+        description="Create starter constitution/purpose.md and constitution/principles.md.",
     )
     add_repo_root_arg(p)
     p.add_argument(
@@ -262,22 +292,15 @@ def _cmd_gui(rest: list[str]) -> None:
     uvicorn_spec = importlib.util.find_spec("uvicorn")
     if uvicorn_spec is None:
         print(
-            "error: FastAPI Gantt UI needs uvicorn (included in specy-road[gui-next]). Run:\n"
-            "  specy-road init gui --install-gui\n"
-            "  specy-road init gui --reinstall-gui   # if deps are corrupted or stuck\n"
-            "or:\n"
-            "  pip install 'specy-road[gui-next]'\n"
-            "Use the same Python environment as this `specy-road` command.",
+            "error: FastAPI Gantt UI needs uvicorn (specy-road[gui-next]). "
+            "Run: specy-road init gui --install-gui",
             file=sys.stderr,
         )
         raise SystemExit(2) from None
     if not _gui_static_ok():
         print(
-            "error: packaged Gantt UI assets are missing "
-            f"({_PM_GANTT_INDEX}).\n"
-            "Reinstall or upgrade: pip install --upgrade 'specy-road[gui-next]'\n"
-            "If you develop the UI from git, rebuild once from the repo root:\n"
-            "  cd gui/pm-gantt && npm install && npm run build",
+            "error: packaged Gantt UI assets are missing. Reinstall specy-road[gui-next] "
+            "or rebuild gui/pm-gantt (see contributor-guide).",
             file=sys.stderr,
         )
         raise SystemExit(2) from None
@@ -323,6 +346,21 @@ def _unknown_command(cmd: str) -> None:
     raise SystemExit(2)
 
 
+def _repo_root_from_argv(args: list[str]) -> Path | None:
+    i = 0
+    while i < len(args):
+        if args[i] == "--repo-root" and i + 1 < len(args):
+            return Path(args[i + 1])
+        i += 1
+    return None
+
+
+def _maybe_warn_running_version_older(cmd: str, rest: list[str]) -> None:
+    if cmd == "doctor" or cmd not in _known_commands():
+        return
+    warn_if_running_version_older(project_root(_repo_root_from_argv(rest)))
+
+
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if not argv or argv[0] in ("-h", "--help"):
@@ -334,6 +372,7 @@ def main(argv: list[str] | None = None) -> None:
         print(f"specy-road {__version__}")
         raise SystemExit(0)
     cmd, *rest = argv
+    _maybe_warn_running_version_older(cmd, rest)
     if cmd in _SCRIPTS:
         _run(_SCRIPTS[cmd], rest)
     elif cmd in _CRUD_COMMANDS:
