@@ -2,6 +2,21 @@
 
 Branch `feature/rm-max-workers-global`, base `be6a6a63`. WIP was merged in at `2e0f5d12` and `9a6dc334` to widen the touch zones; the second merge added `specy_road/bundled_scripts/worker_cli.py`.
 
+## Round 6 (gpt-5.6-sol-high and gpt-6.1-sol blocks on A1; A1 kept as written)
+
+WIP (`origin/WIP/improvements-0-3-1`) was merged first (`ded2db22`).
+
+- **`--offline` no longer bypasses the limit.** Lease refs are now read by fetching them, with pruning, into a local mirror, `refs/specy-road/known-leases/<remote>/`, rather than by `ls-remote`. Every online `delegate`, `message`, `resume` and `worker sync` refreshes the mirror. `--offline` skips the fetch and the push but still counts the mirror as last fetched, minus this checkout's own refs. That count applies in `delegate`'s pre-check and in `acquire_lease`'s recount, which now also runs offline, for launches and resumes. So an offline turn is refused at the limit like any other, and the warning says other checkouts were counted from the last fetch. An offline refusal withdraws nothing, because nothing was pushed. Limit: a checkout that has never made an online worker call has an empty mirror, so offline it knows of no foreign workers. A plain `git fetch` does not fill the mirror.
+- **An empty or unreadable checkout id is rewritten, not refused.** `checkout_id` treats a missing, empty, unreadable or malformed file as uninitialized: no lease can have been pushed under it, so a new id is safe. Such a file is renamed aside; if the renamed file turns out to hold a valid id (a racing caller wrote one in between), it is linked back. A new uuid is then written to a temporary file and hard-linked into place, which never overwrites, so racing callers converge on one id. It makes up to four attempts and refuses the launch if it still has no usable id. That happens when the id path cannot be set aside or written, for example a directory at that path. I used link rather than a plain rename for the final step because rename overwrites, and two racing callers could each return a different id. The round-4 refusal for an empty file is gone, along with its test.
+- **Docs:** the "What `max_workers` counts" paragraph now covers the known-leases mirror, the self-healing id and `--offline` keeping the limit (398 lines).
+- **Tests:**
+  - `test_offline_still_counts_the_lease_refs_last_fetched`: with a foreign worker at `max_workers: 1` and one online `sync`, `delegate`, `resume` and `message` with `--offline` are each refused through the CLI.
+  - `test_an_empty_or_unusable_checkout_id_is_rewritten_and_the_limit_holds`, parametrized over an empty file, a newline and a half-written id: `delegate` through the CLI is refused by the foreign lease, and the id is rewritten valid.
+  - `test_a_launch_after_an_empty_checkout_id_leases_under_the_new_one`: the launch pushes its lease under the new id.
+  - `test_a_checkout_id_that_cannot_be_written_refuses_the_launch`: a non-empty directory at the id path refuses `delegate` with no record.
+  - Updated: the offline warning text, and the sweep-race hook, which now matches the lease fetch instead of `ls-remote`.
+- **Verification:** `.conda/bin/pytest tests/test_worker_max_workers_global.py -q -p no:cacheprovider` gave 27 passed. `.conda/bin/ruff check` passed on `worker_lease.py` and the test file. `.conda/bin/specy-road file-limits` passed.
+
 ## Round 5 (after gpt-5.6-sol-high's block on A1)
 
 - **R1, an adopted worker was invisible to other clones:** `worker adopt` created an active record but pushed no lease, so another clone at `max_workers: 1` could still launch. `adopt` now calls `lease_adopted` right after `create_record`, under the workers lock. That pushes the lease with `acquire_lease(…, count=False)`: no recount, because the adopted session already runs and refusing it would not stop it. If the lease cannot be pushed (rejected, unreachable, or no usable checkout id), the adopt is refused: an `error` event is appended, the record goes `terminated` (nothing is signalled; the lease is observe-only), and the error is raised. So an adopted worker is never active here without being visible elsewhere. `adopt` has no `--offline`.
