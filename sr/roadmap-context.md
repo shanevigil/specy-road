@@ -104,7 +104,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
   - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Complete**
   - `M10.17` The review packet caps its inlined diff by bytes too and lists generated bundles by size only `packet-byte-budget` — task — **Complete**
-  - `M10.18` Review records are found and written with the canonical file name on case-insensitive filesystems `review-file-case` — task — **Not Started**
+  - `M10.18` Review records are found and written with the canonical file name on case-insensitive filesystems `review-file-case` — task — **Complete**
   - `M10.19` The executor prompt forbids killing processes the executor did not start `no-foreign-kills` — task — **Complete**
 
 ## Claimed and in flight
@@ -112,7 +112,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.18` on `feature/rm-review-file-case` since 2026-11-02
 
 ## Reaching the detail behind this
 

@@ -101,7 +101,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.18_review-file-case_4d539f75-387b-4e8a-8e98-3cdbeae5a1cb.md",
       "sibling_order": 18,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review records are found and written with the canonical file name on case-insensitive filesystems",
       "touch_zones": [
         "specy_road/review_files.py",
