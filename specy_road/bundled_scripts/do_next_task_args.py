@@ -33,7 +33,9 @@ does NOT gate pickup; --prefer-agentic only reorders.
 
 A leaf whose planning sheet is still the scaffold-planning or brainstorm promote
 placeholder, and whose node has no acceptance, is skipped with the reason
-printed; --allow-unauthored picks it anyway.
+printed; --allow-unauthored picks it anyway. A leaf with acceptance but an
+unwritten ## Intent or ## Approach is skipped too; --allow-scaffold-planning
+keeps the old warn-and-pick behaviour for that case.
 """
 
 
@@ -90,6 +92,28 @@ def _add_baseline_args(p: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_planning_sheet_pick_flags(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--allow-unauthored",
+        action="store_true",
+        help=(
+            "Also pick leaves whose planning sheet is still the scaffold-planning or "
+            "brainstorm promote placeholder and whose node has no acceptance "
+            "(skipped by default, with the reason printed)."
+        ),
+    )
+    p.add_argument(
+        "--allow-scaffold-planning",
+        action="store_true",
+        help=(
+            "Also pick leaves that have acceptance criteria but whose planning sheet "
+            "still has scaffold-planning's or brainstorm promote's placeholder under "
+            "## Intent or ## Approach (skipped by default; finish-this-task still "
+            "refuses unless this flag is passed there too)."
+        ),
+    )
+
+
 def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -126,15 +150,7 @@ def parse_do_next_task_args(argv: list[str] | None) -> argparse.Namespace:
             "(default appends common [skip ci] / [ci skip] / ***NO_CI*** markers)."
         ),
     )
-    p.add_argument(
-        "--allow-unauthored",
-        action="store_true",
-        help=(
-            "Also pick leaves whose planning sheet is still the scaffold-planning or "
-            "brainstorm promote placeholder and whose node has no acceptance "
-            "(skipped by default, with the reason printed)."
-        ),
-    )
+    _add_planning_sheet_pick_flags(p)
     _add_pick_order_arg(p)
     _add_baseline_args(p)
     _add_claim_visibility_args(p)

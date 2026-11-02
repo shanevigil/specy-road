@@ -1,7 +1,8 @@
 """M11.11: pickup, ``grind-session --plan`` and ``orchestrate plan`` agree on ready.
 
 All three take ready leaves from ``do_next_available._available`` and drop the
-unauthored ones (``planning_sheet_bootstrap.placeholder_sheet``); ``orchestrate
+unauthored ones (:func:`do_next_available.unauthored_leaves` /
+:func:`planning_scaffold_check.pickup_unauthored_leaves`); ``orchestrate
 plan`` used to skip the second step and staff leaves pickup refuses.
 """
 
