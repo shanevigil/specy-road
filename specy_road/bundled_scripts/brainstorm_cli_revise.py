@@ -34,6 +34,8 @@ def _revise_why(idea, ns: argparse.Namespace) -> None:
 def _revise_links(idea, ns: argparse.Namespace) -> None:
     if ns.cluster is not None:
         idea.cluster_id = ns.cluster.strip() or None
+    if ns.target_parent is not None:
+        idea.target_parent = ns.target_parent.strip() or None
     for item in ns.overlap or []:
         idea.overlap.append(parse_overlap(item))
     for item in ns.critic or []:

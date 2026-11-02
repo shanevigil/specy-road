@@ -1,4 +1,4 @@
-"""The v2 idea fields: provenance, evidence records, clusters, critics, decisions.
+"""The v2 idea fields: provenance, evidence records, clusters, critics, decisions, target parents.
 
 Kept beside :mod:`brainstorm_session` so the session module stays readable.
 Every field here is optional and omitted from the YAML when empty: the
@@ -25,7 +25,7 @@ ORIGIN_KEYS = ("harness", "model", "lens", "round", "shard")
 EXTRA_DEFAULTS: dict[str, Any] = {
     "origin": None, "cluster_id": None, "sources": [], "overlap": [], "critic": None,
     "hypothesis": "", "assumptions": [], "decision": None, "verdict_why": "",
-    "codename": "",
+    "codename": "", "target_parent": None,
 }
 
 
@@ -84,9 +84,9 @@ def parse_extra(raw: dict[str, Any], ident: str) -> dict[str, Any]:  # noqa: C90
         out["origin"] = {str(k): str(v) for k, v in origin.items() if str(k) in ORIGIN_KEYS}
     elif isinstance(origin, str):
         out["origin"] = parse_origin(origin)
-    cluster = raw.get("cluster_id")
-    if isinstance(cluster, str) and cluster.strip():
-        out["cluster_id"] = cluster.strip()
+    for key in ("cluster_id", "target_parent"):
+        if isinstance(raw.get(key), str) and raw[key].strip():
+            out[key] = raw[key].strip()
     sources = raw.get("sources")
     if isinstance(sources, list):
         for s in sources:

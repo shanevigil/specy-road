@@ -349,15 +349,21 @@ sources are unverified, not found or blocked, or it has none — and names
 
 The new sheet's `## Intent` is seeded from the idea's rationale; its `## Approach` opens with the critics' objections and the verdict reasoning (`revise --critic`, `--why`) as constraints; its `## References` gains the overlaps with existing nodes (id and relation), the sources (with quote and verification state), the hypothesis and assumptions, and the cluster's rejected or parked siblings as "alternatives considered" with their reasons. When the session has a recorded frame, the anchor's sheet gains a `## Brainstorm frame` section with it (a later promote replaces it). Rewrite the Intent once the slice is properly scoped — the seed is a starting point, not a spec, and pickup skips the node until then.
 
-A successful promote also writes `work/brainstorm-<slug>-authoring-prompt.md` (gitignored) and prints its path: hand it to your agent to draft each promoted node's Intent, Approach steps, tasks, acceptance, touch zones and references from the session and the repo, for you to approve. It covers that promote call's nodes; `--dry-run` writes none.
+A successful promote also writes `work/brainstorm-<slug>-authoring-prompt.md` (gitignored) and prints its path: hand it to your agent to draft each promoted node's Intent, Approach steps, tasks, acceptance, touch zones and references from the session and the repo, for you to approve. It covers that promote call's nodes that an idea seeded (not a plan node without ideas); `--dry-run` writes none.
+
+Placement and selection (combine with `--dry-run` to preview):
+
+- `revise B4 --target-parent M3` lands B4 under M3; ideas without a target parent use `--under`, else the session anchor (`--target-parent ''` clears it).
+- `--by-cluster` writes one node per cluster lead (strongest verdict, then earliest accept); the cluster's other accepted ideas are linked to that node and listed on its sheet as alternatives.
+- `--min-recommendation strong|consider|park` skips weaker verdicts (no verdict is weakest); skipped ideas stay accepted and stderr names them.
+- `--plan plan.yaml` creates a tree instead: a `nodes:` list whose entries take `title` and optionally `ref`, `parent` (a node id or an earlier entry's `ref`; default the anchor), `type`, `acceptance`, `dependencies` (node ids or entries' `ref`s, stored as `node_key`s) and `ideas` (accepted idea ids: the first seeds the sheet, all are linked). Unlisted ideas stay pending; it runs with none pending and does not combine with the two filters above.
 
 Options: `--under NODE_ID` overrides the anchor; `--type` is `milestone` by
 default (`vision`, `phase`, `task` also work; `gate` is refused — a gate is a
-human hold, not work); `--dry-run` writes nothing. Promoted nodes copy the
-anchor's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
+human hold, not work); `--dry-run` writes nothing. Promoted nodes copy their
+parent's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
 `--set execution_milestone=…` only when a leaf should differ (typically
-`Human-led` under an agentic anchor). An unusable anchor is rejected before
-anything is written. Afterwards:
+`Human-led` under an agentic anchor). An unusable parent is rejected before anything is written. Afterwards:
 
 ```bash
 specy-road export && specy-road digest
