@@ -15,21 +15,22 @@ against the leaf's contract as it stands at reconcile time.
   no longer outside. That test also passes against the base commit, so it pins
   the behaviour rather than fixing it. If the field report's stale zones came
   from a run older than M10.14, this leaf has nothing more to change for A1.
-- **A2 (merged-in paths):** `_integration_base` takes the merge base of the
-  worktree's `HEAD` with each integration ref: `refs/remotes/<remote>/<branch>`
-  and `refs/heads/<branch>`, whichever exist. It reads both because a
-  coordinator often merges a local integration branch that is ahead of its
-  remote-tracking ref. It keeps only the **newest** of those bases (`git
-  merge-base --independent`). An older base, such as a stale remote-tracking
-  ref, lacks what a later merge brought, so a worker deleting a merged file
-  would match it and vanish (review R1). When the two bases diverged and
-  neither is newest, there is no base and nothing is filtered: the result is
-  noisier, never hidden. `_changed_since` keeps a tracked path only if it also
-  differs between the working tree and that base. A file that a merge brought
-  in matches the integration branch there, so it drops out of both `changed`
-  and `outside_touch_zones`. Untracked files are always kept. When git cannot
-  diff against the base, the old result stands. Before any merge, the base is
-  the fork point and the filter changes nothing.
+- **A2 (merged-in paths):** `_changed_since` keeps a tracked path changed
+  since `since` (the checkpoint, or the HEAD the worker started at) only when
+  one of two sources changed it. The first is the branch's own commits in
+  `since..HEAD`, from `git_changed_paths.branch_commit_paths`: `git log
+  --first-parent --cc --name-status -z` with rename and copy detection, both
+  sides of a rename. The second is the uncommitted tree (`diff_paths(wt,
+  "HEAD")`). `--first-parent` never walks the integration commits a merge
+  brought in. `--cc` lists a merge's path only where the merge result differs
+  from every parent, which is a conflict resolution or an edit folded into the
+  merge. So a file that arrived only through a merge drops out of both
+  `changed` and `outside_touch_zones`, whichever integration ref it came from:
+  local, remote-tracking, stale or diverged. A later edit or deletion of that
+  file by the worker is a commit on the branch's own line and is reported.
+  Untracked files are always kept. When git cannot answer either query, the old
+  unfiltered result stands. This replaces the merge-base rule of rounds 0 and 1
+  (see review round 3).
 - **A3 (own contract only):** reconcile still compares hashes of the full
   prompt first. When the prompt differs, `_brief_unchanged` no longer compares
   whole briefs. It compares `own_contract(...)` of a fresh render and of the
@@ -49,8 +50,8 @@ against the leaf's contract as it stands at reconcile time.
 ## Touch zones
 
 Confirmed: `specy_road/worker_reconcile.py`, `docs/orchestration-workers.md`,
-`tests/`. `specy_road/git_changed_paths.py` was not needed (`diff_paths`
-already takes any comparison), so it is unchanged.
+`specy_road/git_changed_paths.py` (`branch_commit_paths`, from review round
+3), `tests/`.
 
 ## Review round 1 (gpt-6.1-sol: block)
 
@@ -67,12 +68,37 @@ already takes any comparison), so it is unchanged.
   changed Python files (clean) and `specy-road file-limits` (OK). The full-suite
   numbers below are from round 0.
 
+## Review round 3 (gpt-6.1-sol: block)
+
+- A2: when the local and remote integration refs had diverged and both were
+  merged, the newest-merge-base rule had no newest base. Filtering turned off
+  and merge-only paths were reported. I replaced the merge-base rule with the
+  commit-based rule under A2, which the reviewer suggested, restricted to the
+  first-parent line. A plain `git log --no-merges <base>..HEAD` would also list
+  the integration's own commits that a merge brought in, because they are
+  reachable from HEAD.
+- The merge regression is parametrized over `stale` (the round-1 case,
+  unchanged) and `diverged`. In `diverged`, a remote-only commit is merged as
+  well, and the merged-in files must not be reported. Both cases continue to
+  the post-merge checkpoint and the worker deleting the merged file. Against
+  the round-2 code, `diverged` fails: `other/merged.txt` and `other/remote.txt`
+  are reported. `stale` passes on both.
+- New: `test_an_edit_folded_into_a_merge_commit_is_the_workers` pins that an
+  outside-zone file added inside a merge commit is still reported. It passes
+  against the round-2 code too, so it guards the new rule against hiding such
+  edits.
+- `docs/orchestration-workers.md`: the `reconcile W` row states the new rule.
+- Re-run in round 3: `tests/test_worker_reconcile_contract.py` (8 passed), the
+  tests that use `git_changed_paths` (`tests/test_review_round6_evidence.py`,
+  14 passed), `scripts/check_test_private_imports.py` (0 new), `ruff check`
+  (clean) and `specy-road file-limits` (OK).
+
 ## Verification
 
 - `pytest` (all `tests/test_*.py`, run in three foreground chunks because one
   run exceeds the 10-minute tool limit): 1058 passed; 909 passed, 2 skipped;
   997 passed.
-- `pytest tests/test_worker_reconcile_contract.py`: 6 passed. Against the base
+- `pytest tests/test_worker_reconcile_contract.py` (round 0): 6 passed. Against the base
   `worker_reconcile.py`, the A2 test and the "integration branch moving" test
   fail, as they should. The A1 test and the three own-contract cases pass there
   too (see A1 above).
@@ -83,16 +109,14 @@ already takes any comparison), so it is unchanged.
 
 ## Added
 
-- `worker_reconcile._integration_base`: the newest merge base of HEAD with
-  the remote-tracking and local integration refs, which is the point the
-  branch last took the integration branch in (A2, R1).
-- `None` when those bases diverged (`--independent` lists more than one): no
-  older base gets to hide a change. No test covers this; it needs local and
-  remote integration refs that diverged and were both merged in.
-- `base` parameter and intersection in `worker_reconcile._changed_since`:
-  drops tracked paths the tree matches the integration branch on (A2).
-- Guard `own is not None`: a base git cannot diff is skipped, so it cannot
-  empty the change list.
+- `git_changed_paths.branch_commit_paths`: paths the branch's own
+  first-parent commits changed, with a merge counted only where it differs from
+  every parent; this is where the worker's own committed changes come from
+  (A2, round 3).
+- Intersection in `worker_reconcile._changed_since`: keeps a changed path only
+  when the branch's own commits or the uncommitted tree changed it (A2).
+- Guard that both git queries answered (`is not None`): otherwise the
+  unfiltered result stands, so a git failure cannot empty the change list.
 - `worker_reconcile.own_contract`: the leaf's own contract sections of a
   rendered brief (A3).
 - `worker_reconcile._between` (anchored to a line start): extracts a section.
@@ -107,10 +131,13 @@ already takes any comparison), so it is unchanged.
   - `_edit`: runs `edit-node` in-process, the same way
     `test_roadmap_crud_edit_claim_zones.py` does.
   - `test_reconcile_reads_the_zones_edit_node_widened_after_delegation` (A1).
-  - `test_paths_merged_in_from_the_integration_branch_are_not_the_workers` (A2,
-    including a remote-tracking ref behind the merged local branch; then, past
-    a checkpoint after the merge, the worker deleting the merged file is still
-    reported, R1).
+  - `test_paths_merged_in_from_the_integration_branch_are_not_the_workers`,
+    parametrized `stale` / `diverged` (A2). It covers a remote-tracking ref
+    behind the merged local branch, or a diverged remote that was merged too.
+    Past a checkpoint after the merge, the worker deleting the merged file is
+    still reported (R1).
+  - `test_an_edit_folded_into_a_merge_commit_is_the_workers` (A2: the merge
+    commit's own edits are not dropped as merged-in).
   - `test_the_integration_branch_moving_is_not_a_contract_change` (A3: a shared
     README and a status change).
   - `test_a_change_to_the_leafs_own_contract_is_reported`, parametrized over
