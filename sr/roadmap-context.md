@@ -59,7 +59,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
-  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Not Started**
+  - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
   - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
@@ -107,10 +107,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M10.5` on `feature/rm-per-role-effort-in-model` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
+- `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
 - `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
+- `M4.16` on `feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` since 2026-11-01
 - `M5.4` on `feature/rm-enforced-rules-pointers` since 2026-11-01
-- `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
 
 ## Reaching the detail behind this
 

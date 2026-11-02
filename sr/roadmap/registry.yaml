@@ -45,15 +45,6 @@ entries:
     started: '2026-10-31'
     owner: savigil
     implementation_review: pending
-  - codename: further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
-    node_id: M5.8
-    branch: feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - tests/
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
   - codename: enforced-rules-pointers
     node_id: M5.4
     branch: feature/rm-enforced-rules-pointers

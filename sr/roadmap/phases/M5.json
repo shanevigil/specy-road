@@ -213,7 +213,7 @@
       "parent_id": "M5",
       "planning_dir": "planning/M5.8_further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review_944764d5-04d9-4a8d-87af-679b5dcce462.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Further Markdown mention forms for the stale-command check found in M5.2 review",
       "touch_zones": [
         "specy_road/bundled_scripts/validate_stale_commands.py",
