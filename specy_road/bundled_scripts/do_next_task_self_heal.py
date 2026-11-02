@@ -57,22 +57,68 @@ def attempt_self_cleanup(
         return False
 
 
-def emit_stale_claim_warning(node_id: str, codename: str) -> None:
-    """Loud, structured warning when self-heal cannot resolve a stale claim."""
+#: Why a pre-pickup scan reports a claim. It cannot tell a dead claim from one
+#: held by another clone that has not pushed its branch, so it says so.
+SCAN_CAUSE = (
+    "the registry claims this node but its feature branch is in neither ref "
+    "checked. A claim held by another clone whose branch is not pushed looks "
+    "the same from here: confirm it is dead with its owner before removing it."
+)
+
+#: Why a failed pickup reports its own claim.
+ROLLBACK_CAUSE = (
+    "do-next-available-task failed AFTER registering the claim but BEFORE "
+    "the feature branch was created; the automatic cleanup also failed."
+)
+
+
+def _branch_refs(branch: str, remote: str) -> tuple[str, str]:
+    return f"refs/heads/{branch}", f"refs/remotes/{remote}/{branch}"
+
+
+def claim_branch_found(repo_root: Path, branch: str, remote: str) -> bool:
+    """Whether ``branch`` exists as a local ref or, failing that, a remote one.
+
+    The local ref is checked first and settles it alone: a workflow that pushes
+    feature branches only at merge keeps every live claim's branch local, and
+    each of those claims would otherwise read as stale.
+    """
+    local_ref, remote_ref = _branch_refs(branch, remote)
+    return any(
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", ref],
+            cwd=repo_root, capture_output=True, check=False,
+        ).returncode == 0
+        for ref in (local_ref, remote_ref)
+    )
+
+
+def emit_stale_claim_warning(
+    node_id: str,
+    codename: str,
+    *,
+    branch: str,
+    remote: str,
+    cause: str,
+) -> None:
+    """Loud, structured warning for a claim whose branch exists nowhere checked.
+
+    Callers establish that first (:func:`claim_branch_found`): the fix lines
+    delete the claim, so printing them for a live one tells its reader to
+    destroy work in progress.
+    """
+    local_ref, remote_ref = _branch_refs(branch, remote)
     print("=" * 70, file=sys.stderr)
     print("WARNING: stale registry claim was left behind", file=sys.stderr)
     print(f"  node:     {node_id}", file=sys.stderr)
     print(f"  codename: {codename}", file=sys.stderr)
-    print(
-        "  cause:    do-next-available-task failed AFTER registering the "
-        "claim but BEFORE the feature branch was created and pushed; the "
-        "automatic cleanup also failed.",
-        file=sys.stderr,
-    )
+    print(f"  checked:  local {local_ref} (absent)", file=sys.stderr)
+    print(f"            remote {remote_ref} (absent)", file=sys.stderr)
+    print(f"  cause:    {cause}", file=sys.stderr)
     print("  fix:      one of:", file=sys.stderr)
     print(
         f"            - `specy-road abort-task-pickup --force` "
-        f"(after `git checkout -b feature/rm-{codename}`),",
+        f"(after `git checkout -b {branch}`),",
         file=sys.stderr,
     )
     print(
@@ -81,6 +127,27 @@ def emit_stale_claim_warning(node_id: str, codename: str) -> None:
         file=sys.stderr,
     )
     print("=" * 70, file=sys.stderr)
+
+
+def warn_unresolved_rollback(
+    *,
+    repo_root: Path,
+    node_id: str,
+    codename: str,
+    branch: str,
+    remote: str,
+) -> None:
+    """A failed pickup kept its claim: warn as stale only if the branch is gone."""
+    if claim_branch_found(repo_root, branch, remote):
+        print(
+            f"note: the claim for {node_id} stays registered and is not stale: "
+            f"{branch} exists. `git checkout {branch}` to resume it.",
+            file=sys.stderr,
+        )
+        return
+    emit_stale_claim_warning(
+        node_id, codename, branch=branch, remote=remote, cause=ROLLBACK_CAUSE,
+    )
 
 
 def detect_stale_claims(
@@ -97,15 +164,7 @@ def detect_stale_claims(
         branch = e.get("branch") or ""
         if not branch.startswith("feature/rm-"):
             continue
-        local_ok = subprocess.run(
-            ["git", "rev-parse", "--verify", f"refs/heads/{branch}"],
-            cwd=repo_root, capture_output=True, check=False,
-        ).returncode == 0
-        remote_ok = subprocess.run(
-            ["git", "rev-parse", "--verify", f"refs/remotes/{remote}/{branch}"],
-            cwd=repo_root, capture_output=True, check=False,
-        ).returncode == 0
-        if not local_ok and not remote_ok:
+        if not claim_branch_found(repo_root, branch, remote):
             stale.append(e)
     return stale
 
@@ -119,4 +178,7 @@ def warn_about_stale_claims_before_pickup(
     """Surface F-014's 'next pickup detects orphan' contract."""
     stale = detect_stale_claims(repo_root=repo_root, reg=reg, remote=remote)
     for e in stale:
-        emit_stale_claim_warning(e.get("node_id", "?"), e.get("codename", "?"))
+        emit_stale_claim_warning(
+            e.get("node_id", "?"), e.get("codename", "?"),
+            branch=e["branch"], remote=remote, cause=SCAN_CAUSE,
+        )

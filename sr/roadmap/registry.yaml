@@ -11,17 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-claim-heuristic
-    node_id: M11.5
-    branch: feature/rm-pickup-claim-heuristic
-    touch_zones:
-      - specy_road/bundled_scripts/do_next_task_self_heal.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_task_pickup_helpers.py
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: resume-failed-workers
     node_id: M11.2
     branch: feature/rm-resume-failed-workers

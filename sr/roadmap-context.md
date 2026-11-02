@@ -111,7 +111,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.2` worker message resumes a failed or stalled worker whose native session id is known `resume-failed-workers` — task — **Not Started**
   - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Not Started**
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
-  - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Not Started**
+  - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Not Started**
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Not Started**
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
@@ -128,7 +128,6 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M11.11` on `feature/rm-one-readiness-rule` since 2026-11-02
 - `M11.2` on `feature/rm-resume-failed-workers` since 2026-11-02
-- `M11.5` on `feature/rm-pickup-claim-heuristic` since 2026-11-02
 - `M11.6` on `feature/rm-reconcile-current-contract` since 2026-11-02
 
 ## Reaching the detail behind this
