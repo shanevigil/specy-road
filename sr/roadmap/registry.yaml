@@ -39,6 +39,7 @@ entries:
       - specy_road/templates/specyrd/agents-md-block.md
       - specy_road/templates/specyrd/claude-md-block.md
       - tests/
+      - suggested_prompts/bootstrap-agents-md.md
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending

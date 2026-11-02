@@ -116,7 +116,8 @@
       "touch_zones": [
         "specy_road/templates/specyrd/agents-md-block.md",
         "specy_road/templates/specyrd/claude-md-block.md",
-        "tests/"
+        "tests/",
+        "suggested_prompts/bootstrap-agents-md.md"
       ],
       "type": "task"
     },
