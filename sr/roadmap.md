@@ -57,7 +57,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Complete |
 | `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Complete |
 | `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
-| `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Agentic-led | Not Started |
+| `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Agentic-led | Complete |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Agentic-led | Not Started |
 | `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Complete |
 | `M6` | 0.3.1-rc2 release | phase | — | Complete |
