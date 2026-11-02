@@ -14,7 +14,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.16_wrapper-imports-launcher_8bec970a-ebc6-4481-ac06-fdd553b08f3e.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The worker wrapper imports the launching specy-road, not the worktree's copy",
       "touch_zones": [
         "specy_road/worker_runner.py",

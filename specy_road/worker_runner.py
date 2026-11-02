@@ -77,7 +77,9 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     # The wrapper must run this very package, not whichever specy_road the
     # interpreter would import from the worker's cwd or an editable install.
     # The harness itself gets the caller's PYTHONPATH back (``run`` restores it
-    # from the payload), so the adopter's tests never see ours.
+    # from the payload), so the adopter's tests never see ours. ``-P`` keeps
+    # the cwd (a worktree that may hold an older specy_road) off sys.path for
+    # this interpreter only; PYTHONSAFEPATH would leak into the harness.
     pkg_parent = str(Path(__file__).resolve().parent.parent)
     env["PYTHONPATH"] = pkg_parent + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     env["SPECY_ROAD_WORKER_ID"] = rec.worker_id   # so the harness's own hooks do not count it as a stranger
@@ -88,7 +90,7 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
         path = _payload_file(repo_root, rec, token, payload)
         try:
             p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
-                [sys.executable, "-m", "specy_road.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
+                [sys.executable, "-P", "-m", "specy_road.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
                  token, str(path)],
                 cwd=rec.worktree, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, start_new_session=True,
