@@ -34,7 +34,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.18` | Bring role_prompt under the file cap and clear the ruff complexity error | task | Agentic-led | Complete |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Complete |
-| `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |
+| `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Complete |
 | `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Not Started |
 | `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Not Started |
 | `M4.5` | Repository files as evidence; null results; quotes on research-born ideas | task | Agentic-led | Not Started |
@@ -85,6 +85,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Not Started |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
+| `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Not Started |
 | `M10` | Agent loop performance and observability | phase | — | Not Started |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Not Started |
@@ -101,5 +102,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |
 | `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Complete |
+| `M10.16` | The worker wrapper imports the launching specy-road, not the worktree's copy | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
