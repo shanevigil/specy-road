@@ -223,14 +223,9 @@ stop. A `completion` event says it stopped and whether READY exists; it is
 `review-packet`, reviewer prompts, `review record`, `handoff status`,
 `mark-implementation-reviewed`, `finish-this-task`.
 
-**Backgrounded tests.** A `completion` with exit 0 and READY missing, after
-a final reply saying a test or verifier run is still going in the background
-("I'll be notified when it finishes"), is a lost turn: a headless turn ends
-when the agent replies, and nothing resumes the session when the background
-job finishes. The executor prompt tells the executor to run the verifier and
-tests in the foreground for this reason. To recover, `worker message W
---text` telling the executor to rerun them in the foreground, wait for them
-to finish, and then complete its steps.
+**Backgrounded tests.** A `completion` with exit 0 and READY missing, after a final reply saying a test or verifier run is still going in the background ("I'll be notified when it finishes"), is a lost turn: a headless turn ends when the agent replies, and nothing resumes the session when the background job finishes. The executor prompt tells the executor to run the verifier and tests in the foreground for this reason. To recover, `worker message W --text` telling the executor to rerun them in the foreground, wait for them to finish, and then complete its steps.
+
+**Killing by pattern.** An executor clearing its own stray test run with `pkill -f "pytest -q"` also ended the coordinator's and other leaves' pytest runs (SIGTERM, no failure reported), since sessions share the machine. The executor prompt forbids kills by name or pattern and allows stopping only a process the executor started, by the pid it recorded.
 
 | Command | Does |
 |---|---|

@@ -140,7 +140,10 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         "5. Stop.",
         "",
         "You may not: update roadmap status, mark review done, merge, push, start another leaf, weaken a verifier, "
-        "delete or loosen a failing test, add an exemption, broaden an ignore file, or edit acceptance text. "
+        "delete or loosen a failing test, add an exemption, broaden an ignore file, edit acceptance text, "
+        "or kill a process by name or pattern (`pkill`, `killall`, `kill` on `pgrep` output): other sessions share "
+        "this machine and their runs match the same pattern. Stop only a process you started, by the pid you recorded "
+        "when you started it. "
         "A needed change outside the touch zones stops this leaf: say which path and why, and stop.",
         "",
         DATA_LINE,
