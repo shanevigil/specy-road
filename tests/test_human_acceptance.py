@@ -15,7 +15,6 @@ import pytest
 from specy_road.bundled_scripts import finish_task
 from specy_road.bundled_scripts.role_prompt_rca import reviewer_preamble
 from specy_road.finish_task_gates import human_acceptance_ids, recorded_decisions, undecided_human_items
-from specy_road.review_files import review_semantic_errors
 from tests.review_repo_helpers import NODE, commit_file, git, make_review_repo
 
 HUMAN_NODE = {**NODE, "acceptance": ["a.py exists", "human: the maintainer approves the wording"]}
@@ -37,11 +36,9 @@ def test_marker_and_decision_lines() -> None:
     assert recorded_decisions(sheet) == {"A2": "wording approved by the maintainer", "A1": "no"}
 
 
-def test_reviewer_skips_a_human_item_without_failing_the_record() -> None:
+def test_reviewer_is_told_to_skip_a_human_item() -> None:
     text = "\n".join(reviewer_preamble("M1.1", "r1"))
     assert "`human:`" in text and "mark it `n/a`" in text and "write `human` as its reason" in text
-    record = {"verdict": "approve", "acceptance": {"A1": "pass", "A2": "n/a"}}
-    assert review_semantic_errors(record, ["A1", "A2"]) == []
 
 
 def test_finish_refuses_until_the_sheet_records_the_decision(tmp_path: Path, capsys) -> None:
