@@ -196,10 +196,37 @@ pass does only the two items in scope under either reading. No YAML encodings we
 - **Docs.** `docs/orchestration-models.md` names `generic`, its capture rule and the marker
   rule.
 
+## Round 5 (gpt-5.6-sol-high, A3: no inventory captured)
+
+- **Merge.** `origin/WIP/improvements-0-3-1` was 18 commits ahead and merged cleanly
+  (`52effcfa`).
+- **Codex.** `capture_commands` gains `inventory-features.txt: [codex, features, list]`. Its
+  accepted file was captured from codex-cli 0.165.0 on 2026-11-02.
+- **Cursor.** `capture_commands` gains `inventory-models.txt: [agent, models]`. It was captured
+  from 2026.10.22-27dcf5f, and the list depends on the account.
+- **Claude Code gets none.** It has no listing that runs without a model turn: slash commands
+  and tools appear only in a session's `system/init` event, and an unknown subcommand is taken
+  as a prompt. That is recorded as a comment on its record. While probing, three `claude
+  <subcommand> --help` calls ran model turns; I stopped there.
+- **Relationships.** The completeness guard now requires these inventories on every capture.
+  Every workflow identifier in them is assigned: 27 Codex features and 1 Cursor model id. For
+  example, `worktrees`, `codex_git_commit` and `external_agent_memory_import` are `avoid`.
+- **Not caught by the word match.** `memories` is assigned `avoid` explicitly. The literal
+  substring match never flags it: "memories" does not contain "memory". Matching plurals and
+  stems would change A3's word rule, so I left that for the maintainer.
+- **Tests.**
+  - New: `test_a_version_bump_without_its_inventory_is_refused_before_accept`, through the
+    CLI. A cursor bump without `inventory-models.txt` is refused, and the accepted bytes are
+    unchanged.
+  - Tightened: the accepted-captures test now asserts that each accepted capture holds exactly
+    its `capture_commands` files.
+  - Adapted: the `_capture` helper includes the two inventory files.
+- **Live runs.** `--capture codex` and `--capture cursor` exit 0 with no change.
+
 ## Verification
 
-- `.conda/bin/pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 49 passed (after
-  round 4).
+- `.conda/bin/pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 50 passed (after
+  round 5).
 - `python -m pytest -q -x -p no:cacheprovider`: 3018 passed, 2 skipped (18 min, before
   round 1; round 1 reran only the touched test file, as instructed).
 - `python -m specy_road.bundled_scripts.refresh_profiles --check`: exit 0 (this repository
@@ -250,7 +277,7 @@ pass does only the two items in scope under either reading. No YAML encodings we
   — the accepted captures (A3).
 - `specy_road/templates/project/schemas/harness-facts.schema.json` — the schema (A1).
 - `specy_road/templates/project/model-profiles/README.md` — the rendered harness block (A2).
-- `tests/test_harness_facts.py` — 49 tests. The tests added or changed in rounds 1–4 are listed
+- `tests/test_harness_facts.py` — 50 tests. The tests added or changed in rounds 1–5 are listed
   under their rounds; round 3 also added the `_render_refuses` helper:
   - the fixture validates and covers the roster; each schema rule rejects a broken record;
   - an unverified fact needs no source, and a duplicate id is refused;
