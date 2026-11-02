@@ -20,6 +20,6 @@ cd "$ROOT"
 V=$(grep -m1 '^verdict' "sr/work/reviews/$ID/REVIEW-${R1:-cursor-grok-4.6-high}.md" 2>/dev/null | awk '{print $2}')
 if [ "$V" != "approve" ]; then echo "$ID: grok ${V:-no-record}"; exit 5; fi
 cd "sr/work/.worktrees/$WT/sr" || exit 2
-$S prompt "$ID" --role reviewer --model ${R2:-gpt-6.1-sol} --channel cli --repo-root "$PWD" > "$LOG/$ID-r2.log" 2>&1
+$S prompt "$ID" --role reviewer --model ${R2:-gpt-5.6-sol-high} --channel cli --repo-root "$PWD" > "$LOG/$ID-r2.log" 2>&1
 cd "$ROOT"
 $S handoff status "$ID" 2>&1 | grep -E "policy" | sed "s/^/$ID: /"
