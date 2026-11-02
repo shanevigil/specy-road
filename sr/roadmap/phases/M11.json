@@ -112,7 +112,11 @@
         "specy_road/worker_state.py",
         "specy_road/orchestration_config.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_lease.py",
+        "specy_road/worker_runner.py",
+        "specy_road/worker_process.py",
+        "specy_road/worker_reconcile.py"
       ],
       "type": "task"
     },
@@ -280,7 +284,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.11_one-readiness-rule_78faa6a4-7a22-4c84-866d-bd7c71037af5.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route",
       "touch_zones": [
         "specy_road/orchestrate_plan.py",

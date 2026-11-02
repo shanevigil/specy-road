@@ -155,7 +155,7 @@
       "dependencies": [
         "6bea8860-1394-4fff-9094-c781dc86a11a"
       ],
-      "execution_milestone": "Mixed",
+      "execution_milestone": "Agentic-led",
       "goal": "The toolkit learns whether agents' reports of missing or wrong context reproduce, before adding a question to every implementation summary.",
       "id": "M5.6",
       "node_key": "1bd3af2e-a948-4b50-b678-5ef27f9e290d",
@@ -183,7 +183,7 @@
         "6bea8860-1394-4fff-9094-c781dc86a11a",
         "71602a0f-024d-45ca-9161-efe5b0570658"
       ],
-      "execution_milestone": "Human-led",
+      "execution_milestone": "Agentic-led",
       "goal": "The decision to trim or keep the managed section rests on the toolkit's own numbers.",
       "id": "M5.7",
       "node_key": "2dfefcb7-224f-49cd-b36a-0782a52b6e6c",

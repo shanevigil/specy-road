@@ -186,7 +186,7 @@
       "dependencies": [
         "431d31bb-d8bd-4b7f-8259-66c9c756be94"
       ],
-      "execution_milestone": "Human-led",
+      "execution_milestone": "Agentic-led",
       "id": "M8.6",
       "node_key": "af298d00-74cc-47d6-be84-b809eb6c0d3b",
       "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",

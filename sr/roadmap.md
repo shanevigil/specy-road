@@ -57,8 +57,8 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Complete |
 | `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Complete |
 | `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
-| `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Mixed | Not Started |
-| `M5.7` | Measure the managed section on and off across the sandbox apps | task | Human-led | Not Started |
+| `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Agentic-led | Not Started |
+| `M5.7` | Measure the managed section on and off across the sandbox apps | task | Agentic-led | Not Started |
 | `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Complete |
 | `M6` | 0.3.1-rc2 release | phase | — | Complete |
 | `M6.1` | Close out the triage note, changelog and what's-new for rc2 | task | Agentic-led | Complete |
@@ -72,7 +72,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
 | `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
-| `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Human-led | Not Started |
+| `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Not Started |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Human-led | Not Started |
 | `M9` | Regression prevention | phase | — | Complete |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Complete |
@@ -117,7 +117,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.8` | An opt-in delta review packet for small fix rounds | task | Agentic-led | Not Started |
 | `M11.9` | Acceptance items a human must satisfy are marked and handled as such | task | Agentic-led | Not Started |
 | `M11.10` | edit-node can add and remove single list entries | task | Agentic-led | Complete |
-| `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Not Started |
+| `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Complete |
 | `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Not Started |
 | `M11.13` | A milestone gets one full review of its combined change before it is marked complete | task | Agentic-led | Not Started |
 
