@@ -21,6 +21,29 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "review-packet inlines diff text only up to a byte budget as well as the --max-diff-lines line budget (default about 200 KB, settable with --max-diff-bytes, 0 = no cap); files past either budget are listed with their +/- counts and byte size, and the full diff still goes to DIFF.patch",
+        "Files under a generated-artefact path (by default specy_road/pm_gantt_static/ and any path a .gitattributes line marks linguist-generated) are never inlined; the packet lists them with counts and size and says they are generated",
+        "Tests cover a diff of a few very long minified lines exceeding the byte budget and a generated-path file; docs/orchestration-review.md documents both rules; review_packet.py stays under its 400-line cap"
+      ],
+      "codename": "packet-byte-budget",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.17",
+      "node_key": "2005d0d7-8c50-48fe-a18d-0e62a1b5ad01",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.17_packet-byte-budget_2005d0d7-8c50-48fe-a18d-0e62a1b5ad01.md",
+      "sibling_order": 17,
+      "status": "Not Started",
+      "title": "The review packet caps its inlined diff by bytes too and lists generated bundles by size only",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
