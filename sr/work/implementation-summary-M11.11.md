@@ -20,7 +20,8 @@
 ## Touch zones (confirmed)
 
 Changed: `specy_road/orchestrate_plan.py`, `specy_road/bundled_scripts/orchestrate_cli.py`,
-`docs/orchestration.md`, `tests/test_orchestrate_plan.py`, `tests/test_one_readiness_rule.py`.
+`docs/orchestration.md`, `tests/test_orchestrate_plan.py`, `tests/test_one_readiness_rule.py`,
+`tests/unauthored_repo_helpers.py` (new), `tests/test_unauthored_leaf_guard.py` (helpers moved out).
 Not changed: `session_plan.py` and `do_next_available.py`. Pickup and `grind-session --plan` already
 shared the rule, so only `orchestrate plan` had diverged.
 
@@ -38,7 +39,15 @@ statement, and the schema already names them as examples.
 - `pytest tests/test_orchestrate_plan.py tests/test_one_readiness_rule.py tests/test_unauthored_leaf_guard.py tests/test_session_plan.py tests/test_session_plan_git.py tests/test_grind_session.py tests/test_do_next_queue.py`: 93 passed.
 - The new agreement test fails against the base `orchestrate_plan.py` (`['M2','M3'] == ['M1','M2','M3']`).
 - `specy-road file-limits`: OK.
-- Full `pytest`: 2963 passed, 2 skipped.
+- Full `pytest`: 2963 passed, 2 skipped (before the review fix below).
+
+## Review fix (gpt-6.1-sol, E1)
+
+`tests/test_one_readiness_rule.py` imported `_pick`, `_plan` and `_repo` from another test module. Those helpers, with `FILLED`, `_node`, `_git` and `_Picked`, now live in `tests/unauthored_repo_helpers.py` as `pick_leaf`, `plan_json`, `unauthored_repo`, `FILLED`, `leaf_node`, `git` and `Picked`. Both test modules import them from there. They were moved and renamed only, and every assertion is unchanged (the guard file still has 18 tests).
+
+- `pytest tests/test_unauthored_leaf_guard.py tests/test_one_readiness_rule.py tests/test_orchestrate_plan.py`: 35 passed.
+- `python scripts/check_test_private_imports.py`: exit 0, 0 new.
+- `specy-road file-limits`: OK.
 
 ## Added
 
@@ -52,4 +61,5 @@ statement, and the schema already names them as examples.
 - `tests/test_orchestrate_plan.py::test_cheap_class_beats_a_priced_senior_and_billing_breaks_the_tie` (A2/A3): the field roster shape.
 - `tests/test_orchestrate_plan.py::test_senior_eligibility_still_gets_the_senior_class` (A2): eligibility still overrides the ranking.
 - `tests/test_orchestrate_plan.py::test_executor_order_class_then_price_then_billing` (A2): unit test of the full order.
-- Mocks: none new. The agreement test reuses `_pick`'s existing monkeypatches from `test_unauthored_leaf_guard`.
+- `tests/unauthored_repo_helpers.py`: shared, public-named home for the unauthored-repo fixture and the pickup and `--plan` drivers (review E1). It moves existing helpers and adds no new logic.
+- Mocks: none new. The agreement test reuses `pick_leaf`'s existing monkeypatches, which moved with it.
