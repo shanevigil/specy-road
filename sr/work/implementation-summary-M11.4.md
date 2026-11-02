@@ -2,6 +2,13 @@
 
 Branch `feature/rm-max-workers-global`, base `be6a6a63`. WIP was merged in at `2e0f5d12` and `9a6dc334` to widen the touch zones; the second merge added `specy_road/bundled_scripts/worker_cli.py`.
 
+## Round 4 (after gpt-6.1-sol's third block on A1)
+
+- **P1, a missing or empty checkout id bypassed the leases:** `checkout_id` returned `None` for an empty id file, and every lease call treated `None` like "no remote", so it counted no foreign leases and pushed none. It now returns a valid id or raises a `WorkerError`. Once the integration remote is configured, `foreign_leases` and `acquire_lease` call it unconditionally, so `delegate` (before any record), `message` and `resume` (before the `message` event and the spawn) are refused. `--offline` returns before the id is read, as it reads and pushes no lease.
+- **Atomic creation:** the uuid is written to a uniquely named temporary file beside the id file, then `os.link`ed into place, and the temporary file is removed in `finally`. The id file therefore never exists half-written: concurrent first callers get `FileExistsError` and read the winner's id, and an interrupted call leaves no id file, so the next call creates one. A file that exists but does not hold 32 hex digits (an older toolkit's interrupted `O_EXCL`-then-write, or a hand edit) is refused, not replaced, because which id other checkouts saw is unknown. The error names the file and says to remove it; the next `delegate`, `message` or `resume` then writes a new one. A filesystem that cannot hard-link refuses with that error rather than falling back to a non-atomic write.
+- **Best-effort paths:** `release_lease` and `release_stale_leases` (`sync`) return quietly without a usable id, because this checkout pushed no lease under one, and they must not fail a wrapper, a terminate or a sync.
+- **Docs:** one sentence in the "What `max_workers` counts" paragraph covers the write-then-link creation and the refusal (still 398 lines).
+
 ## Round 3 (after gpt-6.1-sol's second block on A1)
 
 - **P1 (1), the stale sweep raced a launch:** `release_stale_leases` read the live records, then the remote, and deleted unlocked. A lease pushed in between was deleted, hiding a live worker. It now reads this checkout's lease refs from the remote (unlocked network read), then takes the workers lock, reloads each candidate's record (`_closed`: missing, `failed` or `terminated`), and deletes only those refs while still holding the lock. Every launch (`_launch_locked`) and resume (`_send`) pushes its lease under that same lock, so the two cannot interleave. If the remote is unreachable, the sweep does nothing; `sync` still reports, and the next sync retries.
@@ -41,7 +48,7 @@ Two costs remain:
 
 ## Not new: `specy_road/worker_lease.py`
 
-The touch zone named `worker_lease.py` as new, but that module already exists: it holds the human `handoff`/`reclaim` lease. The slot lease is a separate section in the same file (now 318 lines), and the module docstring says so. Round 3 needed `worker_cli.py`, which was added to the touch zones before I edited it. The registry schema and `validate` are unchanged.
+The touch zone named `worker_lease.py` as new, but that module already exists: it holds the human `handoff`/`reclaim` lease. The slot lease is a separate section in the same file (now 346 lines), and the module docstring says so. Round 3 needed `worker_cli.py`, which was added to the touch zones before I edited it. The registry schema and `validate` are unchanged.
 
 ## Acceptance
 
@@ -54,19 +61,22 @@ The touch zone named `worker_lease.py` as new, but that module already exists: i
   - the lease's lifetime and the sync sweep;
   - the unreachable-remote refusal and `--offline`;
   - rejected lease pushes through `message`, `resume` and `delegate`;
-  - the sweep keeping a lease created after its first read.
+  - the sweep keeping a lease created after its first read;
+  - a missing checkout id created on use, an empty or unusable one refusing every turn, and concurrent first calls agreeing on one id.
 
-## Verification (round 3)
+## Verification (round 4)
 
-As instructed, I ran only the touched test file. The other worker suites, including `tests/test_worker_cli.py` for the parser change, were last run in round 1.
+As instructed, I ran only the touched test file. The other worker suites, including `tests/test_worker_cli.py` for the round-3 parser change, were last run in round 1. The round-4 review's rerun noted `tests/test_worker_cli.py::test_terminate_a_live_worker` failing on wrapper pid verification. I did not run or investigate it this round; whether it comes from the reviewer's environment or from this branch is still open.
 
-- `python -m pytest tests/test_worker_max_workers_global.py -q -p no:cacheprovider`: 15 passed in 25.95s.
+- `python -m pytest tests/test_worker_max_workers_global.py -q -p no:cacheprovider`: 20 passed in 35.85s.
 - `specy-road file-limits`: OK.
-- `ruff check` on `worker_lease.py`, `worker_ops.py`, `bundled_scripts/worker_cli.py` and the test file: all checks passed.
+- `ruff` is not installed in this round's environment (not on PATH, nor as a module of either Python), and I did not install it, so lint was not run on the round-4 change. `python -m py_compile` on `worker_lease.py` and the test file succeeds. Round 3's `ruff check` passed on the round-3 versions.
 
 ## Added
 
-- `worker_lease.checkout_id`: the stable per-repository id, shared by linked worktrees (a uuid in the git common dir).
+- `worker_lease.checkout_id`: the stable per-repository id, shared by linked worktrees (a uuid in the git common dir). Round 4: created by write-then-link, validated, and a `WorkerError` instead of `None`.
+- `worker_lease._CHECKOUT_ID` (round 4): the 32-hex-digit shape an id must have to be used.
+- `try/except WorkerError` around `checkout_id` in `release_lease` and `release_stale_leases` (round 4): releases stay best effort without an id.
 - `worker_lease.LEASES`, `LEASE_TIMEOUT`: the ref namespace and a bound on every lease network call.
 - `worker_lease._remote`: `(name, url)` of the integration remote, or `None` (no remote: no leases).
 - `worker_lease.OFFLINE_HINT`, `_WARNED`, `_warn_offline` (round 3): the `--offline` hint in refusals, and one warning per remote per process when `--offline` is used.
@@ -102,5 +112,9 @@ As instructed, I ran only the touched test file. The other worker suites, includ
 - Test `test_sync_keeps_a_lease_created_after_its_first_read` (round 3, review P1 (1)): a worker launched between the sweep's remote read and its delete keeps its lease, and the stale one is deleted. It wraps `worker_lease.run`, the public git runner the module imports, to land that launch.
 - Tests kept from round 1: linked worktree counted, idle resume in its own slot, resume refused when local workers fill a lowered limit.
 - Test helpers `_remote_and_clone`, `_leases`, `_idle`, `_foreign_worker`: a bare integration remote with a second clone, lease listing, an idle record, and a foreign worker holding its lease.
+- Test `test_a_missing_checkout_id_is_created_and_the_count_still_holds` (round 4): `delegate` with no id file creates a valid id and is still refused by the other clone's lease.
+- Test `test_an_empty_or_unusable_checkout_id_refuses_launch_and_resume` (round 4; parametrized over an empty file, a newline and a half-written id): `delegate` and `message` (CLI) and `resume` refused with "holds no checkout id"; no record is created, the idle worker keeps its state, and no message event is recorded. After the file is removed, a new valid id is written.
+- Test `test_concurrent_first_calls_agree_on_one_checkout_id` (round 4): 32 calls on 8 threads return one id, matching the file, with no temporary file left.
+- Test helper `_id_file` (round 4): the id file's path in the main checkout's git dir.
 - Test helpers `_unreachable`, `_rejecting` (round 3): a remote path that does not exist (with `origin/HEAD` as last fetched), and a bare remote whose `update` hook rejects `refs/specy-road/*`.
 - Mocks: one, round 3: `monkeypatch.setattr(lease, "run", …)` in the sweep-race test, which delegates every call to the real `run`. The remotes are real bare repositories in `tmp_path`.
