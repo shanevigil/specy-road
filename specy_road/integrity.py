@@ -176,25 +176,29 @@ def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, s
 
 
 def _blob_additions(root: Path, old: str | None, new: str) -> list[tuple[int, str]]:
-    """Lines blob ``new`` adds to blob ``old``; every line of ``new`` when there is no ``old``."""
+    """Lines blob ``new`` adds to blob ``old``; every line of ``new`` when there is no ``old``.
+
+    Nothing when that diff (or the new blob) is not valid UTF-8: the file is skipped and
+    every other file is still checked.
+    """
     if old is not None:
-        return _hunk_additions(_patch(root, [*_BLOB_DIFF, old, new]))
-    lines = _git_bytes(root, ["cat-file", "blob", new]).decode("utf-8", "replace").split("\n")
+        patch = _utf8(_git_bytes(root, [*_BLOB_DIFF, old, new]))
+        return _hunk_additions(patch) if patch is not None else []
+    text = _utf8(_git_bytes(root, ["cat-file", "blob", new]))
+    if text is None:
+        return []
+    lines = text.split("\n")
     if lines[-1] == "":
         lines.pop()
     return list(enumerate(lines, 1))
 
 
-def _patch(root: Path, args: list[str]) -> str:
-    """``git <args>`` stdout decoded leniently; empty on failure."""
-    return _git_bytes(root, args).decode("utf-8", "replace")
-
-
 def _git_bytes(root: Path, args: list[str]) -> bytes:
     """``git <args>`` raw stdout; empty on failure.
 
-    Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes
-    strictly: one non-UTF-8 added line or file name would hide every other finding.
+    Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes the
+    whole output strictly: one non-UTF-8 file name would hide every other path. Callers
+    decode each name or file's diff on its own.
     """
     try:
         r = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
@@ -227,9 +231,9 @@ def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[
     return out
 
 
-def _utf8(name: bytes) -> str | None:
+def _utf8(data: bytes) -> str | None:
     try:
-        return name.decode("utf-8")
+        return data.decode("utf-8")
     except UnicodeDecodeError:
         return None
 
