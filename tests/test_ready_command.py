@@ -82,6 +82,6 @@ def test_handoff_status_still_validates_a_hand_written_ready(tmp_path: Path, cap
 def test_executor_prompt_tells_the_executor_to_write_ready_with_the_command(tmp_path: Path) -> None:
     text = role_prompt.build_prompt(make_profile_repo(tmp_path), "M1.1", role="executor", model="opus")[0]
     step = next(line for line in text.splitlines() if line.startswith("4. "))
-    assert "Then write `READY-opus.md` with `specy-road ready M1.1 --model opus --verify '<cmd>=<exit>' ...`" in step
+    assert "Then write `READY-opus.md` with `specy-road ready M1.1 --model=opus --verify '<cmd>=<exit>' ...`" in step
     assert "refuses a non-zero `--verify`" in step and "`--red-green '<cmd>=<exit>'`" in step
     assert "handoff-ready.template.md" not in step

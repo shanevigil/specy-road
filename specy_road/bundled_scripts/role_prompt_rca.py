@@ -136,7 +136,7 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
-        f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model {model} --verify '<cmd>=<exit>' ...`, "
+        f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model={model} --verify '<cmd>=<exit>' ...`, "
         f"one `--verify` per verifier or test you ran (`{model}` is your roster id, not an API model id). "
         "It reads branch, commit (the one that adds the summary), base and changed paths from git, refuses a "
         "non-zero `--verify`, and writes into "
