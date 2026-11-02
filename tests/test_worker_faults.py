@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import signal
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from tests.test_worker_cli import _repo
+from tests.review_repo_helpers import make_review_repo
+from tests.test_worker_cli import _repo, worker_roster
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -50,52 +52,54 @@ def test_a_killed_harness_leaves_the_worker_failed(tmp_path: Path) -> None:
         ops.resume(repo, rec.worker_id)
 
 
-SILENT_THEN_LINES = '''
-import sys
-for i in range(int(sys.argv[1])):
+PACED_LINES = '''
+import sys, time
+for i, pause in enumerate(float(x) for x in sys.argv[1:]):
+    time.sleep(pause)
     print(f"line {i}", flush=True)
 '''
 
 
-def _stamps(monkeypatch) -> list[str]:
-    """``worker_runner._now`` as a counter: each call is a distinct, recorded stamp."""
-    made: list[str] = []
-
-    def fake() -> str:
-        made.append(f"2026-11-01T00:00:{len(made):02d}+00:00")
-        return made[-1]
-    monkeypatch.setattr(wr, "_now", fake)
-    return made
+def _paced(tmp_path: Path, *pauses: float) -> wa.Launch:
+    """A harness that prints one line after each pause (seconds, real time)."""
+    script = tmp_path / "paced.py"
+    script.write_text(PACED_LINES)
+    return wa.Launch([sys.executable, str(script), *(str(x) for x in pauses)])
 
 
-def _turn(tmp_path: Path, repo: Path, lines: int) -> tuple[ws.WorkerRecord, wa.Launch]:
-    script = tmp_path / "lines.py"
-    script.write_text(SILENT_THEN_LINES)
-    prompt = tmp_path / "prompt.md"
-    prompt.write_text("go")
+def _since_launch(repo: Path, wid: str) -> float:
+    """Seconds from the latest turn's ``launched`` event to the persisted ``last_output_at``."""
+    launched = [e for e in ws.events_since(repo, wid) if e.type == "launched"][-1]
+    out = ws.load_record(repo, wid).last_output_at
+    return (datetime.fromisoformat(out) - datetime.fromisoformat(launched.at)).total_seconds()
+
+
+def _stall_repo(tmp_path: Path, seconds: int) -> Path:
+    """A review repo whose committed policy (read from the integration branch) sets ``stall_after_seconds``."""
+    roster = worker_roster("harness {prompt}").replace(
+        "policy: {max_workers: 2}", f"policy: {{max_workers: 2, stall_after_seconds: {seconds}}}")
+    return make_review_repo(tmp_path, orchestration=roster)
+
+
+def test_last_output_at_is_written_at_most_every_five_seconds(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
-    return rec, wa.Launch([sys.executable, str(script), str(lines)])
+    launch = _paced(tmp_path, 0, 2.2)   # two lines about 2.2 s apart
+    # Clock readings 0 and 1: the second line is inside the window, so the first line's time stays.
+    wr.run(repo, rec.worker_id, launch, clock=iter([0.0, 1.0]).__next__)
+    assert _since_launch(repo, rec.worker_id) <= 1
+    # Readings 0 and 6: the second line is past the window, and its time is written.
+    wr.run(repo, rec.worker_id, launch, clock=iter([0.0, 6.0]).__next__)
+    assert _since_launch(repo, rec.worker_id) >= 2
 
 
-def test_last_output_at_is_written_at_most_every_five_seconds(tmp_path: Path, monkeypatch) -> None:
+def test_a_new_turn_resets_last_output_at_and_the_stalled_mark(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
-    rec, launch = _turn(tmp_path, repo, 5)
-    made = _stamps(monkeypatch)
-    monkeypatch.setattr(wr, "_clock", iter([0.0, 1.0, 2.0, 6.0, 7.0]).__next__)   # one reading per line
-    wr.run(repo, rec.worker_id, launch)
-    # The launch, then the lines read at 0 s and 6 s; the lines at 1, 2 and 7 s are inside the window.
-    assert len(made) == 3
-    assert ws.load_record(repo, rec.worker_id).last_output_at == made[-1]
-
-
-def test_a_new_turn_resets_last_output_at_and_the_stalled_mark(tmp_path: Path, monkeypatch) -> None:
-    repo, _ = _repo(tmp_path)
-    rec, launch = _turn(tmp_path, repo, 0)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     ws.mutate(repo, rec, lambda r: (setattr(r, "last_output_at", "2026-01-01T00:00:00+00:00"), r.flags.append(ws.FLAG_STALLED)))
-    made = _stamps(monkeypatch)
-    wr.run(repo, rec.worker_id, launch)   # prints nothing: the launch is the only stamp
-    after = ws.load_record(repo, rec.worker_id)
-    assert made and after.last_output_at == made[0] and ws.FLAG_STALLED not in after.flags
+    wr.run(repo, rec.worker_id, _paced(tmp_path))   # prints nothing: only the launch sets the time
+    assert 0 <= _since_launch(repo, rec.worker_id) <= 1
+    assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
 
 
 def _stalled(repo: Path, wid: str) -> list[ws.WorkerEvent]:
@@ -103,8 +107,6 @@ def _stalled(repo: Path, wid: str) -> list[ws.WorkerEvent]:
 
 
 def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> None:
-    from datetime import datetime, timedelta
-
     repo, _ = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     t0 = datetime.fromisoformat("2026-11-01T00:00:00+00:00")
@@ -117,17 +119,46 @@ def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> 
     assert ws.FLAG_STALLED in ws.load_record(repo, rec.worker_id).flags
     assert ops.sweep_stalled(repo, now=t0 + timedelta(seconds=900)) == []   # the same silence: no second event
     assert len(_stalled(repo, rec.worker_id)) == 1
-    # The next output line clears the mark; a later silence raises it again.
-    wr._output_seen(repo, rec, None, 0.0)
-    rec = ws.load_record(repo, rec.worker_id)
-    assert ws.FLAG_STALLED not in rec.flags
-    t1 = datetime.fromisoformat(rec.last_output_at)
-    assert ops.sweep_stalled(repo, now=t1 + timedelta(seconds=599)) == []
-    assert len(ops.sweep_stalled(repo, now=t1 + timedelta(seconds=600))) == 1
-    assert len(_stalled(repo, rec.worker_id)) == 2
     # Only a running worker is stalled: the flag goes when the turn ends.
     ws.set_state(repo, rec, "idle")
-    ops.sweep_stalled(repo, now=t1 + timedelta(seconds=900))
+    ops.sweep_stalled(repo, now=t0 + timedelta(seconds=900))
+    assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
+
+
+def test_output_clears_a_stall_shorter_than_the_write_window(tmp_path: Path) -> None:
+    """stall_after_seconds 1: a sweep flags each 3 s silence, and the line after it clears the flag,
+    although that line falls inside the five-second last_output_at window."""
+    import threading
+    import time
+
+    repo = _stall_repo(tmp_path, 1)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
+    raw = wr.log_path(repo, rec.worker_id)
+    newly_flagged: list[bool] = []
+    errors: list[BaseException] = []
+
+    def sweeper() -> None:
+        try:
+            for n in (1, 2):   # 1.5 s into the silence after line n
+                deadline = time.monotonic() + 10
+                while (raw.read_text().count("line ") if raw.is_file() else 0) < n:
+                    assert time.monotonic() < deadline, f"line {n} never reached the log"
+                    time.sleep(0.05)
+                time.sleep(1.5)
+                newly_flagged.append(bool(ops.sweep_stalled(repo)))
+        except BaseException as e:  # noqa: BLE001 — reported by the test thread
+            errors.append(e)
+
+    t = threading.Thread(target=sweeper)
+    t.start()
+    wr.run(repo, rec.worker_id, _paced(tmp_path, 0, 3, 3))
+    t.join()
+    assert not errors, errors
+    # The second sweep flags afresh only because line 1 cleared the first flag.
+    assert newly_flagged == [True, True] and len(_stalled(repo, rec.worker_id)) == 2
+    # Line 1 also wrote its time: the second silence is measured from it, not from line 0.
+    assert _stalled(repo, rec.worker_id)[1].detail["silent_seconds"] < 3
+    # Line 2 cleared the second flag (the turn's end does not touch flags).
     assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
 
 
@@ -160,15 +191,7 @@ def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None
 
 
 def test_policy_stall_after_seconds_overrides_the_default(tmp_path: Path) -> None:
-    from datetime import datetime, timedelta
-
-    from tests.review_repo_helpers import make_review_repo
-    from tests.test_worker_cli import worker_roster
-
-    # The policy is read from the integration branch, where make_review_repo commits the roster.
-    roster = worker_roster("harness {prompt}").replace("policy: {max_workers: 2}",
-                                                       "policy: {max_workers: 2, stall_after_seconds: 60}")
-    repo = make_review_repo(tmp_path, orchestration=roster)
+    repo = _stall_repo(tmp_path, 60)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
     t0 = datetime.fromisoformat("2026-11-01T00:00:00+00:00")
     ws.mutate(repo, rec, lambda r: (setattr(r, "state", "running"), setattr(r, "last_output_at", t0.isoformat())))

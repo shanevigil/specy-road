@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
@@ -49,7 +50,6 @@ from specy_road.worker_state import (
 
 #: ``last_output_at`` is written at most this often: each write is a mutate under the workers lock.
 OUTPUT_MARK_SECONDS = 5.0
-_clock = time.monotonic   # a test replaces it
 
 
 def log_path(repo_root: Path, worker_id: str) -> Path:
@@ -115,8 +115,11 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
 
 
 def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = False,
-        harness_pythonpath: str | None = None) -> int:
-    """The wrapper body, in the foreground. Returns the harness's exit code."""
+        harness_pythonpath: str | None = None, clock: Callable[[], float] = time.monotonic) -> int:
+    """The wrapper body, in the foreground. Returns the harness's exit code.
+
+    ``clock`` is read once per stdout line to throttle ``last_output_at`` writes.
+    """
     rec = load_record(repo_root, worker_id)
     adapter = adapter_for(rec.harness)
     log = log_path(repo_root, worker_id)
@@ -164,7 +167,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 first = False
                 append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
-                marked = _output_seen(repo_root, rec, marked, _clock())
+                marked = _output_seen(repo_root, rec, marked, clock())
                 _consume(repo_root, rec, adapter, line, launch)
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
@@ -173,11 +176,16 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
-    """Write ``last_output_at`` (and drop ``stalled``) unless the last write is under five seconds old.
+    """Write ``last_output_at`` and drop ``stalled`` unless the last write is under five seconds old
+    and the record is not flagged ``stalled``.
 
-    ``marked`` and ``now`` are clock readings; returns the reading of the last write.
+    A threshold under the window can flag a worker between two writes; its next
+    line must still clear the flag, and writes the time too, so the next sweep
+    measures a new silence from this line. ``marked`` and ``now`` are clock
+    readings; returns the reading of the last write.
     """
-    if marked is not None and now - marked < OUTPUT_MARK_SECONDS:
+    if (marked is not None and now - marked < OUTPUT_MARK_SECONDS
+            and FLAG_STALLED not in load_record(repo_root, rec.worker_id).flags):
         return marked
 
     def fn(r: WorkerRecord) -> None:
