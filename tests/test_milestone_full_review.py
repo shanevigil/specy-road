@@ -53,10 +53,9 @@ def _set_status(root: Path, nid: str, status: str) -> None:
     _chunk(root).write_text(json.dumps({"nodes": nodes}, indent=2) + "\n", encoding="utf-8")
 
 
-def _land_leaf(root: Path, nid: str) -> str:
-    """Pickup-shaped branch for ``nid``: register, implement, complete; merged into ``dev``. Returns its branch point."""
+def _branch_leaf(root: Path, nid: str) -> None:
+    """Pickup-shaped branch for ``nid``: register, implement, complete; left checked out, not merged."""
     codename = LEAVES[nid]
-    start = git(root, "rev-parse", "dev")
     git(root, "checkout", "-q", "-b", f"feature/rm-{codename}", "dev")
     commit_file(root, "roadmap/registry.yaml", f"version: 1\nentries: []\n# {codename}\n",
                 f"chore(rm-{codename}): register as in-progress")
@@ -64,9 +63,16 @@ def _land_leaf(root: Path, nid: str) -> str:
     _set_status(root, nid, "Complete")
     git(root, "add", "roadmap/phases/M2.json")
     git(root, "commit", "-qm", f"chore(rm-{codename}): complete, deregister")
+
+
+def _merge_leaf(root: Path, nid: str) -> None:
     git(root, "checkout", "-q", "dev")
-    git(root, "merge", "-q", "--no-ff", "--no-edit", f"feature/rm-{codename}")
-    return start
+    git(root, "merge", "-q", "--no-ff", "--no-edit", f"feature/rm-{LEAVES[nid]}")
+
+
+def _land_leaf(root: Path, nid: str) -> None:
+    _branch_leaf(root, nid)
+    _merge_leaf(root, nid)
 
 
 def make_milestone_repo(tmp_path: Path, *, orchestration: str | None = None, land: bool = True) -> Path:
@@ -149,7 +155,10 @@ def test_milestone_packet_covers_both_leaves_and_base_overrides(tmp_path: Path) 
 
 def test_milestone_packet_without_a_registration_commit_needs_base(tmp_path: Path, capsys) -> None:
     root = make_milestone_repo(tmp_path, land=False)
-    commit_file(root, "src/alpha.py", "print('alpha')\n", "landed without pickup")
+    for nid in LEAVES:   # finished straight on dev, with no pickup commit to anchor the range
+        _set_status(root, nid, "Complete")
+    git(root, "add", "roadmap/phases/M2.json")
+    git(root, "commit", "-qm", "landed without pickup")
     with pytest.raises(SystemExit):
         rp.build_packet(root, "M2", ref=None, verify_cmds=[])
     assert "pass --base" in capsys.readouterr().err
@@ -213,3 +222,68 @@ def test_mark_implementation_reviewed_refuses_a_leaf_id_and_an_open_milestone(tm
     assert "not a milestone" in capsys.readouterr().err
     assert _mir(root, "M2", "--yes") == 1
     assert "unfinished leaves" in capsys.readouterr().err
+
+
+def test_an_approval_before_the_last_leaf_lands_never_releases_the_hold(tmp_path: Path, capsys) -> None:
+    """Sol's regression: the tip approved after alpha covers less than the milestone; beta is still on its branch."""
+    root = make_milestone_repo(tmp_path, land=False)
+    _land_leaf(root, "M2.1")
+    _review(root)   # approves dev as it stands: alpha only
+    _branch_leaf(root, "M2.2")   # finish-this-task runs here, before the merge
+    assert complete_rolled_up_ancestors(root, "M2.2") == []
+    assert _statuses(root)["M2"] == "Not Started"
+    assert "[hold] M2 rolled up to Complete but its leaves M2.2 have not landed on refs/heads/dev" in capsys.readouterr().out
+    _merge_leaf(root, "M2.2")   # landed: the old approval is for an earlier commit
+    assert complete_rolled_up_ancestors(root, "M2.2") == []
+    assert "its full review is not approved at refs/heads/dev" in capsys.readouterr().out
+    _review(root)   # a fresh review of the landed tip
+    assert complete_rolled_up_ancestors(root, "M2.2") == ["roadmap/phases/M2.json"]
+    assert _statuses(root)["M2"] == "Complete"
+
+
+def test_an_unfinished_milestone_is_not_awaiting_its_full_review(tmp_path: Path, capsys) -> None:
+    root = make_milestone_repo(tmp_path, land=False)
+    _land_leaf(root, "M2.1")
+    _branch_leaf(root, "M2.2")
+    reviews_dir(root, "M2").mkdir(parents=True)
+    assert _cli(["handoff", "status", "M2", "--repo-root", str(root)]) == 1
+    out = capsys.readouterr().out
+    assert "M2: leaves_open" in out and "leaves M2.2 are not Complete at refs/heads/dev" in out
+    assert "awaiting_full_review" not in out
+    with pytest.raises(SystemExit):
+        rp.build_packet(root, "M2", ref=None, verify_cmds=[])
+    assert "leaves M2.2 are not Complete" in capsys.readouterr().err
+    notes = tmp_path / "notes.md"
+    _review(root, model="human")
+    notes.write_text(reviews_dir(root, "M2").joinpath("REVIEW-human.md").read_text().replace("human", "sol"))
+    assert _cli(["review", "record", "M2", "--model", "sol", "--verdict", "approve", "--file", str(notes),
+                 "--repo-root", str(root)]) == 1
+    assert "leaves M2.2 are not Complete" in capsys.readouterr().err
+
+
+def test_close_refuses_on_the_wrong_branch(tmp_path: Path, capsys) -> None:
+    root = make_milestone_repo(tmp_path)
+    _review(root)
+    git(root, "checkout", "-q", "-b", "other", "dev")
+    assert _mir(root, "M2", "--yes") == 1
+    assert "the checked-out branch is 'other', not the integration branch 'dev'" in capsys.readouterr().err
+    assert _statuses(root)["M2"] == "Not Started"
+    assert git(root, "rev-parse", "other") == git(root, "rev-parse", "dev")
+
+
+def test_close_refuses_a_divergent_integration_tip(tmp_path: Path, capsys) -> None:
+    """The gate is read at the remote-tracking tip; a local dev ahead of it must not close the milestone."""
+    root = make_milestone_repo(tmp_path)
+    bare = tmp_path / "remote.git"
+    git(tmp_path, "clone", "-q", "--bare", str(root), str(bare))
+    git(root, "remote", "add", "origin", str(bare))
+    git(root, "fetch", "-q", "origin")
+    reviewed = git(root, "rev-parse", "origin/dev")
+    _review(root, commit=reviewed)
+    commit_file(root, "src/local.py", "print('local')\n", "local work past the reviewed tip")
+    assert resolve_target(root, "M2").commit == reviewed
+    assert _mir(root, "M2", "--yes") == 1
+    assert f"HEAD ({git(root, 'rev-parse', 'HEAD')[:12]}) is not the reviewed commit {reviewed[:12]}" in \
+        capsys.readouterr().err
+    assert _statuses(root)["M2"] == "Not Started"
+    assert "local work past" in git(root, "log", "-1", "--format=%s")

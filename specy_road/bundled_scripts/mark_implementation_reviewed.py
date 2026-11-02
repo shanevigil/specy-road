@@ -34,7 +34,7 @@ from specy_road.review_gate import (
     trial_merge_or_exit,
     write_human_approval,
 )
-from specy_road.review_target import is_milestone, resolve_target_or_exit
+from specy_road.review_target import is_milestone, milestone_close_problem, resolve_target_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
 from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
 from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
@@ -308,6 +308,9 @@ def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
               "closes it only after the last one lands.", file=sys.stderr)
         raise SystemExit(1)
     target = resolve_target_or_exit(ROOT, node_id)
+    if why := milestone_close_problem(ROOT, target):   # before a human reads, approves, or a record is written
+        print(f"error: {why}", file=sys.stderr)
+        raise SystemExit(1)
     print(f"Milestone full review — [{node_id}] at {target.ref}\n")
     gate = _gate_or_human_approval(args, node, branch=None, summary_text="", walkthrough=None,
                                    commit=target.commit)

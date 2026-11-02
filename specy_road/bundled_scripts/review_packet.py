@@ -41,7 +41,7 @@ from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_gate import policy_source_line, trial_merge_lines
 from specy_road.review_target import (
-    MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_base_or_exit, milestone_packet_lines,
+    MILESTONE_SUMMARY, REGISTRY_REL, ReviewTarget, full_sha, milestone_packet_or_exit, milestone_packet_lines,
     resolve_target_or_exit, same_commit,
 )
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
@@ -330,7 +330,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
     integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
     if base:
         t = _with_base(root, t, base)
-    milestone_base_or_exit(t)
+    milestone_packet_or_exit(t)
     brief = render_brief(node_id, index(t.nodes), repo_root=root, include_history=False)
     paths, changed = changed_paths_section(root, t)
     brief_lines = brief.rstrip().splitlines()

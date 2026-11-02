@@ -19,16 +19,19 @@ so the diff is the milestone's combined change (:func:`milestone_review_base`).
 
 from __future__ import annotations
 
+import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.finish_implementation_check import base_ref
-from specy_road.git_subprocess import git_text, local_branch_exists
+from specy_road.git_subprocess import git_stdout, git_text, local_branch_exists
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.registry_yaml import read_registry, registry_path
+from specy_road.roadmap_json import nodes_from_chunk_doc
 from specy_road.runtime_paths import project_prefix
 
 REGISTRY_REL = "roadmap/registry.yaml"
@@ -48,6 +51,7 @@ class ReviewTarget:
     base_ref: str | None
     base: str | None
     milestone: bool = False   # reviewed as a whole at the integration tip, not as a claimed leaf
+    unfinished_leaves: list[str] = field(default_factory=list)   # leaves not Complete at ``commit`` (milestone)
 
     @property
     def node_id(self) -> str:
@@ -196,6 +200,27 @@ def milestone_review_base(repo_root: Path, nodes: list[dict[str, Any]], node_id:
     return git_text(["merge-base", "--octopus", *parents], repo_root) or None
 
 
+def unfinished_leaves_at(repo_root: Path, nodes: list[dict[str, Any]], node_id: str, commit: str) -> list[str]:
+    """Leaves under ``node_id`` whose chunk **at ``commit``** does not say Complete.
+
+    The working tree says what the finishing branch knows; the integration tip
+    says what has landed. A leaf whose chunk cannot be read there counts as
+    unfinished: the review must cover the landed change.
+    """
+    out = []
+    for leaf in leaf_descendants(nodes, node_id):
+        chunk = find_chunk_path(repo_root, leaf["id"])
+        text = chunk and git_stdout(["show", f"{commit}:./{chunk.relative_to(repo_root)}"], repo_root)
+        try:
+            landed = nodes_from_chunk_doc(json.loads(text)) if text else None
+        except ValueError:
+            landed = None
+        status = next((n.get("status") for n in landed or [] if n.get("id") == leaf["id"]), None)
+        if status != "Complete":
+            out.append(leaf["id"])
+    return out
+
+
 def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:
     """Build the target for ``node_id``; raises :class:`ReviewTargetError`."""
     nodes = load_roadmap(repo_root)["nodes"]
@@ -218,7 +243,8 @@ def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> Rev
         if tip is None:
             raise ReviewTargetError(f"cannot resolve {use_ref!r} to a commit")
         return ReviewTarget(node, nodes, entry, use_ref, tip, bref,
-                            milestone_review_base(repo_root, nodes, node_id, tip), milestone=True)
+                            milestone_review_base(repo_root, nodes, node_id, tip), milestone=True,
+                            unfinished_leaves=unfinished_leaves_at(repo_root, nodes, node_id, tip))
     use_ref = ref or default_ref(repo_root, entry or {"node_id": node_id}, remote)
     if not full_sha(repo_root, use_ref):
         raise ReviewTargetError(f"cannot resolve {use_ref!r} to a commit")
@@ -250,6 +276,8 @@ def milestone_status(t: ReviewTarget, state: str) -> tuple[str, list[str]]:
         return state, []
     if t.node.get("status") == "Complete":
         return "complete_no_claim", []
+    if t.unfinished_leaves:
+        return "leaves_open", [milestone_open_problem(t) or ""]
     if state not in ("approved", "blocked", "escalated"):
         state = "awaiting_full_review"
     if state == "approved":
@@ -268,10 +296,41 @@ def milestone_packet_lines(t: ReviewTarget) -> list[str]:
             f"`specy-road mark-implementation-reviewed {t.node_id}`"]
 
 
-def milestone_base_or_exit(t: ReviewTarget) -> None:
-    """``review-packet`` needs the milestone's start; without a leaf registration only ``--base`` gives one."""
-    if t.milestone and not t.base:
-        print(f"error: no 'register as in-progress' commit of a leaf under {t.node_id} is reachable from {t.ref}, "
-              "so the milestone's combined change has no start; pass --base <the commit before its first leaf>",
-              file=sys.stderr)
+def milestone_open_problem(t: ReviewTarget) -> str | None:
+    """Why the full review cannot start: a leaf has not landed at the commit under review."""
+    if t.milestone and t.unfinished_leaves:
+        return (f"{t.node_id}: leaves {', '.join(t.unfinished_leaves)} are not Complete at {t.ref} "
+                f"({(t.commit or '?')[:12]}); its full review starts when the last one lands")
+    return None
+
+
+def milestone_packet_or_exit(t: ReviewTarget) -> None:
+    """``review-packet`` needs every leaf landed and the milestone's start (a leaf registration, or ``--base``)."""
+    why = milestone_open_problem(t)
+    if why is None and t.milestone and not t.base:
+        why = (f"no 'register as in-progress' commit of a leaf under {t.node_id} is reachable from {t.ref}, "
+               "so the milestone's combined change has no start; pass --base <the commit before its first leaf>")
+    if why:
+        print(f"error: {why}", file=sys.stderr)
         raise SystemExit(1)
+
+
+def milestone_close_problem(repo_root: Path, t: ReviewTarget) -> str | None:
+    """Why ``mark-implementation-reviewed <MILESTONE_ID>`` must not write: open leaves, or the wrong checkout.
+
+    Closure commits to the checked-out branch, so that must be the integration
+    branch with ``HEAD`` at the commit whose gate passed; a local branch behind
+    or ahead of the reviewed tip would commit a status the review did not cover.
+    """
+    why = milestone_open_problem(t)
+    if why:
+        return why
+    ib, _remote, _warn = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    branch = git_text(["rev-parse", "--abbrev-ref", "HEAD"], repo_root)
+    if branch != ib:
+        return (f"the checked-out branch is {branch!r}, not the integration branch {ib!r}; closure commits "
+                "the milestone's status there, so run it from that checkout")
+    if not same_commit(repo_root, "HEAD", t.commit):
+        return (f"HEAD ({(full_sha(repo_root, 'HEAD') or '?')[:12]}) is not the reviewed commit "
+                f"{(t.commit or '?')[:12]} ({t.ref}); pull or push so they agree, then re-check the gate")
+    return None

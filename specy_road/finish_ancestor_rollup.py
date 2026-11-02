@@ -68,8 +68,9 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
 
     Only a milestone under the review gate is held, and only while the policy
     is on. The gate is evaluated at the milestone's review target (the
-    integration tip); a target that cannot be resolved holds too, since the
-    review cannot have happened.
+    integration tip), and only once every leaf is Complete there: an approval
+    recorded before the last leaf landed never releases the hold. A target
+    that cannot be resolved holds too, since the review cannot have happened.
     """
     from specy_road.orchestration_config import effective_config
     from specy_road.review_gate import evaluate_gate, review_required
@@ -87,6 +88,8 @@ def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> s
         target = resolve_target(repo_root, node_id)
     except ReviewTargetError as e:
         return f"its full review cannot be evaluated ({e})"
+    if target.unfinished_leaves:   # a review of the tip before the last leaf landed covers less than the milestone
+        return f"its leaves {', '.join(target.unfinished_leaves)} have not landed on {target.ref}"
     gate = evaluate_gate(repo_root, node, target.commit)
     if gate.passed:
         return None
