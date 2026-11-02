@@ -107,19 +107,6 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-lenses
-    node_id: M4.6
-    branch: feature/rm-brainstorm-lenses
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_lenses.py
-      - specy_road/bundled_scripts/brainstorm_prompt_diverge.py
-      - specy_road/bundled_scripts/brainstorm_prompt.py
-      - specy_road/search_index.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: wrapper-imports-launcher
     node_id: M10.16
     branch: feature/rm-wrapper-imports-launcher

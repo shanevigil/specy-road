@@ -195,7 +195,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.6_brainstorm-lenses_fed16291-24ba-47dd-a301-300e59ece353.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Lenses from the frame and a ranked node list in the recommend prompt",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_lenses.py",

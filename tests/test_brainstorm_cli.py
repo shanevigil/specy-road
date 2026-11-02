@@ -125,7 +125,7 @@ def test_the_roadmap_inventory_moves_to_the_converge_prompt(repo: Path) -> None:
     checked at converge, where it is needed."""
     _start(repo)
     assert "`M0.1`" not in _prompt(repo)
-    _run(repo, "add-idea", "--title", "One")
+    _run(repo, "add-idea", "--title", "Shared contracts skeleton")
     _run(repo, "recommend")
 
     text = _prompt(repo, "recommend")
