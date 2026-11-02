@@ -38,12 +38,14 @@ from typing import Any
 from specy_road.git_subprocess import git_text
 from specy_road.worker_adapter_parsers import (
     _SESSION,
+    _init_detail,
     _json,
     _snip,
     _text,
     _tokens,
     placeholder_problem,
     substitute_prompt,
+    usage_fields,
 )
 from specy_road.worker_state import HARNESSES
 
@@ -73,6 +75,7 @@ class Parsed:
     summary: str
     session_id: str | None = None
     detail: dict[str, Any] | None = None
+    usage: dict[str, Any] | None = None   # a turn end's token counts and cost (:func:`usage_fields`); the wrapper logs them
 
 
 class Unsupported(Exception):
@@ -82,11 +85,6 @@ class Unsupported(Exception):
 #: What a harness is told when the prompt itself travels on stdin: an argv
 #: string is capped at 128 KiB on Linux, and a brief can be longer.
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
-
-
-#: The tools `claude -p --bare` starts with: "Bash, file read, and file edit"
-#: (code.claude.com/docs/en/headless, read 2026-11-01).
-CLAUDE_BARE_TOOLS = frozenset({"Bash", "Read", "Edit"})
 
 
 #: A model's own effort level as its harness's arguments; Cursor has no flag (its model ids carry the effort).
@@ -115,23 +113,6 @@ def _reviews_handoff_dir(repo_root: Path, node_id: str) -> Path:
 
 def _bare(launch_mode: str) -> list[str]:
     return ["--bare"] if launch_mode == "bare" else []
-
-
-def _names(items: Any) -> list[str]:
-    """The ``name`` of each ``{name, ...}`` entry (``mcp_servers``, ``plugins``), or the entry itself."""
-    return [str(i.get("name") if isinstance(i, dict) else i) for i in items] if isinstance(items, list) else []
-
-
-def _init_detail(d: dict[str, Any]) -> dict[str, Any]:
-    """What a Claude ``system/init`` line says the harness loaded, and the discovery mode that implies."""
-    detail: dict[str, Any] = {"tools": _names(d.get("tools")), "mcp_servers": _names(d.get("mcp_servers")),
-                              "plugins": _names(d.get("plugins"))}
-    version = d.get("claude_code_version") or d.get("version")   # the SDK's field name, then the short one
-    if version:
-        detail["version"] = str(version)
-    if isinstance(d.get("tools"), list):   # no tool list reported: no evidence either way
-        detail["inferred_mode"] = "bare" if set(detail["tools"]) <= CLAUDE_BARE_TOOLS else "full"
-    return detail
 
 
 class Adapter:
@@ -265,7 +246,10 @@ class ClaudeCode(Adapter):
                 detail["cost_usd"] = cost
             if text:
                 detail["message"] = text
-            return Parsed("turn_completed" if ok else "error", summary, sid, detail or None)
+            # total_cost_usd is the session's, earlier turns included: the wrapper logs the delta.
+            usage = usage_fields(d.get("usage"), cost=cost, num_turns=d.get("num_turns"), estimate=True)
+            usage["session_cost_usd"] = usage["cost_usd"]
+            return Parsed("turn_completed" if ok else "error", summary, sid, detail or None, usage)
         return None
 
     def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
@@ -328,7 +312,8 @@ class Codex(Adapter):
                               detail={"message": text} if text else None)
             return Parsed("output", f"{item.get('type', 'item')} done")
         if t == "turn.completed":
-            return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")})
+            return Parsed("turn_completed", "turn completed", detail={"usage": d.get("usage")},
+                          usage=usage_fields(d.get("usage")))
         if t in ("turn.failed", "error"):
             raw = json.dumps(d.get("error") or d.get("message") or d)
             return Parsed("error", _snip(raw), detail={"message": raw})
@@ -382,7 +367,9 @@ class Cursor(Adapter):
             ok = not d.get("is_error")
             summary = f"{d.get('subtype')}: {_snip(text)}" if ok else _snip(text) or f"{d.get('subtype')}: error"
             detail = {"message": text} if text else None
-            return Parsed("turn_completed" if ok else "error", summary, sid, detail)
+            # Token counts only, when the line carries them: no cost field is documented for agent -p.
+            return Parsed("turn_completed" if ok else "error", summary, sid, detail,
+                          usage_fields(d.get("usage"), num_turns=d.get("num_turns")))
         return None
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:

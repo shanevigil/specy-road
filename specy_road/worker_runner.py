@@ -22,6 +22,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from specy_road.review_target import same_commit
+from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
     argv_too_long,
@@ -39,6 +40,7 @@ from specy_road.worker_state import (
     WorkerRecord,
     _now,
     append_event,
+    events_since,
     load_record,
     mutate,
     record_path,
@@ -162,7 +164,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
                 raw.write(f"[wrapper] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
-        first, marked = True, None
+        first, marked, usage_logged = True, None, False
         for line in proc.stdout:
             raw.write(line)
             raw.flush()
@@ -171,11 +173,11 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
                 marked = _output_seen(repo_root, rec, marked, clock())
-                _consume(repo_root, rec, adapter, line, launch)
+                usage_logged = _consume(repo_root, rec, adapter, line, launch) or usage_logged
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code, before)
+    return _finish(repo_root, rec, code, before, usage_logged)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
@@ -198,7 +200,9 @@ def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: 
     return now
 
 
-def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch) -> None:
+def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch) -> bool:
+    """Append the events ``line`` records; True when one of them carried the turn's usage."""
+    logged = False
     # One line can record more than one event (Claude's init: `started`, then a launch-mode mismatch).
     for parsed in adapter.parse_events(line, launch):
         if parsed.session_id:
@@ -207,6 +211,28 @@ def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Lau
         # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
         append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
                      summary=parsed.summary, detail=parsed.detail)
+        if parsed.usage is not None:
+            _append_usage(repo_root, rec, parsed.usage)
+            logged = True
+    return logged
+
+
+def _append_usage(repo_root: Path, rec: WorkerRecord, usage: dict) -> None:
+    """The turn's ``usage`` event; a running session cost becomes this turn's, the version comes from ``started``."""
+    detail = {**dict.fromkeys(USAGE_FIELDS), **usage}
+    events = events_since(repo_root, rec.worker_id)
+    total = detail.get("session_cost_usd")
+    if total is not None:
+        prev = next((e.detail["session_cost_usd"] for e in reversed(events) if e.type == "usage"
+                     and (e.detail or {}).get("session_cost_usd") is not None), None)
+        # A lower total than the last one is a new session (a custom command without one): it counts whole.
+        detail["cost_usd"] = round(total - prev, 6) if prev is not None and prev <= total else total
+    if detail["harness_version"] is None:
+        detail["harness_version"] = next((str(e.detail["version"]) for e in reversed(events) if e.type == "started"
+                                          and e.source == "worker" and (e.detail or {}).get("version")), None)
+    # Parsed from the harness's output, like the line it came from.
+    append_event(repo_root, rec, "usage", source="worker", authority="worker_suggestion",
+                 summary=f"usage: {usage_text(detail)}", detail=detail)
 
 
 def _fresh_ready(repo_root: Path, rec: WorkerRecord, before: list[str]) -> bool:
@@ -230,10 +256,12 @@ def _fresh_ready(repo_root: Path, rec: WorkerRecord, before: list[str]) -> bool:
     return True
 
 
-def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str]) -> int:
+def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], usage_logged: bool) -> int:
     rec = load_record(repo_root, rec.worker_id)   # the record may have moved on (handoff, terminate)
     if rec.state == "terminated":
         return code
+    if not usage_logged:   # one usage event per turn: a harness that reported none gets nulls, not zeros
+        _append_usage(repo_root, rec, {})
     ready = _fresh_ready(repo_root, rec, before)
     if code == 0:
         append_event(repo_root, rec, "completion", source="worker",

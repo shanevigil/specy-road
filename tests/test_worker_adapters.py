@@ -119,6 +119,27 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     assert plain.summary == "plain line" and plain.detail == {"message": "plain line"}
 
 
+# Sample turn-end lines in each harness's documented shape (M10.2); Claude's input counts the cache reads and writes.
+CLAUDE_RESULT = {"type": "result", "subtype": "success", "is_error": False, "num_turns": 4, "result": "done", "session_id": "s1",
+                 "total_cost_usd": 0.0421, "usage": {"input_tokens": 12, "output_tokens": 800, "cache_creation_input_tokens": 3000,
+                                                     "cache_read_input_tokens": 20000}}
+CODEX_TURN = {"type": "turn.completed", "usage": {"input_tokens": 24763, "cached_input_tokens": 24448, "output_tokens": 122, "reasoning_output_tokens": 64}}
+CURSOR_RESULT = {"type": "result", "subtype": "success", "is_error": False, "result": "fin", "session_id": "c1"}
+
+
+def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor"))
+    assert cc.parse(json.dumps(CLAUDE_RESULT)).usage == {"input_tokens": 23012, "cached_input_tokens": 20000, "output_tokens": 800,
+        "reasoning_tokens": None, "cost_usd": 0.0421, "cost_is_estimate": True, "num_turns": 4, "harness_version": None, "session_cost_usd": 0.0421}
+    assert cx.parse(json.dumps(CODEX_TURN)).usage == {"input_tokens": 24763, "cached_input_tokens": 24448, "output_tokens": 122,
+        "reasoning_tokens": 64, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None}
+    camel = cu.parse(json.dumps({**CURSOR_RESULT, "usage": {"inputTokens": 100, "outputTokens": 20, "cacheReadTokens": 50}})).usage
+    assert (camel["input_tokens"], camel["cached_input_tokens"], camel["output_tokens"]) == (150, 50, 20)
+    bad = cc.parse(json.dumps({**CLAUDE_RESULT, "total_cost_usd": "1", "usage": {"output_tokens": "9", "input_tokens": True}}))
+    assert {k: v for k, v in bad.usage.items() if v is not None} == {"num_turns": 4} and wa.adapter_for("generic").parse("x").usage is None
+    assert set(cu.parse(json.dumps(CURSOR_RESULT)).usage.values()) == {None}   # nothing reported: nulls, never 0
+
+
 def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     prompt, cli = _fake(tmp_path, [
@@ -132,7 +153,7 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.provider_session_id == "s-42" and rec.state == "idle" and rec.pid is None   # no READY file yet
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
-    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "completion"]
+    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "usage", "completion"]
     assert "working" in wr.log_path(repo, rec.worker_id).read_text()
 
 
@@ -154,7 +175,7 @@ def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_pa
     assert wr.run(repo, rec2.worker_id, wa.adapter_for("codex").launch(prompt2, repo, "sol", cli2)) == 1
     rec2 = ws.load_record(repo, rec2.worker_id)
     assert rec2.state == "failed"
-    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-2:] == ["error", "error"]
+    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-3:] == ["error", "usage", "error"]   # nulls: no usage
 
 
 def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -265,7 +286,7 @@ def test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch(tmp_path:
     assert e.value.code == 0
     events = ws.events_since(repo, rec.worker_id)
     assert [x.type for x in events] == ["started", "launched", "first_output", "started", "error", "turn_completed",
-                                        "completion"]
+                                        "usage", "completion"]
     mismatch = events[4]
     assert mismatch.detail == {"inferred_mode": "full", "launch_mode": "bare"}
     assert "exit" not in mismatch.detail   # not a turn end: the turn goes on
