@@ -81,7 +81,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.4` An executor that cannot meet a criterion without weakening a test or a baseline records blocked_on in READY, and the gate stays unmet `executor-blocked-on` — task — **Complete**
   - `M9.5` specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them `integrity-report` — task — **Complete**
   - `M9.6` With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup `integrity-gate-and-waivers` — task — **Complete**
-  - `M9.7` specy-road integrity also reports new lint suppressions and widened baseline files `suppression-and-ratchet-findings` — task — **Not Started**
+  - `M9.7` specy-road integrity also reports new lint suppressions and widened baseline files `suppression-and-ratchet-findings` — task — **Complete**
   - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Complete**
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Not Started**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Not Started**
@@ -110,7 +110,7 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.2` on `feature/rm-normalised-usage-event-in` since 2026-11-01
-- `M9.7` on `feature/rm-suppression-and-ratchet-findings` since 2026-11-01
+- `M4.4` on `feature/rm-brainstorm-decisions` since 2026-11-02
 - `M9.9` on `feature/rm-tests-at-risk` since 2026-11-01
 
 ## Reaching the detail behind this

@@ -11,22 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: suppression-and-ratchet-findings
-    node_id: M9.7
-    branch: feature/rm-suppression-and-ratchet-findings
-    touch_zones:
-      - specy_road/integrity.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - sr/schemas/
-      - sr/roadmap/orchestration.yaml
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-      - schemas/
-      - roadmap/orchestration.yaml
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: normalised-usage-event-in
     node_id: M10.2
     branch: feature/rm-normalised-usage-event-in

@@ -1,21 +1,41 @@
 """Test-integrity findings between two commits, using git objects only.
 
 Compares a merge base to a leaf head: removed tests, new skips, lost asserts,
-and pytest-related config edits. Python per-function checks use AST over
-``git show <commit>:<path>``; no checkout and no writes.
+pytest-related config edits, added lint suppressions, and lines added to the
+baseline files the integration branch lists in ``policy.ratchet_paths``.
+Python per-function checks use AST over ``git show <commit>:<path>``; no
+checkout and no writes.
 """
 
 from __future__ import annotations
 
 import ast
+import re
+import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_stdout
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_stdout
+from specy_road.orchestration_config import effective_config
+from specy_road.review_policy_ref import policy_source
 
 _CONFIG_NAMES = frozenset({"pytest.ini", "tox.ini", "setup.cfg"})
+# Lint and coverage suppression markers of Python, TypeScript/JavaScript and Go linters,
+# in any case and with any spacing after a colon
+_SUPPRESSION = re.compile(
+    r"noqa|type:\s*ignore|pragma:\s*no\s+cover|pylint:\s*disable|eslint-disable|@ts-ignore"
+    r"|@ts-expect-error|nolint",
+    re.IGNORECASE,
+)
+_HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)")
+# A blob-pair diff has no path, so no attribute applies; content with a NUL byte still reads
+# as binary without --text, and repo config can still set a textconv or external diff.
+_BLOB_DIFF = ("diff", "--no-color", "--no-ext-diff", "--no-textconv", "--text", "--unified=0")
+# Entries whose lines count: regular files and symlinks (git diffs a symlink's target as a
+# line). Gitlinks (submodules) and deletions have no such side.
+_KIND = {b"100644": "file", b"100755": "file", b"120000": "symlink"}
 
 
 @dataclass(frozen=True, order=True)
@@ -36,6 +56,10 @@ class Finding:
             return f"assert-loss: {self.path}::{self.test} {self.detail}"
         if self.kind == "config-change":
             return f"config-change: {self.path}"
+        if self.kind == "new-suppression":
+            return f"new-suppression: {self.path}:{self.detail}"
+        if self.kind == "baseline-widened":
+            return f"baseline-widened: {self.path} +{self.detail}"
         raise ValueError(self.kind)
 
     def as_json(self) -> dict[str, str]:
@@ -65,6 +89,8 @@ def compare_integrity(repo_root: Path, base: str, ref: str) -> list[Finding]:
             if r_count < b_count:
                 findings.append(Finding("assert-loss", path, qual, f"{b_count}->{r_count}"))
     findings.extend(_config_findings(root, base, ref))
+    findings.extend(_suppression_findings(_added_lines(root, base, ref)))
+    findings.extend(_ratchet_findings(root, base, ref, integration_ratchet_paths(root)))
     return sorted(findings, key=lambda f: f.line())
 
 
@@ -122,6 +148,133 @@ def _config_findings(root: Path, base: str, ref: str) -> list[Finding]:
             _file_at(root, base, path), _file_at(root, ref, path)
         ):
             out.append(Finding("config-change", path))
+    return out
+
+
+def integration_ratchet_paths(root: Path) -> list[str]:
+    """``policy.ratchet_paths`` as committed on the integration branch; empty when unreadable."""
+    ref, err = policy_source(root)
+    if err or ref is None:
+        return []
+    config, err = effective_config(root, ref)
+    if err:
+        return []
+    return [p for p in config["policy"].get("ratchet_paths") or [] if isinstance(p, str)]
+
+
+def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, str]]]:
+    """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds.
+
+    Renames are followed, so a moved file's existing lines are not new.
+    """
+    added: dict[str, list[tuple[int, str]]] = {}
+    for path, old, new in _changed_files(root, base, ref, "--find-renames"):
+        lines = _blob_additions(root, old, new)
+        if lines:
+            added[path] = lines
+    return added
+
+
+def _blob_additions(root: Path, old: str | None, new: str) -> list[tuple[int, str]]:
+    """Lines blob ``new`` adds to blob ``old``; every line of ``new`` when there is no ``old``.
+
+    Nothing when that diff (or the new blob) is not valid UTF-8: the file is skipped and
+    every other file is still checked.
+    """
+    if old is not None:
+        patch = _utf8(_git_bytes(root, [*_BLOB_DIFF, old, new]))
+        return _hunk_additions(patch) if patch is not None else []
+    text = _utf8(_git_bytes(root, ["cat-file", "blob", new]))
+    if text is None:
+        return []
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return list(enumerate(lines, 1))
+
+
+def _git_bytes(root: Path, args: list[str]) -> bytes:
+    """``git <args>`` raw stdout; empty on failure.
+
+    Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes the
+    whole output strictly: one non-UTF-8 file name would hide every other path. Callers
+    decode each name or file's diff on its own.
+    """
+    try:
+        r = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return b""
+    return r.stdout if r.returncode == 0 else b""
+
+
+def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[str, str | None, str]]:
+    """``(path at ref, old blob, new blob)`` for each ``git diff --raw -z`` entry whose new side is a file or symlink.
+
+    No pathspec selects anything, so each entry's lines belong to exactly its own path.
+    Deletions and submodules are skipped. The old blob is ``None`` when the old side is not
+    the same kind (an addition, or a file/symlink type change, which git's own diff shows
+    as a deletion and an addition), so every new line counts. A name that is not UTF-8 is
+    skipped.
+    """
+    args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", renames, base, ref]
+    fields = _git_bytes(root, args).split(b"\0")
+    out: list[tuple[str, str | None, str]] = []
+    i = 0
+    while i < len(fields) and fields[i].startswith(b":"):
+        old_mode, new_mode, old_blob, new_blob, status = fields[i][1:].split(b" ")
+        width = 2 if status[:1] in (b"R", b"C") else 1
+        path = _utf8(fields[i + width]) if i + width < len(fields) else None
+        i += 1 + width
+        if new_mode in _KIND and path is not None:
+            same_kind = _KIND.get(old_mode) == _KIND[new_mode]
+            out.append((path, old_blob.decode() if same_kind else None, new_blob.decode()))
+    return out
+
+
+def _utf8(data: bytes) -> str | None:
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _hunk_additions(patch: str) -> list[tuple[int, str]]:
+    """Added lines of a blob-pair ``--unified=0`` patch, counted only inside hunk bodies.
+
+    A section's header, up to its first ``@@``, is never content. A ``-U0`` hunk body holds
+    only ``+``, ``-`` and ``\\`` lines, so a ``diff --git`` line always starts a section.
+    """
+    out: list[tuple[int, str]] = []
+    number: int | None = None
+    for raw in patch.split("\n"):
+        if raw.startswith("diff --git "):
+            number = None
+        elif raw.startswith("@@ "):
+            match = _HUNK.match(raw)
+            number = int(match.group(1)) if match else None
+        elif number is not None and raw.startswith("+"):
+            out.append((number, raw[1:]))
+            number += 1
+    return out
+
+
+def _suppression_findings(added: dict[str, list[tuple[int, str]]]) -> list[Finding]:
+    return [
+        Finding("new-suppression", path, detail=str(number))
+        for path, lines in added.items()
+        for number, text in lines
+        if _SUPPRESSION.search(text)
+    ]
+
+
+def _ratchet_findings(root: Path, base: str, ref: str, ratchet_paths: list[str]) -> list[Finding]:
+    """Renames are not followed: a file moved onto a ratchet path widens it by every line."""
+    wanted = set(ratchet_paths)
+    out: list[Finding] = []
+    for path, old, new in _changed_files(root, base, ref, "--no-renames"):
+        count = len(_blob_additions(root, old, new)) if path in wanted else 0
+        if count:
+            out.append(Finding("baseline-widened", path, detail=str(count)))
     return out
 
 

@@ -68,4 +68,10 @@ policy:
   signed_reviews: false
   reviewer_reruns_required: true
   max_workers: 10
+  # Baseline files a leaf may only shrink; `specy-road integrity` reports any it adds lines to.
+  ratchet_paths:
+    - constraints/clone-baseline.json
+    - constraints/test-private-imports-baseline.txt
+    - constraints/mutation-baseline.json
+    - constraints/file-limits.yaml
 substitutions: []

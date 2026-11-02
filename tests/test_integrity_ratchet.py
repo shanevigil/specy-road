@@ -1,0 +1,225 @@
+"""Tests for the new-suppression and baseline-widened findings of specy-road integrity."""
+
+from __future__ import annotations
+
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from tests.integrity_repo_helpers import commit, git, make_repo, merge_dev, on_dev
+from specy_road.bundled_scripts import integrity_cli
+
+_BASE = "a = 1\nb = 2\n"
+_MARKERS = [
+    "x = f()  # noqa: E501",
+    "x = f()  # type: ignore[attr-defined]",
+    "if x:  # pragma: no cover",
+    "x = f()  # pylint: disable=broad-except",
+    "// eslint-disable-next-line no-console",
+    "// @ts-ignore",
+    "// @ts-expect-error",
+    "x := f() //nolint:errcheck",
+]
+_BASELINE = "constraints/clone-baseline.json"
+
+
+def _run(repo: Path, capsys, project: str = "") -> tuple[int, str]:
+    with pytest.raises(SystemExit) as ex:
+        integrity_cli.main(["T1", "--repo-root", str(repo / project), "--ref", git(repo, "rev-parse", "HEAD")])
+    return ex.value.code, capsys.readouterr().out
+
+
+def _policy(repo: Path, paths: list[str], project: str = "") -> None:
+    listed = "".join(f"\n    - {p}" for p in paths)
+    commit(repo, f"{project}/roadmap/orchestration.yaml".lstrip("/"),
+           f"version: 1\npolicy:\n  ratchet_paths:{listed}\n", "ratchet paths")
+
+
+@pytest.mark.parametrize("marker", _MARKERS)
+def test_new_suppression_prints_path_and_line_and_exits_one(tmp_path: Path, capsys, marker: str) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, "src/mod.py", _BASE, "on dev")
+    merge_dev(repo)
+    commit(repo, "src/mod.py", _BASE + marker + "\n", "suppress")
+    assert _run(repo, capsys) == (1, "new-suppression: src/mod.py:3\n")
+
+
+def test_existing_suppression_moved_by_an_insert_is_not_new(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, "src/mod.py", "x = f()  # noqa\n", "on dev")
+    merge_dev(repo)
+    commit(repo, "src/mod.py", "import os\nx = f()  # noqa\n", "insert above")
+    assert _run(repo, capsys) == (0, "")
+
+
+def test_baseline_widened_prints_added_line_count_and_exits_one(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, '[\n  "a"\n]\n', "baseline on dev")
+    merge_dev(repo)
+    commit(repo, _BASELINE, '[\n  "a",\n  "b"\n]\n', "widen")
+    assert _run(repo, capsys) == (1, f"baseline-widened: {_BASELINE} +2\n")
+
+
+def test_baseline_removal_only_exits_zero(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, "a\nb\nc\n", "baseline on dev")
+    merge_dev(repo)
+    commit(repo, _BASELINE, "a\nc\n", "shrink")
+    assert _run(repo, capsys) == (0, "")
+
+
+def test_ratchet_paths_listed_only_on_the_leaf_branch_are_ignored(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, _BASELINE, "a\n", "baseline on dev")
+    merge_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, "a\nb\n", "widen")
+    assert _run(repo, capsys) == (0, "")
+
+
+def test_nested_project_ratchet_path_outside_the_project(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True, project="sr")
+    on_dev(repo)
+    _policy(repo, [_BASELINE], project="sr")
+    commit(repo, _BASELINE, "a\n", "baseline on dev, at the git root")
+    merge_dev(repo)
+    commit(repo, _BASELINE, "a\nb\n", "widen")
+    assert _run(repo, capsys, project="sr") == (1, f"baseline-widened: {_BASELINE} +1\n")
+
+
+def test_non_utf8_file_in_the_diff_hides_no_other_finding(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, "a\n", "baseline on dev")
+    merge_dev(repo)
+    (repo / "legacy.txt").write_bytes(b"caf\xe9\n")
+    (repo / _BASELINE).write_bytes(b"a\ncaf\xe9\nb  # noqa\n")
+    git(repo, "add", "legacy.txt", _BASELINE)
+    git(repo, "commit", "-qm", "widen with non-UTF-8 text")
+    commit(repo, "src/mod.py", "x = 1  # noqa\n", "suppress")
+    # A1 skips a file whose diff is not valid UTF-8 (both invalid files here); the valid one still reports
+    assert _run(repo, capsys) == (1, "new-suppression: src/mod.py:1\n")
+
+
+def test_paths_with_spaces_are_reported_and_matched_exactly(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, ["constraints/a b.txt"])
+    commit(repo, "constraints/a b.txt", "a\n", "baseline on dev")
+    merge_dev(repo)
+    commit(repo, "constraints/a b.txt", "a\nb\n", "widen")
+    commit(repo, "src/a b.txt", "x = 1  # noqa\n", "suppress")
+    assert _run(repo, capsys) == (1, "baseline-widened: constraints/a b.txt +1\nnew-suppression: src/a b.txt:1\n")
+
+
+_HIDING = {
+    "-diff": ("-diff", {}),
+    "binary": ("binary", {}),
+    "textconv": ("diff=hide", {"diff.hide.textconv": "true"}),
+    "external": ("diff=hide", {"diff.external": "true", "diff.hide.command": "true"}),
+}
+
+
+@pytest.mark.parametrize("how", sorted(_HIDING))
+def test_attributes_and_diff_drivers_do_not_hide_additions(tmp_path: Path, capsys, how: str) -> None:
+    attribute, config = _HIDING[how]
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, "a\n", "baseline on dev")
+    merge_dev(repo)
+    for key, value in config.items():
+        git(repo, "config", key, value)
+    commit(repo, ".gitattributes", f"{_BASELINE} {attribute}\n", "hide the baseline from diff")
+    commit(repo, _BASELINE, "a\nb  # noqa\n", "widen")
+    assert _run(repo, capsys) == (1, f"baseline-widened: {_BASELINE} +1\nnew-suppression: {_BASELINE}:2\n")
+
+
+def test_file_renamed_onto_a_new_ratchet_path_widens_it(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, ["constraints/mutation-baseline.json"])
+    commit(repo, "old.txt", "a\nb\n", "existing file on dev")
+    merge_dev(repo)
+    (repo / "constraints").mkdir()
+    git(repo, "mv", "old.txt", "constraints/mutation-baseline.json")
+    git(repo, "commit", "-qm", "rename onto the ratchet path")
+    assert _run(repo, capsys) == (1, "baseline-widened: constraints/mutation-baseline.json +2\n")
+
+
+def test_non_utf8_file_name_hides_no_other_finding(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    merge_dev(repo)
+    blob = subprocess.run(["git", "-C", str(repo), "hash-object", "-w", "--stdin"], input=b"x\n",
+                          capture_output=True, check=True).stdout.decode().strip()
+    # through the index: a 0xff byte in a name is not a valid file name on every filesystem
+    git(repo, "update-index", "--add", "--cacheinfo", f"100644,{blob},bad\udcff.txt")
+    commit(repo, "src/mod.py", "x = 1  # noqa\n", "suppress beside a non-UTF-8 name")
+    assert _run(repo, capsys) == (1, "new-suppression: src/mod.py:1\n")
+
+
+def test_symlink_to_regular_file_counts_only_hunk_lines(tmp_path: Path, capsys) -> None:
+    baseline = "constraints/noqa-baseline.txt"   # a marker in the name must not become a finding
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [baseline])
+    (repo / "constraints").mkdir()
+    (repo / baseline).symlink_to("elsewhere.txt")
+    git(repo, "add", baseline)
+    git(repo, "commit", "-qm", "baseline is a symlink on dev")
+    merge_dev(repo)
+    (repo / baseline).unlink()
+    commit(repo, baseline, "a\nb\n", "replace the symlink with a regular file")
+    assert _run(repo, capsys) == (1, f"baseline-widened: {baseline} +2\n")
+
+
+def test_file_renamed_and_its_path_reused_as_a_directory(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, "old", "".join(f"original {i}\n" for i in range(20)), "file on dev")
+    merge_dev(repo)
+    git(repo, "mv", "old", "new.txt")
+    commit(repo, "old/child.txt", "# noqa\n", "the old name becomes a directory")
+    assert _run(repo, capsys) == (1, "new-suppression: old/child.txt:1\n")
+
+
+def test_deleted_baseline_reused_as_a_directory_is_not_widened(tmp_path: Path, capsys) -> None:
+    baseline = "constraints/base.txt"
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [baseline])
+    commit(repo, baseline, "a\nb\n", "baseline on dev")
+    merge_dev(repo)
+    git(repo, "rm", "-q", baseline)
+    commit(repo, f"{baseline}/child.txt", "unrelated\n", "the baseline name becomes a directory")
+    assert _run(repo, capsys) == (0, "")
+
+
+def test_moved_file_keeps_its_existing_suppressions(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, "src/a.py", "x = f()  # noqa\ny = 2\n", "on dev")
+    merge_dev(repo)
+    git(repo, "mv", "src/a.py", "src/b.py")
+    git(repo, "commit", "-qm", "move")
+    assert _run(repo, capsys) == (0, "")
+
+
+def test_added_symlink_counts_its_target_as_a_line(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, ["baseline-link"])
+    merge_dev(repo)
+    (repo / "baseline-link").symlink_to("target-noqa")
+    git(repo, "add", "baseline-link")
+    git(repo, "commit", "-qm", "add a symlink at the ratchet path")
+    assert _run(repo, capsys) == (1, "baseline-widened: baseline-link +1\nnew-suppression: baseline-link:1\n")
