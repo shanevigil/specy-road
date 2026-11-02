@@ -1,7 +1,7 @@
 """A harness killed by a signal under a live wrapper (sandbox runbook §5 step 9b (ii)).
 
-The wrapper records an ``error`` event and marks the worker ``failed``; a
-failed worker is closed, so ``resume`` refuses it. The exit code is ``-9``
+The wrapper records an ``error`` event and marks the worker ``failed``; it
+kept its native session, so ``resume`` reopens it (M11.2). The exit code is ``-9``
 where the adapter's ``sh -c`` execs the harness (bash, macOS) and ``137``
 where it forks it (dash, the Debian/Ubuntu ``/bin/sh``).
 """
@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo
-from tests.test_worker_cli import _repo, worker_roster
+from tests.test_worker_cli import _repo, wait_for_worker, worker_roster
 
 from specy_road import worker_adapters as wa
 from specy_road import worker_ops as ops
@@ -48,8 +48,9 @@ def test_a_killed_harness_leaves_the_worker_failed(tmp_path: Path) -> None:
     # The launch was timed before the kill: launched, then the one line it printed, then the error.
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
     assert types.index("launched") < types.index("first_output") < types.index("error")
-    with pytest.raises(ws.WorkerError, match="is failed; delegate again instead"):
-        ops.resume(repo, rec.worker_id)
+    ops.resume(repo, rec.worker_id)   # the killed turn's session resumes; no new delegate
+    assert wait_for_worker(repo, rec.worker_id).state == "idle"
+    assert [e.type for e in ws.events_since(repo, rec.worker_id)].count("resumed") == 1
 
 
 PACED_LINES = '''
