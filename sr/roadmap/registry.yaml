@@ -79,3 +79,21 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
+  - codename: emit-a-stalled-event
+    node_id: M10.9
+    branch: feature/rm-emit-a-stalled-event
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_state.py
+      - specy_road/worker_ops.py
+      - specy_road/orchestration_config.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - docs/orchestration.md
+      - tests/test_worker_faults.py
+      - tests/test_worker_state.py
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
