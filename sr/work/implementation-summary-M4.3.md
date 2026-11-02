@@ -17,14 +17,20 @@ them succeed.
 are parsed and serialised in `brainstorm_session.py`, because `brainstorm_fields.py` is outside the
 touch zones. Like the v2 fields, they are left out of the YAML when empty.
 
+## Review round 1 (gpt-6.1-sol, block at `7d113ef`)
+
+- **R1:** A key whose value was `false` or `null` added no argv, so argparse never saw it, and an unknown key could pass in both batch commands. `file_namespaces` now checks every record key against the parsed namespace: an argparse dest must exist for it, `idea_id` is refused, and revise's `id` is allowed. Known flags with `false`/`null` values are still simply omitted. Regression tests cover `false` and `null` for add-idea and for revise: exit 1, nothing on stdout, record 2 named, session bytes unchanged.
+- **R2:** `add-idea --kind` now defaults to `None` in argparse. `idea_fields` applies `feature`, and `kind` is in the flag/file conflict list. `--from-file … --kind risk` is refused and the session bytes stay unchanged. The ordinary default is still `feature`, on the command line and in file records.
+- **R3:** `list --by cluster` no longer stops at `(no ideas match)` when the session has recorded clusters and no `--status` filter is set. A session holding only `C1 --name 'Empty cluster'` lists `C1  Empty cluster  (0)`. With `--status`, the old message stays.
+
 ## Acceptance
 
 - **A1:** `add-idea --from-file PATH` reads a YAML list, a mapping with an `ideas:` list, or JSONL
   (every non-blank line starts with `{`). `-` reads stdin. Keys are the add-idea flag names, with
   `-` or `_` accepted. Repeatable flags (`evidence`, `assumption`) take a list. A bad record (unknown
   or abbreviated key, bad `kind`, a list for a single-value flag, `slug`/`repo-root`/`from-file`/
-  `help`/`id`, missing title) fails as `PATH record N: … — nothing was written`, prints nothing on
-  stdout and leaves the file byte-identical. `--from-file` combined with content flags is refused.
+  `help`/`id`, missing title, an unknown key even when its value is `false` or `null`) fails as `PATH record N: … — nothing was written`, prints nothing on
+  stdout and leaves the file byte-identical. `--from-file` combined with content flags is refused, and that includes an explicit `--kind`.
   Without `--from-file`, `--title` is still required. This is now checked in the handler (exit 1)
   instead of by argparse (exit 2).
 - **A2:** `revise --from-file PATH` takes a list or a `verdicts:` mapping, with `id` naming the
@@ -49,7 +55,7 @@ touch zones. Like the v2 fields, they are left out of the YAML when empty.
   `''` clears a name or best. A repeated role replaces that role's critic. `list --by cluster` shows
   `CID  name  (n)  best: ID` as the group header. The cluster's critics appear only with
   `--show-verdicts`, matching the per-idea critics. Recorded clusters with no members show as `(0)`
-  when no `--status` filter is set. `list --json` includes `clusters`.
+  when no `--status` filter is set, including in a session with no ideas yet. `list --json` includes `clusters`.
 
 ## Behaviour notes
 
@@ -77,6 +83,8 @@ Follow-ups outside the zones (not done; none is needed for the acceptance items)
 
 ## Verification
 
+Round 1 fixes, run in the foreground: `pytest -q tests/test_brainstorm_batch_io.py` gave 30 passed. The same file plus `test_brainstorm_cli.py`, `_session.py`, `_v2.py` and `_triage_m36.py` gave 113 passed. `file-limits`, `ruff` (0.17.3), `check_clones.py` and `check_test_private_imports.py` each exited 0. The full suite was not rerun for round 1. The results below are from the original implementation commit.
+
 - `pytest -q` (whole suite, from this worktree): 2758 passed, 2 skipped (16m55s), exit 0.
 - `pytest -q tests/test_brainstorm_batch_io.py`: 24 passed.
 - `specy-road file-limits`: OK (it failed on the base because `docs/brainstorming.md` was at 406).
@@ -102,4 +110,6 @@ Follow-ups outside the zones (not done; none is needed for the acceptance items)
 - `brainstorm_cli.cmd_add_idea` title guard: keeps `--title` required when there is no file.
 - `brainstorm_cli.cmd_recommend` gap lines, and the `_check_converge` merged skip and `[gap]` tag: A4, and a merged idea is not asked for a verdict.
 - Mocks: `sys.stdin` monkeypatched with a `StringIO` for the JSONL-on-stdin test; no others.
-- Tests (`tests/test_brainstorm_batch_io.py`, 24 cases): from-file add-idea with every key kind; 8 bad-record cases writing nothing; JSONL on stdin (including a value starting with `-`); flag/file mixing; revise from file success and 4 bad-record cases; revise id/file rules; merge links, the re-triage refusal and promote skip; merge refusals; from-gap through recommend, `--check` and list; `--check` skipping merged; cluster object in list/show-verdicts/json; `--best` membership and clearing; session round trip and a bad `merged_into` rejected on read.
+- Round 1: a key check in `file_namespaces` (every key must be an argparse dest of the command; `idea_id` refused): this is R1. The `--kind` default is now `None` (with `feature` applied in `idea_fields`) and `kind` is in the conflict list: this is R2. The `cmd_list` empty-ideas condition lets recorded clusters render: this is R3.
+- Round 1 tests (6 cases): an unknown `false`/`null` key rejects an add-idea batch, and the same for a revise batch, with unchanged bytes; an explicit `--kind` with `--from-file` is refused with unchanged bytes and the default stays `feature`; a session with only a named cluster lists it under `--by cluster`.
+- Tests (`tests/test_brainstorm_batch_io.py`, 24 original cases): from-file add-idea with every key kind; 8 bad-record cases writing nothing; JSONL on stdin (including a value starting with `-`); flag/file mixing; revise from file success and 4 bad-record cases; revise id/file rules; merge links, the re-triage refusal and promote skip; merge refusals; from-gap through recommend, `--check` and list; `--check` skipping merged; cluster object in list/show-verdicts/json; `--best` membership and clearing; session round trip and a bad `merged_into` rejected on read.
