@@ -11,22 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: red-green-evidence
-    node_id: M9.10
-    branch: feature/rm-red-green-evidence
-    touch_zones:
-      - specy_road/red_green.py
-      - specy_road/integrity_gate.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - sr/schemas/
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-      - schemas/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: visual-explorer-for-worker
     node_id: M10.12
     branch: feature/rm-visual-explorer-for-worker

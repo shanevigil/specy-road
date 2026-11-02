@@ -84,7 +84,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.7` specy-road integrity also reports new lint suppressions and widened baseline files `suppression-and-ratchet-findings` — task — **Complete**
   - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Complete**
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Complete**
-  - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Not Started**
+  - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Complete**
   - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Not Started**
 - `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
@@ -111,7 +111,10 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.12` on `feature/rm-visual-explorer-for-worker` since 2026-11-02
-- `M9.10` on `feature/rm-red-green-evidence` since 2026-11-02
+- `M10.13` on `feature/rm-a-project-setting-decides` since 2026-11-02
+- `M10.17` on `feature/rm-packet-byte-budget` since 2026-11-02
+- `M4.5` on `feature/rm-brainstorm-repo-evidence` since 2026-11-02
+- `M9.11` on `feature/rm-nested-zone-paths` since 2026-11-02
 
 ## Reaching the detail behind this
 
