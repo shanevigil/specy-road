@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -123,6 +124,18 @@ def test_sync_delta_and_ack(tmp_path: Path, capsys) -> None:
     assert "completion" in capsys.readouterr().out
     assert run_worker_cli("worker", "sync", "--repo-root", str(repo)) == 0
     assert "No new worker events" in capsys.readouterr().out
+
+
+def test_sync_wait_ends_on_an_event_or_times_out_with_exit_2(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    ws.set_state(repo, rec, "idle", pid=None)   # no wrapper to sweep: only the thread below writes events
+    assert run_worker_cli("worker", "sync", "--wait", "--ack", "--repo-root", str(repo)) == 0   # `started` is unacked: no wait
+    assert run_worker_cli("worker", "sync", "--wait", "--timeout", "0.3", "--repo-root", str(repo)) == 2
+    assert capsys.readouterr().out.endswith("No new worker events.\n")   # the empty delta
+    t0 = time.monotonic(); threading.Timer(0.5, lambda: ws.append_event(repo, rec, "output", source="worker", summary="mid-wait")).start()
+    assert run_worker_cli("worker", "sync", "--wait", "--timeout", "10", "--json", "--repo-root", str(repo)) == 0 and time.monotonic() - t0 < 3
+    assert [e["summary"] for e in json.loads(capsys.readouterr().out)["workers"][0]["events"]] == ["mid-wait"]
 
 
 def test_message_resume_lease_and_interrupt(tmp_path: Path, capsys) -> None:

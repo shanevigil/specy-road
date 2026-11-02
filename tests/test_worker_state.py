@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,7 @@ import pytest
 from tests.review_repo_helpers import git, make_review_repo
 
 from specy_road import worker_state as ws
+from specy_road.bundled_scripts import worker_cli
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -70,6 +73,49 @@ def test_events_are_sequenced_validated_and_read_back_after_a_fresh_load(tmp_pat
     with ws.events_path(repo, rec.worker_id).open("a") as f:
         f.write("{not json\n")
     assert len(ws.events_since(repo, rec.worker_id)) == 5
+
+
+def test_every_event_replaces_the_mailbox_flag(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    assert ws.flag_stamp(repo) is None
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)   # its `started` event is the first
+    first = ws.flag_stamp(repo)
+    assert first is not None and (ws.workers_dir(repo) / "FLAG").read_text().startswith("w-0001 #1 ")
+    ws.append_event(repo, rec, "output", source="worker", summary="x")
+    assert ws.flag_stamp(repo) != first
+    assert (ws.workers_dir(repo) / "FLAG").read_text().startswith("w-0001 #2 ")
+
+
+def test_wait_for_event_returns_on_the_next_event_or_times_out(tmp_path: Path) -> None:
+    repo = _repo(tmp_path)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    since = ws.flag_stamp(repo)
+    t0 = time.monotonic()
+    assert ws.wait_for_event(repo, 0.3, since) is False
+    assert 0.3 <= time.monotonic() - t0 < 2
+    writer = threading.Timer(0.4, lambda: ws.append_event(repo, rec, "output", source="worker", summary="late"))
+    writer.start()
+    t0 = time.monotonic()
+    try:
+        assert ws.wait_for_event(repo, 10, since) is True
+    finally:
+        writer.join()
+    assert time.monotonic() - t0 < 2   # within a poll of the write, not the 10 s timeout
+    assert ws.wait_for_event(repo, 10, None) is True   # the flag already changed since "no flag": no wait at all
+
+
+def test_sync_wait_ctrl_c_exits_130_without_a_traceback(tmp_path: Path, capsys, monkeypatch) -> None:
+    # Beside the wait itself: tests/test_worker_cli.py is at the file-line cap.
+    repo = _repo(tmp_path)
+
+    def interrupted(*_a):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(worker_cli, "wait_for_event", interrupted)
+    with pytest.raises(SystemExit) as e:
+        worker_cli.main(["worker", "sync", "--wait", "--repo-root", str(repo)])
+    assert e.value.code == 130
+    err = capsys.readouterr().err
+    assert "interrupted; nothing acknowledged" in err and "Traceback" not in err
 
 
 def test_lease_blocks_the_broker_until_reclaimed(tmp_path: Path) -> None:

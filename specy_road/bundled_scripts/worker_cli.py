@@ -3,10 +3,11 @@
 
 A worker is one leaf being implemented by one session on one vendor harness,
 started by the coordinator and remembered under ``work/.workers/``
-(``docs/orchestration-workers.md``). Every command returns at once; the
-worker runs detached. ``sync`` is what a coordinator calls at the start of
-each turn. Exit codes: 0 done, 1 refused or failed, 2 the harness does not
-support the operation (declared, never emulated).
+(``docs/orchestration-workers.md``). Every command returns at once (``sync
+--wait`` waits in the foreground, never past its own call); the worker runs
+detached. ``sync`` is what a coordinator calls at the start of each turn.
+Exit codes: 0 done, 1 refused or failed, 2 the harness does not support the
+operation (declared, never emulated) or ``sync --wait`` timed out.
 """
 
 from __future__ import annotations
@@ -35,8 +36,10 @@ from specy_road.worker_state import (
     begin_op,
     complete_op,
     events_since,
+    flag_stamp,
     list_records,
     load_record,
+    wait_for_event,
 )
 
 
@@ -129,6 +132,14 @@ def cmd_events(ns: argparse.Namespace) -> int:
 
 def cmd_sync(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
+    timed_out = False
+    if ns.wait:
+        since = flag_stamp(root)   # before the check: an event landing between the two still ends the wait
+        try:
+            timed_out = not ops.sync(root) and not wait_for_event(root, ns.timeout, since)
+        except KeyboardInterrupt:
+            print("worker sync: interrupted; nothing acknowledged", file=sys.stderr)
+            return 130
     delta = ops.sync(root, ack=ns.ack)
     lines = []
     for w in delta:
@@ -143,7 +154,8 @@ def cmd_sync(ns: argparse.Namespace) -> int:
         lines = ["No new worker events."]
     elif not ns.ack:
         lines.append("(re-run with --ack once handled)")
-    return _emit(ns, {"workers": delta, "acked": ns.ack}, lines)
+    rc = _emit(ns, {"workers": delta, "acked": ns.ack}, lines)
+    return 2 if timed_out and not delta else rc
 
 
 def _mutate(ns: argparse.Namespace, kind: str, fn, render, inputs: dict[str, Any] | None = None) -> int:
@@ -320,6 +332,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = ws.add_parser("sync", help="Every worker's events since the last --ack; call at the start of each turn")
     sp.add_argument("--ack", action="store_true", help="Mark the returned events handled")
+    sp.add_argument("--wait", action="store_true", help="Block until a worker writes an event (exit 2 on --timeout)")
+    sp.add_argument("--timeout", type=float, default=600, metavar="SECONDS", help="With --wait (default 600)")
     sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp)
     sp.set_defaults(func=cmd_sync)
