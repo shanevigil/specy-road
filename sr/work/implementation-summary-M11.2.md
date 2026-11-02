@@ -17,7 +17,10 @@ adapter resume path an `idle`/`completed` worker uses, instead of refusing with
   refusal now says that once the harness exits, `message` resumes the session,
   and that `terminate` closes the worker for good.
 - **A2.** Reopening a `failed` worker calls the same `_slot_or_existing` check
-  `delegate` uses, under the workers lock `message`/`resume` already hold:
+  `delegate` uses, under the workers lock `message`/`resume` already hold. It
+  runs after `_entry_and_harness`, so an unreadable orchestration config (for
+  example a missing integration ref) is the usual `orchestration config: …`
+  `WorkerError`, not a `KeyError` (review F1):
   - more than `max_workers` active gives the same "N workers active, policy
     max_workers is M" refusal;
   - another active worker on the leaf (for example a later delegate) is refused
@@ -29,7 +32,9 @@ adapter resume path an `idle`/`completed` worker uses, instead of refusing with
   live process including `stalled`). The `state` row points to it.
 - **A3.** `tests/test_worker_resume_failed.py` covers failed with a session id
   (resumes, same session), failed without one (refused with the hint), the
-  `max_workers` slot and leaf checks, and both stalled cases.
+  `max_workers` slot and leaf checks, an unreadable integration ref, and both
+  stalled cases. The terminated-with-session case is covered by round2's existing
+  assertion, which now matches the full hint.
 
 ## Existing tests changed (acceptance reverses what they asserted)
 
@@ -40,7 +45,8 @@ behaviour, and none was deleted:
   SIGKILLed harness's failed worker (`s-killed` session) now resumes to `idle`
   (it was "is failed; delegate again instead"). The module docstring is updated.
 - `tests/test_worker_review_round2.py::test_a_completed_worker_takes_a_review_block_as_a_message`:
-  the closed-state loop now checks `terminated` only; failed-with-session is
+  the closed-state loop now checks `terminated` only, and matches the full hint
+  (`is terminated, session sid-1; delegate again instead`); failed-with-session is
   covered in the new file.
 - `tests/test_review_round5.py::test_a_crashed_running_worker_cannot_be_handed_off_or_messaged`
   is renamed `…_cannot_be_handed_off_and_is_recorded_failed_before_a_message`.
@@ -57,7 +63,22 @@ changed. `specy_road/bundled_scripts/worker_cli.py` needed no change, because
 alias (now unused there; `worker_lease.py` keeps its own) and the
 `TERMINAL_STATES` import. The file is at 400 lines.
 
-## Verification
+## Review round 1 (gpt-6.1-sol, block)
+
+- **F1:** `_entry_and_harness` (which raises `orchestration config: …` when
+  `pinned_config` fails) now runs before the failed-worker slot lookup.
+  `test_an_unreadable_integration_ref_is_a_worker_error_for_a_failed_worker`
+  deletes `dev` and checks that both `message` and `resume` raise that
+  `WorkerError` and that the record stays `failed`. I confirmed the test fails
+  against the previous ordering.
+- **F2:** removed `test_a_terminated_worker_with_a_session_id_is_still_refused`.
+  The existing round2 terminated assertion now matches the full hint.
+- Re-run (touched test files only, foreground): `python -m pytest -q
+  tests/test_worker_resume_failed.py tests/test_worker_review_round2.py
+  tests/test_worker_faults.py tests/test_review_round5.py`: 62 passed.
+  `specy-road file-limits`: OK. ruff: clean. Private-imports check: 0 new.
+
+## Verification (round 0)
 
 - `pytest`: the whole suite, run in four foreground chunks, all passed: the
   worker/review chunk 175 passed; the three remaining chunks 939, 769 (2
@@ -72,12 +93,12 @@ alias (now unused there; `worker_lease.py` keeps its own) and the
 ## Added
 
 ### Helpers
-none
+- `_failed` (test helper in `tests/test_worker_resume_failed.py`): builds a `failed` claude-code record with or without a session id, so each test starts from the state under test.
 
 ### Branches or guards
 - `_send`: a `terminated` record, or a `failed` one without `provider_session_id`, is refused with "delegate again instead". This replaces the blanket closed-state refusal, so failed-with-session falls through to resume (A1).
 - `_send`: the `process_alive` refusal adds a stalled-specific hint when `FLAG_STALLED` is set, so the coordinator knows the session resumes once the harness exits and that `terminate` would close it for good (A1, the stalled case).
-- `_send`: a `failed` record takes a `max_workers` slot via `_slot_or_existing` and is refused while another worker holds the leaf (A2).
+- `_send`: a `failed` record takes a `max_workers` slot via `_slot_or_existing` and is refused while another worker holds the leaf (A2). The lookup runs after `_entry_and_harness`, so a config error stays a `WorkerError` (F1).
 
 ### Mocks
 - `test_a_stalled_worker_that_is_still_alive_says_how_to_resume` patches `ops.wrapper_gone` → False and `ops.process_alive` → True, to stand in for a live, silent harness without spawning one.
@@ -85,7 +106,7 @@ none
 ### Tests
 - `test_message_resumes_a_failed_worker_with_a_session_id`: A1/A3. CLI `message` on a failed worker with a session id resumes the same session and ends `idle`.
 - `test_a_failed_worker_without_a_session_id_is_still_refused`: A1/A3. CLI `message` and `ops.resume` refuse with the hint, and the record stays `failed`.
-- `test_a_terminated_worker_with_a_session_id_is_still_refused`: `terminate` still closes a worker for good.
+- `test_an_unreadable_integration_ref_is_a_worker_error_for_a_failed_worker`: F1. With the integration ref gone, `message`/`resume` of a failed worker raise the contextual `WorkerError` (not `KeyError`) and leave it `failed`.
 - `test_a_stalled_worker_whose_process_ended_resumes`: A1 stalled. A stalled `running` record with no live process is recorded `failed`, then resumed.
 - `test_a_stalled_worker_that_is_still_alive_says_how_to_resume`: A1 stalled. A live stalled worker is refused, and the refusal explains how to resume it.
 - `test_the_reopened_turn_counts_against_max_workers`: A2. Refused while the one slot is held; resumes once the slot frees.
