@@ -143,6 +143,8 @@ Not run:
 - `reviewer_packet` removes a stale `PACKET-<model>.md` before choosing which packet to hand over.
 - Schemas: `policy.delta_review` (default true in `DEFAULT_POLICY`) and the record's `delta_from` (A1, A2).
 
+- `prior_approvals`: the model's latest record on a commit is its verdict there; each record drops earlier kept approvals of the same commit, so a later block rescinds and a later approval restores (A2, round 4).
+
 ### Mocks
 - none
 
@@ -156,6 +158,14 @@ Not run:
 - `test_an_ineligible_delta_approval_is_no_basis_for_a_later_delta`: a full approval at P, a rejected delta approval at C1 (a source file), then docs-only C2. The delta basis is not C1, and a `delta_from: C1` approval of C2 does not count (A2, round 2).
 - `test_an_earlier_approval_missing_an_acceptance_result_is_no_delta_basis`: an incomplete historical approval yields no delta basis and no delta packet, and a delta approval built on it does not count (A2, round 3).
 - `test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current`: at gate level, a delta approval counts, stops counting after `review-packet --full`, and counts again once the packet is rebuilt without it (A2, round 3).
+- `test_a_later_block_rescinds_an_approval_as_delta_basis_and_a_later_approval_restores_it`: at gate level, approve P then block P leaves no basis and the `delta_from: P` approval does not count; approving P again restores both (A2, round 4).
 - `test_policy_off_forces_full_review`: with `delta_review: false`, no delta packet and no delta approval (A2, A3).
 - `test_the_prompt_hands_each_reviewer_its_own_packet`: per-reviewer delivery and the delta packet's contents (A1).
 - `test_review_packet_full_stops_delta_packets`: `--full` forces the full packet and removes a stale delta packet (A2).
+
+## Round 4
+
+- Merged `origin/WIP/improvements-0-3-1` (35 commits behind) into the branch first; it merged cleanly.
+- Fix for Sol's block: per-commit effective verdict in `prior_approvals`.
+- The new test fails on the round-3 `review_gate.py` and passes now.
+- Targeted run: `tests/test_delta_review.py`, `tests/test_review_gate.py`, `tests/test_review_packet.py` and `tests/test_models_and_prompt.py`, 76 passed.
