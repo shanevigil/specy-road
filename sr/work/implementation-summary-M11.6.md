@@ -18,13 +18,17 @@ against the leaf's contract as it stands at reconcile time.
 - **A2 (merged-in paths):** `_changed_since` keeps a tracked path changed
   since `since` (the checkpoint, or the HEAD the worker started at) only when
   one of two sources changed it. The first is the branch's own commits in
-  `since..HEAD`, from `git_changed_paths.branch_commit_paths`: `git log
-  --first-parent --cc --name-status -z` with rename and copy detection, both
-  sides of a rename. The second is the uncommitted tree (`diff_paths(wt,
-  "HEAD")`). `--first-parent` never walks the integration commits a merge
-  brought in. `--cc` lists a merge's path only where the merge result differs
-  from every parent, which is a conflict resolution or an edit folded into the
-  merge. So a file that arrived only through a merge drops out of both
+  `since..HEAD`, from `git_changed_paths.branch_commit_paths`. That function
+  reads the ordinary commits with `git log --first-parent --no-merges
+  --name-status -z` and rename and copy detection, keeping both sides of a
+  rename. It takes each merge on the first-parent line separately, through
+  `_merge_own_paths`, using ordinary `git diff` records: what the merge changed
+  against its first parent, less what another parent `P` brought in and the
+  merge kept as `P` had it. "Brought in" means `P` changed the path since its
+  merge base with the first parent. The second source is the uncommitted tree
+  (`diff_paths(wt, "HEAD")`). `--first-parent` never walks the integration
+  commits a merge brought in. A conflict resolution, an edit folded into a
+  merge, and both sides of a rename made in a merge still count. So a file that arrived only through a merge drops out of both
   `changed` and `outside_touch_zones`, whichever integration ref it came from:
   local, remote-tracking, stale or diverged. A later edit or deletion of that
   file by the worker is a commit on the branch's own line and is reported.
@@ -93,6 +97,30 @@ Confirmed: `specy_road/worker_reconcile.py`, `docs/orchestration-workers.md`,
   14 passed), `scripts/check_test_private_imports.py` (0 new), `ruff check`
   (clean) and `specy-road file-limits` (OK).
 
+## Review round 4 (gpt-6.1-sol: block)
+
+- R1: `git log --cc --name-status -z` records for a merge carry one status
+  letter per parent (`RR`, `AA`) and only the destination of a rename. The
+  `R`/`C` parse therefore shifted and lost the rename source and the records
+  after it. `branch_commit_paths` no longer uses `--cc`. Ordinary commits come
+  from `--no-merges` records, and each first-parent merge from
+  `_merge_own_paths` over ordinary `git diff` records, as described under A2.
+- New public regression: `test_a_rename_folded_into_a_merge_counts_on_both_sides`,
+  which is the reviewer's scenario. The source exists on both parents and is
+  checkpointed. The worker commits in zone, `dev` adds a file, and the worker
+  merges with `--no-commit`, renames `outside/source.txt` to `src/dest.txt`
+  and adds `zoutside/extra.txt` in the merge. Reconcile reports the source, the
+  destination, the in-zone commit and the extra file, and nothing from `dev`;
+  the source and the extra file are outside and `needs_reconcile` is set.
+  Against the round-3 helper it fails with `['src/dest.txt']`, the result the
+  review reported.
+- `docs/orchestration-workers.md`: the `reconcile W` row states how a merge's
+  own edits are counted.
+- Re-run in round 4: `tests/test_worker_reconcile_contract.py` (9 passed),
+  `tests/test_review_round6_evidence.py` (14 passed),
+  `scripts/check_test_private_imports.py` (0 new), `ruff check` (clean) and
+  `specy-road file-limits` (OK).
+
 ## Verification
 
 - `pytest` (all `tests/test_*.py`, run in three foreground chunks because one
@@ -110,9 +138,12 @@ Confirmed: `specy_road/worker_reconcile.py`, `docs/orchestration-workers.md`,
 ## Added
 
 - `git_changed_paths.branch_commit_paths`: paths the branch's own
-  first-parent commits changed, with a merge counted only where it differs from
-  every parent; this is where the worker's own committed changes come from
-  (A2, round 3).
+  first-parent commits changed; this is where the worker's own committed
+  changes come from (A2, rounds 3 and 4).
+- `git_changed_paths._merge_own_paths`: a merge's own paths, from ordinary
+  diff records, with both rename sides; `--cc` records cannot be parsed that
+  way (round 4). It returns `None` for a non-merge or when a diff or merge base
+  fails, so the caller falls back to the unfiltered result.
 - Intersection in `worker_reconcile._changed_since`: keeps a changed path only
   when the branch's own commits or the uncommitted tree changed it (A2).
 - Guard that both git queries answered (`is not None`): otherwise the
@@ -138,6 +169,8 @@ Confirmed: `specy_road/worker_reconcile.py`, `docs/orchestration-workers.md`,
     still reported (R1).
   - `test_an_edit_folded_into_a_merge_commit_is_the_workers` (A2: the merge
     commit's own edits are not dropped as merged-in).
+  - `test_a_rename_folded_into_a_merge_counts_on_both_sides` (A2, round 4 R1:
+    a rename and another outside-zone edit made in a merge).
   - `test_the_integration_branch_moving_is_not_a_contract_change` (A3: a shared
     README and a status change).
   - `test_a_change_to_the_leafs_own_contract_is_reported`, parametrized over
