@@ -336,18 +336,9 @@ specy-road brainstorm promote --dry-run
 specy-road brainstorm promote
 ```
 
-Every accepted, not-yet-promoted idea becomes a node through the same path as
-`specy-road add-node`: display id under the anchor, stable `node_key`,
-planning sheet scaffolded, chunk and manifest written in one transaction. A
-batch defers `validate` until every node in that promote call is on disk, so
-pin/schema warnings and other validate notices print once, not per node.
+Every accepted, not-yet-promoted idea becomes a node through the same path as `specy-road add-node`: display id under the anchor, stable `node_key`, planning sheet scaffolded, chunk and manifest written in one transaction. A batch defers `validate` until every node in that promote call is on disk, so pin/schema warnings and other validate notices print once, not per node.
 
-Promoted nodes get a `goal` from the idea's `--hypothesis` when present,
-`sibling_order` in accept order (every `accept`, including without `--reason`,
-records a sequence; later promote calls append after existing siblings), and a
-`codename` from the first four title words unless `revise --codename` set one.
-After a successful promote, stderr lists any new node ids still missing
-`acceptance` or `touch_zones`.
+Promoted nodes get a `goal` from the idea's `--hypothesis` when present, `sibling_order` in accept order (every `accept`, including without `--reason`, records a sequence; later promote calls append after existing siblings), and a `codename` from the first four title words unless `revise --codename` set one. After a successful promote, stderr lists any new node ids still missing `acceptance` or `touch_zones`.
 
 Before it writes (and on `--dry-run`), `promote` warns for each idea it is
 about to promote on a `strong` verdict that no `matched` source backs — its
