@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specy-road.local/schemas/harness-facts.schema.json",
+  "title": "specy-road harness facts",
+  "description": "model-profiles/harness-facts.yaml: one record per harness a roster can name. refresh-profiles renders each profile's access.cli and the model-profiles README's harness block from it, and classifies a version bump's --version/--help diff against the relationships it assigns.",
+  "type": "object",
+  "required": ["version", "harnesses"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "harnesses": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/harness" } }
+  },
+  "$defs": {
+    "label": {
+      "description": "documented: a vendor page or repository doc says so; runtime: observed by running the binary; unverified: no cited source backs it yet (M8.7 replaces these with runtime results).",
+      "enum": ["documented", "runtime", "unverified"]
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "$ref": "#/$defs/label" },
+        "source": { "type": "string", "minLength": 1, "description": "Repository path or URL backing the fact; required unless the label is unverified." }
+      },
+      "if": { "properties": { "label": { "not": { "const": "unverified" } } } },
+      "then": { "required": ["source"] }
+    },
+    "textFact": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/$defs/evidence" }],
+      "required": ["value"],
+      "properties": { "value": { "type": "string", "minLength": 1 }, "label": true, "source": true },
+      "additionalProperties": false
+    },
+    "listFact": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/$defs/evidence" }],
+      "required": ["value"],
+      "properties": { "value": { "type": "array", "items": { "type": "string", "minLength": 1 } }, "label": true, "source": true },
+      "additionalProperties": false
+    },
+    "relationship": {
+      "description": "How specy-road relates to a harness identifier: use (an adapter or profile relies on it), avoid (a second owner for branches, workers, memory or landing), duplicate (specy-road has its own), complement (works alongside specy-road), gap (no specy-road equivalent; not needed), neutral (no bearing on orchestration).",
+      "enum": ["use", "avoid", "duplicate", "complement", "gap", "neutral"]
+    },
+    "harness": {
+      "type": "object",
+      "required": [
+        "id", "name", "binary", "version", "headless_command", "executor_template", "session_flags",
+        "permission_example", "instruction_files", "skill_dirs", "hooks", "git_actions", "model_families",
+        "quota", "capture_commands", "relationships"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$", "description": "The roster harness value (claude-code, codex, cursor, generic, ...)." },
+        "name": { "type": "string", "minLength": 1 },
+        "binary": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/textFact" },
+        "headless_command": { "$ref": "#/$defs/textFact", "description": "What specy-road's worker adapter runs." },
+        "executor_template": {
+          "type": "object",
+          "description": "The access.cli rendered into every profile whose family is listed; {api_id} becomes the profile's api_id.",
+          "allOf": [{ "$ref": "#/$defs/evidence" }],
+          "required": ["value", "renders_cli_for"],
+          "properties": {
+            "value": { "type": "string", "pattern": "(<prompt>|\\{prompt\\})" },
+            "renders_cli_for": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "label": true,
+            "source": true
+          },
+          "additionalProperties": false
+        },
+        "session_flags": { "$ref": "#/$defs/textFact" },
+        "permission_example": { "$ref": "#/$defs/textFact" },
+        "instruction_files": {
+          "type": "object",
+          "allOf": [{ "$ref": "#/$defs/evidence" }],
+          "required": ["value", "size_guidance"],
+          "properties": {
+            "value": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+            "size_guidance": { "type": "string", "minLength": 1 },
+            "label": true,
+            "source": true
+          },
+          "additionalProperties": false
+        },
+        "skill_dirs": { "$ref": "#/$defs/listFact" },
+        "hooks": { "$ref": "#/$defs/textFact" },
+        "git_actions": {
+          "type": "array",
+          "description": "Things the harness can do to git or branches on its own, with the switch that keeps it off.",
+          "items": {
+            "type": "object",
+            "allOf": [{ "$ref": "#/$defs/evidence" }],
+            "required": ["action", "switch"],
+            "properties": {
+              "action": { "type": "string", "minLength": 1 },
+              "switch": { "type": "string", "minLength": 1 },
+              "label": true,
+              "source": true
+            },
+            "additionalProperties": false
+          }
+        },
+        "model_families": { "$ref": "#/$defs/listFact", "description": "Roster family values this harness can run." },
+        "quota": { "$ref": "#/$defs/textFact" },
+        "capture_commands": {
+          "type": "object",
+          "description": "argv per capture file (version.txt, help.txt, inventory-*.txt, ...) that refresh-profiles --capture runs.",
+          "required": ["version.txt"],
+          "propertyNames": { "pattern": "^[a-z][a-z0-9.-]*\\.txt$" },
+          "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        },
+        "relationships": {
+          "type": "object",
+          "description": "Identifier (flag, subcommand, inventory entry) -> relationship. A new identifier containing a workflow word fails the version-bump diff until it is listed here.",
+          "additionalProperties": { "$ref": "#/$defs/relationship" }
+        }
+      }
+    }
+  }
+}

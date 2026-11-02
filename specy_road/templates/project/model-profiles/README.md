@@ -128,6 +128,70 @@ not checked it.
 Muse Wonder has no known headless command. For every model, the two runs'
 flags differ; see the watch-outs.
 
+<!-- >>> harness facts: rendered by `specy-road refresh-profiles --render` from harness-facts.yaml; do not edit inside <<< -->
+
+### Harness facts
+
+Rendered from `harness-facts.yaml`. Each fact carries its label: `documented` (a vendor page or
+repository doc), `runtime` (observed by running the binary) or `unverified`. The `access.cli` of
+every profile whose `family` a harness's executor template names is rendered from it too;
+`refresh-profiles --check` reports a hand edit to either as drift.
+
+#### Claude Code (`claude-code`, binary `claude`)
+
+- **Version:** `2.1.312` _[runtime: harness-captures/claude-code/version.txt (captured 2026-11-02)]_
+- **Headless command:** `claude -p --output-format stream-json --verbose --session-id <uuid> --model <id> --permission-mode acceptEdits (prompt on stdin)` _[documented: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md]_
+- **Executor template:** `claude -p "<prompt>"` _[documented: https://code.claude.com/docs/en/headless (profile source S4)]_
+- **Session:** --session-id &lt;uuid&gt; chosen up front; --resume &lt;id&gt; to continue; never --continue across worktrees _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Permissions:** --permission-mode acceptEdits, or dontAsk with --allowedTools allow rules; bypassPermissions only inside an external sandbox. Since 2.1.302 -p silently denies unapproved tools _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Instruction files:** `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` _[documented: docs/install-and-usage.md (validate context lines)]_; size: under 200 lines per file (vendor target); AGENTS.md and .claude/AGENTS.md only when none of the three exists
+- **Skill directories:** `.claude/skills` _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Hooks:** PreToolUse hooks in .claude/settings.json fire under claude -p and block with exit 2; --bare skips every hook _[runtime: docs/optional-ai-tooling-patterns.md (sandbox run 2026-10-28)]_
+- **Model families:** `anthropic` _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Quota:** a usage limit prints a message with a reset time; grind-session waits out a timed limit and stops on a spend cap or unrecognised wording _[documented: specy_road/claude_code_limits.py]_
+- **Autonomous git actions:**
+  - commits when asked, with an attribution trailer by default; switch: unknown (attribution setting not checked) _[unverified]_
+  - --worktree / -w creates its own git worktree; switch: never pass -w/--worktree; specy-road creates the worktree _[runtime: harness-captures/claude-code/help.txt]_
+  - --bg / --background and routines run sessions specy-road does not own; switch: never pass --bg; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 _[documented: docs/design-notes/harness-compatibility-triage.md]_
+  - --cloud and ultrareview run sessions or reviews in the cloud; switch: never pass --cloud; do not run ultrareview as gate evidence _[runtime: harness-captures/claude-code/help.txt]_
+
+#### Codex CLI (`codex`, binary `codex`)
+
+- **Version:** `codex-cli 0.165.0` _[runtime: harness-captures/codex/version.txt (captured 2026-11-02)]_
+- **Headless command:** `codex exec --json -m <id> -c sandbox_mode=workspace-write -c approval_policy=never -C <worktree> - (prompt on stdin)` _[runtime: specy_road/worker_adapters.py (codex-cli 0.165, run 2026-10-28)]_
+- **Executor template:** `codex exec --model {api_id} -c sandbox_mode=workspace-write -c approval_policy=never "<prompt>"` _[runtime: model-profiles/openai-gpt/gpt-6.1-sol.md (cli_verified_from codex-cli 0.165.0, run 2026-10-28)]_
+- **Session:** thread id from the thread.started event; codex exec resume &lt;id&gt; - to continue; --last is cwd-scoped _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Permissions:** -c sandbox_mode=workspace-write -c approval_policy=never (exec has no --ask-for-approval; its default sandbox is read-only) _[runtime: specy_road/worker_adapters.py (codex-cli 0.165)]_
+- **Instruction files:** `AGENTS.override.md`, `AGENTS.md` _[documented: docs/install-and-usage.md (validate context lines)]_; size: first non-empty of the two per directory from the git root down, truncated at project_doc_max_bytes (32 KiB); ~/.codex/AGENTS.override.md replaces the global file
+- **Skill directories:** `.agents/skills` _[unverified]_
+- **Hooks:** PreToolUse on Bash in .codex/hooks.json (or [hooks] in .codex/config.toml); exit 2 denies; project hooks load only when .codex/ is trusted, and an untrusted hook is skipped silently _[documented: docs/optional-ai-tooling-patterns.md]_
+- **Model families:** `openai` _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Quota:** unknown; one failure exit is documented, so the event stream (turn.failed) is read, not the exit code _[unverified]_
+- **Autonomous git actions:**
+  - .git and the linked gitdir are read-only inside workspace-write, so the executor cannot commit; switch: none; the adapter commits on the worker's behalf (decision 2026-10-29, M8.2) _[documented: docs/design-notes/harness-compatibility-triage.md]_
+  - --worktree runs the session in a new managed git worktree; switch: never pass --worktree _[runtime: harness-captures/codex/help.txt]_
+  - fork and cloud start sessions or tasks specy-road does not own; switch: never run codex fork, codex exec fork or codex cloud for a leaf _[runtime: harness-captures/codex/help.txt]_
+  - memories (memories.use_memories, memories.generate_memories) default on; switch: set both false; per-profile CODEX_HOME _[documented: docs/design-notes/harness-compatibility-triage.md]_
+
+#### Cursor agent CLI (`cursor`, binary `agent`)
+
+- **Version:** `2026.10.22-27dcf5f` _[runtime: harness-captures/cursor/version.txt (captured 2026-11-02)]_
+- **Headless command:** `agent -p --output-format stream-json --force --trust --model <id> --workspace <worktree> "<prompt>"` _[documented: specy_road/worker_adapters.py; docs/design-notes/harness-compatibility-triage.md]_
+- **Executor template:** `agent -p --force "<prompt>"` _[documented: model-profiles/cursor-composer/composer-2.5.md (source S2)]_
+- **Session:** session id from the first stream event (or agent create-chat); --resume &lt;id&gt; to continue (with a new prompt in print mode undocumented); agent ls is not headless _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Permissions:** --force force-allows every command not denied; --trust skips a new worktree's trust prompt; pair with hooks or an external sandbox _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Instruction files:** `AGENTS.md`, `CLAUDE.md`, `.cursor/rules` _[documented: docs/install-and-usage.md (validate context lines)]_; size: no documented limit; only .cursor/rules with alwaysApply true load every session
+- **Skill directories:** `.agents/skills`, `.cursor/skills`, `.claude/skills`, `.codex/skills` _[documented: docs/design-notes/harness-compatibility-triage.md]_
+- **Hooks:** beforeShellExecution in .cursor/hooks.json answers allow or deny as JSON (failClosed true, or empty output fails open); also runs .claude/settings.json hooks _[runtime: docs/optional-ai-tooling-patterns.md (Cursor CLI 2026.10.22, sandbox run 2026-10-28)]_
+- **Model families:** `anthropic`, `openai`, `xai`, `cursor`, `google` _[documented: docs/orchestration-models.md (Cursor model ids carry vendor and effort)]_
+- **Quota:** unknown _[unverified]_
+- **Autonomous git actions:**
+  - -w / --worktree makes its own worktrees under ~/.cursor/worktrees; switch: never pass -w/--worktree _[runtime: harness-captures/cursor/help.txt]_
+  - /split-to-prs, /autopilot and Cloud Agents create branches and PRs; switch: do not use them on a leaf _[documented: docs/design-notes/harness-compatibility-triage.md]_
+  - plan mode (--plan, --mode plan) and generate-rule write harness planning or rules; switch: never pass --plan; do not run generate-rule _[runtime: harness-captures/cursor/help.txt]_
+
+<!-- >>> end harness facts <<< -->
+
 ## Role rankings
 
 Both runs put **Claude Opus 5.5 first in all three roles.** Below that the order

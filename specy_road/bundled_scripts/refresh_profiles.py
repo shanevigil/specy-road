@@ -8,15 +8,25 @@ README, and never overwrites: the adopter's copies are theirs to edit (prices,
 CLI syntax, their own research), which is why the profiles are scaffolded
 rather than read from the package. Use ``--force`` for one named profile to
 take the toolkit's copy over yours.
+
+Two regions of ``model-profiles/`` are rendered from the harness facts fixture
+(:mod:`specy_road.harness_facts`): each profile's ``access.cli`` and the README's
+harness block. ``--check`` reports a hand edit to either as drift (exit 1) and a
+README that predates the block as behind; ``--render`` rewrites them. ``--capture
+<harness>`` classifies a new ``--version``/``--help`` capture against the accepted
+one and fails while a new workflow identifier has no relationship in the fixture;
+``--accept`` then stores it as the accepted capture.
 """
 
 from __future__ import annotations
 
 import argparse
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
+from specy_road import harness_facts as hf
 from specy_road.init_project import project_template_root
 from specy_road.model_profiles import PROFILES_REL
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root
@@ -63,7 +73,83 @@ def refresh_profiles(
     return written, kept
 
 
-def main(argv: list[str] | None = None) -> None:
+def render_profiles(repo_root: Path, *, dry_run: bool = False) -> hf.RenderPlan:
+    """Plan (and unless ``dry_run`` write) the fixture's rendered regions under ``repo_root``."""
+    repo_root = repo_root.resolve()
+    plan = hf.plan_render(repo_root, hf.load_facts())
+    if not dry_run:
+        for path, text in plan.updates.items():
+            _contained(repo_root, path)
+            path.write_text(text, encoding="utf-8")
+    return plan
+
+
+def _report(plan: hf.RenderPlan, *, check: bool) -> int:
+    """Print findings; 1 when ``check`` and a rendered region drifted."""
+    for f in plan.findings:
+        print(f"{f.kind}: {f.rel}: {f.detail}", file=sys.stderr if f.kind == "drift" else sys.stdout)
+    drift = [f for f in plan.findings if f.kind == "drift"]
+    if drift:
+        print(f"{len(drift)} rendered region(s) differ from harness-facts.yaml; "
+              "`refresh-profiles --render` rewrites them (or --force <path> takes the toolkit's copy)",
+              file=sys.stderr)
+    elif check:
+        print("no drift from harness-facts.yaml")
+    return 1 if check and drift else 0
+
+
+def capture(harness_id: str, from_dir: Path | None) -> dict[str, str]:
+    """A capture read from ``from_dir``, or taken by running the fixture's ``capture_commands``."""
+    if from_dir is not None:
+        got = hf.read_capture(from_dir)
+        if not got:
+            raise ValueError(f"no *.txt capture files in {from_dir}")
+        return got
+    rec = hf.harness(hf.load_facts(), harness_id)
+    out: dict[str, str] = {}
+    for name, argv in rec["capture_commands"].items():
+        try:
+            done = subprocess.run(argv, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL, check=False)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise ValueError(f"cannot capture {name} with {' '.join(argv)}: {e}") from e
+        if done.returncode != 0:
+            raise ValueError(f"{' '.join(argv)} exited {done.returncode}: {done.stderr.strip()[:200]}")
+        out[name] = done.stdout
+    return out
+
+
+def _print_diff(diff: hf.CaptureDiff) -> None:
+    old, new = diff.version
+    print(f"{diff.harness}: version {old or '(no accepted capture)'} -> {new}")
+    for ident, rel in diff.assigned.items():
+        print(f"  new {ident}: {rel}")
+    for ident in diff.other:
+        print(f"  new {ident}: no workflow word")
+    for ident in diff.removed:
+        print(f"  removed {ident}")
+    for ident, word in diff.unassigned.items():
+        print(f"  UNASSIGNED {ident}: contains {word!r}; give it a relationship in harness-facts.yaml",
+              file=sys.stderr)
+
+
+def run_capture(harness_id: str, from_dir: Path | None, *, accept: bool) -> int:
+    facts = hf.load_facts()
+    accepted_dir = hf.bundled_captures_dir() / harness_id
+    new = capture(harness_id, from_dir)
+    diff = hf.classify_capture(facts, harness_id, hf.read_capture(accepted_dir), new)
+    _print_diff(diff)
+    if not diff.ok:
+        print(f"{len(diff.unassigned)} new workflow identifier(s) unassigned; capture not accepted", file=sys.stderr)
+        return 1
+    if accept:
+        hf.write_capture(accepted_dir, new)
+        print(f"accepted as {accepted_dir}")
+        if hf.harness(facts, harness_id)["version"]["value"] not in new[hf.VERSION_FILE]:
+            print(f"note: update {harness_id}'s version in harness-facts.yaml to match {hf.VERSION_FILE}")
+    return 0
+
+
+def _parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="specy-road refresh-profiles",
         description=__doc__,
@@ -75,13 +161,21 @@ def main(argv: list[str] | None = None) -> None:
         "--force", action="append", default=[], metavar="PATH",
         help="Overwrite this profile (repo-relative, e.g. model-profiles/openai-gpt/gpt-6.1-sol.md); repeatable.",
     )
-    args = p.parse_args(argv if argv is not None else sys.argv[1:])
-    root = (args.repo_root or default_user_repo_root()).resolve()
-    try:
-        written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force)
-    except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1) from e
+    mode = p.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="Report rendered regions that differ from harness-facts.yaml; exit 1 on drift. Writes nothing.")
+    mode.add_argument("--render", action="store_true",
+                      help="Rewrite the rendered regions (each profile's access.cli, the README's harness block).")
+    mode.add_argument("--capture", metavar="HARNESS",
+                      help="Classify a new --version/--help capture of HARNESS against the accepted one.")
+    p.add_argument("--from", dest="from_dir", type=Path, metavar="DIR",
+                   help="With --capture: read the capture's *.txt files from DIR instead of running the harness.")
+    p.add_argument("--accept", action="store_true", help="With --capture: store a passing capture as the accepted one.")
+    return p
+
+
+def _copy_missing(root: Path, args: argparse.Namespace) -> None:
+    written, kept = refresh_profiles(root, dry_run=args.dry_run, force=args.force)
     verb = "would write" if args.dry_run else "wrote"
     for rel in written:
         print(f"{verb} {rel}")
@@ -93,6 +187,32 @@ def main(argv: list[str] | None = None) -> None:
         print(f"kept {len(profiles)} existing profile(s){readme}; pass --force <path> to replace one")
     if written and not args.dry_run:
         print("Next: add roster entries with `profile:` in roadmap/orchestration.yaml, then `specy-road models list`.")
+
+
+def main(argv: list[str] | None = None) -> None:
+    p = _parser()
+    args = p.parse_args(argv if argv is not None else sys.argv[1:])
+    if (args.from_dir or args.accept) and not args.capture:
+        p.error("--from and --accept need --capture")
+    root = (args.repo_root or default_user_repo_root()).resolve()
+    try:
+        if args.capture:
+            raise SystemExit(run_capture(args.capture, args.from_dir, accept=args.accept))
+        if args.check or args.render:
+            plan = render_profiles(root, dry_run=args.check or args.dry_run)
+            if args.check:
+                raise SystemExit(_report(plan, check=True))
+            verb = "would render" if args.dry_run else "rendered"
+            for f in plan.findings:
+                print(f"{verb} {f.rel} ({f.kind}: {f.detail})")
+            if not plan.findings:
+                print("rendered regions already match harness-facts.yaml")
+            return
+        _copy_missing(root, args)
+        _report(hf.plan_render(root, hf.load_facts()), check=False)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":
