@@ -86,22 +86,22 @@ def _assert_parent(root: Path, nodes: list[dict], parent_id: str | None) -> None
         raise BrainstormError(str(e)) from e
 
 
+def _section_span(lines: list[str], heading: str) -> tuple[int, int] | None:
+    """The ``## heading`` line's index and the end of its section, or None when the sheet has none."""
+    start = next((i for i, ln in enumerate(lines) if ln.strip() == f"## {heading}"), None)
+    if start is None:
+        return None
+    return start, next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+
+
 def _replace_section(text: str, heading: str, body: str, *, append: bool = False) -> str:
     """Swap the body under a ``## heading``, leaving the rest of the sheet alone;
     with ``append``, a missing heading is added at the end instead of skipped."""
-    lines = text.splitlines()
-    marker = f"## {heading}"
-    try:
-        start = next(i for i, ln in enumerate(lines) if ln.strip() == marker)
-    except StopIteration:
+    lines, marker = text.splitlines(), f"## {heading}"
+    span = _section_span(lines, heading)
+    if span is None:
         return f"{text.rstrip(chr(10))}\n\n{marker}\n\n{body.strip()}\n" if append else text
-    end = len(lines)
-    for i in range(start + 1, len(lines)):
-        if lines[i].startswith("## "):
-            end = i
-            break
-    replacement = [marker, "", *body.strip().splitlines(), ""]
-    return "\n".join([*lines[:start], *replacement, *lines[end:]])
+    return "\n".join([*lines[:span[0]], marker, "", *body.strip().splitlines(), "", *lines[span[1]:]])
 
 
 def _intent_body(idea: Idea) -> str:
@@ -163,6 +163,42 @@ def seed_anchor_frame(root: Path, nodes: list[dict], parent_id: str | None,
     text = _replace_section(sheet.read_text(encoding="utf-8"), "Brainstorm frame", body, append=True)
     sheet.write_text(text, encoding="utf-8")
     return sheet
+
+
+def decided_policies(root: Path, nodes: list[dict], anchor_id: str | None,
+                     session: BrainstormSession) -> tuple[Path, str] | None:
+    """The anchor sheet and its text with this session's ``## Decided policies`` bullets
+    reconciled to its decided ideas, or None when the sheet would not change.
+
+    Each bullet ends with the session slug, so a re-run replaces this session's bullets
+    (dropping ideas no longer decided, the last one included) and leaves other sessions' alone."""
+    decided = session.with_status("decided")
+    anchor = next((n for n in nodes if n.get("id") == anchor_id), None)
+    sheet = _sheet_path(root, anchor) if anchor else None
+    if sheet is None:
+        if decided:
+            print(f"warning: decided idea(s) {', '.join(i.id for i in decided)} not written: "
+                  f"{anchor_id or 'the roadmap root'} has no planning sheet; pass --under NODE_ID", file=sys.stderr)
+        return None
+    text, tag = sheet.read_text(encoding="utf-8"), f"(brainstorm `{session.slug}`"
+    span = _section_span(lines := text.splitlines(), "Decided policies")
+    old = [ln for ln in (lines[span[0] + 1:span[1]] if span else []) if ln.strip()]
+    kept = [ln for ln in old if tag not in ln]
+    ours = [f"- **{i.title}:** {' '.join(((i.decision or {}).get('decision') or i.title).split())} {tag}, {i.id})"
+            for i in decided]
+    if [*kept, *ours] == old:
+        return None
+    return sheet, _replace_section(text, "Decided policies", "\n".join([*kept, *ours]), append=True)
+
+
+def _write_policies(root: Path, policies: tuple[Path, str] | None, count: int, dry_run: bool) -> None:
+    """Write (unless ``dry_run``) and report what :func:`decided_policies` returned."""
+    if policies is None:
+        return
+    if not dry_run:
+        policies[0].write_text(policies[1], encoding="utf-8")
+    print(f"{'would write' if dry_run else 'wrote'} {count} decided idea(s) into "
+          f"{policies[0].relative_to(root).as_posix()} ## Decided policies", file=sys.stderr)
 
 
 def _promote_codename(landing: Landing, existing: set[str]) -> str | None:
@@ -240,34 +276,6 @@ def _build_node(nodes: list[dict], landing: Landing, *, parent_id: str | None,
         "dependencies": list(landing.dependencies) or None,
     }
     return {k: v for k, v in node.items() if v is not None}
-
-
-def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
-    """Parse ``promote --set`` pairs; return :data:`INHERIT_EXECUTION_MILESTONE` when absent."""
-    if not pairs:
-        return INHERIT_EXECUTION_MILESTONE
-    value: str | None = None
-    for raw in pairs:
-        if "=" not in raw:
-            raise BrainstormError(
-                f"promote --set expects KEY=VALUE (got {raw!r})"
-            )
-        key, _, raw_val = raw.partition("=")
-        if key.strip() != "execution_milestone":
-            raise BrainstormError(
-                "promote --set only supports execution_milestone "
-                f"(got {key.strip()!r})"
-            )
-        if raw_val.lower() in ("null", "~", ""):
-            value = None
-        elif raw_val not in EXEC_MILESTONES:
-            raise BrainstormError(
-                "execution_milestone must be one of "
-                f"{sorted(EXEC_MILESTONES)} (got {raw_val!r})"
-            )
-        else:
-            value = raw_val
-    return value
 
 
 def unverified_strong(session: BrainstormSession) -> list[Idea]:
@@ -359,15 +367,19 @@ def promote_session(
     anchor = under if under is not None else session.under
     landings = select_landings(root, session, anchor, node_type, by_cluster=by_cluster,
                                min_recommendation=min_recommendation, plan=plan)
-    if not landings:
+    decided, nodes = session.with_status("decided"), _load_nodes(root)
+    policies = decided_policies(root, nodes, anchor, session)
+    if not landings and policies is None:
         return []
-    nodes = _load_nodes(root)
     _assert_landings(root, nodes, landings)
-    snap = None if dry_run else TreeSnapshot(
+    if decided or policies:
+        _assert_parent(root, nodes, anchor)   # a sheet write needs the anchor present and unlocked
+    snap = None if dry_run or not landings else TreeSnapshot(
         (root / "roadmap", root / "planning"),
         (session_path(root, session.slug),),
     )
     out = _promote_landings(root, session, landings, execution_milestone, nodes, dry_run)
+    _write_policies(root, policies, len(decided), dry_run)
     if dry_run or not out:
         return out
     for parent_id in dict.fromkeys(p.parent_id for p in out):

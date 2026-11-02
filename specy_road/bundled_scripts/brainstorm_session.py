@@ -34,13 +34,14 @@ SESSION_SUFFIX = ".yaml"
 PROMPT_SUFFIX = "-prompt.md"
 
 #: What an idea is, for the recommend pass and for `promote`'s node type.
-IDEA_KINDS = ("feature", "capability", "risk", "research", "experiment", "refactor", "platform")
+IDEA_KINDS = ("feature", "capability", "risk", "research", "experiment", "refactor", "platform", "policy")
 #: ``merged`` is set only by ``brainstorm merge``, with ``merged_into`` / ``merged_from`` links.
-IDEA_STATUSES = ("proposed", "accepted", "rejected", "revised", "parked", "merged")
+IDEA_STATUSES = ("proposed", "accepted", "rejected", "revised", "parked", "merged", "decided")
 RECOMMENDATIONS = ("strong", "consider", "park")
 MODES = ("brainstorm", "roadmap")
+FRAME_STATES = ("", "provisional", "confirmed")  # `frame --provisional` / `--confirm`; "" is never marked
 
-#: Ideas the converge pass keeps: `promote` turns exactly these into nodes.
+#: Ideas `promote` turns into nodes; ``decided`` ones (`brainstorm decide`) go into the anchor's sheet instead.
 PROMOTABLE_STATUSES = ("accepted",)
 
 #: What `slugify` can emit, and therefore all a slug is ever allowed to be.
@@ -227,6 +228,8 @@ class BrainstormSession:
     # v2: the frame the PM agreed, the allocation grid, which diverge round
     # is current, the lens profile, and how many independent shards.
     frame: dict[str, str] = field(default_factory=dict)
+    frame_state: str = ""
+    frame_history: list[dict[str, str]] = field(default_factory=list)  # replaced answers: key, answer, replaced_at
     allocation: str = ""
     round: int = 1
     rounds: int = 2       # planned diverge rounds (`start --rounds`); next-round warns past it
@@ -239,13 +242,10 @@ class BrainstormSession:
     def to_dict(self) -> dict[str, Any]:
         out = {"version": SESSION_VERSION, "slug": self.slug, "topic": self.topic, "under": self.under,
                "mode": self.mode, "round": self.round, "rounds": self.rounds, "profile": self.profile}
-        out.update({k: v for k, v in (("panel", self.panel), ("count", self.count)) if v})
-        if self.frame:
-            out["frame"] = dict(self.frame)
-        if self.allocation:
-            out["allocation"] = self.allocation
-        if self.clusters:
-            out["clusters"] = {cid: dict(c) for cid, c in self.clusters.items()}
+        out.update({k: v for k, v in (("panel", self.panel), ("count", self.count), ("frame", dict(self.frame)),
+                                       ("frame_state", self.frame_state), ("allocation", self.allocation),
+                                       ("frame_history", [dict(h) for h in self.frame_history]),
+                                       ("clusters", {cid: dict(c) for cid, c in self.clusters.items()})) if v})
         out["ideas"] = [i.to_dict() for i in self.ideas]
         return out
 
@@ -318,9 +318,11 @@ def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
         raise BrainstormError(f"unsupported version {raw.get('version')!r} (expected {SESSION_VERSION}) "
                               "— upgrade specy-road or edit the file")
     mode = _str_field(raw, "mode", "brainstorm") or "brainstorm"
-    if mode not in MODES:
-        raise BrainstormError(f"mode {mode!r} not one of {', '.join(MODES)} "
-                              "— edit the file: use one of those or remove the key")
+    frame_state = _str_field(raw, "frame_state")
+    for key, value, allowed in (("mode", mode, MODES), ("frame_state", frame_state, FRAME_STATES)):
+        if value not in allowed:
+            raise BrainstormError(f"{key} {value!r} not one of {', '.join(filter(None, allowed))} "
+                                  "— edit the file: use one of those or remove the key")
     ideas = _ideas_from_list(raw.get("ideas"))
     frame = raw.get("frame") if isinstance(raw.get("frame"), dict) else {}
     rnd, planned = raw.get("round"), raw.get("rounds")
@@ -335,6 +337,8 @@ def _session_from_dict(raw: Any, slug: str) -> BrainstormSession:
         mode=mode,
         ideas=ideas,
         frame={str(k): str(v) for k, v in frame.items()},
+        frame_state=frame_state, frame_history=[{str(k): str(v) for k, v in h.items()}
+                                                for h in raw.get("frame_history") or [] if isinstance(h, dict)],
         allocation=_str_field(raw, "allocation"),
         round=rnd if isinstance(rnd, int) and rnd >= 1 else 1,
         rounds=planned if isinstance(planned, int) and planned >= 1 else 2,

@@ -36,7 +36,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Complete**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Complete**
   - `M4.3` Batch ideas and verdicts from a file, merge, and gap ideas `brainstorm-batch-io` — task — **Complete**
-  - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Not Started**
+  - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Complete**
   - `M4.5` Repository files as evidence; null results; quotes on research-born ideas `brainstorm-repo-evidence` — task — **Not Started**
   - `M4.6` Lenses from the frame and a ranked node list in the recommend prompt `brainstorm-lenses` — task — **Complete**
   - `M4.7` Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies `graph-apply` — task — **Complete**
@@ -103,6 +103,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
   - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Complete**
+  - `M10.17` The review packet caps its inlined diff by bytes too and lists generated bundles by size only `packet-byte-budget` — task — **Not Started**
 
 ## Claimed and in flight
 
@@ -111,7 +112,6 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.12` on `feature/rm-visual-explorer-for-worker` since 2026-11-02
 - `M10.3` on `feature/rm-replace-per-worker-polling-with` since 2026-11-02
-- `M4.4` on `feature/rm-brainstorm-decisions` since 2026-11-02
 - `M9.10` on `feature/rm-red-green-evidence` since 2026-11-02
 
 ## Reaching the detail behind this

@@ -11,6 +11,7 @@ import argparse
 
 from specy_road.bundled_scripts.brainstorm_fields import STANCES
 from specy_road.bundled_scripts.brainstorm_lenses import PROFILES
+from specy_road.bundled_scripts.brainstorm_session import BrainstormError
 from specy_road.runtime_paths import add_repo_root_arg
 
 _SLUG_HELP = (
@@ -43,6 +44,23 @@ def add_from_file(p: argparse.ArgumentParser, key: str) -> None:
                         "command's flag names without the dashes; repeatable flags take a list.")
 
 
+def frame_answers(ns: argparse.Namespace) -> list[tuple[str, str]]:
+    """``--answer KEY=TEXT`` pairs, or ``--amend KEY`` with its one ``--answer TEXT``."""
+    if ns.amend is None:
+        pairs = [(key.strip(), text.strip()) for key, _sep, text in (a.partition("=") for a in ns.answer)]
+        for item, (key, text) in zip(ns.answer, pairs):
+            if "=" not in item or not key or not text:
+                raise BrainstormError(f"--answer {item!r}: expected KEY=TEXT")
+        return pairs
+    key = ns.amend.strip()
+    if len(ns.answer) != 1:
+        raise BrainstormError(f"--amend {key} takes exactly one --answer TEXT: the new answer")
+    text = ns.answer[0].strip().removeprefix(f"{key}=").strip()   # KEY=TEXT is accepted too
+    if not key or not text:
+        raise BrainstormError("--amend needs a KEY and a non-empty --answer")
+    return [(key, text)]
+
+
 def add_v2_subcommands(sub) -> None:
     p = sub.add_parser("next-round", help="open the next diverge round: regenerate against the pool")
     p.add_argument("--count", type=int, default=None, metavar="N",
@@ -51,7 +69,16 @@ def add_v2_subcommands(sub) -> None:
 
     p = sub.add_parser("frame", help="record the agreed frame or the allocation grid")
     p.add_argument("--answer", action="append", default=[], metavar="KEY=TEXT",
-                   help="One agreed answer, e.g. outcome=... (repeatable).")
+                   help="One agreed answer, e.g. outcome=... (repeatable). A different answer for a "
+                        "recorded key replaces it and keeps the old one in frame_history.")
+    p.add_argument("--amend", default=None, metavar="KEY",
+                   help="Change one recorded answer: give the new text as the one --answer TEXT; "
+                        "the previous answer is kept in frame_history.")
+    state = p.add_mutually_exclusive_group()
+    state.add_argument("--provisional", action="store_true",
+                       help="Mark the frame provisional: later prompts treat it as working assumptions.")
+    state.add_argument("--confirm", action="store_true",
+                       help="Mark the frame confirmed by the PM; later prompts say so.")
     p.add_argument("--allocation", default=None, metavar="TEXT",
                    help="The allocation grid as text. With --panel, a line `sN: <cell>` gives shard N its cell.")
     _slug(p)
@@ -84,6 +111,13 @@ def add_v2_subcommands(sub) -> None:
                    help="Required; recorded as the decision reason.")
     p.add_argument("--revisit-when", default="", metavar="TEXT",
                    help="Optional: what would make the idea worth another look.")
+    _slug(p)
+
+    p = sub.add_parser("decide", help="record the decision or policy an idea settled: status decided; "
+                                      "promote writes it into the anchor's sheet instead of a node")
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--decision", required=True, metavar="TEXT",
+                   help="The decision, as it should read under the anchor sheet's `## Decided policies`.")
     _slug(p)
 
     p = sub.add_parser("merge", help="fold a duplicate idea into others: status merged, linked both ways")

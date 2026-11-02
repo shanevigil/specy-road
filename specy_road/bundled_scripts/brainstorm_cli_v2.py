@@ -8,6 +8,7 @@ import sys
 from datetime import date, datetime, timezone
 
 from specy_road.bundled_scripts.brainstorm_cli_args import file_namespaces
+from specy_road.bundled_scripts.brainstorm_cli_args_v2 import frame_answers
 from specy_road.bundled_scripts.brainstorm_fields import parse_origin, source_record
 from specy_road.bundled_scripts.brainstorm_prompt import (
     render_brainstorm_prompt,
@@ -99,7 +100,7 @@ def stage(session: BrainstormSession) -> str:
         return "round"
     if any(i.promoted_node_key for i in session.ideas) and not pending_ideas(session):
         return "promote"
-    if any(i.status in ("accepted", "rejected", "parked") for i in session.ideas):
+    if any(i.status in ("accepted", "rejected", "parked", "decided") for i in session.ideas):
         return "triage"
     if any(i.sources for i in session.ideas):
         return "evidence" if pending(session.ideas) else "verify"
@@ -132,17 +133,33 @@ def cmd_next_round(ns: argparse.Namespace) -> int:
     return 0
 
 
+def _set_answer(session: BrainstormSession, key: str, text: str, now: str) -> None:
+    """Record one frame answer; a different answer it replaces goes to ``frame_history``."""
+    old = session.frame.get(key)
+    if old is not None and old != text:
+        session.frame_history.append({"key": key, "answer": old, "replaced_at": now})
+    session.frame[key] = text
+
+
 def cmd_frame(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
-    for item in ns.answer:
-        key, sep, text = item.partition("=")
-        if not sep or not key.strip() or not text.strip():
-            raise BrainstormError(f"--answer {item!r}: expected KEY=TEXT")
-        session.frame[key.strip()] = text.strip()
+    answers = frame_answers(ns)
+    if ns.amend is not None and ns.amend.strip() not in session.frame:
+        raise BrainstormError(f"--amend {ns.amend.strip()!r}: the frame has no such answer to amend; "
+                              f"record it with --answer {ns.amend.strip()}=TEXT")
+    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    for key, text in answers:
+        _set_answer(session, key, text, now)
     if ns.allocation is not None:
         session.allocation = ns.allocation.strip()
+    if ns.provisional or ns.confirm:
+        if not session.frame:
+            raise BrainstormError("no frame recorded yet — record it with --answer KEY=TEXT first")
+        session.frame_state = "provisional" if ns.provisional else "confirmed"
     write_session(root, session)
-    print(f"[ok] frame: {len(session.frame)} answer(s)" + (", allocation recorded" if session.allocation else ""))
+    print(f"[ok] frame: {len(session.frame)} answer(s)" + (", allocation recorded" if session.allocation else "")
+          + (f", {session.frame_state}" if session.frame_state else "")
+          + (f", {ns.amend.strip()} amended (previous answer kept in frame_history)" if ns.amend else ""))
     if session.panel and session.round <= 1:
         # Shards are written at `start`, before any frame exists; rewrite them so they carry it.
         for path in _write_shard_prompts(root, session, count=session.count or DEFAULT_COUNT):
@@ -216,6 +233,20 @@ def cmd_park(ns: argparse.Namespace) -> int:
         print(f"[ok] {idea.id} parked")
     write_session(root, session)
     print(next_step(session, "triage"))
+    return 0
+
+
+def cmd_decide(ns: argparse.Namespace) -> int:
+    root, session = _load(ns)
+    text = (ns.decision or "").strip()
+    if not text:
+        raise BrainstormError("decide needs --decision TEXT: the decision is what promote writes into the sheet")
+    idea = set_status(session, ns.idea_id, "decided")   # refuses a promoted or merged idea
+    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    idea.decision = {"status": "decided", "decision": text, "decided_at": now}
+    write_session(root, session)
+    print(f"[ok] {idea.id} decided: {text}")
+    print(next_step(session, stage(session)))
     return 0
 
 
@@ -349,6 +380,7 @@ HANDLERS_V2 = {
     "add-evidence": cmd_add_evidence,
     "verify": cmd_verify,
     "park": cmd_park,
+    "decide": cmd_decide,
     "realize": cmd_realize,
     "revise": cmd_revise_any,
     "merge": cmd_merge,

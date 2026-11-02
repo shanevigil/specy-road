@@ -17,8 +17,8 @@ import yaml
 
 from specy_road.bundled_scripts.brainstorm_promote import (
     DEFAULT_PROMOTE_TYPE,
+    INHERIT_EXECUTION_MILESTONE,
     PROMOTABLE_TYPES,
-    execution_milestone_from_promote_sets,
 )
 from specy_road.bundled_scripts.brainstorm_cli_args_v2 import (
     add_from_file,
@@ -31,6 +31,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     IDEA_STATUSES,
     RECOMMENDATIONS,
 )
+from specy_road.bundled_scripts.roadmap_edit_fields import EXEC_MILESTONES
 from specy_road.runtime_paths import add_repo_root_arg
 
 _DESCRIPTION = (
@@ -247,6 +248,34 @@ def _add_converge(sub) -> None:
                    help="Create the tree a plan file describes (parent, type, title, acceptance, "
                         "dependencies, ideas by id) instead of one node per accepted idea.")
     _add_slug(p)
+
+
+def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
+    """Parse ``promote --set`` pairs; return :data:`INHERIT_EXECUTION_MILESTONE` when absent."""
+    if not pairs:
+        return INHERIT_EXECUTION_MILESTONE
+    value: str | None = None
+    for raw in pairs:
+        if "=" not in raw:
+            raise BrainstormError(
+                f"promote --set expects KEY=VALUE (got {raw!r})"
+            )
+        key, _, raw_val = raw.partition("=")
+        if key.strip() != "execution_milestone":
+            raise BrainstormError(
+                "promote --set only supports execution_milestone "
+                f"(got {key.strip()!r})"
+            )
+        if raw_val.lower() in ("null", "~", ""):
+            value = None
+        elif raw_val not in EXEC_MILESTONES:
+            raise BrainstormError(
+                "execution_milestone must be one of "
+                f"{sorted(EXEC_MILESTONES)} (got {raw_val!r})"
+            )
+        else:
+            value = raw_val
+    return value
 
 
 def build_parser(handlers: dict[str, Callable]) -> argparse.ArgumentParser:

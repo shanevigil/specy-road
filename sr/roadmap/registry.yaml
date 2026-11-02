@@ -11,22 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-decisions
-    node_id: M4.4
-    branch: feature/rm-brainstorm-decisions
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_cli_v2.py
-      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/brainstorm_prompt.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: red-green-evidence
     node_id: M9.10
     branch: feature/rm-red-green-evidence

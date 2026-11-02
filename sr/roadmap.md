@@ -36,7 +36,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Complete |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Complete |
 | `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Complete |
-| `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Not Started |
+| `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Complete |
 | `M4.5` | Repository files as evidence; null results; quotes on research-born ideas | task | Agentic-led | Not Started |
 | `M4.6` | Lenses from the frame and a ranked node list in the recommend prompt | task | Agentic-led | Complete |
 | `M4.7` | Scriptable graph edits: apply a change file with dry run, acceptance at creation, display-id dependencies | task | Agentic-led | Complete |
@@ -103,5 +103,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |
 | `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Complete |
 | `M10.16` | The worker wrapper imports the launching specy-road, not the worktree's copy | task | Agentic-led | Complete |
+| `M10.17` | The review packet caps its inlined diff by bytes too and lists generated bundles by size only | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
