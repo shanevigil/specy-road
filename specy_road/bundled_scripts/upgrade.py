@@ -13,7 +13,8 @@ order, and nothing else:
 3. shipped docs         — the ``docs/`` files the ``AGENTS.md`` load order names,
    when missing (never overwriting)
 4. ``refresh-stubs``    — IDE skills and the managed blocks (``--prune`` deletes
-   the stubs this version no longer installs)
+   the stubs this version no longer installs, and ``.cursor``/``.codex`` copies
+   of the skills that are links or verbatim stubs)
 5. ``validate``, then ``digest --check``
 
 Each step keeps its own narrow contract; the roadmap, planning sheets and
@@ -151,7 +152,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument(
         "--prune",
         action="store_true",
-        help="Also delete stubs this version no longer installs (e.g. pre-0.3.0 .cursor/commands/specyrd-*.md).",
+        help="Also delete stubs this version no longer installs (e.g. pre-0.3.0 .cursor/commands/specyrd-*.md) "
+        "and .cursor/.codex copies of the skills in .agents/skills.",
     )
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
     try:

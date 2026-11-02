@@ -108,6 +108,6 @@ def test_the_meter_reports_a_shorter_section_than_before(tmp_path: Path, monkeyp
     monkeypatch.delenv("CODEX_HOME", raising=False)
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     run_init_project(tmp_path)
-    codex, _claude = injected_context(tmp_path)
+    codex = injected_context(tmp_path)["Codex"]
     section = next(f for f in codex if f.rel == "AGENTS.md")
     assert section.block_lines < _BEFORE_LINES and section.block_size < _BEFORE_BYTES

@@ -43,7 +43,7 @@ from specy_road.orchestration_config import load_orchestration_config, orchestra
 from specy_road.orchestration_pinned import roster_source
 from specy_road.planning_scaffold_check import notice_complete_scaffold
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, git_root
-from specy_road.specyrd_init import _load_manifest
+from specy_road.specyrd_init import _load_manifest, warn_if_skills_mirrored
 from specy_road.bundled_scripts.validate_roadmap_checks import (
     cycle_check,
     load_schema,
@@ -247,6 +247,7 @@ def validate_at(
     warn_if_pin_differs(root)
     warn_if_schemas_stale(root)
     warn_if_stubs_stale(root)
+    warn_if_skills_mirrored(root)
     warn_if_agents_md_block_stale(root)
     warn_missing_load_order_paths(root)
     warn_unregistered_commands(root)
