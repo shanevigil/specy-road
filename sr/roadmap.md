@@ -94,7 +94,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.5` | Per-role effort in model profiles | task | Agentic-led | Complete |
 | `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Mixed | Not Started |
 | `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Complete |
-| `M10.8` | Reviewers launch without repo hooks or MCP | task | Agentic-led | Not Started |
+| `M10.8` | Reviewers launch without repo hooks or MCP | task | Agentic-led | Complete |
 | `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | Agentic-led | Complete |
 | `M10.10` | Position the docs on governance, not on CLI workers | task | Agentic-led | Complete |
 | `M10.11` | Document the harness-subagent recipe for parallel work inside a leaf | task | Agentic-led | Complete |
