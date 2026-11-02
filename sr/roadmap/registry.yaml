@@ -79,3 +79,17 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: milestone-full-review
+    node_id: M11.13
+    branch: feature/rm-milestone-full-review
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/review_gate.py
+      - specy_road/finish_ancestor_rollup.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
