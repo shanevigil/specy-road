@@ -39,7 +39,6 @@ from specy_road.worker_runner import spawn
 from specy_road.worker_sessions import check_session_id
 from specy_road.worker_state import (
     FLAG_STALLED,
-    TERMINAL_STATES,
     WorkerError,
     WorkerRecord,
     active_for_node,
@@ -57,10 +56,6 @@ from specy_road.worker_state import (
     take_checkpoint,
     workers_lock,
 )
-
-#: ``completed`` is not closed: a review ``block`` goes back to it as a
-#: ``message``, and it owns its leaf until ``terminate`` (docs/orchestration-workers.md).
-CLOSED_STATES = TERMINAL_STATES
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
@@ -302,12 +297,13 @@ def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
 
 def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRecord:
     require_writer(rec)
-    _wrapper_gone(repo_root, rec)   # a crashed turn is a failure to record, not a worker to resume
-    if rec.state in CLOSED_STATES:
-        raise WorkerError(f"{rec.worker_id} is {rec.state}; delegate again instead")
+    _wrapper_gone(repo_root, rec)   # a crashed turn is recorded as failed, then resumed below like any failed one
+    if rec.state == "terminated" or (rec.state == "failed" and not rec.provider_session_id):   # failed keeps its session
+        raise WorkerError(f"{rec.worker_id} is {rec.state}, session {rec.provider_session_id or 'none'}; delegate again instead")
     if process_alive(rec, repo_root):
-        raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a "
-                          "live turn — wait for it to end, or terminate it")
+        raise WorkerError(f"{rec.worker_id} is still running (pid {rec.pid}); the CLI adapters cannot steer a live turn — "
+                          + ("it is stalled: once its harness exits, message resumes the session (terminate closes it "
+                             "for good)" if FLAG_STALLED in rec.flags else "wait for it to end, or terminate it"))
     require_branch(rec)   # the worktree must still be on the worker's branch (review round 6, B12)
     adapter = adapter_for(rec.harness)
     if not adapter.caps.resume:
@@ -315,6 +311,10 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     if not rec.provider_session_id:
         raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to resume")
     sid = check_session_id(rec.harness, rec.provider_session_id)   # the harness's output chose it; never a shell word
+    if rec.state == "failed":   # reopening takes a max_workers slot, as a launch does
+        other = _slot_or_existing(repo_root, rec.node_id, int(pinned_config(repo_root)[0]["policy"]["max_workers"]))
+        if other:
+            raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays failed")
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
