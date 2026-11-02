@@ -28,7 +28,7 @@ Findings:
 ## Verification
 
 - `specy-road file-limits` → `OK: file limits satisfied.`
-- `python -m pytest -q tests/test_doc_links.py tests/test_agents_md_block.py tests/test_shared_checkout_guidance.py tests/test_context_regressions.py tests/test_review_round6_docs.py tests/test_post_release_readme_cleanup.py` → 71 passed.
+- `python -m pytest -q tests/test_doc_links.py tests/test_doctor.py tests/test_agents_md_block.py tests/test_shared_checkout_guidance.py tests/test_context_regressions.py tests/test_review_round6_docs.py tests/test_post_release_readme_cleanup.py` → 71 passed.
 - Full `python -m pytest -q` → 2984 passed, 2 skipped (16:24), run after the note was final and before it was committed.
 - **Study artifacts are local only, never committed:** the app copies, harness JSON logs, review packets and verdicts, and the collection and review scripts. They live in this session's scratchpad, outside the repo. The note gives enough of the protocol (app shape, prompt, exact harness commands, metric definitions, packet contents) to rebuild them.
 
