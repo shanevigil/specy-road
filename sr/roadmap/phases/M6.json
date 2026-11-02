@@ -55,7 +55,7 @@
       "parent_id": "M6",
       "planning_dir": "planning/M6.1_rc2-closeout-docs_3835b0ce-3da0-4d0d-9c1f-a14ea77947aa.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Close out the triage note, changelog and what's-new for rc2",
       "touch_zones": [
         "docs/design-notes/v0-3-1-rc1-adopter-feedback-triage.md",
@@ -82,7 +82,7 @@
       "parent_id": "M6",
       "planning_dir": "planning/M6.2_rc2-cut_fb3572b0-3c7e-4d33-9a2e-6d5135bbd3fc.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pre-release checks and the 0.3.1-rc2 cut",
       "touch_zones": [
         "docs/release-runbook.md",
