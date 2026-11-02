@@ -318,7 +318,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.10_red-green-evidence_b67e06c1-654a-4dcb-b102-d16e43449ff7.md",
       "sibling_order": 10,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head",
       "touch_zones": [
         "specy_road/red_green.py",
