@@ -43,6 +43,16 @@ Not done, on purpose: the planning sheet's "orchestration.md packet section" not
 3. `specy-road grind-session --plan --json --fields ready,totals --repo-root tests/fixtures/specy_road_dogfood`; then with `--fields nope` for the error.
 4. `specy-road validate` on a repo with several open leaves lacking acceptance: one `warning:` line plus one `fix each with:` line.
 
+## Merge with origin/WIP/improvements-0-3-1 (round 4)
+
+The approvals at `818b62e` could not land because of conflicts with M9.5 (`989bbb4`) and later leaves. Merge commit `68d160c` resolves the two conflicting files and keeps both behaviours:
+
+- `review_packet.py` `build_packet`: M9.5's `test_integrity_section(root, t)` comes first, then M10.7's `_diff(root, t, paths, max_diff_lines)`. The integrity section is computed from git independently of the diff, so the cap does not affect it.
+- `cli_usage.py`: the review-packet entry lists the "test integrity" section and the `--max-diff-lines` / `DIFF.patch` option, and M9.5's `integrity <NODE_ID>` command entry is kept.
+- `tests/test_review_packet.py` `test_packet_test_integrity_section_is_stable_and_lists_findings` also builds the weakened-test packet with `max_diff_lines=1` and asserts that its integrity block equals the uncapped one (the `assert-loss` finding included) and that its diff is capped.
+
+Verified at `68d160c`: `tests/test_review_packet.py`, `tests/test_integrity.py`, the root-help tests that print `USAGE_TEXT` (`tests/test_cli.py`, `tests/test_cli_version.py`, `tests/test_cli_query_commands.py`) and the other touch-zone tests: 157 passed. `specy-road file-limits` exits 1 on `docs/brainstorming.md` (406/400). That file is identical on `origin/WIP/improvements-0-3-1` and outside this leaf's zones; this leaf's files pass. The full suite was left to the coordinator, as instructed.
+
 ## Added
 
 ### Helpers
@@ -79,4 +89,5 @@ Not done, on purpose: the planning sheet's "orchestration.md packet section" not
 - `test_fields_flag_parses_and_rejects_unknown_keys` — A3 parsing, unknown key error naming valid keys, flag without `--plan --json`.
 - `test_plan_json_fields_prints_only_those_keys` — A3 end to end through `run_session`.
 - `test_the_warning_is_one_line_per_class_with_one_hint` — A4 (replaces the per-leaf cap test).
+- `test_packet_test_integrity_section_is_stable_and_lists_findings` (M9.5's, extended at the merge) — a capped packet keeps the same integrity block.
 - `test_the_brief_is_identical_across_layouts` (changed, not added) — strips the layout-dependent `_Size:` line on both briefs, after asserting each has exactly one; the rest stays byte-identical.
