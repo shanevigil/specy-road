@@ -206,3 +206,54 @@ def test_main_passes_max_diff_lines_through(tmp_path: Path, capsys) -> None:
     assert "**Diff capped at 1 lines**" in text and "the first 0 of 2 changed file(s)" in text
     assert "- `docs/x.md` (+1 -0) — not inlined" in text and "- `src/a.py` (+1 -0) — not inlined" in text
     assert (reviews_dir(repo, "M1.1") / rp.DIFF_NAME).is_file()
+
+
+def test_a_few_long_minified_lines_past_the_byte_budget_are_listed_with_their_size(tmp_path: Path) -> None:
+    """A1: three 100 KB lines are well under --max-diff-lines but past the default byte budget."""
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, "src/zz.min.js", "".join(f"var a{i}={'x' * 100_000};\n" for i in range(3)), "minified")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    patch = reviews_dir(repo, "M1.1") / rp.DIFF_NAME
+    assert f"**Diff capped at {rp.MAX_DIFF_LINES} lines** and **{rp.MAX_DIFF_BYTES} bytes**" in text
+    assert "the first 2 of 3 changed file(s)" in text and "+print('a')" in text
+    size = len(next(c for c in patch.read_text().split("diff --git ") if "zz.min.js" in c).encode()) + 11
+    assert f"- `src/zz.min.js` (+3 -0) — not inlined ({size} bytes of diff)" in text
+    assert "x" * 1000 not in text and len(text.encode()) < rp.MAX_DIFF_BYTES and "x" * 100_000 in patch.read_text()
+
+
+def test_max_diff_bytes_zero_lifts_the_byte_cap(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, "src/zz.min.js", f"var a={'x' * 300_000};\n", "minified")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_bytes=0)
+    assert "x" * 300_000 in text and "Diff capped" not in text
+    assert not (reviews_dir(repo, "M1.1") / rp.DIFF_NAME).exists()
+
+
+def test_a_generated_bundle_is_listed_as_generated_and_never_inlined(tmp_path: Path) -> None:
+    """A2: a file under GENERATED_PATHS is listed even with both budgets off; DIFF.patch holds it."""
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, f"{rp.GENERATED_PATHS[0]}assets/index.js", "bundle()\n", "rebuild the GUI")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=0, max_diff_bytes=0)
+    assert "**Diff not inlined in full**" in text and rp.GENERATED_NOTE in text
+    assert f"- `{rp.GENERATED_PATHS[0]}assets/index.js` (+1 -0) — not inlined, generated (" in text
+    assert "+bundle()" not in text and "+print('a')" in text
+    assert "+bundle()" in (reviews_dir(repo, "M1.1") / rp.DIFF_NAME).read_text()
+
+
+def test_a_linguist_generated_path_at_the_reviewed_commit_is_never_inlined(tmp_path: Path) -> None:
+    """A2: .gitattributes is read at the commit under review, not from the working tree."""
+    repo = make_review_repo(tmp_path)
+    commit_file(repo, ".gitattributes", "src/gen.py linguist-generated\n", "attrs")
+    commit_file(repo, "src/gen.py", "made = 1\n", "generated module")
+    (repo / ".gitattributes").unlink()
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    assert "- `src/gen.py` (+1 -0) — not inlined, generated (" in text and "+made = 1" not in text
+    assert "+src/gen.py linguist-generated" in text and "the first 3 of 4 changed file(s)" in text
+
+
+def test_main_passes_max_diff_bytes_through(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    rp.main(["M1.1", "--max-diff-bytes", "1", "--repo-root", str(repo)])
+    text = (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()
+    assert f"**Diff capped at {rp.MAX_DIFF_LINES} lines** and **1 bytes**" in text
+    assert "the first 0 of 2 changed file(s)" in text and "- `src/a.py` (+1 -0) — not inlined (" in text

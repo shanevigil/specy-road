@@ -9,9 +9,11 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
    ``--base``), with paths outside the node's touch zones called out;
 4. the Python test files that import a changed module (``specy-road impact``);
 5. ``git diff <base>...<ref>``, with a warning when it is empty; past
-   ``--max-diff-lines`` (default 1500) the first files that fit are inlined
-   whole, the rest are listed with their ``+``/``-`` counts, and the full
-   diff is written to ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap);
+   ``--max-diff-lines`` (default 1500) or ``--max-diff-bytes`` (default 200000)
+   the first files that fit both are inlined whole, the rest are listed with
+   their ``+``/``-`` counts and diff bytes, and the full diff is written to
+   ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap); a generated file is
+   never inlined, only listed;
 6. verifier output — the newest valid READY file's ``verify`` tails, plus any
    ``--verify-cmd`` run now.
 
@@ -42,6 +44,10 @@ from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, 
 
 TAIL_LINES = 60
 MAX_DIFF_LINES = 1500
+MAX_DIFF_BYTES = 200_000   # a minified bundle is a few very long lines; lines alone do not bound it
+# Generated artefacts, git-root relative; with .gitattributes `linguist-generated` paths, listed, never inlined.
+GENERATED_PATHS = ("specy_road/pm_gantt_static/",)   # the packaged PM GUI bundle
+GENERATED_NOTE = "_Generated files are never inlined: review the source they are built from._"
 DIFF_NAME = "DIFF.patch"   # beside PACKET.md when the diff is capped
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
 # work/ holds the brief, implementation summary, and session files the scaffold
@@ -217,33 +223,67 @@ def _split_files(diff: str) -> list[str]:
 
 
 def _numstat(root: Path, t: ReviewTarget) -> list[tuple[str, str, str]]:
-    """``(added, removed, path)`` per file, in diff order (``-`` for binary)."""
-    rows = (git_stdout(["diff", "--numstat", f"{t.base}...{t.commit}"], root) or "").splitlines()
-    return [tuple(r.split("\t", 2)) for r in rows if r.count("\t") == 2]
+    """``(added, removed, path)`` per file, in diff order (``-`` for binary; a rename's new path)."""
+    fields = iter((git_stdout(["diff", "--numstat", "-z", f"{t.base}...{t.commit}"], root) or "").split("\0"))
+    rows = []
+    for f in fields:
+        a, _, rest = f.partition("\t")
+        r, tab, path = rest.partition("\t")
+        if not tab:
+            continue
+        if not path:   # a rename or copy: the old and the new path follow
+            next(fields, "")
+            path = next(fields, "")
+        rows.append((a, r, path))
+    return rows
 
 
-def _capped_diff(root: Path, t: ReviewTarget, diff: str, cap: int) -> list[str]:
-    """Inline whole files up to ``cap`` lines, list the rest, write the full diff to DIFF.patch."""
+def _generated(root: Path, commit: str, paths: list[str]) -> set[str]:
+    """The git-root ``paths`` under GENERATED_PATHS or marked ``linguist-generated`` at ``commit``."""
+    out = {p for p in paths if p.startswith(GENERATED_PATHS)}
+    top = Path(git_text(["rev-parse", "--show-toplevel"], root) or root)   # check-attr paths are cwd-relative
+    attr = ["check-attr", "-z", "linguist-generated", "--", *paths]
+    raw = git_stdout(attr[:2] + [f"--source={commit}"] + attr[2:], top) or git_stdout(attr, top) or ""
+    f = raw.split("\0")   # path, attribute, value; repeated
+    return out | {f[i] for i in range(0, len(f) - 2, 3) if f[i + 2] in ("set", "true")}
+
+
+def _budget(cap: int, max_bytes: int) -> str:
+    caps = [f"**Diff capped at {cap} lines**"] if cap else []
+    if max_bytes:
+        caps.append(f"**{max_bytes} bytes**" if cap else f"**Diff capped at {max_bytes} bytes**")
+    return " and ".join(caps) or "**Diff not inlined in full**"
+
+
+def _capped_diff(root: Path, t: ReviewTarget, diff: str, rows: list[tuple[str, str, str]], generated: set[str],
+                 cap: int, max_bytes: int) -> list[str]:
+    """Inline the first whole files within both budgets, list the rest and every generated file, write DIFF.patch."""
     chunks = _split_files(diff)
-    kept, lines = 0, 0
-    for c in chunks:
-        n = c.count("\n")
-        if lines + n > cap:
-            break
-        kept, lines = kept + 1, lines + n
-    stats = _numstat(root, t)
-    rest = stats[kept:] if len(stats) == len(chunks) else \
-        [("?", "?", c.split("\n", 1)[0].removeprefix("diff --git ")) for c in chunks[kept:]]
+    if len(rows) != len(chunks):   # name each file from its header instead
+        rows = [("?", "?", c.split("\n", 1)[0].rsplit(" b/", 1)[-1]) for c in chunks]
+    kept: list[str] = []
+    listed: list[str] = []
+    lines = size = 0
+    full = False   # once a file misses a budget, every later one is listed too
+    for c, (a, r, path) in zip(chunks, rows):
+        n, b, gen = c.count("\n"), len(c.encode()), path in generated
+        full = full or (not gen and bool(cap and lines + n > cap or max_bytes and size + b > max_bytes))
+        if gen or full:
+            listed.append(f"- `{path}` (+{a} -{r}) — not inlined{', generated' if gen else ''} ({b} bytes of diff)")
+        else:
+            kept, lines, size = kept + [c], lines + n, size + b
     patch = reviews_dir(root, t.node_id) / DIFF_NAME
     patch.parent.mkdir(parents=True, exist_ok=True)
     patch.write_text(diff, encoding="utf-8")
-    out = [f"**Diff capped at {cap} lines** ({diff.count(chr(10))} in all): the first {kept} of "
-           f"{len(chunks)} changed file(s) are inlined whole below; the full diff is at `{patch}`.", ""]
-    out += [f"- `{path}` (+{a} -{r}) — not inlined" for a, r, path in rest] + [""]
-    return out + (_fence("".join(chunks[:kept]), "diff") if kept else [])
+    out = [f"{_budget(cap, max_bytes)} ({diff.count(chr(10))} lines, {len(diff.encode())} bytes in all): the first "
+           f"{len(kept)} of {len(chunks)} changed file(s) are inlined whole below; the full diff is at `{patch}`.", ""]
+    out += [GENERATED_NOTE, ""] if generated & {path for *_, path in rows} else []
+    out += listed + [""]
+    return out + (_fence("".join(kept), "diff") if kept else [])
 
 
-def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = MAX_DIFF_LINES) -> list[str]:
+def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = MAX_DIFF_LINES,
+          max_diff_bytes: int = MAX_DIFF_BYTES) -> list[str]:
     out = ["## Diff", ""]
     (reviews_dir(root, t.node_id) / DIFF_NAME).unlink(missing_ok=True)   # only a capped packet names one
     if not t.base or not t.commit:
@@ -253,8 +293,12 @@ def _diff(root: Path, t: ReviewTarget, paths: list[str], max_diff_lines: int = M
     if not diff.strip():
         print(f"warning: {_empty_diff_reason(t)}", file=sys.stderr)
         return out + [_computed(t), ""] + note + [f"_({_empty_diff_reason(t)})_", ""]
-    if max_diff_lines and diff.count("\n") > max_diff_lines:
-        return out + [_computed(t), ""] + note + _capped_diff(root, t, diff, max_diff_lines)
+    rows = _numstat(root, t)
+    generated = _generated(root, t.commit, [path for *_, path in rows])
+    if generated or (max_diff_lines and diff.count("\n") > max_diff_lines) or \
+            (max_diff_bytes and len(diff.encode()) > max_diff_bytes):
+        return out + [_computed(t), ""] + note + _capped_diff(root, t, diff, rows, generated, max_diff_lines,
+                                                              max_diff_bytes)
     return out + [_computed(t), ""] + note + _fence(diff, "diff")
 
 
@@ -298,7 +342,8 @@ def _run_verify(root: Path, cmds: list[str], t: ReviewTarget) -> list[str]:
 
 
 def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list[str],
-                 base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES) -> str:
+                 base: str | None = None, max_diff_lines: int = MAX_DIFF_LINES,
+                 max_diff_bytes: int = MAX_DIFF_BYTES) -> str:
     t = resolve_target_or_exit(root, node_id, ref)
     integration_ref = t.base_ref   # --base moves the diff range, never the trial merge mark and finish check
     if base:
@@ -313,7 +358,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         changed,
         test_integrity_section(root, t),
         tests_at_risk_section(root, t),
-        _diff(root, t, paths, max_diff_lines),
+        _diff(root, t, paths, max_diff_lines, max_diff_bytes),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
     return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
@@ -331,7 +376,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--max-diff-lines", type=int, default=MAX_DIFF_LINES, metavar="N",
                    help=f"Inline at most N diff lines (default {MAX_DIFF_LINES}): whole files up to the cap, "
                         f"the rest listed with +/- counts and the full diff written to "
-                        f"work/reviews/<NODE_ID>/{DIFF_NAME}; 0 = no cap and no {DIFF_NAME}")
+                        f"work/reviews/<NODE_ID>/{DIFF_NAME}; 0 = no line cap")
+    p.add_argument("--max-diff-bytes", type=int, default=MAX_DIFF_BYTES, metavar="N",
+                   help=f"Inline at most N bytes of diff too (default {MAX_DIFF_BYTES}), as for --max-diff-lines; "
+                        f"0 = no byte cap. With both 0 and no generated file, nothing is listed and no {DIFF_NAME}")
     p.add_argument("-o", "--output", type=Path,
                    help=f"Also write here; work/reviews/<NODE_ID>/{PACKET_NAME} is always written, "
                         "since `prompt --role reviewer` reads only that path")
@@ -339,7 +387,7 @@ def main(argv: list[str] | None = None) -> None:
     args = p.parse_args(argv)
     root = (args.repo_root or default_user_repo_root()).resolve()
     text = build_packet(root, args.node_id, ref=args.ref, verify_cmds=args.verify_cmd, base=args.base,
-                        max_diff_lines=args.max_diff_lines)
+                        max_diff_lines=args.max_diff_lines, max_diff_bytes=args.max_diff_bytes)
     for out in [reviews_dir(root, args.node_id) / PACKET_NAME, *([args.output] if args.output else [])]:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(text, encoding="utf-8")
