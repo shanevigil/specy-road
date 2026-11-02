@@ -267,7 +267,7 @@ coordinator, and each call runs one phase and exits.
 
 ```bash
 specy-road grind-session --step pickup --json --on-complete merge   # -> picked | resumed
-# implement work/prompt-<ID>.md (a fresh sub-agent per leaf), verify, review
+# implement work/prompt-<ID>.md (a fresh sub-agent per leaf, or `worker delegate` + `worker sync --wait`), verify, review
 specy-road grind-session --step finish --json --until M7.6         # -> finished [+ stopped]
 ```
 
@@ -288,7 +288,7 @@ the agent decides when to stop. With the review gate on, the agent files an
 independent review and runs `mark-implementation-reviewed --yes` between
 implement and finish; see [orchestration.md](orchestration.md#unattended-loops).
 Any step that modifies files runs **before** review, because a later commit
-makes the reviews stale, so `--pre-finish-cmd` here should only check.
+makes the reviews stale, so `--pre-finish-cmd` here should only check. To wait for a delegated worker between steps, run `specy-road worker sync --wait` instead of a sleep loop: it returns on the worker's next event ([orchestration-workers.md](orchestration-workers.md#the-loop)).
 
 **Usage limits** are the agent harness's to handle. Claude Code 2.1.234+ waits
 out a limit in an interactive session and carries on when *Continue

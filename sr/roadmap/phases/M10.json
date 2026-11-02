@@ -101,7 +101,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.3_replace-per-worker-polling-with_77ecca98-cf46-4640-a984-89a62cca9517.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Replace per-worker polling with a single mailbox flag file and a foreground --wait",
       "touch_zones": [
         "specy_road/worker_state.py",

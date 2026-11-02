@@ -6,7 +6,7 @@
 **Not for:** the review gate, roster roles and hand-off files — [`orchestration.md`](orchestration.md).
 
 **Must know without reading on:**
-- Run `specy-road worker sync` at the start of every turn; `specy-road worker sync --ack` once you have acted on the events.
+- Run `specy-road worker sync` at the start of every turn; `specy-road worker sync --ack` once you have acted on the events. To wait for a worker, `specy-road worker sync --wait`, never a sleep loop.
 - One writer per worker (`lease.holder`): `specy-road worker handoff <W>` before a human opens the native session, `specy-road worker reclaim <W>` after. While leased to a human, `message` and `resume` fail with `WORKER_LEASED_BY_HUMAN`.
 - `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5.5` needs the leaf's registry claim and branch.
 - A `completion` event and a READY file approve nothing; the review path is unchanged. `interrupt` is unsupported on every adapter; `terminate` loses the turn.
@@ -187,7 +187,7 @@ flags still win over the file for that run.
 ## The loop
 
 ```bash
-specy-road worker sync                 # start of every turn: what changed
+specy-road worker sync                 # start of every turn: what changed (--wait: block until something does)
 specy-road worker delegate M2.3 --model claude-opus-5.5
 specy-road worker sync --ack           # once you have acted on the events
 ```
@@ -214,6 +214,8 @@ executor's precondition looks for it there: under the worktree's project root
 the project root and give the summary and hand-off paths from the git root, the
 directory the worker is told to work from).
 
+**Waiting.** When there is nothing to do until a worker reports, call `specy-road worker sync --wait` rather than sleeping and re-running `sync`. Every event appended to any worker's log also replaces one file, `work/.workers/FLAG`; `--wait` stats it every 250 ms (no OS watch API) and prints the usual `sync` output as soon as it changes, or at once when an unacknowledged event is already there. After `--timeout` seconds (default 600) with nothing new it prints the empty delta and exits 2. The wait is the command itself, in the foreground: nothing runs on after it returns, and Ctrl-C ends it with exit 130 and no acknowledgement.
+
 The worker's job is the executor's as before: implement, commit, write
 `work/implementation-summary-<ID>.md` and `work/reviews/<ID>/READY-*.md`,
 stop. A `completion` event says it stopped and whether READY exists; it is
@@ -233,7 +235,7 @@ to finish, and then complete its steps.
 | Command | Does |
 |---|---|
 | `list [--all]`, `status W`, `events W [--since N]`, `open W` | Read. `open` prints the worktree, the log, and the native resume command. |
-| `sync [--ack]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`, per worker the acked `seq` and `acked_at`); compact, with state, lease, epoch and flags. A sequence number between the last acknowledged one and the record's `last_event_seq` that no readable line carries (lost or unreadable, the final event included) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`); a worker whose new events are all unreadable is still listed, and `--ack` moves past its gaps. |
+| `sync [--ack] [--wait [--timeout S]]` | Every worker's events after the last acknowledged one (`work/.workers/sync.yaml`, per worker the acked `seq` and `acked_at`); compact, with state, lease, epoch and flags. A sequence number between the last acknowledged one and the record's `last_event_seq` that no readable line carries (lost or unreadable, the final event included) is reported as a gap (`! gap: event(s) #4–#5 …`; `gaps` in `--json`); a worker whose new events are all unreadable is still listed, and `--ack` moves past its gaps. `--wait` first blocks until there is something to report (see "Waiting" above); exit 2 when `--timeout` passes with nothing. |
 | `message W --text\|--file` | A follow-up: resumes the native session with the text. Needs the `broker` lease and a stopped wrapper; a running one-shot turn cannot be steered. |
 | `resume W` | `message` with a "continue from where you stopped" prompt. Both work on `idle` **and** `completed` workers (a review `block` goes back as a message); only `failed` and `terminated` are closed. |
 | `interrupt W` | **Unsupported** by every CLI adapter: exit 2 and the reason. A kill is not an interrupt; use `terminate` and say so. |

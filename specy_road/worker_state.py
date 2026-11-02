@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -48,6 +49,7 @@ FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
 FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
 FLAG_STALLED = "stalled"   # running, and no stdout for policy.stall_after_seconds; the next output line clears it
+MAILBOX_FLAG = "FLAG"   # work/.workers/FLAG: replaced by every append_event; `sync --wait` stats only this file
 _ID = re.compile(r"^w-[0-9]{4,}$")
 
 
@@ -282,7 +284,24 @@ def append_event(repo_root: Path, rec: WorkerRecord, type_: str, *, source: str,
             f.write(json.dumps(data, sort_keys=True) + "\n")
         rec.last_event_seq = ev.seq
         save_record(repo_root, rec)
+        _write_atomic(workers_dir(repo_root) / MAILBOX_FLAG, f"{rec.worker_id} #{ev.seq} {ev.at}\n")
     return ev
+
+
+def flag_stamp(repo_root: Path) -> tuple[int, int] | None:
+    """The flag's ``(inode, mtime_ns)``, ``None`` before any event; replaced, so the inode moves where mtime is coarse."""
+    path = workers_dir(repo_root) / MAILBOX_FLAG
+    st = path.stat() if path.exists() else None
+    return (st.st_ino, st.st_mtime_ns) if st else None
+
+
+def wait_for_event(repo_root: Path, timeout: float, since: tuple[int, int] | None, interval: float = 0.25) -> bool:
+    """``True`` once the flag's stamp differs from ``since``, ``False`` after ``timeout`` seconds. A stat every
+    ``interval`` in the calling process: no OS watch API and no child, so nothing outlives the call (principle 5)."""
+    deadline = time.monotonic() + timeout
+    while flag_stamp(repo_root) == since and time.monotonic() < deadline:
+        time.sleep(interval)
+    return flag_stamp(repo_root) != since
 
 
 def _last_logged_seq(repo_root: Path, worker_id: str) -> int:
