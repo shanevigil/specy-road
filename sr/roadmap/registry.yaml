@@ -33,3 +33,14 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: resume-failed-workers
+    node_id: M11.2
+    branch: feature/rm-resume-failed-workers
+    touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
