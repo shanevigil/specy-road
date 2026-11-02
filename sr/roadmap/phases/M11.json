@@ -447,7 +447,8 @@
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
         "specy_road/bundled_scripts/roadmap_crud_argparse.py",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/roadmap_crud_chunk_report.py"
       ],
       "type": "task"
     },
