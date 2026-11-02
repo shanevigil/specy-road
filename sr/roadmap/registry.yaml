@@ -49,3 +49,15 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: max-workers-global
+    node_id: M11.4
+    branch: feature/rm-max-workers-global
+    touch_zones:
+      - specy_road/worker_ops.py
+      - specy_road/worker_state.py
+      - specy_road/orchestration_config.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
