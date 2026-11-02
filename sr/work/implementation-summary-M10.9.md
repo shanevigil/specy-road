@@ -1,8 +1,8 @@
 # Implementation summary: M10.9 — emit a stalled event when a worker goes silent
 
 Branch `feature/rm-emit-a-stalled-event`; implementation commits `3b649f6` (worker, sweep, docs, tests),
-`abb7748` (orchestration schema key and its test) and `f203c8b` (review fixes R1, R2 from
-`REVIEW-gpt-6.1-sol.md`).
+`abb7748` (orchestration schema key and its test), `f203c8b` (review round 1 fixes) and
+`f8722e9` (review round 3 fixes), both rounds from `REVIEW-gpt-6.1-sol.md`.
 
 ## What changed, per acceptance item
 
@@ -12,13 +12,14 @@ Branch `feature/rm-emit-a-stalled-event`; implementation commits `3b649f6` (work
   old, read from the monotonic clock `run(..., clock=time.monotonic)`. Each
   write is a `mutate` under the workers lock. The `seen` mutate at launch sets it to the launch time, so
   every turn starts a new silence (design point 1 from the stop report).
-- **A2** — `worker_ops.sweep_stalled(repo_root, *, now=None)`. For each active
+- **A2** — `worker_ops.sweep_stalled(repo_root, *, now=None)`. For each
   record in `running` whose `last_output_at` is at least
   `policy.stall_after_seconds` old and not already flagged, it appends one
   `stalled` event (source/authority `system`; summary and detail carry the
   seconds silent, `last_output_at` and the last worker-sourced summary) and
-  adds flag `stalled`. A record that has left `running`, or is under the
-  threshold again, loses the flag. `worker_reconcile.sync` calls it right
+  adds flag `stalled`. It reads every record, so any record that has left
+  `running` (idle, completed, failed, terminated, and the rest) loses the
+  flag, as does one under the threshold again. `worker_reconcile.sync` calls it right
   after `sweep_dead_wrappers` (so a dead wrapper is `failed`, not stalled), and
   `worker_cli.cmd_list` calls it before listing. Clearing: the wrapper's
   `last_output_at` write drops the flag in the same mutate (design point 2).
@@ -89,6 +90,21 @@ loop and a new function below `run`.
   unavailable in their sandbox). They recorded this as an environment limit,
   not a regression, and the test passes here.
 
+## Review round 3 (gpt-6.1-sol, block)
+
+- **R1** fixed: `sweep_stalled` read only active records, so a worker that
+  was flagged and then became `failed` or `terminated` kept the flag forever.
+  It now reads every record. `test_a_silent_running_worker_is_flagged_once_per_silence`
+  re-flags the worker and moves it to `idle`, `failed` and `terminated` in
+  turn, and checks that each sweep clears the flag. With the old
+  `active_only=True` it fails at `failed` (checked, then restored).
+- **R2** fixed: `test_a_new_turn_resets_last_output_at_and_the_stalled_mark`
+  no longer compares against the `launched` event, which is written after the
+  reset and can land in the next wall-clock second. It now bounds the
+  persisted `last_output_at` between a time taken before `run()` (rounded down
+  to whole seconds, like the stamps) and one taken after it. The flag-clearing
+  assertion is unchanged.
+
 ## Verification
 
 - `pytest tests/test_worker_faults.py tests/test_worker_state.py`: 16 passed
@@ -121,8 +137,9 @@ loop and a new function below `run`.
 - Schema: `last_output_at` and flag `stalled` in the record schema, type `stalled` in the event schema (A3).
 - `policy.stall_after_seconds` in the orchestration schema template: lets the documented key be set.
 - Test `test_last_output_at_is_written_at_most_every_five_seconds`: A1 throttle through `run(clock=...)`, asserting the persisted time.
-- Test `test_a_new_turn_resets_last_output_at_and_the_stalled_mark`: the turn-start reset.
-- Test `test_a_silent_running_worker_is_flagged_once_per_silence`: A2 threshold, one event per silence, clear on leaving `running`, with `now=`.
+- Test `test_a_new_turn_resets_last_output_at_and_the_stalled_mark`: the turn-start reset, bounded by times taken around `run()`.
+- Test `test_a_silent_running_worker_is_flagged_once_per_silence`: A2 threshold, one event per silence, clear on leaving `running` for `idle`, `failed` and `terminated`, with `now=`.
+- `sweep_stalled` reads all records, not only active ones (round 3 R1): a closed worker must not keep the flag.
 - Test `test_output_clears_a_stall_shorter_than_the_write_window`: R1, the line after a stall clears it under a 1 s threshold, a later silence re-raises it, measured from that line; real stdout through `run()` with a sweeping thread.
 - Test `test_list_and_sync_flag_a_live_silent_worker`: A2 through `worker list` and `worker sync` on a live spawned wrapper.
 - Test `test_policy_stall_after_seconds_overrides_the_default`: a committed `stall_after_seconds: 60` flags at 60 s, not 600.
