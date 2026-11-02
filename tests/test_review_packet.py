@@ -95,9 +95,30 @@ def test_each_section_states_its_provenance(tmp_path: Path) -> None:
     assert text.count(rp.RENDERED) == 1
     assert text.count(rp.ASSERTED) == 1           # READY tails; the summary is not committed here
     assert text.count(rp.ASSERTED_WORKING_TREE) == 1
-    assert text.count("_Computed by review-packet from git (`") == 2   # changed paths and diff
+    assert text.count("_Computed by review-packet from git (`") == 3   # changed paths, test integrity, diff
     assert text.count(f"_Run now by review-packet at HEAD `{head}`._") == 1
     assert f"## Implementation summary\n\n{rp.ASSERTED_WORKING_TREE}\n\nDid it." in text
+
+
+def test_packet_test_integrity_section_is_stable_and_lists_findings(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    commit_file(repo, "tests/test_leaf.py", "def test_ok():\n    assert 1\n", "baseline test")
+    git(repo, "checkout", "-q", "feature/rm-thing")
+    git(repo, "merge", "dev", "--no-edit")
+    text_a = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    text_b = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    start = "## Test integrity\n"
+    sec_a = text_a.split(start, 1)[1].split("\n## Diff\n", 1)[0]
+    sec_b = text_b.split(start, 1)[1].split("\n## Diff\n", 1)[0]
+    assert sec_a == sec_b
+    assert "_none_" in sec_a
+    commit_file(repo, "tests/test_leaf.py", "def test_ok():\n    pass\n", "weaken")
+    text = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[])
+    block = text.split(start, 1)[1].split("\n## Diff\n", 1)[0]
+    assert "assert-loss: tests/test_leaf.py::test_ok 1->0" in block
+    capped = rp.build_packet(repo, "M1.1", ref=None, verify_cmds=[], max_diff_lines=1)   # a capped diff keeps it
+    assert capped.split(start, 1)[1].split("\n## Diff\n", 1)[0] == block and "**Diff capped at 1 lines**" in capped
 
 
 def test_main_writes_packet_file(tmp_path: Path, capsys) -> None:

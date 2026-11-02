@@ -27,6 +27,7 @@ def test_init_project_scaffold_validates(tmp_path: Path) -> None:
     assert "Initialized specy-road layout" in r.stdout
     assert (tmp_path / "roadmap" / "manifest.json").is_file()
     assert (tmp_path / "AGENTS.md").is_file()
+    assert (tmp_path / "research" / "README.md").is_file()
     v = subprocess.run(
         [
             sys.executable,

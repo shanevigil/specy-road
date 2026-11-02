@@ -24,6 +24,7 @@ from specy_road.worker_state import (
     FLAG_RECONCILE,
     WorkerError,
     WorkerRecord,
+    _now,
     _write_atomic,
     add_flag,
     append_event,
@@ -140,6 +141,24 @@ def _sync_path(repo_root: Path) -> Path:
     return workers_dir(repo_root) / "sync.yaml"
 
 
+def sync_marks(repo_root: Path) -> dict[str, dict[str, Any]]:
+    """Per worker, ``{"seq": highest acked seq, "acked_at": when or None}`` from ``sync.yaml``.
+
+    A bare integer (the file's shape before ``acked_at`` was recorded) still reads as a mark.
+    """
+    path = _sync_path(repo_root)
+    if not path.is_file():
+        return {}
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    out = {}
+    for k, v in raw.items():
+        if isinstance(v, dict):
+            out[str(k)] = {"seq": int(v.get("seq", 0)), "acked_at": v.get("acked_at")}
+        else:
+            out[str(k)] = {"seq": int(v), "acked_at": None}
+    return out
+
+
 def _gaps(after: int, seqs: list[int], last: int) -> list[list[int]]:
     """``[first, last]`` per run of sequence numbers in ``after+1 .. last`` that no readable event carries."""
     seen, out = set(seqs), []
@@ -168,12 +187,11 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
     path = _sync_path(repo_root)
     with workers_lock(repo_root):
         sweep_dead_wrappers(repo_root)
-        marks: dict[str, int] = {}
-        if path.is_file():
-            marks = {str(k): int(v) for k, v in (yaml.safe_load(path.read_text(encoding="utf-8")) or {}).items()}
+        marks = sync_marks(repo_root)
+        now = _now()
         out = []
         for rec in list_records(repo_root):
-            mark = marks.get(rec.worker_id, 0)
+            mark = marks.get(rec.worker_id, {}).get("seq", 0)
             evs = events_since(repo_root, rec.worker_id, mark)
             # append_event writes the line before it saves the record, so the
             # record's last_event_seq is a sequence that was logged.
@@ -186,7 +204,7 @@ def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
                         "events": [{"seq": e.seq, "type": e.type, "source": e.source, "summary": e.summary,
                                     "detail": e.detail} for e in evs]})
             if ack:
-                marks[rec.worker_id] = last
+                marks[rec.worker_id] = {"seq": last, "acked_at": now}
         if ack and out:
             path.parent.mkdir(parents=True, exist_ok=True)
             _write_atomic(path, yaml.safe_dump(marks, sort_keys=True))

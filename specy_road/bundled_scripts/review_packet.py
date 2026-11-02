@@ -32,6 +32,7 @@ from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
+from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_gate import policy_source, trial_merge
 from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
@@ -172,6 +173,22 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
     return paths, lines
 
 
+def test_integrity_section(root: Path, t: ReviewTarget) -> list[str]:
+    """Deterministic ``## Test integrity`` block for the review packet."""
+    lines = ["## Test integrity", ""]
+    if not t.base or not t.commit:
+        return lines + ["_(cannot compute: no merge base or no commit)_", ""]
+    lines.append(_computed(t))
+    lines.append("")
+    findings = compare_integrity(root, t.base, t.commit)
+    if not findings:
+        lines.append("_none_")
+    else:
+        lines.extend(f.line() for f in findings)
+    lines.append("")
+    return lines
+
+
 def _empty_diff_reason(t: ReviewTarget) -> str:
     return (f"the diff is empty: `{t.commit}` adds nothing past its merge base with `{t.base_ref}`, as when the "
             "branch is already merged there; `review-packet --base <ref>` sets the diff range (e.g. the commit "
@@ -284,6 +301,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         ["---", ""] + brief_lines[:1] + ["", RENDERED] + brief_lines[1:] + ["", "---", ""],
         _summary(root, t),
         changed,
+        test_integrity_section(root, t),
         _diff(root, t, paths, max_diff_lines),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]

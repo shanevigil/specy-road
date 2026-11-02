@@ -22,7 +22,7 @@
 **Related:** [`orchestration-models.md`](orchestration-models.md), [`orchestration-workers.md`](orchestration-workers.md), [`orchestration-review.md`](orchestration-review.md), [`grind-session.md`](grind-session.md), [`design-notes/v0-3-0-orchestration-slices.md`](design-notes/v0-3-0-orchestration-slices.md) (background).
 
 specy-road separates three roles around a roadmap leaf and prescribes how work passes
-between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit.
+between them — not **which** agent, IDE or vendor fills a role; a human, Claude Code, Cursor, Codex or a local model all fit. Other tools also drive those CLIs as workers; what is specy-road's is the governance around them, set out in [Where specy-road sits](philosophy-and-scope.md#where-specy-road-sits).
 
 - **Coordinator** — picks the leaf, creates the branch or worktree, assembles the review packet, closes the review gate, finishes the leaf, and changes roadmap status.
 - **Executor** — reads the brief, changes only the leaf's touch zones, runs the verifiers, commits, writes a hand-off file, and **stops**.
@@ -222,6 +222,8 @@ specy-road review record M1.2 --model claude-opus-5.5 --verdict block --file not
 
 It sets `family` from the roster; a `family` written in the file is ignored. When policy
 requires distinct families, it relabels every counted record `independence: same-family` or `distinct-family` as reviews arrive. It overwrites `REVIEW-<model>.md` each round and keeps a copy of every record it files under `history/`, the round history escalation counts from.
+
+`handoff status` and `review list` report, per leaf, its review rounds (distinct reviewed commits) and the time from its first review to the latest (`n/a` with a single review). Two or more review rounds per leaf are normal under a two-family policy: the second family often blocks on something the first passed, and each fix is a new commit to review. Escalation (`escalate_review_rounds`, default 5) is what marks a loop that is not converging.
 
 ## The review gate
 

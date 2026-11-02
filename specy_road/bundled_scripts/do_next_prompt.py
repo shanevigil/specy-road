@@ -125,6 +125,25 @@ def _leaf_planning_excerpt_lines(node: dict, root: Path) -> list[str]:
     return lines
 
 
+def _planned_test_changes_lines(node: dict) -> list[str]:
+    """The leaf's declared test removals or weakenings, and the stop rule for any other."""
+    planned = [s for s in (node.get("planned_test_changes") or []) if isinstance(s, str)]
+    lines = ["## Planned test changes", ""]
+    lines += [f"- `{s}`" for s in planned] or ["_none_"]
+    lines += [
+        "",
+        (
+            "These are the only test removals or weakenings this leaf may make "
+            f"(as `specy-road integrity {node['id']}` prints them). Any other is a "
+            "`blocked_on` stop: write READY with `blocked_on` naming the criterion "
+            "and stop until the coordinator amends `planned_test_changes` on the "
+            "integration branch."
+        ),
+        "",
+    ]
+    return lines
+
+
 def _on_complete_hint_lines(on_complete: str) -> list[str]:
     oc = (on_complete or "pr").strip().lower()
     if oc == "merge":
@@ -237,7 +256,10 @@ def _finish_instruction_lines(
                 f"`work/reviews/{node_id}/READY-<your roster id>.md` (the `id` of "
                 "your entry in `roadmap/orchestration.yaml`) from "
                 "`work/handoff-ready.template.md` (branch, commit, base, changed_paths, "
-                "verify), then stop. Reviewers read "
+                "verify), then stop. When an acceptance criterion can be met only by "
+                "deleting, skipping or weakening an existing test, or by raising a baseline "
+                "or cap, stop and write READY with `blocked_on` naming the criterion instead "
+                "of making that change. Reviewers read "
                 f"`specy-road review-packet {node_id}` and file verdicts with "
                 "`specy-road review record` (from `work/review-record.template.md`); "
                 "then the developer runs "
@@ -275,6 +297,7 @@ def write_agent_prompt(
     lines.extend(_governance_lines(repo_root))
     lines.extend(_ancestor_planning_lines(node_id, by_id, repo_root))
     lines.extend(_leaf_planning_excerpt_lines(node, repo_root))
+    lines.extend(_planned_test_changes_lines(node))
     lines += ["", "## Instructions", ""]
     lines += _finish_instruction_lines(
         node_id,

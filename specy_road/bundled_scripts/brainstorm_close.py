@@ -23,8 +23,8 @@ from specy_road.bundled_scripts.brainstorm_session import (
 
 CLOSED_DIRNAME = "brainstorm-closed"
 #: The pass part of a prompt name ``prompt_path`` writes (``-r<N>``, ``-r1-s<K>``, ``-recommend``,
-#: ``-evidence``), plus the bare and ``-s<K>`` names older versions wrote.
-PROMPT_PASS_RE = r"(?:-r\d+(?:-s\d+)?|-recommend|-evidence|-s\d+)?"
+#: ``-evidence``, ``-authoring``), plus the bare and ``-s<K>`` names older versions wrote.
+PROMPT_PASS_RE = r"(?:-r\d+(?:-s\d+)?|-recommend|-evidence|-authoring|-s\d+)?"
 
 
 def closed_dir(root: Path) -> Path:
@@ -39,7 +39,7 @@ def session_files(root: Path, slug: str) -> list[Path]:
     """The session file plus the prompts written beside it.
 
     Those are exactly what ``write_prompt`` emits for a slug: one per pass
-    (``-r<N>``, ``-r1-s<K>``, ``-recommend``, ``-evidence``), plus the bare and
+    (``-r<N>``, ``-r1-s<K>``, ``-recommend``, ``-evidence``, ``-authoring``), plus the bare and
     ``-s<K>`` names older versions wrote. The pattern is anchored on the whole
     slug, so closing ``a`` never touches ``ab``'s files.
     """

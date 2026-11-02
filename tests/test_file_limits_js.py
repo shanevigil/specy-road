@@ -86,6 +86,16 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures" / "file_limits_js"
         ("comparison_declarator.ts", [("oversized", 1, 5), ("small", 6, 1), ("big", 6, 1)]),
         # A typed arrow field keeps its name: `onChange: (x) => T = (x) => { … }`.
         ("typed_field.ts", [("Handler.onChange", 2, 5)]),
+        # A definite-assignment `!` on an arrow field, bare or typed, keeps the field's name.
+        (
+            "definite_field.ts",
+            [("Handler.onChange", 2, 5), ("Handler.onInput", 7, 5), ("Handler.onKey", 12, 5)],
+        ),
+        # `as` / `satisfies` after a grouped arrow does not end the declarator list.
+        (
+            "cast_after_group.ts",
+            [("wrapped", 1, 1), ("after", 1, 5), ("checked", 6, 1), ("also", 6, 1)],
+        ),
         # An apostrophe or quote in JSX text is not a string; the following function stays separate.
         ("jsx_text.tsx", [("Greeting", 1, 5), ("next", 6, 2), ("after", 8, 3)]),
         # Braces inside strings, nested template literals and comments are ignored.
@@ -178,6 +188,8 @@ def test_js_function_hard_alert(tmp_path: Path) -> None:
         ("grouped_list.ts", "grouped_list.ts:1 function `after` 6 lines"),
         ("object_type_arg.ts", "object_type_arg.ts:1 function `oversized` 5 lines"),
         ("semicolon_object_type.ts", "semicolon_object_type.ts:1 function `oversized` 5 lines"),
+        ("definite_field.ts", "definite_field.ts:2 function `Handler.onChange` 5 lines"),
+        ("cast_after_group.ts", "cast_after_group.ts:1 function `after` 5 lines"),
     ],
 )
 def test_validator_does_not_print_ok_with_over_cap_ts_function(

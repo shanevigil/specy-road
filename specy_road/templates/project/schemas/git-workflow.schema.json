@@ -44,6 +44,10 @@
       "type": "string",
       "description": "Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."
     },
+    "land_check_cmd": {
+      "type": "string",
+      "description": "Shell command finish-this-task runs in merge (and auto) mode on the local merge commit, at the project root of a detached temporary worktree, before it pushes the integration branch (e.g. the full test and lint gate). A non-zero exit pushes nothing and resets the local integration branch. CLI --land-check-cmd wins (an empty value skips it for that run). pr mode never runs it."
+    },
     "prefer_agentic_pick_order": {
       "type": "boolean",
       "description": "When true, do-next-available-task and grind-session order each pickup tier (Blocked, MR-rejected, the rest) Agentic-led, then Mixed, then unset, then Human-led, outline order within each (default false: outline order only). Eligibility is unchanged. CLI --prefer-agentic / --no-prefer-agentic wins."

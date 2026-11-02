@@ -18,3 +18,14 @@ def script_subprocess_env() -> dict[str, str]:
     # Repo root so `import specy_road` works from a source checkout.
     env["PYTHONPATH"] = str(REPO) + (sep + prev if prev else "")
     return env
+
+
+def sorted_diff_paths_project_relative(project: Path, base: str, tip: str) -> list[str]:
+    """Paths ``git diff base...tip`` touches, in the same project-relative form as review-packet."""
+    from specy_road.git_changed_paths import diff_paths
+    from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
+
+    top = git_root(project) or project
+    prefix = project_prefix(project)
+    raw = diff_paths(top, f"{base}...{tip}") or []
+    return sorted(rebase_to_project(path, prefix) or path for path in raw)

@@ -125,7 +125,7 @@ def test_the_roadmap_inventory_moves_to_the_converge_prompt(repo: Path) -> None:
     checked at converge, where it is needed."""
     _start(repo)
     assert "`M0.1`" not in _prompt(repo)
-    _run(repo, "add-idea", "--title", "One")
+    _run(repo, "add-idea", "--title", "Shared contracts skeleton")
     _run(repo, "recommend")
 
     text = _prompt(repo, "recommend")
@@ -314,7 +314,7 @@ def test_close_moves_the_session_and_its_prompts_and_nothing_else(repo: Path) ->
     _seed(repo, "ab")
     work = repo / "work"
     # One prompt per pass, plus the bare and -sN names older versions wrote.
-    for tag in ("-r2", "-r1-s1", "-recommend", "-evidence", "", "-s1"):
+    for tag in ("-r2", "-r1-s1", "-recommend", "-evidence", "-authoring", "", "-s1"):
         (work / f"brainstorm-a{tag}-prompt.md").write_text("prompt", encoding="utf-8")
 
     r = _run(repo, "close", "--slug", "a")
@@ -322,6 +322,7 @@ def test_close_moves_the_session_and_its_prompts_and_nothing_else(repo: Path) ->
     assert r.returncode == 0, r.stderr
     closed = work / "brainstorm-closed"
     assert sorted(p.name for p in closed.iterdir()) == [
+        "brainstorm-a-authoring-prompt.md",
         "brainstorm-a-evidence-prompt.md", "brainstorm-a-prompt.md", "brainstorm-a-r1-prompt.md",
         "brainstorm-a-r1-s1-prompt.md", "brainstorm-a-r2-prompt.md", "brainstorm-a-recommend-prompt.md",
         "brainstorm-a-s1-prompt.md", "brainstorm-a.yaml"]
@@ -332,17 +333,21 @@ def test_close_moves_the_session_and_its_prompts_and_nothing_else(repo: Path) ->
 
 
 def test_close_leaves_a_name_another_open_session_could_own(repo: Path) -> None:
-    """`a-s1` is a valid slug: its prompts, and the legacy name it shares with `a`'s shard 1, stay."""
+    """`a-s1` and `a-authoring` are valid slugs: their prompts, and the bare names they
+    share with `a`'s shard 1 and authoring prompt, stay."""
     _seed(repo, "a")
     _seed(repo, "a-s1")
+    _seed(repo, "a-authoring")
     work = repo / "work"
     (work / "brainstorm-a-s1-prompt.md").write_text("legacy", encoding="utf-8")
+    (work / "brainstorm-a-authoring-prompt.md").write_text("shared name", encoding="utf-8")
 
     assert _run(repo, "close", "--slug", "a").returncode == 0
 
     assert sorted(p.name for p in (work / "brainstorm-closed").iterdir()) == [
         "brainstorm-a-r1-prompt.md", "brainstorm-a.yaml"]
-    for name in ("brainstorm-a-s1.yaml", "brainstorm-a-s1-r1-prompt.md", "brainstorm-a-s1-prompt.md"):
+    for name in ("brainstorm-a-s1.yaml", "brainstorm-a-s1-r1-prompt.md", "brainstorm-a-s1-prompt.md",
+                 "brainstorm-a-authoring.yaml", "brainstorm-a-authoring-prompt.md"):
         assert (work / name).is_file(), name
 
 

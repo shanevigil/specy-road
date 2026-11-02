@@ -10,7 +10,7 @@ specy-road handoff status --json     # for a coordinator that polls
 specy-road handoff status <NODE_ID> --ref <branch or commit>   # no claim names the commit
 ```
 
-States: `waiting` (no valid READY file), `in-review`, `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit), `escalated` (the review loop keeps blocking and no root-cause analysis covers it: run `specy-road prompt <NODE_ID> --role rca --model <id>`), `complete_no_claim` (Complete, claim released), `unclaimed` (no claim names a commit; pass `--ref`), `error`.
+States: `waiting` (no valid READY file), `in-review`, `executor_blocked` (READY declares `blocked_on` at the commit under review), `blocked` (a counted review blocks), `approved` (review policy met), `stale` (the branch moved past the READY commit), `escalated` (the review loop keeps blocking and no root-cause analysis covers it: run `specy-road prompt <NODE_ID> --role rca --model <id>`), `complete_no_claim` (Complete, claim released), `unclaimed` (no claim names a commit; pass `--ref`), `error`.
 
 With a `<NODE_ID>` the exit says which: `0` approved or `complete_no_claim`, `1` policy not met (including `escalated`), `2` cannot be determined (`unclaimed`, `error`). `specy-road review list <NODE_ID> [--ref …]` prints the filed records and the gate without writing anything.
 

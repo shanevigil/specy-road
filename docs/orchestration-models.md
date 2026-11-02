@@ -31,6 +31,71 @@ api_id: claude-opus-5-5
 aliases: [claude-opus-5-5-high, claude-opus-5-5-max]   # harness ids for this model
 ```
 
+A profile's `access.launch_mode` pins how much of its harness a Claude Code
+worker gets: `full` (the default when absent) or `bare`. Any other value makes
+the profile invalid, and `models show` prints the error naming the profile.
+
+```yaml
+access:
+  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
+```
+
+- **`full`** — `worker delegate` and `message`/`resume` never pass `--bare`, so
+  `claude -p` loads hooks, skills, custom commands, subagents, plugins, MCP
+  servers, auto memory and CLAUDE.md as an interactive session would. This is
+  the design intent (a worker keeps its harness's native tools), and the
+  shipped Claude profiles set it.
+- **`bare`** — the default command adds `--bare` on launch and on resume.
+  Bare mode never reads OAuth credentials or the keychain, so the worker needs
+  `ANTHROPIC_API_KEY` (or an `apiKeyHelper`) instead of your subscription
+  login; Bedrock, Google Cloud and Foundry credentials still work.
+
+A roster `channels.cli` is run as written: the mode adds no flag to it.
+
+A profile's `access.effort_by_role` sets the thinking budget per role. Each
+role names a key of the profile's `effort_map`, whose value is the model's own
+level; a role left out gets the harness's default:
+
+```yaml
+access:
+  effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }
+  effort_by_role: { coordinator: low, executor: medium, reviewer: medium }
+```
+
+An unknown role, or a key that is not in `effort_map` or maps to `unknown`,
+makes the profile invalid, with an error naming it; `models show` prints the
+mapping as `role=key (level)`. The level reaches the harness as its own flag:
+
+| Harness | Flag |
+|---|---|
+| `claude-code` | `--effort <level>` |
+| `codex` | `-c model_reasoning_effort=<level>` |
+| `cursor`, `generic` | none (Cursor's model ids carry the effort, e.g. `claude-opus-5-5-high`) |
+
+- **Workers.** A worker is an executor: `worker delegate`, `message` and
+  `resume` add the executor's flag to the default Claude Code and Codex
+  commands, and every worker starts with `CLAUDE_CODE_EFFORT_LEVEL` removed from
+  its environment, so a shell setting cannot override the profile.
+- **Custom commands.** A roster `channels.cli` (or a profile `access.cli`) may
+  name `{effort}` as a whole argument; `worker delegate` and
+  `prompt --channel cli` replace it with the flag for the role's level (empty
+  when the profile sets none, or on Cursor). When the profile sets a level for
+  the role but the command names no `{effort}`, they print one note that the
+  command takes no effort and run it as written.
+
+The shipped Claude profiles set executor and reviewer to the model's documented
+default and the coordinator one level below. They stay there until measurement
+shows that a lower reviewer level keeps the same verdicts.
+Claude Code's headless docs say `--bare` "will become the default for `-p` in a
+future release" ([code.claude.com/docs/en/headless](https://code.claude.com/docs/en/headless),
+read 2026-11-01), so the mode is checked as well as set: the worker's `started`
+event records what the harness reported in its `system/init` line (`version`,
+`tools`, `mcp_servers`, `plugins`) and an `inferred_mode` — `bare` when the tool
+list is no more than `Bash`, `Read` and `Edit`, else `full`. When that differs
+from the profile's `launch_mode` the worker also records an `error` event naming
+both, which `worker sync` shows on the next turn. The check applies to a custom
+`channels.cli` too, since its output is still parsed as Claude Code's.
+
 The roster `id` stays the label review records and the gate count. When the
 `id` is one of the profile's aliases (found that way or named by `profile:`),
 the alias is what `worker delegate` passes the harness as the model, since it is
@@ -60,10 +125,11 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   `--channel cli` runs the profile's `access.cli` (or the roster entry's
   `channels.cli`) after substituting one placeholder: `{prompt}` becomes the
   quoted **path** of the prompt file, `<prompt>` (the shipped profiles' form)
-  becomes the quoted prompt **text**. Either must be a whole shell argument on
+  becomes the quoted prompt **text**; an optional `{effort}` becomes the
+  harness's flag for the role's `effort_by_role` level. Either must be a whole shell argument on
   its own, optionally quoted as one (`"<prompt>"`). A placeholder inside a
   larger word is refused on purpose — `claude -p "$(cat {prompt})"` and
-  `--prompt={prompt}` are rejected before anything runs, because the quoting
+  `--prompt={prompt}` (or `--effort={effort}`) are rejected before anything runs, because the quoting
   the substitution adds would land inside still-open quotes where `$(…)`
   executes. Accepted headless forms (2026-10): `claude -p --model <id> < {prompt}`
   or `claude -p "<prompt>" --model <id>`, `codex exec -m <id> - < {prompt}`

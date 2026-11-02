@@ -1,8 +1,11 @@
 """Turn accepted brainstorm ideas into roadmap nodes.
 
 Promoted ideas use the same add-node write as ``specy-road add-node``. The
-planning sheet is seeded after that write; deferred validation restores the
-batch if the graph is then invalid.
+planning sheet is seeded after that write with the converge judgement, the
+anchor's sheet gains the frame, and a successful batch writes an authoring
+prompt; deferred validation restores the batch if the graph is then invalid.
+Which nodes to write (per idea, per cluster, or from a plan file) is decided
+in ``brainstorm_promote_plan``.
 """
 
 from __future__ import annotations
@@ -11,11 +14,16 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from specy_road.bundled_scripts.brainstorm_prompt import (
+    constraint_lines, reference_lines, render_authoring_prompt, write_prompt,
+)
+from specy_road.bundled_scripts.brainstorm_promote_plan import (  # pending_ideas: re-exported
+    Landing, cluster_siblings, pending_ideas, select_landings,
+)
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
     Idea,
-    PROMOTABLE_STATUSES,
     session_path,
     write_session,
 )
@@ -33,7 +41,6 @@ from specy_road.bundled_scripts.roadmap_crud_prepare import (
 from specy_road.bundled_scripts.roadmap_layout import next_child_id
 from specy_road.bundled_scripts.roadmap_edit_fields import CODENAME_PATTERN, EXEC_MILESTONES
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.roadmap_node_keys import new_node_key
 
 #: Gates are human holds, not work, so an idea never becomes one.
 PROMOTABLE_TYPES = ("vision", "phase", "milestone", "task")
@@ -49,7 +56,7 @@ INHERIT_EXECUTION_MILESTONE = object()
 
 @dataclass(frozen=True)
 class Promotion:
-    """One idea's landing: which node it became, and where."""
+    """One node promote wrote, the idea that seeded it ("" for a plan node with none), and where."""
 
     idea_id: str
     node_id: str
@@ -57,6 +64,8 @@ class Promotion:
     title: str
     parent_id: str | None
     chunk: str
+    #: Other ideas now linked to the node: cluster alternatives, or a plan node's further ideas.
+    linked: tuple[str, ...] = ()
 
 
 def _load_nodes(root: Path) -> list[dict]:
@@ -77,14 +86,15 @@ def _assert_parent(root: Path, nodes: list[dict], parent_id: str | None) -> None
         raise BrainstormError(str(e)) from e
 
 
-def _replace_section(text: str, heading: str, body: str) -> str:
-    """Swap the body under a ``## heading``, leaving the rest of the sheet alone."""
+def _replace_section(text: str, heading: str, body: str, *, append: bool = False) -> str:
+    """Swap the body under a ``## heading``, leaving the rest of the sheet alone;
+    with ``append``, a missing heading is added at the end instead of skipped."""
     lines = text.splitlines()
     marker = f"## {heading}"
     try:
         start = next(i for i, ln in enumerate(lines) if ln.strip() == marker)
     except StopIteration:
-        return text
+        return f"{text.rstrip(chr(10))}\n\n{marker}\n\n{body.strip()}\n" if append else text
     end = len(lines)
     for i in range(start + 1, len(lines)):
         if lines[i].startswith("## "):
@@ -98,89 +108,75 @@ def _intent_body(idea: Idea) -> str:
     parts = [idea.rationale.strip() or idea.title.strip()]
     if idea.effort.strip():
         parts.append(f"Initial sizing at brainstorm time: {idea.effort.strip()}.")
-    parts.append(
-        f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). {PROMOTE_PLACEHOLDER}"
-    )
+    parts.append(f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). {PROMOTE_PLACEHOLDER}")
     return "\n\n".join(parts)
 
 
-def seed_planning_sheet(root: Path, node: dict, idea: Idea,
-                        siblings: list[Idea] | None = None) -> Path | None:
-    """Write the idea's rationale into the scaffolded sheet's ``## Intent``."""
+def _sheet_path(root: Path, node: dict) -> Path | None:
     pd = node.get("planning_dir")
     if not isinstance(pd, str) or not pd.strip():
         return None
     try:
-        paths = planning_artifact_paths(root, normalize_planning_dir(pd.strip()))
+        sheet = planning_artifact_paths(root, normalize_planning_dir(pd.strip()))["sheet"]
     except ValueError:
         return None
-    sheet = paths["sheet"]
-    if not sheet.is_file():
+    return sheet if sheet.is_file() else None
+
+
+def _prepend_to_section(text: str, heading: str, block: str) -> str:
+    parts = text.split(f"## {heading}", 1)
+    if len(parts) != 2:
+        return text
+    return f"{parts[0]}## {heading}\n\n{block}{parts[1].lstrip(chr(10))}"
+
+
+def seed_planning_sheet(root: Path, node: dict, idea: Idea,
+                        siblings: list[Idea] | None = None, also: list[Idea] | None = None) -> Path | None:
+    """Seed ``## Intent`` from the rationale, ``## Approach`` with the critics and
+    verdict as constraints, and ``## References`` with overlaps, sources, and the
+    ``also`` ideas a plan node carries besides ``idea``."""
+    sheet = _sheet_path(root, node)
+    if sheet is None:
         return None
     text = sheet.read_text(encoding="utf-8")
     text = _replace_section(text, "Intent", _intent_body(idea))
-    refs = _reference_lines(idea, siblings or [])
+    constraints = constraint_lines(idea)
+    if constraints:
+        text = _prepend_to_section(text, "Approach", "\n".join(constraints) + "\n\n")
+    refs = reference_lines(idea, siblings or [])
+    refs += [f"- Also promoted into this node: brainstorm idea {i.id} {i.title}" for i in also or []]
     if refs:
-        parts = text.split("## References", 1)
-        if len(parts) == 2:
-            text = f"{parts[0]}## References\n\n" + "\n".join(refs) + f"\n{parts[1].lstrip(chr(10))}"
+        text = _prepend_to_section(text, "References", "\n".join(refs) + "\n")
     sheet.write_text(text, encoding="utf-8")
     return sheet
 
 
-def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
-    """Sources (structured ones with their quote and verification state) and the
-    cluster's rejected or parked siblings, so the sheet records what was not chosen."""
-    structured = {s.get("url") for s in idea.sources}
-    lines = [f"- Brainstorm source: {u}" for u in idea.evidence if u not in structured]
-    for s in idea.sources:
-        state = s.get("verification", "unverified")
-        quote = f' — "{s["quote"]}"' if s.get("quote") else ""
-        lines.append(f"- Brainstorm evidence ({s.get('stance', 'for')}, {state}): {s.get('url')}{quote}")
-    if idea.hypothesis:
-        lines.append(f"- Hypothesis: {idea.hypothesis}")
-    for a in idea.assumptions:
-        lines.append(f"- Assumption: {a}")
-    for sib in siblings:
-        why = (sib.decision or {}).get("reason", "")
-        lines.append(f"- Alternative considered: {sib.id} {sib.title} ({sib.status}" + (f": {why}" if why else "") + ")")
-    return lines
+def seed_anchor_frame(root: Path, nodes: list[dict], parent_id: str | None,
+                      session: BrainstormSession) -> Path | None:  # nodes: the graph before promote
+    """Write the session's recorded frame into the anchor's ``## Brainstorm frame``."""
+    anchor = next((n for n in nodes if n.get("id") == parent_id), None)
+    sheet = _sheet_path(root, anchor) if anchor and session.frame else None
+    if sheet is None:
+        return None
+    lead = f"Recorded by brainstorm session `{session.slug}` before its ideas were promoted under this node."
+    body = "\n".join([lead, "", *(f"- **{k}:** {v}" for k, v in session.frame.items())])
+    text = _replace_section(sheet.read_text(encoding="utf-8"), "Brainstorm frame", body, append=True)
+    sheet.write_text(text, encoding="utf-8")
+    return sheet
 
 
-def _accept_order_key(idea: Idea) -> tuple[int, str, str]:
-    """Sort pending ideas by accept sequence, then decision time, then id."""
-    dec = idea.decision or {}
-    raw = dec.get("seq")
-    try:
-        seq = int(str(raw)) if raw not in (None, "") else 0
-    except (TypeError, ValueError):
-        seq = 0
-    when = dec.get("decided_at") or dec.get("decided_date") or ""
-    return (seq, when, idea.id)
-
-
-def _promote_codename(
-    idea: Idea,
-    existing: set[str],
-    node_key: str,
-) -> str | None:
-    """Idea ``--codename`` on revise wins; else derive from the capped title."""
-    raw = (idea.codename or "").strip()
+def _promote_codename(landing: Landing, existing: set[str]) -> str | None:
+    """The seeding idea's ``--codename`` on revise wins; else derive from the capped title."""
+    idea = landing.ideas[0] if landing.ideas else None
+    raw = (idea.codename or "").strip() if idea else ""
     if raw:
         if not CODENAME_PATTERN.match(raw):
-            raise BrainstormError(
-                f"idea {idea.id} codename {raw!r} is not valid kebab-case"
-            )
+            raise BrainstormError(f"idea {idea.id} codename {raw!r} is not valid kebab-case")
         if raw in existing:
-            raise BrainstormError(
-                f"idea {idea.id} codename {raw!r} already used on the roadmap"
-            )
+            raise BrainstormError(f"idea {idea.id} codename {raw!r} already used on the roadmap")
         return raw
     return derive_codename_with_collision_suffix(
-        idea.title,
-        node_key,
-        existing,
-        max_words=PROMOTE_CODENAME_MAX_WORDS,
+        landing.title, landing.node_key, existing, max_words=PROMOTE_CODENAME_MAX_WORDS,
     )
 
 
@@ -227,37 +223,23 @@ def _promote_execution_milestone(
     return execution_milestone
 
 
-def _build_node(
-    nodes: list[dict],
-    idea: Idea,
-    *,
-    parent_id: str | None,
-    node_type: str,
-    execution_milestone: str | None = None,
-    sibling_order: int | None = None,
-) -> dict:
+def _build_node(nodes: list[dict], landing: Landing, *, parent_id: str | None,
+                execution_milestone: str | None, sibling_order: int) -> dict:
+    lead = landing.ideas[0] if landing.ideas else None
     node = {
         "id": next_child_id(nodes, parent_id),
-        "node_key": new_node_key(),
+        "node_key": landing.node_key,
         "parent_id": parent_id,
-        "type": node_type,
-        "title": idea.title,
+        "type": landing.node_type,
+        "title": landing.title,
         "status": "Not Started",
         "execution_milestone": execution_milestone,
+        "sibling_order": sibling_order,
+        "goal": (lead.hypothesis.strip() or None) if lead else None,
+        "acceptance": list(landing.acceptance) or None,
+        "dependencies": list(landing.dependencies) or None,
     }
-    if sibling_order is not None:
-        node["sibling_order"] = sibling_order
-    if idea.hypothesis.strip():
-        node["goal"] = idea.hypothesis.strip()
     return {k: v for k, v in node.items() if v is not None}
-
-
-def _cluster_siblings(session: BrainstormSession, idea: Idea) -> list[Idea]:
-    """Rejected or parked ideas from the same converge cluster."""
-    if not idea.cluster_id:
-        return []
-    return [i for i in session.ideas
-            if i.cluster_id == idea.cluster_id and i.id != idea.id and i.status in ("rejected", "parked")]
 
 
 def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
@@ -288,65 +270,67 @@ def execution_milestone_from_promote_sets(pairs: list[str] | None) -> object:
     return value
 
 
-def pending_ideas(session: BrainstormSession) -> list[Idea]:
-    """Accepted ideas that have not been promoted yet."""
-    return [i for i in session.ideas
-            if i.status in PROMOTABLE_STATUSES and not i.promoted_node_key]
-
-
 def unverified_strong(session: BrainstormSession) -> list[Idea]:
     """Ideas about to be promoted on a ``strong`` verdict that no ``matched`` source backs."""
     return [i for i in pending_ideas(session) if i.recommendation == "strong"
             and not any(s["verification"] == "matched" for s in i.sources)]
 
 
-def _promote_ideas(
-    root: Path,
-    session: BrainstormSession,
-    todo: list[Idea],
-    parent_id: str | None,
-    node_type: str,
-    execution_milestone: str | None,
-    nodes: list[dict],
-    dry_run: bool,
-) -> list[Promotion]:
-    """Write each pending idea; routing reads the previous node on disk."""
+def _land(root: Path, session: BrainstormSession, landing: Landing, node: dict) -> str:
+    """Write one node, seed its sheet, link its ideas; the chunk it landed in."""
+    chunk_path = append_node_to_chunk(root, None, node, validate=False, max_words=PROMOTE_CODENAME_MAX_WORDS)
+    if landing.ideas:
+        lead = landing.ideas[0]
+        siblings = [*landing.alternatives, *cluster_siblings(session, lead)]
+        seed_planning_sheet(root, node, lead, siblings, also=landing.ideas[1:])
+    for idea in landing.linked():
+        idea.promoted_node_key = node["node_key"]
+    write_session(root, session)
+    return str(chunk_path.relative_to(root))
+
+
+def _promote_landings(root: Path, session: BrainstormSession, landings: list[Landing],
+                      execution_milestone: object, nodes: list[dict], dry_run: bool) -> list[Promotion]:
+    """Write each landing in order; routing reads the previous node on disk."""
     out: list[Promotion] = []
     existing = {n.get("codename") for n in nodes if n.get("codename")}
-    order = next_sibling_order(root, parent_id, None)
-    for idea in todo:
+    ids: dict[str, str] = {}  # landing node_key -> display id, for plan nodes under plan nodes
+    simulated: dict[str | None, int] = {}  # dry run: nodes not on disk, per parent
+    for landing in landings:
+        parent_id = ids.get(landing.parent or "", landing.parent)
         node = _build_node(
-            nodes,
-            idea,
-            parent_id=parent_id,
-            node_type=node_type,
-            execution_milestone=execution_milestone,
-            sibling_order=order,
+            nodes, landing, parent_id=parent_id,
+            execution_milestone=_promote_execution_milestone(nodes, parent_id, execution_milestone),
+            sibling_order=next_sibling_order(root, parent_id, None) + simulated.get(parent_id, 0),
         )
-        derived = _promote_codename(idea, existing, node["node_key"])
+        derived = _promote_codename(landing, existing)
         if derived:
             node["codename"] = derived
             existing.add(derived)
         if dry_run:
             nodes = [*nodes, node]
+            simulated[parent_id] = simulated.get(parent_id, 0) + 1
             chunk = "(not written)"
-            order += 1
         else:
-            chunk_path = append_node_to_chunk(
-                root, None, node, validate=False,
-                max_words=PROMOTE_CODENAME_MAX_WORDS,
-            )
-            seed_planning_sheet(root, node, idea, _cluster_siblings(session, idea))
-            idea.promoted_node_key = node["node_key"]
-            write_session(root, session)
-            chunk = str(chunk_path.relative_to(root))
+            chunk = _land(root, session, landing, node)
             nodes = _load_nodes(root)
-            order = next_sibling_order(root, parent_id, None)
+        ids[landing.node_key] = node["id"]
         out.append(Promotion(
-            idea_id=idea.id, node_id=node["id"], node_key=node["node_key"],
-            title=idea.title, parent_id=parent_id, chunk=chunk,
+            idea_id=landing.ideas[0].id if landing.ideas else "", node_id=node["id"],
+            node_key=node["node_key"], title=landing.title, parent_id=parent_id, chunk=chunk,
+            linked=tuple(i.id for i in landing.linked()[1:]),
         ))
     return out
+
+
+def _assert_landings(root: Path, nodes: list[dict], landings: list[Landing]) -> None:
+    """Every type promotable; every existing parent present and unlocked."""
+    for landing in landings:
+        if landing.node_type not in PROMOTABLE_TYPES:
+            raise BrainstormError(f"type {landing.node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}")
+    planned = {ln.node_key for ln in landings}
+    for parent in dict.fromkeys(ln.parent for ln in landings if ln.parent not in planned):
+        _assert_parent(root, nodes, parent)
 
 
 def promote_session(
@@ -357,40 +341,48 @@ def promote_session(
     node_type: str = DEFAULT_PROMOTE_TYPE,
     execution_milestone: object = INHERIT_EXECUTION_MILESTONE,
     dry_run: bool = False,
+    by_cluster: bool = False,
+    min_recommendation: str | None = None,
+    plan: Path | None = None,
 ) -> list[Promotion]:
-    """Promote every pending accepted idea, newest ids allocated as we go.
+    """Promote every pending accepted idea (or ``plan``'s nodes), newest ids allocated as we go.
 
-    Raises :class:`BrainstormError` before touching the graph when the
-    anchor is unusable. Per-idea writes stay routing transactions; deferred
-    validation failure restores nodes, sheets, and session markers.
+    An idea lands under its ``target_parent``, else ``under``, else the session
+    anchor. ``min_recommendation`` leaves weaker verdicts pending; ``by_cluster``
+    writes one node per cluster lead. Raises :class:`BrainstormError` before
+    touching the graph when a parent or the plan is unusable. Per-node writes
+    stay routing transactions; deferred validation failure restores nodes,
+    sheets, and session markers.
     """
     if node_type not in PROMOTABLE_TYPES:
-        raise BrainstormError(
-            f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}"
-        )
-    todo = sorted(pending_ideas(session), key=_accept_order_key)
-    if not todo:
+        raise BrainstormError(f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}")
+    anchor = under if under is not None else session.under
+    landings = select_landings(root, session, anchor, node_type, by_cluster=by_cluster,
+                               min_recommendation=min_recommendation, plan=plan)
+    if not landings:
         return []
-    parent_id = under if under is not None else session.under
     nodes = _load_nodes(root)
-    _assert_parent(root, nodes, parent_id)
-    resolved_em = _promote_execution_milestone(nodes, parent_id, execution_milestone)
+    _assert_landings(root, nodes, landings)
     snap = None if dry_run else TreeSnapshot(
         (root / "roadmap", root / "planning"),
         (session_path(root, session.slug),),
     )
-    out = _promote_ideas(
-        root, session, todo, parent_id, node_type, resolved_em, nodes, dry_run,
-    )
+    out = _promote_landings(root, session, landings, execution_milestone, nodes, dry_run)
     if dry_run or not out:
         return out
+    for parent_id in dict.fromkeys(p.parent_id for p in out):
+        seed_anchor_frame(root, nodes, parent_id, session)
     try:
         run_validate_raise(root)
     except BaseException:
         assert snap is not None
         snap.restore()
-        for idea in todo:
+        for idea in (i for ln in landings for i in ln.linked()):
             idea.promoted_node_key = None
         raise
     _report_promoted_missing_fields(root, out)
+    seeded = [p for p in out if p.idea_id]  # the authoring prompt is written per idea
+    if seeded:
+        ppath = write_prompt(root, session, render_authoring_prompt(root, session, seeded), pass_name="authoring")
+        print(f"authoring prompt: {ppath.relative_to(root)}", file=sys.stderr)
     return out

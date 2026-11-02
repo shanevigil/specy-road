@@ -24,7 +24,9 @@ with no remote), and a branch that cannot be found fails closed (:func:`policy_s
 
 The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_required`` — counted by distinct family when
-``reviewers_distinct_families`` is set.
+``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each
+test-integrity finding the node did not declare in ``planned_test_changes`` on
+the integration branch is a problem too (:mod:`specy_road.integrity_gate`).
 """
 
 from __future__ import annotations
@@ -37,6 +39,7 @@ from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.integrity_gate import integrity_gate_problems
 from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
 from specy_road.orchestration_config import (
     effective_config,
@@ -64,6 +67,7 @@ from specy_road.review_files import (
     latest_ready,
     list_reviews,
     verifier_gate_problems,
+    executor_blocked_gate_problems,
 )
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
@@ -265,8 +269,11 @@ def evaluate_gate(
             result.ineligible.append((review, why or "not eligible"))
         else:
             _count(result, counted)
-    ready = latest_ready(repo_root, node["id"], branch)
+    ready = latest_ready(repo_root, node["id"], branch, acceptance_ids(node))
     result.verifier_problems = verifier_gate_problems(ready, result.approvals)
+    if ready is not None and same_commit(repo_root, ready.data["commit"], result.commit):
+        result.verifier_problems += executor_blocked_gate_problems(ready)
+    result.verifier_problems += integrity_gate_problems(repo_root, policy, node["id"], result.commit, ref)
     return result
 
 

@@ -10,7 +10,21 @@ from pathlib import Path
 
 import pytest
 
+from tests.fixture_guard import (
+    exit_if_ignored_fixtures_present,
+    fail_if_fixtures_status_changed,
+    record_session_start,
+)
 from tests.helpers import REPO
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    record_session_start(session, REPO)
+    exit_if_ignored_fixtures_present(REPO)
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    fail_if_fixtures_status_changed(session, REPO)
 
 
 @pytest.fixture(autouse=True)

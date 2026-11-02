@@ -384,8 +384,10 @@ When multiple developers or agents are running simultaneously:
 
 - `do-next-available-task` filters out already-claimed nodes — safe to run in parallel; the CLI **pushes the integration branch by default** after registering so others see claims quickly. If two pickups race on push, pull/rebase the integration branch and retry.
 - `specy-road validate` warns on overlapping touch zones between registry entries, and on a zone of an In Progress or Blocked node that matches nothing in the working tree (a typo or a moved path; Not Started nodes are not checked).
+- **Editing a claimed leaf's zones updates its claim.** Pickup copies the node's `touch_zones` into its `roadmap/registry.yaml` row, and `review-packet` and `finish-this-task` read that row first. `specy-road edit-node <NODE_ID> --set touch_zones=...` rewrites the row to the node's new list in the same command and prints a line naming the claim; commit both files on the integration branch, where the claim lives, so the packet and finish see the new zones without hand-editing the registry.
 - **Prefer git worktrees** for parallel agents on one machine — isolated working trees
   on disjoint branches.
+- **Session overlap warnings say where the other copy is.** When `specy-road session start` or `touch` finds that your paths overlap another live session's, the warning names that session's worktree and branch, labels it `yours` when the same `$USER` started it (another worktree of your own is still reported), and says whether that worktree has uncommitted edits to the overlapping paths, commits touching them not yet merged into the integration branch, or neither. A piece git cannot answer (the worktree is gone, no integration branch) is shown as `unknown`, never as clean. Presence records themselves are covered in [orchestration.md](orchestration.md#presence-specy-road-session).
 - **Milestone dependencies are hard stops** — In JSON, `dependencies` lists **`node_key` UUIDs**
   (stable references to other nodes), not display ids like `M1.1`. Semantically, if milestone A must
   finish before milestone B, A’s `node_key` appears in B’s `dependencies`; tools resolve those keys to

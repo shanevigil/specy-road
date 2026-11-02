@@ -100,6 +100,7 @@ def report_finish_already_done_on_branch(
     *,
     delete_branch: bool = False,
     no_milestone_rollup: bool = False,
+    land_check_cmd: str | None = None,
 ) -> None:
     """Explain a repeat ``finish-this-task`` after bookkeeping already committed.
 
@@ -131,6 +132,7 @@ def report_finish_already_done_on_branch(
         print(f"[info] {node_id} is already Complete on {branch}; landing it on {ib}.")
         retry_merge_landing(
             repo_root, branch=branch, ib=ib, remote=remote, delete_branch=delete_branch,
+            land_check_cmd=land_check_cmd,
         )
     print(
         f"[info] {node_id} is already Complete on {branch}; "
@@ -151,6 +153,7 @@ def resolve_feature_rm_registry_context_for_finish(
     *,
     delete_branch: bool = False,
     no_milestone_rollup: bool = False,
+    land_check_cmd: str | None = None,
 ) -> _Context:
     """Like :func:`resolve_feature_rm_registry_context`, with a repeat-finish hint."""
     if branch.startswith("feature/rm-"):
@@ -160,6 +163,6 @@ def resolve_feature_rm_registry_context_for_finish(
             if finish_already_done_on_branch(repo_root, branch):
                 report_finish_already_done_on_branch(
                     repo_root, branch, on_complete, delete_branch=delete_branch,
-                    no_milestone_rollup=no_milestone_rollup,
+                    no_milestone_rollup=no_milestone_rollup, land_check_cmd=land_check_cmd,
                 )
     return resolve_feature_rm_registry_context(repo_root, branch)

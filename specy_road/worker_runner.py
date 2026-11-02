@@ -77,7 +77,9 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
     # The wrapper must run this very package, not whichever specy_road the
     # interpreter would import from the worker's cwd or an editable install.
     # The harness itself gets the caller's PYTHONPATH back (``run`` restores it
-    # from the payload), so the adopter's tests never see ours.
+    # from the payload), so the adopter's tests never see ours. ``-P`` keeps
+    # the cwd (a worktree that may hold an older specy_road) off sys.path for
+    # this interpreter only; PYTHONSAFEPATH would leak into the harness.
     pkg_parent = str(Path(__file__).resolve().parent.parent)
     env["PYTHONPATH"] = pkg_parent + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
     env["SPECY_ROAD_WORKER_ID"] = rec.worker_id   # so the harness's own hooks do not count it as a stranger
@@ -88,7 +90,7 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
         path = _payload_file(repo_root, rec, token, payload)
         try:
             p = subprocess.Popen(  # noqa: S603 — our own module, arguments are not user-shaped
-                [sys.executable, "-m", "specy_road.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
+                [sys.executable, "-P", "-m", "specy_road.worker_runner", str(Path(repo_root).resolve()), rec.worker_id,
                  token, str(path)],
                 cwd=rec.worktree, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, start_new_session=True,
@@ -119,6 +121,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
     env = dict(os.environ)
     env.pop("PYTHONPATH", None)
+    env.pop("CLAUDE_CODE_EFFORT_LEVEL", None)   # a caller's setting must not override the profile's effort_by_role
     if harness_pythonpath:
         env["PYTHONPATH"] = harness_pythonpath
     with log.open("a", encoding="utf-8") as raw:
@@ -129,12 +132,15 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 stdout=subprocess.PIPE, stderr=raw, text=True, encoding="utf-8", errors="replace",
             )
         except OSError as e:
-            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}")
+            append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
+                         detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             set_state(repo_root, rec, "failed", pid=None)
             return 127
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
         mutate(repo_root, rec, seen)
+        append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
+                     detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed})
         if launch.stdin is not None and proc.stdin:
             try:
                 proc.stdin.write(launch.stdin)
@@ -142,27 +148,30 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
                 raw.write(f"[wrapper] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
+        first = True
         for line in proc.stdout:
             raw.write(line)
             raw.flush()
+            if first:
+                first = False
+                append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
-                _consume(repo_root, rec, adapter, line)
+                _consume(repo_root, rec, adapter, line, launch)
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
     return _finish(repo_root, rec, code, before)
 
 
-def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str) -> None:
-    parsed = adapter.parse(line)
-    if parsed is None:
-        return
-    if parsed.session_id:
-        # First seen wins; a later line (which the model controls) cannot move it.
-        mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
-    # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
-    append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
-                 summary=parsed.summary, detail=parsed.detail)
+def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch) -> None:
+    # One line can record more than one event (Claude's init: `started`, then a launch-mode mismatch).
+    for parsed in adapter.parse_events(line, launch):
+        if parsed.session_id:
+            # First seen wins; a later line (which the model controls) cannot move it.
+            mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
+        # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
+        append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
+                     summary=parsed.summary, detail=parsed.detail)
 
 
 def _fresh_ready(repo_root: Path, rec: WorkerRecord, before: list[str]) -> bool:

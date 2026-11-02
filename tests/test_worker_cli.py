@@ -8,12 +8,13 @@ import time
 from pathlib import Path
 
 import pytest
+import yaml
 
 from tests.review_repo_helpers import git, make_review_repo
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
-from specy_road.bundled_scripts import review_cli, worker_cli
+from specy_road.bundled_scripts import review_cli, worker_cli, worker_cli_render as wcr
 
 FAKE = '''
 import json, sys, time
@@ -257,3 +258,71 @@ def test_adopt_open_list_status_and_handoff_status(tmp_path: Path, capsys) -> No
     with pytest.raises(SystemExit):
         review_cli.main(["handoff", "status", "--json", "--repo-root", str(repo)])
     assert json.loads(capsys.readouterr().out)["workers"][0]["worker_id"] == "w-0001"
+
+
+def test_launch_events_ack_time_and_timeline(tmp_path: Path, capsys) -> None:
+    """A1: launched and first_output bracket the harness; A2: the ack is timed; A3: timeline per turn."""
+    repo, _ = _repo(tmp_path)
+    run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo))
+    wait_for_worker(repo, "w-0001")
+    evs = ws.events_since(repo, "w-0001")
+    types = [e.type for e in evs]
+    assert types[:3] == ["started", "launched", "first_output"] and types[-1] == "completion"
+    launched = evs[1]
+    assert launched.source == "system" and launched.authority == "system"
+    assert launched.detail == {"argv0": "sh", "harness": "claude-code", "resumed": False}
+    assert evs[2].detail is None
+    capsys.readouterr()
+    # A3 by node id, before any ack: the last phase is unknown.
+    assert run_worker_cli("worker", "timeline", "M1.1", "--repo-root", str(repo)) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("w-0001 M1.1 timeline") and len(out) == 5
+    assert out[1].startswith("  delegated -> launched: ") and out[1].endswith("s")
+    assert out[4] == "  end -> acked: unknown"
+    # A2: the ack records when, and the seq, without changing what sync returns.
+    assert run_worker_cli("worker", "sync", "--ack", "--json", "--repo-root", str(repo)) == 0
+    d = json.loads(capsys.readouterr().out)
+    assert d["acked"] is True and d["workers"][0]["events"][-1]["seq"] == len(evs)
+    marks = yaml.safe_load((ws.workers_dir(repo) / "sync.yaml").read_text())
+    assert marks["w-0001"]["seq"] == len(evs) and marks["w-0001"]["acked_at"] >= evs[-1].at   # ISO strings order
+    assert run_worker_cli("worker", "timeline", "w-0001", "--json", "--repo-root", str(repo)) == 0
+    t = json.loads(capsys.readouterr().out)
+    assert t["worker_id"] == "w-0001" and t["node_id"] == "M1.1"
+    assert all(isinstance(t["phases"][k], float) for k in ("delegated_to_launched", "launched_to_first_output",
+                                                          "first_output_to_end", "end_to_acked"))
+    # A resumed turn: launched says so, and the earlier ack does not count for the new turn's end.
+    assert run_worker_cli("worker", "message", "w-0001", "--text", "again", "--repo-root", str(repo)) == 0
+    wait_for_worker(repo, "w-0001")
+    capsys.readouterr()
+    second = [e for e in ws.events_since(repo, "w-0001") if e.type == "launched"]
+    assert len(second) == 2 and second[1].detail["resumed"] is True
+    assert run_worker_cli("worker", "timeline", "w-0001", "--json", "--repo-root", str(repo)) == 0
+    t = json.loads(capsys.readouterr().out)
+    assert t["phases"]["end_to_acked"] is None and isinstance(t["phases"]["first_output_to_end"], float)
+    assert run_worker_cli("worker", "timeline", "M9.9", "--repo-root", str(repo)) == 1
+    assert "no worker for M9.9" in capsys.readouterr().err
+
+
+def test_timeline_arithmetic_and_unknown_phases() -> None:
+    """The phase sums from a fixed log; a missing boundary reads unknown, an ack short of the end does not count."""
+    class Rec:
+        worker_id, node_id = "w-0007", "M2.1"
+    def ev(seq, at, type_, source="system", detail=None):
+        return {"seq": seq, "at": f"2026-10-30T10:00:{at:02d}+00:00", "type": type_, "source": source, "detail": detail}
+    log = [ev(1, 0, "started", "broker"), ev(2, 3, "launched"), ev(3, 5, "first_output"),
+           ev(4, 5, "started", "worker"), ev(5, 20, "turn_completed", "worker"),
+           ev(6, 21, "completion", "worker", {"exit": 0, "ready": True})]
+    t = wcr.timeline(Rec(), log, {"seq": 6, "acked_at": "2026-10-30T10:01:01+00:00"})
+    assert t["phases"] == {"delegated_to_launched": 3.0, "launched_to_first_output": 2.0,
+                           "first_output_to_end": 15.0, "end_to_acked": 41.0}
+    assert wcr.timeline_lines(t)[1:] == ["  delegated -> launched: 3s", "  launched -> first_output: 2s",
+                                         "  first_output -> end: 15s", "  end -> acked: 41s"]
+    # The ack reached seq 4 only: the turn's end was not acknowledged yet.
+    assert wcr.timeline(Rec(), log, {"seq": 4, "acked_at": "2026-10-30T10:00:30+00:00"})["phases"]["end_to_acked"] is None
+    # An error with an exit code ends the turn too; no first_output leaves its two phases unknown.
+    log2 = [ev(1, 0, "started", "broker"), ev(2, 2, "launched"), ev(3, 9, "error", "worker", {"exit": 1})]
+    assert wcr.timeline(Rec(), log2, None)["phases"] == {"delegated_to_launched": 2.0, "launched_to_first_output": None,
+                                                        "first_output_to_end": None, "end_to_acked": None}
+    # An adopted worker never launched anything: every phase unknown, and the lines say so.
+    t = wcr.timeline(Rec(), [ev(1, 0, "started", "broker"), ev(2, 1, "adopted", "orchestrator")], None)
+    assert set(t["phases"].values()) == {None} and all(line.endswith("unknown") for line in wcr.timeline_lines(t)[1:])

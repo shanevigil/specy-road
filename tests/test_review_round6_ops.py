@@ -22,6 +22,7 @@ import subprocess
 import sys
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -331,11 +332,19 @@ def test_sync_ack_runs_under_the_workers_lock(tmp_path: Path) -> None:
     time.sleep(0.5)
     assert not done                                   # blocked behind the other writer
     t0 = time.monotonic()
+    before = datetime.now(timezone.utc).replace(microsecond=0)
     release.set()
     t.join(5)
     assert done and done[0] >= t0
     marks = yaml.safe_load((ws.workers_dir(repo) / "sync.yaml").read_text())
-    assert marks == {rec.worker_id: ws.load_record(repo, rec.worker_id).last_event_seq}
+    last = ws.load_record(repo, rec.worker_id).last_event_seq
+    acked_at = marks.get(rec.worker_id, {}).get("acked_at")
+    assert isinstance(acked_at, str) and before <= datetime.fromisoformat(acked_at) <= datetime.now(timezone.utc)
+    assert marks == {rec.worker_id: {"seq": last, "acked_at": acked_at}}   # exactly these fields, nothing else
+    assert wrc.sync(repo) == []                                 # the mark still reads as acknowledged
+    # A file from before acked_at was recorded (a bare integer per worker) is still a mark.
+    (ws.workers_dir(repo) / "sync.yaml").write_text(f"{rec.worker_id}: {last}\n")
+    assert wrc.sync_marks(repo) == {rec.worker_id: {"seq": last, "acked_at": None}} and wrc.sync(repo) == []
 
 
 # --- G3 ------------------------------------------------------------------------

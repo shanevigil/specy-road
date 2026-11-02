@@ -18,10 +18,11 @@ AGENTS = "\n".join(render_agents_lines())
 PROMPT = REPO / "suggested_prompts" / "bootstrap-agents-md.md"
 
 _SENTENCES = (
-    "Commit by explicit path (`git commit --only <paths>`); never `git add -A`, `git commit -a`, or a bare",
+    "commit only with `git commit --only <paths>`",
     "switch branches in a tree another session may be using",
     "`base: <sha>`",
     "the toolkit's is the floor: stop and ask rather than relax it",
+    "The opt-in tool-call guard (`specy-road session guard`) refuses these while another session is live",
 )
 
 
@@ -34,6 +35,9 @@ def test_bootstrap_prompt_carries_the_same_rule() -> None:
     start = AGENTS.index("**Shared checkouts and other agents.**")
     rule = AGENTS[start:AGENTS.index("\n\n", start)]
     assert rule in PROMPT.read_text(encoding="utf-8")
+    start = AGENTS.index("**Git in a shared tree:**")
+    pointer = AGENTS[start:AGENTS.index("`https://", start)]
+    assert pointer in PROMPT.read_text(encoding="utf-8")
 
 
 def test_suggested_prompts_index_lists_every_kept_prompt() -> None:
@@ -55,5 +59,5 @@ def test_suggested_prompts_index_lists_every_kept_prompt() -> None:
 def test_claude_md_block_points_at_it() -> None:
     text = "\n".join(render_guide_lines("sr/"))
     assert "Other agents share this checkout" in text
-    assert "never\n  `-A`/`-a`" in text
+    assert "opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`" in text
     assert "Full rule in `sr/AGENTS.md`" in text

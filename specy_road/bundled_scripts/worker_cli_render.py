@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -68,4 +69,67 @@ def _sync_event_lines(events: list[dict[str, Any]], e: dict[str, Any]) -> list[s
         msg = msg or _harness_message_before(events, e["seq"])
     if msg:
         lines.append(f"  {msg}")
+    return lines
+
+
+# --- timeline ----------------------------------------------------------------
+
+#: ``(phase name, start event, end event)`` over the worker's latest turn; the
+#: "acked" boundary is the sync acknowledgement that covers the turn's end.
+PHASES = (("delegated_to_launched", "delegated", "launched"),
+          ("launched_to_first_output", "launched", "first_output"),
+          ("first_output_to_end", "first_output", "end"),
+          ("end_to_acked", "end", "acked"))
+
+
+def _parse_at(at: str) -> datetime:
+    return datetime.fromisoformat(at.replace("Z", "+00:00"))
+
+
+def _delegation(e: dict[str, Any]) -> bool:
+    """The coordinator's ``started`` or ``message``; a harness's own ``started`` line is not a turn."""
+    return e["type"] in ("started", "message") and e.get("source") != "worker"
+
+
+def _latest_turn(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The events from the latest turn's delegation on."""
+    starts = [i for i, e in enumerate(events) if _delegation(e)]
+    return events[starts[-1]:] if starts else events
+
+
+def _boundaries(events: list[dict[str, Any]], marks: dict[str, Any] | None) -> dict[str, str | None]:
+    turn = _latest_turn(events)
+    first = {}
+    for e in turn:
+        key = "end" if _ends_turn(e) or e["type"] == "turn_completed" else e["type"]
+        first.setdefault(key, e)
+    b: dict[str, str | None] = {"delegated": None, "launched": None, "first_output": None, "end": None, "acked": None}
+    if turn and _delegation(turn[0]):
+        b["delegated"] = turn[0]["at"]
+    for key in ("launched", "first_output", "end"):
+        if key in first:
+            b[key] = first[key]["at"]
+    # The ack counts for this turn only once it reaches the end event's sequence.
+    if "end" in first and marks and marks.get("acked_at") and int(marks.get("seq", 0)) >= first["end"]["seq"]:
+        b["acked"] = str(marks["acked_at"])
+    return b
+
+
+def timeline(rec, events: list[dict[str, Any]], marks: dict[str, Any] | None) -> dict[str, Any]:
+    """``{"worker_id", "node_id", "phases": {name: seconds | None}}`` for the latest turn."""
+    b = _boundaries(events, marks)
+    phases: dict[str, float | None] = {}
+    for name, start, end in PHASES:
+        if b[start] and b[end]:
+            phases[name] = (_parse_at(b[end]) - _parse_at(b[start])).total_seconds()
+        else:
+            phases[name] = None
+    return {"worker_id": rec.worker_id, "node_id": rec.node_id, "phases": phases}
+
+
+def timeline_lines(data: dict[str, Any]) -> list[str]:
+    lines = [f"{data['worker_id']} {data['node_id']} timeline (latest turn)"]
+    for name, start, end in PHASES:
+        secs = data["phases"][name]
+        lines.append(f"  {start} -> {end}: " + ("unknown" if secs is None else f"{secs:.0f}s"))
     return lines

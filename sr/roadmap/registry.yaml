@@ -11,100 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: fixture-pollution-guard
-    node_id: M9.2
-    branch: feature/rm-fixture-pollution-guard
-    touch_zones:
-      - tests/conftest.py
-      - tests/fixture_guard.py
-      - tests/test_fixture_guard.py
-      - docs/contributor-guide.md
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: layout-with-outside-change
-    node_id: M9.3
-    branch: feature/rm-layout-with-outside-change
-    touch_zones:
-      - tests/test_project_layouts_outside.py
-      - tests/helpers.py
-      - tests/review_repo_helpers.py
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: executor-blocked-on
-    node_id: M9.4
-    branch: feature/rm-executor-blocked-on
-    touch_zones:
-      - specy_road/schemas/handoff.schema.json
-      - specy_road/templates/project/work/handoff-ready.template.md
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/review_files.py
-      - specy_road/review_gate.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/templates/specyrd/commands/specyrd-handoff-status.md
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: integrity-report
-    node_id: M9.5
-    branch: feature/rm-integrity-report
-    touch_zones:
-      - specy_road/integrity.py
-      - specy_road/bundled_scripts/integrity_cli.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/review_packet.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-    started: '2026-10-29'
-    owner: savigil
-    implementation_review: pending
-  - codename: position-the-docs-on
-    node_id: M10.10
-    branch: feature/rm-position-the-docs-on
-    touch_zones:
-      - docs/philosophy-and-scope.md
-      - README.md
-      - docs/orchestration.md
-    started: '2026-10-30'
-    owner: savigil
-    implementation_review: pending
-  - codename: pin-harness-discovery-mode
-    node_id: M10.4
-    branch: feature/rm-pin-harness-discovery-mode
-    touch_zones:
-      - specy_road/worker_adapters.py
-      - specy_road/model_profiles.py
-      - specy_road/templates/project/model-profiles/
-      - docs/orchestration-models.md
-      - suggested_prompts/
-      - tests/test_worker_adapters.py
-      - tests/test_models_and_prompt.py
-    started: '2026-10-30'
-    owner: savigil
-    implementation_review: pending
-  - codename: record-phase-timestamps-in
-    node_id: M10.1
-    branch: feature/rm-record-phase-timestamps-in
-    touch_zones:
-      - specy_road/worker_runner.py
-      - specy_road/worker_state.py
-      - specy_road/worker_ops.py
-      - specy_road/schemas/worker-event.schema.json
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - docs/orchestration-workers.md
-      - tests/test_worker_state.py
-      - tests/test_worker_cli.py
-      - tests/test_worker_faults.py
-    started: '2026-10-30'
-    owner: savigil
-    implementation_review: pending
   - codename: output-budgets-with-full
     node_id: M10.7
     branch: feature/rm-output-budgets-with-full
@@ -122,6 +28,86 @@ entries:
       - tests/test_generate_brief.py
       - tests/test_session_plan.py
       - tests/test_validate_acceptance_coverage.py
+      - tests/test_project_layouts.py
     started: '2026-10-30'
+    owner: savigil
+    implementation_review: pending
+  - codename: emit-a-stalled-event
+    node_id: M10.9
+    branch: feature/rm-emit-a-stalled-event
+    touch_zones:
+      - specy_road/worker_runner.py
+      - specy_road/worker_state.py
+      - specy_road/worker_ops.py
+      - specy_road/orchestration_config.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/schemas/worker-record.schema.json
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - docs/orchestration.md
+      - tests/test_worker_faults.py
+      - tests/test_worker_state.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_reconcile.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: brainstorm-batch-io
+    node_id: M4.3
+    branch: feature/rm-brainstorm-batch-io
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_cli_v2.py
+      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: suppression-and-ratchet-findings
+    node_id: M9.7
+    branch: feature/rm-suppression-and-ratchet-findings
+    touch_zones:
+      - specy_road/integrity.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/
+      - sr/roadmap/orchestration.yaml
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - tests/
+      - schemas/
+      - roadmap/orchestration.yaml
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: verified-pre-existing-claims
+    node_id: M9.8
+    branch: feature/rm-verified-pre-existing-claims
+    touch_zones:
+      - specy_road/review_files.py
+      - specy_road/review_pre_existing.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/schemas/review-record.schema.json
+      - docs/orchestration-review.md
+      - CHANGELOG.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: document-the-harness-subagent-recipe
+    node_id: M10.11
+    branch: feature/rm-document-the-harness-subagent-recipe
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-models.md
+      - specy_road/templates/project/model-profiles/README.md
+      - tests/test_do_next_prompt.py
+      - tests/test_models_and_prompt.py
+    started: '2026-11-01'
     owner: savigil
     implementation_review: pending
