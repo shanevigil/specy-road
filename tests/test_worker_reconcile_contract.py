@@ -14,7 +14,8 @@ from types import SimpleNamespace
 import pytest
 
 from tests.review_repo_helpers import NODE, commit_file, git
-from tests.test_worker_cli import _repo, wait_for_worker
+from tests.test_worker_cli import wait_for_worker
+from tests.test_worker_m310_reconcile_status import worker_repo
 
 from specy_road import worker_ops as ops
 from specy_road import worker_state as ws
@@ -27,7 +28,7 @@ def _edit(repo: Path, *sets: str) -> None:
 
 def _linked(tmp_path: Path) -> tuple[Path, ws.WorkerRecord, Path]:
     """A coordinator on ``dev`` and a checkpointed worker in a linked worktree of the claim's branch."""
-    repo, _ = _repo(tmp_path)
+    repo = worker_repo(tmp_path)
     git(repo, "checkout", "-q", "dev")
     rec, _c = ops.delegate(repo, "M1.1", "opus")
     rec = wait_for_worker(repo, rec.worker_id)
@@ -57,6 +58,14 @@ def test_paths_merged_in_from_the_integration_branch_are_not_the_workers(tmp_pat
     _r, delta = ops.reconcile(repo, rec.worker_id)
     assert "other/merged.txt" not in delta["changed"]
     assert delta["outside_touch_zones"] == ["docs/own.md"]
+    # Past a checkpoint after the merge, deleting the merged file is the worker's
+    # own change: the stale remote base, which never had the file, must not hide it.
+    ws.take_checkpoint(repo, ws.load_record(repo, rec.worker_id))
+    git(wt, "rm", "-q", "other/merged.txt")
+    git(wt, "commit", "-qm", "worker deletes the merged file")
+    _r, delta = ops.reconcile(repo, rec.worker_id)
+    assert delta["changed"] == ["other/merged.txt"]
+    assert delta["outside_touch_zones"] == ["docs/own.md", "other/merged.txt"] and delta["needs_reconcile"]
 
 
 def test_the_integration_branch_moving_is_not_a_contract_change(tmp_path: Path) -> None:

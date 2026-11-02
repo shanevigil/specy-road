@@ -46,14 +46,21 @@ def _target(repo_root: Path, node_id: str):
     return t
 
 
-def _integration_bases(repo_root: Path, worktree: Path) -> tuple[str, ...]:
-    """Where the worktree's HEAD last took in the integration branch, by its remote-tracking and its local ref."""
+def _integration_base(repo_root: Path, worktree: Path) -> str | None:
+    """Where the worktree's HEAD last took in the integration branch: the newest of its merge bases with
+    the remote-tracking and the local ref, or ``None`` when they diverged and neither is newest.
+
+    Only the newest counts: an older base (a stale remote-tracking ref) lacks what a later merge brought,
+    so the worker deleting a merged file would match it and vanish.
+    """
     ib, remote, _warn = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
     refs = (f"refs/remotes/{remote}/{ib}", f"refs/heads/{ib}")
-    return tuple(sorted({b for r in refs if (b := git_text(["merge-base", r, "HEAD"], worktree))}))
+    bases = {b for r in refs if (b := git_text(["merge-base", r, "HEAD"], worktree))}
+    newest = (git_text(["merge-base", "--independent", *bases], worktree) or "").split() if bases else []
+    return newest[0] if len(newest) == 1 else None
 
 
-def _changed_since(worktree: Path, since_sha: str | None, bases: tuple[str, ...] = ()) -> list[str]:
+def _changed_since(worktree: Path, since_sha: str | None, base: str | None = None) -> list[str]:
     if not since_sha:
         return []
     # Both sides of a rename or copy: a `git mv` into the zone is also a
@@ -61,10 +68,9 @@ def _changed_since(worktree: Path, since_sha: str | None, bases: tuple[str, ...]
     changed = set(diff_paths(worktree, since_sha) or [])
     # A path the tree matches the integration branch on, at the point it was
     # last merged in, came through that merge and is not the worker's change.
-    for base in bases:
-        own = diff_paths(worktree, base)
-        if own is not None:
-            changed &= set(own)
+    own = diff_paths(worktree, base) if base else None
+    if own is not None:
+        changed &= set(own)
     # Named from the git root over the whole repo, as `git diff` names them: the
     # worktree may be a nested project root, where plain ls-files is directory-relative.
     untracked = git_text(["ls-files", "--others", "--exclude-standard", "--full-name", "--", ":(top)"], worktree) or ""
@@ -137,8 +143,8 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
     wt = Path(rec.worktree)
-    bases = _integration_bases(repo_root, wt)
-    changed = _changed_since(wt, since, bases)
+    base = _integration_base(repo_root, wt)
+    changed = _changed_since(wt, since, base)
     # The claim row as it is now (edit-node keeps it in step with the node),
     # not the zones the worker was delegated with.
     zones = [z for z in (_clean(z) for z in t.touch_zones) if z]
@@ -146,7 +152,7 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
-    on_branch = _changed_since(wt, origin, bases) if origin != since else changed
+    on_branch = _changed_since(wt, origin, base) if origin != since else changed
     # Toolkit bookkeeping is never a breach: the leaf's brief, summary and
     # review files, and the registry row the claim lives in. Paths are named
     # from the git root; zones are matched as the review packet matches them,
