@@ -23,6 +23,11 @@ touch zones. Like the v2 fields, they are left out of the YAML when empty.
 - **R2:** `add-idea --kind` now defaults to `None` in argparse. `idea_fields` applies `feature`, and `kind` is in the flag/file conflict list. `--from-file … --kind risk` is refused and the session bytes stay unchanged. The ordinary default is still `feature`, on the command line and in file records.
 - **R3:** `list --by cluster` no longer stops at `(no ideas match)` when the session has recorded clusters and no `--status` filter is set. A session holding only `C1 --name 'Empty cluster'` lists `C1  Empty cluster  (0)`. With `--status`, the old message stays.
 
+## Review round 2 (gpt-6.1-sol, block at `e3869eb`)
+
+- **R1:** `_record_argv` put revise's record `id` first in the argv, as a bare word. An id of `--help` or `-h` was therefore parsed as an option: help was printed, exit 0, and no verdict was applied. The id now follows an end-of-options `--` after the record's flags, so it is always data. `--help` and `-h` fail as `no idea '--help'` / `no idea '-h'`, with exit 1, nothing on stdout and unchanged session bytes. Both ids were added to the existing invalid-verdict parametrization.
+- I checked add-idea for the same problem. Every field value is passed as `--flag=value`, so a value starting with `-` stays data. A new test records `--help`, `-h`, `--slug` and `--from-file=x` as title, rationale, evidence and assumption. A key that embeds `=` (e.g. `help=x`) is refused: argparse rejects `--help=x` ("ignored explicit argument"), and any other `=` key fails the key check from round 1. That case was added to the add-idea bad-record parametrization.
+
 ## Acceptance
 
 - **A1:** `add-idea --from-file PATH` reads a YAML list, a mapping with an `ideas:` list, or JSONL
@@ -83,6 +88,8 @@ Follow-ups outside the zones (not done; none is needed for the acceptance items)
 
 ## Verification
 
+Round 2 fixes, run in the foreground: `pytest -q tests/test_brainstorm_batch_io.py` gave 34 passed. With the four related brainstorm test files it gave 117 passed. `file-limits`, `ruff` (0.17.3), `check_clones.py` and `check_test_private_imports.py` each exited 0. The full suite was not rerun.
+
 Round 1 fixes, run in the foreground: `pytest -q tests/test_brainstorm_batch_io.py` gave 30 passed. The same file plus `test_brainstorm_cli.py`, `_session.py`, `_v2.py` and `_triage_m36.py` gave 113 passed. `file-limits`, `ruff` (0.17.3), `check_clones.py` and `check_test_private_imports.py` each exited 0. The full suite was not rerun for round 1. The results below are from the original implementation commit.
 
 - `pytest -q` (whole suite, from this worktree): 2758 passed, 2 skipped (16m55s), exit 0.
@@ -111,5 +118,7 @@ Round 1 fixes, run in the foreground: `pytest -q tests/test_brainstorm_batch_io.
 - `brainstorm_cli.cmd_recommend` gap lines, and the `_check_converge` merged skip and `[gap]` tag: A4, and a merged idea is not asked for a verdict.
 - Mocks: `sys.stdin` monkeypatched with a `StringIO` for the JSONL-on-stdin test; no others.
 - Round 1: a key check in `file_namespaces` (every key must be an argparse dest of the command; `idea_id` refused): this is R1. The `--kind` default is now `None` (with `feature` applied in `idea_fields`) and `kind` is in the conflict list: this is R2. The `cmd_list` empty-ideas condition lets recorded clusters render: this is R3.
+- Round 2: the revise record id is placed after `--` in `_record_argv`, so an id can never become an option.
+- Round 2 tests (4 cases): `--help` and `-h` as revise ids in the invalid-verdict batch (unchanged bytes); option-like add-idea values recorded as data; a `help=x` key refused.
 - Round 1 tests (6 cases): an unknown `false`/`null` key rejects an add-idea batch, and the same for a revise batch, with unchanged bytes; an explicit `--kind` with `--from-file` is refused with unchanged bytes and the default stays `feature`; a session with only a named cluster lists it under `--by cluster`.
 - Tests (`tests/test_brainstorm_batch_io.py`, 24 original cases): from-file add-idea with every key kind; 8 bad-record cases writing nothing; JSONL on stdin (including a value starting with `-`); flag/file mixing; revise from file success and 4 bad-record cases; revise id/file rules; merge links, the re-triage refusal and promote skip; merge refusals; from-gap through recommend, `--check` and list; `--check` skipping merged; cluster object in list/show-verdicts/json; `--best` membership and clearing; session round trip and a bad `merged_into` rejected on read.
