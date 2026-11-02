@@ -106,5 +106,18 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.17` | The review packet caps its inlined diff by bytes too and lists generated bundles by size only | task | Agentic-led | Complete |
 | `M10.18` | Review records are found and written with the canonical file name on case-insensitive filesystems | task | Agentic-led | Complete |
 | `M10.19` | The executor prompt forbids killing processes the executor did not start | task | Agentic-led | Complete |
+| `M11` | rc2 field feedback: worktrees, workers and the review loop | phase | Agentic-led | Not Started |
+| `M11.1` | In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record | task | Agentic-led | Not Started |
+| `M11.2` | worker message resumes a failed or stalled worker whose native session id is known | task | Agentic-led | Not Started |
+| `M11.3` | specy-road's own runtime directories never fail the clean-tree checks | task | Agentic-led | Not Started |
+| `M11.4` | max_workers counts live workers across checkouts and applies to resumes | task | Agentic-led | Not Started |
+| `M11.5` | Pickup's stale-claim check tests the local branch and never advises deleting a live claim | task | Agentic-led | Complete |
+| `M11.6` | worker reconcile judges a worker against the leaf's current contract | task | Agentic-led | Not Started |
+| `M11.7` | review delegate runs a rostered reviewer like worker delegate runs an executor | task | Agentic-led | Not Started |
+| `M11.8` | An opt-in delta review packet for small fix rounds | task | Mixed | Not Started |
+| `M11.9` | Acceptance items a human must satisfy are marked and handled as such | task | Agentic-led | Not Started |
+| `M11.10` | edit-node can add and remove single list entries | task | Agentic-led | Not Started |
+| `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Not Started |
+| `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

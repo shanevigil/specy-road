@@ -130,7 +130,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.5_pickup-claim-heuristic_9124114c-7995-42a4-bde4-b1eda63ca0c5.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup's stale-claim check tests the local branch and never advises deleting a live claim",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_task_self_heal.py",
