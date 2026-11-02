@@ -457,7 +457,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.15_session-overlap-warnings-name-the-other-worktree-and-its-edit-state_d513099f-60bc-4af7-8ef4-40f363d57f82.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Session overlap warnings name the other worktree and its edit state",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",

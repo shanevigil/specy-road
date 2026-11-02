@@ -47,7 +47,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.12` file-limits function-length check covers TypeScript and JavaScript `file-limits-function-length-check-covers-typescript-and-javascript` — task — **Complete**
   - `M4.13` specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes `specy-road-doctor-lists-merged-or-stale-feature-branches-worktrees-registry-rows-and-stashes` — task — **Complete**
   - `M4.14` brainstorm promote inherits execution_milestone from the anchor `brainstorm-promote-inherits-execution-milestone-from-the-anchor` — task — **Complete**
-  - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Not Started**
+  - `M4.15` Session overlap warnings name the other worktree and its edit state `session-overlap-warnings-name-the-other-worktree-and-its-edit-state` — task — **Complete**
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Not Started**
   - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
   - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Complete**
@@ -110,7 +110,6 @@ Do not pick these up.
 - `M10.15` on `feature/rm-foreground-long-commands` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
-- `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
 - `M5.4` on `feature/rm-enforced-rules-pointers` since 2026-11-01
 - `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
 
