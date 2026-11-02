@@ -1,6 +1,6 @@
 # Implementation summary — M10.12 Visual explorer for worker event logs
 
-Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Implementation commit `272b347`.
+Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b347` (implementation), `54e0665` (packaged bundle rebuild), `e5b7a69` (`docs/orchestration-workers.md` pointer).
 
 ## What changed
 
@@ -18,20 +18,21 @@ Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Implementation c
 
 ## Touch zones (final list)
 
-Used: `specy_road/gui_app.py`, `specy_road/gui_app_routes_workers.py`, `gui/pm-gantt/src/`, `docs/pm-gui.md`, `tests/test_gui_app_workers.py`.
+Used: `specy_road/gui_app.py`, `specy_road/gui_app_routes_workers.py`, `gui/pm-gantt/src/`, `docs/pm-gui.md`, `tests/test_gui_app_workers.py`, `specy_road/pm_gantt_static/` and `docs/orchestration-workers.md` (the last two added to the touch zones on WIP in `538be8a`, merged here in `fc8669d`).
 
 Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_gui_app.py`.
 
-## Not done here (outside the touch zones)
+## Follow-up round (touch zones widened)
 
-- **Packaged bundle.** `npm run build` rewrites `specy_road/pm_gantt_static/`, which is outside the touch zones, so I restored it to HEAD and did not commit it. The drawer reaches `specy-road gui` users only after a bundle rebuild commit, like `f2ee0c2 build(gui): rebuild the packaged PM GUI bundle…`.
-- **`docs/orchestration-workers.md`.** The planning sheet's Approach asks for a pointer to the viewer there. The file is not a touch zone and no acceptance item needs it, so it is left for a follow-up. `docs/pm-gui.md` already links to it.
+- **Packaged bundle.** `npm ci && npm run lint && npm test && npm run build` re-run in the foreground from `gui/pm-gantt` (lint 0 errors; 23 files / 181 tests passed; built). The rebuilt `specy_road/pm_gantt_static/` is committed on its own as `54e0665 build(gui): …`, so `specy-road gui` now serves the drawer. Its entry chunk `index-2teI54Ey.js` is 94,018 bytes, well under CI's 900 KB budget.
+- **`docs/orchestration-workers.md`.** The file was at 398 of its 400-line cap, so the pointer to the Workers drawer is one sentence added to the end of the `usage W|NODE_ID` command row. It adds no lines; the file is still 398 lines.
 
 ## Verification
 
-- `pytest tests/test_gui_app.py tests/test_gui_app_workers.py`: 22 passed.
+- `pytest tests/test_gui_app.py tests/test_gui_app_workers.py`: 22 passed (re-run after the WIP merge).
+- `specy-road file-limits`: OK (re-run after the doc pointer).
 - Full `pytest`, run in chunks because one run exceeds this harness's 10-minute foreground limit: every test passed (2 skipped). When four chunks ran at once, `tests/test_worker_faults.py::test_output_clears_a_stall_shorter_than_the_write_window` hit its log-line deadline. Run alone, `tests/test_worker_faults.py` gives 7 passed. That is load-dependent timing in a file this leaf does not touch.
-- `specy-road file-limits`: OK. `scripts/check_test_private_imports.py`: 0 new. `ruff check` on the new and changed Python: clean.
+- `scripts/check_test_private_imports.py`: 0 new. `ruff check` on the new and changed Python: clean.
 - `scripts/check_clones.py` could not run here: `pylint` is not installed.
 
 ## Added
@@ -59,6 +60,8 @@ Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_
 - `gui/pm-gantt/src/types.ts::WorkerRow`, `WorkerEvent`, `WorkerDetail` — response types.
 - `gui/pm-gantt/src/App.tsx` — `workersOpen` state, the lazy `WorkersDrawer`, and the header **Workers** button.
 - `gui/pm-gantt/src/index.css` — `.worker-*` styles, using only existing theme tokens so dark mode follows.
+- `specy_road/pm_gantt_static/` — the rebuilt bundle, including the new lazy `WorkersDrawer-*.js` chunk; it is generated output, not hand-written.
+- `docs/orchestration-workers.md` — one sentence on the `usage` row pointing at the drawer.
 
 ### Tests
 - `tests/test_gui_app_workers.py::repo` (fixture) — a review repo with one failed worker (launch, tool line, stall, two usage events, turn end) and a second attempt that has reported nothing; `SPECY_ROAD_REPO_ROOT` points at it.
