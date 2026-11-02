@@ -33,6 +33,7 @@ _SCRIPTS = {
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "review-packet": "review_packet.py",
     "integrity": "integrity_cli.py",
+    "impact": "impact_cli.py",
     "prompt": "role_prompt.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",

@@ -400,7 +400,9 @@
         "gui/pm-gantt/src/",
         "docs/pm-gui.md",
         "tests/test_gui_app.py",
-        "tests/test_gui_app_workers.py"
+        "tests/test_gui_app_workers.py",
+        "specy_road/pm_gantt_static/",
+        "docs/orchestration-workers.md"
       ],
       "type": "task"
     },
