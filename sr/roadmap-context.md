@@ -93,7 +93,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
   - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
-  - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
+  - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Complete**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Not Started**
   - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Not Started**
   - `M10.10` Position the docs on governance, not on CLI workers `position-the-docs-on` — task — **Complete**
@@ -110,7 +110,6 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.11` on `feature/rm-document-the-harness-subagent-recipe` since 2026-11-01
-- `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
 - `M4.3` on `feature/rm-brainstorm-batch-io` since 2026-11-01
 - `M9.7` on `feature/rm-suppression-and-ratchet-findings` since 2026-11-01
