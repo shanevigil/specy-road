@@ -48,6 +48,7 @@ WORKFLOW_WORDS = (
 )
 VERSION_FILE = "version.txt"
 _CLI_LINE = re.compile(r"^(  cli:)[ \t]*(.*)$", re.MULTILINE)
+_ACCESS_LINE = re.compile(r"^access:[ \t]*(#.*)?$", re.MULTILINE)
 _FLAG = re.compile(r"(?<![\w-])--[A-Za-z][A-Za-z0-9-]*")
 _COMMAND_ROW = re.compile(r"^ {2,4}([a-z][\w|-]*)(?=\s|$)")
 
@@ -182,11 +183,14 @@ def render_readme(text: str, facts: dict[str, Any]) -> str:
 
 
 def render_profile(text: str, cli: str) -> str:
-    """``text`` with its front matter's ``access.cli`` line set to ``cli``."""
+    """``text`` with its front matter's ``access.cli`` line set to ``cli``; a removed line goes back
+    first under ``access:``. Unchanged when the front matter has no block-style ``access:`` mapping."""
     head, sep, body = text.partition("\n---\n")
     if not sep:
         return text
     new_head, n = _CLI_LINE.subn(lambda _m: _cli_line(cli), head, count=1)
+    if not n:
+        new_head, n = _ACCESS_LINE.subn(lambda m: f"{m.group(0)}\n{_cli_line(cli)}", head, count=1)
     return (new_head if n else head) + sep + body
 
 
@@ -286,10 +290,16 @@ def _all_identifiers(capture: dict[str, str]) -> set[str]:
 
 
 def classify_capture(facts: dict[str, Any], harness_id: str, old: dict[str, str], new: dict[str, str]) -> CaptureDiff:
-    """Classify what ``new`` adds to and drops from the accepted capture ``old``."""
-    if VERSION_FILE not in new:
-        raise HarnessFactsError(f"a capture needs {VERSION_FILE} (the harness's --version output)")
-    rels = harness(facts, harness_id).get("relationships") or {}
+    """Classify what ``new`` adds to and drops from the accepted capture ``old``.
+
+    ``new`` must hold every file the record's ``capture_commands`` names and every file ``old`` has:
+    a file left out of a capture is a missing input, not evidence that its identifiers were removed."""
+    rec = harness(facts, harness_id)
+    missing = sorted((set(rec["capture_commands"]) | set(old)) - set(new))
+    if missing:
+        raise HarnessFactsError(f"incomplete {harness_id} capture: no {', '.join(missing)} "
+                                f"({VERSION_FILE} is the harness's --version output)")
+    rels = rec.get("relationships") or {}
     before, after = _all_identifiers(old), _all_identifiers(new)
     diff = CaptureDiff(harness_id, (old.get(VERSION_FILE, "").strip(), new[VERSION_FILE].strip()))
     for ident in sorted(after - before):
@@ -305,10 +315,8 @@ def classify_capture(facts: dict[str, Any], harness_id: str, old: dict[str, str]
 
 
 def write_capture(directory: Path, capture: dict[str, str]) -> None:
-    """Replace the accepted capture in ``directory`` with ``capture``."""
+    """Write ``capture`` over the accepted one in ``directory``; :func:`classify_capture` has
+    already refused a capture that lacks a file the accepted one has, so nothing is deleted."""
     directory.mkdir(parents=True, exist_ok=True)
-    for stale in directory.glob("*.txt"):
-        if stale.name not in capture:
-            stale.unlink()
     for name, text in capture.items():
         (directory / name).write_text(text, encoding="utf-8")

@@ -168,6 +168,10 @@ specy-road refresh-profiles --check    # report drift (exit 1); a README older t
 specy-road refresh-profiles --render   # rewrite the rendered regions; --dry-run lists them
 ```
 
+`--render` puts a removed `access.cli` back under `access:`. It exits 1, naming
+the profile, when the front matter has no block-style `access:` mapping to
+write into.
+
 A plain `refresh-profiles` still copies only missing files, and also prints
 any drift without failing. To re-render the shipped copies after editing the
 fixture, run `--render --repo-root specy_road/templates/project` from a
@@ -182,7 +186,11 @@ specy-road refresh-profiles --capture codex --from DIR # or reads DIR/*.txt (ver
 specy-road refresh-profiles --capture codex --accept   # store a passing capture as the accepted one
 ```
 
-The accepted capture lives in `model-profiles/harness-captures/<harness>/`.
+The accepted capture lives in `model-profiles/harness-captures/<harness>/`. A
+new capture must hold every file the record's `capture_commands` names and
+every file the accepted capture has (an `inventory*.txt` included). An
+incomplete one is refused before classification, and the accepted capture is
+left as it was.
 Identifiers are `--flags`, the rows under a help text's `Commands:` heading,
 and the first word of each line of an `inventory*.txt` file (a slash-command or
 model listing). Every identifier the new capture adds or drops is listed. A new

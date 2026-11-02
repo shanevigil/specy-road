@@ -130,6 +130,34 @@ def test_a_readme_without_the_block_is_behind_not_drift(tmp_path: Path, capsys) 
     assert readme.read_text(encoding="utf-8") == text
 
 
+def test_render_restores_a_removed_cli_and_check_then_passes(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    prof = repo / SOL
+    shipped = prof.read_text(encoding="utf-8")
+    cli_line = next(line for line in shipped.splitlines() if line.startswith("  cli: "))
+    prof.write_text(shipped.replace(cli_line + "\n", ""), encoding="utf-8")
+    assert run_main("--check", "--repo-root", str(repo)) == 1
+    assert run_main("--render", "--repo-root", str(repo)) == 0
+    assert f"rendered {SOL.as_posix()} (drift: access.cli is None" in capsys.readouterr().out
+    assert run_main("--check", "--repo-root", str(repo)) == 0
+    head = yaml.safe_load(prof.read_text(encoding="utf-8").split("---\n")[1])
+    assert head["access"]["cli"] == yaml.safe_load(cli_line.strip())["cli"]
+    assert prof.read_text(encoding="utf-8").split("---\n")[2] == shipped.split("---\n")[2]
+
+
+def test_render_fails_on_a_region_it_cannot_write(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    prof = repo / SOL
+    text = prof.read_text(encoding="utf-8")
+    start = text.index("\naccess:\n") + 1
+    end = text.index("\ncost_usd_per_mtok:")
+    prof.write_text(text[:start] + "access: { cli: none }" + text[end:], encoding="utf-8")
+    assert run_main("--render", "--repo-root", str(repo)) == 1
+    out, err = capsys.readouterr()
+    assert f"cannot render {SOL.as_posix()}" in err and f"rendered {SOL.as_posix()}" not in out
+    assert "access: { cli: none }" in prof.read_text(encoding="utf-8")
+
+
 def test_the_default_refresh_reports_drift_without_failing_or_rewriting(tmp_path: Path, capsys) -> None:
     repo = _repo(tmp_path)
     prof = repo / OPUS
@@ -154,7 +182,8 @@ HELP = "Usage: tool [options]\n\nOptions:\n  --model <m>   Model\n\nCommands:\n 
 
 
 def _capture(version: str, help_text: str = HELP, **extra: str) -> dict[str, str]:
-    return {hf.VERSION_FILE: version + "\n", "help.txt": help_text, **extra}
+    """Every file any shipped record's capture_commands names (codex also captures help-exec.txt)."""
+    return {hf.VERSION_FILE: version + "\n", "help.txt": help_text, "help-exec.txt": "", **extra}
 
 
 def test_identifiers_are_flags_command_rows_and_inventory_lines() -> None:
@@ -213,6 +242,23 @@ def test_capture_cli_fails_on_unassigned_and_accept_stores_a_passing_one(tmp_pat
     out = capsys.readouterr().out
     assert "new --colour: no workflow word" in out and "note: update codex's version" in out
     assert hf.read_capture(accepted / "codex") == hf.read_capture(good)
+
+
+def test_an_incomplete_capture_is_refused_and_the_accepted_one_is_kept(tmp_path: Path, monkeypatch, capsys) -> None:
+    accepted = tmp_path / "accepted"
+    shutil.copytree(hf.bundled_captures_dir() / "codex", accepted / "codex")
+    (accepted / "codex" / "inventory-features.txt").write_text("memories  on\n", encoding="utf-8")
+    monkeypatch.setattr(hf, "bundled_captures_dir", lambda: accepted)
+    before = hf.read_capture(accepted / "codex")
+    version_only, no_inventory = tmp_path / "version-only", tmp_path / "no-inventory"
+    hf.write_capture(version_only, {hf.VERSION_FILE: "codex-cli 0.166.0\n"})
+    hf.write_capture(no_inventory, {**{k: v for k, v in before.items() if k != "inventory-features.txt"},
+                                    hf.VERSION_FILE: "codex-cli 0.166.0\n"})
+    assert run_main("--capture", "codex", "--from", str(version_only), "--accept") == 1
+    assert "incomplete codex capture: no help-exec.txt, help.txt, inventory-features.txt" in capsys.readouterr().err
+    assert run_main("--capture", "codex", "--from", str(no_inventory), "--accept") == 1
+    assert "incomplete codex capture: no inventory-features.txt" in capsys.readouterr().err
+    assert hf.read_capture(accepted / "codex") == before
 
 
 def test_capture_runs_the_fixture_commands(monkeypatch) -> None:

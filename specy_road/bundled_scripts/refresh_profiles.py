@@ -98,6 +98,22 @@ def _report(plan: hf.RenderPlan, *, check: bool) -> int:
     return 1 if check and drift else 0
 
 
+def _report_render(root: Path, plan: hf.RenderPlan, *, dry_run: bool) -> int:
+    """Print what was (or would be) rendered; 1 when a drifted region could not be rendered."""
+    updated = {p.relative_to(root).as_posix() for p in plan.updates}
+    verb = "would render" if dry_run else "rendered"
+    stuck = [f for f in plan.findings if f.rel not in updated]
+    for f in plan.findings:
+        if f.rel in updated:
+            print(f"{verb} {f.rel} ({f.kind}: {f.detail})")
+    for f in stuck:
+        print(f"cannot render {f.rel} ({f.kind}: {f.detail}): its front matter has no block-style "
+              "`access:` mapping; add one or take the toolkit's copy with --force", file=sys.stderr)
+    if not plan.findings:
+        print("rendered regions already match harness-facts.yaml")
+    return 1 if stuck else 0
+
+
 def capture(harness_id: str, from_dir: Path | None) -> dict[str, str]:
     """A capture read from ``from_dir``, or taken by running the fixture's ``capture_commands``."""
     if from_dir is not None:
@@ -202,12 +218,7 @@ def main(argv: list[str] | None = None) -> None:
             plan = render_profiles(root, dry_run=args.check or args.dry_run)
             if args.check:
                 raise SystemExit(_report(plan, check=True))
-            verb = "would render" if args.dry_run else "rendered"
-            for f in plan.findings:
-                print(f"{verb} {f.rel} ({f.kind}: {f.detail})")
-            if not plan.findings:
-                print("rendered regions already match harness-facts.yaml")
-            return
+            raise SystemExit(_report_render(root, plan, dry_run=args.dry_run))
         _copy_missing(root, args)
         _report(hf.plan_render(root, hf.load_facts()), check=False)
     except ValueError as e:
