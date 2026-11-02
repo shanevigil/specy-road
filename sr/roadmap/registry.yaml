@@ -145,6 +145,9 @@ entries:
       - specy_road/bundled_scripts/do_next_available.py
       - docs/roadmap-authoring.md
       - tests/
+      - specy_road/bundled_scripts/do_next_task_args.py
+      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
+      - specy_road/bundled_scripts/session_plan_git.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
