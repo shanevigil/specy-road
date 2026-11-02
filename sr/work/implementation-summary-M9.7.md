@@ -3,8 +3,10 @@
 ## What changed
 
 - `specy_road/integrity.py`: `compare_integrity` now also reads the lines
-  `base..ref` adds (one `git diff --unified=0` over git objects, paths
-  git-root-relative via `--no-relative`) and reports two new finding kinds:
+  `base..ref` adds and reports two new finding kinds. It lists the changed
+  files with `git diff --name-status -z --find-renames` (exact git-root paths,
+  rename pairs kept) and runs one `git diff --unified=0` per file, limited by a
+  `:(top,literal)` pathspec, reading only the hunks:
   - `new-suppression: <path>:<line>` (A1) — each added line, in any file, that
     contains `noqa`, `type: ignore`, `pragma: no cover`, `pylint: disable`,
     `eslint-disable`, `@ts-ignore`, `@ts-expect-error` or `nolint`. Matching is
@@ -49,33 +51,39 @@ findings, and `test_integrity_section`'s `_none_` wording in
   in the regex in `integrity.py`, in the test parameters, and in the docs and
   CHANGELOG text. `integrity_gate` is off in `sr/roadmap/orchestration.yaml`, so
   they are informational only.
-- A diff git cannot decode as UTF-8 makes `git_stdout` return `None`, and then
-  neither new finding kind reports for that comparison (the M9.5 findings are
-  unaffected).
+- Review round 1 (gpt-6.1-sol, R1/R2) fixed: a single whole-branch diff let one
+  non-UTF-8 file blank both findings, and patch-header parsing kept git's tab
+  after a name with spaces. Now a file whose diff git output cannot decode as
+  UTF-8 loses only its own lines, and paths come from `--name-status -z`, never
+  from a `+++` header. Origin `WIP/improvements-0-3-1` was merged in (1ae66df),
+  which brings the `docs/brainstorming.md` file-limits fix (9b82c16).
 - Renames are detected (`--find-renames`), so moving a file that already holds
   a suppression does not report it; edits inside the moved file still do.
 
 ## Verification
 
-- `pytest` (full suite, run in three batches to fit the foreground limit): all passed (see READY).
+- Round 2: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 83 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
 - `specy-road validate` (sr) and `validate` / `export --check` / `digest --check` on the dogfood fixture: OK.
-- `specy-road file-limits`: only `docs/brainstorming.md: 406 lines`, which is already 406 lines at the base commit (not touched here).
+- `specy-road file-limits`: OK after the merge.
 
 ## Added
 
 ### Helpers
 - `integrity.integration_ratchet_paths` — reads `policy.ratchet_paths` from the integration branch so a leaf cannot drop its own baselines from the list (A2).
-- `integrity._added_lines` — parses `git diff -U0` into added lines with their REF line numbers; both new findings need them (A1, A2).
+- `integrity._added_lines` — added lines with their REF line numbers, one diff per changed file so an undecodable file hides nothing else (A1, A2; R1).
+- `integrity._changed_files` — changed paths and rename pairs from `--name-status -z`, so paths with spaces or quotes are exact (R2).
+- `integrity._hunk_additions` — the `+` lines of one file's `-U0` patch after its first hunk header.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
 - `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines (A2).
 - `_SUPPRESSION`, `_HUNK` regexes — the marker list (A1) and the hunk header's new-side start line.
 
 ### Branches / guards
 - `Finding.line` gains the `new-suppression` and `baseline-widened` forms (A1, A2).
-- `_added_lines` reads `+++` only in a file header (`in_header`), so an added content line starting with `++` is not mistaken for a file name; a C-quoted name is unquoted; `/dev/null` (deletion) has no added lines.
+- `_hunk_additions` ignores everything before the first `@@`, so header lines are never content; a deleted or binary file has no hunks and adds nothing.
+- `_added_lines` skips a file whose diff git output cannot decode (`git_stdout` is `None`).
 - `integration_ratchet_paths` returns `[]` when the policy ref or file is unreadable, and drops non-string entries.
 
 ### Mocks
@@ -88,3 +96,5 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `test_baseline_removal_only_exits_zero` — A2/A4 removal-only gives exit 0.
 - `test_ratchet_paths_listed_only_on_the_leaf_branch_are_ignored` — the list comes from the integration branch, not the leaf.
 - `test_nested_project_ratchet_path_outside_the_project` — git-root-relative path outside a nested project root (the regression-2 shape).
+- `test_non_utf8_file_in_the_diff_hides_no_other_finding` — R1: a non-UTF-8 file in the same diff; both findings still print, exit 1.
+- `test_paths_with_spaces_are_reported_and_matched_exactly` — R2: exact suppression line and baseline match for paths with spaces, exit 1.
