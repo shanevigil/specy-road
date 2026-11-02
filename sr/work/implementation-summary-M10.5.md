@@ -1,6 +1,6 @@
 # Implementation summary: `M10.5` — Per-role effort in model profiles
 
-Branch `feature/rm-per-role-effort-in-model`, base `6bd6fc8` (fast-forwarded to `18b6db0` for the widened touch zones), implementation commit `d9bf465`.
+Branch `feature/rm-per-role-effort-in-model`, base `6bd6fc8` (fast-forwarded to `18b6db0` for the widened touch zones), implementation commit `d9bf465`, review-round fixes `4fd47f8` (gpt-6.1-sol block: F1, F2).
 
 ## Touch zones (final)
 
@@ -32,9 +32,9 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
     |---|---|---|---|
     | Opus 5.5 (default medium) | low | medium | medium |
     | Opus 5 (default high) | medium | high | high |
-    | Fable 5.1 and Fable 5 (default high) | unset | high | high |
+    | Fable 5.1 and Fable 5 (default high) | medium | high | high |
 
-    Fable's coordinator is unset because its `effort_map` has `medium: unknown`, so one level below `high` is not a verified level.
+    Round 2 (F1) changed Fable. Anthropic's effort page (https://platform.claude.com/docs/en/build-with-claude/effort, fetched 2026-11-01) lists all five levels for Fable 5.1 and Fable 5, with `high` the default and "step down to `medium` or `low`". It is cited as S11 in the Fable 5.1 profile and S12 in the Fable 5 profile. Both profiles' `effort_controls` now name the levels, `effort_map` has `medium: medium`, and the coordinator is `medium`. `low` and `max` stay `unknown` in `effort_map`: the same page confirms them, but the coordinator asked only for `medium`.
   - Each of those `effort_by_role` lines has a comment pointing at M10.6.
   - Tests cover A1 to A3; see the list below.
 
@@ -45,11 +45,12 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
 - **One doc left alone.** `docs/orchestration-workers.md` documents `{session_flag}` but not `{effort}`. It is outside the touch zones, so I did not edit it.
 - **Fixture copies not synced.** The copies of the profiles in `tests/fixtures/specy_road_dogfood/model-profiles/` and `sr/model-profiles/` are unchanged. They are outside the touch zones, and no test compares them with the templates.
 - **Line cap.** `worker_adapters.py` is exactly 400 lines (the cap). Per-harness flags live in an `EFFORT_FLAGS` dict instead of method overrides to fit.
-- **Tests moved.** `tests/test_models_and_prompt.py` would have gone over its cap, so the prompt and delegate effort tests live in `tests/test_worker_adapters.py`, which imports `_repo`, `_commit_profile` and `_run`.
+- **Tests moved.** `tests/test_models_and_prompt.py` would have gone over its cap, so the prompt and delegate effort tests live in `tests/test_worker_adapters.py`.
+- **F2.** The helpers that `tests/test_worker_adapters.py` imports are now public in `tests/test_models_and_prompt.py`: `make_profile_repo`, `commit_profile` and `run_main`, formerly `_repo`, `_commit_profile` and `_run`. Other test modules already import public names from that module (`ROSTER`, `TEMPLATE_PROFILES`, `OPUS`). A separate helper module would have been outside the touch zones. Only the names changed; no assertion did.
 
 ## Verification (foreground)
 
-- `pytest tests/test_models_and_prompt.py tests/test_worker_adapters.py` → 43 passed.
+- `pytest tests/test_models_and_prompt.py tests/test_worker_adapters.py` → 43 passed (again after `4fd47f8`).
 - `specy-road file-limits` → OK.
 - `ruff check specy_road tests/test_models_and_prompt.py tests/test_worker_adapters.py` → all checks passed.
 - `python scripts/check_test_private_imports.py` → 0 new.
@@ -72,7 +73,7 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
 - `effort_by_role` line in `models_cli` show: A1.
 - Tests in tests/test_models_and_prompt.py:
   - `test_effort_by_role_names_effort_map_keys_and_rejects_the_rest`: A1 validation and resolution.
-  - `test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below`: A4 shipped levels and the M10.6 comment.
+  - `test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below`: A4 shipped levels and the M10.6 comment. After F1 it expects `medium` for the Fable coordinator.
   - `test_models_show_prints_effort_by_role`: A1 show output.
 - Tests in tests/test_worker_adapters.py:
   - `test_default_claude_and_codex_commands_carry_the_effort_flag_and_cursor_none`: A3 default commands.
@@ -81,6 +82,7 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
   - `test_the_worker_child_environment_has_no_claude_code_effort_level`: A3 environment.
   - `test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence`: A2 for `prompt --channel cli`.
   - `test_delegate_passes_the_executor_effort_to_default_and_custom_commands`: A2 and A3 for `worker delegate`.
+- `make_profile_repo`, `commit_profile`, `run_main` (F2): public names for the existing private helpers, so `tests/test_worker_adapters.py` imports no private test names.
 - `_harness` test helper: rosters `opus` on `claude-code` with an optional `channels.cli`.
 - `ENV_PROBE` test script: lets the harness report its own environment.
 - Mocks: `ops.spawn` is monkeypatched in the delegate test to capture the `Launch`, the same pattern as the existing launch_mode test.
