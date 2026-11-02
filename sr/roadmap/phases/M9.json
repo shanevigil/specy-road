@@ -328,7 +328,8 @@
         "sr/schemas/",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "schemas/"
       ],
       "type": "task"
     },
