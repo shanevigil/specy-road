@@ -80,6 +80,8 @@ def level_command(entry: dict, level: str) -> tuple[str, list[str]]:
     if suffix not in ID_LEVELS or not word.search(cli):
         raise StudyError(f"{rid}: {adapter.harness} carries effort in the model id, so the roster id must end in "
                          f"-<{'|'.join(ID_LEVELS)}> and appear in channels.cli: {cli}")
+    if level not in ID_LEVELS:   # it is spliced into a shell command unquoted
+        raise StudyError(f"{rid}: level {level!r} is not a {adapter.harness} effort suffix ({', '.join(ID_LEVELS)})")
     return word.sub(f"{stem}-{level}", cli), []
 
 

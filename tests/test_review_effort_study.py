@@ -114,6 +114,17 @@ def test_duplicate_levels_are_refused_through_the_cli_before_anything_runs(tmp_p
     assert not (root / "study").exists()
 
 
+def test_cursor_level_outside_the_suffix_set_is_refused_through_the_cli(tmp_path: Path) -> None:
+    root = make_project(tmp_path, [with_root(reviewer("grok-4.7-high", "cursor", "grok-4.7-high {prompt}"), tmp_path)])
+    for bad in ("high;touch PWNED", "ultra"):
+        done = subprocess.run([sys.executable, str(SCRIPT), "--model", "grok-4.7-high", "--levels", "high", bad,
+                               "M1.1", "--repo-root", str(root), "-o", str(root / "study")],
+                              capture_output=True, text=True, check=False, cwd=root,
+                              env={**os.environ, "PYTHONPATH": str(REPO)})
+        assert done.returncode == 1 and "is not a cursor effort suffix" in done.stderr, bad
+    assert not (root / "study").exists() and not list(root.rglob("PWNED"))
+
+
 def test_study_over_budget_is_refused_whole(tmp_path: Path, capsys) -> None:
     root = make_project(tmp_path, [with_root(reviewer("sol", "codex", "{effort} {prompt}"), tmp_path)])
     assert run(root, "--model", "sol", "--levels", "high", "medium", "--max-runs", "3", "M1.1", "M1.2") == 1
