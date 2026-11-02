@@ -90,7 +90,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
-  - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Not Started**
+  - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
   - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Not Started**
@@ -102,13 +102,21 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
+- `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
 - `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
+- `M4.16` on `feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` since 2026-11-01
 - `M5.4` on `feature/rm-enforced-rules-pointers` since 2026-11-01
 - `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
 

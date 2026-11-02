@@ -64,26 +64,6 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: per-role-effort-in-model
-    node_id: M10.5
-    branch: feature/rm-per-role-effort-in-model
-    touch_zones:
-      - specy_road/model_profiles.py
-      - specy_road/worker_adapters.py
-      - specy_road/worker_sessions.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/templates/project/model-profiles/
-      - docs/orchestration-models.md
-      - tests/test_models_and_prompt.py
-      - tests/test_worker_adapters.py
-      - specy_road/worker_ops.py
-      - specy_road/worker_runner.py
-      - specy_road/bundled_scripts/models_cli.py
-      - specy_road/worker_adapter_parsers.py
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T05:07:22+00:00'
   - codename: emit-a-stalled-event
     node_id: M10.9
     branch: feature/rm-emit-a-stalled-event
