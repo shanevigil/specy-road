@@ -13,6 +13,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road review check-pre-existing <NODE_ID>` runs each failing READY
+  verifier that a counted approval names in `verify_pre_existing` twice, at the
+  project root of a detached temporary worktree of the integration tip, and
+  records the exits in `work/reviews/<NODE_ID>/PRE-EXISTING.md`. The review
+  gate now honours a claim only when both runs failed at the current tip; an
+  unchecked, passing or outdated claim leaves the verifier problem in place,
+  marked `(unverified)`, `(rejected)` or `(stale: <sha>)`.
 - `specy-road integrity <NODE_ID>` compares a leaf to its merge base using git
   objects only and reports removed tests, new skips, lost asserts and pytest
   config edits; `review-packet` includes the same findings under **Test

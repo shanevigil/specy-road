@@ -43,6 +43,7 @@ from specy_road.review_files import (
     executor_blocked_display_lines,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
+from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
 from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
@@ -375,6 +376,11 @@ def build_parser() -> argparse.ArgumentParser:
     ls.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(ls)
     ls.set_defaults(func=cmd_review_list)
+    pre = rsub.add_parser("check-pre-existing", help="Re-run claimed pre-existing verifier failures twice on the integration tip")
+    pre.add_argument("node_id")
+    pre.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_repo_root_arg(pre)
+    pre.set_defaults(func=cmd_check_pre_existing)
     return p
 
 

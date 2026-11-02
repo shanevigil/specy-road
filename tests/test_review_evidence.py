@@ -176,9 +176,12 @@ def test_failing_verifier_blocks_even_when_reviews_pass(tmp_path: Path, capsys) 
 
 
 def test_pre_existing_marker_on_approve_clears_verifier_block(tmp_path: Path, capsys) -> None:
+    """Since M9.8 the marker clears the block only once check-pre-existing reproduced it."""
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
     _ready(repo, FAILED)
-    assert _gate(repo, _review_with_preexisting(repo, pre=["false"])).passed
+    gate = _gate(repo, _review_with_preexisting(repo, pre=["false"]))
+    assert "READY-exec.md (executor-reported): verifier `false` exited 1 (unverified)" in gate.problems()
+    assert _run("review", "check-pre-existing", "M1.1", "--repo-root", str(repo)) == 0
     st = _status(repo, capsys)
     assert st["policy_met"]
     assert not any("verifier `false`" in p for p in st["problems"])
