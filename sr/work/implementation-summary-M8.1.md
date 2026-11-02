@@ -83,10 +83,38 @@ Follow-ups outside the zones (not done):
   before.
 - `sr/model-profiles/README.md` can take the block with `refresh-profiles --render`.
 
+## Review round 1 (gpt-6.1-sol block, R1 and R2)
+
+- **R1 — `--render` and a removed `access.cli`.**
+  - `render_profile` now puts a removed `access.cli` back as the first line under a
+    block-style `access:` mapping.
+  - `--render` reports `rendered` only for files it actually updated (`_report_render`).
+  - A drifted profile with no block-style `access:` to write into (flow style
+    `access: { … }`) is reported as `cannot render …` and exits 1.
+  - Regressions through `main`:
+    `test_render_restores_a_removed_cli_and_check_then_passes` (remove the line, `--render`,
+    `--check` exits 0) and `test_render_fails_on_a_region_it_cannot_write`.
+- **R2 — incomplete captures.**
+  - `classify_capture` refuses a capture that lacks any file the record's `capture_commands`
+    names or any file the accepted capture has (inventory files included). The error is
+    `incomplete <harness> capture: no …`, raised before classification, so `--accept` writes
+    nothing.
+  - `write_capture` no longer deletes files. With that guard in front of it, a
+    capture can never drop an accepted input.
+  - Regression through `main`:
+    `test_an_incomplete_capture_is_refused_and_the_accepted_one_is_kept`. A version-only
+    capture and a capture missing an accepted `inventory-features.txt` both exit 1, and the
+    accepted directory is byte-identical afterwards.
+  - The `_capture` test helper now includes `help-exec.txt`, because codex's
+    `capture_commands` names it. No assertion was loosened.
+- **Docs.** `docs/orchestration-models.md` states both rules.
+
 ## Verification
 
-- `python -m pytest tests/test_harness_facts.py -q`: 39 passed.
-- `python -m pytest -q -x -p no:cacheprovider`: 3018 passed, 2 skipped (18 min).
+- `python -m pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 42 passed (after
+  round 1).
+- `python -m pytest -q -x -p no:cacheprovider`: 3018 passed, 2 skipped (18 min, before
+  round 1; round 1 reran only the touched test file, as instructed).
 - `python -m specy_road.bundled_scripts.refresh_profiles --check`: exit 0 (this repository
   resolves `sr/`; README `behind`, no drift).
 - `--check --repo-root specy_road/templates/project`: exit 0, no drift.
@@ -101,6 +129,12 @@ Follow-ups outside the zones (not done):
   `render_readme`, `render_profile`, `plan_render`, plus `Finding`/`RenderPlan`), and runs the
   capture diff (`identifiers`, `workflow_word`, `read_capture`, `classify_capture`,
   `write_capture`, `CaptureDiff`). Needed for A1–A3.
+- `harness_facts._ACCESS_LINE` and the insert branch in `render_profile` — restore a removed
+  `access.cli` (review R1).
+- Completeness guard in `classify_capture` — a capture missing a commanded or accepted file is
+  refused (review R2).
+- `refresh_profiles._report_render` — `--render` reports only applied updates and exits 1 on
+  a region it cannot write (review R1).
 - `harness_facts._cli_line` — quotes a rendered `cli` only when YAML would misread it bare. The
   shipped values stay byte-identical.
 - `harness_facts._prose` / `_evidence` / `_fact` — format the README block and escape `<id>`
@@ -117,7 +151,8 @@ Follow-ups outside the zones (not done):
   — the accepted captures (A3).
 - `specy_road/templates/project/schemas/harness-facts.schema.json` — the schema (A1).
 - `specy_road/templates/project/model-profiles/README.md` — the rendered harness block (A2).
-- `tests/test_harness_facts.py` — 39 tests:
+- `tests/test_harness_facts.py` — 42 tests (the 3 added in round 1 are listed under Review
+  round 1):
   - the fixture validates and covers the roster; each schema rule rejects a broken record;
   - an unverified fact needs no source, and a duplicate id is refused;
   - the shipped files are render-identical;
