@@ -72,25 +72,6 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: integrity-gate-and-waivers
-    node_id: M9.6
-    branch: feature/rm-integrity-gate-and-waivers
-    touch_zones:
-      - specy_road/integrity_gate.py
-      - specy_road/review_gate.py
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/templates/project/schemas/roadmap.schema.json
-      - specy_road/templates/project/schemas/orchestration.schema.json
-      - sr/schemas/
-      - docs/roadmap-authoring.md
-      - docs/orchestration-review.md
-      - suggested_prompts/
-      - CHANGELOG.md
-      - tests/
-      - schemas/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: promote-structured
     node_id: M4.2
     branch: feature/rm-promote-structured

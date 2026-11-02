@@ -125,6 +125,25 @@ def _leaf_planning_excerpt_lines(node: dict, root: Path) -> list[str]:
     return lines
 
 
+def _planned_test_changes_lines(node: dict) -> list[str]:
+    """The leaf's declared test removals or weakenings, and the stop rule for any other."""
+    planned = [s for s in (node.get("planned_test_changes") or []) if isinstance(s, str)]
+    lines = ["## Planned test changes", ""]
+    lines += [f"- `{s}`" for s in planned] or ["_none_"]
+    lines += [
+        "",
+        (
+            "These are the only test removals or weakenings this leaf may make "
+            f"(as `specy-road integrity {node['id']}` prints them). Any other is a "
+            "`blocked_on` stop: write READY with `blocked_on` naming the criterion "
+            "and stop until the coordinator amends `planned_test_changes` on the "
+            "integration branch."
+        ),
+        "",
+    ]
+    return lines
+
+
 def _on_complete_hint_lines(on_complete: str) -> list[str]:
     oc = (on_complete or "pr").strip().lower()
     if oc == "merge":
@@ -278,6 +297,7 @@ def write_agent_prompt(
     lines.extend(_governance_lines(repo_root))
     lines.extend(_ancestor_planning_lines(node_id, by_id, repo_root))
     lines.extend(_leaf_planning_excerpt_lines(node, repo_root))
+    lines.extend(_planned_test_changes_lines(node))
     lines += ["", "## Instructions", ""]
     lines += _finish_instruction_lines(
         node_id,
