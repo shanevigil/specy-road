@@ -72,22 +72,6 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: promote-structured
-    node_id: M4.2
-    branch: feature/rm-promote-structured
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - docs/brainstorming.md
-      - tests/
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_revise.py
-      - specy_road/bundled_scripts/brainstorm_fields.py
-      - specy_road/bundled_scripts/brainstorm_promote_plan.py
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: wrapper-imports-launcher
     node_id: M10.16
     branch: feature/rm-wrapper-imports-launcher

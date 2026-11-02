@@ -153,8 +153,7 @@ class Idea:
     status: str = "proposed"
     recommendation: str | None = None
     promoted_node_key: str | None = None
-    # v2 (brainstorm_fields): provenance, structured evidence, clusters,
-    # critics, decision records. Omitted from the file when empty.
+    # v2 (brainstorm_fields), omitted from the file when empty: provenance, evidence, clusters, critics, decisions.
     origin: dict[str, str] | None = None
     cluster_id: str | None = None
     sources: list[dict[str, Any]] = field(default_factory=list)
@@ -165,6 +164,7 @@ class Idea:
     decision: dict[str, str] | None = None
     verdict_why: str = ""
     codename: str = ""
+    target_parent: str | None = None  # display id promote lands this idea under, instead of the anchor
 
     def to_dict(self) -> dict[str, Any]:
         return {

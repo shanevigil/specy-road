@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
 from specy_road.bundled_scripts.brainstorm_cli_revise import cmd_revise
@@ -39,6 +40,7 @@ from specy_road.bundled_scripts.brainstorm_promote import (
     promote_session,
     unverified_strong,
 )
+from specy_road.bundled_scripts.brainstorm_promote_plan import below_recommendation
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
@@ -258,19 +260,27 @@ def cmd_recommend(ns: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_promote(ns: argparse.Namespace) -> int:
-    root, session = _load(ns)
-    if not pending_ideas(session):
-        print(
-            "nothing to promote — accept ideas first with: "
-            f"specy-road brainstorm accept <IDEA_ID> --slug {session.slug}"
-        )
-        return 0
+def _promote_warnings(session: BrainstormSession, ns: argparse.Namespace) -> None:
+    for idea in below_recommendation(pending_ideas(session), ns.min_recommendation):
+        print(f"skipped {idea.id} ({idea.recommendation or 'no verdict'}): below --min-recommendation "
+              f"{ns.min_recommendation}; it stays accepted", file=sys.stderr)
     for idea in unverified_strong(session):
         states = ", ".join(s["verification"] for s in idea.sources) or "no sources"
         fix = "verify" if idea.sources else f"evidence {idea.id}"
         print(f"warning: {idea.id} is recommended strong but no source is matched ({states}); "
               f"`specy-road brainstorm {fix} --slug {session.slug}`", file=sys.stderr)
+
+
+def cmd_promote(ns: argparse.Namespace) -> int:
+    root, session = _load(ns)
+    if not ns.plan and not pending_ideas(session):
+        print(
+            "nothing to promote — accept ideas first with: "
+            f"specy-road brainstorm accept <IDEA_ID> --slug {session.slug}"
+        )
+        return 0
+    if not ns.plan:
+        _promote_warnings(session, ns)
     results = promote_session(
         root,
         session,
@@ -278,18 +288,22 @@ def cmd_promote(ns: argparse.Namespace) -> int:
         node_type=ns.type,
         execution_milestone=execution_milestone_from_promote_sets(getattr(ns, "set", None)),
         dry_run=ns.dry_run,
+        by_cluster=ns.by_cluster,
+        min_recommendation=ns.min_recommendation,
+        plan=Path(ns.plan) if ns.plan else None,
     )
     if not ns.dry_run:
         write_session(root, session)
     prefix = "would add" if ns.dry_run else "[ok] added"
     for r in results:
         parent = r.parent_id or "(root)"
-        print(f"{prefix} {r.node_id} under {parent} — {r.title}  (from {r.idea_id})")
+        source = f"from {', '.join(filter(None, (r.idea_id, *r.linked)))}" if r.idea_id else "plan"
+        print(f"{prefix} {r.node_id} under {parent} — {r.title}  ({source})")
     if ns.dry_run:
         print("\nDry run — nothing written.")
         print(next_step(session, "dry-run"))
     else:
-        print(f"\nPromoted {len(results)} idea(s).")
+        print(f"\nPromoted {len(results)} node(s).")
         print(next_step(session, "promote"))
     return 0
 
