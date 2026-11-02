@@ -109,6 +109,28 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor preamble's may-not list forbids pattern-based process kills (pkill, killall, kill by name or by a pgrep pattern) and allows stopping only a process the executor itself started, by the pid it recorded, because other sessions share the machine",
+        "docs/orchestration-workers.md records the failure (an executor's 'pkill -f \"pytest -q\"' ended the coordinator's and other leaves' test runs) in one or two lines and stays under its 400-line cap; a test asserts the rendered executor prompt carries the rule; role_prompt_rca.py stays under its cap"
+      ],
+      "codename": "no-foreign-kills",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.19",
+      "node_key": "703b5286-3be8-4970-b6d6-3860dfed1fc9",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.19_no-foreign-kills_703b5286-3be8-4970-b6d6-3860dfed1fc9.md",
+      "sibling_order": 19,
+      "status": "Not Started",
+      "title": "The executor prompt forbids killing processes the executor did not start",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
