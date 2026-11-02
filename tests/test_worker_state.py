@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import time
 from pathlib import Path
@@ -11,6 +12,9 @@ import pytest
 
 from tests.review_repo_helpers import git, make_review_repo
 
+from specy_road import git_workflow_config as gwc
+from specy_road import worker_adapters as wa
+from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
 from specy_road.bundled_scripts import worker_cli
 
@@ -189,3 +193,65 @@ def test_schemas_ship_in_the_package(tmp_path: Path) -> None:
     pkg = Path(ws.__file__).resolve().parent / "schemas"
     for name in ("worker-record.schema.json", "worker-event.schema.json"):
         assert json.loads((pkg / name).read_text())["title"].startswith("specy-road")
+
+
+def _track(repo: Path, line: str) -> None:
+    cfg = repo / "roadmap" / "git-workflow.yaml"
+    cfg.write_text("version: 1\nintegration_branch: dev\nremote: origin\n" + line, encoding="utf-8")
+
+
+@pytest.mark.parametrize(("line", "mode"), [("", "off"), ("track_worker_logs: off\n", "off"),
+                                            ('track_worker_logs: "off"\n', "off"),
+                                            ('track_worker_logs: "events"\n', "events"),
+                                            ("track_worker_logs: full\n", "full")])
+def test_track_worker_logs_accepts_off_events_and_full(tmp_path: Path, line: str, mode: str) -> None:
+    repo = _repo(tmp_path)
+    _track(repo, line)   # a bare `off` is YAML false: accepted as off
+    assert gwc.load_git_workflow_config(repo)[1] is None
+    assert gwc.track_worker_logs(repo) == mode
+
+
+@pytest.mark.parametrize("line", ["track_worker_logs: on\n", "track_worker_logs: Full\n",
+                                  'track_worker_logs: "raw"\n', "track_worker_logs: 1\n"])
+def test_track_worker_logs_rejects_any_other_value(tmp_path: Path, line: str) -> None:
+    repo = _repo(tmp_path)
+    _track(repo, line)
+    _data, err = gwc.load_git_workflow_config(repo)
+    assert err and "track_worker_logs" in err
+    assert gwc.track_worker_logs(repo) == "off"
+
+
+def _turn(repo: Path, rec) -> None:
+    wr.run(repo, rec.worker_id, wa.Launch([sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"]))
+
+
+def _worker_in_linked_tree(tmp_path: Path) -> tuple[Path, Path, ws.WorkerRecord]:
+    repo = _repo(tmp_path)
+    git(repo, "checkout", "-q", "dev")
+    wt = tmp_path / "wt"
+    git(repo, "worktree", "add", "-q", str(wt), "feature/rm-thing")
+    return repo, wt, ws.create_record(repo, "M1.1", "generic", "m", wt, branch="feature/rm-thing")
+
+
+def test_events_mode_mirrors_the_event_log_into_the_workers_checkout(tmp_path: Path) -> None:
+    repo, wt, rec = _worker_in_linked_tree(tmp_path)
+    _track(repo, 'track_worker_logs: "events"\n')
+    _turn(repo, rec)
+    logs = wt / "work" / "worker-logs" / "M1.1"
+    src = ws.events_path(repo, rec.worker_id)
+    assert (logs / f"{rec.worker_id}.events.jsonl").read_bytes() == src.read_bytes()
+    assert not (logs / f"{rec.worker_id}.log").exists()        # the raw log only under full
+    assert not (repo / "work" / "worker-logs").exists()         # the worker's checkout, not the main one
+    ws.append_event(repo, rec, "message", source="orchestrator", summary="between turns")
+    _track(repo, 'track_worker_logs: "full"\n')
+    _turn(repo, rec)                                        # catches up from where the copy stopped
+    assert (logs / f"{rec.worker_id}.events.jsonl").read_bytes() == src.read_bytes()
+    assert (logs / f"{rec.worker_id}.log").read_bytes() == wr.log_path(repo, rec.worker_id).read_bytes()
+    assert "err" in (logs / f"{rec.worker_id}.log").read_text()
+
+
+def test_off_writes_nothing_outside_work_workers(tmp_path: Path) -> None:
+    repo, wt, rec = _worker_in_linked_tree(tmp_path)
+    _turn(repo, rec)   # no key: off
+    assert ws.events_path(repo, rec.worker_id).is_file()
+    assert not (wt / "work" / "worker-logs").exists() and not (repo / "work" / "worker-logs").exists()

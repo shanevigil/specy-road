@@ -16,4 +16,6 @@ Two files do not follow that switch. **`work/.on-complete-<NODE_ID>.yaml`** is i
 
 **Agent coordination state** (all gitignored, always in the main worktree): `work/.sessions/<agent>.yaml` presence records (`specy-road session`), `work/.workers/` worker records, event logs and the ops outbox (`specy-road worker`), and `work/.worktrees/` for leaves a worker runs in a linked worktree.
 
+**Worker logs in git** are opt-in: with `track_worker_logs: "events"` in `roadmap/git-workflow.yaml`, each worker's event log is also copied, at the end of each turn, to **`work/worker-logs/<NODE_ID>/<worker id>.events.jsonl`** in the worker's checkout (`"full"` adds the raw `<worker id>.log`), and `finish-this-task` commits that directory with the leaf. Under the default `"off"`, logs live only in `work/.workers/`. Keep `work/worker-logs/` out of `.gitignore` if you opt in.
+
 Add a `.gitkeep` or tune `.gitignore` for what should stay local vs checked in.

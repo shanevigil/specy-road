@@ -8,12 +8,15 @@ the adapter's command in the worktree, writes every raw output line to
 event log, remembers the harness's session id the moment it appears, and
 sets the final state from the exit code. There is no daemon above it
 (design note D3): the record and the log are the whole of its interface.
+When ``track_worker_logs`` opts in, each turn ends by mirroring the logs into
+the worker's own checkout, where finish-this-task commits them with the leaf.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -21,7 +24,9 @@ from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
+from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.review_target import same_commit
+from specy_road.runtime_paths import project_prefix
 from specy_road.worker_adapter_parsers import USAGE_FIELDS, usage_text
 from specy_road.worker_adapters import Launch, adapter_for
 from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified re-exported for existing callers
@@ -40,6 +45,7 @@ from specy_road.worker_state import (
     WorkerRecord,
     _now,
     append_event,
+    events_path,
     events_since,
     load_record,
     mutate,
@@ -56,6 +62,43 @@ OUTPUT_MARK_SECONDS = 5.0
 
 def log_path(repo_root: Path, worker_id: str) -> Path:
     return record_path(repo_root, worker_id).with_suffix(".log")
+
+
+def mirror_dir(repo_root: Path, rec: WorkerRecord) -> Path:
+    """``work/worker-logs/<NODE_ID>/`` in the worker's own checkout: the leaf's branch is checked out there."""
+    return Path(rec.worktree) / project_prefix(repo_root) / WORKER_LOGS_REL / rec.node_id
+
+
+def mirror_logs(repo_root: Path, rec: WorkerRecord) -> None:
+    """Bring the tracked copies up to date per ``track_worker_logs``; nothing at all when ``off``.
+
+    Called when a turn ends, not per line: a copy in the worktree during the turn
+    would be an untracked change under the executor's own clean-tree check.
+    """
+    mode = track_worker_logs(repo_root)
+    if mode == "off":
+        return
+    d = mirror_dir(repo_root, rec)
+    pairs = [(events_path(repo_root, rec.worker_id), d / f"{rec.worker_id}.events.jsonl")]
+    if mode == "full":
+        pairs.append((log_path(repo_root, rec.worker_id), d / f"{rec.worker_id}.log"))
+    for src, dst in pairs:
+        try:
+            _copy_tail(src, dst)
+        except OSError as e:   # the audit copy must never fail the turn it records
+            with log_path(repo_root, rec.worker_id).open("a", encoding="utf-8") as raw:
+                raw.write(f"[wrapper] could not mirror {src.name}: {e}\n")
+
+
+def _copy_tail(src: Path, dst: Path) -> None:
+    """Append what ``src`` holds past ``dst``'s length: both only grow, so the copy stays byte-identical."""
+    have = dst.stat().st_size if dst.is_file() else 0
+    if not src.is_file() or src.stat().st_size <= have:
+        return
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with src.open("rb") as s, dst.open("ab") as d:
+        s.seek(have)
+        shutil.copyfileobj(s, d)
 
 
 def _payload_file(repo_root: Path, rec: WorkerRecord, token: str, payload: str) -> Path:
@@ -149,6 +192,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
                          detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
             set_state(repo_root, rec, "failed", pid=None)
+            mirror_logs(repo_root, rec)
             return 127
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
@@ -178,7 +222,9 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    return _finish(repo_root, rec, code, before, usage_logged)
+    code = _finish(repo_root, rec, code, before, usage_logged)
+    mirror_logs(repo_root, rec)
+    return code
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:

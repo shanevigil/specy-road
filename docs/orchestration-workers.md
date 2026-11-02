@@ -11,7 +11,7 @@
 - `delegate` runs after pickup only: `specy-road worker delegate M2.3 --model claude-opus-5.5` needs the leaf's registry claim and branch.
 - A `completion` event and a READY file approve nothing; the review path is unchanged. `interrupt` is unsupported on every adapter; `terminate` loses the turn.
 - A worker whose wrapper died but whose harness lives is flagged `wrapper_gone_harness_alive` and still owns its leaf: `terminate` it (kills the recorded process group) before delegating again.
-- Records live in `work/.workers/` (gitignored); the event log is authoritative, the transcript is evidence.
+- Records live in `work/.workers/` (gitignored); the event log is authoritative, the transcript is evidence. With `track_worker_logs: "events"` (or `"full"`) in `roadmap/git-workflow.yaml`, each turn's end also copies the event log (and, under `full`, the raw log) to `work/worker-logs/<NODE_ID>/` in the worker's checkout, which `finish-this-task` commits with the leaf; the default `"off"` writes nothing outside `work/.workers/`.
 
 **Read further for:**
 - record fields, states and events → "The model"
@@ -42,8 +42,8 @@ wrapper process per worker writes files that the commands read.
 A **worker** is one leaf, one session, one harness. Its record lives at
 `work/.workers/<id>.yaml` (`w-0001`, …) beside an append-only event log
 `<id>.events.jsonl`, a raw output log `<id>.log`, and an ops outbox; all in
-the **main** worktree, like presence files and review records, and
-gitignored. The event log is authoritative for orchestration state: the
+the **main** worktree, like presence files and review records, and gitignored
+(tracked copies in `work/worker-logs/` only by opt-in, see above). The event log is authoritative for orchestration state: the
 harness's transcript is evidence, the log is what the coordinator may assume.
 Authoritative is not authenticated: the worker runs as the same OS user and
 can write `work/.workers/` itself, so `source` and `authority` labels are

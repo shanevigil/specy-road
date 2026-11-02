@@ -24,6 +24,7 @@ from specy_road.finish_work_artifacts import (
     cleanup_session_sidecar,
     cleanup_work_artifacts,
     warn_if_pr_body_tracked,
+    worker_logs_to_stage,
 )
 from specy_road.finish_ancestor_rollup import complete_rolled_up_ancestors
 from specy_road.finish_milestone_rollout import (
@@ -277,6 +278,7 @@ def _bookkeeping_commit_phase(
     ):
         work_tracked_removals = cleanup_work_artifacts(ROOT, node_id)
     work_tracked_removals.extend(cleanup_session_sidecar(ROOT, sess_path))
+    changed_files.extend(worker_logs_to_stage(ROOT, node_id))
     changed_files.extend(_stageable_generated_files())
     changed_files.extend(work_tracked_removals)
     git_run(ROOT, "add", *changed_files)

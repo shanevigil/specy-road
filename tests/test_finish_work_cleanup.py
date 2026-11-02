@@ -9,6 +9,7 @@ from specy_road.finish_work_artifacts import (
     cleanup_work_artifacts,
     warn_if_pr_body_tracked,
     work_artifact_rel_paths,
+    worker_logs_to_stage,
 )
 from specy_road.git_workflow_config import (
     cleanup_work_artifacts_on_finish,
@@ -183,3 +184,44 @@ def test_pr_body_warning_silent_when_nothing_is_tracked(tmp_path, capsys) -> Non
     (tmp_path / "work" / "pr-body-M1.1.md").write_text("x", encoding="utf-8")
     warn_if_pr_body_tracked(tmp_path)
     assert capsys.readouterr().err == ""
+
+
+def _logs_repo(root, mode: str | None) -> None:
+    _init_repo(root)
+    (root / "roadmap").mkdir()
+    (root / "roadmap" / "git-workflow.yaml").write_text(
+        "version: 1\nintegration_branch: main\nremote: origin\n"
+        + (f"track_worker_logs: {mode}\n" if mode else ""),
+        encoding="utf-8",
+    )
+    logs = root / "work" / "worker-logs" / "M1.1"
+    logs.mkdir(parents=True)
+    (logs / "w-0001.events.jsonl").write_text('{"seq": 1}\n', encoding="utf-8")
+
+
+def test_worker_logs_are_staged_when_tracked_and_survive_cleanup(tmp_path) -> None:
+    _logs_repo(tmp_path, '"events"')
+    staged = worker_logs_to_stage(tmp_path, "M1.1")
+    assert staged == ["work/worker-logs/M1.1"]
+    cleanup_work_artifacts(tmp_path, "M1.1")   # the session documents go; the logs are not among them
+    assert (tmp_path / "work" / "worker-logs" / "M1.1" / "w-0001.events.jsonl").is_file()
+    subprocess.run(["git", "-C", str(tmp_path), "add", *staged], check=True, capture_output=True)
+    names = subprocess.run(["git", "-C", str(tmp_path), "diff", "--cached", "--name-only"],
+                           check=True, capture_output=True, text=True).stdout.split()
+    assert names == ["work/worker-logs/M1.1/w-0001.events.jsonl"]
+
+
+def test_worker_logs_are_not_staged_when_off_or_absent(tmp_path) -> None:
+    for i, mode in enumerate((None, "off", '"off"')):   # absent, bare (YAML false), quoted
+        root = tmp_path / f"r{i}"
+        root.mkdir()
+        _logs_repo(root, mode)
+        assert worker_logs_to_stage(root, "M1.1") == []
+        assert worker_logs_to_stage(root, "M9.9") == []
+
+
+def test_worker_logs_a_consumer_ignores_are_skipped_with_a_warning(tmp_path, capsys) -> None:
+    _logs_repo(tmp_path, '"full"')
+    (tmp_path / ".gitignore").write_text("/work/*\n", encoding="utf-8")
+    assert worker_logs_to_stage(tmp_path, "M1.1") == []
+    assert "!work/worker-logs/" in capsys.readouterr().err
