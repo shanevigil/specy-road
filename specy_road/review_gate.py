@@ -49,20 +49,13 @@ from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sens
 from specy_road.orchestration_config import (effective_config, family_of, is_rostered_reviewer, roster_entry,
                                             substitute_for)
 from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exported
-    TRIAL_MERGE_BOOKKEEPING,
-    TrialMerge,
-    is_trial_merge_bookkeeping,
-    trial_merge,
-    trial_merge_or_exit,
-    write_human_approval,
-)
+    TRIAL_MERGE_BOOKKEEPING, TrialMerge, is_trial_merge_bookkeeping, trial_merge, trial_merge_or_exit,
+    write_human_approval)
 from specy_road.review_signing import (  # noqa: F401 — SigningError re-exported
-    SigningError,
-    notes_problem,
-    verify,
-)
-from specy_road.review_files import (HUMAN, ReviewFile, executor_blocked_gate_problems, latest_ready,
-                                     list_review_history, list_reviews, verifier_gate_problems)
+    SigningError, notes_problem, verify)
+from specy_road.review_files import (HUMAN, PACKET_NAME, ReviewFile, executor_blocked_gate_problems, latest_ready,
+                                     list_review_history, list_reviews, review_semantic_errors, reviews_dir,
+                                     verifier_gate_problems)
 from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
@@ -72,6 +65,8 @@ from specy_road.runtime_paths import project_prefix, rebase_to_project
 DELTA_MAX_FILES = 3
 _DOC_SUFFIXES = (".md", ".rst", ".txt", ".adoc")
 _TEST_DIRS = frozenset({"tests", "test", "__tests__"})
+#: ``review-packet --full`` stamps ``PACKET.md``; while that is the commit's packet, no delta counts.
+FULL_MARK = "- **Delta review:** off (`--full`): every reviewer reads this full packet"
 
 
 def review_required(repo_root: Path) -> bool:
@@ -237,6 +232,10 @@ def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: 
     if not commit or same_commit(repo_root, approved, commit) or \
             git_code(["merge-base", "--is-ancestor", approved, commit], repo_root)[0] != 0:
         return f"{approved} is not an earlier commit of {commit}"
+    packet = reviews_dir(repo_root, node["id"]) / PACKET_NAME   # commit-bound: a new commit lifts it
+    if FULL_MARK in (text := packet.read_text(encoding="utf-8") if packet.is_file() else "") and \
+            f"**Commit under review:** `{full_sha(repo_root, commit)}`" in text:
+        return f"`review-packet --full` forces a full review of {commit}"
     paths = diff_paths(repo_root, f"{approved}..{commit}")
     if paths is None or len(paths) > DELTA_MAX_FILES:
         return f"the delta touches {'?' if paths is None else len(paths)} files (at most {DELTA_MAX_FILES})"
@@ -272,6 +271,7 @@ def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any
     for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"]):
         if (r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model
                 and r.data["verdict"] == "approve" and not same_commit(repo_root, r.data["commit"], commit)
+                and not review_semantic_errors(r.data, acceptance_ids(node))   # history is loaded without them
                 and _eligibility(config, node, r, today)[0] is not None
                 and not (r.data.get("delta_from")
                          and _delta_why(repo_root, node, kept, r, r.data["commit"], config["policy"]))):

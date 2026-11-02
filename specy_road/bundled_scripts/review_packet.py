@@ -39,7 +39,7 @@ from specy_road.git_subprocess import git_stdout, git_text, head_sha
 from specy_road.impact import impact_for_diff, section_lines
 from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, ReviewFile, latest_ready, reviews_dir
-from specy_road.review_gate import policy_source, trial_merge
+from specy_road.review_gate import FULL_MARK, policy_source, trial_merge
 from specy_road.review_target import REGISTRY_REL, ReviewTarget, full_sha, resolve_target_or_exit, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, default_user_repo_root, project_prefix, rebase_to_project
 
@@ -50,7 +50,6 @@ MAX_DIFF_BYTES = 200_000   # a minified bundle is a few very long lines; lines a
 GENERATED_PATHS = ("specy_road/pm_gantt_static/",)   # the packaged PM GUI bundle
 GENERATED_NOTE = "_Generated files are never inlined: review the source they are built from._"
 DIFF_NAME = "DIFF.patch"   # beside PACKET.md when the diff is capped
-FULL_MARK = "- **Delta review:** off (`--full`): every reviewer reads this full packet"
 # Paths every feature branch touches for bookkeeping; never a touch-zone breach.
 # work/ holds the brief, implementation summary, and session files the scaffold
 # tracks on the feature branch on purpose.

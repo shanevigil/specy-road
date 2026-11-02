@@ -60,16 +60,23 @@ The reviewer then adds `delta_from: "<approved commit>"` to its record's front
 matter. The gate counts an approval naming `delta_from` only when a counting
 approval of that commit by the same model is on file (`history/` keeps every
 filing), and only while the change since still meets the rule above under the
-current policy. Otherwise `handoff status` lists it as `does not count — a delta
+current policy. An earlier approval counts only if it would have counted at its
+own commit:
+- it has a result for every acceptance id in the brief;
+- it passes the roster, session and signature checks;
+- if it names `delta_from` itself, its own delta qualified.
+
+A delta approval the gate rejected is therefore never the start of a later delta. Otherwise `handoff status` lists it as `does not count — a delta
 review from <sha>, …; a full review is needed`. A delta approval is still one
 model's vote, so `reviewers_distinct_families` still needs approvals from both
 families at the current commit. A block is never affected. Like
 `fresh_session`, `delta_from` is self-attested; a signature covers it.
 
-Full fresh review comes back two ways: `specy-road review-packet <NODE_ID>
---full` marks `PACKET.md` so every reviewer reads the full packet while it is
-current, and `delta_review: false` turns the rule off, so no delta packet is
-built and no `delta_from` approval counts.
+Full fresh review comes back two ways. `specy-road review-packet <NODE_ID>
+--full` stamps `PACKET.md`; while that packet is the one for the commit under
+review, no delta packet is built and no `delta_from` approval counts. Rebuilding
+the packet without `--full`, or a new commit, lifts the stamp. `delta_review:
+false` turns the rule off everywhere.
 
 **Under the default policy** the interactive menu's **approve** files
 `REVIEW-human.md` and closes the gate in one step; a human approval is offered

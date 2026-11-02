@@ -31,10 +31,14 @@ def _repo(tmp_path: Path, policy: str = "") -> tuple[Path, str]:
     return repo, approved
 
 
-def _file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None) -> None:
-    """File a record as `review record` does: the live REVIEW-<model>.md plus a copy under history/."""
+def _file(repo: Path, model: str, commit: str, verdict: str = "approve", delta_from: str | None = None,
+          drop: str | None = None) -> None:
+    """File a record as `review record` does: the live REVIEW-<model>.md plus a copy under history/.
+    ``drop`` leaves out that acceptance id's result, so the record is incomplete for the brief."""
     text = review_text(commit, model=model, verdict=verdict, a1="pass" if verdict == "approve" else "fail")
     text = text.replace("notes\n", f"{model} notes on {commit[:7]}\n")
+    if drop:
+        text = text.replace(f"  {drop}: pass\n", "")
     if delta_from:
         text = text.replace("---\n", f"---\ndelta_from: '{delta_from}'\n", 1)
     d = reviews_dir(repo, "M1.1")
@@ -123,6 +127,32 @@ def test_an_ineligible_delta_approval_is_no_basis_for_a_later_delta(tmp_path: Pa
     _file(repo, "opus", c2, delta_from=c1)
     assert f"a delta review from {c1}, which opus did not approve" in _why(repo, "opus")
     assert not _gate(repo).approvals
+
+
+def test_an_earlier_approval_missing_an_acceptance_result_is_no_delta_basis(tmp_path: Path) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ROSTER % "")
+    approved = commit_file(repo, TEST_FILE, TEST_SRC, "first round")
+    _file(repo, "opus", approved, drop="A2")   # would not have counted at its own commit
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "no earlier approval")
+    rp.main(["M1.1", "--repo-root", str(repo)])
+    packet, _ = reviewer_packet(repo, "M1.1", "opus", resolve_target(repo, "M1.1"))
+    assert packet == (reviews_dir(repo, "M1.1") / PACKET_NAME).read_text()   # no delta packet
+    _file(repo, "opus", head, delta_from=approved)
+    assert f"a delta review from {approved}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+
+
+def test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    _file(repo, "opus", head, delta_from=approved)
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+    rp.main(["M1.1", "--full", "--repo-root", str(repo)])
+    assert f"`review-packet --full` forces a full review of {head}" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+    rp.main(["M1.1", "--repo-root", str(repo)])   # the override is the current packet's, not sticky
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
 
 
 def test_policy_off_forces_full_review(tmp_path: Path) -> None:

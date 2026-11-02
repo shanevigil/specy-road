@@ -42,7 +42,7 @@ from pathlib import Path
 
 from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief
-from specy_road.bundled_scripts.review_packet import FULL_MARK, build_packet
+from specy_road.bundled_scripts.review_packet import build_packet
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
     coordinator_preamble,
@@ -94,14 +94,14 @@ def has_subagents(prof: Profile | None) -> bool:
 def reviewer_packet(root: Path, node_id: str, model: str, t: ReviewTarget,
                     ref: str | None = None) -> tuple[str | None, str]:
     """``(packet text, error)``. ``model``'s own delta packet, written now to ``PACKET-<model>.md``, when
-    ``policy.delta_review`` lets its fix round be reviewed from one (``review_gate.delta_basis``) and
-    ``PACKET.md`` was not written with ``--full``; else ``PACKET.md``, the full packet."""
+    ``policy.delta_review`` lets its fix round be reviewed from one (``review_gate.delta_basis``, which
+    also honours ``review-packet --full``); else ``PACKET.md``, the full packet."""
     packet, own = reviews_dir(root, node_id) / PACKET_NAME, reviews_dir(root, node_id) / f"PACKET-{model}.md"
     own.unlink(missing_ok=True)   # a stale delta packet never stands in for this round's
     if not packet.is_file():
         return None, f"no review packet at {packet}; run `specy-road review-packet {node_id}` first"
     text = packet.read_text(encoding="utf-8")
-    prior = None if FULL_MARK in text else delta_basis(root, t.node, model, t.commit)[0]
+    prior = delta_basis(root, t.node, model, t.commit)[0]   # None under `review-packet --full`
     if prior is None:
         return text, ""
     text = build_packet(root, node_id, ref=ref, verify_cmds=[], max_diff_lines=0, max_diff_bytes=0, prior=prior)
