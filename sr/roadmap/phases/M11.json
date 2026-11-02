@@ -27,7 +27,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.1_worktree-paths-agree_9eaab693-8897-4e18-977c-f83b7e7a69b9.md",
       "sibling_order": 1,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record",
       "touch_zones": [
         "specy_road/review_files.py",
