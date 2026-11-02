@@ -21,11 +21,19 @@ As listed on the node after the coordinator widened them: `specy_road/bundled_sc
 - Readers that compute the rollup from leaves (`roadmap.md`, brief, PM GUI) still show a held milestone as Complete; the authored status, `list-nodes` and `handoff status` show the hold. Changing the rollup computation was out of scope.
 - A milestone review record needs an empty `acceptance` map: a milestone has no acceptance ids, and the gate rejects unknown ids as for a leaf.
 - The hold creates the hand-off directory in the main checkout; it is gitignored like every `work/reviews/` directory.
-- `review_cli.py` and `orchestration_config.py` are also edited by M11.7 and M11.8; the edits here are an import, three lines in `_node_status`, two in `cmd_review_list`, and one dict entry.
+- `review_cli.py` and `orchestration_config.py` are also edited by M11.7 and M11.8; the edits here are an import, three lines in `_node_status`, two in `cmd_review_list`, the first check of `_check_record`, and one dict entry.
+
+## Review round 2 (Sol's block, 2026-11-02)
+
+1. **Held until the last leaf has landed.** `resolve_target` now records, for a milestone, the leaves whose chunk at the commit under review does not say Complete (`unfinished_leaves_at` reads each leaf's chunk with `git show <commit>:./<chunk>`; an unreadable chunk counts as unfinished). `milestone_review_hold` holds while any such leaf exists, before it looks at the gate, so an approval recorded against a pre-landing tip never releases the milestone; after the merge that approval is stale anyway. Regression test: approve after alpha, finish beta on its branch, hold; merge, still held; fresh review, released.
+2. **Closure requires the integration checkout at the gated commit.** `milestone_close_problem` (review_target) refuses when a leaf is open at the target, when the checked-out branch is not the configured integration branch, or when `HEAD` is not the commit under review (the remote-tracking tip when there is one). `_close_milestone` runs it right after resolving the target, before the gate, so nothing is read, prompted or written first. Tests: wrong branch; local `dev` one commit ahead of `origin/dev` with the record bound to the remote tip.
+3. **Unfinished milestones are not `awaiting_full_review`.** `milestone_status` reports `leaves_open` with the leaves named; `review-packet` and `review record` refuse for such a milestone with the same message (`milestone_packet_or_exit`, `milestone_open_problem`). Docs updated with the state, the landed-tip rule and the checkout requirement.
+
+Merged `origin/WIP/improvements-0-3-1` first (clean; it did not touch these files).
 
 ## Verification
 
-- `python -m pytest -q tests/test_milestone_full_review.py tests/test_finish_ancestor_rollup.py tests/test_review_packet.py tests/test_review_cli.py tests/test_review_gate.py tests/test_mark_implementation_reviewed_gate.py tests/test_orchestration_config.py -p no:cacheprovider` → 103 passed.
+- `python -m pytest -q tests/test_milestone_full_review.py tests/test_finish_ancestor_rollup.py tests/test_review_packet.py tests/test_review_cli.py tests/test_review_gate.py tests/test_mark_implementation_reviewed_gate.py tests/test_orchestration_config.py -p no:cacheprovider` → 107 passed.
 - `specy-road file-limits` → OK.
 - `ruff check specy_road tests/test_milestone_full_review.py` → clean.
 
@@ -36,7 +44,12 @@ As listed on the node after the coordinator widened them: `specy_road/bundled_sc
 - `leaf_descendants(nodes, node_id)`, `is_milestone(nodes, node_id)` (review_target): the reviewed unit is a node with leaf children.
 - `REGISTER_SUBJECT`, `milestone_review_base(repo_root, nodes, node_id, tip)` (review_target): the packet range start, A1.
 - Milestone branch in `resolve_target`: integration tip as ref/commit, `milestone_review_base` as base, error when the integration branch is unreachable.
-- `MILESTONE_SUMMARY`, `milestone_status(t, state)`, `milestone_packet_lines(t)`, `milestone_base_or_exit(t)` (review_target): shared display and the `--base` refusal, A2.
+- `MILESTONE_SUMMARY`, `milestone_status(t, state)`, `milestone_packet_lines(t)`, `milestone_packet_or_exit(t)` (review_target): shared display, the open-leaves and `--base` refusals, A2.
+- `ReviewTarget.unfinished_leaves` field and `unfinished_leaves_at(repo_root, nodes, node_id, commit)` (review_target): leaf status read at the commit under review, round 2 change 1.
+- `milestone_open_problem(t)` (review_target): the one message for an unfinished milestone, used by the CLI state, the packet and `review record`, round 2 change 3.
+- `milestone_close_problem(repo_root, t)` (review_target) and its call in `_close_milestone`: open leaves, wrong branch, divergent `HEAD`, round 2 change 2.
+- Open-leaves guard in `milestone_review_hold` before the gate: round 2 change 1.
+- `leaves_open` state in `milestone_status` and the record refusal in `_check_record`: round 2 change 3.
 - `held` parameter on `rolled_up_stale_ancestor_ids`: the hold point, ends the walk at a held milestone so ancestors above it wait, A1.
 - `milestone_review_hold(repo_root, nodes, node_id)`, `milestone_review_next_steps(node_id)`, `_print_hold(repo_root, nodes)` (finish_ancestor_rollup): decide, explain and open the hand-off directory for a hold.
 - `_set_complete(root, node_id)` (finish_ancestor_rollup): the status write extracted from the old loop so the release can reuse it; same messages as before.
@@ -54,4 +67,8 @@ As listed on the node after the coordinator widened them: `specy_road/bundled_sc
   - `test_handoff_status_and_review_list_show_a_milestone_awaiting_its_full_review`: A2.
   - `test_approval_through_mark_implementation_reviewed_releases_the_rollup`: `--yes` refuses without a record, then closes with trailers and regenerated files, A3.
   - `test_mark_implementation_reviewed_refuses_a_leaf_id_and_an_open_milestone`: guard rails.
+  - `test_an_approval_before_the_last_leaf_lands_never_releases_the_hold`: Sol's regression, round 2 change 1.
+  - `test_an_unfinished_milestone_is_not_awaiting_its_full_review`: `leaves_open`, packet and record refusals, round 2 change 3.
+  - `test_close_refuses_on_the_wrong_branch`, `test_close_refuses_a_divergent_integration_tip`: round 2 change 2.
+  - Helpers `_branch_leaf` / `_merge_leaf` split out of `_land_leaf` so a leaf can be finished before it lands.
 - Mocks: none.
