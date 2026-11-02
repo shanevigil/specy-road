@@ -1,6 +1,6 @@
 # Implementation summary: `M10.5` — Per-role effort in model profiles
 
-Branch `feature/rm-per-role-effort-in-model`, base `6bd6fc8` (fast-forwarded to `18b6db0` for the widened touch zones), implementation commit `d9bf465`, review-round fixes `4fd47f8` (gpt-6.1-sol block: F1, F2).
+Branch `feature/rm-per-role-effort-in-model`, base `6bd6fc8` (fast-forwarded to `18b6db0` for the widened touch zones), implementation commit `d9bf465`, review-round fixes `4fd47f8` (gpt-6.1-sol round 2: F1, F2) and `2eaefa5` (gpt-6.1-sol round 3: F1).
 
 ## Touch zones (final)
 
@@ -40,6 +40,12 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
 
 ## Notes for reviewers
 
+- **Round 3 (F1).** The known-levels list in `_effort_errors` joined `effort_map` keys as strings. A YAML key such as `true` or `2` raised `TypeError` there, so the profile-named rejection was lost; the keys are now passed through `str()`. I checked the other effort diagnostics for the same assumption:
+  - The unknown-role error formats its role with `!r` and checks the mapping shape first.
+  - The key check tests `isinstance(key, str)` before the `in` check.
+  - `Profile.effort` does the same.
+  - The `models show` line and `effort_note` only format values in f-strings.
+
 - **The M10.6 comment ships.** The acceptance text requires it, but `model-profiles/` is scaffolded into adopter repos, where "M10.6" is a toolkit-internal id. Someone may want to reword it before promotion to `main`.
 - **Precedence is unverified.** I have not checked whether `CLAUDE_CODE_EFFORT_LEVEL` outranks `--effort` in Claude Code. The env var is removed either way, as A3 asks.
 - **One doc left alone.** `docs/orchestration-workers.md` documents `{session_flag}` but not `{effort}`. It is outside the touch zones, so I did not edit it.
@@ -50,7 +56,7 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
 
 ## Verification (foreground)
 
-- `pytest tests/test_models_and_prompt.py tests/test_worker_adapters.py` → 43 passed (again after `4fd47f8`).
+- `pytest tests/test_models_and_prompt.py tests/test_worker_adapters.py` → 43 passed (again after `4fd47f8` and `2eaefa5`).
 - `specy-road file-limits` → OK.
 - `ruff check specy_road tests/test_models_and_prompt.py tests/test_worker_adapters.py` → all checks passed.
 - `python scripts/check_test_private_imports.py` → 0 new.
@@ -62,6 +68,7 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
 - `_effort_errors` (model_profiles.py): A1 validation, kept outside `_structure_errors` so its complexity baseline does not grow.
 - Guard: a key mapped to `unknown` is an error, since otherwise the harness would be sent `--effort unknown`.
 - Guard: a non-string key is an error, since an unhashable YAML value would raise in the `in` check.
+- `str(k)` in the known-levels list of `_effort_errors` (round 3): non-string `effort_map` keys no longer crash the diagnostic.
 - `{effort}` in `PLACEHOLDERS` and `_ARGS` (worker_adapter_parsers.py): A2 placeholder; `_ARGS` lets the redirect refusal cover `{effort}` as well as `{session_flag}`.
 - `effort` parameter of `substitute_prompt`: carries the flag words into the substitution.
 - `effort_note(cli, level)` (worker_adapter_parsers.py): the one note A2 asks for, shared by `prompt` and `worker_ops`. It returns nothing for a command that cannot run, which is refused with its own reason elsewhere.
@@ -72,7 +79,7 @@ I touched all of them except `specy_road/worker_sessions.py`. The brief's Approa
 - `harness` and `role` keywords on `role_prompt.run_cli_channel`: pick the harness's flag and the role's level (A2).
 - `effort_by_role` line in `models_cli` show: A1.
 - Tests in tests/test_models_and_prompt.py:
-  - `test_effort_by_role_names_effort_map_keys_and_rejects_the_rest`: A1 validation and resolution.
+  - `test_effort_by_role_names_effort_map_keys_and_rejects_the_rest`: A1 validation and resolution. Since round 3 it also feeds an `effort_map` with non-string keys (`true`, `2`) and asserts the exact profile-named unknown-key error.
   - `test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below`: A4 shipped levels and the M10.6 comment. After F1 it expects `medium` for the Fable coordinator.
   - `test_models_show_prints_effort_by_role`: A1 show output.
 - Tests in tests/test_worker_adapters.py:
