@@ -1,6 +1,6 @@
 # Implementation summary — M10.12 Visual explorer for worker event logs
 
-Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b347` (implementation), `54e0665` (packaged bundle rebuild, reverted by `30d4d70`), `e5b7a69` (`docs/orchestration-workers.md` pointer). The leaf's net diff from base holds source, tests and docs only.
+Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b347` (implementation), `54e0665` (packaged bundle rebuild, reverted by `30d4d70`), `e5b7a69` (`docs/orchestration-workers.md` pointer), `02af062` (review fix P2), `721cda4` (reverts `30d4d70`: bundle restored, review P1), `fbe3424` (bundle rebuilt from the fixed source). The leaf ships the packaged bundle at its head.
 
 ## What changed
 
@@ -18,20 +18,33 @@ Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b34
 
 ## Touch zones (final list)
 
-Used: `specy_road/gui_app.py`, `specy_road/gui_app_routes_workers.py`, `gui/pm-gantt/src/`, `docs/pm-gui.md`, `tests/test_gui_app_workers.py` and `docs/orchestration-workers.md`. That doc and `specy_road/pm_gantt_static/` were both added to the touch zones on WIP in `538be8a`, merged here in `fc8669d`. The bundle is a touch zone but has no net change here (see below).
+Used: `specy_road/gui_app.py`, `specy_road/gui_app_routes_workers.py`, `gui/pm-gantt/src/`, `docs/pm-gui.md`, `tests/test_gui_app_workers.py` and `docs/orchestration-workers.md`. That doc and `specy_road/pm_gantt_static/` were both added to the touch zones on WIP in `538be8a`, merged here in `fc8669d`. `specy_road/pm_gantt_static/` is used too: the rebuilt bundle ships at the head (see the review round below).
 
 Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_gui_app.py`.
 
 ## Follow-up round (touch zones widened)
 
 - **Packaged bundle.** `npm ci && npm run lint && npm test && npm run build` re-run in the foreground from `gui/pm-gantt` (lint 0 errors; 23 files / 181 tests passed; built). The rebuilt `specy_road/pm_gantt_static/` was committed on its own as `54e0665 build(gui): …`. Its entry chunk `index-2teI54Ey.js` was 94,018 bytes, under CI's 900 KB budget.
-- **Bundle reverted (change of plan).** The minified bundle made the review packet about 535 KB of very long lines, which the 1500-line diff cap does not limit, and the first reviewer filed nothing. At the coordinator's request, `30d4d70` reverts `54e0665` with `git revert --no-edit` (no history rewrite). `specy_road/pm_gantt_static/` is back to its state at base, so the packaged UI does **not** show the drawer from this branch alone. Once M10.12 lands, the coordinator will rebuild and commit the bundle on the integration branch, as was done with `f2ee0c2`. The source build still passes, as above.
+- **Bundle reverted (change of plan).** The minified bundle made the review packet about 535 KB of very long lines, which the 1500-line diff cap does not limit, and the first reviewer filed nothing. At the coordinator's request, `30d4d70` reverts `54e0665` with `git revert --no-edit` (no history rewrite). `specy_road/pm_gantt_static/` is back to its state at base, so the packaged UI does **not** show the drawer from this branch alone. Once M10.12 lands, the coordinator will rebuild and commit the bundle on the integration branch, as was done with `f2ee0c2`. The source build still passes, as above. *Superseded by the review round below: the bundle is back.*
 - **`docs/orchestration-workers.md`.** The file was at 398 of its 400-line cap, so the pointer to the Workers drawer is one sentence added to the end of the `usage W|NODE_ID` command row. It adds no lines; the file is still 398 lines.
+
+## Review round 1 (gpt-6.1-sol, block) — fixes
+
+- **P1 (A2): the packaged GUI must show the drawer at the reviewed commit.** `721cda4` is `git revert --no-edit 30d4d70`, which restores `54e0665`'s bundle without rewriting history. The P2 fix changes the source, so `fbe3424 build(gui): …` then commits a fresh build from the fixed source, by explicit path.
+  - The served `specy_road/pm_gantt_static/index.html` loads `index-Bqjz7U4A.js` (94,031 bytes, under CI's 900 KB budget).
+  - That entry chunk references `WorkersDrawer-ChfMVQaq.js`, which contains the drawer (`workers-drawer-title`).
+  - Gate run in the foreground before the bundle commit: `npm ci && npm run lint && npm test && npm run build` (lint 0 errors; 24 files / 184 tests passed; built).
+- **P2: an older selection's reply could replace the current one.** Selection now goes through `createWorkerSelection` in the new `gui/pm-gantt/src/workerSelection.ts`, which the drawer holds as a single instance.
+  - Each `select` bumps a request token and aborts the previous request (`AbortController`; `fetchWorkerEvents` takes the signal). A reply or error is applied only if its token is still current.
+  - The previous details are cleared the moment a new selection starts, and the pane shows `Loading w-NNNN…` until the new details arrive. An error now comes from the current selection's state.
+  - Regression test, `workerSelection.test.ts`: select A then B, resolve B then A → B stays selected and shown. A's details clear and A's request is aborted as soon as B is selected. A superseded error does not replace B's details, and `clear` drops an in-flight reply.
+  - The vitest environment is `node`, with no DOM or testing-library, and A3 forbids new npm dependencies. So the test drives the controller the drawer uses rather than rendering the component.
 
 ## Verification
 
-- `pytest tests/test_gui_app.py tests/test_gui_app_workers.py`: 22 passed (re-run after the WIP merge).
-- `specy-road file-limits`: OK (re-run after the doc pointer).
+- `pytest tests/test_gui_app.py tests/test_gui_app_workers.py`: 22 passed (re-run after the review fixes).
+- `specy-road file-limits`: OK (re-run after the review fixes).
+- `cd gui/pm-gantt && npm ci && npm run lint && npm test && npm run build`: exit 0 (24 files / 184 tests).
 - Full `pytest`, run in chunks because one run exceeds this harness's 10-minute foreground limit: every test passed (2 skipped). When four chunks ran at once, `tests/test_worker_faults.py::test_output_clears_a_stall_shorter_than_the_write_window` hit its log-line deadline. Run alone, `tests/test_worker_faults.py` gives 7 passed. That is load-dependent timing in a file this leaf does not touch.
 - `scripts/check_test_private_imports.py`: 0 new. `ruff check` on the new and changed Python: clean.
 - `scripts/check_clones.py` could not run here: `pylint` is not installed.
@@ -56,12 +69,15 @@ Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_
 - `gui/pm-gantt/src/components/WorkersDrawer.tsx::groupByNode` — workers per leaf (A2).
 - `gui/pm-gantt/src/components/WorkersDrawer.tsx::PhaseBar` — the bar and its legend.
 - `gui/pm-gantt/src/components/WorkersDrawer.tsx::WorkerDetailView` — detail pane: header, stall badge, usage line, event list with tool and stall markers.
-- `gui/pm-gantt/src/components/WorkersDrawer.tsx::WorkersDrawer` — the drawer; it loads on open and keeps the selection on Refresh.
+- `gui/pm-gantt/src/components/WorkersDrawer.tsx::WorkersDrawer` — the drawer; it loads on open and keeps the selection on Refresh. Selection state comes from one `createWorkerSelection` instance, and the pane shows `Loading …` while new details are pending.
+- `gui/pm-gantt/src/workerSelection.ts::createWorkerSelection` — review P2: a request token plus `AbortController`, so only the newest selection's reply or error is applied; details clear when a new selection starts; `clear()` for an empty list.
+- `gui/pm-gantt/src/api.ts::fetchWorkerEvents` — optional `signal`, so a superseded request is aborted.
 - `gui/pm-gantt/src/api.ts::fetchWorkers`, `fetchWorkerEvents` — the two GET calls.
 - `gui/pm-gantt/src/types.ts::WorkerRow`, `WorkerEvent`, `WorkerDetail` — response types.
 - `gui/pm-gantt/src/App.tsx` — `workersOpen` state, the lazy `WorkersDrawer`, and the header **Workers** button.
 - `gui/pm-gantt/src/index.css` — `.worker-*` styles, using only existing theme tokens so dark mode follows.
 - `docs/orchestration-workers.md` — one sentence on the `usage` row pointing at the drawer.
+- `specy_road/pm_gantt_static/` — the rebuilt bundle (`fbe3424`), including the lazy `WorkersDrawer-*.js` chunk; it is generated output, shipped so the packaged GUI has the drawer (review P1).
 
 ### Tests
 - `tests/test_gui_app_workers.py::repo` (fixture) — a review repo with one failed worker (launch, tool line, stall, two usage events, turn end) and a second attempt that has reported nothing; `SPECY_ROAD_REPO_ROOT` points at it.
@@ -72,5 +88,7 @@ Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_
 - `test_no_workers_directory_lists_nothing` — an empty list, and no directory is created.
 - `gui/pm-gantt/src/workerTimeline.test.ts` — A4 vitest: segment percentages and order, all-unknown, `formatSeconds`, `formatCost` keeping `?` apart from 0, `isToolCall` per harness.
 
+- `gui/pm-gantt/src/workerSelection.test.ts` — review P2 regression: A then B with B answering first keeps B; a superseded error is ignored; `clear` drops an in-flight reply.
+
 ### Mocks
-- none
+- `workerSelection.test.ts::controlledFetch` — a fetch stub whose replies the test releases in any order; it is the only way to force the out-of-order case. The tests assert on the resulting state, not on call counts or call order.
