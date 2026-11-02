@@ -78,7 +78,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.3_runtime-dirs-not-dirty_d6ce85d8-6e44-41b3-881a-292ca185cc50.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road's own runtime directories never fail the clean-tree checks",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",
@@ -93,7 +93,7 @@
     },
     {
       "acceptance": [
-        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout and in every linked worktree or clone that shares the integration branch's registry",
+        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout, in every linked worktree, and (through lease refs on the configured remote) in other clones. With --offline the count uses this checkout plus the last-fetched lease refs, the command warns that the global limit was not verified, and docs name --offline as the explicit local-only escape (maintainer decision 2026-11-02)",
         "docs/orchestration-workers.md states what is counted and how a separate clone is included (for example through the claims on the integration branch)",
         "Tests show a resume refused at the limit and two checkouts sharing one limit"
       ],
@@ -183,7 +183,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.7_review-delegate_2d7324a8-cfd7-4eca-8662-113e963c98b4.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate runs a rostered reviewer like worker delegate runs an executor",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
@@ -237,7 +237,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.9_human-acceptance_a10ebda9-1fa9-4c54-a84d-cdff292accb9.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Acceptance items a human must satisfy are marked and handled as such",
       "touch_zones": [
         "specy_road/templates/project/schemas/roadmap.schema.json",

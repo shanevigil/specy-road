@@ -28,13 +28,9 @@
 - rounds, panel, evidence, promote and the GUI → "6. Brainstorm v2"
 - hook-mode grind and the gate → "7. Grind and unattended loops"
 - what must be green before §A → "8. Close-out"
-- replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"
+- replaying `docs/context-regressions.yaml` on a harness or model upgrade, and its format → "9. Context regressions"; the opt-in context-feedback block and its triage rule → "10. Context feedback (pilot)"
 
 **Related:** [`release-runbook.md`](release-runbook.md), [`orchestration-workers.md`](orchestration-workers.md), [`brainstorming.md`](brainstorming.md), [`orchestration.md`](orchestration.md).
-
-The suite (`pytest`, ~2,100 tests) proves the toolkit's logic with fake
-harnesses and stub fetchers. Everything below needs a machine with the
-vendor CLIs installed and signed in, and is **not** claimed by any test.
 
 ## 0. Prerequisites
 
@@ -394,3 +390,11 @@ and `expect`; an `expect` may name an outcome that fails the run outright)
 and `runs` (the first runs of the failure rule's sample).
 `tests/test_context_regressions.py` holds the schema and checks the file
 against it. Replace a case rather than adding an eleventh.
+
+## 10. Context feedback (pilot)
+
+Opt-in, outside every pass criterion. Render the executor prompts of §2.8, §4.2 and §5 with `--context-feedback`: the
+prompt then asks for three lines at the end of the summary, `missing:` / `wrong:` / `unused:`, each quoting the brief or
+prompt line or naming the turn, or `none`. Copy them into the evidence file with the prompt's `sha256`. **Triage rule:**
+act on an item only when it quotes a line or names a turn **and** recurs in another run or reproduces against the brief
+and the transcript; record offered / cited / reproduced per run. Hit rate and shipping decision: [`design-notes/context-feedback-pilot.md`](design-notes/context-feedback-pilot.md).

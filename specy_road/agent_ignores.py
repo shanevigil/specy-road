@@ -53,12 +53,16 @@ _INDEXING_NOTE = (
 # repo scaffolded before a path existed got it only by hand-editing .gitignore
 # (0.3 adopters had to add the work/ entries themselves). A committed review
 # file moves the branch past the commit the review read.
+#: The directories specy-road itself writes under work/ while it runs: review
+#: hand-offs, session presence, worker records and linked worktrees. A clone
+#: or worktree can hold them before any human edit, so the clean-tree checks
+#: (the executor and reviewer preconditions, delegate's uncommitted-work check,
+#: reconcile's breach list) leave them out, as git does once they are ignored.
+RUNTIME_WORK_DIRS = ("work/reviews/", "work/.sessions/", "work/.workers/", "work/.worktrees/")
+
 GITIGNORE_LINES = [
     ".specyrd/cache/",
-    "work/reviews/",
-    "work/.sessions/",
-    "work/.workers/",
-    "work/.worktrees/",
+    *RUNTIME_WORK_DIRS,
     "work/brainstorm-*-prompt.md",
     "work/brainstorm-closed/*-prompt.md",
 ]
