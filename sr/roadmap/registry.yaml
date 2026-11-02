@@ -11,63 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: output-budgets-with-full
-    node_id: M10.7
-    branch: feature/rm-output-budgets-with-full
-    touch_zones:
-      - specy_road/bundled_scripts/review_packet.py
-      - specy_road/bundled_scripts/generate_brief.py
-      - specy_road/bundled_scripts/brief_acceptance.py
-      - specy_road/bundled_scripts/session_plan_render.py
-      - specy_road/bundled_scripts/grind_session_args.py
-      - specy_road/bundled_scripts/grind_session.py
-      - specy_road/cli_usage.py
-      - docs/dev-workflow.md
-      - docs/grind-session.md
-      - tests/test_review_packet.py
-      - tests/test_generate_brief.py
-      - tests/test_session_plan.py
-      - tests/test_validate_acceptance_coverage.py
-      - tests/test_project_layouts.py
-    started: '2026-10-30'
-    owner: savigil
-    implementation_review: pending
-  - codename: emit-a-stalled-event
-    node_id: M10.9
-    branch: feature/rm-emit-a-stalled-event
-    touch_zones:
-      - specy_road/worker_runner.py
-      - specy_road/worker_state.py
-      - specy_road/worker_ops.py
-      - specy_road/orchestration_config.py
-      - specy_road/schemas/worker-event.schema.json
-      - specy_road/schemas/worker-record.schema.json
-      - specy_road/bundled_scripts/worker_cli_render.py
-      - docs/orchestration-workers.md
-      - docs/orchestration.md
-      - tests/test_worker_faults.py
-      - tests/test_worker_state.py
-      - specy_road/bundled_scripts/worker_cli.py
-      - specy_road/worker_reconcile.py
-      - specy_road/templates/project/schemas/orchestration.schema.json
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
-  - codename: brainstorm-batch-io
-    node_id: M4.3
-    branch: feature/rm-brainstorm-batch-io
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_cli_v2.py
-      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: suppression-and-ratchet-findings
     node_id: M9.7
     branch: feature/rm-suppression-and-ratchet-findings
@@ -84,30 +27,51 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: verified-pre-existing-claims
-    node_id: M9.8
-    branch: feature/rm-verified-pre-existing-claims
+  - codename: normalised-usage-event-in
+    node_id: M10.2
+    branch: feature/rm-normalised-usage-event-in
     touch_zones:
-      - specy_road/review_files.py
-      - specy_road/review_pre_existing.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/schemas/review-record.schema.json
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - tests/test_worker_adapters.py
+      - tests/test_worker_cli.py
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: tests-at-risk
+    node_id: M9.9
+    branch: feature/rm-tests-at-risk
+    touch_zones:
+      - specy_road/impact.py
+      - specy_road/bundled_scripts/impact_cli.py
+      - specy_road/cli.py
+      - specy_road/cli_usage.py
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/bundled_scripts/review_packet.py
       - docs/orchestration-review.md
       - CHANGELOG.md
       - tests/
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: document-the-harness-subagent-recipe
-    node_id: M10.11
-    branch: feature/rm-document-the-harness-subagent-recipe
+  - codename: brainstorm-decisions
+    node_id: M4.4
+    branch: feature/rm-brainstorm-decisions
     touch_zones:
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/bundled_scripts/role_prompt.py
-      - docs/orchestration-models.md
-      - specy_road/templates/project/model-profiles/README.md
-      - tests/test_do_next_prompt.py
-      - tests/test_models_and_prompt.py
-    started: '2026-11-01'
+      - specy_road/bundled_scripts/brainstorm_cli.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_cli_v2.py
+      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/brainstorm_prompt.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-11-02'
     owner: savigil
     implementation_review: pending

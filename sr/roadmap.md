@@ -35,7 +35,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Complete |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Complete |
-| `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Not Started |
+| `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Complete |
 | `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Not Started |
 | `M4.5` | Repository files as evidence; null results; quotes on research-born ideas | task | Agentic-led | Not Started |
 | `M4.6` | Lenses from the frame and a ranked node list in the recommend prompt | task | Agentic-led | Complete |
@@ -82,7 +82,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.5` | specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them | task | Agentic-led | Complete |
 | `M9.6` | With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup | task | Agentic-led | Complete |
 | `M9.7` | specy-road integrity also reports new lint suppressions and widened baseline files | task | Agentic-led | Not Started |
-| `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Not Started |
+| `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Complete |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
 | `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Not Started |
@@ -93,11 +93,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.4` | Pin harness discovery mode per profile | task | Agentic-led | Complete |
 | `M10.5` | Per-role effort in model profiles | task | Agentic-led | Complete |
 | `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Mixed | Not Started |
-| `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Not Started |
+| `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Complete |
 | `M10.8` | Reviewers launch without repo hooks or MCP | task | Agentic-led | Not Started |
-| `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | Agentic-led | Not Started |
+| `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | Agentic-led | Complete |
 | `M10.10` | Position the docs on governance, not on CLI workers | task | Agentic-led | Complete |
-| `M10.11` | Document the harness-subagent recipe for parallel work inside a leaf | task | Agentic-led | Not Started |
+| `M10.11` | Document the harness-subagent recipe for parallel work inside a leaf | task | Agentic-led | Complete |
 | `M10.12` | Visual explorer for worker event logs in the PM GUI | task | Agentic-led | Not Started |
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |

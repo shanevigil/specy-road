@@ -201,8 +201,8 @@
     },
     {
       "acceptance": [
-        "specy-road integrity prints new-suppression: <path>:<line> for each line added by REF, in any file, that contains noqa, type: ignore, pragma: no cover, pylint: disable, eslint-disable, @ts-ignore, @ts-expect-error or nolint",
-        "For each git-root-relative path in policy.ratchet_paths (read from the integration branch), a diff that adds one or more lines to it prints baseline-widened: <path> +<added lines>; a diff that only removes lines from it prints nothing for that path",
+        "specy-road integrity prints new-suppression: <path>:<line> for each added line that contains noqa, type: ignore, pragma: no cover, pylint: disable, eslint-disable, @ts-ignore, @ts-expect-error or nolint. An added line is a '+' content line of git diff --unified=0 between the merge base and REF, for a path listed by git diff --name-status -z. <path> is that path exactly, with no extra delimiter (a space stays; a trailing tab does not). <line> is the new-side number in the hunk header. The path and that file's diff must be valid UTF-8; a path or file diff that is not is skipped and must not drop findings for any other path. Out of scope: marker search in a diff that is not valid UTF-8; a file git's default diff classifies as binary, including a -diff or binary attribute, a textconv driver or an external diff; submodule gitlinks; and diff behavior that comes only from the caller's environment or repo-local config",
+        "For each git-root-relative path in policy.ratchet_paths (read from the integration branch), a diff that adds one or more lines to it, counted as in A1 (text hunk '+' lines of a valid UTF-8 diff, under A1's scope bounds), prints baseline-widened: <path> +<added lines>; a diff that only removes lines from it prints nothing for that path",
         "sr/roadmap/orchestration.yaml lists constraints/clone-baseline.json, constraints/test-private-imports-baseline.txt, constraints/mutation-baseline.json and constraints/file-limits.yaml under policy.ratchet_paths",
         "Each finding form in A1-A2 has a test against a fixture git repository asserting the exact output line and exit 1; a removal-only diff gives exit 0"
       ],
@@ -250,7 +250,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.8_verified-pre-existing-claims_01de268c-c69c-411d-b712-e41c38a1056c.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip",
       "touch_zones": [
         "specy_road/review_files.py",

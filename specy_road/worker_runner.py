@@ -16,6 +16,8 @@ import json
 import os
 import subprocess
 import sys
+import time
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 
@@ -32,8 +34,10 @@ from specy_road.worker_process import (  # noqa: F401 — pid_alive/pid_verified
     start_token,
 )
 from specy_road.worker_state import (
+    FLAG_STALLED,
     WorkerError,
     WorkerRecord,
+    _now,
     append_event,
     load_record,
     mutate,
@@ -42,6 +46,10 @@ from specy_road.worker_state import (
     workers_dir,
     workers_lock,
 )
+
+
+#: ``last_output_at`` is written at most this often: each write is a mutate under the workers lock.
+OUTPUT_MARK_SECONDS = 5.0
 
 
 def log_path(repo_root: Path, worker_id: str) -> Path:
@@ -109,8 +117,11 @@ def spawn(repo_root: Path, rec: WorkerRecord, launch: Launch, *, resumed: bool =
 
 
 def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = False,
-        harness_pythonpath: str | None = None) -> int:
-    """The wrapper body, in the foreground. Returns the harness's exit code."""
+        harness_pythonpath: str | None = None, clock: Callable[[], float] = time.monotonic) -> int:
+    """The wrapper body, in the foreground. Returns the harness's exit code.
+
+    ``clock`` is read once per stdout line to throttle ``last_output_at`` writes.
+    """
     rec = load_record(repo_root, worker_id)
     adapter = adapter_for(rec.harness)
     log = log_path(repo_root, worker_id)
@@ -138,6 +149,9 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             return 127
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
+            # A new turn is a new silence: measured from the launch, not the last turn's output.
+            r.last_output_at = _now()
+            r.flags = [f for f in r.flags if f != FLAG_STALLED]
         mutate(repo_root, rec, seen)
         append_event(repo_root, rec, "launched", source="system", summary=f"started {launch.argv[0]} (pid {proc.pid})",
                      detail={"argv0": launch.argv[0], "harness": rec.harness, "resumed": resumed})
@@ -148,7 +162,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except (BrokenPipeError, OSError) as e:   # the harness quit before reading its prompt
                 raw.write(f"[wrapper] harness closed stdin early: {e}\n")
         assert proc.stdout is not None
-        first = True
+        first, marked = True, None
         for line in proc.stdout:
             raw.write(line)
             raw.flush()
@@ -156,11 +170,32 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 first = False
                 append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
+                marked = _output_seen(repo_root, rec, marked, clock())
                 _consume(repo_root, rec, adapter, line, launch)
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
     return _finish(repo_root, rec, code, before)
+
+
+def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
+    """Write ``last_output_at`` and drop ``stalled`` unless the last write is under five seconds old
+    and the record is not flagged ``stalled``.
+
+    A threshold under the window can flag a worker between two writes; its next
+    line must still clear the flag, and writes the time too, so the next sweep
+    measures a new silence from this line. ``marked`` and ``now`` are clock
+    readings; returns the reading of the last write.
+    """
+    if (marked is not None and now - marked < OUTPUT_MARK_SECONDS
+            and FLAG_STALLED not in load_record(repo_root, rec.worker_id).flags):
+        return marked
+
+    def fn(r: WorkerRecord) -> None:
+        r.last_output_at = _now()
+        r.flags = [f for f in r.flags if f != FLAG_STALLED]
+    mutate(repo_root, rec, fn)
+    return now
 
 
 def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch) -> None:

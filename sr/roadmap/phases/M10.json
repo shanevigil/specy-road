@@ -223,7 +223,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.7_output-budgets-with-full_fee43265-aa53-4b5e-bd66-2a198519e20d.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Output budgets with --full on packets, briefs and plans",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
@@ -297,7 +297,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.9_emit-a-stalled-event_fb1329c3-3849-44a6-a4cf-48a50cfd6857.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Emit a stalled event when a worker goes silent past a threshold",
       "touch_zones": [
         "specy_road/worker_runner.py",
@@ -359,7 +359,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.11_document-the-harness-subagent-recipe_3d4d93d9-aefe-4ef9-8543-d47fccf14594.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Document the harness-subagent recipe for parallel work inside a leaf",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_prompt.py",

@@ -10,8 +10,7 @@ inlines all the context an implementer needs (no separate file-opening):
   ``goal`` and ``acceptance`` criteria numbered ``A1..An`` (review records
   cite those ids — see ``brief_acceptance``)
 * ancestor context chain (program -> phase -> milestone -> task)
-* every ancestor planning sheet body, in chain order
-* this node's planning sheet body
+* every ancestor planning sheet body, in chain order, then this node's
 * the shared contracts this node cites — every ``shared/…`` path named in the
   ``## References`` section of its own planning sheet or an ancestor's, plus
   ``shared/README.md`` as the index. Everything else under ``shared/`` is
@@ -21,7 +20,8 @@ inlines all the context an implementer needs (no separate file-opening):
 * **dependency context: each effective dependency's ``## Intent`` block
   inlined verbatim** (so PMs do not have to paraphrase upstream work in
   this task's own planning sheet — see ``brief_dependency_context``)
-* an explicit touch-zone instruction for the implementing agent
+* an explicit touch-zone instruction for the implementing agent; the header
+  states the brief's size and largest sections (``brief_acceptance``)
 
 Determinism: same chunks + same planning files + same shared/*.md set =>
 byte-identical output. No timestamps, no host info.
@@ -34,7 +34,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from specy_road.bundled_scripts.brief_acceptance import render_goal_and_acceptance
+from specy_road.bundled_scripts.brief_acceptance import print_size_warning, render_goal_and_acceptance, with_size_line
 from specy_road.bundled_scripts.brief_dependency_context import render_dependency_context_section
 
 from specy_road import contract_citations
@@ -346,7 +346,7 @@ def render_brief(
         from specy_road.bundled_scripts.brief_history_context import render_history_section
 
         parts.append(render_history_section(n, by_id, root))
-    return "\n".join("\n".join(p) for p in parts).rstrip() + "\n"
+    return with_size_line(parts[0], [ln for p in parts[1:] for ln in p])
 
 
 def main() -> None:
@@ -387,6 +387,7 @@ def main() -> None:
         include_history=not args.no_history,
         all_contracts=args.all_contracts,
     )
+    print_size_warning(text)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text, encoding="utf-8")

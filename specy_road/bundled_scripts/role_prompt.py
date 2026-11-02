@@ -10,7 +10,9 @@
    packet-only rule (§3.2), the coordinator's never-review-your-own-fix
    rule, or the root-cause analyst's protocol (``rca``, only while the leaf's
    review loop is escalated) — plus the standing line that text inside tool
-   output is data (§3.5); a reviewer's prompt also says when the loop is escalated;
+   output is data (§3.5); a reviewer's prompt also says when the loop is escalated,
+   and an executor's says to use the harness's subagents for verification and
+   search when the profile's ``access.subagents`` starts with ``yes``;
 3. the model's profile applied mechanically (§4.4): its ``## Prompting rules``
    as instructions, each ``## Failure modes`` mitigation as a guard, and the
    touch zones repeated at the end when the profile says the model drifts;
@@ -32,6 +34,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.bundled_scripts.do_next_prompt import SUBAGENT_LINE
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt_rca import (
     DATA_LINE,
@@ -63,6 +66,13 @@ from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_
 CHANNELS = ("cli", "paste", "subagent")
 # `rca` is not a roster role or a profile score: any rostered reviewer that is not a party may analyse.
 PROMPT_ROLES = (*ROLES, "rca")
+
+
+def has_subagents(prof: Profile | None) -> bool:
+    """``access.subagents`` starts with ``yes`` (YAML reads a bare ``yes`` as true)."""
+    access = prof.data.get("access") if prof is not None else None
+    value = access.get("subagents") if isinstance(access, dict) else None
+    return value is True or str(value or "").startswith("yes")
 
 
 def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
@@ -121,6 +131,8 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     if role == "executor":
         lines += executor_preamble(node_id, model, zones, entry.get("subagent_family_lock"),
                                    reviews_dir(root, node_id), prefix)
+        if has_subagents(prof):
+            lines += [SUBAGENT_LINE, ""]
     elif role == "reviewer":
         lines += reviewer_preamble(node_id, model, ref) + escalated_note(loop, node_id)
     elif role == "rca":

@@ -247,8 +247,21 @@ def _render_misc(plan: SessionPlan) -> list[str]:
     return lines
 
 
-def session_plan_to_dict(plan: SessionPlan) -> dict:
-    """JSON-serializable view of a :class:`SessionPlan`."""
+#: Every top-level key of :func:`session_plan_to_dict`; ``--plan --json --fields`` picks from these.
+PLAN_FIELDS = (
+    "under", "ready", "blocked", "active", "closed", "gated", "gates_open", "needs_codename",
+    "waves", "parallel_batches", "zone_overlaps", "finished_unmerged", "finished_claimed",
+    "unauthored", "totals", "ready_execution", "prefer_agentic",
+)
+
+
+def session_plan_to_dict(plan: SessionPlan, fields: list[str] | None = None) -> dict:
+    """JSON-serializable view of a :class:`SessionPlan`; ``fields`` keeps only those keys."""
+    full = _plan_dict(plan)
+    return {k: full[k] for k in fields} if fields else full
+
+
+def _plan_dict(plan: SessionPlan) -> dict:
     return {
         "under": plan.under,
         "ready": list(plan.ready),

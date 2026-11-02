@@ -22,10 +22,11 @@
     "pgid": { "type": ["integer", "null"], "description": "The wrapper's process group (the wrapper is a session leader, so this is its pid). terminate signals the group and confirms it is gone; a record whose wrapper died but whose group lives is not freed." },
     "harness_pid": { "type": ["integer", "null"], "description": "The harness child the wrapper started, while it runs." },
     "harness_start": { "type": ["string", "null"], "description": "The harness's process start time (ps -o lstart=); with harness_pid, an identity a reused pid cannot share." },
+    "last_output_at": { "type": ["string", "null"], "description": "When the wrapper last read a stdout line from the harness, written at most every five seconds, and at once by the first line after a stalled mark (which that write clears); set to the launch time at the start of each turn. sync and list flag a running worker stalled when it is older than policy.stall_after_seconds." },
     "state": { "enum": ["starting", "running", "idle", "needs_input", "interrupted", "failed", "completed", "handed_off", "terminated"] },
     "flags": {
       "type": "array", "uniqueItems": true,
-      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive"] }
+      "items": { "enum": ["possibly_modified_externally", "needs_reconcile", "wrapper_gone_harness_alive", "stalled"] }
     },
     "lease": {
       "type": "object", "required": ["holder", "since"], "additionalProperties": false,

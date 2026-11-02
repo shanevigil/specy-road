@@ -56,16 +56,18 @@ one. The review gate is the boundary: READY and `completed` approve nothing.
 | `provider_session_id` | The harness's own session/thread/chat id, once seen; what `message`, `resume` and `handoff` use. |
 | `state` | `starting → running → idle` (exit 0, no new READY) or `completed` (a READY that appeared or changed during the turn, for this node, on the worker's branch — the one actually checked out — at HEAD), `failed`, `handed_off`, `terminated`. A `completed` worker still owns its leaf and its `max_workers` slot until `terminate`; only `failed` and `terminated` are closed. A `running` record whose wrapper **and** process group are gone is marked `failed` by the next `delegate` or `sync`, whichever leaf it was on. |
 | `pid` / `wrapper_token` / `pgid` / `harness_pid` / `harness_start` | The wrapper, the random token in its argv, their process group (the wrapper's pid: it is a session leader), and the harness child with its start time. A pid is this worker's wrapper only when its command line carries the resolved repo root, the worker id and the token as whole arguments; a pid our user cannot signal is someone else's. The harness pid counts only with its recorded start time. All are cleared when the wrapper records the exit. |
+| `last_output_at` | When the wrapper last read a stdout line from the harness, written at most every 5 s (each write takes the workers lock), and at once by the first line after a `stalled` mark, which that write clears; set to the launch time at the start of every turn, so a new turn starts a new silence. |
 | `lease.holder` | The single writer: `broker` (specy-road sends turns), `human` (handed off), `native` (adopted; observe only), `none`. |
 | `instruction_epoch` | +1 for every recorded human intervention. |
 | `checkpoint` | Git HEAD and time at the last handoff; `reclaim` and `reconcile` diff from here. |
-| `flags` | `possibly_modified_externally` (a human session returned without hook evidence), `needs_reconcile` (changes outside the touch zones, the brief changed, or the worktree is off the worker's branch), `wrapper_gone_harness_alive` (the wrapper died; the harness or its group did not — the leaf stays owned until `terminate`). |
+| `flags` | `possibly_modified_externally` (a human session returned without hook evidence), `needs_reconcile` (changes outside the touch zones, the brief changed, or the worktree is off the worker's branch), `wrapper_gone_harness_alive` (the wrapper died; the harness or its group did not — the leaf stays owned until `terminate`), `stalled` (`running` with `last_output_at` older than `policy.stall_after_seconds`, default 600: set by `sync` or `list` with one `stalled` event; the next output line clears it, a later silence raises it again, and a worker that stops running loses it). |
 
 Events (`seq`, `type`, `source`, `authority`, `summary`, `epoch`): `started`,
 `launched` (the harness process is up; detail `argv0`, `harness`, `resumed`),
 `first_output` (its first stdout line), `output`, `turn_completed`,
 `completion`, `error`, `message`, `resumed`, `intervention`, `handoff`,
-`reclaim`, `terminated`, `adopted`, `reconcile`. Summaries are at most 500
+`reclaim`, `terminated`, `adopted`, `reconcile`, `stalled` (detail `silent_seconds`, `last_output_at`, and
+`last_summary`, the last event parsed from the harness). Summaries are at most 500
 characters; a transcript never goes in the log.
 
 `authority` says who vouches for an event. `system` is a fact the toolkit

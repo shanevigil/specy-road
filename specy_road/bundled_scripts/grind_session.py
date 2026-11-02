@@ -19,6 +19,7 @@ See exit-code and event contract in ``grind_session_events`` and the guide in
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -289,8 +290,10 @@ def _pin_loop_mode(repo_root: Path, args) -> str | None:
     return None
 
 
-def _emit_plan(emitter: EventEmitter, plan: SessionPlan) -> None:
-    if emitter.as_json:
+def _emit_plan(emitter: EventEmitter, plan: SessionPlan, fields: list[str] | None = None) -> None:
+    if emitter.as_json and fields:   # exactly the selected keys, no event/ts envelope
+        print(json.dumps(session_plan_to_dict(plan, fields)), flush=True)
+    elif emitter.as_json:
         emitter.emit("plan", **session_plan_to_dict(plan))
     else:
         emitter.emit("plan", text=render_session_plan_text(plan).rstrip())
@@ -346,7 +349,7 @@ def run_session(args) -> int:
             repo_root, args.under, allow_unauthored=args.allow_unauthored,
             prefer_agentic=args.prefer_agentic,
         )
-        _emit_plan(emitter, plan)
+        _emit_plan(emitter, plan, args.fields)
         return EXIT_OK
     mode_error = _pin_loop_mode(repo_root, args)
     if mode_error is not None:

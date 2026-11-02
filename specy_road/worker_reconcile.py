@@ -175,18 +175,20 @@ def _gaps(after: int, seqs: list[int], last: int) -> list[list[int]]:
 def sync(repo_root: Path, *, ack: bool = False) -> list[dict[str, Any]]:
     """Per worker, the events after the last acknowledged one; ``ack`` moves the mark.
 
-    Under the workers lock: dead wrappers are closed first so their ``error``
-    is in this delta, and an acknowledgement only ever moves a mark forward,
-    so two coordinators acking at once cannot push one back. ``gaps`` lists the
+    Under the workers lock: dead wrappers are closed and silent ones flagged
+    ``stalled`` first so their ``error`` or ``stalled`` is in this delta, and an
+    acknowledgement only ever moves a mark forward, so two coordinators acking
+    at once cannot push one back. ``gaps`` lists the
     sequence numbers between the mark and the record's ``last_event_seq`` that
     no readable line carries (lost or unreadable, the final one included); a
     worker with only gaps is listed too, and ``ack`` moves its mark past them.
     """
-    from specy_road.worker_ops import sweep_dead_wrappers   # noqa: PLC0415 — ops imports this module
+    from specy_road.worker_ops import sweep_dead_wrappers, sweep_stalled   # noqa: PLC0415 — ops imports this module
 
     path = _sync_path(repo_root)
     with workers_lock(repo_root):
         sweep_dead_wrappers(repo_root)
+        sweep_stalled(repo_root)   # after the sweep: a dead wrapper is failed, not stalled
         marks = sync_marks(repo_root)
         now = _now()
         out = []

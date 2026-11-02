@@ -262,3 +262,35 @@ def test_acceptance_ids_skip_blank_entries() -> None:
 
     assert acceptance_ids({"acceptance": ["x", "  ", "y"]}) == ["A1", "A2"]
     assert acceptance_ids({}) == []
+
+
+# --- size line and warning (A2) ----------------------------------------------
+
+
+def test_render_brief_header_states_its_size_and_largest_sections() -> None:
+    by_id = gb.index(gb.load_nodes(DOGFOOD))
+    text = gb.render_brief("M0.3", by_id, repo_root=DOGFOOD)
+    line = text.splitlines()[4]
+    assert line.startswith(f"_Size: {len(text.encode('utf-8'))} bytes. Largest sections: ")
+    # three sections, largest first; inlined sheets' own `## Intent` headings are not sections
+    assert line.count("` ") == 3 and "`## 4. Shared contracts (cited)`" in line and "Intent" not in line
+
+
+def test_size_warning_names_the_largest_sections_past_the_threshold(capsys) -> None:
+    from specy_road.bundled_scripts.brief_acceptance import SIZE_WARN_BYTES, size_warning
+
+    small = gb.render_brief("M0.2", gb.index(gb.load_nodes(DOGFOOD)), repo_root=DOGFOOD)
+    assert size_warning(small) is None
+    big = "# b\n\n## 1. Small\n\nx\n\n## 2. Huge\n\n" + "y" * SIZE_WARN_BYTES + "\n"
+    warning = size_warning(big)
+    assert warning.startswith(f"warning: brief is {len(big)} bytes (over {SIZE_WARN_BYTES})")
+    assert "`## 2. Huge` (" in warning and warning.index("Huge") < warning.index("Small")
+
+
+def test_main_prints_the_size_warning_on_stderr(monkeypatch, capsys) -> None:
+    big = "# b\n\n## 1. Huge\n\n" + "y" * 65536 + "\n"
+    monkeypatch.setattr(gb, "render_brief", lambda *a, **k: big)
+    monkeypatch.setattr(sys, "argv", ["generate_brief", "M0.2", "--repo-root", str(DOGFOOD)])
+    gb.main()
+    out = capsys.readouterr()
+    assert out.out == big and "warning: brief is" in out.err and "`## 1. Huge`" in out.err
