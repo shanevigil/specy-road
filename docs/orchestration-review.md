@@ -82,6 +82,25 @@ process does not hold. Still self-attested: the session flags inside a signed re
 
 Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id, or after `escalate_review_rounds` rounds, an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
 
+## The hand-off directory in a worktree
+
+`work/reviews/<NODE_ID>/` is one directory: the **main checkout's**, whichever
+worktree a command runs in. `review-packet`, `review record`, `handoff status`,
+`mark-implementation-reviewed` and `worker delegate` all resolve it through
+one function, which reads the linked worktree's `.git` file (and the
+`commondir` it points to) instead of running git, so a sandboxed process that
+git refuses to serve still finds the same directory. A worktree's own
+`work/reviews/` is never read. A project nested below the git root (`sr/`)
+keeps its directory at the same place under the main checkout; a separate
+clone has its own.
+
+That directory is the one path a reviewer must be able to write: `review
+record` files the verdict there. The reviewer prompt names it, absolute, as
+the **writable root**, so a harness sandboxed to the leaf's worktree can be
+launched with it as a writable root (Claude Code `--add-dir`, as below);
+without it the record cannot be filed. The executor prompt names the same
+directory for `READY-<agent>.md`.
+
 ## Reviewer launch mode
 
 A reviewer is a fresh session reading a branch it did not write, so that branch

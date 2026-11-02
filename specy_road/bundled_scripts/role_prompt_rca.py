@@ -85,6 +85,11 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         "The packet is gitignored, so file-search and glob tools may not list it: open that "
         f"absolute path directly (`ls {packet}`).",
         "",
+        f"**Writable root:** `{packet.parent}` is the one path you must be able to write. It is the main checkout's "
+        "hand-off directory, the same from every worktree; `review record` files your verdict there, so write your "
+        "notes there too, as `notes-<your roster id>.md` (a `REVIEW-` name would be read as a record). A harness sandboxed to the leaf's worktree must be launched with it as a writable "
+        "root (Claude Code: `--add-dir`), or the record cannot be filed.",
+        "",
     ]
 
 

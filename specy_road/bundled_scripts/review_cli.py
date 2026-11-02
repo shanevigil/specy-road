@@ -32,7 +32,7 @@ from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
     HUMAN, REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
     list_reviews, load_review, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
-    review_path, round_span, write_review,
+    review_path, reviews_root, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_pre_existing import cmd_check_pre_existing
@@ -210,7 +210,7 @@ def cmd_handoff_status(ns: argparse.Namespace) -> int:
             print("Workers: " + ", ".join(
                 f"{w.worker_id} ({w.node_id} {w.harness} {w.state}, lease {w.lease.get('holder')})" for w in workers))
         if not out:
-            print("No hand-offs under work/reviews/.")
+            print(f"No hand-offs under {reviews_root(root)}.")
         else:
             print("\n".join(line for st in out for line in _render(st)))
     # A sweep only reports. For one named node a polling script reads the exit:

@@ -62,35 +62,34 @@ class ReviewFile:
         return not self.errors
 
 
-def reviews_root(repo_root: Path) -> Path:
-    """``work/reviews`` in the **main** worktree, whichever worktree asks.
-
-    ``work/reviews/`` is gitignored, so each linked worktree would otherwise
-    have its own empty copy: an executor in a worktree hands off into the
-    coordinator's checkout, and the gate run from that worktree must read the
-    same directory. Only a *linked* worktree is redirected (its git dir is not
-    the common one); a project nested below the git root (``sr/``) or a
-    fixture inside another checkout keeps its own ``work/``, at the same
-    place relative to the main worktree.
-    """
-    common = git_text(["rev-parse", "--path-format=absolute", "--git-common-dir"], repo_root)
-    gitdir = git_text(["rev-parse", "--path-format=absolute", "--git-dir"], repo_root)
-    top = git_text(["rev-parse", "--show-toplevel"], repo_root)
-    if not common or not gitdir or not top or Path(common).name != ".git" or Path(gitdir) == Path(common):
-        return repo_root / REVIEWS_REL
+def _main_checkout(top: Path) -> Path | None:
+    """The main worktree of the linked worktree at ``top``, from ``.git`` and ``commondir``: git is never run,
+    so a process git refuses to serve (a sandbox, an ownership check) finds what every other command does."""
     try:
-        prefix = Path(repo_root).resolve().relative_to(Path(top).resolve())
-    except ValueError:
-        return repo_root / REVIEWS_REL
-    return Path(common).parent / prefix / REVIEWS_REL
+        line = (top / ".git").read_text(encoding="utf-8").strip() if (top / ".git").is_file() else ""
+    except OSError:
+        return None
+    gitdir = Path(top, line.removeprefix("gitdir:").strip())   # absolute, or relative to top
+    try:
+        common = Path(gitdir, (gitdir / "commondir").read_text(encoding="utf-8").strip()).resolve()
+    except OSError:   # unreadable or absent: git's own <common>/worktrees/<name> layout, else not a worktree
+        common = gitdir.parent.parent.resolve() if gitdir.parent.name == "worktrees" else None
+    linked = line.startswith("gitdir:") and common and common.name == ".git"   # not bare, not a submodule
+    return common.parent if linked else None
+
+
+def reviews_root(repo_root: Path) -> Path:
+    """``work/reviews`` in the **main** worktree, whichever linked worktree asks: the one resolver, since
+    it is gitignored and each worktree would have its own empty copy. A project nested below the git root
+    (``sr/``) or a fixture inside another checkout keeps its own ``work/``, at the same place."""
+    here = Path(repo_root).resolve()
+    top = next((p for p in (here, *here.parents) if (p / ".git").exists()), None)   # git's own discovery
+    main = _main_checkout(top) if top else None
+    return main / here.relative_to(top) / REVIEWS_REL if main else repo_root / REVIEWS_REL
 
 
 def reviews_dir(repo_root: Path, node_id: str) -> Path:
     return reviews_root(repo_root) / node_id
-
-
-def ready_path(repo_root: Path, node_id: str, agent: str) -> Path:
-    return reviews_dir(repo_root, node_id) / f"{READY_PREFIX}{agent}.md"
 
 
 def review_path(repo_root: Path, node_id: str, model: str) -> Path:
