@@ -73,7 +73,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
 | `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
 | `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Agentic-led | Not Started |
-| `M8.7` | Runtime verification of the harness facts against installed binaries | task | Human-led | Not Started |
+| `M8.7` | Runtime verification of the harness facts against installed binaries | task | Agentic-led | Not Started |
 | `M9` | Regression prevention | phase | — | Complete |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Complete |
 | `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Complete |
@@ -112,13 +112,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.3` | specy-road's own runtime directories never fail the clean-tree checks | task | Agentic-led | Not Started |
 | `M11.4` | max_workers counts live workers across checkouts and applies to resumes | task | Agentic-led | Not Started |
 | `M11.5` | Pickup's stale-claim check tests the local branch and never advises deleting a live claim | task | Agentic-led | Complete |
-| `M11.6` | worker reconcile judges a worker against the leaf's current contract | task | Agentic-led | Not Started |
+| `M11.6` | worker reconcile judges a worker against the leaf's current contract | task | Agentic-led | Complete |
 | `M11.7` | review delegate runs a rostered reviewer like worker delegate runs an executor | task | Agentic-led | Not Started |
 | `M11.8` | An opt-in delta review packet for small fix rounds | task | Agentic-led | Not Started |
 | `M11.9` | Acceptance items a human must satisfy are marked and handled as such | task | Agentic-led | Not Started |
 | `M11.10` | edit-node can add and remove single list entries | task | Agentic-led | Complete |
 | `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Complete |
-| `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Not Started |
+| `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Complete |
 | `M11.13` | A milestone gets one full review of its combined change before it is marked complete | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

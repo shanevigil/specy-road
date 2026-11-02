@@ -15,7 +15,7 @@
     {
       "acceptance": [
         "A tracked harness-facts fixture (one record per harness: version, headless command, session flags, permission example, instruction files and size guidance, skill dirs, hooks, autonomous git actions and switches, model families, quota behaviour, evidence with labels) validates against a schema",
-        "refresh-profiles renders model-profiles/ and the executor command templates from the fixture; hand edits to rendered files are reported as drift",
+        "refresh-profiles renders two regions from the harness-facts fixture, and a hand edit to either is drift. Executor template: for a profile whose family a harness executor_template.renders_cli_for lists, access.cli is that template with {api_id} replaced by the profile's api_id. The only shape this criterion requires is the shipped one: a single-line block-style value indented two spaces (`  cli: <value>`) under a block-style `access:` mapping whose other children are indented two spaces. A missing `  cli:` line under that mapping is inserted at that indentation. --render rewrites that line so the parsed access.cli equals the rendered value and every other byte stays unchanged. README: the model-profiles harness block between the harness-facts markers is rewritten from the fixture. A README with no block is behind, and --check exits 0 for behind. Drift is a parseable profile whose access.cli differs from the rendered value, or marker bytes that differ from the rendered block. --check exits 1 on drift. --render exits 0 only when every file it changes parses and matches. Any other layout (folded or literal scalar, flow mapping, or any other indentation) may be rewritten only when that same parse-and-match result holds; otherwise the file stays byte-identical and --render exits non-zero. A profile whose front matter does not parse is drift. Round-tripping every YAML encoding is out of scope.",
         "A version-bump diff of --version, --help and inventories is classified before a refresh is accepted; a new identifier containing plan, memory, task, todo, worktree, branch, commit, push, pr, background, delegate, cloud, schedule, review, resume, fork or autopilot fails the diff until it is assigned a relationship"
       ],
       "codename": "harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps",
@@ -162,7 +162,7 @@
       ],
       "codename": "runtime-verification-of-the-harness-facts-against-installed-binaries",
       "dependencies": [],
-      "execution_milestone": "Human-led",
+      "execution_milestone": "Agentic-led",
       "id": "M8.7",
       "node_key": "431d31bb-d8bd-4b7f-8259-66c9c756be94",
       "notes": "Deferred past 0.3.1rc2: if rc2 feedback is to ship, 0.3.1 goes to PyPI and this lands in 0.3.2; otherwise it goes into rc3.",
