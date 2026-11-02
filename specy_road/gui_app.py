@@ -8,13 +8,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 
 from specy_road.gui_app_api import make_api_router  # noqa: E402
+from specy_road.gui_app_routes_workers import register_worker_routes
 
 _PKG_DIR = Path(__file__).resolve().parent
 _STATIC_DIR = _PKG_DIR / "pm_gantt_static"
@@ -35,6 +36,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(make_api_router())
+    workers = APIRouter(prefix="/api")
+    register_worker_routes(workers)
+    app.include_router(workers)
 
     if _STATIC_DIR.is_dir():
         app.mount(

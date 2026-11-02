@@ -122,6 +122,11 @@ const WorkNotesDrawer = lazy(() =>
     default: m.WorkNotesDrawer,
   })),
 );
+const WorkersDrawer = lazy(() =>
+  import("./components/WorkersDrawer").then((m) => ({
+    default: m.WorkersDrawer,
+  })),
+);
 const BrainstormDrawer = lazy(() =>
   import("./components/BrainstormDrawer").then((m) => ({
     default: m.BrainstormDrawer,
@@ -215,6 +220,7 @@ export default function App() {
     null,
   );
   const [workNotesOpen, setWorkNotesOpen] = useState(false);
+  const [workersOpen, setWorkersOpen] = useState(false);
   /** When set, Vision / Constitution need human content beyond blank or starter templates. */
   const [govCompletion, setGovCompletion] = useState<{
     vision: boolean;
@@ -1585,6 +1591,15 @@ export default function App() {
                 <button
                   type="button"
                   className="app-header-doc-btn"
+                  onClick={() => setWorkersOpen(true)}
+                >
+                  Workers
+                </button>
+              </div>
+              <div className="app-header-doc-slot">
+                <button
+                  type="button"
+                  className="app-header-doc-btn"
                   // Re-pressing raises and un-minimizes rather than doing
                   // nothing, which is what the button appears to promise once
                   // the window can be sent to the dock.
@@ -1772,6 +1787,10 @@ export default function App() {
         <WorkNotesDrawer
           open={workNotesOpen}
           onClose={() => setWorkNotesOpen(false)}
+        />
+        <WorkersDrawer
+          open={workersOpen}
+          onClose={() => setWorkersOpen(false)}
         />
         <BrainstormDrawer
           open={brainstormOpen}

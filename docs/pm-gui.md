@@ -9,6 +9,12 @@ The supported **PM dashboard** is a **FastAPI** server plus a **prebuilt React**
 - **CLI:** `specy-road gui` starts Uvicorn with the FastAPI app. Install optional dependencies with `pip install 'specy-road[gui]'` or `'specy-road[gui-next]'` (same dependency sets; see `pyproject.toml`).
 
 - **Archive drawer:** the toolbar's **Archive** button lists archived subtrees, offers eligible ones, and restores them. Routes live in [`specy_road/gui_app_routes_archive.py`](../specy_road/gui_app_routes_archive.py); every write carries the usual `X-PM-Gui-Fingerprint` token because archiving moves roadmap files. Two preferences under **Settings → Completed work** control the default Hide Complete state (a view filter) and auto-archiving (which moves files). See [Archiving](archiving.md).
+- **Workers drawer:** the header's **Workers** button shows what each worker did, step by step, without reading the JSONL. It reads the worker records and event logs under the **main** worktree's `work/.workers/` (gitignored; see [Orchestration workers](orchestration-workers.md)) and **never writes** there: no stall sweep, no `sync --ack`. Workers are grouped by leaf; each row shows its attempt, harness/model, state and total cost (`$?` when no `usage` event reported one, never `$0`). Selecting a worker shows:
+  - a **phase bar** for the latest turn — delegated → launched → first output → turn end → acked, each segment sized by its share of the known total and listed with its seconds (`unknown` when a boundary event is missing); the same numbers as `specy-road worker timeline`;
+  - the worker's **usage** totals (the same sums as `specy-road worker usage`);
+  - the **event list**, with tool-call lines (Claude's `(tool use)`, Cursor's `tool call …`, Codex's command/file/MCP/web-search items) labelled `tool`, and **stall markers** on `stalled` events plus a `stalled ×N` badge when any exist.
+
+  Routes, both read-only, in [`specy_road/gui_app_routes_workers.py`](../specy_road/gui_app_routes_workers.py): `GET /api/workers` (one row per worker: id, node, harness, model, state, attempt, flags, last event, total cost) and `GET /api/workers/{id}/events` (that row plus `events`, `phases` in seconds and `usage` totals; 404 for an unknown id). The drawer reloads when opened and on **Refresh**.
 - **Last worked column:** the outline shows when each leaf was last worked on, **derived from git history** (no stored file) via the `activity` map on `GET /api/roadmap`; see [Archiving](archiving.md#last-worked-on).
 
 ## How to use it and install it
