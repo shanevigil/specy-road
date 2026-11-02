@@ -119,11 +119,12 @@
         "specy_road/specyrd_init.py",
         "specy_road/bundled_scripts/refresh_stubs.py",
         "specy_road/bundled_scripts/upgrade.py",
-        "specy_road/context_meter.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "specy_road/templates/specyrd/",
         "docs/install-and-usage.md",
-        "tests/"
+        "tests/",
+        "specy_road/agents_md_block.py",
+        "specy_road/specyrd_skills.py"
       ],
       "type": "task"
     },
