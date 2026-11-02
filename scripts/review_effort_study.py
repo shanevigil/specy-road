@@ -157,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
     add_repo_root_arg(p)
     ns = p.parse_args(argv)
     root = resolve_repo_root(ns)
-    out = ns.output or root / "work" / "effort-study"
+    out = (ns.output or root / "work" / "effort-study").resolve()   # each run's cwd is its own directory
     try:
         runs = plan(root, ns.model, ns.levels, ns.nodes, ns.max_runs)
     except StudyError as e:

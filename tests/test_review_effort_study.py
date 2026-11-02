@@ -17,9 +17,11 @@ _spec = importlib.util.spec_from_file_location("review_effort_study", SCRIPT)
 study = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(study)
 
-# Records its arguments in its working directory (the run's own) and answers with a verdict block.
+# Records its arguments in its working directory (the run's own), reads the prompt file it is given
+# (its last argument; a missing file fails the run), and answers with a verdict block.
 FAKE = """import pathlib, sys
 pathlib.Path("argv.txt").write_text(" ".join(sys.argv[1:]))
+assert "this replay files nothing" in pathlib.Path(sys.argv[-1]).read_text()
 print("notes\\n```yaml\\nverdict: block\\nblock_reasons: [\\"A1 fails\\", \\"no test\\"]\\n```")
 """
 PACKET = "# Review packet: `M1.1`\n\n- **Commit under review:** `abc1234def` (`feature/rm-x`)\n"
@@ -68,6 +70,15 @@ def test_flag_harness_passes_each_level_through_effort_and_writes_one_row_per_ru
     assert argv.startswith("-c model_reasoning_effort=medium ") and argv.endswith("prompt.md")
     prompt = (root / "study" / "runs" / "M1.1" / "sol-medium" / "prompt.md").read_text()
     assert "this replay files nothing" in prompt and prompt.rstrip().endswith("(`feature/rm-x`)")
+
+
+def test_relative_output_dir_still_hands_each_reviewer_a_readable_prompt(tmp_path: Path, monkeypatch) -> None:
+    root = make_project(tmp_path, [with_root(reviewer("sol", "codex", "{effort} {prompt}"), tmp_path)])
+    monkeypatch.chdir(root)
+    assert study.main(["--model", "sol", "--levels", "high", "medium", "M1.1", "--repo-root", str(root),
+                       "-o", "rel-study"]) == 0
+    with (root / "rel-study" / "results.csv").open(encoding="utf-8") as f:
+        assert {(r["verdict"], r["exit_code"]) for r in csv.DictReader(f)} == {("block", "0")}
 
 
 def test_cursor_level_swaps_the_effort_suffix_of_the_model_id(tmp_path: Path) -> None:
