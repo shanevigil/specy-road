@@ -1,6 +1,7 @@
 # Implementation summary: M10.9 — emit a stalled event when a worker goes silent
 
-Branch `feature/rm-emit-a-stalled-event`; implementation commit `3b649f6`.
+Branch `feature/rm-emit-a-stalled-event`; implementation commits `3b649f6` (worker, sweep, docs, tests)
+and `abb7748` (orchestration schema key and its test).
 
 ## What changed, per acceptance item
 
@@ -30,17 +31,15 @@ Branch `feature/rm-emit-a-stalled-event`; implementation commit `3b649f6`.
   `docs/orchestration.md`: `policy.stall_after_seconds` row in the policy
   table. Tests below use fake clocks (`_clock` readings, `now=`).
 
-## Open: the policy key cannot be set yet (outside the touch zones)
+## Policy key in the orchestration schema
 
 `specy_road/templates/project/schemas/orchestration.schema.json` declares
-`policy` with `additionalProperties: false`. A `roadmap/orchestration.yaml`
-that sets `policy.stall_after_seconds` is therefore rejected
-(`policy: Additional properties are not allowed ('stall_after_seconds' was
-unexpected)`, checked with `parse_orchestration_text`). Until that schema
-gains the key, only the default 600 applies, though the docs present the key
-as settable. The fix is one property (`integer`, `minimum` 1, "Default 600")
-in that file plus a test that an override takes effect. That file is not in
-M10.9's touch zones, so READY is held.
+`policy` with `additionalProperties: false`. Before `abb7748` it rejected a
+`roadmap/orchestration.yaml` that set `stall_after_seconds`, so only the
+default applied. The touch zones were widened to take that file, and it now
+declares `policy.stall_after_seconds` (integer, minimum 1, default 600). The
+toolkit roadmap's own copy, `sr/schemas/orchestration.schema.json`, is
+outside the zones and was left alone; it already differed from the template.
 
 ## Render
 
@@ -56,11 +55,11 @@ every event, `stalled` included. No change was needed in
 `specy_road/schemas/worker-event.schema.json`,
 `specy_road/schemas/worker-record.schema.json`,
 `specy_road/worker_reconcile.py`, `specy_road/bundled_scripts/worker_cli.py`,
+`specy_road/templates/project/schemas/orchestration.schema.json`,
 `docs/orchestration-workers.md`, `docs/orchestration.md`,
 `tests/test_worker_faults.py`. Untouched from the list:
 `specy_road/bundled_scripts/worker_cli_render.py` (above),
-`tests/test_worker_state.py`. Needed and outside:
-`specy_road/templates/project/schemas/orchestration.schema.json`.
+`tests/test_worker_state.py`.
 
 M10.5 coordination: no edit to `worker_ops._cli_for`, the launch/resume
 calls, or the child env / `Popen` in `worker_runner`. The runner changes are
@@ -68,7 +67,7 @@ in the `seen` mutate, the read loop and a new function below `run`.
 
 ## Verification
 
-- `pytest tests/test_worker_faults.py tests/test_worker_state.py`: 14 passed
+- `pytest tests/test_worker_faults.py tests/test_worker_state.py`: 15 passed
   (foreground). Only the touched test files were run, as instructed; the full
   suite is the coordinator's.
 - Setting `OUTPUT_MARK_SECONDS` to 0 makes the throttle test fail (checked,
@@ -91,9 +90,11 @@ in the `seen` mutate, the read loop and a new function below `run`.
 - Call in `worker_reconcile.sync` after `sweep_dead_wrappers`, and in `worker_cli.cmd_list` before listing (A2's two commands).
 - `stall_after_seconds: 600` in `DEFAULT_POLICY` (`orchestration_config.py`): A3.
 - Schema: `last_output_at` and flag `stalled` in the record schema, type `stalled` in the event schema (A3).
+- `policy.stall_after_seconds` in the orchestration schema template: lets the documented key be set.
 - Test `test_last_output_at_is_written_at_most_every_five_seconds`: A1 throttle with a fake clock through `run()`.
 - Test `test_a_new_turn_resets_last_output_at_and_the_stalled_mark`: the turn-start reset.
 - Test `test_a_silent_running_worker_is_flagged_once_per_silence`: A2 threshold, one event per silence, clear on output, re-raise, clear on leaving `running`, with `now=`.
 - Test `test_list_and_sync_flag_a_live_silent_worker`: A2 through `worker list` and `worker sync` on a live spawned wrapper.
+- Test `test_policy_stall_after_seconds_overrides_the_default`: a committed `stall_after_seconds: 60` flags at 60 s, not 600.
 - Test helpers `SILENT_THEN_LINES`, `_stamps` (a fake `worker_runner._now` that counts writes), `_turn`, `_stalled`: support for the tests above.
 - Mocks: `monkeypatch` of `worker_runner._clock` and `worker_runner._now` only.
