@@ -52,9 +52,51 @@
   per-harness field table, and the `usage` row in the command table.
 - Tests (A4): see Added.
 
+## Review round 1 (gpt-6.1-sol, block): fixes
+
+- **R1:** a harness that cannot start (`OSError` → exit 127) now also ends the
+  turn with one all-`null` `usage` event. It is written just before the
+  existing `error` event; the error and the `failed` state are unchanged.
+  `test_run_reports_a_missing_binary_as_failed` asserts it.
+- **R2:** `usage_fields` now adds a reported cache-creation (write) bucket to
+  `input_tokens` even when no cache reads are reported. `cached_input_tokens`
+  stays `null` when reads are unreported. The adapter test covers
+  `{input_tokens: 12, cache_creation_input_tokens: 3000}` → `3012 / null`.
+- **R3:** the tests now use recorded, sanitized turn-end lines, in
+  `tests/fixtures/worker_usage/turn_end_lines.json`, with provenance per
+  harness (version, date, command) in the file:
+  - **Claude Code 2.1.312:** the init line and the first two `result` lines of
+    one resumed session from this repo's worker log `w-0008` (2026-10-28).
+  - **Codex 0.165.0:** `codex exec --json --skip-git-repo-check "reply ok"`
+    from an empty temp dir (2026-11-02).
+  - **Cursor `agent` 2026.10.22-27dcf5f:** `agent -p --output-format stream-json
+    --force "reply ok"` from an empty temp dir (2026-11-02, model Grok 4.6
+    High). Its `result` line.
+
+  Sanitizing replaced session, thread, request, run and message ids, the result
+  text and an account flag with `<placeholders>`. The Claude init line keeps
+  only `type`, `subtype`, `model`, `claude_code_version` and `permissionMode`
+  (it carried cwd, memory and socket paths, plugins). Token and cost figures
+  are as recorded.
+
+  The records changed the mapping in one place. Claude reports reasoning as
+  `usage.output_tokens_details.thinking_tokens`, which now fills
+  `reasoning_tokens`; it was `null`.
+
+  They also confirmed the cost design. Across the resume, `total_cost_usd` is
+  the session's running total (1.0474079 → 1.2101441), and the delta matches the
+  line's own `model_usage_since_last_result` cost. `usage` tokens and
+  `num_turns` are per run, so they are not differenced.
+
+  Two inputs in the tests are still constructed, and are marked as such in the
+  tests: Codex `turn.failed`, and a Cursor `result` line with `usage` removed.
+
 ## Touch zones (final)
 
-All nine listed zones were used, and nothing outside them was edited.
+All nine listed zones were used. One path outside them was added in round 1
+because the coordinator asked for recorded fixtures (R3):
+`tests/fixtures/worker_usage/turn_end_lines.json`. The test files are at or near
+the 400-line cap, so the recorded lines could not be inlined.
 
 Not edited:
 - `docs/orchestration-models.md`. The planning sheet's Approach names its
@@ -64,12 +106,12 @@ Not edited:
 
 ## Notes for reviewers
 
-- The sample harness lines in the tests follow each vendor's documented shape.
-  They were not captured from a live run in this session. The Claude `result`
-  line follows the headless docs (`total_cost_usd`, `num_turns`, `usage` with
-  `cache_*_input_tokens`). The Codex line is the `codex exec --json`
-  `turn.completed` shape. Cursor's `result` usage is unverified, which is why
-  both key cases are read and the no-usage line gives all `null`.
+- Cursor's `inputTokens` is read as excluding cache reads (Anthropic-style
+  buckets: input + `cacheReadTokens` + `cacheWriteTokens`). The one recorded
+  line (9323 input, 4864 cache read) cannot prove inclusive or exclusive, so
+  this reading is still an assumption.
+- Codex's recorded line also carries `cache_write_input_tokens` (0). It is not
+  read: Codex's `input_tokens` is already the total input.
 - The Claude cost delta assumes one session per worker. If a human used the
   session between turns (handoff), their spend lands in the next turn's delta.
 - Totals add up what was reported. When some turns are `null` for a figure, the
@@ -79,38 +121,37 @@ Not edited:
 
 ## Verification
 
-All of these were run in the foreground at commit `b4ac17a`:
-- `pytest tests/test_worker_adapters.py tests/test_worker_cli.py` (the brief's verifier): 33 passed.
-- The other `tests/test_worker_*.py` files (cli_fixes, faults, m310_reconcile_status, review_round1/2,
-  runner_safe_path, state): 80 passed.
-- The other tests that import the worker modules or the event log (`test_review_round4_sol*`,
-  `test_review_round5`, `test_review_round6_{runner,ops,policy}`, `test_tool_call_guard`, file-limits):
-  272 passed.
-- `tests/test_cli.py`, `test_context_regressions.py`, `test_enforced_rules_pointers.py`,
-  `test_lean_rules.py`, `test_update_specy_road.py`: 97 passed.
-- `specy-road file-limits`: OK. `ruff check specy_road tests`: clean.
+Round 1, at commit `d256600`, foreground:
+- `pytest tests/test_worker_adapters.py tests/test_worker_cli.py`: 33 passed.
+- `ruff check specy_road tests`: clean. `specy-road file-limits`: OK.
 
-The full `pytest` suite did not finish within the harness's 20-minute limit for a
-background command, and was stopped. It was not run to completion. Before
-merging, the coordinator should run the full suite.
+Round 0 (`b4ac17a`) also ran the other worker tests (80 passed), the other tests
+that use the worker modules (272 passed) and the CLI and doc tests (97 passed).
+The full `pytest` suite has not been run to completion: in round 0 it exceeded
+the harness's 20-minute background limit and was stopped. The reviewer's run
+failed `test_terminate_a_live_worker` with "ps unavailable". It passes here,
+and this change does not touch terminate.
 
 ## Added
 
 - `worker_adapter_parsers.USAGE_FIELDS`: the eight field names in one place, used by the wrapper (all-null fill) and the schema test.
 - `worker_adapter_parsers._num`: guard that turns a non-number, bool or negative value into `null`, so a model-controlled line cannot fail schema validation and drop the event.
-- `worker_adapter_parsers.usage_fields`: the per-harness → shared-shape mapping (A2), including the branch that adds Anthropic-style cache buckets back into `input_tokens`.
+- `worker_adapter_parsers.usage_fields`: the per-harness → shared-shape mapping (A2), including the branch that adds Anthropic-style cache buckets (reads, writes, either alone) back into `input_tokens` (R2) and the `output_tokens_details.thinking_tokens` fallback for `reasoning_tokens` (from the R3 records).
 - `worker_adapter_parsers.usage_text`: one-line rendering shared by the event summary and `worker usage`.
 - `worker_adapters.Parsed.usage`: carries the figures from `parse` to the wrapper without changing existing `detail` shapes.
 - `worker_runner._append_usage`: writes the `usage` event, with the cumulative → delta conversion (A2) and `harness_version` taken from `started`.
 - Branch in `_append_usage`: a total lower than the previous one counts whole. Without it a new session under a custom command would give a negative cost.
 - Branch in `_finish`: an all-`null` `usage` event when the turn reported none, for one event per turn end (A2).
+- Call in `run`'s launch-`OSError` path: the same all-`null` `usage` event before the exit-127 error (R1).
 - `_consume` return value / `usage_logged` in `run`: tells `_finish` whether the turn already logged usage.
 - `worker_cli_render._sum_usage`, `usage`, `usage_lines`: aggregation and text (A3).
 - `worker_cli._records_for`, `cmd_usage`, `usage` subparser: the command (A3). `_records_for` replaces the inline lookup in `cmd_timeline`.
 - Schema `if`/`then` + `$defs/usage`: A1.
 - Mocks: none. Tests use the existing fake-harness scripts.
-- Test `test_each_adapter_reports_turn_usage_in_one_shape` (test_worker_adapters.py): A2 per harness from sample lines, plus camel-case Cursor, bad types → `null`, and generic → no usage.
-- Test `test_usage_events_per_turn_and_the_usage_command` (test_worker_cli.py): A2 through the wrapper (Claude delta 0.05 → 0.03 across a resume, version from init, Codex tokens, all-`null` event on `turn.failed`) and A3 (`--json`, exact text lines, worker-id target, unknown node exits 1).
+- Fixture `tests/fixtures/worker_usage/turn_end_lines.json`: recorded, sanitized turn-end lines per harness with provenance (R3).
+- Test `test_each_adapter_reports_turn_usage_in_one_shape` (test_worker_adapters.py): A2 per harness from the recorded lines (Claude, Codex, Cursor camel case), plus a constructed Cursor line without usage → `null`, a cache-write-only bucket (R2), bad types → `null`, and generic → no usage.
+- Test `test_usage_events_per_turn_and_the_usage_command` (test_worker_cli.py): A2 through the wrapper on the recorded lines (Claude delta 1.0474079 → 0.162736 across the recorded resume, version 2.1.312 from init, recorded Codex turn, all-`null` event on a constructed `turn.failed`) and A3 (`--json`, exact text lines, worker-id target, unknown node exits 1).
 - Test `test_usage_event_schema_needs_every_field_nullable_never_missing` (test_worker_cli.py): A1, where nulls and zeros pass and a missing field, wrong type or missing detail fail.
 - Helper `_turn` (test_worker_cli.py): runs one fake-harness turn through `worker_runner.run`.
+- Extended `test_run_reports_a_missing_binary_as_failed`: asserts the all-`null` usage event before the exit-127 error (R1).
 - Updated expectations (not loosened): three event-sequence assertions in test_worker_adapters.py now include the `usage` event that A2 adds at the turn end.
