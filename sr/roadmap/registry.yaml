@@ -40,6 +40,7 @@ entries:
       - docs/orchestration-workers.md
       - tests/test_worker_adapters.py
       - tests/test_worker_cli.py
+      - tests/fixtures/worker_usage/
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending

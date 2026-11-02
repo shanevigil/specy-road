@@ -77,7 +77,8 @@
         "specy_road/bundled_scripts/worker_cli_render.py",
         "docs/orchestration-workers.md",
         "tests/test_worker_adapters.py",
-        "tests/test_worker_cli.py"
+        "tests/test_worker_cli.py",
+        "tests/fixtures/worker_usage/"
       ],
       "type": "task"
     },
