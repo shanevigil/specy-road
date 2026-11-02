@@ -5,11 +5,11 @@
 - `specy_road/integrity.py`: `compare_integrity` now also reads the lines
   `base..ref` adds and reports two new finding kinds. It takes the changed
   entries from `git diff --raw -z` (modes, blob ids, exact git-root path) and
-  computes each regular file's added lines from its blob pair (`git diff
-  --text --no-textconv --no-ext-diff -U0 <old> <new>`), or from the whole new
-  blob (`git cat-file`) when the old side is not a regular file. No pathspec
-  and no attribute is involved, so each result belongs to exactly its entry's
-  path:
+  computes the added lines of each regular file or symlink from its blob pair
+  (`git diff --text --no-textconv --no-ext-diff -U0 <old> <new>`). When the old
+  side is not the same kind, it uses the whole new blob (`git cat-file`). No
+  pathspec and no attribute is involved, so each result belongs to exactly its
+  entry's path:
   - `new-suppression: <path>:<line>` (A1) — each added line, in any file, that
     contains `noqa`, `type: ignore`, `pragma: no cover`, `pylint: disable`,
     `eslint-disable`, `@ts-ignore`, `@ts-expect-error` or `nolint`. Matching is
@@ -125,10 +125,33 @@ findings.
     exact destination, so no pathspec is involved, and a moved file's existing
     markers stay out of the findings. That behaviour was described since round
     1 and is now pinned by `test_moved_file_keeps_its_existing_suppressions`.
+- Round 8 (A1/A2 rewritten on WIP in c55166d, merged here in 75329c5;
+  gpt-6.1-sol): the new A1 counts the `+` content lines of git's default
+  `-U0` diff, and that diff shows a symlink's target as one such line. Round 7
+  skipped symlinks (mode `120000`), so an added `baseline-link -> target-noqa`
+  at a ratchet path gave nothing. `_changed_files` now keeps regular files and
+  symlinks (`_KIND`) in both passes, and still skips gitlinks and deletions.
+  The old blob is used only when the old side is the same kind. A file/symlink
+  type change keeps git's default semantics, a deletion plus an addition, so
+  every line of the new side counts. A 100644/100755 mode change is an ordinary
+  modification.
+  - How this matches the new A1's wording: `--raw -z` lists the same entries
+    as `--name-status -z` (with modes and blob ids added), and a `-U0`
+    blob-pair diff gives the same `+` content lines as git's default diff of
+    that path for a text file. `--text` also covers files the new A1 puts out
+    of scope (binary by default or by attribute), so it reports more, never
+    less.
+  - Seen in the merge, not this leaf's change: WIP added
+    `policy.stall_after_seconds` to the template orchestration schema without
+    refreshing `sr/schemas/orchestration.schema.json`, so the two copies differ
+    by that key on WIP itself. `ratchet_paths` is in both. Left alone as
+    another leaf's drift.
+  - The local `sr/work/brief-M9.7.md` is an untracked snapshot and still shows
+    the old A1/A2; I worked from the rewritten text in `sr/roadmap/phases/M9.json`.
 
 ## Verification
 
-- Round 7: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 93 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
+- Round 8: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 98 passed (the merge brought more tests into these files). Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -140,7 +163,7 @@ findings.
 ### Helpers
 - `integrity.integration_ratchet_paths` — reads `policy.ratchet_paths` from the integration branch so a leaf cannot drop its own baselines from the list (A2).
 - `integrity._added_lines` — `path -> added lines` over the `--find-renames` entries (A1).
-- `integrity._changed_files` — `(path, old blob or None, new blob)` per `git diff --raw -z` entry whose new side is a regular file; exact paths with no pathspec (R2, round 7), and a non-UTF-8 name drops only itself (round 5).
+- `integrity._changed_files` — `(path, old blob or None, new blob)` per `git diff --raw -z` entry whose new side is a regular file or symlink; exact paths with no pathspec (R2, round 7), and a non-UTF-8 name drops only itself (round 5).
 - `integrity._blob_additions` — added lines of one blob pair, or every line of the new blob when there is no regular old side (round 7).
 - `integrity._patch` — a git diff decoded leniently, so a non-UTF-8 line keeps its count and markers (round 2).
 - `integrity._git_bytes` — raw git stdout, never raises, empty on failure or timeout; `_patch`, `_changed_files` and `_blob_additions` use it (round 5).
@@ -149,14 +172,14 @@ findings.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
 - `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines, over the `--no-renames` entries (A2; round 3).
 - `_BLOB_DIFF` flags — `--text --no-textconv --no-ext-diff`: a blob pair has no path, so no attribute applies, but NUL content and repo-config drivers still could hide lines (round 3).
-- `_REGULAR` — the two regular-file modes; every other new mode is skipped (round 7).
+- `_KIND` — modes whose lines count (`100644`/`100755` file, `120000` symlink); gitlinks and deletions are skipped (round 7; symlinks added in round 8).
 - `_SUPPRESSION`, `_HUNK` regexes — the marker list (A1) and the hunk header's new-side start line.
 
 ### Branches / guards
 - `Finding.line` gains the `new-suppression` and `baseline-widened` forms (A1, A2).
 - `_hunk_additions` ignores each section's header (from `diff --git` to its first `@@`), so header lines are never content (round 6; with blob pairs each patch has one section, so this is a guard).
 - `_git_bytes` returns `b""` when git fails, times out or cannot start, so that file adds nothing.
-- `_changed_files` skips an entry whose new mode is not regular (deletion, submodule, symlink) or whose path is not UTF-8; it treats a non-regular old side as `None`; it stops at a truncated record instead of raising (round 7).
+- `_changed_files` skips an entry whose new mode is not in `_KIND` (deletion, submodule) or whose path is not UTF-8. It treats an old side of a different kind as `None`, so a file/symlink type change counts every new line, as git's default diff does (round 8). It stops at a truncated record instead of raising (round 7).
 - `_blob_additions` drops the empty string after a final newline, so `a\n` is one line.
 - `integration_ratchet_paths` returns `[]` when the policy ref or file is unreadable, and drops non-string entries.
 
@@ -179,3 +202,4 @@ findings.
 - `test_file_renamed_and_its_path_reused_as_a_directory` — round 7, Sol's case 1: `old` renamed to `new.txt` and `old/child.txt` added with `# noqa`; prints only `new-suppression: old/child.txt:1`, exit 1.
 - `test_deleted_baseline_reused_as_a_directory_is_not_widened` — round 7, Sol's case 2: the configured baseline deleted and its name reused as a directory; empty output, exit 0.
 - `test_moved_file_keeps_its_existing_suppressions` — round 7: pins the rename-following kept for suppressions; a moved file with an existing `# noqa` gives exit 0.
+- `test_added_symlink_counts_its_target_as_a_line` — round 8: an added symlink `baseline-link -> target-noqa` at a configured ratchet path prints `baseline-widened: baseline-link +1` and `new-suppression: baseline-link:1`, exit 1.
