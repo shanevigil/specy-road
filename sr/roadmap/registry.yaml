@@ -155,6 +155,7 @@ entries:
       - specy_road/bundled_scripts/roadmap_crud_ops.py
       - specy_road/bundled_scripts/roadmap_crud_argparse.py
       - tests/
+      - specy_road/bundled_scripts/roadmap_crud_chunk_report.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
