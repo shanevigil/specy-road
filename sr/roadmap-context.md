@@ -86,13 +86,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Complete**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Complete**
   - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Complete**
-- `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
+- `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Complete**
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Complete**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Complete**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
-  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
+  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Complete**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Complete**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Complete**
   - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Complete**
@@ -121,6 +121,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
@@ -128,6 +134,7 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M11.11` on `feature/rm-one-readiness-rule` since 2026-11-02
 - `M11.6` on `feature/rm-reconcile-current-contract` since 2026-11-02
+- `M8.1` on `feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` since 2026-11-02
 
 ## Reaching the detail behind this
 

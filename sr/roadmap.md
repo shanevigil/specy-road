@@ -86,13 +86,13 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Complete |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Complete |
 | `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Complete |
-| `M10` | Agent loop performance and observability | phase | — | Not Started |
+| `M10` | Agent loop performance and observability | phase | — | Complete |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Complete |
 | `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | Agentic-led | Complete |
 | `M10.4` | Pin harness discovery mode per profile | task | Agentic-led | Complete |
 | `M10.5` | Per-role effort in model profiles | task | Agentic-led | Complete |
-| `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Agentic-led | Not Started |
+| `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Agentic-led | Complete |
 | `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Complete |
 | `M10.8` | Reviewers launch without repo hooks or MCP | task | Agentic-led | Complete |
 | `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | Agentic-led | Complete |
