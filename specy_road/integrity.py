@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import ast
 import re
+import subprocess
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from specy_road.git_changed_paths import diff_paths
-from specy_road.git_subprocess import git_stdout
+from specy_road.git_subprocess import DEFAULT_TIMEOUT, git_stdout
 from specy_road.orchestration_config import effective_config
 from specy_road.review_policy_ref import policy_source
 
@@ -159,19 +160,31 @@ def integration_ratchet_paths(root: Path) -> list[str]:
 def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, str]]]:
     """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds.
 
-    One diff per changed file, so a file git output cannot decode as UTF-8 loses only its
-    own lines; the path comes from ``--name-status -z``, never from a patch header.
+    One diff per changed file; the path comes from ``--name-status -z``, never from a
+    patch header.
     """
     added: dict[str, list[tuple[int, str]]] = {}
     for paths in _changed_files(root, base, ref):
-        out = git_stdout([
+        lines = _hunk_additions(_patch(root, [
             "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames", "--unified=0",
             base, ref, "--", *(f":(top,literal){p}" for p in paths),
-        ], root)
-        lines = _hunk_additions(out or "")
+        ]))
         if lines:
             added[paths[-1]] = lines
     return added
+
+
+def _patch(root: Path, args: list[str]) -> str:
+    """``git <args>`` stdout decoded leniently; empty on failure.
+
+    Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes
+    strictly: one non-UTF-8 added line would hide the file's markers and line count.
+    """
+    try:
+        r = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else ""
 
 
 def _changed_files(root: Path, base: str, ref: str) -> list[tuple[str, ...]]:

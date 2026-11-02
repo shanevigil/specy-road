@@ -101,10 +101,15 @@ def test_non_utf8_file_in_the_diff_hides_no_other_finding(tmp_path: Path, capsys
     commit(repo, _BASELINE, "a\n", "baseline on dev")
     merge_dev(repo)
     (repo / "legacy.txt").write_bytes(b"caf\xe9\n")
-    git(repo, "add", "legacy.txt")
-    commit(repo, _BASELINE, "a\nb\n", "widen")
+    (repo / _BASELINE).write_bytes(b"a\ncaf\xe9\nb  # noqa\n")
+    git(repo, "add", "legacy.txt", _BASELINE)
+    git(repo, "commit", "-qm", "widen with non-UTF-8 text")
     commit(repo, "src/mod.py", "x = 1  # noqa\n", "suppress")
-    assert _run(repo, capsys) == (1, f"baseline-widened: {_BASELINE} +1\nnew-suppression: src/mod.py:1\n")
+    assert _run(repo, capsys) == (1, (
+        f"baseline-widened: {_BASELINE} +2\n"
+        f"new-suppression: {_BASELINE}:3\n"
+        "new-suppression: src/mod.py:1\n"
+    ))
 
 
 def test_paths_with_spaces_are_reported_and_matched_exactly(tmp_path: Path, capsys) -> None:
