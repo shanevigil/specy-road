@@ -33,7 +33,7 @@ Two costs remain:
 
 ## Not new: `specy_road/worker_lease.py`
 
-The touch zone named `worker_lease.py` as new, but that module already exists: it holds the human `handoff`/`reclaim` lease. The slot lease is a separate section in the same file (now 285 lines), and the module docstring says so. No path outside the touch zones was needed, and the registry schema and `validate` are unchanged.
+The touch zone named `worker_lease.py` as new, but that module already exists: it holds the human `handoff`/`reclaim` lease. The slot lease is a separate section in the same file (now 282 lines), and the module docstring says so. No path outside the touch zones was needed, and the registry schema and `validate` are unchanged.
 
 ## Acceptance
 
