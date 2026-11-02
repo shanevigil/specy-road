@@ -42,20 +42,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: ready-command
-    node_id: M11.12
-    branch: feature/rm-ready-command
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_gate_ready.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - docs/orchestration-review.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: delta-review-packet
     node_id: M11.8
     branch: feature/rm-delta-review-packet
@@ -89,6 +75,85 @@ entries:
       - specy_road/worker_adapters.py
       - specy_road/review_files.py
       - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: milestone-full-review
+    node_id: M11.13
+    branch: feature/rm-milestone-full-review
+    touch_zones:
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/review_gate.py
+      - specy_road/finish_ancestor_rollup.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/
+      - docs/orchestration-review.md
+      - tests/
+      - specy_road/review_target.py
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/bundled_scripts/mark_implementation_reviewed.py
+      - specy_road/orchestration_config.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: context-feedback-pilot
+    node_id: M5.6
+    branch: feature/rm-context-feedback-pilot
+    touch_zones:
+      - docs/agentic-sandbox-runbook.md
+      - docs/design-notes/
+      - specy_road/bundled_scripts/role_prompt.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: runtime-dirs-not-dirty
+    node_id: M11.3
+    branch: feature/rm-runtime-dirs-not-dirty
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/worker_reconcile.py
+      - specy_road/worker_ops.py
+      - specy_road/agent_ignores.py
+      - specy_road/templates/project/
+      - docs/git-workflow.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: human-acceptance
+    node_id: M11.9
+    branch: feature/rm-human-acceptance
+    touch_zones:
+      - specy_road/templates/project/schemas/roadmap.schema.json
+      - sr/schemas/
+      - schemas/
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/finish_task_gates.py
+      - specy_road/bundled_scripts/finish_task.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: pickup-refuses-scaffold-sheet
+    node_id: M11.15
+    branch: feature/rm-pickup-refuses-scaffold-sheet
+    touch_zones:
+      - specy_road/planning_scaffold_check.py
+      - specy_road/bundled_scripts/do_next_task.py
+      - specy_road/bundled_scripts/do_next_available.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: edit-node-names-chunks
+    node_id: M11.17
+    branch: feature/rm-edit-node-names-chunks
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
       - tests/
     started: '2026-11-02'
     owner: savigil
