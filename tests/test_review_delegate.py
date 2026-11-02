@@ -174,6 +174,25 @@ def test_refusals(tmp_path: Path, capsys) -> None:
     assert "unsupported by generic: resume" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("flag,value", [("--retries", "-1"), ("--retries", "1.5"), ("--backoff", "-1"),
+                                        ("--backoff", "nan"), ("--backoff", "inf")])
+def test_invalid_retry_controls_are_refused_before_any_launch(tmp_path: Path, capsys, flag: str, value: str) -> None:
+    repo, spec = _repo(tmp_path)
+    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    assert _run("review", "delegate", "M1.1", "--model", "opus", flag, value, "--repo-root", str(repo)) == 2
+    assert f"argument {flag}" in capsys.readouterr().err
+    assert not spec.with_name("calls.json").exists() and load_run(repo, "M1.1", "opus") is None
+
+
+def test_zero_retries_still_makes_the_first_attempt_and_ends_incomplete(tmp_path: Path, capsys) -> None:
+    repo, spec = _repo(tmp_path)
+    _steps(repo, spec, {"error": CAPACITY, "exit": 1})
+    assert _delegate(repo, "--retries", "0", "--json") == 1             # --backoff 0: no wait, no crash
+    run = json.loads(capsys.readouterr().out)
+    assert len(_calls(spec)) == 1 and [a["capacity"] for a in run["attempts"]] == [True]
+    assert run["state"] == "incomplete" and "capacity error after 1 attempt(s)" in run["reason"]
+
+
 def test_bare_reviewer_launch_tracks_a_session_only_when_asked(tmp_path: Path) -> None:
     prompt = tmp_path / "p.md"
     prompt.write_text("x")

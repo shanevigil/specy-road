@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -320,6 +321,22 @@ def cmd_review_delegate(ns: argparse.Namespace) -> int:
     return 0 if run["state"] == "complete" else 1
 
 
+def _count(text: str) -> int:
+    """``--retries``: a whole number, 0 or more (0 still makes the first attempt)."""
+    n = int(text)
+    if n < 0:
+        raise argparse.ArgumentTypeError(f"must be 0 or more, not {text}")
+    return n
+
+
+def _seconds(text: str) -> float:
+    """``--backoff``: a finite number of seconds, 0 or more."""
+    s = float(text)
+    if not math.isfinite(s) or s < 0:
+        raise argparse.ArgumentTypeError(f"must be a finite number of seconds, 0 or more, not {text}")
+    return s
+
+
 def add_parser(rsub: Any) -> None:
     """``review delegate`` under ``review_cli``'s ``review`` subcommands."""
     sp = rsub.add_parser("delegate", help="Run a rostered reviewer on its harness and wait for its record")
@@ -327,9 +344,9 @@ def add_parser(rsub: Any) -> None:
     sp.add_argument("--model", required=True, help="Roster id (reviewer role, or an active substitute)")
     sp.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     sp.add_argument("--resume", action="store_true", help="Continue the recorded reviewer session for this commit")
-    sp.add_argument("--retries", type=int, default=DEFAULT_RETRIES, metavar="N",
+    sp.add_argument("--retries", type=_count, default=DEFAULT_RETRIES, metavar="N",
                     help=f"Capacity or rate-limit retries (default {DEFAULT_RETRIES})")
-    sp.add_argument("--backoff", type=float, default=DEFAULT_BACKOFF, metavar="SECONDS",
+    sp.add_argument("--backoff", type=_seconds, default=DEFAULT_BACKOFF, metavar="SECONDS",
                     help=f"First retry's wait, doubled each time (default {DEFAULT_BACKOFF:g})")
     sp.add_argument("--worktree", help="Run the reviewer in this checkout (default: this one's git root)")
     sp.add_argument("--json", action="store_true")
