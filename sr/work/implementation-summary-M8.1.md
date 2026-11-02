@@ -125,10 +125,43 @@ Follow-ups outside the zones (not done):
   a `>-` folded scalar with a blank line inside. `--check` exits 1, `--render` exits 0,
   `--check` then exits 0, and the file is byte-identical to the shipped profile.
 
+## Round 3 (escalated; RCA-3, in-scope items only)
+
+A2's acceptance text is unchanged pending the maintainer's decision on RCA-3's rewrite. This
+pass does only the two items in scope under either reading. No YAML encodings were added.
+
+- **R4 — the shipped layout only.**
+  - **What is rewritten.** `render_profile` rewrites only the shipped layout: a block-style
+    `access:` whose children are all one-line keys indented two spaces (`_shipped_layout`).
+    It writes only when the result parses to the original front matter with just
+    `access.cli` changed (`_renders_to`).
+  - **What is left alone.** Any other layout stays byte-identical: a folded or literal `cli`,
+    a flow mapping, four-space or other indentation. `--render` then names the profile
+    (`cannot render …`) and exits 1.
+  - **Unparseable front matter.** A profile whose front matter is missing or not YAML is
+    reported as `drift: … front matter does not parse`. `--check` exits 1, and `--render`
+    exits 1 and leaves the file alone.
+  - **Reverses round 2.** The round-2 whole-value matcher (`_CLI_VALUE`) is gone, because it
+    was an extra encoding.
+  - **Changed test.** `test_render_replaces_a_folded_multi_line_cli_whole` is now
+    `test_render_refuses_a_folded_cli_and_leaves_it_byte_identical`. It asserts exit 1 and
+    unchanged bytes instead of a rewrite. That follows the instruction that every layout
+    other than the shipped single-line shape stays byte-identical. It is a changed
+    expectation, not a removed check.
+  - **New tests.** `test_render_refuses_a_four_space_access_mapping_and_leaves_it_byte_identical`
+    is Sol's R4 input: valid YAML, with `--check` and `--render` both exiting 1 and the bytes
+    unchanged. `test_a_profile_whose_front_matter_does_not_parse_is_drift` covers the parse
+    case. Both share the helper `_render_refuses`.
+- **R5 — `--capture --accept --dry-run`.** It now prints `would accept as …` and writes
+  nothing (`run_capture(dry_run=...)`). The capture CLI test asserts that the accepted files
+  are byte-identical after a `--dry-run` accept.
+- **Docs.** `docs/orchestration-models.md` states the shipped-layout rule and the dry-run
+  behaviour.
+
 ## Verification
 
-- `python -m pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 43 passed (after
-  round 2).
+- `python -m pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 45 passed (after
+  round 3).
 - `python -m pytest -q -x -p no:cacheprovider`: 3018 passed, 2 skipped (18 min, before
   round 1; round 1 reran only the touched test file, as instructed).
 - `python -m specy_road.bundled_scripts.refresh_profiles --check`: exit 0 (this repository
@@ -147,8 +180,13 @@ Follow-ups outside the zones (not done):
   `write_capture`, `CaptureDiff`). Needed for A1–A3.
 - `harness_facts._ACCESS_LINE` and the insert branch in `render_profile` — restore a removed
   `access.cli` (review R1).
-- `harness_facts._ACCESS_BLOCK` / `_CLI_VALUE` (replacing `_CLI_LINE` / `_ACCESS_LINE`) — the
-  whole `access.cli` value, scoped to the `access:` mapping (review R3).
+- `harness_facts._ACCESS_BLOCK` / `_CLI_LINE` — the `access:` mapping and its one-line `cli` key.
+  Round 2's `_CLI_VALUE` was removed in round 3.
+- `harness_facts._shipped_layout` / `_renders_to` — rewrite only the shipped layout, and only
+  when the result parses to the same front matter with just `access.cli` changed (round 3, R4).
+- Unparseable-front-matter drift branch in `plan_render` (round 3).
+- `--dry-run` branch in `refresh_profiles.run_capture` — `--accept --dry-run` writes nothing
+  (round 3, R5).
 - Completeness guard in `classify_capture` — a capture missing a commanded or accepted file is
   refused (review R2).
 - `refresh_profiles._report_render` — `--render` reports only applied updates and exits 1 on
@@ -169,8 +207,8 @@ Follow-ups outside the zones (not done):
   — the accepted captures (A3).
 - `specy_road/templates/project/schemas/harness-facts.schema.json` — the schema (A1).
 - `specy_road/templates/project/model-profiles/README.md` — the rendered harness block (A2).
-- `tests/test_harness_facts.py` — 43 tests (the 3 added in round 1 and the 1 added in round 2
-  are listed under their review rounds):
+- `tests/test_harness_facts.py` — 45 tests. The tests added or changed in rounds 1–3 are listed
+  under their rounds; round 3 also added the `_render_refuses` helper:
   - the fixture validates and covers the roster; each schema rule rejects a broken record;
   - an unverified fact needs no source, and a duplicate id is refused;
   - the shipped files are render-identical;
