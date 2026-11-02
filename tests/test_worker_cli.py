@@ -340,38 +340,35 @@ def _turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines: list[dict], *, 
 def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> None:
     """M10.2 A2/A3: one usage event per turn end, Claude's running cost as a delta; `worker usage` per attempt and node."""
     repo, script = _repo(tmp_path)
-    init = {"type": "system", "subtype": "init", "session_id": "s1", "claude_code_version": "2.1.300"}
-    def result(total: float) -> dict:   # a resumed session reports its whole total, earlier turns included
-        return {"type": "result", "subtype": "success", "result": "ok", "session_id": "s1", "num_turns": 2,
-                "total_cost_usd": total, "usage": {"input_tokens": 10, "cache_read_input_tokens": 90, "output_tokens": 5}}
+    rec = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized
+    init, first, resumed = rec["claude-code"]["lines"]   # one session: the resumed turn reports the session's whole total
     claude = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
-    _turn(repo, script, claude, [init, result(0.05)])
-    _turn(repo, script, claude, [init, result(0.08)])
+    _turn(repo, script, claude, [init, first])
+    _turn(repo, script, claude, [init, resumed])
     codex = ws.create_record(repo, "M1.1", "codex", "sol", repo)
-    _turn(repo, script, codex, [{"type": "thread.started", "thread_id": "t1"}, {"type": "turn.completed", "usage": {
-        "input_tokens": 100, "cached_input_tokens": 40, "output_tokens": 7, "reasoning_output_tokens": 3}}])
-    _turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)
+    _turn(repo, script, codex, rec["codex"]["lines"])
+    _turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
     cu = [e.detail for e in ws.events_since(repo, claude.worker_id) if e.type == "usage"]
-    assert [u["cost_usd"] for u in cu] == [0.05, 0.03] and [u["session_cost_usd"] for u in cu] == [0.05, 0.08]
-    assert cu[1] == {"input_tokens": 100, "cached_input_tokens": 90, "output_tokens": 5, "reasoning_tokens": None,
-                     "cost_usd": 0.03, "cost_is_estimate": True, "num_turns": 2, "harness_version": "2.1.300",
-                     "session_cost_usd": 0.08}
+    assert [u["cost_usd"] for u in cu] == [1.0474079, 0.162736] and [u["session_cost_usd"] for u in cu] == [1.0474079, 1.2101441]
+    assert cu[1] == {"input_tokens": 380001, "cached_input_tokens": 376181, "output_tokens": 2849, "reasoning_tokens": 123,
+                     "cost_usd": 0.162736, "cost_is_estimate": True, "num_turns": 4, "harness_version": "2.1.312",
+                     "session_cost_usd": 1.2101441}
     xu = [e for e in ws.events_since(repo, codex.worker_id) if e.type == "usage"]
-    assert xu[0].detail["reasoning_tokens"] == 3 and xu[0].detail["cost_usd"] is None
+    assert xu[0].detail["reasoning_tokens"] == 0 and xu[0].detail["cost_usd"] is None
     assert set(xu[1].detail.values()) == {None} and xu[1].authority == "worker_suggestion"   # nothing reported: nulls
     capsys.readouterr()
     assert run_worker_cli("worker", "usage", "M1.1", "--json", "--repo-root", str(repo)) == 0
     d = json.loads(capsys.readouterr().out)
     assert [(a["attempt"], a["harness"], a["model"], a["turns"], a["cost_usd"]) for a in d["attempts"]] == [
-        (1, "claude-code", "opus", 2, 0.08), (2, "codex", "sol", 2, None)]
-    assert d["total"] == {"turns": 4, "input_tokens": 300, "cached_input_tokens": 220, "output_tokens": 17,
-                          "reasoning_tokens": 3, "cost_usd": 0.08, "num_turns": 4, "cost_is_estimate": True}
+        (1, "claude-code", "opus", 2, 1.210144), (2, "codex", "sol", 2, None)]
+    assert d["total"] == {"turns": 4, "input_tokens": 1686117, "cached_input_tokens": 1612673, "output_tokens": 16112,
+                          "reasoning_tokens": 4826, "cost_usd": 1.210144, "num_turns": 23, "cost_is_estimate": True}
     assert run_worker_cli("worker", "usage", "M1.1", "--repo-root", str(repo)) == 0
     assert capsys.readouterr().out.splitlines() == [
         "M1.1 usage (2 attempt(s); ? = not reported)",
-        "  attempt 1 w-0001 claude-code 2.1.300/opus, 2 turn(s): in 200 (180 cached), out 10, reasoning ?, $0.0800 est.",
-        "  attempt 2 w-0002 codex/sol, 2 turn(s): in 100 (40 cached), out 7, reasoning 3, $?",
-        "  total, 4 turn(s): in 300 (220 cached), out 17, reasoning 3, $0.0800 est."]
+        "  attempt 1 w-0001 claude-code 2.1.312/opus, 2 turn(s): in 1671333 (1600385 cached), out 16107, reasoning 4826, $1.2101 est.",
+        "  attempt 2 w-0002 codex/sol, 2 turn(s): in 14784 (12288 cached), out 5, reasoning 0, $?",
+        "  total, 4 turn(s): in 1686117 (1612673 cached), out 16112, reasoning 4826, $1.2101 est."]
     assert run_worker_cli("worker", "usage", "w-0002", "--json", "--repo-root", str(repo)) == 0
     assert json.loads(capsys.readouterr().out)["total"]["cost_usd"] is None
     assert run_worker_cli("worker", "usage", "M9.9", "--repo-root", str(repo)) == 1

@@ -160,21 +160,25 @@ def usage_fields(u: Any, *, cost: Any = None, num_turns: Any = None, estimate: b
     ``input_tokens`` counts every input token, cached ones included, and
     ``cached_input_tokens`` the part read from cache: Codex reports it that
     way; Claude's (and Cursor's) ``input_tokens`` leaves out the cache reads
-    and writes, which are added back. Snake and camel case keys are both read.
+    and writes, which are added back. Snake and camel case keys are both read;
+    Claude reports reasoning as ``output_tokens_details.thinking_tokens``.
     """
     u = u if isinstance(u, dict) else {}
+    details = u.get("output_tokens_details") if isinstance(u.get("output_tokens_details"), dict) else {}
 
-    def get(*keys: str) -> int | None:
-        return next((n for n in (_num(u.get(k), whole=True) for k in keys) if n is not None), None)
+    def get(*keys: str, src: dict[str, Any] = u) -> int | None:
+        return next((n for n in (_num(src.get(k), whole=True) for k in keys) if n is not None), None)
 
     inp, cached = get("input_tokens", "inputTokens"), get("cached_input_tokens", "cachedInputTokens")
-    read = get("cache_read_input_tokens", "cacheReadTokens")
-    if cached is None and read is not None:   # separate cache buckets, as Anthropic reports them
-        write = get("cache_creation_input_tokens", "cacheWriteTokens") or 0
-        inp, cached = (None if inp is None else inp + read + write), read
+    read, write = get("cache_read_input_tokens", "cacheReadTokens"), get("cache_creation_input_tokens", "cacheWriteTokens")
+    if cached is None and (read is not None or write is not None):   # separate cache buckets, as Anthropic reports them
+        inp, cached = (None if inp is None else inp + (read or 0) + (write or 0)), read
+    reasoning = get("reasoning_output_tokens", "reasoning_tokens", "reasoningTokens")
+    if reasoning is None:
+        reasoning = get("thinking_tokens", src=details)
     cost = _num(cost)
     return {"input_tokens": inp, "cached_input_tokens": cached, "output_tokens": get("output_tokens", "outputTokens"),
-            "reasoning_tokens": get("reasoning_output_tokens", "reasoning_tokens", "reasoningTokens"),
+            "reasoning_tokens": reasoning,
             "cost_usd": cost, "cost_is_estimate": estimate if cost is not None else None,
             "num_turns": _num(num_turns, whole=True), "harness_version": None}
 

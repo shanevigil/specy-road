@@ -70,12 +70,12 @@ Events (`seq`, `type`, `source`, `authority`, `summary`, `epoch`): `started`,
 `last_summary`, the last event parsed from the harness), `usage` (below). Summaries are at most 500
 characters; a transcript never goes in the log.
 
-The wrapper appends one `usage` event (`worker_suggestion`) per turn end, in the same shape for every harness; a field the harness did not report is `null`, never 0, and a turn that reported nothing (a crash, `turn.failed`, `generic`) still gets one, all `null`:
+The wrapper appends one `usage` event (`worker_suggestion`) per turn end, in the same shape for every harness; a field the harness did not report is `null`, never 0, and a turn that reported nothing (a crash, `turn.failed`, `generic`) still gets one, all `null` (also a harness that could not start). Recorded lines per harness, with provenance: `tests/fixtures/worker_usage/turn_end_lines.json`.
 
 | `usage` detail | Claude Code (`result` line) | Codex (`turn.completed.usage`) | Cursor (`result` line) |
 |---|---|---|---|
-| `input_tokens` / `cached_input_tokens` | all input: `input_tokens` + cache creation + cache reads / cache reads | `input_tokens` / `cached_input_tokens` | `usage` when the line carries one (snake or camel case, read as Claude's), else `null` |
-| `output_tokens` / `reasoning_tokens` | `output_tokens` / `null` | `output_tokens` / `reasoning_output_tokens` | as above / `null` |
+| `input_tokens` / `cached_input_tokens` | all input: `input_tokens` + cache creation + cache reads (each counted when reported) / cache reads | `input_tokens` / `cached_input_tokens` (`cache_write_input_tokens` is not read) | `usage` when the line carries one (snake or camel case, read as Claude's), else `null` |
+| `output_tokens` / `reasoning_tokens` | `output_tokens` / `output_tokens_details.thinking_tokens` | `output_tokens` / `reasoning_output_tokens` | as above / `null` |
 | `cost_usd` / `cost_is_estimate` | this turn's: `total_cost_usd` is the session's running total, so the previous `usage` event's `session_cost_usd` is subtracted (a lower total counts whole); `true`, a client-side estimate | `null` / `null` | `null` / `null` (no cost documented) |
 | `num_turns` / `harness_version` | `num_turns` / the `system/init` line's version | `null` / `null` | `num_turns` if present / `null` |
 
