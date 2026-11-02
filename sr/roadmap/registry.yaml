@@ -99,6 +99,9 @@ entries:
       - sr/schemas/
       - schemas/
       - specy_road/bundled_scripts/finish_task.py
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - specy_road/worker_reconcile.py
+      - specy_road/worker_ops.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

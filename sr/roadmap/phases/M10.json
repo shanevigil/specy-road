@@ -408,46 +408,6 @@
     },
     {
       "acceptance": [
-        "roadmap/git-workflow.yaml accepts track_worker_logs with the values off, events or full (absent means off); validate rejects any other value",
-        "With events, the wrapper mirrors each worker's event log to work/worker-logs/<NODE_ID>/<worker id>.events.jsonl (a tracked path) and finish-this-task commits that directory with the leaf; with full the raw output log is mirrored too; with off nothing is written outside work/.workers",
-        "The ignore rules the toolkit writes keep work/.workers/ and work/.worktrees/ ignored in every mode and never ignore work/worker-logs/",
-        "docs/git-workflow.md documents the key with the default and the size warning; docs/orchestration-workers.md and the work README say where logs live in each mode; tests cover A1 to A3"
-      ],
-      "codename": "a-project-setting-decides",
-      "dependencies": [
-        "77ecca98-cf46-4640-a984-89a62cca9517"
-      ],
-      "execution_milestone": "Agentic-led",
-      "goal": "If we do this, teams that want an audit trail get one without a side system, and teams that do not keep their repo clean",
-      "id": "M10.13",
-      "node_key": "673b14b9-f262-48ea-a804-941fbf405bd1",
-      "parent_id": "M10",
-      "planning_dir": "planning/M10.13_a-project-setting-decides_673b14b9-f262-48ea-a804-941fbf405bd1.md",
-      "sibling_order": 13,
-      "status": "Not Started",
-      "title": "A project setting decides whether agent logs are tracked in git",
-      "touch_zones": [
-        "specy_road/git_workflow_config.py",
-        "specy_road/worker_state.py",
-        "specy_road/worker_runner.py",
-        "specy_road/finish_work_artifacts.py",
-        "specy_road/agent_ignores.py",
-        "specy_road/templates/project/roadmap/git-workflow.yaml",
-        "docs/git-workflow.md",
-        "docs/orchestration-workers.md",
-        "specy_road/templates/project/work/README.md",
-        "tests/test_worker_state.py",
-        "tests/test_finish_work_cleanup.py",
-        "tests/test_agent_ignores.py",
-        "specy_road/templates/project/schemas/git-workflow.schema.json",
-        "sr/schemas/",
-        "schemas/",
-        "specy_road/bundled_scripts/finish_task.py"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
         "When edit-node changes touch_zones on a node that has a claim row in roadmap/registry.yaml, it rewrites that row's touch_zones to the node's new list in the same command, validates, and prints one line naming the claim it updated; a node without a claim is unchanged in behaviour",
         "The finish implementation check's hint and the review packet both read the updated zones without further steps; a test widens a claimed leaf's zones with edit-node and shows a file in the new zone is no longer flagged outside touch zones in the packet",
         "The hint in finish_implementation_check names edit-node as sufficient only because of A1; docs/dev-workflow.md says that editing a claimed leaf's zones updates its claim and should be committed on the integration branch",
