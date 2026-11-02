@@ -250,7 +250,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.8_verified-pre-existing-claims_01de268c-c69c-411d-b712-e41c38a1056c.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip",
       "touch_zones": [
         "specy_road/review_files.py",

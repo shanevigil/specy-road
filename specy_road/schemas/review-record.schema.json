@@ -37,7 +37,7 @@
     "commands_rerun": { "$ref": "#/$defs/notes", "description": "Commands the reviewer ran independently." },
     "verify_pre_existing": {
       "$ref": "#/$defs/notes",
-      "description": "Verifier commands from the READY file that already failed identically on the integration branch; only approving records count, and each failing READY verifier must be named by at least one approving reviewer before the gate can pass."
+      "description": "Verifier commands from the READY file that the reviewer claims already fail on the integration branch. Only approving records count, and a claim clears a failing READY verifier only after `specy-road review check-pre-existing` ran the command twice on the integration tip, both runs exited non-zero, and that tip is still current (work/reviews/<NODE_ID>/PRE-EXISTING.md)."
     },
     "required_changes": { "$ref": "#/$defs/notes" },
     "fresh_session": { "type": "boolean", "description": "The review ran in a session that saw only the review packet." },

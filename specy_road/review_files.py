@@ -342,19 +342,16 @@ def pre_existing_cmds_from_approvals(approvals: list[Any]) -> set[str]:
 
 
 def verifier_gate_problems(ready: ReviewFile | None, approvals: list[Any]) -> list[str]:
-    """Failing READY verifiers with no approving review marking them pre-existing."""
-    if ready is None:
-        return []
-    failing = failing_verifier_entries(ready)
+    """Failing READY verifiers not cleared by an approving review's *verified* pre-existing claim.
+
+    A claim counts once ``review check-pre-existing`` reproduced it on the current
+    integration tip (:mod:`specy_road.review_pre_existing`).
+    """
+    failing = failing_verifier_entries(ready) if ready is not None else []
     if not failing:
         return []
-    covered = pre_existing_cmds_from_approvals(approvals)
-    name = ready.path.name
-    return [
-        f"{name} (executor-reported): verifier `{v['cmd']}` exited {v['exit']}"
-        for v in failing
-        if str(v["cmd"]) not in covered
-    ]
+    from specy_road.review_pre_existing import gate_problems  # it reads files through this module
+    return gate_problems(ready, failing, pre_existing_cmds_from_approvals(approvals))
 
 
 def non_gating_verify_problems(ready: ReviewFile | None) -> list[str]:
