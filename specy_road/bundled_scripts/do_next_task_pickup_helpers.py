@@ -13,7 +13,7 @@ from pathlib import Path
 from specy_road.bundled_scripts.do_next_prompt import write_agent_prompt
 from specy_road.bundled_scripts.do_next_task_self_heal import (
     attempt_self_cleanup,
-    emit_stale_claim_warning,
+    warn_unresolved_rollback,
 )
 from specy_road.bundled_scripts.generate_brief import index as make_index, render_brief
 from specy_road.git_subprocess import commits_behind, local_branch_exists
@@ -166,7 +166,10 @@ def push_and_branch_with_self_heal(
                 git_runner=git_runner,
             )
             if not ok:
-                emit_stale_claim_warning(node_id, codename)
+                warn_unresolved_rollback(
+                    repo_root=repo_root, node_id=node_id, codename=codename,
+                    branch=branch, remote=remote,
+                )
         raise
 
 
