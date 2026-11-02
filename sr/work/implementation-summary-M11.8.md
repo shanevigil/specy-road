@@ -23,7 +23,10 @@
 - **Which approval a delta starts from** (`review_gate.prior_approvals` and
   `delta_basis`): the model's latest approval of another commit of the node that
   counted at its own commit. These are read from `history/` plus the live
-  `REVIEW-*.md`, oldest filing first. A record that names `delta_from` is kept only
+  `REVIEW-*.md`, oldest filing first. Each record is first checked against the
+  brief's acceptance ids with `review_semantic_errors`, because history is loaded
+  without them. So an approval missing an acceptance result is never a basis
+  (round 3). A record that names `delta_from` is kept only
   when an approval already kept is of that commit and the delta from it qualifies
   (`_delta_why`). So a delta approval the gate rejected can never be the start of a
   later delta that would hide the rejected change. If the policy cannot be read,
@@ -33,8 +36,12 @@
   section that tells the reviewer to add `delta_from: "<P>"` and includes that
   reviewer's notes on `P`. The whole diff is inlined (caps 0). A capped diff of a
   delta packet goes to `DIFF-<model>.patch`, so it never overwrites `DIFF.patch`.
-- **`review-packet --full`**: stamps `FULL_MARK` into `PACKET.md`. While that
-  packet is current, no delta packet is built (A2).
+- **`review-packet --full`**: stamps `review_gate.FULL_MARK` into `PACKET.md`.
+  `delta_problem` returns "`review-packet --full` forces a full review" while
+  `PACKET.md` is stamped and is the commit under review's packet. That makes the
+  override part of gate eligibility as well as packet selection: no delta packet
+  is built and no `delta_from` approval counts (A2, round 3). Rebuilding the
+  packet without `--full`, or a new commit, lifts it.
 - **Delivery, per reviewer** (`role_prompt.reviewer_packet`): `prompt --role
   reviewer --model M` builds M's delta packet at prompt time when `delta_basis`
   allows it. It writes `work/reviews/<NODE_ID>/PACKET-M.md` and inlines that file;
@@ -83,9 +90,10 @@ The output of all of these is unchanged.
 
 ## Verification
 
-- `python -m pytest tests/test_delta_review.py -q`: 10 passed. The new
-  ineligible-delta test fails against the previous `review_gate.py` (`c6bb2aea`)
-  and passes now.
+- `.conda/bin/pytest tests/test_delta_review.py -q`: 12 passed.
+  - The round-2 test fails against `review_gate.py` at `c6bb2aea`.
+  - The two round-3 tests fail against the three source files at `d1e585af`.
+  - All of them pass now.
 - `ruff check specy_road tests scripts`: all checks passed.
 - `specy-road file-limits`: OK.
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -121,8 +129,10 @@ Not run:
 - `review_gate.delta_basis`: picks the reviewer's latest such approval and applies the rule; an unreadable policy means a full review.
 - `review_gate._delta_why`: why a `delta_from` approval does not count, given the model's counting priors. The gate and `prior_approvals` share it, so a rejected delta approval is never a basis (A2, round 2).
 - `review_packet._delta_section`: the `## Delta review` header, the `delta_from` instruction and the reviewer's notes (A1).
-- `review_packet.FULL_MARK`: the `--full` stamp that the prompt reads (A2).
-- `role_prompt.reviewer_packet`: builds the reviewer's own delta packet and hands it to that reviewer only.
+- `review_gate.FULL_MARK`: the `--full` stamp. It moved from `review_packet` so `delta_problem` can read it; `review_packet` imports it (A2, round 3).
+- `delta_problem`: a commit-bound `--full` guard (`PACKET.md` stamped and naming the commit under review), so the gate, `delta_basis` and the prompt all honour it (A2, round 3).
+- `prior_approvals`: a `review_semantic_errors(…, acceptance_ids(node))` guard, so an earlier approval missing an acceptance result is no basis (A2, round 3).
+- `role_prompt.reviewer_packet`: builds the reviewer's own delta packet and hands it to that reviewer only. It now relies on `delta_basis` for `--full` (round 3).
 
 ### Branches and guards
 - `evaluate_gate`: an approval with `delta_from` goes through `_delta_why` against `prior_approvals` (A2).
@@ -144,6 +154,8 @@ Not run:
 - `test_a_delta_with_an_integrity_finding_needs_a_full_review`: a lost assert (A3).
 - `test_a_reviewer_that_did_not_approve_the_earlier_commit_gets_no_delta`: no delta packet and no delta approval for that reviewer; its full review still counts (A2, A3).
 - `test_an_ineligible_delta_approval_is_no_basis_for_a_later_delta`: a full approval at P, a rejected delta approval at C1 (a source file), then docs-only C2. The delta basis is not C1, and a `delta_from: C1` approval of C2 does not count (A2, round 2).
+- `test_an_earlier_approval_missing_an_acceptance_result_is_no_delta_basis`: an incomplete historical approval yields no delta basis and no delta packet, and a delta approval built on it does not count (A2, round 3).
+- `test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current`: at gate level, a delta approval counts, stops counting after `review-packet --full`, and counts again once the packet is rebuilt without it (A2, round 3).
 - `test_policy_off_forces_full_review`: with `delta_review: false`, no delta packet and no delta approval (A2, A3).
 - `test_the_prompt_hands_each_reviewer_its_own_packet`: per-reviewer delivery and the delta packet's contents (A1).
 - `test_review_packet_full_stops_delta_packets`: `--full` forces the full packet and removes a stale delta packet (A2).
