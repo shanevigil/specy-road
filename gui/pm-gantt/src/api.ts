@@ -7,6 +7,8 @@ import type {
   BrainstormSession,
   PublishStatusPayload,
   RoadmapResponse,
+  WorkerDetail,
+  WorkerRow,
 } from "./types";
 
 const API = "/api";
@@ -784,4 +786,22 @@ export async function testResearchSettings(
     ok: Boolean(raw.ok),
     message: typeof raw.message === "string" ? raw.message : "",
   };
+}
+
+/** Read-only: the worker records under the main worktree's `work/.workers/`. */
+export async function fetchWorkers(): Promise<{ workers: WorkerRow[] }> {
+  const r = await fetch(`${API}/workers`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<{ workers: WorkerRow[] }>;
+}
+
+export async function fetchWorkerEvents(
+  workerId: string,
+  signal?: AbortSignal,
+): Promise<WorkerDetail> {
+  const r = await fetch(`${API}/workers/${encodeURIComponent(workerId)}/events`, {
+    signal,
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json() as Promise<WorkerDetail>;
 }

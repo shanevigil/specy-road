@@ -391,7 +391,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.12_visual-explorer-for-worker_19dc4036-f6f2-4877-a8e0-94775e7b36fc.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Visual explorer for worker event logs in the PM GUI",
       "touch_zones": [
         "specy_road/gui_app.py",

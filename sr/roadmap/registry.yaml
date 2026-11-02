@@ -11,22 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: visual-explorer-for-worker
-    node_id: M10.12
-    branch: feature/rm-visual-explorer-for-worker
-    touch_zones:
-      - specy_road/gui_app.py
-      - specy_road/gui_app_routes_workspace.py
-      - specy_road/gui_app_routes_workers.py
-      - gui/pm-gantt/src/
-      - docs/pm-gui.md
-      - tests/test_gui_app.py
-      - tests/test_gui_app_workers.py
-      - specy_road/pm_gantt_static/
-      - docs/orchestration-workers.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: brainstorm-repo-evidence
     node_id: M4.5
     branch: feature/rm-brainstorm-repo-evidence

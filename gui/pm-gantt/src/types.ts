@@ -257,3 +257,52 @@ export type BrainstormPromotion = {
   title: string;
   parent_id: string | null;
 };
+
+/** One worker from `GET /api/workers` (read from `work/.workers/`, never written). */
+export type WorkerRow = {
+  worker_id: string;
+  node_id: string;
+  harness: string;
+  model: string;
+  state: string;
+  attempt: number;
+  flags: string[];
+  updated: string;
+  last_event: {
+    seq: number;
+    at: string;
+    type: string;
+    source: string;
+    summary: string;
+  } | null;
+  /** Summed over the worker's `usage` events; `null` when none reported a cost (never read as 0). */
+  total_cost_usd: number | null;
+  cost_is_estimate: boolean | null;
+};
+
+export type WorkerEvent = {
+  seq: number;
+  at: string;
+  type: string;
+  source: string;
+  authority: string;
+  summary: string;
+  epoch: number;
+  detail?: Record<string, unknown> | null;
+};
+
+/** `GET /api/workers/{id}/events`: the row, its event log, phase seconds and usage totals. */
+export type WorkerDetail = WorkerRow & {
+  events: WorkerEvent[];
+  phases: Record<string, number | null>;
+  usage: {
+    turns: number;
+    input_tokens: number | null;
+    cached_input_tokens: number | null;
+    output_tokens: number | null;
+    reasoning_tokens: number | null;
+    cost_usd: number | null;
+    cost_is_estimate: boolean | null;
+    num_turns: number | null;
+  };
+};
