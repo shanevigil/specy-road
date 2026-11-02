@@ -109,7 +109,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M11` rc2 field feedback: worktrees, workers and the review loop `rc2-field-feedback` — phase — **Not Started**
   - `M11.1` In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record `worktree-paths-agree` — task — **Complete**
   - `M11.2` worker message resumes a failed or stalled worker whose native session id is known `resume-failed-workers` — task — **Complete**
-  - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Not Started**
+  - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Complete**
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
@@ -121,14 +121,22 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
+- `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.7` on `feature/rm-review-delegate` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
+- `M5.6` on `feature/rm-context-feedback-pilot` since 2026-11-02
 - `M5.7` on `feature/rm-managed-section-ablation` since 2026-11-02
 - `M8.1` on `feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` since 2026-11-02
 

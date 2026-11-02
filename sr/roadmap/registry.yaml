@@ -103,18 +103,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: runtime-dirs-not-dirty
-    node_id: M11.3
-    branch: feature/rm-runtime-dirs-not-dirty
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_ops.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/
-      - docs/git-workflow.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T22:31:34+00:00'
