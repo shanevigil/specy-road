@@ -124,8 +124,7 @@
     },
     {
       "acceptance": [
-        "When a worker launches in a linked worktree, the Claude Code adapter adds the main checkout's work/reviews/<ID> directory as an allowed directory (and the equivalent for other harnesses that support it), so the executor can write its READY there",
-        "The executor and reviewer clean-tree preconditions name the checkout to run git status in (the leaf worktree path, filled in), so a reviewer does not check the main checkout by mistake; tests cover both prompts and the adapter argv"
+        "When a worker launches in a linked worktree, the Claude Code adapter adds the main checkout's work/reviews/<ID> directory as an allowed directory (and the equivalent for other harnesses that support it), so the executor can write its READY there; tests cover the adapter argv"
       ],
       "codename": "worktree-handoff-writable",
       "dependencies": [],
@@ -171,8 +170,8 @@
     },
     {
       "acceptance": [
-        "A profile can list aliases (or a roster entry can name its profile), so roster ids like gpt-5.6-sol-high or -xhigh find the GPT-5.6 Sol profile and prompts carry its model notes",
-        "Tests cover an alias match and an unmatched id"
+        "Shipped model profiles cover the Cursor ids the docs recommend: a GPT-5.6 Sol profile exists and lists its effort-suffixed Cursor ids (for example gpt-5.6-sol-high, -xhigh) as aliases, and the shipped Grok and Composer profiles list theirs",
+        "models list (or validate) names roster ids that match no profile; a test covers an alias match and an unmatched id"
       ],
       "codename": "profile-aliases",
       "dependencies": [],
@@ -195,8 +194,8 @@
     },
     {
       "acceptance": [
-        "session start --path accepts several paths after one flag (or the error says to repeat --path); prompt --role reviewer accepts --packet or says the packet must be at the default path when review-packet -o wrote elsewhere",
-        "worker sync shows the worker's full final message on a completion without READY; session end works on the caller's own stale sessions; the Cursor adapter's default launch passes --trust, with a test"
+        "session start --path accepts several paths after one flag (or the error says to repeat --path)",
+        "For every adapter, the worker log keeps the harness's full stream transcript, and worker sync shows the worker's full final message on a completion without READY; a custom channels.cli that uses a text-only output mode is reported at delegate time; tests cover both"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [],
@@ -210,11 +209,10 @@
       "title": "Small CLI fixes from field use",
       "touch_zones": [
         "specy_road/bundled_scripts/session_cli.py",
-        "specy_road/bundled_scripts/review_packet.py",
-        "specy_road/bundled_scripts/role_prompt.py",
         "specy_road/bundled_scripts/worker_cli.py",
         "specy_road/bundled_scripts/worker_cli_render.py",
         "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
         "tests/"
       ],
       "type": "task"
@@ -247,7 +245,8 @@
     {
       "acceptance": [
         "specy-road doctor warns when the running version is older than the version recorded in the AGENTS.md managed block or .specyrd/manifest.json, naming both and the likely cause (an older install earlier on PATH)",
-        "Tests cover older, equal and newer"
+        "The generated AGENTS.md stub states the minimum specy-road version, and commands warn once when the running version is older than it",
+        "README and docs/install-and-usage.md document one supported install route for the CLI on a maintainer machine (for example uv tool install or pipx) and how to check which install is on PATH; tests cover older, equal and newer"
       ],
       "codename": "doctor-version-skew",
       "dependencies": [],
@@ -261,6 +260,87 @@
       "title": "doctor warns when the running specy-road is older than the project's stubs",
       "touch_zones": [
         "specy_road/bundled_scripts/doctor.py",
+        "specy_road/cli.py",
+        "specy_road/templates/",
+        "README.md",
+        "docs/install-and-usage.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An optional env_setup command in roadmap/git-workflow.yaml runs in a new worktree when delegate or pickup creates it; a failure stops the launch with the command's output",
+        "doctor reports a configured env_setup and whether it succeeds in the main checkout; docs give a uv workspace example (uv sync --all-packages --all-groups --locked) and warn that a plain uv sync in a workspace removes other members' packages; tests cover success, failure and no setting"
+      ],
+      "codename": "worktree-env-setup",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.30",
+      "node_key": "e442e4b8-d057-4e6d-b520-9ec4b28f356e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.30_worktree-env-setup_e442e4b8-d057-4e6d-b520-9ec4b28f356e.md",
+      "sibling_order": 30,
+      "status": "Not Started",
+      "title": "Leaf worktrees get the project's environment set up",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road worktree prune <ID> removes the leaf's worktree only when the leaf branch is merged into the integration branch and the worktree has no uncommitted changes, untracked non-ignored files or stashes, and lists ignored files it would delete (with --yes to proceed)",
+        "When nested_repos are configured, it also refuses if any nested repo in the worktree holds commits on no branch of the main checkout's copy or any remote, uncommitted changes or stashes, and handles both linked worktrees and full clones; tests cover each refusal and a clean prune"
+      ],
+      "codename": "worktree-prune",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.31",
+      "node_key": "4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.31_worktree-prune_4f1db491-c309-4ba9-b5d7-d5d91a9cf9b6.md",
+      "sibling_order": 31,
+      "status": "Not Started",
+      "title": "A safe command to retire a leaf worktree",
+      "touch_zones": [
+        "specy_road/bundled_scripts/worktree_cli.py",
+        "specy_road/worktree_prune.py",
+        "specy_road/cli.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "doctor and grind-session --plan list configured nested repos with branches that are ahead of their upstream, have no upstream, or have no remote, naming the repo, branch and commit count",
+        "Tests cover ahead, no upstream, no remote and clean"
+      ],
+      "codename": "nested-unpushed-report",
+      "dependencies": [
+        "0e58af0e-895f-4a7c-b3c9-e5cb788d598f"
+      ],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.32",
+      "node_key": "66a3455f-0e4e-4947-8cb5-cee6a60ddcf0",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.32_nested-unpushed-report_66a3455f-0e4e-4947-8cb5-cee6a60ddcf0.md",
+      "sibling_order": 32,
+      "status": "Not Started",
+      "title": "Unpushed nested-repo commits are reported",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/nested_repos.py",
         "tests/"
       ],
       "type": "task"
