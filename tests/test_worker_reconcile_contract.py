@@ -85,6 +85,22 @@ def test_an_edit_folded_into_a_merge_commit_is_the_workers(tmp_path: Path) -> No
     assert delta["outside_touch_zones"] == ["docs/folded.md"]
 
 
+def test_a_rename_folded_into_a_merge_counts_on_both_sides(tmp_path: Path) -> None:
+    repo, rec, wt = _linked(tmp_path)
+    commit_file(repo, "outside/source.txt", "same line\n" * 20, "dev adds a file")
+    git(wt, "merge", "-q", "--no-edit", "dev")   # the source is on both parents
+    ws.take_checkpoint(repo, ws.load_record(repo, rec.worker_id))
+    commit_file(wt, "src/own.txt", "own\n", "worker commits in zone")
+    commit_file(repo, "other/integration.txt", "dev\n", "dev moves on")
+    git(wt, "merge", "-q", "--no-commit", "dev")
+    git(wt, "mv", "outside/source.txt", "src/dest.txt")
+    commit_file(wt, "zoutside/extra.txt", "extra\n", "merge dev, renaming and adding outside the zone")
+    _r, delta = ops.reconcile(repo, rec.worker_id)
+    assert delta["changed"] == ["outside/source.txt", "src/dest.txt", "src/own.txt", "zoutside/extra.txt"]
+    assert delta["outside_touch_zones"] == ["outside/source.txt", "zoutside/extra.txt"]
+    assert delta["needs_reconcile"]
+
+
 def test_the_integration_branch_moving_is_not_a_contract_change(tmp_path: Path) -> None:
     repo, rec, _wt = _linked(tmp_path)
     commit_file(repo, "shared/README.md", "# Shared\n\nA new contract index.\n", "dev moves on")
