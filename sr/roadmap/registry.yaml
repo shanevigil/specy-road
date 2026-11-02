@@ -50,3 +50,15 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: profile-aliases
+    node_id: M11.26
+    branch: feature/rm-profile-aliases
+    touch_zones:
+      - specy_road/model_profiles.py
+      - specy_road/templates/project/model-profiles/
+      - specy_road/templates/project/schemas/
+      - docs/orchestration-models.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
