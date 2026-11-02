@@ -51,14 +51,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Complete**
   - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
   - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Complete**
-- `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
+- `M5` Agent context and outcomes `context-and-outcomes` — phase — **Complete**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Complete**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Complete**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Complete**
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Complete**
-  - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
+  - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Complete**
   - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Complete**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Complete**
@@ -159,7 +159,6 @@ Do not pick these up.
 - `M11.17` on `feature/rm-edit-node-names-chunks` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
-- `M5.7` on `feature/rm-managed-section-ablation` since 2026-11-02
 
 ## Reaching the detail behind this
 
