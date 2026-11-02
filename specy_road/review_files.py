@@ -278,6 +278,30 @@ def list_review_history(repo_root: Path, node_id: str) -> list[ReviewFile]:
     return [load_review(p) for p in sorted(d.glob("*.md"))] if d.is_dir() else []
 
 
+def round_span(repo_root: Path, node_id: str) -> dict[str, Any]:
+    """Review rounds (distinct reviewed commits) and the time from the first filed review to the latest.
+
+    Read from ``history/`` (each copy is written once, so its mtime is its filing
+    time) plus each ``REVIEW-*.md`` with no copy there: ``REVIEW-human.md``, or one
+    written by hand.
+    """
+    seen, times = set(), []
+    for r, in_history in ([(r, True) for r in list_review_history(repo_root, node_id)]
+                          + [(r, False) for r in list_reviews(repo_root, node_id)]):
+        if not r.ok or r.data.get("node_id") != node_id:
+            continue
+        raw = r.data["commit"]   # a short and a full SHA of one commit are one round
+        sha = git_text(["rev-parse", "--verify", "--quiet", f"{raw}^{{commit}}"], repo_root) or raw
+        if in_history or (r.data["model"], sha) not in seen:   # not the live copy of an archived record
+            seen.add((r.data["model"], sha))
+            times.append(r.path.stat().st_mtime)
+    rounds = len({sha for _model, sha in seen})
+    s = int(max(times) - min(times)) if len(times) > 1 else None
+    units = ((s // 86400, "d"), (s // 3600 % 24, "h"), (s // 60 % 60, "m")) if s is not None else ()
+    took = "n/a" if s is None else " ".join(f"{n}{u}" for n, u in units if n) or "under 1m"
+    return {"rounds": rounds, "elapsed_seconds": s, "line": f"rounds: {rounds}, first to latest: {took}"}
+
+
 def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
     """``RCA-*.md`` records, schema-checked and bound to ``node_id``."""
     out = []
@@ -369,7 +393,5 @@ def node_ids_with_reviews(repo_root: Path) -> list[str]:
 
 
 def render_front_matter(data: dict[str, Any], body: str = "") -> str:
-    import yaml
-
     head = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).rstrip()
     return f"---\n{head}\n---\n{body}"
