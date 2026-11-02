@@ -1,0 +1,323 @@
+{
+  "nodes": [
+    {
+      "codename": "rc2-field-feedback",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11",
+      "node_key": "e10fe30c-201f-4170-998c-0cc6847f84f4",
+      "planning_dir": "planning/M11_rc2-field-feedback_e10fe30c-201f-4170-998c-0cc6847f84f4.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "rc2 field feedback: worktrees, workers and the review loop",
+      "touch_zones": [],
+      "type": "phase"
+    },
+    {
+      "acceptance": [
+        "review-packet, review record, handoff status and worker delegate run in a linked worktree all read and write the leaf's review directory at one documented location (the main checkout's work/reviews/<ID>/, as the executor prompt already states); no command reads READY from the worktree while another writes PACKET.md to the main checkout",
+        "The reviewer prompt names that directory as the one path the reviewer must be able to write, so a harness sandboxed to the worktree can be launched with it as a writable root; docs/orchestration-review.md says so",
+        "A test runs review-packet, review record and handoff status from a linked worktree and shows they agree on the directory"
+      ],
+      "codename": "worktree-paths-agree",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.1",
+      "node_key": "9eaab693-8897-4e18-977c-f83b7e7a69b9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.1_worktree-paths-agree_9eaab693-8897-4e18-977c-f83b7e7a69b9.md",
+      "sibling_order": 1,
+      "status": "Not Started",
+      "title": "In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker message W --text ... resumes a worker in state failed or stalled when its record holds a native session id, instead of refusing with 'delegate again'; a failed worker without a session id is still refused with that hint",
+        "The resumed turn counts against max_workers like any other launch; docs/orchestration-workers.md lists which states can be resumed",
+        "Tests cover resuming a failed worker with and without a session id"
+      ],
+      "codename": "resume-failed-workers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.2",
+      "node_key": "37fbae4e-2d6f-42a8-8b7b-1465e680776d",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.2_resume-failed-workers_37fbae4e-2d6f-42a8-8b7b-1465e680776d.md",
+      "sibling_order": 2,
+      "status": "Not Started",
+      "title": "worker message resumes a failed or stalled worker whose native session id is known",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "The executor and reviewer clean-tree preconditions and delegation's uncommitted-work check ignore specy-road's own runtime state (work/.workers/ and the other generated work/ bookkeeping), in the main checkout, a linked worktree and a separate clone",
+        "init project (and refresh) make sure those runtime paths are ignored by git in a new project, so a fresh clone starts clean",
+        "A test delegates in a fresh clone and shows the precondition passes while an unrelated untracked file still fails it"
+      ],
+      "codename": "runtime-dirs-not-dirty",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.3",
+      "node_key": "d6ce85d8-6e44-41b3-881a-292ca185cc50",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.3_runtime-dirs-not-dirty_d6ce85d8-6e44-41b3-881a-292ca185cc50.md",
+      "sibling_order": 3,
+      "status": "Not Started",
+      "title": "specy-road's own runtime directories never fail the clean-tree checks",
+      "touch_zones": [
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/worker_ops.py",
+        "specy_road/agent_ignores.py",
+        "specy_road/templates/project/",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout and in every linked worktree or clone that shares the integration branch's registry",
+        "docs/orchestration-workers.md states what is counted and how a separate clone is included (for example through the claims on the integration branch)",
+        "Tests show a resume refused at the limit and two checkouts sharing one limit"
+      ],
+      "codename": "max-workers-global",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.4",
+      "node_key": "5c014d93-e0e4-4d94-a066-9a2534c7b870",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.4_max-workers-global_5c014d93-e0e4-4d94-a066-9a2534c7b870.md",
+      "sibling_order": 4,
+      "status": "Not Started",
+      "title": "max_workers counts live workers across checkouts and applies to resumes",
+      "touch_zones": [
+        "specy_road/worker_ops.py",
+        "specy_road/worker_state.py",
+        "specy_road/orchestration_config.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A claim whose feature branch exists locally is never reported as stale, whether or not the branch has been pushed, so a successful pickup prints no stale-claim warning",
+        "The stale-claim warning and its fix lines (abort-task-pickup --force, removing the row) are printed only when neither a local nor a remote feature branch exists, and say which was checked",
+        "Tests cover a local-only branch (no warning) and a missing branch (warning)"
+      ],
+      "codename": "pickup-claim-heuristic",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.5",
+      "node_key": "9124114c-7995-42a4-bde4-b1eda63ca0c5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.5_pickup-claim-heuristic_9124114c-7995-42a4-bde4-b1eda63ca0c5.md",
+      "sibling_order": 5,
+      "status": "Not Started",
+      "title": "Pickup's stale-claim check tests the local branch and never advises deleting a live claim",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task_self_heal.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "worker reconcile compares changed paths with the leaf's current touch zones (the claim row as edit-node now keeps it), not the zones snapshotted at delegation",
+        "Paths that arrive only through a merge of the integration branch into the leaf branch are not reported as outside the touch zones",
+        "'The leaf's brief changed since delegation' is reported only when the leaf's own contract changed (acceptance, touch zones, sheet), not whenever the integration branch moved; tests cover all three"
+      ],
+      "codename": "reconcile-current-contract",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.6",
+      "node_key": "6fdec849-e299-453b-a5e7-369c210b6e05",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.6_reconcile-current-contract_6fdec849-e299-453b-a5e7-369c210b6e05.md",
+      "sibling_order": 6,
+      "status": "Not Started",
+      "title": "worker reconcile judges a worker against the leaf's current contract",
+      "touch_zones": [
+        "specy_road/worker_reconcile.py",
+        "specy_road/git_changed_paths.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road review delegate <ID> --model <roster id> builds the reviewer prompt, launches the roster entry's harness, records the reviewer's native session id, and can resume it",
+        "A provider capacity or rate-limit error is retried with backoff a bounded number of times; a run that ends without a valid record is reported as incomplete for that commit, and handoff status never presents an older commit's record as the current verdict",
+        "docs/orchestration-review.md documents the command; tests use a fake harness for success, a capacity error then success, and a run that writes no record"
+      ],
+      "codename": "review-delegate",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.7",
+      "node_key": "2d7324a8-cfd7-4eca-8662-113e963c98b4",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.7_review-delegate_2d7324a8-cfd7-4eca-8662-113e963c98b4.md",
+      "sibling_order": 7,
+      "status": "Not Started",
+      "title": "review delegate runs a rostered reviewer like worker delegate runs an executor",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_delegate.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/review_files.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "With a policy setting enabled, review-packet --since-approved builds a packet of the diff since the last commit a reviewer approved, plus that reviewer's notes, when the delta is below a size threshold and touches only paths of the configured kinds (for example docs or tests)",
+        "The gate counts such a delta approval only for a reviewer who approved the earlier commit, only under the policy, and full fresh review stays the default",
+        "Tests cover an eligible delta, a delta over the threshold, and the policy off"
+      ],
+      "codename": "delta-review-packet",
+      "dependencies": [],
+      "execution_milestone": "Mixed",
+      "id": "M11.8",
+      "node_key": "0aae8208-413d-4d60-b7b8-c83f9c31b522",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.8_delta-review-packet_0aae8208-413d-4d60-b7b8-c83f9c31b522.md",
+      "sibling_order": 8,
+      "status": "Not Started",
+      "title": "An opt-in delta review packet for small fix rounds",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/review_gate.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "An acceptance item can be marked human (for example a 'human:' prefix or a per-item flag in the schema); reviewers are told to mark it n/a with the reason 'human', and the review gate does not count it as a fail",
+        "finish-this-task refuses while a human item has no recorded decision on the planning sheet, and says how to record it",
+        "docs/roadmap-authoring.md documents the marker; tests cover a reviewer skip and the finish refusal"
+      ],
+      "codename": "human-acceptance",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.9",
+      "node_key": "a10ebda9-1fa9-4c54-a84d-cdff292accb9",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.9_human-acceptance_a10ebda9-1fa9-4c54-a84d-cdff292accb9.md",
+      "sibling_order": 9,
+      "status": "Not Started",
+      "title": "Acceptance items a human must satisfy are marked and handled as such",
+      "touch_zones": [
+        "specy_road/templates/project/schemas/roadmap.schema.json",
+        "sr/schemas/",
+        "schemas/",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/finish_task_gates.py",
+        "specy_road/bundled_scripts/finish_task.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "edit-node --add touch_zones=<path> and --remove touch_zones=<path> change one entry without restating the list; the same works for dependencies and acceptance",
+        "The claim row follows as it does for --set (M10.14); tests cover add, remove, a duplicate add and removing a missing entry"
+      ],
+      "codename": "edit-node-add-remove",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.10",
+      "node_key": "e94870e8-7925-47e5-99ef-9bd104bfd3d5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.10_edit-node-add-remove_e94870e8-7925-47e5-99ef-9bd104bfd3d5.md",
+      "sibling_order": 10,
+      "status": "Not Started",
+      "title": "edit-node can add and remove single list entries",
+      "touch_zones": [
+        "specy_road/bundled_scripts/roadmap_crud_ops.py",
+        "specy_road/bundled_scripts/roadmap_crud_argparse.py",
+        "docs/roadmap-authoring.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A leaf that pickup would skip (for example a scaffold sheet with no acceptance) is not listed as ready by orchestrate plan or grind-session --plan; all three call one readiness function",
+        "orchestrate plan ranks executor candidates using roster class and billing_route when cost data is unknown, instead of always choosing one model",
+        "Tests show the three commands agree on a fixture, and a roster with cheap and senior classes is ranked accordingly"
+      ],
+      "codename": "one-readiness-rule",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.11",
+      "node_key": "78faa6a4-7a22-4c84-866d-bd7c71037af5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.11_one-readiness-rule_78faa6a4-7a22-4c84-866d-bd7c71037af5.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route",
+      "touch_zones": [
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/bundled_scripts/orchestrate_cli.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road ready <ID> --verify '<cmd>=<exit>' ... writes READY-<model>.md in the leaf's review directory with valid front matter and the current commit, and refuses a non-zero verifier unless it is marked as red-green evidence",
+        "The executor prompt tells executors to write READY with this command; handoff status still validates hand-written files",
+        "Tests cover a valid write, a refused failing verifier, and the prompt text"
+      ],
+      "codename": "ready-command",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.12",
+      "node_key": "28811e9e-94e6-4934-b182-a79d5d0ceca5",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.12_ready-command_28811e9e-94e6-4934-b182-a79d5d0ceca5.md",
+      "sibling_order": 12,
+      "status": "Not Started",
+      "title": "specy-road ready writes a valid READY hand-off",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/review_gate_ready.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "specy_road/cli.py",
+        "specy_road/cli_usage.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}
