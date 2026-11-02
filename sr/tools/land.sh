@@ -26,10 +26,9 @@ if ! git merge-base --is-ancestor "$B" WIP/improvements-0-3-1 && git fetch -q or
   # bundled schema predates it: restore finish's partial bookkeeping and retry with the
   # branch's own code (the code that is landing).
   W_ROOT="$ROOT/sr/work/.worktrees/$WT"
-  if (cd "$W_ROOT/sr" && $S finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -q 'Additional properties are not allowed'); then
-    git -C "$W_ROOT" checkout -- sr/roadmap 2>/dev/null
-    (cd "$W_ROOT/sr" && PYTHONPATH="$W_ROOT" "$ROOT/.venv/bin/python" -m specy_road.cli finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error')
-  fi
+  git -C "$W_ROOT" checkout -- sr/roadmap 2>/dev/null
+  echo "$ID: retrying finish with the branch's own specy-road"
+  (cd "$W_ROOT/sr" && PYTHONPATH="$W_ROOT" "$ROOT/.venv/bin/python" -m specy_road.cli finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error')
   git fetch -q origin
   git merge-base --is-ancestor "$B" origin/WIP/improvements-0-3-1 || { echo "$ID: NOT MERGED"; exit 4; }
   git pull -q --ff-only origin WIP/improvements-0-3-1
