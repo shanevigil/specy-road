@@ -1,7 +1,7 @@
 """Read model profiles (``model-profiles/<family>/<api_id>.md``) for the roster.
 
 A profile is Markdown with a schema-2 YAML front matter (the machine part: ids,
-limits, prices, ``role_fit``, ``access.cli``, ``effort_map``, ``launch_mode``) and body sections
+limits, prices, ``role_fit``, ``access.cli``, ``effort_map``, ``effort_by_role``, ``launch_mode``) and body sections
 (``## Strengths``, ``## Failure modes``, ``## Prompting rules``, …). The
 toolkit ships a canonical set and ``init project`` scaffolds them into the
 adopter's repo, where a roster entry's ``profile`` key points at one; the team
@@ -84,6 +84,16 @@ class Profile:
         access = self.data.get("access")
         return str((access.get("launch_mode") if isinstance(access, dict) else None) or "full")
 
+    def effort(self, role: str) -> str | None:
+        """The model's own effort level for ``role``: ``effort_map[effort_by_role[role]]``, else ``None``."""
+        access = self.data.get("access")
+        if not isinstance(access, dict) or not isinstance(access.get("effort_by_role"), dict) \
+                or not isinstance(access.get("effort_map"), dict):
+            return None
+        key = access["effort_by_role"].get(role)
+        level = access["effort_map"].get(key) if isinstance(key, str) else None
+        return str(level) if level is not None else None
+
     def bullets(self, section: str) -> list[str]:
         """The ``- `` items under ``## <section>``, without the dash."""
         return [ln[2:].strip() for ln in self.sections.get(section, []) if ln.startswith("- ")]
@@ -137,6 +147,23 @@ def _as_date(raw: Any) -> date | None:
         return None
 
 
+def _effort_errors(access: dict[str, Any], name: str) -> list[str]:
+    """``access.effort_by_role``: each role names an ``effort_map`` key with a known level."""
+    by_role = access["effort_by_role"]
+    if not isinstance(by_role, dict):
+        return [f"profile {name}: `access.effort_by_role` must be a mapping of role → effort_map key"]
+    levels = access.get("effort_map") if isinstance(access.get("effort_map"), dict) else {}
+    out = []
+    for role, key in by_role.items():
+        if role not in ROLES:
+            out.append(f"profile {name}: `access.effort_by_role` names unknown role {role!r}; "
+                       f"expected {', '.join(ROLES)}")
+        elif not isinstance(key, str) or key not in levels or str(levels[key]).lower() == "unknown":
+            out.append(f"profile {name}: `access.effort_by_role.{role}` is {key!r}, not an effort_map key "
+                       f"with a known level ({', '.join(str(k) for k, v in levels.items() if str(v).lower() != 'unknown')})")
+    return out
+
+
 def _structure_errors(data: dict[str, Any], name: str) -> list[str]:  # noqa: C901 — baseline 2026-10-28; simplify, then drop this
     """Shapes the readers assume: wrong ones made ``profile_ok`` true and then raised."""
     out = []
@@ -150,6 +177,8 @@ def _structure_errors(data: dict[str, Any], name: str) -> list[str]:  # noqa: C9
             out.append("`access.effort_map` must be a mapping")
         if "launch_mode" in access and access["launch_mode"] not in LAUNCH_MODES:
             out.append(f"profile {name}: `access.launch_mode` must be full or bare, not {access['launch_mode']!r}")
+        if "effort_by_role" in access:
+            out += _effort_errors(access, name)
     fit = data.get("role_fit")
     if "role_fit" in data and not isinstance(fit, dict):
         out.append("`role_fit` must be a mapping of role → {score, reason}")

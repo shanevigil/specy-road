@@ -20,7 +20,8 @@
 ``--channel cli`` also runs the roster entry's ``channels.cli``, else the
 profile's ``access.cli``, with its placeholder replaced: ``"<prompt>"`` (the
 shipped profiles' form) by the prompt text as one argument, ``{prompt}`` by the
-prompt file's path. The profile is read from the integration branch,
+prompt file's path, ``{effort}`` by the roster harness's flag for the profile's
+``effort_by_role`` level for the role. The profile is read from the integration branch,
 like the roster; a working-tree copy that differs is refused. ``paste`` and ``subagent`` only write the file.
 """
 
@@ -49,7 +50,8 @@ from specy_road.orchestrate_plan import (
     node_eligibility,
     node_sensitivity,
 )
-from specy_road.worker_adapters import placeholder_problem, substitute_prompt
+from specy_road.worker_adapter_parsers import effort_note
+from specy_road.worker_adapters import ADAPTERS, placeholder_problem, substitute_prompt
 from specy_road.orchestration_config import substitute_for
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -139,7 +141,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
 
 
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
-                    entry_cli: str | None = None) -> int:
+                    entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None) -> int:
     if preflight:
         # Proposal §3.6: e.g. confirm which process owns a local model's port.
         # It runs before anything else is even inspected: a failed check stops
@@ -157,10 +159,17 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if why:
         print(f"error: the cli has {why}: {cli}", file=sys.stderr)
         return 1
+    # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
+    level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
+    note = effort_note(cli, level)
+    if note:
+        print(note, file=sys.stderr)
+    effort = ADAPTERS.get(harness or "generic", ADAPTERS["generic"]).effort_flag(level)
     # The template, not the expansion: "<prompt>" would echo the whole brief.
     print(f"running: {cli} (prompt: {prompt_path})", file=sys.stderr)
     try:
-        return subprocess.run(substitute_prompt(cli, prompt_path), shell=True, cwd=root, check=False).returncode
+        return subprocess.run(substitute_prompt(cli, prompt_path, effort=effort), shell=True, cwd=root,
+                              check=False).returncode
     except OSError as e:   # E2BIG: "<prompt>" puts the whole text on the command line
         print(f"error: could not launch the cli: {e.strerror}; if the prompt is too long for a command line, "
               'use {prompt} (its file path) instead of "<prompt>"', file=sys.stderr)
@@ -174,7 +183,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", required=True, help="Roster id")
     p.add_argument("--role", required=True, choices=PROMPT_ROLES)
     p.add_argument("--channel", choices=CHANNELS, default="paste",
-                   help="cli runs the profile's access.cli (<prompt> = the prompt text, {prompt} = its file path); "
+                   help="cli runs the profile's access.cli (<prompt> = the prompt text, {prompt} = its file path, "
+                        "{effort} = the harness's flag for the role's effort); "
                         "paste/subagent only write the file")
     p.add_argument("-o", "--output", type=Path)
     p.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
@@ -193,7 +203,8 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Wrote {out}")
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
-    raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"))
+    raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
+                                     harness=entry.get("harness"), role=ns.role)
                      if ns.channel == "cli" else 0)
 
 

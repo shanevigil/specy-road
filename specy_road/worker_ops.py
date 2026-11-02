@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_en
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix
+from specy_road.worker_adapter_parsers import effort_note
 from specy_road.worker_adapters import Unsupported, adapter_for
 from specy_road.worker_process import kill_group, process_alive, require_branch, wrapper_gone
 from specy_road.worker_reconcile import _bookkeeping
@@ -131,11 +133,12 @@ def _worktree_for(repo_root: Path, branch: str, codename: str, explicit: Path | 
     return _check_tree(wt, branch)
 
 
-def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str | None, str]:
-    """``(custom cli, model id the harness is told, profile's access.launch_mode)``.
+def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str | None, str | None, str, str | None]:
+    """``(custom cli, model id the harness is told, profile's access.launch_mode, executor effort level)``.
 
     ``channels.cli`` wins; a profile's ``access.cli`` stands in only for ``generic``, since a named
-    harness's default command is what gives it JSON events and a session id.
+    harness's default command is what gives it JSON events and a session id. A worker is an
+    executor, so its effort is the profile's ``effort_by_role.executor`` (``None``: the harness's own).
     """
     prof = pinned_profile_for_entry(repo_root, entry)   # the committed profile, as the roster is
     if prof is not None and not prof.ok:
@@ -144,9 +147,13 @@ def _cli_for(repo_root: Path, entry: dict[str, Any], harness: str) -> tuple[str 
     if not cli and harness == "generic" and prof is not None:
         cli = prof.cli()
     if prof is None:
-        return cli, str(entry["id"]), "full"
+        return cli, str(entry["id"]), "full", None
     api_id = None if prof.api_id.strip().lower() == "unknown" else prof.api_id   # unknown: harness default
-    return cli, api_id, prof.launch_mode()
+    effort = prof.effort("executor")
+    note = effort_note(cli, effort)
+    if note:
+        print(note, file=sys.stderr)
+    return cli, api_id, prof.launch_mode(), effort
 
 
 def _preflight(entry: dict[str, Any], repo_root: Path) -> None:
@@ -240,9 +247,9 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
     prompt.parent.mkdir(parents=True, exist_ok=True)
     prompt.write_text(text, encoding="utf-8")
     _brief_into(wt, repo_root, node_id, t)
-    cli, api_id, mode = _cli_for(repo_root, entry, harness)
+    cli, api_id, mode, effort = _cli_for(repo_root, entry, harness)
     launch = adapter_for(harness).launch(prompt, wt, api_id, cli, node_id=node_id, repo_root=repo_root,
-                                         launch_mode=mode)
+                                         launch_mode=mode, effort=effort)
     rec = create_record(repo_root, node_id, harness, model, wt, branch=branch,
                         contract_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
                         billing_route=entry.get("billing_route"))
@@ -281,13 +288,13 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
-    cli, api_id, mode = _cli_for(repo_root, entry, rec.harness)
+    cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
     n = rec.last_event_seq + 1
     prompt = repo_root / "work" / f"prompt-{rec.worker_id}-{kind}-{n}.md"
     prompt.parent.mkdir(parents=True, exist_ok=True)   # a linked worktree may have no work/ yet
     prompt.write_text(text, encoding="utf-8")
     launch = adapter.resume(sid, prompt, Path(rec.worktree), api_id, cli,
-                            node_id=rec.node_id, repo_root=repo_root, launch_mode=mode)
+                            node_id=rec.node_id, repo_root=repo_root, launch_mode=mode, effort=effort)
     append_event(repo_root, rec, "message", source="orchestrator", authority="orchestrator",
                  summary=f"{kind}: {' '.join(text.split())[:300]}")
     spawn(repo_root, rec, launch, resumed=True)
