@@ -192,13 +192,13 @@
     },
     {
       "acceptance": [
-        "With a policy setting enabled, review-packet --since-approved builds a packet of the diff since the last commit a reviewer approved, plus that reviewer's notes, when the delta is below a size threshold and touches only paths of the configured kinds (for example docs or tests)",
-        "The gate counts such a delta approval only for a reviewer who approved the earlier commit, only under the policy, and full fresh review stays the default",
-        "Tests cover an eligible delta, a delta over the threshold, and the policy off"
+        "A review policy setting (on by default) lets a fix round after an approval be reviewed from a delta packet: the diff since the last commit that reviewer approved, plus that reviewer's notes. The delta packet is used only when every changed path in the delta is a documentation or test file, the delta touches at most three files, the integrity report for the delta has no findings (no removed or skipped tests, no lost asserts), and every path is inside the leaf's touch zones; otherwise the round gets a full packet. There is no line-count limit",
+        "A delta approval counts only for a reviewer that approved the earlier commit, and the gate still needs both distinct families; a --full flag and the policy (set to off) force full fresh review",
+        "docs/orchestration-review.md documents the rule and the policy key; tests cover an eligible delta, a delta with a source file, a delta over three files, a delta with an integrity finding, a reviewer that did not approve the earlier commit, and the policy off"
       ],
       "codename": "delta-review-packet",
       "dependencies": [],
-      "execution_milestone": "Mixed",
+      "execution_milestone": "Agentic-led",
       "id": "M11.8",
       "node_key": "0aae8208-413d-4d60-b7b8-c83f9c31b522",
       "parent_id": "M11",
@@ -314,6 +314,33 @@
         "specy_road/bundled_scripts/role_prompt_rca.py",
         "specy_road/cli.py",
         "specy_road/cli_usage.py",
+        "docs/orchestration-review.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "With a review policy setting (on by default), when the last leaf under a milestone lands, the milestone is not rolled up to Complete until a full review of its combined change (merge base of its first leaf to the integration tip) is approved by both families; review-packet <MILESTONE_ID> builds that packet",
+        "handoff status and review list show a milestone awaiting its full review; setting the policy off restores the current rollup; docs/orchestration-review.md documents it",
+        "Tests cover the rollup held, the milestone packet's range, approval releasing the rollup, and the policy off"
+      ],
+      "codename": "milestone-full-review",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.13",
+      "node_key": "b0b6bb18-c235-4783-b69a-7aadde34b219",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.13_milestone-full-review_b0b6bb18-c235-4783-b69a-7aadde34b219.md",
+      "sibling_order": 13,
+      "status": "Not Started",
+      "title": "A milestone gets one full review of its combined change before it is marked complete",
+      "touch_zones": [
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/review_gate.py",
+        "specy_road/finish_ancestor_rollup.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "sr/schemas/",
         "docs/orchestration-review.md",
         "tests/"
       ],
