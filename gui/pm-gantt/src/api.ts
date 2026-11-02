@@ -795,8 +795,13 @@ export async function fetchWorkers(): Promise<{ workers: WorkerRow[] }> {
   return r.json() as Promise<{ workers: WorkerRow[] }>;
 }
 
-export async function fetchWorkerEvents(workerId: string): Promise<WorkerDetail> {
-  const r = await fetch(`${API}/workers/${encodeURIComponent(workerId)}/events`);
+export async function fetchWorkerEvents(
+  workerId: string,
+  signal?: AbortSignal,
+): Promise<WorkerDetail> {
+  const r = await fetch(`${API}/workers/${encodeURIComponent(workerId)}/events`, {
+    signal,
+  });
   if (!r.ok) throw new Error(await r.text());
   return r.json() as Promise<WorkerDetail>;
 }

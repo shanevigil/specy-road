@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchWorkerEvents, fetchWorkers } from "../api";
 import type { WorkerDetail, WorkerRow } from "../types";
 import {
+  createWorkerSelection,
+  type WorkerSelectionState,
+} from "../workerSelection";
+import {
   formatCost,
   formatSeconds,
   isToolCall,
@@ -105,21 +109,19 @@ function WorkerDetailView({ d }: { d: WorkerDetail }) {
 
 export function WorkersDrawer({ open, onClose }: Props) {
   const [rows, setRows] = useState<WorkerRow[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [detail, setDetail] = useState<WorkerDetail | null>(null);
+  const [view, setView] = useState<WorkerSelectionState<WorkerDetail>>({
+    selected: null,
+    detail: null,
+    loading: false,
+    error: null,
+  });
+  // One controller for the drawer's life: a newer selection drops older replies.
+  const [selection] = useState(() =>
+    createWorkerSelection(fetchWorkerEvents, setView),
+  );
+  const { selected, detail } = view;
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
-  const select = useCallback(async (id: string) => {
-    setSelected(id);
-    setMsg(null);
-    try {
-      setDetail(await fetchWorkerEvents(id));
-    } catch (e: unknown) {
-      setDetail(null);
-      setMsg(String(e));
-    }
-  }, []);
 
   /** Reload the list; keep `keepId` selected when it is still listed, else the newest worker. */
   const load = useCallback(
@@ -131,15 +133,15 @@ export function WorkersDrawer({ open, onClose }: Props) {
         setRows(r.workers);
         const keep = r.workers.find((w) => w.worker_id === keepId);
         const pick = keep ?? r.workers[r.workers.length - 1];
-        if (pick) await select(pick.worker_id);
-        else setDetail(null);
+        if (pick) await selection.select(pick.worker_id);
+        else selection.clear();
       } catch (e: unknown) {
         setMsg(String(e));
       } finally {
         setLoading(false);
       }
     },
-    [select],
+    [selection],
   );
 
   useEffect(() => {
@@ -155,7 +157,11 @@ export function WorkersDrawer({ open, onClose }: Props) {
       titleId="workers-drawer-title"
       onClose={onClose}
       storageKey="workers"
-      footer={msg ? <p className="outline-meta">{msg}</p> : null}
+      footer={
+        msg || view.error ? (
+          <p className="outline-meta">{msg ?? view.error}</p>
+        ) : null
+      }
       bodyClassName="modal-body--workspace"
     >
       <p className="outline-meta">
@@ -193,7 +199,7 @@ export function WorkersDrawer({ open, onClose }: Props) {
                           : "workspace-file-pill"
                       }
                       title={w.last_event ? `#${w.last_event.seq} ${w.last_event.type}: ${w.last_event.summary}` : ""}
-                      onClick={() => void select(w.worker_id)}
+                      onClick={() => void selection.select(w.worker_id)}
                     >
                       #{w.attempt} {w.worker_id} · {w.state}
                       <br />
@@ -211,6 +217,8 @@ export function WorkersDrawer({ open, onClose }: Props) {
         <div className="workspace-notes-editor">
           {detail ? (
             <WorkerDetailView d={detail} />
+          ) : view.loading ? (
+            <p className="outline-meta">Loading {selected}…</p>
           ) : (
             <p className="outline-meta">Select a worker.</p>
           )}
