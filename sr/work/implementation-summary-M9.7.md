@@ -65,12 +65,35 @@ findings, and `test_integrity_section`'s `_none_` wording in
   decodes strictly. The `git_subprocess` module docstring, which lists the
   callers that spawn git themselves, is outside this leaf's touch zones and
   does not mention this one yet.
+- Review round 3 (gpt-6.1-sol) fixed: the leaf's own `.gitattributes` could mark
+  a file `-diff` (or `binary`), and git then printed "Binary files differ" with
+  no hunks. Every content diff now passes `--text`, plus `--no-textconv`,
+  `--no-ext-diff` and `--no-relative` (the shared `_DIFF` flags). Audit of other
+  ways to hide additions:
+  - textconv drivers and `diff.external` / `diff=<driver>` commands are
+    disabled by flags; tests cover both.
+  - `diff.relative` in repo config: `--no-relative` on both git calls.
+  - the leaf's `.gitattributes`: with these flags only `xfuncname` still has an
+    effect, and it changes the hunk-header text after the line number, which is
+    not parsed.
+  - `git show <blob>`, used to read the policy from the integration branch,
+    applies no textconv or binary classification (checked by hand).
+  - **renames (found in this audit):** with rename detection, `git mv` of an
+    existing file onto a ratchet path that does not exist yet
+    (`constraints/mutation-baseline.json` does not) showed zero added lines.
+    `_ratchet_findings` now diffs each ratchet path on its own with
+    `--no-renames`, so every line of the moved file counts. Suppression
+    findings still follow renames, so a moved file's existing markers are not
+    reported as new.
+  - not handled: submodule gitlinks have no file lines, and repo-local config
+    or environment set by whoever runs the command is out of scope (the
+    leaf's commit cannot carry either).
 - Renames are detected (`--find-renames`), so moving a file that already holds
   a suppression does not report it; edits inside the moved file still do.
 
 ## Verification
 
-- Rounds 2 and 3: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 83 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
+- Round 4: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 88 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -86,7 +109,9 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `integrity._changed_files` — changed paths and rename pairs from `--name-status -z`, so paths with spaces or quotes are exact (R2).
 - `integrity._hunk_additions` — the `+` lines of one file's `-U0` patch after its first hunk header.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
-- `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines (A2).
+- `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines, each diffed with `--no-renames` (A2; round 3).
+- `integrity._file_additions` — one file's (or rename pair's) added lines; shared by both findings.
+- `_DIFF` flags — `--text --no-textconv --no-ext-diff --no-relative`, so attributes and drivers cannot hide added lines (round 3).
 - `_SUPPRESSION`, `_HUNK` regexes — the marker list (A1) and the hunk header's new-side start line.
 
 ### Branches / guards
@@ -107,3 +132,5 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `test_nested_project_ratchet_path_outside_the_project` — git-root-relative path outside a nested project root (the regression-2 shape).
 - `test_non_utf8_file_in_the_diff_hides_no_other_finding` — R1 and round 2: an unrelated non-UTF-8 file, and non-UTF-8 text plus a suppression in the configured baseline itself; `baseline-widened ... +2`, the baseline's `new-suppression` and the other file's, exit 1.
 - `test_paths_with_spaces_are_reported_and_matched_exactly` — R2: exact suppression line and baseline match for paths with spaces, exit 1.
+- `test_attributes_and_diff_drivers_do_not_hide_additions` (×4: `-diff`, `binary`, textconv driver, external diff command) — round 3: a configured baseline the leaf hides from diff still gives `baseline-widened ... +1` and its `new-suppression`, exit 1.
+- `test_file_renamed_onto_a_new_ratchet_path_widens_it` — round 3 audit: `git mv` onto a not-yet-existing ratchet path gives `+<all lines>`, exit 1.
