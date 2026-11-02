@@ -3,8 +3,8 @@
 ## What changed
 
 - **A1 — fixture and schema.** `specy_road/templates/project/model-profiles/harness-facts.yaml`
-  holds one record per rostered harness (`claude-code`, `codex`, `cursor`; the roster names no
-  other). Each record covers version, headless command, executor command template, session
+  holds one record per supported harness (`claude-code`, `codex`, `cursor`, `generic`: the
+  `worker_state.HARNESSES` list a roster `harness` may name; `generic` added in round 4). Each record covers version, headless command, executor command template, session
   flags, permission example, instruction files plus size guidance, skill dirs, hooks,
   autonomous git actions with their switches, model families, quota behaviour,
   `capture_commands` and `relationships`. Every fact is labelled `documented`, `runtime` or
@@ -158,10 +158,48 @@ pass does only the two items in scope under either reading. No YAML encodings we
 - **Docs.** `docs/orchestration-models.md` states the shipped-layout rule and the dry-run
   behaviour.
 
+## Round 4 (gpt-5.6-sol-high block at 23367a84, A1 and A2)
+
+- **A1 — the `generic` harness.**
+  - **The record.** The fixture now has a `generic` record. Its sourced facts are labelled
+    `documented`: the headless command and executor template (it runs the roster
+    `channels.cli` or the profile's own `access.cli`), the session facts (no resume, interrupt
+    or hand-off), hooks (the session guard's generic contract) and quota (no usage reported).
+    Each source is `docs/orchestration-workers.md`, `docs/orchestration-models.md`,
+    `worker_adapters.py` or `tool_call_guard_adapters.py`. Everything else is `unverified`:
+    version, permissions, instruction files, skill dirs, git actions and model families.
+  - **What it renders.** `renders_cli_for: []`, so it renders no `access.cli`. It does
+    render into the README block, re-rendered with `--render --repo-root
+    specy_road/templates/project`. An empty list now reads "none listed".
+  - **No `capture_commands`.** Generic has no binary of its own, so the key is now optional in
+    the schema. `--capture generic` without `--from` refuses with a message. With `--from`,
+    only `version.txt` (plus any accepted files) is required.
+  - **Coverage test.** The coverage test now compares the fixture's ids with the public
+    `specy_road.worker_state.HARNESSES` (the list `worker_adapters` asserts its adapters
+    against) instead of a hard-coded tuple. The accepted-captures test derives its harness list
+    from the records that have `capture_commands`.
+- **A2 — damaged README markers.**
+  - **What counts as a block.** `_block_span` accepts only exactly one start marker followed
+    by exactly one end marker. A README with neither marker is still `behind`.
+  - **Damaged markers are drift.** One marker missing, a repeated marker, or the end before
+    the start is now `drift: … the harness block markers are missing one, repeated or out of
+    order` (`_markers_malformed`). `--check` exits 1; `--render` leaves the file byte-identical
+    and exits 1 (`cannot render …`). It never guesses where a block was.
+  - **Message change.** The `cannot render` message is now generic. A profile that cannot be
+    rewritten gets the shipped-layout explanation in its finding detail.
+- **Tests (+4).**
+  - `test_a_damaged_marker_pair_is_drift_and_render_leaves_it_byte_identical`, through the CLI
+    and parametrized: start deleted, end deleted, swapped.
+  - `test_the_generic_harness_has_no_binary_to_capture`.
+  - `test_the_shipped_fixture_validates_and_covers_every_supported_harness` (renamed;
+    `HARNESSES`).
+- **Docs.** `docs/orchestration-models.md` names `generic`, its capture rule and the marker
+  rule.
+
 ## Verification
 
-- `python -m pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 45 passed (after
-  round 3).
+- `.conda/bin/pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 49 passed (after
+  round 4).
 - `python -m pytest -q -x -p no:cacheprovider`: 3018 passed, 2 skipped (18 min, before
   round 1; round 1 reran only the touched test file, as instructed).
 - `python -m specy_road.bundled_scripts.refresh_profiles --check`: exit 0 (this repository
@@ -202,12 +240,17 @@ pass does only the two items in scope under either reading. No YAML encodings we
 - `refresh_profiles._parser` and `_copy_missing` — `main` would otherwise pass the
   80-line function cap. `_copy_missing` keeps the old behaviour unchanged.
 - Guard in `main`: `--from`/`--accept` without `--capture` is a usage error.
-- `specy_road/templates/project/model-profiles/harness-facts.yaml` — the fixture (A1).
+- `specy_road/templates/project/model-profiles/harness-facts.yaml` — the fixture (A1), with a
+  `generic` record added in round 4.
+- `harness_facts._markers_malformed` and the stricter `_block_span` — damaged markers are
+  drift, never re-rendered (round 4, A2).
+- `generic` branch in `refresh_profiles.capture` (no `capture_commands` means `--from` is
+  needed), and the `rec.get("capture_commands")` fallback in `classify_capture` (round 4, A1).
 - `specy_road/templates/project/model-profiles/harness-captures/{claude-code,codex,cursor}/*.txt`
   — the accepted captures (A3).
 - `specy_road/templates/project/schemas/harness-facts.schema.json` — the schema (A1).
 - `specy_road/templates/project/model-profiles/README.md` — the rendered harness block (A2).
-- `tests/test_harness_facts.py` — 45 tests. The tests added or changed in rounds 1–3 are listed
+- `tests/test_harness_facts.py` — 49 tests. The tests added or changed in rounds 1–4 are listed
   under their rounds; round 3 also added the `_render_refuses` helper:
   - the fixture validates and covers the roster; each schema rule rejects a broken record;
   - an unverified fact needs no source, and a duplicate id is refused;
