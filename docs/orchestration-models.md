@@ -168,9 +168,14 @@ specy-road refresh-profiles --check    # report drift (exit 1); a README older t
 specy-road refresh-profiles --render   # rewrite the rendered regions; --dry-run lists them
 ```
 
-`--render` puts a removed `access.cli` back under `access:`. It exits 1, naming
-the profile, when the front matter has no block-style `access:` mapping to
-write into.
+`--render` rewrites only the shipped layout: a block-style `access:` whose
+children are one-line keys indented two spaces. It puts a removed `access.cli`
+back under `access:`. It writes a profile only when the result parses to the
+same front matter with just that value changed. Any other layout is left byte
+for byte as it was, and so is a profile whose front matter does not parse,
+which counts as drift. Examples are a folded or literal `cli`, a flow
+`access: { … }`, or another indentation. `--render` names each such profile and
+exits 1; fix it by hand or take the toolkit's copy with `--force`.
 
 A plain `refresh-profiles` still copies only missing files, and also prints
 any drift without failing. To re-render the shipped copies after editing the
@@ -183,7 +188,7 @@ output before accepting it:
 ```bash
 specy-road refresh-profiles --capture codex            # runs the record's capture_commands
 specy-road refresh-profiles --capture codex --from DIR # or reads DIR/*.txt (version.txt required)
-specy-road refresh-profiles --capture codex --accept   # store a passing capture as the accepted one
+specy-road refresh-profiles --capture codex --accept   # store a passing capture as the accepted one (--dry-run: report only)
 ```
 
 The accepted capture lives in `model-profiles/harness-captures/<harness>/`. A

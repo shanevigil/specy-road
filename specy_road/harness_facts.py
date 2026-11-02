@@ -49,9 +49,7 @@ WORKFLOW_WORDS = (
 VERSION_FILE = "version.txt"
 #: ``access:`` and its block mapping: every following line that is blank or indented.
 _ACCESS_BLOCK = re.compile(r"^access:[ \t]*(?:#[^\n]*)?$(?:\n(?:[ \t][^\n]*)?)*", re.MULTILINE)
-#: The ``cli`` key and its whole value: continuation lines are indented deeper than the key
-#: (a folded or literal block scalar, or a quoted scalar broken across lines).
-_CLI_VALUE = re.compile(r"^  cli:[^\n]*(?:\n(?:[ \t]*\n)*   [^\n]*)*", re.MULTILINE)
+_CLI_LINE = re.compile(r"^  cli:[^\n]*$", re.MULTILINE)
 _FLAG = re.compile(r"(?<![\w-])--[A-Za-z][A-Za-z0-9-]*")
 _COMMAND_ROW = re.compile(r"^ {2,4}([a-z][\w|-]*)(?=\s|$)")
 
@@ -185,20 +183,38 @@ def render_readme(text: str, facts: dict[str, Any]) -> str:
     return text[:at + 1] + block + "\n" + text[at + 1:]
 
 
+def _shipped_layout(block: str) -> bool:
+    """The layout the shipped profiles use: every child of ``access:`` on one line, indented two spaces."""
+    return all(not ln.strip() or (ln.startswith("  ") and not ln[2:3].isspace()) for ln in block.split("\n")[1:])
+
+
+def _renders_to(old_head: str, new_head: str, cli: str) -> bool:
+    """``new_head`` parses to ``old_head``'s front matter with only ``access.cli`` set to ``cli``."""
+    try:
+        old, new = yaml.safe_load(old_head), yaml.safe_load(new_head)
+    except (yaml.YAMLError, ValueError):
+        return False
+    if not isinstance(old, dict) or not isinstance(old.get("access") or {}, dict):
+        return False
+    return new == {**old, "access": {**(old.get("access") or {}), "cli": cli}}
+
+
 def render_profile(text: str, cli: str) -> str:
-    """``text`` with its front matter's ``access.cli`` value (every line of it) set to ``cli``; a removed
-    one goes back first under ``access:``. Unchanged when the front matter has no block-style
-    ``access:`` mapping. Everything outside that one value is kept byte for byte."""
+    """``text`` with its front matter's ``access.cli`` line set to ``cli``; a removed one goes back first
+    under ``access:``. Only the shipped layout (a block-style ``access:`` whose children are one-line,
+    two-space keys) is rewritten, and only when the result parses to the same front matter with that
+    one value changed. Any other layout, or front matter that does not parse, comes back unchanged."""
     head, sep, body = text.partition("\n---\n")
     access = _ACCESS_BLOCK.search(head) if sep else None
-    if not access:
+    if not access or not _shipped_layout(access.group(0)):
         return text
     block = access.group(0)
-    new_block, n = _CLI_VALUE.subn(lambda _m: _cli_line(cli), block, count=1)
+    new_block, n = _CLI_LINE.subn(lambda _m: _cli_line(cli), block, count=1)
     if not n:
         first, nl, rest = block.partition("\n")
         new_block = f"{first}\n{_cli_line(cli)}{nl}{rest}"
-    return head[:access.start()] + new_block + head[access.end():] + sep + body
+    new_head = head[:access.start()] + new_block + head[access.end():]
+    return new_head + sep + body if _renders_to(head, new_head, cli) else text
 
 
 @dataclass
@@ -220,6 +236,10 @@ def plan_render(repo_root: Path, facts: dict[str, Any]) -> RenderPlan:
     plan = RenderPlan()
     pdir = repo_root / PROFILES_REL
     for prof in list_profiles(repo_root):
+        if not prof.data and prof.errors:   # front matter missing or not YAML: its family is unknowable
+            plan.findings.append(Finding(prof.path.relative_to(repo_root).as_posix(), "drift",
+                                         f"front matter does not parse ({prof.errors[0]})"))
+            continue
         want = rendered_cli(facts, prof.data.get("family"), str(prof.data.get("api_id") or prof.path.stem))
         if want is None:
             continue

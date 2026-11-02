@@ -107,8 +107,9 @@ def _report_render(root: Path, plan: hf.RenderPlan, *, dry_run: bool) -> int:
         if f.rel in updated:
             print(f"{verb} {f.rel} ({f.kind}: {f.detail})")
     for f in stuck:
-        print(f"cannot render {f.rel} ({f.kind}: {f.detail}): its front matter has no block-style "
-              "`access:` mapping; add one or take the toolkit's copy with --force", file=sys.stderr)
+        print(f"cannot render {f.rel} ({f.kind}: {f.detail}): left unchanged; --render rewrites only "
+              "the shipped layout (block-style `access:` with one-line, two-space keys); fix it by hand "
+              "or take the toolkit's copy with --force", file=sys.stderr)
     if not plan.findings:
         print("rendered regions already match harness-facts.yaml")
     return 1 if stuck else 0
@@ -148,7 +149,7 @@ def _print_diff(diff: hf.CaptureDiff) -> None:
               file=sys.stderr)
 
 
-def run_capture(harness_id: str, from_dir: Path | None, *, accept: bool) -> int:
+def run_capture(harness_id: str, from_dir: Path | None, *, accept: bool, dry_run: bool = False) -> int:
     facts = hf.load_facts()
     accepted_dir = hf.bundled_captures_dir() / harness_id
     new = capture(harness_id, from_dir)
@@ -157,7 +158,9 @@ def run_capture(harness_id: str, from_dir: Path | None, *, accept: bool) -> int:
     if not diff.ok:
         print(f"{len(diff.unassigned)} new workflow identifier(s) unassigned; capture not accepted", file=sys.stderr)
         return 1
-    if accept:
+    if accept and dry_run:
+        print(f"would accept as {accepted_dir} (--dry-run: nothing written)")
+    elif accept:
         hf.write_capture(accepted_dir, new)
         print(f"accepted as {accepted_dir}")
         if hf.harness(facts, harness_id)["version"]["value"] not in new[hf.VERSION_FILE]:
@@ -213,7 +216,7 @@ def main(argv: list[str] | None = None) -> None:
     root = (args.repo_root or default_user_repo_root()).resolve()
     try:
         if args.capture:
-            raise SystemExit(run_capture(args.capture, args.from_dir, accept=args.accept))
+            raise SystemExit(run_capture(args.capture, args.from_dir, accept=args.accept, dry_run=args.dry_run))
         if args.check or args.render:
             plan = render_profiles(root, dry_run=args.check or args.dry_run)
             if args.check:

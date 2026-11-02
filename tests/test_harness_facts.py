@@ -145,18 +145,48 @@ def test_render_restores_a_removed_cli_and_check_then_passes(tmp_path: Path, cap
     assert prof.read_text(encoding="utf-8").split("---\n")[2] == shipped.split("---\n")[2]
 
 
-def test_render_replaces_a_folded_multi_line_cli_whole(tmp_path: Path, capsys) -> None:
+def _render_refuses(repo: Path, prof: Path, capsys) -> None:
+    """``--check`` and ``--render`` both exit 1, render names the profile and leaves its bytes alone."""
+    before = prof.read_bytes()
+    assert run_main("--check", "--repo-root", str(repo)) == 1
+    assert run_main("--render", "--repo-root", str(repo)) == 1
+    out, err = capsys.readouterr()
+    rel = prof.relative_to(repo).as_posix()
+    assert f"cannot render {rel}" in err and f"rendered {rel}" not in out
+    assert prof.read_bytes() == before
+
+
+def test_render_refuses_a_folded_cli_and_leaves_it_byte_identical(tmp_path: Path, capsys) -> None:
     repo = _repo(tmp_path)
     prof = repo / SOL
     shipped = prof.read_text(encoding="utf-8")
     cli_line = next(line for line in shipped.splitlines() if line.startswith("  cli: "))
-    folded = '  cli: >-\n    codex exec --model custom\n\n    "<prompt>"'
-    prof.write_text(shipped.replace(cli_line, folded), encoding="utf-8")
+    prof.write_text(shipped.replace(cli_line, '  cli: >-\n    codex exec --model custom\n\n    "<prompt>"'),
+                    encoding="utf-8")
+    _render_refuses(repo, prof, capsys)
+
+
+def test_render_refuses_a_four_space_access_mapping_and_leaves_it_byte_identical(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    prof = repo / SOL
+    head, sep, body = prof.read_text(encoding="utf-8").partition("\n---\n")
+    start = head.index("\naccess:\n") + len("\naccess:\n")
+    end = head.index("\ncost_usd_per_mtok:")
+    children = [("  " + ln) for ln in head[start:end].split("\n")]
+    children = [ln.replace("approval_policy=never", "approval_policy=on-request") for ln in children]
+    prof.write_text(head[:start] + "\n".join(children) + head[end:] + sep + body, encoding="utf-8")
+    assert yaml.safe_load(prof.read_text(encoding="utf-8").split("---\n")[1])["access"]["cli"]   # valid YAML
+    _render_refuses(repo, prof, capsys)
+
+
+def test_a_profile_whose_front_matter_does_not_parse_is_drift(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    prof = repo / OPUS
+    prof.write_text(prof.read_text(encoding="utf-8").replace("family: Anthropic Claude", "family: [unclosed"),
+                    encoding="utf-8")
+    _render_refuses(repo, prof, capsys)
     assert run_main("--check", "--repo-root", str(repo)) == 1
-    assert run_main("--render", "--repo-root", str(repo)) == 0
-    assert f"rendered {SOL.as_posix()} (drift:" in capsys.readouterr().out
-    assert run_main("--check", "--repo-root", str(repo)) == 0
-    assert prof.read_text(encoding="utf-8") == shipped   # the rest of the front matter and the body untouched
+    assert f"drift: {OPUS.as_posix()}: front matter does not parse" in capsys.readouterr().err
 
 
 def test_render_fails_on_a_region_it_cannot_write(tmp_path: Path, capsys) -> None:
@@ -252,6 +282,10 @@ def test_capture_cli_fails_on_unassigned_and_accept_stores_a_passing_one(tmp_pat
     assert "0.165.0" in (accepted / "codex" / hf.VERSION_FILE).read_text()
     assert run_main("--capture", "codex", "--from", str(good)) == 0
     assert "0.165.0" in (accepted / "codex" / hf.VERSION_FILE).read_text()
+    snapshot = {p.name: p.read_bytes() for p in (accepted / "codex").iterdir()}
+    assert run_main("--capture", "codex", "--from", str(good), "--accept", "--dry-run") == 0
+    assert "would accept as" in capsys.readouterr().out
+    assert {p.name: p.read_bytes() for p in (accepted / "codex").iterdir()} == snapshot
     assert run_main("--capture", "codex", "--from", str(good), "--accept") == 0
     out = capsys.readouterr().out
     assert "new --colour: no workflow word" in out and "note: update codex's version" in out
