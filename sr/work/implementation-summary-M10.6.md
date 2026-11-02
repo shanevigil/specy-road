@@ -1,7 +1,7 @@
 # Implementation summary: `M10.6` — Measure whether lower reviewer effort changes verdicts
 
 Branch `feature/rm-measure-whether-lower-reviewer`, base `d9fc67a57eccdbd9a05bb3d40595b8f7dfba65b9`,
-implementation commits `6792da65` and `b689f2d7` (round 2).
+implementation commits `6792da65`, `b689f2d7` (round 2) and `e0c71b64` (round 3).
 
 ## Acceptance
 
@@ -39,6 +39,16 @@ implementation commits `6792da65` and `b689f2d7` (round 2).
   run). A new test runs with a relative `-o` and checks that every row has a parsed verdict
   and exit 0. With the round-1 script, that test fails.
 
+## Round 3 (REVIEW-gpt-5.6-sol-high, block, A1)
+
+- **Duplicate `--levels` fixed in `e0c71b64`:** `plan` refuses two equal levels, before the
+  output directory is created or any reviewer runs. Before the fix, `--levels high high` ran
+  one level twice under one run directory and read as a two-level study. The study was not
+  re-run; the recorded runs used `high medium`.
+- A new test runs the script as a subprocess (the real CLI) with `--levels high high` and
+  checks for exit 1, the refusal message and no output directory. With the round-2 script,
+  that test fails.
+
 ## Deviations and notes for the coordinator
 
 - **Sol ran on Cursor, not Codex.** The roster's `gpt-6.1-sol` command
@@ -62,6 +72,7 @@ changed), `tests/test_review_effort_study.py`. Nothing else changed.
 
 ## Verification
 
+- Round 3: `.conda/bin/pytest tests/test_review_effort_study.py -q`: 12 passed
 - Round 2: `pytest tests/test_review_effort_study.py -q`: 11 passed
 - Round 1: `pytest tests/test_review_effort_study.py tests/test_models_and_prompt.py -q`: 35 passed
 - Round 1: `pytest -q` (full suite): 2989 passed, 2 skipped
@@ -84,6 +95,7 @@ changed), `tests/test_review_effort_study.py`. Nothing else changed.
 ### Branches / guards
 - Flag harness whose `channels.cli` lacks `{effort}` → refused (two levels would be one command).
 - Cursor id without a `-<level>` suffix, or not present in the command → refused.
+- Two equal `--levels` (round 3) → refused before anything runs (one level twice is not a two-level study).
 - Study over `--max-runs` → refused whole (maintainer's 12-run budget).
 - Non-reviewer roster id or missing packet → refused before any run.
 - Study directory resolved to an absolute path (round 2, R1) → a relative `-o` still gives each reviewer a prompt path it can open from its own cwd.
@@ -98,6 +110,7 @@ changed), `tests/test_review_effort_study.py`. Nothing else changed.
 - `test_cursor_level_swaps_the_effort_suffix_of_the_model_id`: Cursor's level is carried by the model id.
 - `test_flag_harness_without_effort_placeholder_is_refused_before_any_run`: no silent same-command study.
 - `test_cursor_id_without_effort_suffix_is_refused`: the Cursor guard.
+- `test_duplicate_levels_are_refused_through_the_cli_before_anything_runs`: round 3, duplicate levels through the CLI.
 - `test_study_over_budget_is_refused_whole`: the budget guard.
 - `test_non_reviewer_and_missing_packet_are_refused`: roster and packet checks.
 - `test_reply_without_verdict_block_is_unparsed_with_exit_code`: an unreadable reply is recorded, not dropped.
