@@ -88,7 +88,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Not Started**
 - `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
-  - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
+  - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Complete**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
@@ -109,7 +109,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.2` on `feature/rm-normalised-usage-event-in` since 2026-11-01
 - `M4.4` on `feature/rm-brainstorm-decisions` since 2026-11-02
 - `M9.9` on `feature/rm-tests-at-risk` since 2026-11-01
 

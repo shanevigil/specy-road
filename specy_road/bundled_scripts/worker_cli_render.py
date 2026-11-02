@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from specy_road.worker_adapter_parsers import usage_text
 from specy_road.worker_process import wrapper_alive
 from specy_road.worker_state import events_since
 
@@ -132,4 +133,42 @@ def timeline_lines(data: dict[str, Any]) -> list[str]:
     for name, start, end in PHASES:
         secs = data["phases"][name]
         lines.append(f"  {start} -> {end}: " + ("unknown" if secs is None else f"{secs:.0f}s"))
+    return lines
+
+
+# --- usage -------------------------------------------------------------------
+
+_SUMMED = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens", "cost_usd", "num_turns")
+
+
+def _sum_usage(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Each figure summed over the rows that report it; ``None`` when none does, so absent never reads as 0."""
+    out: dict[str, Any] = {}
+    for f in _SUMMED:
+        vals = [r[f] for r in rows if r.get(f) is not None]
+        out[f] = (round(sum(vals), 6) if f == "cost_usd" else sum(vals)) if vals else None
+    flags = [r["cost_is_estimate"] for r in rows if r.get("cost_is_estimate") is not None]
+    out["cost_is_estimate"] = any(flags) if flags else None
+    return out
+
+
+def usage(attempts: list[tuple[Any, list[dict[str, Any]]]]) -> dict[str, Any]:
+    """``{"node_id", "attempts": [...], "total"}`` from ``(record, events)`` per worker, from its ``usage`` events."""
+    rows = []
+    for rec, events in attempts:
+        turns = [e["detail"] for e in events if e["type"] == "usage" and e.get("detail")]
+        versions = [t["harness_version"] for t in turns if t.get("harness_version")]
+        rows.append({"attempt": rec.attempt, "worker_id": rec.worker_id, "model": rec.model, "harness": rec.harness,
+                     "harness_version": versions[-1] if versions else None, "turns": len(turns), **_sum_usage(turns)})
+    return {"node_id": attempts[0][0].node_id, "attempts": rows,
+            "total": {"turns": sum(r["turns"] for r in rows), **_sum_usage(rows)}}
+
+
+def usage_lines(data: dict[str, Any]) -> list[str]:
+    lines = [f"{data['node_id']} usage ({len(data['attempts'])} attempt(s); ? = not reported)"]
+    for a in data["attempts"]:
+        version = f" {a['harness_version']}" if a["harness_version"] else ""
+        lines.append(f"  attempt {a['attempt']} {a['worker_id']} {a['harness']}{version}/{a['model']}, {a['turns']} turn(s): {usage_text(a)}")
+    t = data["total"]
+    lines.append(f"  total, {t['turns']} turn(s): {usage_text(t)}")
     return lines

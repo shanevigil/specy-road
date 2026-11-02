@@ -326,3 +326,62 @@ def test_timeline_arithmetic_and_unknown_phases() -> None:
     # An adopted worker never launched anything: every phase unknown, and the lines say so.
     t = wcr.timeline(Rec(), [ev(1, 0, "started", "broker"), ev(2, 1, "adopted", "orchestrator")], None)
     assert set(t["phases"].values()) == {None} and all(line.endswith("unknown") for line in wcr.timeline_lines(t)[1:])
+
+
+def _turn(repo: Path, script: Path, rec: ws.WorkerRecord, lines: list[dict], *, exit_code: int = 0) -> None:
+    """One turn of the fake harness through the wrapper, printing ``lines``."""
+    from specy_road import worker_runner as wr
+    from specy_road.worker_adapters import Launch
+    spec = script.parent / f"turn-{rec.worker_id}-{ws.load_record(repo, rec.worker_id).last_event_seq}.json"
+    spec.write_text(json.dumps({"lines": lines, "exit": exit_code}))
+    wr.run(repo, rec.worker_id, Launch([sys.executable, str(script), str(spec)]))
+
+
+def test_usage_events_per_turn_and_the_usage_command(tmp_path: Path, capsys) -> None:
+    """M10.2 A2/A3: one usage event per turn end, Claude's running cost as a delta; `worker usage` per attempt and node."""
+    repo, script = _repo(tmp_path)
+    rec = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized
+    init, first, resumed = rec["claude-code"]["lines"]   # one session: the resumed turn reports the session's whole total
+    claude = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    _turn(repo, script, claude, [init, first])
+    _turn(repo, script, claude, [init, resumed])
+    codex = ws.create_record(repo, "M1.1", "codex", "sol", repo)
+    _turn(repo, script, codex, rec["codex"]["lines"])
+    _turn(repo, script, codex, [{"type": "turn.failed", "error": {"message": "quota"}}], exit_code=1)   # constructed
+    cu = [e.detail for e in ws.events_since(repo, claude.worker_id) if e.type == "usage"]
+    assert [u["cost_usd"] for u in cu] == [1.0474079, 0.162736] and [u["session_cost_usd"] for u in cu] == [1.0474079, 1.2101441]
+    assert cu[1] == {"input_tokens": 380001, "cached_input_tokens": 376181, "output_tokens": 2849, "reasoning_tokens": 123,
+                     "cost_usd": 0.162736, "cost_is_estimate": True, "num_turns": 4, "harness_version": "2.1.312",
+                     "session_cost_usd": 1.2101441}
+    xu = [e for e in ws.events_since(repo, codex.worker_id) if e.type == "usage"]
+    assert xu[0].detail["reasoning_tokens"] == 0 and xu[0].detail["cost_usd"] is None
+    assert set(xu[1].detail.values()) == {None} and xu[1].authority == "worker_suggestion"   # nothing reported: nulls
+    capsys.readouterr()
+    assert run_worker_cli("worker", "usage", "M1.1", "--json", "--repo-root", str(repo)) == 0
+    d = json.loads(capsys.readouterr().out)
+    assert [(a["attempt"], a["harness"], a["model"], a["turns"], a["cost_usd"]) for a in d["attempts"]] == [
+        (1, "claude-code", "opus", 2, 1.210144), (2, "codex", "sol", 2, None)]
+    assert d["total"] == {"turns": 4, "input_tokens": 1686117, "cached_input_tokens": 1612673, "output_tokens": 16112,
+                          "reasoning_tokens": 4826, "cost_usd": 1.210144, "num_turns": 23, "cost_is_estimate": True}
+    assert run_worker_cli("worker", "usage", "M1.1", "--repo-root", str(repo)) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        "M1.1 usage (2 attempt(s); ? = not reported)",
+        "  attempt 1 w-0001 claude-code 2.1.312/opus, 2 turn(s): in 1671333 (1600385 cached), out 16107, reasoning 4826, $1.2101 est.",
+        "  attempt 2 w-0002 codex/sol, 2 turn(s): in 14784 (12288 cached), out 5, reasoning 0, $?",
+        "  total, 4 turn(s): in 1686117 (1612673 cached), out 16112, reasoning 4826, $1.2101 est."]
+    assert run_worker_cli("worker", "usage", "w-0002", "--json", "--repo-root", str(repo)) == 0
+    assert json.loads(capsys.readouterr().out)["total"]["cost_usd"] is None
+    assert run_worker_cli("worker", "usage", "M9.9", "--repo-root", str(repo)) == 1
+
+
+def test_usage_event_schema_needs_every_field_nullable_never_missing() -> None:
+    """M10.2 A1: a usage event carries all eight fields; null is allowed, a missing field or a wrong type is not."""
+    from specy_road.worker_adapter_parsers import USAGE_FIELDS
+    ev = {"seq": 1, "worker_id": "w-0001", "at": "2026-11-01T00:00:00+00:00", "type": "usage", "source": "worker",
+          "authority": "worker_suggestion", "summary": "usage", "epoch": 0}
+    nulls = dict.fromkeys(USAGE_FIELDS)
+    assert ws.schema_errors({**ev, "detail": nulls}, "worker-event.schema.json") == []
+    assert ws.schema_errors({**ev, "detail": {**nulls, "input_tokens": 0, "cost_usd": 0.0}}, "worker-event.schema.json") == []
+    for bad in ({}, {**nulls, "output_tokens": "9"}, {k: v for k, v in nulls.items() if k != "num_turns"}):
+        assert ws.schema_errors({**ev, "detail": bad}, "worker-event.schema.json")
+    assert ws.schema_errors(ev, "worker-event.schema.json")   # no detail at all

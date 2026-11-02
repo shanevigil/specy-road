@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Any
 
 from specy_road import worker_ops as ops
-from specy_road.bundled_scripts.worker_cli_render import _line, _row, _sync_event_lines, timeline, timeline_lines
+from specy_road.bundled_scripts.worker_cli_render import (_line, _row, _sync_event_lines, timeline, timeline_lines,
+                                                       usage, usage_lines)
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.tool_call_guard import read_payload
 from specy_road.worker_adapters import ADAPTERS, Unsupported
@@ -243,17 +244,27 @@ def cmd_open(ns: argparse.Namespace) -> int:
                             + ("" if rec.lease.get("holder") == "human" else "  — run `worker handoff` first")])
 
 
+def _records_for(root: Path, target: str) -> list:
+    """The worker ``target`` names, or every worker (attempt) on node ``target``, oldest first."""
+    if target.startswith("w-"):
+        return [load_record(root, target)]
+    recs = [r for r in list_records(root) if r.node_id == target]
+    if not recs:
+        raise WorkerError(f"no worker for {target}")
+    return recs
+
+
 def cmd_timeline(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    if ns.target.startswith("w-"):
-        rec = load_record(root, ns.target)
-    else:   # a node id: its latest worker
-        recs = [r for r in list_records(root) if r.node_id == ns.target]
-        if not recs:
-            raise WorkerError(f"no worker for {ns.target}")
-        rec = recs[-1]
+    rec = _records_for(root, ns.target)[-1]   # a node id: its latest worker
     data = timeline(rec, [e.to_dict() for e in events_since(root, rec.worker_id)], sync_marks(root).get(rec.worker_id))
     return _emit(ns, data, timeline_lines(data))
+
+
+def cmd_usage(ns: argparse.Namespace) -> int:
+    root = resolve_repo_root(ns)
+    data = usage([(r, [e.to_dict() for e in events_since(root, r.worker_id)]) for r in _records_for(root, ns.target)])
+    return _emit(ns, data, usage_lines(data))
 
 
 def cmd_hook(ns: argparse.Namespace) -> int:
@@ -332,6 +343,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp = ws.add_parser("timeline", help="Seconds per phase of a worker's latest turn (worker id or node id)")
     sp.add_argument("target", metavar="W|NODE_ID"); sp.add_argument("--json", action="store_true")
     add_repo_root_arg(sp); sp.set_defaults(func=cmd_timeline)
+    sp = ws.add_parser("usage", help="Tokens and cost per attempt, and the node's total (worker id or node id)")
+    sp.add_argument("target", metavar="W|NODE_ID"); sp.add_argument("--json", action="store_true")
+    add_repo_root_arg(sp); sp.set_defaults(func=cmd_usage)
 
     sp = ws.add_parser("adopt", help="Register a session the user started natively (observe only)")
     sp.add_argument("--node", required=True); sp.add_argument("--harness", required=True, choices=HARNESSES)

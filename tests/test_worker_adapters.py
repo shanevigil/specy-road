@@ -119,6 +119,26 @@ def test_parsers_map_each_harness_output_to_events() -> None:
     assert plain.summary == "plain line" and plain.detail == {"message": "plain line"}
 
 
+RECORDED = json.loads((Path(__file__).parent / "fixtures/worker_usage/turn_end_lines.json").read_text())   # real, sanitized (M10.2)
+CLAUDE_RESULT, CODEX_TURN, CURSOR_RESULT = (RECORDED[h]["lines"][i] for h, i in (("claude-code", 1), ("codex", -1), ("cursor", -1)))
+
+
+def test_each_adapter_reports_turn_usage_in_one_shape() -> None:
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor"))
+    assert cc.parse(json.dumps(CLAUDE_RESULT)).usage == {"input_tokens": 38 + 67090 + 1224204, "cached_input_tokens": 1224204,
+        "output_tokens": 13258, "reasoning_tokens": 4703, "cost_usd": 1.0474079, "cost_is_estimate": True, "num_turns": 19,
+        "harness_version": None, "session_cost_usd": 1.0474079}   # input counts cache reads and writes; the wrapper takes the delta
+    assert cx.parse(json.dumps(CODEX_TURN)).usage == {"input_tokens": 14784, "cached_input_tokens": 12288, "output_tokens": 5,
+        "reasoning_tokens": 0, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None}
+    assert cu.parse(json.dumps(CURSOR_RESULT)).usage == {"input_tokens": 9323 + 4864, "cached_input_tokens": 4864, "output_tokens": 25,
+        "reasoning_tokens": None, "cost_usd": None, "cost_is_estimate": None, "num_turns": None, "harness_version": None}
+    assert set(cu.parse(json.dumps({**CURSOR_RESULT, "usage": None})).usage.values()) == {None}   # constructed: no usage → nulls
+    w = cc.parse(json.dumps({**CLAUDE_RESULT, "usage": {"input_tokens": 12, "cache_creation_input_tokens": 3000}})).usage
+    assert (w["input_tokens"], w["cached_input_tokens"], w["reasoning_tokens"]) == (3012, None, None)   # writes alone count
+    bad = cc.parse(json.dumps({**CLAUDE_RESULT, "total_cost_usd": "1", "usage": {"output_tokens": "9", "input_tokens": True}}))
+    assert {k: v for k, v in bad.usage.items() if v is not None} == {"num_turns": 19} and wa.adapter_for("generic").parse("x").usage is None
+
+
 def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     repo = make_review_repo(tmp_path)
     prompt, cli = _fake(tmp_path, [
@@ -132,7 +152,7 @@ def test_run_records_session_id_events_and_a_clean_exit(tmp_path: Path) -> None:
     rec = ws.load_record(repo, rec.worker_id)
     assert rec.provider_session_id == "s-42" and rec.state == "idle" and rec.pid is None   # no READY file yet
     types = [e.type for e in ws.events_since(repo, rec.worker_id)]
-    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "completion"]
+    assert types == ["started", "launched", "first_output", "started", "output", "turn_completed", "usage", "completion"]
     assert "working" in wr.log_path(repo, rec.worker_id).read_text()
 
 
@@ -154,7 +174,7 @@ def test_run_marks_completed_when_ready_exists_and_failed_on_nonzero_exit(tmp_pa
     assert wr.run(repo, rec2.worker_id, wa.adapter_for("codex").launch(prompt2, repo, "sol", cli2)) == 1
     rec2 = ws.load_record(repo, rec2.worker_id)
     assert rec2.state == "failed"
-    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-2:] == ["error", "error"]
+    assert [e.type for e in ws.events_since(repo, rec2.worker_id)][-3:] == ["error", "usage", "error"]   # nulls: no usage
 
 
 def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -164,6 +184,7 @@ def test_run_reports_a_missing_binary_as_failed(tmp_path: Path, capsys: pytest.C
     assert ws.load_record(repo, rec.worker_id).state == "failed"
     last = ws.events_since(repo, rec.worker_id)[-1]
     assert "cannot start" in last.summary and last.detail == {"exit": 127}
+    assert [(e.type, set(e.detail.values())) for e in ws.events_since(repo, rec.worker_id)[-2:-1]] == [("usage", {None})]
     # The startup failure is the turn's end, so its ack is timed; the harness never launched or spoke.
     assert [d["worker_id"] for d in wrc.sync(repo, ack=True)] == [rec.worker_id]
     capsys.readouterr()
@@ -265,7 +286,7 @@ def test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch(tmp_path:
     assert e.value.code == 0
     events = ws.events_since(repo, rec.worker_id)
     assert [x.type for x in events] == ["started", "launched", "first_output", "started", "error", "turn_completed",
-                                        "completion"]
+                                        "usage", "completion"]
     mismatch = events[4]
     assert mismatch.detail == {"inferred_mode": "full", "launch_mode": "bare"}
     assert "exit" not in mismatch.detail   # not a turn end: the turn goes on

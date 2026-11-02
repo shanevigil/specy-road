@@ -116,3 +116,77 @@ def _json(line: str) -> dict[str, Any] | None:
     except ValueError:
         return None
     return d if isinstance(d, dict) else None
+
+
+#: The tools `claude -p --bare` starts with: "Bash, file read, and file edit"
+#: (code.claude.com/docs/en/headless, read 2026-11-01).
+CLAUDE_BARE_TOOLS = frozenset({"Bash", "Read", "Edit"})
+
+
+def _names(items: Any) -> list[str]:
+    """The ``name`` of each ``{name, ...}`` entry (``mcp_servers``, ``plugins``), or the entry itself."""
+    return [str(i.get("name") if isinstance(i, dict) else i) for i in items] if isinstance(items, list) else []
+
+
+def _init_detail(d: dict[str, Any]) -> dict[str, Any]:
+    """What a Claude ``system/init`` line says the harness loaded, and the discovery mode that implies."""
+    detail: dict[str, Any] = {"tools": _names(d.get("tools")), "mcp_servers": _names(d.get("mcp_servers")),
+                              "plugins": _names(d.get("plugins"))}
+    version = d.get("claude_code_version") or d.get("version")   # the SDK's field name, then the short one
+    if version:
+        detail["version"] = str(version)
+    if isinstance(d.get("tools"), list):   # no tool list reported: no evidence either way
+        detail["inferred_mode"] = "bare" if set(detail["tools"]) <= CLAUDE_BARE_TOOLS else "full"
+    return detail
+
+
+#: The ``usage`` event's detail, in this order; a field the harness did not report is ``None``, never 0.
+USAGE_FIELDS = ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_tokens", "cost_usd",
+                "cost_is_estimate", "num_turns", "harness_version")
+
+
+def _num(v: Any, *, whole: bool = False) -> int | float | None:
+    """``v`` when it is a non-negative number (an integral one for ``whole``), else ``None``: the line is the model's."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or v < 0:
+        return None
+    if whole:
+        return int(v) if float(v).is_integer() else None
+    return v
+
+
+def usage_fields(u: Any, *, cost: Any = None, num_turns: Any = None, estimate: bool | None = None) -> dict[str, Any]:
+    """A harness's token counts in the vendor-neutral shape of :data:`USAGE_FIELDS`.
+
+    ``input_tokens`` counts every input token, cached ones included, and
+    ``cached_input_tokens`` the part read from cache: Codex reports it that
+    way; Claude's (and Cursor's) ``input_tokens`` leaves out the cache reads
+    and writes, which are added back. Snake and camel case keys are both read;
+    Claude reports reasoning as ``output_tokens_details.thinking_tokens``.
+    """
+    u = u if isinstance(u, dict) else {}
+    details = u.get("output_tokens_details") if isinstance(u.get("output_tokens_details"), dict) else {}
+
+    def get(*keys: str, src: dict[str, Any] = u) -> int | None:
+        return next((n for n in (_num(src.get(k), whole=True) for k in keys) if n is not None), None)
+
+    inp, cached = get("input_tokens", "inputTokens"), get("cached_input_tokens", "cachedInputTokens")
+    read, write = get("cache_read_input_tokens", "cacheReadTokens"), get("cache_creation_input_tokens", "cacheWriteTokens")
+    if cached is None and (read is not None or write is not None):   # separate cache buckets, as Anthropic reports them
+        inp, cached = (None if inp is None else inp + (read or 0) + (write or 0)), read
+    reasoning = get("reasoning_output_tokens", "reasoning_tokens", "reasoningTokens")
+    if reasoning is None:
+        reasoning = get("thinking_tokens", src=details)
+    cost = _num(cost)
+    return {"input_tokens": inp, "cached_input_tokens": cached, "output_tokens": get("output_tokens", "outputTokens"),
+            "reasoning_tokens": reasoning,
+            "cost_usd": cost, "cost_is_estimate": estimate if cost is not None else None,
+            "num_turns": _num(num_turns, whole=True), "harness_version": None}
+
+
+def usage_text(u: dict[str, Any]) -> str:
+    """``in 1200 (800 cached), out 300, reasoning ?, $0.0123 est.``: ``?`` is a figure the harness did not report."""
+    def n(k: str) -> str:
+        return "?" if u.get(k) is None else str(u[k])
+    cost = "$?" if u.get("cost_usd") is None else f"${u['cost_usd']:.4f}" + (" est." if u.get("cost_is_estimate") else "")
+    return (f"in {n('input_tokens')} ({n('cached_input_tokens')} cached), out {n('output_tokens')}, "
+            f"reasoning {n('reasoning_tokens')}, {cost}")

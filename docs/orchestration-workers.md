@@ -67,8 +67,17 @@ Events (`seq`, `type`, `source`, `authority`, `summary`, `epoch`): `started`,
 `first_output` (its first stdout line), `output`, `turn_completed`,
 `completion`, `error`, `message`, `resumed`, `intervention`, `handoff`,
 `reclaim`, `terminated`, `adopted`, `reconcile`, `stalled` (detail `silent_seconds`, `last_output_at`, and
-`last_summary`, the last event parsed from the harness). Summaries are at most 500
+`last_summary`, the last event parsed from the harness), `usage` (below). Summaries are at most 500
 characters; a transcript never goes in the log.
+
+The wrapper appends one `usage` event (`worker_suggestion`) per turn end, in the same shape for every harness; a field the harness did not report is `null`, never 0, and a turn that reported nothing (a crash, `turn.failed`, `generic`) still gets one, all `null` (also a harness that could not start). Recorded lines per harness, with provenance: `tests/fixtures/worker_usage/turn_end_lines.json`.
+
+| `usage` detail | Claude Code (`result` line) | Codex (`turn.completed.usage`) | Cursor (`result` line) |
+|---|---|---|---|
+| `input_tokens` / `cached_input_tokens` | all input: `input_tokens` + cache creation + cache reads (each counted when reported) / cache reads | `input_tokens` / `cached_input_tokens` (`cache_write_input_tokens` is not read) | `usage` when the line carries one (snake or camel case, read as Claude's), else `null` |
+| `output_tokens` / `reasoning_tokens` | `output_tokens` / `output_tokens_details.thinking_tokens` | `output_tokens` / `reasoning_output_tokens` | as above / `null` |
+| `cost_usd` / `cost_is_estimate` | this turn's: `total_cost_usd` is the session's running total, so the previous `usage` event's `session_cost_usd` is subtracted (a lower total counts whole); `true`, a client-side estimate | `null` / `null` | `null` / `null` (no cost documented) |
+| `num_turns` / `harness_version` | `num_turns` / the `system/init` line's version | `null` / `null` | `num_turns` if present / `null` |
 
 `authority` says who vouches for an event. `system` is a fact the toolkit
 itself observed: the launch, the exit code, whether a new READY exists, a
@@ -233,6 +242,7 @@ to finish, and then complete its steps.
 | `adopt --node ID --harness H --session SID` | Register a session the user started natively; lease `native`, observe only. Refused while the leaf has an active worker, and for an id that is not the harness's own shape (a UUID for Claude Code and Codex; shell-safe characters for all). |
 | `reconcile W` | Paths changed since the checkpoint, and over the worker's whole lifetime (from the HEAD it started at), vs the leaf's touch zones — a rename or copy counts on both sides, so a `git mv` into the zone is still a change outside it; and whether the brief changed (a prompt that can no longer be built for this model counts as changed). Sets or clears `needs_reconcile`. The leaf's brief, summary and prompts, the toolkit's state under `work/`, and `roadmap/registry.yaml` never count; any other `work/` file does. |
 | `timeline W\|NODE_ID` | Seconds per phase of the latest turn (a node id means its latest worker): delegated → `launched`, `launched` → `first_output`, `first_output` → turn end (`turn_completed`, `completion`, or an `error` carrying `detail.exit`, which includes a harness that could not start), end → the `sync --ack` that covered it; `unknown` when a boundary event is missing. `--json` prints the same object. |
+| `usage W\|NODE_ID` | Per attempt (a node id means every worker on it): model, harness and version, `usage` events counted as turns, and each figure summed over the turns that reported it (`?` when none did; partial sums are lower bounds), then the node's total. `--json` prints the same object. |
 | `hook --format H [--print-config]` | The prompt-submit hook body; below. |
 
 ## Handing a worker to a human
