@@ -74,13 +74,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: managed-section-ablation
-    node_id: M5.7
-    branch: feature/rm-managed-section-ablation
-    touch_zones:
-      - docs/design-notes/
-      - docs/agentic-sandbox-runbook.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T23:02:41+00:00'
