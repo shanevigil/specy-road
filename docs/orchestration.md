@@ -120,6 +120,19 @@ a feature branch is ignored by the gate, flagged in the review packet, and, like
 Profiles, `models`, `prompt` and `orchestrate plan`: [orchestration-models.md](orchestration-models.md);
 `specy-road worker` (a leaf on another harness): [orchestration-workers.md](orchestration-workers.md).
 
+**One readiness rule.** `do-next-available-task`, `grind-session --plan` and `orchestrate plan` agree on
+which leaves are ready: the same dependency, claim and status check, minus leaves already Complete on an
+unmerged `feature/rm-*` branch, minus unauthored leaves (a placeholder planning sheet and no
+`acceptance`). `orchestrate plan` lists the unauthored ones apart (`unauthored` in `--json`) and staffs
+none of them.
+
+**Executor ranking.** Among capable executors, `orchestrate plan` orders by roster `class` first
+(`cheap`, then untagged or any other tag, then `senior`), then list price from the profile, then
+`billing_route` (a label containing `subscription` or `oauth` before none, before any other, such as
+`api_key`). A roster whose cheaper entries have no profile, so no price, still routes to what it
+declares `cheap` instead of the one priced model; a leaf with `executor_eligibility: senior` still gets
+a `senior` executor.
+
 ## Hand-off files: `work/reviews/<NODE_ID>/`
 
 Plain files work across every harness, including IDE chats that cannot see each other. Each file is Markdown whose YAML front matter is the machine-readable part.
