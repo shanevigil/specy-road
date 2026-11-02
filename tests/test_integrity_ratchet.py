@@ -168,3 +168,18 @@ def test_non_utf8_file_name_hides_no_other_finding(tmp_path: Path, capsys) -> No
     git(repo, "update-index", "--add", "--cacheinfo", f"100644,{blob},bad\udcff.txt")
     commit(repo, "src/mod.py", "x = 1  # noqa\n", "suppress beside a non-UTF-8 name")
     assert _run(repo, capsys) == (1, "new-suppression: src/mod.py:1\n")
+
+
+def test_symlink_to_regular_file_counts_only_hunk_lines(tmp_path: Path, capsys) -> None:
+    baseline = "constraints/noqa-baseline.txt"   # a marker in the name must not become a finding
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [baseline])
+    (repo / "constraints").mkdir()
+    (repo / baseline).symlink_to("elsewhere.txt")
+    git(repo, "add", baseline)
+    git(repo, "commit", "-qm", "baseline is a symlink on dev")
+    merge_dev(repo)
+    (repo / baseline).unlink()
+    commit(repo, baseline, "a\nb\n", "replace the symlink with a regular file")
+    assert _run(repo, capsys) == (1, f"baseline-widened: {baseline} +2\n")

@@ -227,11 +227,18 @@ def _utf8(name: bytes) -> str | None:
 
 
 def _hunk_additions(patch: str) -> list[tuple[int, str]]:
-    """Added lines of a one-file ``--unified=0`` patch; nothing before the first hunk is content."""
+    """Added lines of a one-file ``--unified=0`` patch, counted only inside hunk bodies.
+
+    A type change (symlink to regular file) is two sections; each section's header, up to
+    its first ``@@``, is never content. A ``-U0`` hunk body holds only ``+``, ``-`` and
+    ``\\`` lines, so a ``diff --git`` line always starts a section.
+    """
     out: list[tuple[int, str]] = []
     number: int | None = None
     for raw in patch.split("\n"):
-        if raw.startswith("@@ "):
+        if raw.startswith("diff --git "):
+            number = None
+        elif raw.startswith("@@ "):
             match = _HUNK.match(raw)
             number = int(match.group(1)) if match else None
         elif number is not None and raw.startswith("+"):
