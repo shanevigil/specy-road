@@ -30,7 +30,7 @@ from datetime import date
 from pathlib import Path
 
 from specy_road.bundled_scripts.generate_brief import index, render_brief
-from specy_road.finish_implementation_check import zone_matches
+from specy_road.finish_implementation_check import in_zones
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
 from specy_road.impact import impact_for_diff, section_lines
@@ -142,18 +142,18 @@ def changed_paths_section(root: Path, t: ReviewTarget) -> tuple[list[str], list[
     """``(paths, lines)``: the project-relative changed paths and the rendered section."""
     if not t.base or not t.commit:
         return [], ["_(cannot compute: no merge base or no commit)_", ""]
-    # git names paths from the repository root; zones, bookkeeping and policy
-    # paths are project-relative. A path outside the project (a monorepo's
-    # other trees) keeps its repository-root name.
+    # git names paths from the repository root; bookkeeping and policy paths
+    # are project-relative, and zones may be either. A path outside the project
+    # (a monorepo's other trees) keeps its repository-root name.
     prefix = project_prefix(root)
-    paths = [rebase_to_project(p, prefix) or p
-             for p in diff_paths(root, f"{t.base}...{t.commit}") or []]   # both sides of a rename or copy
+    changed = diff_paths(root, f"{t.base}...{t.commit}") or []   # both sides of a rename or copy
+    paths = [rebase_to_project(p, prefix) or p for p in changed]
     zones = [z.strip().strip("/") for z in t.touch_zones if isinstance(z, str) and z.strip()]
     lines = ["## Changed paths", "", _computed(t), ""]
     outside = []
     policy = [p for p in paths if p in _POLICY_PATHS]
-    for p in paths:
-        inside = not zones or any(zone_matches(z, p) for z in zones)
+    for git_path, p in zip(changed, paths):
+        inside = not zones or in_zones(zones, git_path, prefix)
         bookkeeping = p.startswith(_BOOKKEEPING_PREFIXES) and p not in _POLICY_PATHS
         if not inside and not bookkeeping:
             outside.append(p)
