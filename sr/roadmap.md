@@ -85,7 +85,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Complete |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Complete |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
-| `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Not Started |
+| `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Complete |
 | `M10` | Agent loop performance and observability | phase | — | Not Started |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Complete |
