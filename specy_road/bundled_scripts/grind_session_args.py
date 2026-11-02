@@ -162,8 +162,8 @@ def _add_passthrough_args(p: argparse.ArgumentParser) -> None:
                    help="Emit one JSON event per line (picked/finished/blocked/stopped/...). "
                         "stdout carries only JSON; sub-command output goes to stderr.")
     p.add_argument("--fields", default=None, metavar="KEY,...",
-                   help="With --plan --json: print only these top-level plan keys (event and ts "
-                        f"stay). Valid: {', '.join(PLAN_FIELDS)}.")
+                   help="With --plan --json: print only these top-level plan keys (no event or "
+                        f"ts). Valid: {', '.join(PLAN_FIELDS)}.")
 
 
 def _reject_step_conflicts(p: argparse.ArgumentParser, ns) -> None:

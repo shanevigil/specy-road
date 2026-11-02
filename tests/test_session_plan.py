@@ -255,4 +255,4 @@ def test_plan_json_fields_prints_only_those_keys(monkeypatch, capsys):
     args = gs.parse_grind_session_args(["--plan", "--json", "--fields", "ready", "--repo-root", "/tmp/x"])
     assert gs.run_session(args) == 0
     payload = json.loads(capsys.readouterr().out.strip())
-    assert set(payload) == {"event", "ts", "ready"} and payload["ready"] == ["M10.3", "M10.4"]
+    assert set(payload) == {"ready"} and payload["ready"] == ["M10.3", "M10.4"]

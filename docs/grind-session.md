@@ -58,8 +58,8 @@ specy-road grind-session --plan --under M10       # scope to a subtree
 
 `--plan` is **read-only**: it reads the local roadmap + registry and prints a
 classification plus a dependency **wave** layout. No git, no pickup. With
-`--json`, `--fields KEY,...` prints only those top-level keys (`event` and `ts`
-stay) — the keys of the shape below; an unknown key is an error (exit 2) that
+`--json`, `--fields KEY,...` prints only those top-level keys (no `event` or
+`ts`) — the keys of the shape below; an unknown key is an error (exit 2) that
 names the valid ones, and `--fields` is accepted only with `--plan --json`.
 
 ### What the planner reports
