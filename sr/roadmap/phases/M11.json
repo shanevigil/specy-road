@@ -350,7 +350,11 @@
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "sr/schemas/",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "specy_road/bundled_scripts/mark_implementation_reviewed.py",
+        "specy_road/orchestration_config.py"
       ],
       "type": "task"
     }
