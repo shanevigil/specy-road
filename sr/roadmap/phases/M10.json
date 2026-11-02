@@ -297,7 +297,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.9_emit-a-stalled-event_fb1329c3-3849-44a6-a4cf-48a50cfd6857.md",
       "sibling_order": 9,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Emit a stalled event when a worker goes silent past a threshold",
       "touch_zones": [
         "specy_road/worker_runner.py",

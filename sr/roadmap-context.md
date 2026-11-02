@@ -95,7 +95,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Not Started**
-  - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Not Started**
+  - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Complete**
   - `M10.10` Position the docs on governance, not on CLI workers `position-the-docs-on` — task — **Complete**
   - `M10.11` Document the harness-subagent recipe for parallel work inside a leaf `document-the-harness-subagent-recipe` — task — **Not Started**
   - `M10.12` Visual explorer for worker event logs in the PM GUI `visual-explorer-for-worker` — task — **Not Started**
@@ -104,6 +104,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
   - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Complete**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
@@ -111,7 +117,6 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.11` on `feature/rm-document-the-harness-subagent-recipe` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
-- `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
 - `M4.3` on `feature/rm-brainstorm-batch-io` since 2026-11-01
 - `M9.7` on `feature/rm-suppression-and-ratchet-findings` since 2026-11-01
 - `M9.8` on `feature/rm-verified-pre-existing-claims` since 2026-11-01
