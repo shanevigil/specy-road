@@ -70,7 +70,11 @@
         "specy_road/bundled_scripts/brainstorm_cli_args.py",
         "specy_road/bundled_scripts/brainstorm_session.py",
         "docs/brainstorming.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/brainstorm_cli.py",
+        "specy_road/bundled_scripts/brainstorm_cli_revise.py",
+        "specy_road/bundled_scripts/brainstorm_fields.py",
+        "specy_road/bundled_scripts/brainstorm_promote_plan.py"
       ],
       "type": "task"
     },
