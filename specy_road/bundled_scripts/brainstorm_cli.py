@@ -19,9 +19,10 @@ import sys
 from pathlib import Path
 
 from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
-from specy_road.bundled_scripts.brainstorm_cli_revise import cmd_revise
 from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     HANDLERS_V2,
+    cmd_add_ideas_from_file,
+    idea_fields,
     integration_branch_warning,
     next_step,
     print_idea_summary,
@@ -29,7 +30,6 @@ from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     write_round_prompts,
 )
 from specy_road.bundled_scripts.brainstorm_close import close_session
-from specy_road.bundled_scripts.brainstorm_fields import parse_origin
 from specy_road.bundled_scripts.brainstorm_prompt import (
     render_recommend_prompt,
     write_prompt,
@@ -110,18 +110,12 @@ def cmd_start(ns: argparse.Namespace) -> int:
 
 
 def cmd_add_idea(ns: argparse.Namespace) -> int:
+    if ns.from_file is not None:
+        return cmd_add_ideas_from_file(ns)
+    if not (ns.title or "").strip():
+        raise BrainstormError("add-idea needs --title, or --from-file PATH")
     root, session = _load(ns)
-    idea = add_idea(
-        session,
-        title=ns.title,
-        rationale=ns.rationale or "",
-        kind=ns.kind,
-        effort=ns.effort or "",
-        evidence=list(ns.evidence or []),
-        origin=parse_origin(ns.origin),
-        hypothesis=ns.hypothesis or "",
-        assumptions=list(ns.assumption or []),
-    )
+    idea = add_idea(session, **idea_fields(ns))
     write_session(root, session)
     print(f"[ok] {idea.id} {idea.title}")
     print(next_step(session, stage(session)))
@@ -137,6 +131,7 @@ def _idea_payload(session: BrainstormSession) -> dict:
         "round": session.round,
         "profile": session.profile,
         "frame": dict(session.frame),
+        "clusters": session.clusters,
         "ideas": [i.to_dict() for i in session.ideas],
     }
 
@@ -145,6 +140,8 @@ def _print_rows(ideas: list, *, verdicts: bool) -> None:
     for i in ideas:
         rec = (i.recommendation or "-") if verdicts else ""
         mark = f" -> {i.promoted_node_key[:8]}" if i.promoted_node_key else ""
+        mark += f" => {', '.join(i.merged_into)}" if i.merged_into else ""
+        mark += " [gap]" if i.raised_in else ""
         src = f" [{len(i.sources)} src]" if i.sources else ""
         print(f"  {i.id:<5} {i.status:<9} {rec:<9} {i.kind:<11} {i.title}{src}{mark}")
         if verdicts and i.verdict_why:
@@ -152,6 +149,15 @@ def _print_rows(ideas: list, *, verdicts: bool) -> None:
         if verdicts and i.critic:
             for role, text in i.critic.items():
                 print(f"        {role}: {text}")
+
+
+def _print_cluster(cid: str, members: list, obj: dict, *, verdicts: bool) -> None:
+    """A cluster header (the `brainstorm cluster` object's name and best, when recorded), then its rows."""
+    best = f"best: {obj['best']}" if obj.get("best") else ""
+    print("  ".join(filter(None, (cid, obj.get("name", ""), f"({len(members)})", best))))
+    for role, text in (obj.get("critic") or {}).items() if verdicts else ():
+        print(f"    {role}: {text}")
+    _print_rows(members, verdicts=verdicts)
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
@@ -176,12 +182,11 @@ def cmd_list(ns: argparse.Namespace) -> int:
         print("\n(no ideas match)")
     elif ns.by == "cluster":
         print("")
-        clusters: dict[str, list] = {}
+        clusters: dict[str, list] = {} if ns.status else {cid: [] for cid in session.clusters}
         for i in ideas:
             clusters.setdefault(i.cluster_id or "(unclustered)", []).append(i)
         for cid, members in sorted(clusters.items(), key=lambda kv: (kv[0] == "(unclustered)", kv[0])):
-            print(f"{cid}  ({len(members)})")
-            _print_rows(members, verdicts=ns.show_verdicts)
+            _print_cluster(cid, members, session.clusters.get(cid, {}), verdicts=ns.show_verdicts)
     else:
         print("")
         _print_rows(ideas, verdicts=ns.show_verdicts)
@@ -233,12 +238,12 @@ def cmd_reject(ns: argparse.Namespace) -> int:
 def _check_converge(session: BrainstormSession) -> int:
     """Exit 1, listing each idea the converge pass left without a cluster or a recommendation."""
     missed = 0
-    for i in session.ideas:
+    for i in (i for i in session.ideas if i.status != "merged"):   # a merged idea's verdict is its target's
         gaps = [name for name, value in (("cluster", i.cluster_id), ("recommendation", i.recommendation))
                 if not value]
         if gaps:
             missed += 1
-            print(f"  {i.id:<5} no {' and no '.join(gaps)}  {i.title}")
+            print(f"  {i.id:<5} no {' and no '.join(gaps)}  {i.title}{' [gap]' if i.raised_in else ''}")
     if missed:
         print(f"recommend --check: {missed} of {len(session.ideas)} idea(s) not converged; record each with "
               f"`specy-road brainstorm revise <IDEA_ID> --cluster CID --recommendation … --slug {session.slug}`")
@@ -256,6 +261,8 @@ def cmd_recommend(ns: argparse.Namespace) -> int:
     write_session(root, session)
     ppath = write_prompt(root, session, render_recommend_prompt(root, session), pass_name="recommend")
     print(f"prompt: {ppath.relative_to(root)} ({len(session.ideas)} ideas to assess)")
+    for i in (i for i in session.ideas if i.raised_in and not i.recommendation):
+        print(f"gap idea {i.id} (raised in the converge pass) needs a verdict: {i.title}")
     print(next_step(session, "recommend"))
     return 0
 
@@ -356,7 +363,6 @@ HANDLERS = {name: fn if name == "verify" else _serialised(fn) for name, fn in {
     "close": cmd_close,
     "accept": cmd_accept,
     "reject": cmd_reject,
-    "revise": cmd_revise,
     "recommend": cmd_recommend,
     "promote": cmd_promote,
     **HANDLERS_V2,
