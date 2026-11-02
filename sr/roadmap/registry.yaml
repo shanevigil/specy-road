@@ -90,3 +90,16 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: review-delegate
+    node_id: M11.7
+    branch: feature/rm-review-delegate
+    touch_zones:
+      - specy_road/bundled_scripts/review_cli.py
+      - specy_road/review_delegate.py
+      - specy_road/worker_adapters.py
+      - specy_road/review_files.py
+      - docs/orchestration-review.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
