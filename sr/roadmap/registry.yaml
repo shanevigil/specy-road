@@ -62,19 +62,3 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: brainstorm-batch-io
-    node_id: M4.3
-    branch: feature/rm-brainstorm-batch-io
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_cli.py
-      - specy_road/bundled_scripts/brainstorm_cli_args.py
-      - specy_road/bundled_scripts/brainstorm_cli_v2.py
-      - specy_road/bundled_scripts/brainstorm_cli_args_v2.py
-      - specy_road/bundled_scripts/brainstorm_session.py
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - docs/brainstorming.md
-      - tests/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T07:15:45+00:00'

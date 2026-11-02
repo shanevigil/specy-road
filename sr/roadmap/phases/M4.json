@@ -98,7 +98,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.3_brainstorm-batch-io_e23d24a4-b720-4f95-b5c5-e715a49cb6a8.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Batch ideas and verdicts from a file, merge, and gap ideas",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_cli.py",
