@@ -318,6 +318,34 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can declare routing: fixed (the default) or routing: dynamic; the review gate does not count a dynamic entry's approval toward the distinct-family requirement unless the entry also pins its model (for example a pinned: true flag the maintainer sets after checking the harness honours it), and handoff status says why an approval was not counted",
+        "Worker usage records keep the requested model and, when the harness stream reports one, the observed model (beside the harness version already recorded); worker sync flags a mismatch",
+        "Docs explain the rule (a harness that cascades or runs its own critic underneath could put the same family on both sides) and that a harness's internal critic is supporting evidence, never a gate approval; tests cover fixed, dynamic, dynamic-pinned and a mismatch"
+      ],
+      "codename": "dynamic-routing-reviewers",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.33",
+      "node_key": "abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.33_dynamic-routing-reviewers_abfffa4b-36f6-4fc1-8754-ab8bc26e9fb8.md",
+      "sibling_order": 33,
+      "status": "Not Started",
+      "title": "A reviewer whose harness routes models dynamically does not count as an independent family by default",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/review_gate.py",
+        "specy_road/worker_adapter_parsers.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration.md",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
