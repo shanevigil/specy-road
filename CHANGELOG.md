@@ -17,6 +17,14 @@ body. Keep section bodies focused; link to PRs for detail.
   objects only and reports removed tests, new skips, lost asserts and pytest
   config edits; `review-packet` includes the same findings under **Test
   integrity** after **Changed paths** (`--json` on the CLI).
+- `policy.integrity_gate` in `roadmap/orchestration.yaml` (default false): when
+  on, each `specy-road integrity` finding for the commit under review is a
+  review-gate problem (`integrity (undeclared): …` in `handoff status`) unless
+  the node's new optional `planned_test_changes` field, as committed on the
+  integration branch, lists that exact line. A declaration on the leaf branch
+  does not count. The pickup prompt lists the leaf's `planned_test_changes` and
+  makes any other test removal or weakening a `blocked_on` stop. Run
+  `specy-road refresh-schemas` to pick up both schema fields.
 - READY hand-offs may declare optional `blocked_on` (`{acceptance, reason}` per
   brief acceptance id). `handoff status` reports `executor_blocked` while that
   READY is current; `mark-implementation-reviewed` and `finish-this-task`

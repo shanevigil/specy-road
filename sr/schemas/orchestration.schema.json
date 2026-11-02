@@ -88,6 +88,20 @@
           "type": "integer",
           "minimum": 1,
           "description": "Most workers `specy-road worker delegate` keeps active at once; each draws on a plan quota. Default 2."
+        },
+        "escalate_same_acceptance_blocks": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A leaf's review loop is escalated for root-cause analysis when this many consecutive review rounds block on the same acceptance id. Default 3."
+        },
+        "escalate_review_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
+        },
+        "integrity_gate": {
+          "type": "boolean",
+          "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
         }
       }
     },

@@ -94,6 +94,11 @@
           "minItems": 1,
           "description": "Observable acceptance criteria — what must be true for this node to be considered done."
         },
+        "planned_test_changes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Test removals or weakenings this leaf is approved to make, each a finding line exactly as `specy-road integrity` prints it (e.g. removed-test: tests/test_x.py::test_old). Authored and approved with the leaf before pickup; with policy.integrity_gate on, the review gate reads it from the integration branch and fails on any finding not listed."
+        },
         "risks": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 },
