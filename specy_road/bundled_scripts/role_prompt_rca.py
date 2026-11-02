@@ -118,7 +118,10 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         "",
         "1. Read the brief and every file it names before editing.",
         "2. Change only files inside the touch zones; preserve behaviour unless an acceptance item changes it.",
-        "3. Run the verifier and tests the brief names. Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
+        "3. Run the verifier and tests the brief names in the foreground, with a long timeout if your harness has one, "
+        "and do not end your turn while a command you started is still running: a headless turn ends when you reply, "
+        "and nothing resumes it when a background job finishes. "
+        "Commit by explicit path (`git commit --only <paths>`), never `-A`, `-a`, or a bare `git commit`.",
         f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "

@@ -154,6 +154,14 @@ def test_executor_prompt_has_precondition_boundary_rules_and_brief(tmp_path: Pat
     assert "# Work-packet brief: `M1.1`" in text and "- **A1:** a.py exists" in text
 
 
+def test_executor_prompt_keeps_verifier_and_tests_in_the_foreground(tmp_path: Path) -> None:
+    text = role_prompt.build_prompt(_repo(tmp_path), "M1.1", role="executor", model="opus")[0]
+    step = next(line for line in text.splitlines() if line.startswith("3. "))
+    assert "Run the verifier and tests the brief names in the foreground" in step
+    assert "do not end your turn while a command you started is still running" in step
+    assert "nothing resumes it when a background job finishes" in step   # why: a headless turn ends on reply
+
+
 def test_reviewer_prompt_needs_a_packet_and_embeds_it(tmp_path: Path) -> None:
     repo = _repo(tmp_path)
     _text, _prof, err = role_prompt.build_prompt(repo, "M1.1", role="opus" and "reviewer", model="opus")
