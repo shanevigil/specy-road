@@ -310,3 +310,23 @@ def test_doctor_refuses_without_a_fresh_roadmap(
 
     assert error in capsys.readouterr().err
     assert _has(repo, "refs/heads/feature/rm-done")
+
+
+def test_fix_keeps_a_landed_patch_whose_commit_no_ref_holds(doctor_repo, capsys) -> None:
+    """The patch reached origin/dev under another SHA: the content landed, the commit did not."""
+    repo, _bare = doctor_repo
+    wt = repo.parent / "wt-landed"
+    git(repo, "worktree", "add", "-q", "--detach", str(wt), "dev")
+    head = commit_file(wt, "src/landed.py", "x\n", "fix in a review worktree")
+    git(repo, "cherry-pick", "-x", head)   # -x changes the message, so the SHA differs
+    git(repo, "push", "-q", "origin", "dev")
+    assert git(repo, "for-each-ref", "--contains", head, "refs/heads", "refs/remotes") == ""
+
+    assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
+
+    out = capsys.readouterr().out
+    assert any(line.startswith("[kept] ") and line.endswith(
+        f"wt-landed: branch gone: detached at {head[:12]}, {doctor.SAME_PATCH}; "
+        "commits no branch holds, so --fix leaves it") for line in out.splitlines())
+    assert "wt-landed" in git(repo, "worktree", "list")
+    assert git(wt, "rev-parse", "HEAD") == head

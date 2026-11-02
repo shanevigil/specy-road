@@ -193,12 +193,12 @@ def _ignored_note(path: Path) -> str:
     return f"; removing it deletes ignored {', '.join(ignored)}" if ignored else ""
 
 
-def _keep_detached(ctx: _Ctx, wt: dict[str, str], reason: str) -> str | None:
-    """Why ``--fix`` leaves a detached worktree: uncommitted changes, or (unmerged) commits no ref holds."""
+def _keep_detached(ctx: _Ctx, wt: dict[str, str]) -> str | None:
+    """Why ``--fix`` leaves a detached worktree: uncommitted changes, or a HEAD no ref holds (even a landed patch)."""
     if git_text(["status", "--porcelain"], Path(wt["worktree"])):
         return "uncommitted changes"
     refs = ["for-each-ref", "--count=1", "--contains", wt.get("HEAD", ""), "refs/heads", "refs/remotes"]
-    if reason.startswith("detached") and not git_text(refs, ctx.root):
+    if not git_text(refs, ctx.root):
         return "commits no branch holds"
     return None
 
@@ -217,7 +217,7 @@ def _worktree_findings(ctx: _Ctx, merged_local: set[str]) -> list[Finding]:
             continue
         reason = _worktree_reason(ctx, wt, merged_local)
         if reason:
-            keep = None if "branch" in wt else _keep_detached(ctx, wt, reason)
+            keep = None if "branch" in wt else _keep_detached(ctx, wt)
             found.append(Finding(
                 "worktree", path,
                 reason + _ignored_note(Path(path)) + (f"; {keep}, so --fix leaves it" if keep else ""),
