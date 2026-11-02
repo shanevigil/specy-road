@@ -25,7 +25,7 @@ from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
-from specy_road.orchestration_config import roster_entry
+from specy_road.orchestration_config import DEFAULT_POLICY, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
@@ -36,12 +36,16 @@ from specy_road.worker_reconcile import _bookkeeping
 from specy_road.worker_runner import spawn
 from specy_road.worker_sessions import check_session_id
 from specy_road.worker_state import (
+    FLAG_STALLED,
     TERMINAL_STATES,
     WorkerError,
     WorkerRecord,
     active_for_node,
+    add_flag,
     append_event,
+    clear_flag,
     create_record,
+    events_since,
     list_records,
     load_record,
     mutate,
@@ -176,6 +180,32 @@ def _brief_into(wt: Path, repo_root: Path, node_id: str, t) -> None:
 def sweep_dead_wrappers(repo_root: Path) -> list[WorkerRecord]:
     """Close every ``running``/``starting`` record whose wrapper is gone, on any leaf; returns those closed."""
     return [r for r in list_records(repo_root, active_only=True) if _wrapper_gone(repo_root, r)]
+
+
+def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[WorkerRecord]:
+    """Flag each ``running`` worker silent for ``policy.stall_after_seconds`` with one ``stalled`` event per
+    silence (the wrapper's next output write clears the flag; so does leaving ``running``); returns those flagged."""
+    config, _err = pinned_config(repo_root)   # unreadable: the default threshold, still a signal
+    limit = int((config.get("policy") or {}).get("stall_after_seconds", DEFAULT_POLICY["stall_after_seconds"]))
+    now = now or datetime.now(timezone.utc)
+    out = []
+    with workers_lock(repo_root):
+        for rec in list_records(repo_root, active_only=True):
+            silent = (int((now - datetime.fromisoformat(rec.last_output_at)).total_seconds())
+                      if rec.state == "running" and rec.last_output_at else None)
+            if silent is None or silent < limit:
+                if FLAG_STALLED in rec.flags:
+                    clear_flag(repo_root, rec, FLAG_STALLED)
+                continue
+            if FLAG_STALLED in rec.flags:
+                continue
+            last = next((e.summary for e in reversed(events_since(repo_root, rec.worker_id)) if e.source == "worker"), None)
+            append_event(repo_root, rec, "stalled", source="system",
+                         summary=f"no output for {silent}s (policy.stall_after_seconds {limit}); last: {last or '-'}",
+                         detail={"silent_seconds": silent, "last_output_at": rec.last_output_at, "last_summary": last})
+            add_flag(repo_root, rec, FLAG_STALLED)
+            out.append(rec)
+    return out
 
 
 def _slot_or_existing(repo_root: Path, node_id: str, limit: int) -> WorkerRecord | None:

@@ -47,6 +47,7 @@ LEASE_HOLDERS = ("broker", "human", "native", "none")
 FLAG_EXTERNAL = "possibly_modified_externally"
 FLAG_RECONCILE = "needs_reconcile"
 FLAG_ORPHAN = "wrapper_gone_harness_alive"   # the wrapper died; its harness or process group did not
+FLAG_STALLED = "stalled"   # running, and no stdout for policy.stall_after_seconds; the next output line clears it
 _ID = re.compile(r"^w-[0-9]{4,}$")
 
 
@@ -80,6 +81,7 @@ class WorkerRecord:
     pgid: int | None = None           # the wrapper's process group (it is a session leader); terminate kills it
     harness_pid: int | None = None    # the harness child, while it runs
     harness_start: str | None = None  # the harness's start time (ps lstart): with the pid, its identity
+    last_output_at: str | None = None  # the harness's last stdout line (the turn's launch until one); stalled reads it
 
     @property
     def active(self) -> bool:

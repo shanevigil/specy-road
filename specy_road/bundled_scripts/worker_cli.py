@@ -101,6 +101,7 @@ def cmd_delegate(ns: argparse.Namespace) -> int:
 
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
+    ops.sweep_stalled(root)
     recs = list_records(root, active_only=not ns.all)
     if not recs:
         return _emit(ns, {"workers": []}, ["No workers under work/.workers/."])

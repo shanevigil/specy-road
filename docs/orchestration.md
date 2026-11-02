@@ -72,6 +72,7 @@ substitutions: []
 | `policy.reviewers_distinct_families` | Count approvals by distinct family, so two sessions of one family count once. |
 | `policy.reviewer_fresh_session` | Records must attest `fresh_session: true`. |
 | `policy.reviewer_reruns_required` | An approval counts only when `commands_rerun` lists a command the reviewer re-ran; the interactive human approval is exempt. Default `false`. A `model: human` record is trusted as written unless `signed_reviews` is on, so under unsigned policy this switch is cooperative attestation, not enforcement. |
+| `policy.stall_after_seconds` | A `running` worker with no stdout for this long is flagged `stalled` by `worker sync` and `worker list`, with one `stalled` event per silence ([orchestration-workers.md](orchestration-workers.md#the-model)). Default `600`. |
 | `substitutions[]` | A recorded decision letting `use` review in place of a usual reviewer: `slot`, `use` (must be a roster id; its family comes from the roster), optional `scope` (non-empty list of node ids; omit for all), `decided` (does not count before this date), and an expiry — `expires_when` (prose), `expires` (date after which it stops counting), or both. |
 
 Roster entries also accept `profile`, `channels`, `may_process`, `subagent_family_lock`, `preflight`, `harness` and `billing_route`; policy also takes `max_workers` (routing, prompts, and `worker delegate` use them), and `escalate_same_acceptance_blocks` (default 3) and `escalate_review_rounds` (default 5), the review-loop escalation thresholds under "The review gate".
