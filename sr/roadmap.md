@@ -55,7 +55,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.1` | Every managed AGENTS.md rule carries its provenance in the template | task | Agentic-led | Complete |
 | `M5.2` | validate flags specy-road commands that do not exist in the consumer's agent files | task | Agentic-led | Complete |
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Complete |
-| `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Not Started |
+| `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Complete |
 | `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
 | `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Mixed | Not Started |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Human-led | Not Started |
@@ -101,5 +101,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |
 | `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Complete |
+| `M10.16` | The worker wrapper imports the launching specy-road, not the worktree's copy | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

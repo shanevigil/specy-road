@@ -55,7 +55,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Complete**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Complete**
-  - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Not Started**
+  - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Complete**
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
@@ -101,17 +101,27 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
+  - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M10.16` on `feature/rm-wrapper-imports-launcher` since 2026-11-01
 - `M10.5` on `feature/rm-per-role-effort-in-model` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
 - `M4.16` on `feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` since 2026-11-01
-- `M5.4` on `feature/rm-enforced-rules-pointers` since 2026-11-01
+- `M4.2` on `feature/rm-promote-structured` since 2026-11-01
+- `M4.6` on `feature/rm-brainstorm-lenses` since 2026-11-01
+- `M9.6` on `feature/rm-integrity-gate-and-waivers` since 2026-11-01
 
 ## Reaching the detail behind this
 

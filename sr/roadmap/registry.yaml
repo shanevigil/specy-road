@@ -32,18 +32,6 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
-  - codename: enforced-rules-pointers
-    node_id: M5.4
-    branch: feature/rm-enforced-rules-pointers
-    touch_zones:
-      - specy_road/templates/specyrd/agents-md-block.md
-      - specy_road/templates/specyrd/claude-md-block.md
-      - tests/
-      - suggested_prompts/bootstrap-agents-md.md
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T03:48:03+00:00'
   - codename: per-role-effort-in-model
     node_id: M10.5
     branch: feature/rm-per-role-effort-in-model
