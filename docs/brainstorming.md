@@ -10,7 +10,7 @@
 - Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
 - `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
-- The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
+- The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]`, `decide --decision`, `frame --confirm` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
 - Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
 - The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it, one per pass, are gitignored. `start` warns on the integration branch and suggests `chore/brainstorm-<slug>`.
 
@@ -132,6 +132,12 @@ coding agent. It instructs the agent to:
   specy-road brainstorm frame --answer "outcome=fewer failed payments" --answer "served=assumed: SMBs"
   ```
 
+  The frame can change with history: `frame --amend served --answer "SMBs and marketplaces"` (or a
+  different `--answer KEY=TEXT` for a recorded key) keeps the previous answer in the session's
+  `frame_history` with when it was replaced. `frame --provisional` marks the frame as working
+  assumptions and `frame --confirm` as confirmed by the PM; every later prompt that shows the frame
+  (later rounds, shards, the authoring prompt) carries a `Frame state:` line.
+
 - **Plan the search before generating.** An allocation grid of lenses ×
   directions (user segments, technical layers, business model, risk, a
   competing team's PM), each cell with a quota and a **diversity operator**:
@@ -161,7 +167,7 @@ specy-road brainstorm add-idea --title "Stored payment vault" \
   --assumption "SMBs still pay by card"
 ```
 
-`--kind` is one of `feature`, `capability`, `risk`, `research`, `experiment`, `refactor`, `platform`. `--origin` is `harness/model/lens/round[/shard]`, so acceptance can later be read per lens and per model. Only `--title` is required.
+`--kind` is one of `feature`, `capability`, `risk`, `research`, `experiment`, `refactor`, `platform`, `policy`. `--origin` is `harness/model/lens/round[/shard]`, so acceptance can later be read per lens and per model. Only `--title` is required.
 
 Many ideas at once: `add-idea --from-file ideas.yaml` takes a YAML list (or a mapping with an `ideas:` list) whose keys are the flag names without dashes (`title`, `kind`, `origin`, `from-gap`, …; repeatable flags such as `evidence` and `assumption` take a list), or JSONL, one object per line, with `--from-file -` reading stdin. Every record is checked before the session is written once: one bad record (an unknown key, a bad `kind`) writes nothing and names the record. `revise --from-file verdicts.yaml` does the same for verdicts (a list or a `verdicts:` mapping; `id` names the idea).
 
@@ -299,6 +305,7 @@ specy-road brainstorm accept B1 B4 B9
 specy-road brainstorm accept B3 --reason "fits the anchor"
 specy-road brainstorm reject B2 --reason "duplicates M3.1"
 specy-road brainstorm park B7 --reason "after billing" --revisit-when "billing ships"
+specy-road brainstorm decide B5 --decision "We never store card numbers"   # settled, not a node
 specy-road brainstorm realize B1 --node M3.6   # node you added outside promote
 ```
 
@@ -317,6 +324,9 @@ content marks it `revised`. Once an idea has been promoted it can no longer be
 re-triaged: it is a roadmap node, and the node is what you edit. `realize`
 links an idea to a node you created by hand (`promoted_node_key`) after
 checking that node exists in the merged graph.
+`decide` records what a brainstorm settled (a policy, a rule, a choice between
+options) as status `decided` with the decision text, instead of parking or
+rejecting it; `promote` writes it into the anchor's sheet rather than a node.
 
 ## 5. Promote
 
@@ -335,6 +345,8 @@ sources are unverified, not found or blocked, or it has none — and names
 `verify` or `evidence` as the fix. It warns; the call is yours.
 
 The new sheet's `## Intent` is seeded from the idea's rationale; its `## Approach` opens with the critics' objections and the verdict reasoning (`revise --critic`, `--why`) as constraints; its `## References` gains the overlaps with existing nodes (id and relation), the sources (with quote and verification state), the hypothesis and assumptions, and the cluster's rejected or parked siblings as "alternatives considered" with their reasons. When the session has a recorded frame, the anchor's sheet gains a `## Brainstorm frame` section with it (a later promote replaces it). Rewrite the Intent once the slice is properly scoped — the seed is a starting point, not a spec, and pickup skips the node until then.
+
+Each `decided` idea becomes a bullet under the anchor sheet's `## Decided policies` (title, decision text, session slug and idea id), not a node; a later promote rewrites that session's bullets and leaves other sessions' alone, `--dry-run` only names the sheet, and with no anchor sheet (the roadmap root) stderr names the ideas left unwritten.
 
 A successful promote also writes `work/brainstorm-<slug>-authoring-prompt.md` (gitignored) and prints its path: hand it to your agent to draft each promoted node's Intent, Approach steps, tasks, acceptance, touch zones and references from the session and the repo, for you to approve. It covers that promote call's nodes that an idea seeded (not a plan node without ideas); `--dry-run` writes none.
 

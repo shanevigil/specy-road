@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from specy_road.bundled_scripts.brainstorm_cli_args import build_parser
+from specy_road.bundled_scripts.brainstorm_cli_args import build_parser, execution_milestone_from_promote_sets
 from specy_road.bundled_scripts.brainstorm_cli_v2 import (
     HANDLERS_V2,
     cmd_add_ideas_from_file,
@@ -35,7 +35,6 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
     write_prompt,
 )
 from specy_road.bundled_scripts.brainstorm_promote import (
-    execution_milestone_from_promote_sets,
     pending_ideas,
     promote_session,
     unverified_strong,
@@ -131,6 +130,8 @@ def _idea_payload(session: BrainstormSession) -> dict:
         "round": session.round,
         "profile": session.profile,
         "frame": dict(session.frame),
+        "frame_state": session.frame_state,
+        "frame_history": [dict(h) for h in session.frame_history],
         "clusters": session.clusters,
         "ideas": [i.to_dict() for i in session.ideas],
     }
@@ -144,6 +145,8 @@ def _print_rows(ideas: list, *, verdicts: bool) -> None:
         mark += " [gap]" if i.raised_in else ""
         src = f" [{len(i.sources)} src]" if i.sources else ""
         print(f"  {i.id:<5} {i.status:<9} {rec:<9} {i.kind:<11} {i.title}{src}{mark}")
+        if i.status == "decided" and (i.decision or {}).get("decision"):
+            print(f"        decision: {i.decision['decision']}")
         if verdicts and i.verdict_why:
             print(f"        why: {i.verdict_why}")
         if verdicts and i.critic:
@@ -280,10 +283,11 @@ def _promote_warnings(session: BrainstormSession, ns: argparse.Namespace) -> Non
 
 def cmd_promote(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
-    if not ns.plan and not pending_ideas(session):
+    if not ns.plan and not pending_ideas(session) and not session.with_status("decided"):
         print(
             "nothing to promote — accept ideas first with: "
             f"specy-road brainstorm accept <IDEA_ID> --slug {session.slug}"
+            f" (or record a decision with `specy-road brainstorm decide <IDEA_ID> --decision TEXT`)"
         )
         return 0
     if not ns.plan:

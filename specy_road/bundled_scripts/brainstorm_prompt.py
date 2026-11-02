@@ -96,6 +96,14 @@ def _governance_lines(root: Path, *, roadmap: bool = True) -> list[str]:
     return lines
 
 
+def _frame_state_lines(session: BrainstormSession) -> list[str]:
+    """The ``frame --provisional`` / ``--confirm`` marker, for every prompt that shows the frame."""
+    if session.frame_state == "provisional" and session.frame:
+        return ["**Frame state: provisional.** The PM has not confirmed this frame: treat each answer as a "
+                "working assumption, and say which ideas depend on one.", ""]
+    return ["**Frame state: confirmed** by the PM.", ""] if session.frame_state == "confirmed" and session.frame else []
+
+
 def _node_line(n: dict) -> str:
     status = n.get("rollup_status") or n.get("status") or "Not Started"
     return f"- `{n.get('id')}` {n.get('title', '')} — {n.get('type', '?')} — {status}"
@@ -175,13 +183,13 @@ def render_brainstorm_prompt(
     if session.round <= 1:
         lines = header_lines(session, count, title="Brainstorm")
         lines += _governance_lines(root, roadmap=False)
-        lines += frame_lines(session)
+        lines += frame_lines(session) + _frame_state_lines(session)
         lines += allocation_lines(session, count)
         lines += quantity_lines(count, first_round=True, more_rounds=session.rounds > 1)
     else:
         lines = header_lines(session, count, title=f"Brainstorm, round {session.round}")
         lines += _governance_lines(root)
-        lines += agreed_frame_lines(session)
+        lines += agreed_frame_lines(session) + _frame_state_lines(session)
         lines += regeneration_lines(session, count)
         lines += quantity_lines(count, first_round=False)
     lines += recording_lines(session)
@@ -193,7 +201,7 @@ def render_shard_prompt(root: Path, session: BrainstormSession, *, count: int,
     """One independent worker's share of round 1: its cell, nothing of the others."""
     lines = header_lines(session, count, title=f"Brainstorm shard {shard}/{total}")
     lines += _governance_lines(root, roadmap=False)
-    lines += agreed_frame_lines(session)
+    lines += agreed_frame_lines(session) + _frame_state_lines(session)
     lines += allocation_lines(session, count, shard=True)
     lines += shard_lines(session, shard, total)
     lines += quantity_lines(count, first_round=True, more_rounds=session.rounds > 1)
@@ -359,7 +367,7 @@ def render_authoring_prompt(root: Path, session: BrainstormSession,
         "",
     ]
     lines += _governance_lines(root)
-    lines += agreed_frame_lines(session)
+    lines += agreed_frame_lines(session) + _frame_state_lines(session)
     lines += _authoring_node_lines(root, session, promotions)
     lines += [
         "## What to do, per node",
