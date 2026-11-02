@@ -78,7 +78,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.3_runtime-dirs-not-dirty_d6ce85d8-6e44-41b3-881a-292ca185cc50.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road's own runtime directories never fail the clean-tree checks",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",

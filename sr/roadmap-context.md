@@ -109,7 +109,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M11` rc2 field feedback: worktrees, workers and the review loop `rc2-field-feedback` — phase — **Not Started**
   - `M11.1` In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record `worktree-paths-agree` — task — **Complete**
   - `M11.2` worker message resumes a failed or stalled worker whose native session id is known `resume-failed-workers` — task — **Complete**
-  - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Not Started**
+  - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Complete**
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
@@ -136,6 +136,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Not Started**
+  - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
+  - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
+  - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
 
 ## Claimed and in flight
 
@@ -145,7 +148,6 @@ Do not pick these up.
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.15` on `feature/rm-pickup-refuses-scaffold-sheet` since 2026-11-02
 - `M11.17` on `feature/rm-edit-node-names-chunks` since 2026-11-02
-- `M11.3` on `feature/rm-runtime-dirs-not-dirty` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.7` on `feature/rm-review-delegate` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
