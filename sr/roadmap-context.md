@@ -102,16 +102,19 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.13` A project setting decides whether agent logs are tracked in git `a-project-setting-decides` — task — **Not Started**
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
-  - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Not Started**
+  - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Complete**
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.16` on `feature/rm-wrapper-imports-launcher` since 2026-11-01
+- `M10.11` on `feature/rm-document-the-harness-subagent-recipe` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
+- `M4.3` on `feature/rm-brainstorm-batch-io` since 2026-11-01
+- `M9.7` on `feature/rm-suppression-and-ratchet-findings` since 2026-11-01
+- `M9.8` on `feature/rm-verified-pre-existing-claims` since 2026-11-01
 
 ## Reaching the detail behind this
 
