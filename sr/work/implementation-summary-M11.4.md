@@ -2,6 +2,19 @@
 
 Branch `feature/rm-max-workers-global`, base `be6a6a63`. WIP was merged in at `2e0f5d12` and `9a6dc334` to widen the touch zones; the second merge added `specy_road/bundled_scripts/worker_cli.py`.
 
+## Round 8 (gpt-6.1-sol block on A1: failed-state cleanup raced a resume)
+
+WIP was merged first (`53a47d35`). `--offline` is unchanged from round 7.
+
+- **The race:** on a nonzero harness exit, `worker_runner._exit_state` wrote `failed` (and cleared the pids) in one locked `mutate`, then deleted the lease after unlocking. The harness-start failure path did the same with `set_state` and then `release_lease`. A `resume` in that gap saw `failed` with a session, pushed the same lease ref under the lock, and spawned; the old cleanup then deleted that ref, so other clones stopped counting the resumed worker.
+- **The fix:** each place that publishes `failed` now writes it and releases the lease inside one `workers_lock` section: `_exit_state` (nonzero exit), the harness-start `OSError` path, `_refuse` (spawn refusal, already under the caller's lock, re-entered to make the pairing explicit) and `worker_process.wrapper_gone` (dead-wrapper close). `resume` acquires under the same lock, so it sees `failed` only once the old lease is gone, and its own lease is never deleted by the old cleanup. `terminate` still releases after its lock: a `terminated` record cannot be resumed.
+- **Regression** (`tests/test_worker_lease_races.py`, new file, because `test_worker_max_workers_global.py` would have gone past the 400-line limit): `test_a_failed_turns_cleanup_cannot_delete_the_lease_of_a_resume_that_overlaps_it`, parametrized as `nonzero-exit` (a harness that exits 1) and `harness-start-failure` (a missing binary). It runs the wrapper body, the public `worker_runner.run`, in-process. `worker_runner.release_lease` is wrapped to start `ops.resume` on another thread during the old cleanup and wait up to 1 s for it. Afterwards the resumed worker is idle, its lease is on the remote, and `delegate` in a second clone at `max_workers: 1` is refused. With `worker_runner.py` reverted to the round-7 commit, both cases fail; with the fix, both pass.
+- **Docs:** one clause in the "What `max_workers` counts" paragraph says `failed` and its lease deletion are one locked step (398 lines).
+- **Verification:**
+  - `.conda/bin/pytest tests/test_worker_max_workers_global.py tests/test_worker_lease_races.py tests/test_lean_gates.py -q -p no:cacheprovider` gave 41 passed, 2 skipped. `test_lean_gates.py` was included for the private-import gate.
+  - `.conda/bin/ruff check` passed on `worker_runner.py`, `worker_process.py` and both test files.
+  - `.conda/bin/specy-road file-limits` passed.
+
 ## Round 7 (A1 amended on WIP, 38ea226f)
 
 WIP was merged (`97664017`), which brings in the amended A1. Under it, `--offline` is the explicit local-only escape: it counts this checkout's workers plus the lease refs last fetched, neither fetches nor pushes, and warns that the global limit was not verified. The online count and refusal, and round 6's checkout-id rewrite, are unchanged.
