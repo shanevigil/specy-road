@@ -82,7 +82,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.5` specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them `integrity-report` — task — **Complete**
   - `M9.6` With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup `integrity-gate-and-waivers` — task — **Complete**
   - `M9.7` specy-road integrity also reports new lint suppressions and widened baseline files `suppression-and-ratchet-findings` — task — **Not Started**
-  - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Not Started**
+  - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Complete**
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Not Started**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Not Started**
   - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Not Started**
@@ -104,6 +104,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
   - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
@@ -112,6 +118,8 @@ Do not pick these up.
 - `M10.16` on `feature/rm-wrapper-imports-launcher` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
+- `M4.3` on `feature/rm-brainstorm-batch-io` since 2026-11-01
+- `M9.7` on `feature/rm-suppression-and-ratchet-findings` since 2026-11-01
 
 ## Reaching the detail behind this
 

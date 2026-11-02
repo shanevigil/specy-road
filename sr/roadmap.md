@@ -82,7 +82,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.5` | specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them | task | Agentic-led | Complete |
 | `M9.6` | With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup | task | Agentic-led | Complete |
 | `M9.7` | specy-road integrity also reports new lint suppressions and widened baseline files | task | Agentic-led | Not Started |
-| `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Not Started |
+| `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Complete |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Not Started |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Not Started |
 | `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Not Started |
