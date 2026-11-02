@@ -26,7 +26,8 @@ entries:
       - roadmap/orchestration.yaml
     started: '2026-11-01'
     owner: savigil
-    implementation_review: pending
+    implementation_review: approved
+    implementation_review_at: '2026-11-02T08:13:20+00:00'
   - codename: normalised-usage-event-in
     node_id: M10.2
     branch: feature/rm-normalised-usage-event-in
