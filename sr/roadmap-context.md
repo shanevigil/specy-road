@@ -106,6 +106,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.17` The review packet caps its inlined diff by bytes too and lists generated bundles by size only `packet-byte-budget` — task — **Complete**
   - `M10.18` Review records are found and written with the canonical file name on case-insensitive filesystems `review-file-case` — task — **Complete**
   - `M10.19` The executor prompt forbids killing processes the executor did not start `no-foreign-kills` — task — **Complete**
+  - `M10.20` Pilot GPT-6.1 Terra as a lower-cost executor before rostering it `terra-executor-pilot` — task — **Not Started**
 - `M11` rc2 field feedback: worktrees, workers and the review loop `rc2-field-feedback` — phase — **Not Started**
   - `M11.1` In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record `worktree-paths-agree` — task — **Complete**
   - `M11.2` worker message resumes a failed or stalled worker whose native session id is known `resume-failed-workers` — task — **Complete**
@@ -113,7 +114,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
-  - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Not Started**
+  - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Complete**
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Complete**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
@@ -138,6 +139,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
   - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
   - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
+  - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
+  - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
+  - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
 
 ## Archived (not in the live roadmap)
 
@@ -154,7 +158,6 @@ Do not pick these up.
 - `M11.15` on `feature/rm-pickup-refuses-scaffold-sheet` since 2026-11-02
 - `M11.17` on `feature/rm-edit-node-names-chunks` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
-- `M11.7` on `feature/rm-review-delegate` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
 - `M5.7` on `feature/rm-managed-section-ablation` since 2026-11-02
 
