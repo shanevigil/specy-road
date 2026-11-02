@@ -2,6 +2,18 @@
 
 Branch `feature/rm-max-workers-global`, base `be6a6a63`. WIP was merged in at `2e0f5d12` and `9a6dc334` to widen the touch zones; the second merge added `specy_road/bundled_scripts/worker_cli.py`.
 
+## Round 7 (A1 amended on WIP, 38ea226f)
+
+WIP was merged (`97664017`), which brings in the amended A1. Under it, `--offline` is the explicit local-only escape: it counts this checkout's workers plus the lease refs last fetched, neither fetches nor pushes, and warns that the global limit was not verified. The online count and refusal, and round 6's checkout-id rewrite, are unchanged.
+
+- **Warning** (`worker_lease._warn_offline`): it now reads "warning: --offline: the global max_workers limit was not verified; counted this checkout's workers and the lease refs last fetched from <remote>, and pushed no lease". It is still printed once per remote per process. The `foreign_leases` docstring says the same.
+- **Behaviour:** unchanged from round 6. `--offline` still refuses at the count it can see (this checkout's workers plus the last-fetched lease refs), because the amended A1 says the count uses those.
+- **Docs:** the `--offline` sentence now names it the explicit local-only escape, says it refuses at that count, and says why the limit is not verified: a worker another checkout started after the last fetch is not seen (398 lines).
+- **Tests:**
+  - New, `test_offline_warns_and_launches_on_a_stale_mirror`: after one online `sync`, the other clone starts a worker. `delegate --offline` at `max_workers: 1` then exits 0 with exactly one "limit was not verified" warning, and pushes no lease.
+  - Updated: the warning assertions in `test_an_unreachable_remote_refuses_unless_offline` and `test_offline_still_counts_the_lease_refs_last_fetched`.
+- **Verification:** `.conda/bin/pytest tests/test_worker_max_workers_global.py -q -p no:cacheprovider` gave 28 passed. `.conda/bin/ruff check` passed on `worker_lease.py` and the test file. `.conda/bin/specy-road file-limits` passed.
+
 ## Round 6 (gpt-5.6-sol-high and gpt-6.1-sol blocks on A1; A1 kept as written)
 
 WIP (`origin/WIP/improvements-0-3-1`) was merged first (`ded2db22`).
