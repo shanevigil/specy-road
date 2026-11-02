@@ -95,7 +95,7 @@ def test_each_section_states_its_provenance(tmp_path: Path) -> None:
     assert text.count(rp.RENDERED) == 1
     assert text.count(rp.ASSERTED) == 1           # READY tails; the summary is not committed here
     assert text.count(rp.ASSERTED_WORKING_TREE) == 1
-    assert text.count("_Computed by review-packet from git (`") == 3   # changed paths, test integrity, diff
+    assert text.count("_Computed by review-packet from git (`") == 4   # changed paths, integrity, tests at risk, diff
     assert text.count(f"_Run now by review-packet at HEAD `{head}`._") == 1
     assert f"## Implementation summary\n\n{rp.ASSERTED_WORKING_TREE}\n\nDid it." in text
 
