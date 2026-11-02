@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import yaml
 
@@ -249,6 +249,21 @@ def display_rel(repo_root: Path, path: Path) -> str:
         return str(path.relative_to(repo_root))
     except ValueError:
         return str(path)
+
+
+def unmatched_roster_ids(
+    entries: list[dict[str, Any]],
+    resolve: Callable[[dict[str, Any]], Profile | None],
+) -> list[str]:
+    """Roster entry ``id`` values ``resolve(entry)`` could not match to any profile."""
+    out: list[str] = []
+    for entry in entries:
+        mid = entry.get("id")
+        if not isinstance(mid, str) or not mid:
+            continue
+        if resolve(entry) is None:
+            out.append(mid)
+    return out
 
 
 def profile_for_entry(repo_root: Path, entry: dict[str, Any]) -> Profile | None:

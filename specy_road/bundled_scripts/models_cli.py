@@ -23,6 +23,7 @@ from specy_road.model_profiles import (
     Profile,
     display_rel,
     list_profiles,
+    unmatched_roster_ids,
 )
 from specy_road.orchestration_config import roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
@@ -53,14 +54,19 @@ def _roster_rows(root: Path) -> tuple[list[dict[str, Any]], list[Profile], str |
             used.add(prof.path)
         rows.append(_row(root, entry, prof))
     unrostered = [p for p in list_profiles(root) if p.path not in used]
-    return rows, unrostered, err
+    missing = unmatched_roster_ids(
+        config.get("roster") or [],
+        lambda entry: pinned_profile_for_entry(root, entry),
+    )
+    return rows, unrostered, missing, err
 
 
 def cmd_list(ns: argparse.Namespace) -> int:
     root = resolve_repo_root(ns)
-    rows, unrostered, err = _roster_rows(root)
+    rows, unrostered, missing, err = _roster_rows(root)
     if ns.json:
-        print(json.dumps({"roster": rows, "unrostered_profiles": [display_rel(root, p.path) for p in unrostered]}, indent=2))
+        print(json.dumps({"roster": rows, "unmatched_roster_ids": missing,
+                          "unrostered_profiles": [display_rel(root, p.path) for p in unrostered]}, indent=2))
         return 0
     if err:
         print(f"warning: {err}; showing the default roster", file=sys.stderr)
@@ -69,6 +75,10 @@ def cmd_list(ns: argparse.Namespace) -> int:
         flag = "" if r["profile_ok"] or r["profile"] is None else "  INVALID: " + "; ".join(r["errors"])
         stale = "  stale" if r["stale"] else ""
         print(f"{r['id']:<28} {r['family']:<10} {','.join(r['roles']) or '-':<30} C/E/R {scores}{stale}{flag}")
+    if missing:
+        print(f"\n{len(missing)} roster id(s) match no profile (add `profile:` or list the id in a profile's `aliases`):")
+        for mid in missing:
+            print(f"  {mid}")
     if unrostered:
         print(f"\n{len(unrostered)} profile(s) not in the roster (add an entry with `profile:` to use one):")
         for p in unrostered:

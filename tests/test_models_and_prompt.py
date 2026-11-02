@@ -61,7 +61,7 @@ def run_main(mod, *args: str) -> int:
 
 def test_every_shipped_profile_loads_and_is_schema_2() -> None:
     profiles = mp.list_profiles(TEMPLATE_PROFILES.parent)
-    assert len(profiles) == 16
+    assert len(profiles) == 17
     bad = [(p.path.name, p.errors) for p in profiles if not p.ok]
     assert not bad, bad
     assert all(p.role_score("executor") is not None for p in profiles)
@@ -334,16 +334,16 @@ def test_refresh_profiles_adds_missing_and_keeps_edited(tmp_path: Path, capsys) 
     repo = tmp_path / "r"
     repo.mkdir()
     written, kept = rp.refresh_profiles(repo)
-    assert len(written) == 17 and kept == []  # 16 profiles + README
+    assert len(written) == 18 and kept == []  # 17 profiles + README
     mine = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     mine.write_text("---\nprofile_schema: 2\n---\nmy edits\n")
     written, kept = rp.refresh_profiles(repo)
-    assert written == [] and len(kept) == 17
+    assert written == [] and len(kept) == 18
     assert mine.read_text().endswith("my edits\n")
     assert run_main(rp, "--force", "model-profiles/anthropic-claude/claude-opus-5-5.md", "--repo-root", str(repo)) == 0
     out = capsys.readouterr().out
     assert "wrote model-profiles/anthropic-claude/claude-opus-5-5.md\n" in out
-    assert "kept 15 existing profile(s) and the README;" in out   # 1 written + 15 + README = 17
+    assert "kept 16 existing profile(s) and the README;" in out   # 1 written + 16 + README = 18
     assert "my edits" not in mine.read_text()
     assert run_main(rp, "--repo-root", str(repo)) == 0
     assert "already has every profile" in capsys.readouterr().out

@@ -4,6 +4,15 @@ family: SpaceXAI Grok
 track: none
 model: Grok 4.7
 api_id: grok-4.7
+aliases:
+  - grok-4.7-low
+  - grok-4.7-low-fast
+  - grok-4.7-medium
+  - grok-4.7-medium-fast
+  - grok-4.7-high
+  - grok-4.7-high-fast
+  - grok-4.7-xhigh
+  - grok-4.7-xhigh-fast
 checkpoint: same-as-api_id
 alias_moves: unknown
 version_rank: latest
