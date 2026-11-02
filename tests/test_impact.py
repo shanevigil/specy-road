@@ -15,7 +15,8 @@ from specy_road.impact import impact_for_zones
 from specy_road.review_target import resolve_target_or_exit
 
 # Ten Python files under a src/ layout. tests/test_api.py reaches src/pkg/core.py
-# only through src/pkg/api.py's relative import: the two-level chain.
+# only through src/pkg/api.py's relative import: the two-level chain. Without
+# src/pkg/__init__.py, pkg is a namespace package and the output is the same.
 _FILES = {
     "src/pkg/__init__.py": "",
     "src/pkg/core.py": "VALUE = 1\n",
@@ -39,11 +40,12 @@ def _commit_all(repo: Path, files: dict[str, str], msg: str) -> str:
     return git(repo, "rev-parse", "HEAD")
 
 
-def _repo(tmp_path: Path) -> Path:
+def _repo(tmp_path: Path, *, namespace: bool = False) -> Path:
     """Leaf ``T1`` (touch zone ``src``) on ``feature``, with the fixture merged in from ``dev``."""
     repo = make_repo(tmp_path, roadmap=True)
     on_dev(repo)
-    _commit_all(repo, _FILES, "fixture")
+    files = {k: v for k, v in _FILES.items() if not (namespace and k == "src/pkg/__init__.py")}
+    _commit_all(repo, files, "fixture")
     merge_dev(repo)
     return repo
 
@@ -53,14 +55,21 @@ def _cli(repo: Path, capsys, *args: str) -> str:
     return capsys.readouterr().out
 
 
-def test_diff_lists_tests_through_a_two_level_chain_and_counts_other_files(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
+_PACKAGE_KINDS = pytest.mark.parametrize("namespace", [False, True], ids=["regular", "namespace"])
+
+
+@_PACKAGE_KINDS
+def test_diff_lists_tests_through_a_two_level_chain_and_counts_other_files(
+    tmp_path: Path, capsys, namespace: bool,
+) -> None:
+    repo = _repo(tmp_path, namespace=namespace)
     _commit_all(repo, {"src/pkg/core.py": "VALUE = 2\n", "README.md": "# changed\n"}, "change core")
     assert _cli(repo, capsys) == "tests/core_test.py\ntests/test_api.py\nnot analysed: 1 files\n"
 
 
-def test_zones_use_the_modules_under_the_touch_zones(tmp_path: Path, capsys) -> None:
-    repo = _repo(tmp_path)
+@_PACKAGE_KINDS
+def test_zones_use_the_modules_under_the_touch_zones(tmp_path: Path, capsys, namespace: bool) -> None:
+    repo = _repo(tmp_path, namespace=namespace)
     assert _cli(repo, capsys, "--zones") == "tests/core_test.py\ntests/test_api.py\ntests/test_util.py\n"
     head = git(repo, "rev-parse", "HEAD")
     assert impact_for_zones(repo, head, ["lib"]).lines() == ["tests/test_other.py"]

@@ -122,7 +122,7 @@ def tests_importing(files: dict[str, str], targets: set[str]) -> tuple[str, ...]
             by_name.setdefault(name, set()).add(p)
     importers: dict[str, set[str]] = {}
     for p in sorted(files):
-        for name in imported_names(files[p], _package(p, inits)):
+        for name in imported_names(files[p], _package(p)):
             for dep in by_name.get(name, ()):
                 importers.setdefault(dep, set()).add(p)
     seen: set[str] = set()
@@ -135,27 +135,30 @@ def tests_importing(files: dict[str, str], targets: set[str]) -> tuple[str, ...]
     return tuple(sorted(p for p in seen if is_test_file(p)))
 
 
-def _parts(path: str, inits: set[str]) -> tuple[list[str], int]:
-    """``path``'s dotted parts and where its import name starts (the topmost package with ``__init__``)."""
-    parts = path[: -len(".py")].split("/")
-    start = len(parts) - 1
-    while start > 0 and "/".join(parts[:start]) + "/__init__.py" in inits:
-        start -= 1
-    return parts, start
-
-
 def module_names(path: str, inits: set[str]) -> set[str]:
-    """Names ``path`` can be imported by: from its top package, and from the git root."""
-    parts, start = _parts(path, inits)
+    """Names ``path`` can be imported by.
+
+    A regular package (one with ``__init__.py``) is imported from its top only.
+    Above that top, any directory may be a ``sys.path`` root or a namespace
+    package, so every suffix from there to the git root counts (``src/pkg/api.py``
+    with no ``__init__.py`` files is ``src.pkg.api``, ``pkg.api`` and ``api``).
+    """
+    parts = path[: -len(".py")].split("/")
+    top = len(parts) - 1
+    while top > 0 and "/".join(parts[:top]) + "/__init__.py" in inits:
+        top -= 1
     if parts[-1] == "__init__":
         parts = parts[:-1]
-    return {n for n in (".".join(parts[start:]), ".".join(parts)) if n}
+    return {".".join(parts[i:]) for i in range(top + 1) if parts[i:]}
 
 
-def _package(path: str, inits: set[str]) -> list[str]:
-    """The package a relative import in ``path`` starts from."""
-    parts, start = _parts(path, inits)
-    return parts[start:-1]
+def _package(path: str) -> list[str]:
+    """Where a relative import in ``path`` starts: its directory, as the git-root dotted name.
+
+    By path rather than by import name, so it resolves inside namespace packages
+    too; the git-root name is always one of a file's :func:`module_names`.
+    """
+    return path.split("/")[:-1]
 
 
 def imported_names(source: str, package: list[str]) -> set[str]:

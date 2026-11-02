@@ -24,10 +24,14 @@ rendered by `impact.section_lines`, which shows at most 50 paths and then
 `… and <n> more`. The packet section is computed from git objects only, so it is
 deterministic for the same refs.
 
-Module naming: a file is importable under its name from its topmost package with an
-`__init__.py` (so `src/pkg/api.py` → `pkg.api`, and `tests/helpers.py` → `helpers`)
-and under its full git-root dotted path. A name shared by several files links to all
-of them, which over-reports rather than under-reports. Out of scope: imports the
+Module naming: a regular package (one with `__init__.py`) is imported from its top
+only. Above that top, any directory may be a `sys.path` root or a namespace package,
+so every dotted suffix from there to the git root is registered. For example,
+`src/pkg/api.py` with no `__init__.py` files is `src.pkg.api`, `pkg.api` and `api`,
+while `specy_road/bundled_scripts/x.py` is only `specy_road.bundled_scripts.x`.
+Relative imports resolve by the importing file's directory, which gives its git-root
+dotted name, so they also work inside namespace packages. A name shared by several
+files links to all of them, which over-reports rather than under-reports. Out of scope: imports the
 static graph cannot see, such as scripts run as subprocesses (for example `cli.py`
 → `python -m specy_road.bundled_scripts.*`) and `importlib` with computed names.
 The doc says so.
@@ -46,14 +50,27 @@ The doc says so.
 
 Touch zones confirmed: every changed path is inside the declared zones. `generate_brief.py` is not touched, as the planning sheet asks.
 
+## Review round 1 (gpt-6.1-sol, block on A1)
+
+R1: namespace packages under `src/` (no `__init__.py`) were missing from both the diff
+and `--zones` results, because names started only at the topmost `__init__.py` and
+relative imports resolved from that name. Fixed in `impact.module_names` (every suffix
+above the regular-package top) and `impact._package` (the directory path). The
+fixture's diff and `--zones` tests now run twice, with and without
+`src/pkg/__init__.py`, and expect the same exact output, `tests/test_api.py` included.
+Both namespace cases fail on the reviewed commit `7bcb714` and pass now. The `--zones`
+list for this repository at the same commit is unchanged (153 = 153), so the wider
+naming adds no noise here.
+
 ## Verification
 
-- `pytest tests/test_impact.py tests/test_review_packet.py tests/test_do_next_prompt.py tests/test_integrity.py tests/test_integrity_gate.py` → 57 passed.
+- Round 1: `pytest -p no:cacheprovider tests/test_impact.py tests/test_review_packet.py tests/test_do_next_prompt.py` → 29 passed; `ruff check specy_road tests scripts` and `specy-road file-limits` → clean.
+- Round 0: `pytest tests/test_impact.py tests/test_review_packet.py tests/test_do_next_prompt.py tests/test_integrity.py tests/test_integrity_gate.py` → 57 passed.
 - `specy-road file-limits` → OK.
 - `ruff check specy_road tests scripts` → all checks passed.
 - `python scripts/check_clones.py` (pylint 4.1.3) → 0 new. One stale baseline entry predates this leaf (refresh_schemas/refresh_stubs).
 - `python scripts/check_test_private_imports.py` → 0 new. One stale baseline entry predates this leaf (`review_packet._changed` in `test_review_round6_evidence.py`).
-- Full `pytest` → 2766 passed, 2 skipped in 1439s (exit 0).
+- Full `pytest` at round 0 (`7bcb714`) → 2766 passed, 2 skipped in 1439s (exit 0). Not re-run for round 1, which changes only `impact.py` and `tests/test_impact.py`.
 - Smoke test on this checkout: `python -m specy_road.bundled_scripts.impact_cli M9.9 --zones` printed 153 test files in about 0.9 s.
 
 ## Walkthrough
@@ -71,7 +88,7 @@ Touch zones confirmed: every changed path is inside the declared zones. `generat
 - `impact.impact_for_zones`: `--zones` mode (A1), used by the CLI and the pickup prompt.
 - `impact.python_sources` / `_read_blobs`: reads the tree at a commit from git objects in one batch, so the result is deterministic (A5) and fast. Per-file `git show` was too slow for a whole repo.
 - `impact.tests_importing`: reverse-graph walk from the targets to the test files.
-- `impact._parts` / `module_names` / `_package`: import names for a path, and the base package for relative imports.
+- `impact.module_names` / `_package`: import names for a path (every suffix above the regular-package top, for namespace packages), and the directory a relative import starts from. Round 1 removed `_parts`.
 - `impact.imported_names`: `ast` import extraction, relative imports resolved, parent packages included.
 - `impact.section_lines`: the shared `## Tests at risk` rendering with the 50-path cap (A4/A5).
 - `do_next_prompt._tests_at_risk_lines`: the prompt section (A4).
@@ -82,7 +99,7 @@ Touch zones confirmed: every changed path is inside the declared zones. `generat
 - `_tests_at_risk_lines` skips the computation when `HEAD` does not resolve, for the same reason.
 - `tests_importing` keeps module names for targets deleted at REF, so a test that still imports a deleted module is listed.
 - `imported_names` ignores unparsable sources (`SyntaxError`/`ValueError`), so fixture files that are not valid Python cannot crash the walk.
-- `imported_names` skips a relative import that climbs above the top package (it cannot resolve).
+- `imported_names` skips a relative import that climbs above the git root (it cannot resolve).
 - `python_sources` skips symlinks (mode 120000), whose blob is a path, not source.
 - `impact_cli` exits 1 when there is no commit, or no merge base in diff mode, or git fails, matching `integrity_cli`.
 
@@ -90,8 +107,8 @@ Touch zones confirmed: every changed path is inside the declared zones. `generat
 - none
 
 ### Tests
-- `test_diff_lists_tests_through_a_two_level_chain_and_counts_other_files`: A1/A2/A3, exact diff output, including the non-Python count.
-- `test_zones_use_the_modules_under_the_touch_zones`: A1/A3, exact `--zones` output, plus a second zone that selects a different test.
+- `test_diff_lists_tests_through_a_two_level_chain_and_counts_other_files[regular|namespace]`: A1/A2/A3, exact diff output, including the non-Python count; the `namespace` case is R1's reproduction.
+- `test_zones_use_the_modules_under_the_touch_zones[regular|namespace]`: A1/A3, exact `--zones` output, plus a second zone that selects a different test; the `namespace` case is R1's reproduction.
 - `test_conftest_change_prints_all`: A2/A3, exact `ALL`.
 - `test_deleted_module_still_lists_its_importers`: covers the deleted-target guard.
 - `test_pickup_prompt_lists_zone_tests_capped_at_fifty` (3 and 55 tests): A4, the list and the cap with a count of the rest.
