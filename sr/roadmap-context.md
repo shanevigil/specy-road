@@ -117,8 +117,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Not Started**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Not Started**
-  - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Not Started**
+  - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
@@ -128,6 +134,7 @@ Do not pick these up.
 - `M11.10` on `feature/rm-edit-node-add-remove` since 2026-11-02
 - `M11.2` on `feature/rm-resume-failed-workers` since 2026-11-02
 - `M11.5` on `feature/rm-pickup-claim-heuristic` since 2026-11-02
+- `M11.6` on `feature/rm-reconcile-current-contract` since 2026-11-02
 
 ## Reaching the detail behind this
 

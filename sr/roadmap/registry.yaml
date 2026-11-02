@@ -55,17 +55,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: one-readiness-rule
-    node_id: M11.11
-    branch: feature/rm-one-readiness-rule
-    touch_zones:
-      - specy_road/orchestrate_plan.py
-      - specy_road/bundled_scripts/session_plan.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - specy_road/bundled_scripts/orchestrate_cli.py
-      - docs/orchestration.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T19:55:42+00:00'

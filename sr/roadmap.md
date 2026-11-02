@@ -117,7 +117,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.8` | An opt-in delta review packet for small fix rounds | task | Mixed | Not Started |
 | `M11.9` | Acceptance items a human must satisfy are marked and handled as such | task | Agentic-led | Not Started |
 | `M11.10` | edit-node can add and remove single list entries | task | Agentic-led | Not Started |
-| `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Not Started |
+| `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Complete |
 | `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
