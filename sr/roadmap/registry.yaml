@@ -43,3 +43,14 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: nested-zone-paths
+    node_id: M9.11
+    branch: feature/rm-nested-zone-paths
+    touch_zones:
+      - specy_road/review_target.py
+      - specy_road/bundled_scripts/review_packet.py
+      - specy_road/finish_implementation_check.py
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
