@@ -1,6 +1,6 @@
 # Implementation summary — M10.12 Visual explorer for worker event logs
 
-Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b347` (implementation), `54e0665` (packaged bundle rebuild), `e5b7a69` (`docs/orchestration-workers.md` pointer).
+Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b347` (implementation), `54e0665` (packaged bundle rebuild, reverted by `30d4d70`), `e5b7a69` (`docs/orchestration-workers.md` pointer). The leaf's net diff from base holds source, tests and docs only.
 
 ## What changed
 
@@ -18,13 +18,14 @@ Branch `feature/rm-visual-explorer-for-worker`, base `1d8d99e`. Commits: `272b34
 
 ## Touch zones (final list)
 
-Used: `specy_road/gui_app.py`, `specy_road/gui_app_routes_workers.py`, `gui/pm-gantt/src/`, `docs/pm-gui.md`, `tests/test_gui_app_workers.py`, `specy_road/pm_gantt_static/` and `docs/orchestration-workers.md` (the last two added to the touch zones on WIP in `538be8a`, merged here in `fc8669d`).
+Used: `specy_road/gui_app.py`, `specy_road/gui_app_routes_workers.py`, `gui/pm-gantt/src/`, `docs/pm-gui.md`, `tests/test_gui_app_workers.py` and `docs/orchestration-workers.md`. That doc and `specy_road/pm_gantt_static/` were both added to the touch zones on WIP in `538be8a`, merged here in `fc8669d`. The bundle is a touch zone but has no net change here (see below).
 
 Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_gui_app.py`.
 
 ## Follow-up round (touch zones widened)
 
-- **Packaged bundle.** `npm ci && npm run lint && npm test && npm run build` re-run in the foreground from `gui/pm-gantt` (lint 0 errors; 23 files / 181 tests passed; built). The rebuilt `specy_road/pm_gantt_static/` is committed on its own as `54e0665 build(gui): …`, so `specy-road gui` now serves the drawer. Its entry chunk `index-2teI54Ey.js` is 94,018 bytes, well under CI's 900 KB budget.
+- **Packaged bundle.** `npm ci && npm run lint && npm test && npm run build` re-run in the foreground from `gui/pm-gantt` (lint 0 errors; 23 files / 181 tests passed; built). The rebuilt `specy_road/pm_gantt_static/` was committed on its own as `54e0665 build(gui): …`. Its entry chunk `index-2teI54Ey.js` was 94,018 bytes, under CI's 900 KB budget.
+- **Bundle reverted (change of plan).** The minified bundle made the review packet about 535 KB of very long lines, which the 1500-line diff cap does not limit, and the first reviewer filed nothing. At the coordinator's request, `30d4d70` reverts `54e0665` with `git revert --no-edit` (no history rewrite). `specy_road/pm_gantt_static/` is back to its state at base, so the packaged UI does **not** show the drawer from this branch alone. Once M10.12 lands, the coordinator will rebuild and commit the bundle on the integration branch, as was done with `f2ee0c2`. The source build still passes, as above.
 - **`docs/orchestration-workers.md`.** The file was at 398 of its 400-line cap, so the pointer to the Workers drawer is one sentence added to the end of the `usage W|NODE_ID` command row. It adds no lines; the file is still 398 lines.
 
 ## Verification
@@ -60,7 +61,6 @@ Listed but not needed: `specy_road/gui_app_routes_workspace.py` and `tests/test_
 - `gui/pm-gantt/src/types.ts::WorkerRow`, `WorkerEvent`, `WorkerDetail` — response types.
 - `gui/pm-gantt/src/App.tsx` — `workersOpen` state, the lazy `WorkersDrawer`, and the header **Workers** button.
 - `gui/pm-gantt/src/index.css` — `.worker-*` styles, using only existing theme tokens so dark mode follows.
-- `specy_road/pm_gantt_static/` — the rebuilt bundle, including the new lazy `WorkersDrawer-*.js` chunk; it is generated output, not hand-written.
 - `docs/orchestration-workers.md` — one sentence on the `usage` row pointing at the drawer.
 
 ### Tests
