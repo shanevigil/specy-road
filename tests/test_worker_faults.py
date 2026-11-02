@@ -157,3 +157,21 @@ def test_list_and_sync_flag_a_live_silent_worker(tmp_path: Path, capsys) -> None
         assert "stalled" in w["flags"] and [e["type"] for e in w["events"]].count("stalled") == 2
     finally:
         ops.terminate(repo, rec.worker_id)
+
+
+def test_policy_stall_after_seconds_overrides_the_default(tmp_path: Path) -> None:
+    from datetime import datetime, timedelta
+
+    from tests.review_repo_helpers import make_review_repo
+    from tests.test_worker_cli import worker_roster
+
+    # The policy is read from the integration branch, where make_review_repo commits the roster.
+    roster = worker_roster("harness {prompt}").replace("policy: {max_workers: 2}",
+                                                       "policy: {max_workers: 2, stall_after_seconds: 60}")
+    repo = make_review_repo(tmp_path, orchestration=roster)
+    rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo)
+    t0 = datetime.fromisoformat("2026-11-01T00:00:00+00:00")
+    ws.mutate(repo, rec, lambda r: (setattr(r, "state", "running"), setattr(r, "last_output_at", t0.isoformat())))
+    assert ops.sweep_stalled(repo, now=t0 + timedelta(seconds=59)) == []
+    assert len(ops.sweep_stalled(repo, now=t0 + timedelta(seconds=60))) == 1   # well under the default 600
+    assert "stall_after_seconds 60" in _stalled(repo, rec.worker_id)[0].summary

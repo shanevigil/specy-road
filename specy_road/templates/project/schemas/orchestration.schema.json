@@ -98,6 +98,11 @@
           "type": "integer",
           "minimum": 1,
           "description": "A leaf's review loop is escalated for root-cause analysis after this many review rounds since its last analysis. Default 5."
+        },
+        "stall_after_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A running worker with no harness stdout for this many seconds is flagged stalled by `worker sync` and `worker list`, with one stalled event per silence. Default 600."
         }
       }
     },
