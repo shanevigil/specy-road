@@ -1,20 +1,5 @@
 version: 1
 entries:
-  - codename: harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps
-    node_id: M8.1
-    branch: feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps
-    touch_zones:
-      - specy_road/templates/project/model-profiles/
-      - specy_road/bundled_scripts/refresh_profiles.py
-      - specy_road/harness_facts.py
-      - specy_road/templates/project/schemas/
-      - schemas/
-      - docs/orchestration-models.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T22:15:18+00:00'
   - codename: measure-whether-lower-reviewer
     node_id: M10.6
     branch: feature/rm-measure-whether-lower-reviewer
