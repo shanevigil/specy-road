@@ -124,7 +124,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.14` | worker message queues a follow-up for a worker whose turn is still running | task | Agentic-led | Not Started |
 | `M11.15` | Pickup and finish agree on unwritten planning sheets | task | Agentic-led | Not Started |
 | `M11.16` | A commit that changes only planning or bookkeeping files keeps existing approvals | task | Agentic-led | Not Started |
-| `M11.17` | edit-node names every chunk file it changes, and relocation is loud | task | Agentic-led | Not Started |
+| `M11.17` | edit-node names every chunk file it changes, and relocation is loud | task | Agentic-led | Complete |
 | `M11.18` | Registry overlap warnings show only what concerns the command at hand | task | Agentic-led | Not Started |
 | `M11.19` | Pickup never stashes work/ around the registry commit | task | Agentic-led | Not Started |
 | `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Not Started |

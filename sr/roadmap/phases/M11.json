@@ -442,7 +442,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.17_edit-node-names-chunks_b0dc8ed9-8928-426b-9cd7-0adb92ee713c.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "edit-node names every chunk file it changes, and relocation is loud",
       "touch_zones": [
         "specy_road/bundled_scripts/roadmap_crud_ops.py",
