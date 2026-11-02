@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Land an approved leaf and free its slot. Usage: sr/tools/land.sh <NODE_ID> <worktree-dir-name> <worker-id>
 set -u
+# Coordinator pause: no new landings while /tmp/specy-pause exists.
+if [ -e /tmp/specy-pause ]; then echo "$1: paused, not landing (rm /tmp/specy-pause to resume)"; exit 5; fi
 ID=$1; WT=$2; W=$3
 ROOT=/Users/savigil/WORKSPACE/specy-road; S=$ROOT/sr/tools/specy-road
 cd "$ROOT" || exit 2
