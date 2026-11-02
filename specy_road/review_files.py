@@ -247,7 +247,8 @@ def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -
     if not d.is_dir():
         return []
     fold = str.lower if any_case else str
-    return sorted(p for p in d.glob("*.md") if fold(p.name).startswith(fold(prefix)) and p.is_file())
+    return sorted(p for p in d.iterdir()
+                  if fold(p.name).startswith(fold(prefix)) and fold(p.suffix) == ".md" and p.is_file())
 
 
 def list_ready(repo_root: Path, node_id: str, branch: str | None = None,
@@ -260,10 +261,10 @@ def list_ready(repo_root: Path, node_id: str, branch: str | None = None,
 
 
 def _canonical(r: ReviewFile) -> ReviewFile:
-    """Report a record filed under another case (``review-x.md``) as ``REVIEW-<model>.md``."""
+    """Report a record filed under another case (``review-x.md``, ``REVIEW-x.MD``) as ``REVIEW-<model>.md``."""
     name = f"{REVIEW_PREFIX}{r.data.get('model')}.md"
-    if name.lower() != r.path.name.lower():   # not this model's record: fix only the prefix
-        name = REVIEW_PREFIX + r.path.name[len(REVIEW_PREFIX):]
+    if name.lower() != r.path.name.lower():   # not this model's record: fix only the prefix and extension
+        name = REVIEW_PREFIX + r.path.stem[len(REVIEW_PREFIX):] + ".md"
     if name != r.path.name:
         r.path, r.on_disk = r.path.with_name(name), r.path
     return r

@@ -56,17 +56,19 @@ def test_review_record_writes_the_canonical_name_over_a_lowercase_file(tmp_path:
     assert "family: anthropic" in review_path(repo, "M1.1", "opus").read_text(encoding="utf-8")
 
 
-def test_list_reviews_reports_a_lowercase_record_under_the_canonical_name(tmp_path: Path) -> None:
+@pytest.mark.parametrize("name", ["Review-OPUS.md", "review-opus.MD"])
+def test_list_reviews_reports_a_lowercase_record_under_the_canonical_name(tmp_path: Path, name: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    real = _lowercase_record(repo, "Review-OPUS.md")
+    real = _lowercase_record(repo, name)
     (r,) = list_reviews(repo, "M1.1")
     assert r.ok, r.errors
     assert r.path.name == "REVIEW-opus.md" and r.on_disk == real
 
 
-def test_the_gate_counts_a_lowercase_record_and_names_it_canonically(tmp_path: Path) -> None:
+@pytest.mark.parametrize("name", ["review-opus.md", "review-opus.MD"])
+def test_the_gate_counts_a_lowercase_record_and_names_it_canonically(tmp_path: Path, name: str) -> None:
     repo = make_review_repo(tmp_path, orchestration=ONE_AI)
-    _lowercase_record(repo)
+    _lowercase_record(repo, name)
     gate = evaluate_gate(repo, NODE, git(repo, "rev-parse", "HEAD"))
     assert gate.passed and [a.review.path.name for a in gate.approvals] == ["REVIEW-opus.md"]
     commit_file(repo, "src/b.py", "x\n", "fix")
