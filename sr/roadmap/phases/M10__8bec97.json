@@ -123,7 +123,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.19_no-foreign-kills_703b5286-3be8-4970-b6d6-3860dfed1fc9.md",
       "sibling_order": 19,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The executor prompt forbids killing processes the executor did not start",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",

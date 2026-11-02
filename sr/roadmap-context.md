@@ -105,7 +105,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Complete**
   - `M10.17` The review packet caps its inlined diff by bytes too and lists generated bundles by size only `packet-byte-budget` — task — **Complete**
   - `M10.18` Review records are found and written with the canonical file name on case-insensitive filesystems `review-file-case` — task — **Not Started**
-  - `M10.19` The executor prompt forbids killing processes the executor did not start `no-foreign-kills` — task — **Not Started**
+  - `M10.19` The executor prompt forbids killing processes the executor did not start `no-foreign-kills` — task — **Complete**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
