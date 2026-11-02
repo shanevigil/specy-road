@@ -33,7 +33,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.17` A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch `a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` — task — **Complete**
   - `M3.18` Bring role_prompt under the file cap and clear the ruff complexity error `bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error` — task — **Complete**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
-  - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
+  - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Complete**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**
   - `M4.3` Batch ideas and verdicts from a file, merge, and gap ideas `brainstorm-batch-io` — task — **Not Started**
   - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Not Started**
@@ -102,6 +102,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Not Started**
 
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
+
 ## Claimed and in flight
 
 Do not pick these up.
@@ -109,7 +115,6 @@ Do not pick these up.
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
-- `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
 - `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31
 - `M4.18` on `feature/rm-further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` since 2026-10-31
 - `M5.8` on `feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` since 2026-10-31
