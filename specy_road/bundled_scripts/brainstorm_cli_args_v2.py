@@ -2,16 +2,28 @@
 
 ``next-round``, ``frame``, ``evidence``, ``add-evidence``, ``verify``,
 ``park``, ``merge`` and ``cluster`` — kept apart from ``brainstorm_cli_args``
-for the same file-cap reason that module exists.
+for the same file-cap reason that module exists — and the sources
+``add-evidence`` and ``add-idea --quote`` build from their flags.
 """
 
 from __future__ import annotations
 
 import argparse
+from datetime import date
+from pathlib import Path
+from typing import Any
 
-from specy_road.bundled_scripts.brainstorm_fields import STANCES
+from specy_road.bundled_scripts.brainstorm_fields import (
+    NO_RESULT,
+    REPO,
+    STANCES,
+    no_result_locator,
+    repo_locator,
+    source_record,
+)
 from specy_road.bundled_scripts.brainstorm_lenses import PROFILES
 from specy_road.bundled_scripts.brainstorm_session import BrainstormError
+from specy_road.bundled_scripts.brainstorm_verify import repo_commit
 from specy_road.runtime_paths import add_repo_root_arg
 
 _SLUG_HELP = (
@@ -61,6 +73,82 @@ def frame_answers(ns: argparse.Namespace) -> list[tuple[str, str]]:
     return [(key, text)]
 
 
+def _evidence_quote(ns: argparse.Namespace) -> str:
+    """The checked ``--quote``: required on a page or a file, absent on a search that found nothing."""
+    given = [f for f, v in (("--url", ns.url), ("--path", ns.path), ("--query", ns.query)) if v is not None]
+    if len(given) != 1:
+        raise BrainstormError("add-evidence takes one of --url URL, --path FILE[:LINE], "
+                              "or --query TEXT --no-result" + (f"; got {', '.join(given)}" if given else ""))
+    if (ns.query is not None) != ns.no_result:
+        raise BrainstormError("--query and --no-result go together: they record a search that found nothing")
+    quote = (ns.quote or "").strip()
+    if ns.no_result:
+        if quote:
+            raise BrainstormError("--no-result takes no --quote: the search found nothing to quote")
+        return quote
+    if not quote:
+        raise BrainstormError("--quote is required: a URL with no quote is not evidence (verify checks the quote)")
+    if len(quote) > 300:
+        raise BrainstormError("--quote must be 300 characters or fewer: quote, do not paraphrase")
+    return quote
+
+
+def evidence_record(ns: argparse.Namespace, root: Path) -> dict[str, Any]:
+    """The source ``add-evidence`` records: a page (``--url``), a file in this repository at ``HEAD``
+    (``--path FILE[:LINE]``), or a search that found nothing (``--query TEXT --no-result``)."""
+    common = dict(quote=_evidence_quote(ns), supports=ns.supports, stance=ns.stance, tool=ns.tool,
+                  retrieved_at=ns.retrieved_at or date.today().isoformat())
+    source_type = ns.source_type.strip()
+    if ns.path is not None:
+        if source_type not in ("", REPO):
+            raise BrainstormError(f"--path cites a file in this repository: --source-type {REPO}, or leave it out")
+        path = ns.path.strip()
+        commit = repo_commit(root, path)
+        return source_record(repo_locator(path, commit), source_type=REPO, path=path, commit=commit, **common)
+    if source_type == REPO:
+        raise BrainstormError(f"--source-type {REPO} needs --path FILE[:LINE]")
+    if ns.no_result:
+        if not ns.query.strip():
+            raise BrainstormError("--query is empty: record the search that found nothing")
+        return source_record(no_result_locator(ns.query.strip()), source_type=source_type, query=ns.query,
+                             result=NO_RESULT, **common)
+    return source_record(ns.url, source_type=source_type, **common)
+
+
+def quoted_sources(ns: argparse.Namespace) -> list[dict]:
+    """``--quote`` N backs ``--evidence`` N: a source ``verify`` can check, for an idea research produced."""
+    quotes, urls = list(ns.quote or []), list(ns.evidence or [])
+    if len(quotes) > len(urls):
+        raise BrainstormError(f"{len(quotes)} --quote for {len(urls)} --evidence: each quote backs the URL "
+                              "in the same position")
+    for q in quotes:
+        if not q.strip() or len(q) > 300:
+            raise BrainstormError("each --quote needs verbatim text of 300 characters or fewer")
+    return [source_record(u, quote=q, retrieved_at=date.today().isoformat()) for u, q in zip(urls, quotes)]
+
+
+def _add_evidence_parser(sub) -> None:
+    p = sub.add_parser("add-evidence", help="record one source on an idea (the agent calls this)")
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--url", default=None, help="The page. One of --url, --path or --query.")
+    p.add_argument("--path", default=None, metavar="FILE[:LINE]",
+                   help=f"A file in this repository (source type {REPO}); records the HEAD commit, and "
+                        "verify checks the quote against the file at that commit, locally.")
+    p.add_argument("--query", default=None, metavar="TEXT",
+                   help="With --no-result: a search, e.g. a disconfirming one, that found nothing.")
+    p.add_argument("--no-result", action="store_true",
+                   help="Record --query as a search with no hit; it takes no --quote and verify skips it.")
+    p.add_argument("--quote", default="", metavar="TEXT", help="Verbatim text from the page or file (≤300 chars); "
+                   "required unless --no-result — a URL alone is not evidence.")
+    p.add_argument("--supports", default="", metavar="TEXT", help="The claim this source bears on.")
+    p.add_argument("--stance", default="for", choices=STANCES)
+    p.add_argument("--tool", default="", metavar="TEXT", help="How it was retrieved, e.g. 'claude WebFetch'.")
+    p.add_argument("--source-type", default="", metavar="TYPE",
+                   help=f"official-doc, regulation, paper, customer-report, news, competitor; {REPO} with --path.")
+    p.add_argument("--retrieved-at", default=None, metavar="DATE", help="Default: today.")
+    _slug(p)
+
+
 def add_v2_subcommands(sub) -> None:
     p = sub.add_parser("next-round", help="open the next diverge round: regenerate against the pool")
     p.add_argument("--count", type=int, default=None, metavar="N",
@@ -88,17 +176,7 @@ def add_v2_subcommands(sub) -> None:
                    help="Ideas to source (default: those recommended strong). More than 15 warns.")
     _slug(p)
 
-    p = sub.add_parser("add-evidence", help="record one source on an idea (the agent calls this)")
-    p.add_argument("idea_id", metavar="IDEA_ID")
-    p.add_argument("--url", required=True)
-    p.add_argument("--quote", default="", metavar="TEXT", help="Verbatim text from the page (≤300 chars); required — a URL alone is not evidence.")
-    p.add_argument("--supports", default="", metavar="TEXT", help="The claim this source bears on.")
-    p.add_argument("--stance", default="for", choices=STANCES)
-    p.add_argument("--tool", default="", metavar="TEXT", help="How it was retrieved, e.g. 'claude WebFetch'.")
-    p.add_argument("--source-type", default="", metavar="TYPE",
-                   help="official-doc, regulation, paper, customer-report, news, competitor.")
-    p.add_argument("--retrieved-at", default=None, metavar="DATE", help="Default: today.")
-    _slug(p)
+    _add_evidence_parser(sub)
 
     p = sub.add_parser("verify", help="check that each recorded quote appears on its page (asks before fetching)")
     p.add_argument("idea_id", nargs="*", metavar="IDEA_ID", help="Default: every idea with unverified sources.")

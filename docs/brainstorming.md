@@ -9,7 +9,7 @@
 - Run `specy-road brainstorm start` before reading anything else — the digest and the roadmap anchor round 1 — then open the prompt it writes. Every command prints the next step.
 - Keep the passes apart: diverge (`start`, `next-round`) generates with no ranking, and no research or roadmap inventory in round 1; converge (`recommend`) judges and adds no ideas.
 - Record ideas as you go with `specy-road brainstorm add-idea --title … --origin harness/model/lens/round`; only `--title` is required.
-- `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page; a URL alone is not evidence. `brainstorm verify` is the CLI's only network call and asks before fetching.
+- `specy-road brainstorm add-evidence` requires a verbatim `--quote` from the page (or, with `--path FILE[:LINE]`, from a file in this repository); a URL alone is not evidence. A search that found nothing is recorded with `--query … --no-result`. `brainstorm verify` is the CLI's only network call and asks before fetching; repo sources it checks locally.
 - The human decides: `accept`, `reject --reason`, `park --reason [--revisit-when]`, `decide --decision`, `frame --confirm` and `promote` are theirs; `revise --recommendation` advises and leaves triage alone.
 - Until `promote`, the agent writes only the session file, and only through `frame`, `add-idea`, `add-evidence` and `revise`: no code, `planning/`, `roadmap/`, `registry.yaml`, `shared/` or other `work/` edits — see "What the agent may write".
 - The session is `work/brainstorm-<slug>.yaml`, tracked; the prompt files beside it, one per pass, are gitignored. `start` warns on the integration branch and suggests `chore/brainstorm-<slug>`.
@@ -177,13 +177,7 @@ Many ideas at once: `add-idea --from-file ideas.yaml` takes a YAML list (or a ma
 specy-road brainstorm next-round --count 15
 ```
 
-Writes the **round-k prompt** (`…-r<k>-prompt.md`): the titles of everything captured so far, and
-an instruction to add only ideas that are not in, and not near, that pool —
-with the mechanics that measurably widen a pool (estimate how likely a
-typical PM would be to propose each candidate and keep only the unlikely
-ones; name the untouched regions and fill them). Web research is now allowed
-as a source of ideas, URLs recorded with `--evidence`. Two rounds of twenty
-beat one of forty.
+Writes the **round-k prompt** (`…-r<k>-prompt.md`): the titles of everything captured so far, and an instruction to add only ideas that are not in, and not near, that pool — with the mechanics that measurably widen a pool (estimate how likely a typical PM would be to propose each candidate and keep only the unlikely ones; name the untouched regions and fill them). Web research is now allowed as a source of ideas, URLs recorded with `--evidence`; add a `--quote` from the page and it becomes a source `verify` checks (`--quote` N backs `--evidence` N; a URL without one stays a plain link). Two rounds of twenty beat one of forty.
 
 ### Panel (independent shards)
 
@@ -262,13 +256,7 @@ specy-road brainstorm evidence            # the ideas recommended strong
 specy-road brainstorm evidence B4 B9      # or named ideas, e.g. a consider worth checking
 ```
 
-More than 15 ideas in one pass warns: the sources get thinner and the
-disconfirming searches are the first thing dropped, so name the ids and run it
-in batches. Writes `work/brainstorm-<slug>-evidence-prompt.md`: for each idea, one to
-three sources and at least one search that could disconfirm it, using the
-strongest research capability the session exposes (and never claiming a
-named research product that is not a tool). Each source needs a **verbatim
-quote**, the claim it bears on, a stance, the retrieval tool and date:
+More than 15 ideas in one pass warns: the sources get thinner and the disconfirming searches are the first thing dropped, so name the ids and run it in batches. Writes `work/brainstorm-<slug>-evidence-prompt.md`: for each idea, one to three sources and at least one search that could disconfirm it, using the strongest research capability the session exposes (and never claiming a named research product that is not a tool). Each source needs a **verbatim quote**, the claim it bears on, a stance, the retrieval tool and date:
 
 ```bash
 specy-road brainstorm add-evidence B4 --url "https://…" \
@@ -276,24 +264,29 @@ specy-road brainstorm add-evidence B4 --url "https://…" \
   --stance for --tool "claude WebFetch" --source-type customer-report
 ```
 
+In a brownfield repo the code is evidence too. `--path FILE[:LINE]` (source type `repo`; the path is relative to the repo root) records the commit `HEAD` is on, so the citation stays checkable after the code moves on; a file that commit does not hold (new or untracked) is refused until it is committed:
+
+```bash
+specy-road brainstorm add-evidence B4 --source-type repo --path src/pay.py:42 \
+  --quote "links expire after 24 hours" --supports "links are short-lived"
+```
+
+A disconfirming search that found nothing is a result worth keeping: record the query, with no URL and no quote. `verify` has nothing to check on it and leaves it alone:
+
+```bash
+specy-road brainstorm add-evidence B4 --query "pay-by-link chargeback complaints" \
+  --no-result --stance against --tool "claude WebSearch"
+```
+
+Each source is one of `--url`, `--path` or `--query … --no-result`. In the session file a repo source's `url` reads `repo:<path>@<short commit>` and a search with no hit `no-result:<query>`, so the listings and the promoted sheet's `## References` name them.
+
 Then check them:
 
 ```bash
 specy-road brainstorm verify
 ```
 
-`verify` lists the URLs and **asks before fetching** (`--yes` for scripts;
-without a terminal and without `--yes` it fetches nothing). It fetches
-public `https` pages only, with a timeout and a size cap (a larger page is
-`blocked`, not read in part), and records
-`matched` (quote found on the page), `not-found` (page read, quote absent — or no
-quote was given; `add-evidence` requires one), or
-`blocked` (paywall, robots, transport error — never "fabricated"). Sources
-it did not fetch stay `unverified`. Session files written before the rename
-say `retrieved`; they read as `matched` and are saved that way. This is the only network call the CLI
-makes. Other brainstorm commands (CLI or GUI) are not blocked while it asks
-or fetches; it records its results into the session as it then stands, so
-ideas added meanwhile are kept.
+`verify` lists the URLs and **asks before fetching** (`--yes` for scripts; without a terminal and without `--yes` it fetches nothing). It fetches public `https` pages only, with a timeout and a size cap (a larger page is `blocked`, not read in part), and records `matched` (quote found on the page), `not-found` (page read, quote absent — or no quote was given; `add-evidence` requires one), or `blocked` (paywall, robots, transport error — never "fabricated"). Sources it did not fetch stay `unverified`. Session files written before the rename say `retrieved`; they read as `matched` and are saved that way. This is the only network call the CLI makes. Repo sources are not fetched and need no answer: `verify` reads the cited file at the recorded commit with `git show` and records `matched` when the quote (whitespace collapsed) appears on a span covering the cited line — anywhere in the file when no line was given — `not-found` when it does not or the file is gone from that commit, and `blocked` when the commit itself is no longer in the repository. Declining the fetch still checks them. Other brainstorm commands (CLI or GUI) are not blocked while it asks or fetches; it records its results into the session as it then stands, so ideas added meanwhile are kept.
 
 ## 4. Triage
 

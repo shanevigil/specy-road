@@ -106,6 +106,9 @@ def _add_add_idea(sub) -> None:
         metavar="URL",
         help="Source that produced the idea. Repeatable.",
     )
+    p.add_argument("--quote", action="append", default=None, metavar="TEXT",
+                   help="Verbatim text (≤300 chars) from the --evidence URL in the same position; "
+                        "records a source `verify` checks. Repeatable.")
     p.add_argument("--origin", default=None, metavar="H/M/LENS/ROUND[/SHARD]",
                    help="Where the idea came from: harness/model/lens/round[/shard].")
     p.add_argument("--hypothesis", default=None, metavar="TEXT",
