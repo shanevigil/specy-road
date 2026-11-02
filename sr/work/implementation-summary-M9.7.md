@@ -97,12 +97,18 @@ findings, and `test_integrity_section`'s `_none_` wording in
   left alone, as instructed (no other encoding class opened): the M9.5 code
   paths (`_tree_paths` via `ls-tree`, and `diff_paths` for config changes) still
   read names through the strict `git_stdout`.
+- Round 6 (gpt-6.1-sol R1): a type change (symlink to regular file) is two
+  patch sections. `_hunk_additions` stayed in hunk mode after the first
+  section's `@@`, so it counted the second section's `+++ b/<path>` header as
+  an added line. That inflated baseline counts, and a marker in the file name
+  gave a false `:0` suppression. A `diff --git` line now ends hunk mode, so
+  only lines inside each section's hunks count.
 - Renames are detected (`--find-renames`), so moving a file that already holds
   a suppression does not report it; edits inside the moved file still do.
 
 ## Verification
 
-- Round 5: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 89 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
+- Round 6: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 90 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -118,7 +124,7 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `integrity._git_bytes` — raw git stdout, never raises, empty on failure or timeout; used by `_patch` and `_changed_files` (round 5).
 - `integrity._utf8` — strict decode of one file name, `None` when it is not UTF-8 (round 5).
 - `integrity._changed_files` — changed paths and rename pairs from `--name-status -z` read as bytes, so paths with spaces or quotes are exact (R2) and a non-UTF-8 name drops only itself (round 5).
-- `integrity._hunk_additions` — the `+` lines of one file's `-U0` patch after its first hunk header.
+- `integrity._hunk_additions` — the `+` lines inside the hunks of one file's `-U0` patch, every section of it.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
 - `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines, each diffed with `--no-renames` (A2; round 3).
 - `integrity._file_additions` — one file's (or rename pair's) added lines; shared by both findings.
@@ -127,7 +133,7 @@ findings, and `test_integrity_section`'s `_none_` wording in
 
 ### Branches / guards
 - `Finding.line` gains the `new-suppression` and `baseline-widened` forms (A1, A2).
-- `_hunk_additions` ignores everything before the first `@@`, so header lines are never content; a deleted or binary file has no hunks and adds nothing.
+- `_hunk_additions` ignores each section's header (from `diff --git` to its first `@@`), so header lines are never content even in a two-section type change (round 6); a deleted or binary file has no hunks and adds nothing.
 - `_git_bytes` returns `b""` when git fails, times out or cannot start, so that file adds nothing.
 - `_changed_files` skips a record whose destination name is not UTF-8 and drops an undecodable rename source (round 5).
 - `integration_ratchet_paths` returns `[]` when the policy ref or file is unreadable, and drops non-string entries.
@@ -147,3 +153,4 @@ findings, and `test_integrity_section`'s `_none_` wording in
 - `test_attributes_and_diff_drivers_do_not_hide_additions` (×4: `-diff`, `binary`, textconv driver, external diff command) — round 3: a configured baseline the leaf hides from diff still gives `baseline-widened ... +1` and its `new-suppression`, exit 1.
 - `test_file_renamed_onto_a_new_ratchet_path_widens_it` — round 3 audit: `git mv` onto a not-yet-existing ratchet path gives `+<all lines>`, exit 1.
 - `test_non_utf8_file_name_hides_no_other_finding` — round 5: a committed name with a 0xff byte beside `src/mod.py`'s added `# noqa`; prints `new-suppression: src/mod.py:1`, exit 1.
+- `test_symlink_to_regular_file_counts_only_hunk_lines` — round 6: a ratchet baseline named `noqa-baseline.txt` goes from symlink to a two-line file; prints only `baseline-widened: ... +2`, exit 1 (was `+3` plus a false `:0` suppression).
