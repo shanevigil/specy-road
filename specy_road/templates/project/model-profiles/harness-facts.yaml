@@ -78,6 +78,8 @@ harnesses:
       value: a usage limit prints a message with a reset time; grind-session waits out a timed limit and stops on a spend cap or unrecognised wording
       label: documented
       source: specy_road/claude_code_limits.py
+    # No inventory: Claude Code has no listing that runs without a model turn (slash commands and
+    # tools appear only in a session's system/init event; an unknown subcommand becomes a prompt).
     capture_commands:
       version.txt: [claude, --version]
       help.txt: [claude, --help]
@@ -177,6 +179,7 @@ harnesses:
       version.txt: [codex, --version]
       help.txt: [codex, --help]
       help-exec.txt: [codex, exec, --help]
+      inventory-features.txt: [codex, features, list]
     relationships:
       --approve-for-me: avoid
       --ask-for-approval: neutral
@@ -195,6 +198,34 @@ harnesses:
       fork: avoid
       resume: use
       review: duplicate
+      # inventory-features.txt (codex features list)
+      analytics_plan_history: neutral
+      api_key_cyber_access_programs: neutral
+      app_server_websocket_compression: neutral
+      apply_patch_preserve_line_endings: neutral
+      background_paginated_rollout_migration: neutral
+      code_mode_prewarm: neutral
+      codex_git_commit: avoid
+      defer_mailbox_preemption: neutral
+      enable_request_compression: neutral
+      exec_permission_approvals: neutral
+      external_agent_memory_import: avoid
+      guardian_approval: neutral
+      local_thread_store_compression: neutral
+      local_thread_store_shared_compression: neutral
+      memories: avoid
+      network_proxy: neutral
+      non_prefixed_mcp_tool_names: neutral
+      prediction_preserve_parent_tools: neutral
+      prefer_mxc: neutral
+      prevent_idle_sleep: neutral
+      respect_system_proxy: neutral
+      shell_zsh_fork: neutral
+      skill_env_var_dependency_prompt: neutral
+      system_proxy_fallback: neutral
+      unified_exec_zsh_fork: neutral
+      worktrees: avoid
+      write_stdin_approval: neutral
 
   - id: cursor
     name: Cursor agent CLI
@@ -256,6 +287,7 @@ harnesses:
     capture_commands:
       version.txt: [agent, --version]
       help.txt: [agent, --help]
+      inventory-models.txt: [agent, models]
     relationships:
       --approve-mcps: neutral
       --auto-review: avoid
@@ -276,6 +308,8 @@ harnesses:
       generate-rule: avoid
       resume: use
       worker: avoid
+      # inventory-models.txt (agent models; the list depends on the account)
+      gemini-3.1-pro: neutral
 
   - id: generic
     name: Generic (the profile's own command)

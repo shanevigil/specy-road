@@ -244,8 +244,10 @@ HELP = "Usage: tool [options]\n\nOptions:\n  --model <m>   Model\n\nCommands:\n 
 
 
 def _capture(version: str, help_text: str = HELP, **extra: str) -> dict[str, str]:
-    """Every file any shipped record's capture_commands names (codex also captures help-exec.txt)."""
-    return {hf.VERSION_FILE: version + "\n", "help.txt": help_text, "help-exec.txt": "", **extra}
+    """Every file any shipped record's capture_commands names (codex: help-exec.txt and its features
+    inventory; cursor: its models inventory)."""
+    return {hf.VERSION_FILE: version + "\n", "help.txt": help_text, "help-exec.txt": "",
+            "inventory-features.txt": "", "inventory-models.txt": "", **extra}
 
 
 def test_identifiers_are_flags_command_rows_and_inventory_lines() -> None:
@@ -285,7 +287,7 @@ def test_the_accepted_captures_pass_against_an_empty_baseline() -> None:
     assert set(with_binary) == set(HARNESSES) - {"generic"}   # generic runs the profile's own access.cli
     for hid in with_binary:
         accepted = hf.read_capture(hf.bundled_captures_dir() / hid)
-        assert hf.VERSION_FILE in accepted and "help.txt" in accepted, hid
+        assert set(accepted) == set(hf.harness(facts, hid)["capture_commands"]), hid   # inventories included
         assert hf.classify_capture(facts, hid, {}, accepted).ok, hid
         assert hf.harness(facts, hid)["version"]["value"] in accepted[hf.VERSION_FILE], hid
 
@@ -327,6 +329,20 @@ def test_an_incomplete_capture_is_refused_and_the_accepted_one_is_kept(tmp_path:
     assert run_main("--capture", "codex", "--from", str(no_inventory), "--accept") == 1
     assert "incomplete codex capture: no inventory-features.txt" in capsys.readouterr().err
     assert hf.read_capture(accepted / "codex") == before
+
+
+def test_a_version_bump_without_its_inventory_is_refused_before_accept(tmp_path: Path, monkeypatch, capsys) -> None:
+    accepted = tmp_path / "accepted"
+    shutil.copytree(hf.bundled_captures_dir() / "cursor", accepted / "cursor")
+    monkeypatch.setattr(hf, "bundled_captures_dir", lambda: accepted)
+    before = {p.name: p.read_bytes() for p in (accepted / "cursor").iterdir()}
+    assert "inventory-models.txt" in before
+    bump = tmp_path / "bump"
+    hf.write_capture(bump, {k: v.decode() for k, v in before.items() if k != "inventory-models.txt"})
+    (bump / hf.VERSION_FILE).write_text("2026.11.01-abc1234\n", encoding="utf-8")
+    assert run_main("--capture", "cursor", "--from", str(bump), "--accept") == 1
+    assert "incomplete cursor capture: no inventory-models.txt" in capsys.readouterr().err
+    assert {p.name: p.read_bytes() for p in (accepted / "cursor").iterdir()} == before
 
 
 def test_capture_runs_the_fixture_commands(monkeypatch) -> None:

@@ -202,8 +202,10 @@ every file the accepted capture has (an `inventory*.txt` included). An
 incomplete one is refused before classification, and the accepted capture is
 left as it was.
 Identifiers are `--flags`, the rows under a help text's `Commands:` heading,
-and the first word of each line of an `inventory*.txt` file (a slash-command or
-model listing). Every identifier the new capture adds or drops is listed. A new
+and the first word of each line of an `inventory*.txt` file. The shipped
+inventories are `codex features list` (`inventory-features.txt`) and
+`agent models` (`inventory-models.txt`, which depends on the account). Claude
+Code has no listing that runs without a model turn, so it captures none. Every identifier the new capture adds or drops is listed. A new
 one whose name contains `plan`, `memory`, `task`, `todo`, `worktree`,
 `branch`, `commit`, `push`, `pr`, `background`, `delegate`, `cloud`,
 `schedule`, `review`, `resume`, `fork` or `autopilot` fails the diff, and
