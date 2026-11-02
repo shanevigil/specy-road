@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.review_repo_helpers import git
 from tests.test_worker_cli import _repo, run_worker_cli, wait_for_worker
 
 from specy_road import worker_ops as ops
@@ -44,12 +45,14 @@ def test_a_failed_worker_without_a_session_id_is_still_refused(tmp_path: Path, c
     assert ws.load_record(repo, rec.worker_id).state == "failed"
 
 
-def test_a_terminated_worker_with_a_session_id_is_still_refused(tmp_path: Path) -> None:
+def test_an_unreadable_integration_ref_is_a_worker_error_for_a_failed_worker(tmp_path: Path) -> None:
     repo, _ = _repo(tmp_path)
     rec = _failed(repo)
-    ws.set_state(repo, rec, "terminated", pid=None)
-    with pytest.raises(ws.WorkerError, match="is terminated, session sid-1; delegate again instead"):
-        ops.message(repo, rec.worker_id, "x")
+    git(repo, "branch", "-D", "dev")   # the roster and policy are read from the integration branch
+    for send in (lambda: ops.message(repo, rec.worker_id, "x"), lambda: ops.resume(repo, rec.worker_id)):
+        with pytest.raises(ws.WorkerError, match="orchestration config"):
+            send()
+    assert ws.load_record(repo, rec.worker_id).state == "failed"
 
 
 def test_a_stalled_worker_whose_process_ended_resumes(tmp_path: Path) -> None:

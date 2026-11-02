@@ -311,11 +311,11 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
     if not rec.provider_session_id:
         raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to resume")
     sid = check_session_id(rec.harness, rec.provider_session_id)   # the harness's output chose it; never a shell word
+    entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)   # raises on an unreadable config first
     if rec.state == "failed":   # reopening takes a max_workers slot, as a launch does
         other = _slot_or_existing(repo_root, rec.node_id, int(pinned_config(repo_root)[0]["policy"]["max_workers"]))
         if other:
             raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays failed")
-    entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)

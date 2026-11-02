@@ -64,7 +64,7 @@ def test_a_completed_worker_takes_a_review_block_as_a_message(tmp_path: Path) ->
     wait_for_worker(repo, rec.worker_id)
     assert ws.load_record(repo, rec.worker_id).state in ("idle", "completed")
     ws.set_state(repo, rec, "terminated", pid=None)   # failed with a session id resumes (M11.2)
-    with pytest.raises(ws.WorkerError, match="delegate again"):
+    with pytest.raises(ws.WorkerError, match="is terminated, session sid-1; delegate again instead"):
         ops.message(repo, rec.worker_id, "x")
 
 
