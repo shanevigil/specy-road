@@ -30,6 +30,9 @@ _SUPPRESSION = re.compile(
     re.IGNORECASE,
 )
 _HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)")
+# The leaf's own .gitattributes can mark a file binary (``-diff``), and repo config can set a
+# textconv driver, an external diff or a relative diff; none of them may hide an added line.
+_DIFF = ("diff", "--no-relative", "--no-color", "--no-ext-diff", "--no-textconv", "--text", "--unified=0")
 
 
 @dataclass(frozen=True, order=True)
@@ -83,9 +86,8 @@ def compare_integrity(repo_root: Path, base: str, ref: str) -> list[Finding]:
             if r_count < b_count:
                 findings.append(Finding("assert-loss", path, qual, f"{b_count}->{r_count}"))
     findings.extend(_config_findings(root, base, ref))
-    added = _added_lines(root, base, ref)
-    findings.extend(_suppression_findings(added))
-    findings.extend(_ratchet_findings(added, integration_ratchet_paths(root)))
+    findings.extend(_suppression_findings(_added_lines(root, base, ref)))
+    findings.extend(_ratchet_findings(root, base, ref, integration_ratchet_paths(root)))
     return sorted(findings, key=lambda f: f.line())
 
 
@@ -161,17 +163,22 @@ def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, s
     """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds.
 
     One diff per changed file; the path comes from ``--name-status -z``, never from a
-    patch header.
+    patch header. Renames are followed, so a moved file's existing lines are not new.
     """
     added: dict[str, list[tuple[int, str]]] = {}
     for paths in _changed_files(root, base, ref):
-        lines = _hunk_additions(_patch(root, [
-            "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames", "--unified=0",
-            base, ref, "--", *(f":(top,literal){p}" for p in paths),
-        ]))
+        lines = _file_additions(root, base, ref, paths, "--find-renames")
         if lines:
             added[paths[-1]] = lines
     return added
+
+
+def _file_additions(
+    root: Path, base: str, ref: str, paths: tuple[str, ...], renames: str
+) -> list[tuple[int, str]]:
+    return _hunk_additions(_patch(root, [
+        *_DIFF, renames, base, ref, "--", *(f":(top,literal){p}" for p in paths),
+    ]))
 
 
 def _patch(root: Path, args: list[str]) -> str:
@@ -189,7 +196,8 @@ def _patch(root: Path, args: list[str]) -> str:
 
 def _changed_files(root: Path, base: str, ref: str) -> list[tuple[str, ...]]:
     """``(path,)`` per changed file, ``(source, destination)`` per rename."""
-    fields = (git_stdout(["diff", "--name-status", "-z", "--find-renames", base, ref], root) or "").split("\0")
+    args = ["diff", "--no-relative", "--name-status", "-z", "--find-renames", base, ref]
+    fields = (git_stdout(args, root) or "").split("\0")
     out: list[tuple[str, ...]] = []
     i = 0
     while i < len(fields) and fields[i]:
@@ -222,12 +230,14 @@ def _suppression_findings(added: dict[str, list[tuple[int, str]]]) -> list[Findi
     ]
 
 
-def _ratchet_findings(added: dict[str, list[tuple[int, str]]], ratchet_paths: list[str]) -> list[Finding]:
-    return [
-        Finding("baseline-widened", path, detail=str(len(added[path])))
-        for path in sorted(set(ratchet_paths))
-        if added.get(path)
-    ]
+def _ratchet_findings(root: Path, base: str, ref: str, ratchet_paths: list[str]) -> list[Finding]:
+    """Renames are not followed: a file moved onto a ratchet path widens it by every line."""
+    out: list[Finding] = []
+    for path in sorted(set(ratchet_paths)):
+        count = len(_file_additions(root, base, ref, (path,), "--no-renames"))
+        if count:
+            out.append(Finding("baseline-widened", path, detail=str(count)))
+    return out
 
 
 def _pytest_table_changed(base_text: str | None, ref_text: str | None) -> bool:

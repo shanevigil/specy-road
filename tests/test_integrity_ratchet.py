@@ -121,3 +121,38 @@ def test_paths_with_spaces_are_reported_and_matched_exactly(tmp_path: Path, caps
     commit(repo, "constraints/a b.txt", "a\nb\n", "widen")
     commit(repo, "src/a b.txt", "x = 1  # noqa\n", "suppress")
     assert _run(repo, capsys) == (1, "baseline-widened: constraints/a b.txt +1\nnew-suppression: src/a b.txt:1\n")
+
+
+_HIDING = {
+    "-diff": ("-diff", {}),
+    "binary": ("binary", {}),
+    "textconv": ("diff=hide", {"diff.hide.textconv": "true"}),
+    "external": ("diff=hide", {"diff.external": "true", "diff.hide.command": "true"}),
+}
+
+
+@pytest.mark.parametrize("how", sorted(_HIDING))
+def test_attributes_and_diff_drivers_do_not_hide_additions(tmp_path: Path, capsys, how: str) -> None:
+    attribute, config = _HIDING[how]
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, "a\n", "baseline on dev")
+    merge_dev(repo)
+    for key, value in config.items():
+        git(repo, "config", key, value)
+    commit(repo, ".gitattributes", f"{_BASELINE} {attribute}\n", "hide the baseline from diff")
+    commit(repo, _BASELINE, "a\nb  # noqa\n", "widen")
+    assert _run(repo, capsys) == (1, f"baseline-widened: {_BASELINE} +1\nnew-suppression: {_BASELINE}:2\n")
+
+
+def test_file_renamed_onto_a_new_ratchet_path_widens_it(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, ["constraints/mutation-baseline.json"])
+    commit(repo, "old.txt", "a\nb\n", "existing file on dev")
+    merge_dev(repo)
+    (repo / "constraints").mkdir()
+    git(repo, "mv", "old.txt", "constraints/mutation-baseline.json")
+    git(repo, "commit", "-qm", "rename onto the ratchet path")
+    assert _run(repo, capsys) == (1, "baseline-widened: constraints/mutation-baseline.json +2\n")
