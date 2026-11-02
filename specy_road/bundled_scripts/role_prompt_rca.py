@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.model_profiles import Profile
 from specy_road.review_files import PACKET_NAME
 
@@ -41,9 +42,11 @@ _EXCESS_CHECKLIST = (
 )
 
 
-def dirty_check(prefix: str = "") -> str:
+def dirty_check(prefix: str = "", node_id: str | None = None) -> str:
+    """The clean-tree check; with ``node_id``, that leaf's tracked worker logs (``track_worker_logs``) are left out too."""
+    logs = f" ':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/'" if node_id else ""
     return (f"git status --porcelain --untracked-files=all -- ':(top)' ':(top,exclude){prefix}work/brief-*.md' "
-            f"':(top,exclude){prefix}work/implementation-summary-*.md' ':(top,exclude){prefix}work/reviews/'")
+            f"':(top,exclude){prefix}work/implementation-summary-*.md' ':(top,exclude){prefix}work/reviews/'{logs}")
 
 
 def where(prefix: str) -> list[str]:
@@ -65,7 +68,8 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         f"':(top,exclude){work}/implementation-summary-{node_id}.md' "
         f"':(top,exclude){work}/prompt-{node_id}.md' "
         f"':(top,exclude){work}/prompt-{node_id}-*.md' "
-        f"':(top,exclude){work}/reviews/{node_id}/'"
+        f"':(top,exclude){work}/reviews/{node_id}/' "
+        f"':(top,exclude){prefix}{WORKER_LOGS_REL}/{node_id}/'"   # the wrapper mirrors these after READY
     )
     return [
         "## Precondition",
@@ -74,8 +78,9 @@ def reviewer_precondition(node_id: str, t, packet: Path, prefix: str) -> list[st
         f"changes you did not make, change nothing, reply exactly `{node_id} not landed; waiting`, and stop. Run that command in "
         f"the checkout that has `{branch}` checked out (`git worktree list` names it; usually the leaf's worktree, "
         "not the coordinator's main checkout); if none has it, skip it, since the packet names the commit you review. "
-        f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts and "
-        f"`{work}/reviews/{node_id}/` hand-offs; any other change, tracked or untracked, counts.",
+        f"It leaves out only this leaf's `{work}/brief-{node_id}.md`, implementation summary, prompts, "
+        f"`{work}/reviews/{node_id}/` hand-offs and `{prefix}{WORKER_LOGS_REL}/{node_id}/` worker logs; any other "
+        "change, tracked or untracked, counts.",
         "",
         "The packet is gitignored, so file-search and glob tools may not list it: open that "
         f"absolute path directly (`ls {packet}`).",
@@ -98,10 +103,11 @@ def precondition(role: str, node_id: str, t, packet: Path, prefix: str = "") -> 
         "## Precondition",
         "",
         *(where(prefix) if role == "executor" else []),
-        f"If {missing}, or `{dirty_check(prefix)}` lists changes you did not make, "
+        f"If {missing}, or `{dirty_check(prefix, node_id)}` lists changes you did not make, "
         f"change nothing, reply exactly `{node_id} not landed; waiting`, and stop. That command leaves out "
         f"only specy-road's bookkeeping (`{prefix}work/brief-*.md`, `{prefix}work/implementation-summary-*.md`, "
-        f"`{prefix}work/reviews/`); any other change, tracked or untracked, counts.",
+        f"`{prefix}work/reviews/`, this leaf's `{prefix}{WORKER_LOGS_REL}/{node_id}/`); any other change, "
+        "tracked or untracked, counts.",
         "",
     ]
 

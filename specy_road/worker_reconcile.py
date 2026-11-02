@@ -17,6 +17,7 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
+from specy_road.git_workflow_config import WORKER_LOGS_REL
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
 from specy_road.worker_process import branch_mismatch
@@ -77,14 +78,16 @@ def _brief_unchanged(repo_root: Path, rec: WorkerRecord, nodes: list[dict]) -> b
 
 def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
     """The leaf's own specy-road files: the brief and summary the reviewer's clean-tree check leaves
-    out (role_prompt), the prompts ``delegate`` writes, and the toolkit's state.
+    out (role_prompt), the prompts ``delegate`` writes, the leaf's own mirrored worker logs
+    (``track_worker_logs``; another leaf's are not), and the toolkit's state.
 
     ``path`` is git-root-relative; ``prefix`` is the project's (nested layout). A path outside the
     project, such as the git root's own ``work/``, is never the leaf's bookkeeping.
     """
     rel = rebase_to_project(path, prefix)
     return rel is not None and (rel in (f"work/brief-{node_id}.md", f"work/implementation-summary-{node_id}.md")
-                                or rel.startswith((f"work/prompt-{node_id}-", *_STATE_DIRS)))
+                                or rel.startswith((f"work/prompt-{node_id}-", f"{WORKER_LOGS_REL}/{node_id}/",
+                                                   *_STATE_DIRS)))
 
 
 def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, Any]]:

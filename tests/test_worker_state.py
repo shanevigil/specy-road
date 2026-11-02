@@ -255,3 +255,37 @@ def test_off_writes_nothing_outside_work_workers(tmp_path: Path) -> None:
     _turn(repo, rec)   # no key: off
     assert ws.events_path(repo, rec.worker_id).is_file()
     assert not (wt / "work" / "worker-logs").exists() and not (repo / "work" / "worker-logs").exists()
+
+
+def test_a_leafs_own_worker_logs_neither_breach_zones_nor_block_redelegation(tmp_path: Path) -> None:
+    """R2: through `delegate`, `reconcile` and `terminate`, as the coordinator drives them."""
+    from specy_road import worker_ops as ops
+    from specy_road.agent_ignores import apply_agent_ignores
+    from tests.test_worker_cli import FAKE, wait_for_worker, worker_roster
+
+    script = tmp_path / "fake.py"
+    script.write_text(FAKE)
+    repo = make_review_repo(tmp_path, orchestration=worker_roster(f"{sys.executable} {script} {{prompt}} {{session}}"))
+    apply_agent_ignores(repo)   # work/.workers/ ignored, work/worker-logs/ not: the opted-in layout
+    _track(repo, 'track_worker_logs: "events"\n')
+    git(repo, "add", "-A")
+    git(repo, "commit", "-qm", "track worker logs")
+    rec, created = ops.delegate(repo, "M1.1", "opus")
+    assert created
+    wait_for_worker(repo, rec.worker_id)
+    own = f"work/worker-logs/M1.1/{rec.worker_id}.events.jsonl"
+    assert (repo / own).is_file()
+    _rec, delta = ops.reconcile(repo, rec.worker_id)
+    assert own in delta["changed"] and own not in delta["outside_touch_zones"]
+    other = repo / "work" / "worker-logs" / "M1.2" / "w-0009.events.jsonl"   # another leaf's: not bookkeeping
+    other.parent.mkdir(parents=True)
+    other.write_text("{}\n")
+    _rec, delta = ops.reconcile(repo, rec.worker_id)
+    assert "work/worker-logs/M1.2/w-0009.events.jsonl" in delta["outside_touch_zones"]
+    ops.terminate(repo, rec.worker_id)
+    with pytest.raises(ws.WorkerError, match=r"uncommitted changes .*worker-logs/M1\.2/"):
+        ops.delegate(repo, "M1.1", "opus")
+    other.unlink()
+    again, created = ops.delegate(repo, "M1.1", "opus")   # this leaf's own logs do not block it
+    assert created and again.worker_id != rec.worker_id
+    wait_for_worker(repo, again.worker_id)

@@ -191,8 +191,8 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             _append_usage(repo_root, rec, {})   # the turn ends here too: nothing reported, so nulls
             append_event(repo_root, rec, "error", source="system", summary=f"cannot start {launch.argv[0]}: {e}",
                          detail={"exit": 127})   # the wrapper's exit record: this error ends the turn
-            set_state(repo_root, rec, "failed", pid=None)
             mirror_logs(repo_root, rec)
+            set_state(repo_root, rec, "failed", pid=None)
             return 127
         def seen(r: WorkerRecord) -> None:
             r.harness_pid, r.harness_start, r.pgid = proc.pid, start_token(proc.pid), os.getpgid(0)
@@ -222,9 +222,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
-    code = _finish(repo_root, rec, code, before, usage_logged)
-    mirror_logs(repo_root, rec)
-    return code
+    return _finish(repo_root, rec, code, before, usage_logged)
 
 
 def _output_seen(repo_root: Path, rec: WorkerRecord, marked: float | None, now: float) -> float | None:
@@ -322,7 +320,13 @@ def _finish(repo_root: Path, rec: WorkerRecord, code: int, before: list[str], us
 
 
 def _exit_state(repo_root: Path, rec: WorkerRecord, state: str) -> None:
-    """The harness has been waited for: no pid, harness pid or group is left to signal."""
+    """The harness has been waited for: no pid, harness pid or group is left to signal.
+
+    The turn's last event is written, so the logs are mirrored first: whoever waits
+    for the record to clear its pid finds the copy complete.
+    """
+    mirror_logs(repo_root, rec)
+
     def fn(r: WorkerRecord) -> None:
         r.state = state
         r.pid = r.pgid = r.harness_pid = r.harness_start = None
