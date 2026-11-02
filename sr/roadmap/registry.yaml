@@ -87,3 +87,18 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: decision-ledger
+    node_id: M11.34
+    branch: feature/rm-decision-ledger
+    touch_zones:
+      - specy_road/decisions.py
+      - specy_road/bundled_scripts/decisions_cli.py
+      - specy_road/cli.py
+      - specy_road/templates/project/schemas/
+      - specy_road/templates/specyrd/commands/specyrd-orchestrate.md
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
