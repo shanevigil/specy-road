@@ -8,7 +8,7 @@
       "node_key": "4e85b231-476a-4c86-89a2-9c224c0dfbf9",
       "planning_dir": "planning/M4_brainstorm-editing-features_4e85b231-476a-4c86-89a2-9c224c0dfbf9.md",
       "sibling_order": 3,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Brainstorm and roadmap editing features",
       "touch_zones": [],
       "type": "phase"
@@ -164,7 +164,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.5_brainstorm-repo-evidence_d2f29378-7143-4bf3-8b5b-dc6846ab82bb.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Repository files as evidence; null results; quotes on research-born ideas",
       "touch_zones": [
         "specy_road/bundled_scripts/brainstorm_cli.py",
