@@ -190,6 +190,21 @@ every profile whose `family` a harness's executor template names is rendered fro
   - /split-to-prs, /autopilot and Cloud Agents create branches and PRs; switch: do not use them on a leaf _[documented: docs/design-notes/harness-compatibility-triage.md]_
   - plan mode (--plan, --mode plan) and generate-rule write harness planning or rules; switch: never pass --plan; do not run generate-rule _[runtime: harness-captures/cursor/help.txt]_
 
+#### Generic (the profile's own command) (`generic`, binary `access.cli`)
+
+- **Version:** `none of its own; the version is that of whatever binary access.cli names` _[unverified]_
+- **Headless command:** `the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted` _[documented: docs/orchestration-workers.md (harness table); docs/orchestration-models.md]_
+- **Executor template:** `the profile's own access.cli, written with "<prompt>" or {prompt}` _[documented: docs/orchestration-models.md (prompt --channel cli and generic workers run access.cli)]_
+- **Session:** none; a generic worker cannot resume, interrupt or hand off _[documented: docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)]_
+- **Permissions:** whatever the command's own flags grant; specy-road adds none _[unverified]_
+- **Instruction files:** `AGENTS.md` _[unverified]_; size: unknown
+- **Skill directories:** `.agents/skills` _[unverified]_
+- **Hooks:** no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it _[documented: specy_road/tool_call_guard_adapters.py (generic adapter)]_
+- **Model families:** none listed _[unverified]_
+- **Quota:** unknown; no usage is reported (every usage field is null) _[documented: docs/orchestration-workers.md (usage events)]_
+- **Autonomous git actions:**
+  - unknown; depends on the binary access.cli names; switch: unknown _[unverified]_
+
 <!-- >>> end harness facts <<< -->
 
 ## Role rankings

@@ -107,8 +107,7 @@ def _report_render(root: Path, plan: hf.RenderPlan, *, dry_run: bool) -> int:
         if f.rel in updated:
             print(f"{verb} {f.rel} ({f.kind}: {f.detail})")
     for f in stuck:
-        print(f"cannot render {f.rel} ({f.kind}: {f.detail}): left unchanged; --render rewrites only "
-              "the shipped layout (block-style `access:` with one-line, two-space keys); fix it by hand "
+        print(f"cannot render {f.rel} ({f.kind}: {f.detail}): left unchanged; fix it by hand "
               "or take the toolkit's copy with --force", file=sys.stderr)
     if not plan.findings:
         print("rendered regions already match harness-facts.yaml")
@@ -124,6 +123,8 @@ def capture(harness_id: str, from_dir: Path | None) -> dict[str, str]:
         return got
     rec = hf.harness(hf.load_facts(), harness_id)
     out: dict[str, str] = {}
+    if not rec.get("capture_commands"):
+        raise ValueError(f"{harness_id} has no capture_commands (no binary of its own); pass --from DIR")
     for name, argv in rec["capture_commands"].items():
         try:
             done = subprocess.run(argv, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL, check=False)

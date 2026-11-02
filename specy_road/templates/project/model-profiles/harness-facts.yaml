@@ -276,3 +276,49 @@ harnesses:
       generate-rule: avoid
       resume: use
       worker: avoid
+
+  - id: generic
+    name: Generic (the profile's own command)
+    binary: access.cli
+    version:
+      value: none of its own; the version is that of whatever binary access.cli names
+      label: unverified
+    headless_command:
+      value: the roster channels.cli, else the profile's access.cli, with {prompt} (the prompt file path) or <prompt> (the prompt text) substituted
+      label: documented
+      source: docs/orchestration-workers.md (harness table); docs/orchestration-models.md
+    executor_template:
+      value: the profile's own access.cli, written with "<prompt>" or {prompt}
+      renders_cli_for: []
+      label: documented
+      source: docs/orchestration-models.md (prompt --channel cli and generic workers run access.cli)
+    session_flags:
+      value: none; a generic worker cannot resume, interrupt or hand off
+      label: documented
+      source: docs/orchestration-workers.md (harness table); specy_road/worker_adapters.py (Adapter.caps)
+    permission_example:
+      value: whatever the command's own flags grant; specy-road adds none
+      label: unverified
+    instruction_files:
+      value: [AGENTS.md]
+      size_guidance: unknown
+      label: unverified
+    skill_dirs:
+      value: [.agents/skills]
+      label: unverified
+    hooks:
+      value: no hook of its own; the session guard's generic contract reads a JSON object with a command field on stdin and exits 2 to deny, for any harness that can call it
+      label: documented
+      source: specy_road/tool_call_guard_adapters.py (generic adapter)
+    git_actions:
+      - action: unknown; depends on the binary access.cli names
+        switch: unknown
+        label: unverified
+    model_families:
+      value: []
+      label: unverified
+    quota:
+      value: unknown; no usage is reported (every usage field is null)
+      label: documented
+      source: docs/orchestration-workers.md (usage events)
+    relationships: {}

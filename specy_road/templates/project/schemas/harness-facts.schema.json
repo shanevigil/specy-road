@@ -48,7 +48,7 @@
       "required": [
         "id", "name", "binary", "version", "headless_command", "executor_template", "session_flags",
         "permission_example", "instruction_files", "skill_dirs", "hooks", "git_actions", "model_families",
-        "quota", "capture_commands", "relationships"
+        "quota", "relationships"
       ],
       "additionalProperties": false,
       "properties": {
@@ -106,7 +106,7 @@
         "quota": { "$ref": "#/$defs/textFact" },
         "capture_commands": {
           "type": "object",
-          "description": "argv per capture file (version.txt, help.txt, inventory-*.txt, ...) that refresh-profiles --capture runs.",
+          "description": "argv per capture file (version.txt, help.txt, inventory-*.txt, ...) that refresh-profiles --capture runs. Absent for a harness with no binary of its own (generic): --capture then needs --from.",
           "required": ["version.txt"],
           "propertyNames": { "pattern": "^[a-z][a-z0-9.-]*\\.txt$" },
           "additionalProperties": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }

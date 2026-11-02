@@ -145,7 +145,7 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
 ## Harness facts: what `refresh-profiles` renders
 
 `model-profiles/harness-facts.yaml` holds one record per harness a roster can
-name (`claude-code`, `codex`, `cursor`): version, the adapter's headless
+name (`claude-code`, `codex`, `cursor`, `generic`): version, the adapter's headless
 command, the executor command template, session flags, a permission example,
 instruction files and their size guidance, skill directories, hooks, the git
 actions the harness can take on its own with the switch that keeps each off,
@@ -153,7 +153,9 @@ model families, and quota behaviour. Every fact carries a label, `documented`,
 `runtime` or `unverified`, and the source for the first two;
 `schemas/harness-facts.schema.json` enforces the shape. Facts nobody has
 checked stay `unverified` until the runtime verification leaf (M8.7) replaces
-them.
+them. `generic` has no binary of its own (it runs the profile's `access.cli`),
+so its record renders no `access.cli`, has no `capture_commands`, and
+`--capture generic` needs `--from`.
 
 Two parts of `model-profiles/` are rendered from it. A hand edit to either is
 drift:
@@ -161,7 +163,10 @@ drift:
 - each profile's `access.cli`, from the `executor_template` of the harness
   whose `renders_cli_for` names the profile's `family` (`{api_id}` becomes the
   profile's `api_id`);
-- the README's harness block, between the `harness facts` markers.
+- the README's harness block, between the `harness facts` markers. A README
+  with neither marker is behind. One with only one marker, a repeated marker,
+  or the end before the start is drift: `--check` exits 1, and `--render`
+  leaves it byte for byte and exits 1.
 
 ```bash
 specy-road refresh-profiles --check    # report drift (exit 1); a README older than the block is "behind" (exit 0)

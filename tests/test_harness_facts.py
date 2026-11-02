@@ -13,8 +13,7 @@ import yaml
 from specy_road import harness_facts as hf
 from specy_road.bundled_scripts import refresh_profiles as rp
 from specy_road.init_project import project_template_root
-
-ROSTER_HARNESSES = ("claude-code", "codex", "cursor")
+from specy_road.worker_state import HARNESSES
 OPUS = Path("model-profiles/anthropic-claude/claude-opus-5-5.md")
 SOL = Path("model-profiles/openai-gpt/gpt-6.1-sol.md")
 
@@ -38,9 +37,10 @@ def _facts() -> dict:
 
 # --- A1: fixture and schema --------------------------------------------------
 
-def test_the_shipped_fixture_validates_and_covers_every_roster_harness() -> None:
+def test_the_shipped_fixture_validates_and_covers_every_supported_harness() -> None:
     facts = hf.load_facts()
-    assert tuple(h["id"] for h in facts["harnesses"]) == ROSTER_HARNESSES
+    ids = [h["id"] for h in facts["harnesses"]]
+    assert sorted(ids) == sorted(HARNESSES)   # one record per harness a roster entry may name
     for rec in facts["harnesses"]:
         facts_with_labels = [v for v in rec.values() if isinstance(v, dict) and "value" in v] + rec["git_actions"]
         assert all(f["label"] == "unverified" or f.get("source") for f in facts_with_labels), rec["id"]
@@ -128,6 +128,24 @@ def test_a_readme_without_the_block_is_behind_not_drift(tmp_path: Path, capsys) 
     assert hf.BLOCK_START not in readme.read_text(encoding="utf-8")
     assert run_main("--render", "--repo-root", str(repo)) == 0
     assert readme.read_text(encoding="utf-8") == text
+
+
+@pytest.mark.parametrize("damage", [
+    lambda text: text.replace(hf.BLOCK_START + "\n", ""),
+    lambda text: text.replace(hf.BLOCK_END + "\n", ""),
+    lambda text: text.replace(hf.BLOCK_START, "@@").replace(hf.BLOCK_END, hf.BLOCK_START).replace("@@", hf.BLOCK_END),
+], ids=["start-deleted", "end-deleted", "swapped"])
+def test_a_damaged_marker_pair_is_drift_and_render_leaves_it_byte_identical(tmp_path: Path, capsys, damage) -> None:
+    readme = _repo(tmp_path) / "model-profiles" / hf.README_NAME
+    repo = readme.parent.parent
+    readme.write_text(damage(readme.read_text(encoding="utf-8")), encoding="utf-8")
+    before = readme.read_bytes()
+    assert run_main("--check", "--repo-root", str(repo)) == 1
+    assert "drift: model-profiles/README.md: the harness block markers are" in capsys.readouterr().err
+    assert run_main("--render", "--repo-root", str(repo)) == 1
+    out, err = capsys.readouterr()
+    assert "cannot render model-profiles/README.md" in err and "rendered model-profiles/README.md" not in out
+    assert readme.read_bytes() == before
 
 
 def test_render_restores_a_removed_cli_and_check_then_passes(tmp_path: Path, capsys) -> None:
@@ -263,7 +281,9 @@ def test_a_neutral_addition_passes_and_a_removal_is_listed() -> None:
 def test_the_accepted_captures_pass_against_an_empty_baseline() -> None:
     """Every workflow identifier the shipped captures contain already has a relationship."""
     facts = hf.load_facts()
-    for hid in ROSTER_HARNESSES:
+    with_binary = [h["id"] for h in facts["harnesses"] if h.get("capture_commands")]
+    assert set(with_binary) == set(HARNESSES) - {"generic"}   # generic runs the profile's own access.cli
+    for hid in with_binary:
         accepted = hf.read_capture(hf.bundled_captures_dir() / hid)
         assert hf.VERSION_FILE in accepted and "help.txt" in accepted, hid
         assert hf.classify_capture(facts, hid, {}, accepted).ok, hid
@@ -331,3 +351,10 @@ def test_capture_needs_a_version_file_and_a_known_harness(tmp_path: Path, capsys
     assert "no *.txt capture files" in capsys.readouterr().err
     with pytest.raises(SystemExit):
         rp.main(["--accept"])
+
+
+def test_the_generic_harness_has_no_binary_to_capture(tmp_path: Path, capsys) -> None:
+    assert run_main("--capture", "generic") == 1
+    assert "generic has no capture_commands" in capsys.readouterr().err
+    hf.write_capture(tmp_path, {hf.VERSION_FILE: "my-tool 1.0\n"})
+    assert run_main("--capture", "generic", "--from", str(tmp_path)) == 0

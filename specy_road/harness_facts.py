@@ -127,7 +127,7 @@ def _evidence(f: dict[str, Any]) -> str:
 def _fact(f: dict[str, Any], *, code: bool = False) -> str:
     value = f["value"]
     if isinstance(value, list):
-        text = ", ".join(f"`{v}`" for v in value)
+        text = ", ".join(f"`{v}`" for v in value) or "none listed"
     else:
         text = f"`{value}`" if code else _prose(str(value))
     return f"{text} {_evidence(f)}"
@@ -164,12 +164,19 @@ def render_block(facts: dict[str, Any]) -> str:
 
 
 def _block_span(text: str) -> tuple[int, int] | None:
-    start = text.find(BLOCK_START)
-    end = text.find(BLOCK_END, start + 1) if start >= 0 else -1
-    if start < 0 or end < 0:
+    """The block's ``(start, end)``: exactly one start marker, then exactly one end marker."""
+    if text.count(BLOCK_START) != 1 or text.count(BLOCK_END) != 1:
+        return None
+    start, end = text.find(BLOCK_START), text.find(BLOCK_END)
+    if end < start:
         return None
     end += len(BLOCK_END)
     return start, end + 1 if text[end:end + 1] == "\n" else end
+
+
+def _markers_malformed(text: str) -> bool:
+    """Some marker is present but they do not make one block: one is missing, repeated, or out of order."""
+    return (BLOCK_START in text or BLOCK_END in text) and _block_span(text) is None
 
 
 def render_readme(text: str, facts: dict[str, Any]) -> str:
@@ -252,13 +259,20 @@ def plan_render(repo_root: Path, facts: dict[str, Any]) -> RenderPlan:
         new = render_profile(text, want)
         if new != text:
             plan.updates[prof.path] = new
+        else:
+            plan.findings[-1].detail += ("; only the shipped layout (block-style `access:` with one-line, "
+                                         "two-space keys) is rewritten")
     readme = pdir / README_NAME
     if readme.is_file():
         text = readme.read_text(encoding="utf-8")
+        rel = readme.relative_to(repo_root).as_posix()
+        if _markers_malformed(text):   # a hand edit to the markers: drift, and never guessed at
+            plan.findings.append(Finding(rel, "drift", "the harness block markers are missing one, "
+                                         "repeated or out of order"))
+            return plan
         span = _block_span(text)
         new = render_readme(text, facts)
         if new != text:
-            rel = readme.relative_to(repo_root).as_posix()
             plan.findings.append(Finding(rel, "drift", "the harness block differs from the fixture") if span
                                  else Finding(rel, "behind", "no harness block yet"))
             plan.updates[readme] = new
@@ -322,7 +336,7 @@ def classify_capture(facts: dict[str, Any], harness_id: str, old: dict[str, str]
     ``new`` must hold every file the record's ``capture_commands`` names and every file ``old`` has:
     a file left out of a capture is a missing input, not evidence that its identifiers were removed."""
     rec = harness(facts, harness_id)
-    missing = sorted((set(rec["capture_commands"]) | set(old)) - set(new))
+    missing = sorted((set(rec.get("capture_commands") or {VERSION_FILE: []}) | set(old)) - set(new))
     if missing:
         raise HarnessFactsError(f"incomplete {harness_id} capture: no {', '.join(missing)} "
                                 f"({VERSION_FILE} is the harness's --version output)")
