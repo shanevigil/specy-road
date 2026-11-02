@@ -473,7 +473,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.15_foreground-long-commands_2d5b98da-b88b-44b1-90c2-0b0542250006.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish",
       "touch_zones": [
         "specy_road/bundled_scripts/role_prompt_rca.py",
