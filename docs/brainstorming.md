@@ -264,7 +264,7 @@ specy-road brainstorm add-evidence B4 --url "https://…" \
   --stance for --tool "claude WebFetch" --source-type customer-report
 ```
 
-In a brownfield repo the code is evidence too. `--path FILE[:LINE]` (source type `repo`; the path is relative to the repo root) records the commit `HEAD` is on, so the citation stays checkable after the code moves on; a file that commit does not hold (new or untracked) is refused until it is committed, and a directory is refused outright:
+In a brownfield repo the code is evidence too. `--path FILE[:LINE]` (source type `repo`; the path is relative to the git root, so in a nested layout such as a project under `sr/` it can cite code outside the project) records the commit `HEAD` is on, so the citation stays checkable after the code moves on; a file that commit does not hold (new or untracked) is refused until it is committed, and a directory is refused outright:
 
 ```bash
 specy-road brainstorm add-evidence B4 --source-type repo --path src/pay.py:42 \

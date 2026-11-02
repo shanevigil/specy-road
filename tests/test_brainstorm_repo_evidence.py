@@ -96,6 +96,27 @@ def test_repo_source_records_the_commit_and_verify_checks_it_locally(repo: Path,
     assert [s["verification"] for s in _sources(repo)] == ["matched", "not-found"]
 
 
+def test_a_nested_project_cites_code_outside_it_relative_to_the_git_root(tmp_path: Path, monkeypatch) -> None:
+    top = tmp_path / "top"
+    project = top / "sr"
+    shutil.copytree(DOGFOOD, project)
+    _git(top, "init", "-q")
+    first = _commit(top, "src/pay.py", PAY)
+    (project / "src").mkdir(exist_ok=True)   # a same-named file under the project must not be the one read
+    (project / "src" / "pay.py").write_text("nothing to see\n", encoding="utf-8")
+    _started(project)
+    code, _, err = _cli(project, "add-evidence", "B1", "--source-type", "repo", "--path", "src/pay.py:2",
+                        "--quote", "# Links expire after 24 hours.")
+    assert code == 0, err
+    src = _sources(project)[0]
+    assert (src["path"], src["commit"]) == ("src/pay.py:2", first)
+    _commit(top, "src/pay.py", "def charge(amount):\n    return link(amount)\n")   # HEAD moves on
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    code, out, _ = _cli(project, "verify")
+    assert code == 0 and "B1 matched" in out
+    assert [s["verification"] for s in _sources(project)] == ["matched"]
+
+
 def test_verify_checks_repo_sources_even_when_the_fetch_is_declined(repo: Path, monkeypatch) -> None:
     _commit(repo, "src/pay.py", PAY)
     _started(repo)

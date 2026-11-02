@@ -36,6 +36,7 @@ from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa:
 from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
 from specy_road.bundled_scripts.brainstorm_session import BrainstormError, BrainstormSession, Idea
 from specy_road.git_subprocess import git_ok, git_stdout, git_text, head_sha
+from specy_road.runtime_paths import git_root
 
 TIMEOUT_SECONDS = 20
 MAX_BYTES = 2_000_000
@@ -156,16 +157,29 @@ def split_path(cited: str) -> tuple[str, int | None]:
     return (path, int(line)) if sep and path and line.isdigit() and int(line) > 0 else (cited.strip(), None)
 
 
+def _blob(root: Path, commit: str, path: str) -> tuple[Path, str]:
+    """Where to run git, and the object name, for ``path`` at ``commit``.
+
+    A repo source's path is relative to the **git** root, which in a nested
+    layout (a project under ``sr/``) sits above the project root, so a file
+    outside the project can be cited. Git runs there and the name carries no
+    ``./``, which git would resolve against its working directory instead.
+    """
+    return git_root(root) or root, f"{commit}:{path.removeprefix('./')}"
+
+
 def repo_commit(root: Path, cited: str) -> str:
     """The ``HEAD`` commit a repo source records; refuses a path that commit does not hold as a file."""
     path, _line = split_path(cited)
     commit = head_sha(root)
     if not path or commit is None:
         raise BrainstormError("--path FILE[:LINE] needs a git checkout with a commit to cite")
-    kind = git_text(["cat-file", "-t", f"{commit}:./{path}"], root)
+    top, name = _blob(root, commit, path)
+    kind = git_text(["cat-file", "-t", name], top)
     if kind is None:
         raise BrainstormError(f"--path {path}: not in the HEAD commit {commit[:12]}; "
-                              "commit it first so verify can check the quote against it")
+                              "commit it first so verify can check the quote against it (the path is "
+                              "relative to the git root)")
     if kind != "blob":
         raise BrainstormError(f"--path {path}: a {kind} in the HEAD commit, not a file; cite a file")
     return commit
@@ -201,9 +215,10 @@ def check_repo_source(source: dict[str, Any], root: Path | None) -> str:
     commit = str(source.get("commit", ""))
     if root is None or not commit or not git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], root)[0]:
         return "blocked"
-    if git_text(["cat-file", "-t", f"{commit}:./{path}"], root) != "blob":
+    top, name = _blob(root, commit, path)
+    if git_text(["cat-file", "-t", name], top) != "blob":
         return "not-found"
-    text = git_stdout(["cat-file", "blob", f"{commit}:./{path}"], root)
+    text = git_stdout(["cat-file", "blob", name], top)
     if text is None:   # the file is there but did not read, e.g. not UTF-8: not evidence against the quote
         return "blocked"
     return "matched" if quote_in_file(text, str(source.get("quote", "")), line) else "not-found"
