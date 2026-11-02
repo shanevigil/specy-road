@@ -2,9 +2,7 @@
   "nodes": [
     {
       "acceptance": [
-        "Pickup commits the registry change without stashing work/ (for example git commit --only roadmap/registry.yaml), so a running worker's work/.workers files and other sessions' untracked files under work/ are never moved",
-        "If any stash or restore step remains and fails, pickup exits non-zero naming the stash; worker sync reports a gap in a worker's event sequence numbers",
-        "Tests run a pickup while another worker's event log is being appended and show no events are lost and no stash entry is left"
+        "A test runs a real pickup while another worker's work/.workers event log is being appended and shows no events are lost and no stash entry is left"
       ],
       "codename": "pickup-no-work-stash",
       "dependencies": [],
@@ -26,8 +24,8 @@
     },
     {
       "acceptance": [
-        "When the roster on the integration ref differs from the working tree or local branch, orchestrate plan and validate print that the roster is read from origin/<integration> and that the local roadmap/orchestration.yaml must be pushed to take effect; with no roster file on the integration ref they say so and point at docs/orchestration.md instead of a may_process hint",
-        "Tests cover a local-only roster, a committed-unpushed roster and no roster"
+        "When the roster on the integration ref differs from the working tree or the local integration branch, orchestrate plan and validate say the roster is read from <remote>/<integration> and that the change must be committed and pushed (not only committed); with no roster on the integration ref and no working-tree file they say so and point at docs/orchestration.md instead of the may_process hint",
+        "Tests cover a committed-but-unpushed roster and no roster at all"
       ],
       "codename": "roster-source-explained",
       "dependencies": [],
@@ -44,30 +42,6 @@
         "specy_road/orchestrate_plan.py",
         "specy_road/bundled_scripts/validate_roadmap.py",
         "docs/orchestration.md",
-        "tests/"
-      ],
-      "type": "task"
-    },
-    {
-      "acceptance": [
-        "A --prefer-agentic flag (and a git-workflow.yaml default) orders ready leaves Agentic-led before Mixed before Human-led within the same tree position; grind-session --plan prints the execution milestone next to the next auto-pick",
-        "Tests cover the ordering with and without the flag"
-      ],
-      "codename": "prefer-agentic-pick",
-      "dependencies": [],
-      "execution_milestone": "Agentic-led",
-      "id": "M11.21",
-      "node_key": "439c8b26-a447-4ead-a8e0-5b1af091e935",
-      "parent_id": "M11",
-      "planning_dir": "planning/M11.21_prefer-agentic-pick_439c8b26-a447-4ead-a8e0-5b1af091e935.md",
-      "sibling_order": 21,
-      "status": "Not Started",
-      "title": "Auto-pick can prefer Agentic-led leaves and shows each leaf's mode",
-      "touch_zones": [
-        "specy_road/bundled_scripts/do_next_available.py",
-        "specy_road/bundled_scripts/session_plan.py",
-        "specy_road/bundled_scripts/do_next_task_args.py",
-        "docs/dev-workflow.md",
         "tests/"
       ],
       "type": "task"
@@ -100,8 +74,8 @@
     },
     {
       "acceptance": [
-        "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the same permissions as the launch; a custom cli without a usable resume form is reported at delegate time instead of silently falling back",
-        "docs/orchestration-workers.md documents the per-worktree settings-file route for Claude Code permissions; tests cover launch and resume argv"
+        "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the launch's permissions; a custom cli without a usable resume form is reported at delegate time instead of silently falling back to the default command",
+        "Tests cover the launch and resume argv for both fields and the delegate-time report"
       ],
       "codename": "resume-keeps-permissions",
       "dependencies": [],
@@ -124,7 +98,8 @@
     },
     {
       "acceptance": [
-        "When a worker launches in a linked worktree, the Claude Code adapter adds the main checkout's work/reviews/<ID> directory as an allowed directory (and the equivalent for other harnesses that support it), so the executor can write its READY there; tests cover the adapter argv"
+        "A roster channels.cli can receive the main checkout's work/reviews/<ID> directory (for example a {reviews_dir} placeholder), so a custom launch can allow the executor to write READY there",
+        "The Codex and Cursor adapters pass the equivalent allowed-directory option when the installed harness supports it (checked against model-profiles/harness-facts.yaml), or the docs state that the harness has none; tests cover the argv"
       ],
       "codename": "worktree-handoff-writable",
       "dependencies": [],
@@ -146,8 +121,8 @@
     },
     {
       "acceptance": [
-        "In merge mode, finish-this-task prints before pushing how many commits it will push to the integration branch and how many of them are not from this leaf, and --help says merge mode pushes the integration branch",
-        "Tests cover a push that carries an unrelated local commit"
+        "In merge mode, the push notice prints the total number of commits the push will carry and how many are not from this leaf branch, and still prints a count when the remote-tracking ref or local branch is absent; docs/git-workflow.md's merge-mode bullet mentions the notice",
+        "An end-to-end finish test pushes an unrelated local commit and checks the printed total and not-from-leaf counts"
       ],
       "codename": "merge-push-disclosure",
       "dependencies": [],
@@ -160,9 +135,9 @@
       "status": "Not Started",
       "title": "finish-this-task says what merge mode will push before it pushes",
       "touch_zones": [
+        "specy_road/finish_land_integration.py",
         "specy_road/bundled_scripts/finish_task.py",
         "specy_road/finish_modes.py",
-        "specy_road/bundled_scripts/finish_task_args.py",
         "docs/git-workflow.md",
         "tests/"
       ],
@@ -194,8 +169,7 @@
     },
     {
       "acceptance": [
-        "session start --path accepts several paths after one flag (or the error says to repeat --path)",
-        "For every adapter, the worker log keeps the harness's full stream transcript, and worker sync shows the worker's full final message on a completion without READY; a custom channels.cli that uses a text-only output mode is reported at delegate time; tests cover both"
+        "worker delegate reports a custom channels.cli that uses a text-only output mode (for example agent -p --output-format text, or no output format), which keeps only the last message, and suggests the stream-json form; a test covers the report"
       ],
       "codename": "small-cli-fixes",
       "dependencies": [],

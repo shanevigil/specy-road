@@ -1,0 +1,28 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "A --prefer-agentic flag (and a git-workflow.yaml default) orders ready leaves Agentic-led before Mixed before Human-led within the same tree position; grind-session --plan prints the execution milestone next to the next auto-pick",
+        "Tests cover the ordering with and without the flag"
+      ],
+      "codename": "prefer-agentic-pick",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.21",
+      "node_key": "439c8b26-a447-4ead-a8e0-5b1af091e935",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.21_prefer-agentic-pick_439c8b26-a447-4ead-a8e0-5b1af091e935.md",
+      "sibling_order": 21,
+      "status": "Not Started",
+      "title": "Auto-pick can prefer Agentic-led leaves and shows each leaf's mode",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "docs/dev-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}
