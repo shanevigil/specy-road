@@ -33,7 +33,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M3.17` A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch `a-failing-verifier-in-the-ready-file-blocks-the-gate-unless-a-reviewer-marks-it-as-already-failing-on-the-integration-branch` — task — **Complete**
   - `M3.18` Bring role_prompt under the file cap and clear the ruff complexity error `bring-role-prompt-under-the-file-cap-and-clear-the-ruff-complexity-error` — task — **Complete**
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
-  - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Not Started**
+  - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Complete**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Not Started**
   - `M4.3` Batch ideas and verdicts from a file, merge, and gap ideas `brainstorm-batch-io` — task — **Not Started**
   - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Not Started**
@@ -110,7 +110,6 @@ Do not pick these up.
 - `M10.5` on `feature/rm-per-role-effort-in-model` since 2026-11-01
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M10.9` on `feature/rm-emit-a-stalled-event` since 2026-11-01
-- `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
 - `M4.16` on `feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` since 2026-11-01
 - `M5.4` on `feature/rm-enforced-rules-pointers` since 2026-11-01
 

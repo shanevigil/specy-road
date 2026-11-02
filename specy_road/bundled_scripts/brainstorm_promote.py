@@ -1,8 +1,9 @@
 """Turn accepted brainstorm ideas into roadmap nodes.
 
 Promoted ideas use the same add-node write as ``specy-road add-node``. The
-planning sheet is seeded after that write; deferred validation restores the
-batch if the graph is then invalid.
+planning sheet is seeded after that write with the converge judgement, the
+anchor's sheet gains the frame, and a successful batch writes an authoring
+prompt; deferred validation restores the batch if the graph is then invalid.
 """
 
 from __future__ import annotations
@@ -11,6 +12,9 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from specy_road.bundled_scripts.brainstorm_prompt import (
+    constraint_lines, reference_lines, render_authoring_prompt, write_prompt,
+)
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
@@ -77,14 +81,15 @@ def _assert_parent(root: Path, nodes: list[dict], parent_id: str | None) -> None
         raise BrainstormError(str(e)) from e
 
 
-def _replace_section(text: str, heading: str, body: str) -> str:
-    """Swap the body under a ``## heading``, leaving the rest of the sheet alone."""
+def _replace_section(text: str, heading: str, body: str, *, append: bool = False) -> str:
+    """Swap the body under a ``## heading``, leaving the rest of the sheet alone;
+    with ``append``, a missing heading is added at the end instead of skipped."""
     lines = text.splitlines()
     marker = f"## {heading}"
     try:
         start = next(i for i, ln in enumerate(lines) if ln.strip() == marker)
     except StopIteration:
-        return text
+        return f"{text.rstrip(chr(10))}\n\n{marker}\n\n{body.strip()}\n" if append else text
     end = len(lines)
     for i in range(start + 1, len(lines)):
         if lines[i].startswith("## "):
@@ -98,53 +103,59 @@ def _intent_body(idea: Idea) -> str:
     parts = [idea.rationale.strip() or idea.title.strip()]
     if idea.effort.strip():
         parts.append(f"Initial sizing at brainstorm time: {idea.effort.strip()}.")
-    parts.append(
-        f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). {PROMOTE_PLACEHOLDER}"
-    )
+    parts.append(f"Promoted from brainstorm idea `{idea.id}` ({idea.kind}). {PROMOTE_PLACEHOLDER}")
     return "\n\n".join(parts)
 
 
-def seed_planning_sheet(root: Path, node: dict, idea: Idea,
-                        siblings: list[Idea] | None = None) -> Path | None:
-    """Write the idea's rationale into the scaffolded sheet's ``## Intent``."""
+def _sheet_path(root: Path, node: dict) -> Path | None:
     pd = node.get("planning_dir")
     if not isinstance(pd, str) or not pd.strip():
         return None
     try:
-        paths = planning_artifact_paths(root, normalize_planning_dir(pd.strip()))
+        sheet = planning_artifact_paths(root, normalize_planning_dir(pd.strip()))["sheet"]
     except ValueError:
         return None
-    sheet = paths["sheet"]
-    if not sheet.is_file():
+    return sheet if sheet.is_file() else None
+
+
+def _prepend_to_section(text: str, heading: str, block: str) -> str:
+    parts = text.split(f"## {heading}", 1)
+    if len(parts) != 2:
+        return text
+    return f"{parts[0]}## {heading}\n\n{block}{parts[1].lstrip(chr(10))}"
+
+
+def seed_planning_sheet(root: Path, node: dict, idea: Idea,
+                        siblings: list[Idea] | None = None) -> Path | None:
+    """Seed ``## Intent`` from the rationale, ``## Approach`` with the critics and
+    verdict as constraints, and ``## References`` with overlaps and sources."""
+    sheet = _sheet_path(root, node)
+    if sheet is None:
         return None
     text = sheet.read_text(encoding="utf-8")
     text = _replace_section(text, "Intent", _intent_body(idea))
-    refs = _reference_lines(idea, siblings or [])
+    constraints = constraint_lines(idea)
+    if constraints:
+        text = _prepend_to_section(text, "Approach", "\n".join(constraints) + "\n\n")
+    refs = reference_lines(idea, siblings or [])
     if refs:
-        parts = text.split("## References", 1)
-        if len(parts) == 2:
-            text = f"{parts[0]}## References\n\n" + "\n".join(refs) + f"\n{parts[1].lstrip(chr(10))}"
+        text = _prepend_to_section(text, "References", "\n".join(refs) + "\n")
     sheet.write_text(text, encoding="utf-8")
     return sheet
 
 
-def _reference_lines(idea: Idea, siblings: list[Idea]) -> list[str]:
-    """Sources (structured ones with their quote and verification state) and the
-    cluster's rejected or parked siblings, so the sheet records what was not chosen."""
-    structured = {s.get("url") for s in idea.sources}
-    lines = [f"- Brainstorm source: {u}" for u in idea.evidence if u not in structured]
-    for s in idea.sources:
-        state = s.get("verification", "unverified")
-        quote = f' — "{s["quote"]}"' if s.get("quote") else ""
-        lines.append(f"- Brainstorm evidence ({s.get('stance', 'for')}, {state}): {s.get('url')}{quote}")
-    if idea.hypothesis:
-        lines.append(f"- Hypothesis: {idea.hypothesis}")
-    for a in idea.assumptions:
-        lines.append(f"- Assumption: {a}")
-    for sib in siblings:
-        why = (sib.decision or {}).get("reason", "")
-        lines.append(f"- Alternative considered: {sib.id} {sib.title} ({sib.status}" + (f": {why}" if why else "") + ")")
-    return lines
+def seed_anchor_frame(root: Path, nodes: list[dict], parent_id: str | None,
+                      session: BrainstormSession) -> Path | None:
+    """Write the session's recorded frame into the anchor's ``## Brainstorm frame``."""
+    anchor = next((n for n in nodes if n.get("id") == parent_id), None)
+    sheet = _sheet_path(root, anchor) if anchor and session.frame else None
+    if sheet is None:
+        return None
+    lead = f"Recorded by brainstorm session `{session.slug}` before its ideas were promoted under this node."
+    body = "\n".join([lead, "", *(f"- **{k}:** {v}" for k, v in session.frame.items())])
+    text = _replace_section(sheet.read_text(encoding="utf-8"), "Brainstorm frame", body, append=True)
+    sheet.write_text(text, encoding="utf-8")
+    return sheet
 
 
 def _accept_order_key(idea: Idea) -> tuple[int, str, str]:
@@ -168,13 +179,9 @@ def _promote_codename(
     raw = (idea.codename or "").strip()
     if raw:
         if not CODENAME_PATTERN.match(raw):
-            raise BrainstormError(
-                f"idea {idea.id} codename {raw!r} is not valid kebab-case"
-            )
+            raise BrainstormError(f"idea {idea.id} codename {raw!r} is not valid kebab-case")
         if raw in existing:
-            raise BrainstormError(
-                f"idea {idea.id} codename {raw!r} already used on the roadmap"
-            )
+            raise BrainstormError(f"idea {idea.id} codename {raw!r} already used on the roadmap")
         return raw
     return derive_codename_with_collision_suffix(
         idea.title,
@@ -315,14 +322,8 @@ def _promote_ideas(
     existing = {n.get("codename") for n in nodes if n.get("codename")}
     order = next_sibling_order(root, parent_id, None)
     for idea in todo:
-        node = _build_node(
-            nodes,
-            idea,
-            parent_id=parent_id,
-            node_type=node_type,
-            execution_milestone=execution_milestone,
-            sibling_order=order,
-        )
+        node = _build_node(nodes, idea, parent_id=parent_id, node_type=node_type,
+                           execution_milestone=execution_milestone, sibling_order=order)
         derived = _promote_codename(idea, existing, node["node_key"])
         if derived:
             node["codename"] = derived
@@ -365,9 +366,7 @@ def promote_session(
     validation failure restores nodes, sheets, and session markers.
     """
     if node_type not in PROMOTABLE_TYPES:
-        raise BrainstormError(
-            f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}"
-        )
+        raise BrainstormError(f"--type {node_type!r} not one of {', '.join(PROMOTABLE_TYPES)}")
     todo = sorted(pending_ideas(session), key=_accept_order_key)
     if not todo:
         return []
@@ -384,6 +383,7 @@ def promote_session(
     )
     if dry_run or not out:
         return out
+    seed_anchor_frame(root, nodes, parent_id, session)
     try:
         run_validate_raise(root)
     except BaseException:
@@ -393,4 +393,6 @@ def promote_session(
             idea.promoted_node_key = None
         raise
     _report_promoted_missing_fields(root, out)
+    ppath = write_prompt(root, session, render_authoring_prompt(root, session, out), pass_name="authoring")
+    print(f"authoring prompt: {ppath.relative_to(root)}", file=sys.stderr)
     return out
