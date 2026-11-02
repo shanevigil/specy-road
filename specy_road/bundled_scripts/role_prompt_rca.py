@@ -165,7 +165,10 @@ def reviewer_preamble(node_id: str, model: str, ref: str | None = None) -> list[
         f"You review leaf `{node_id}` from the packet below and nothing else. This is a fresh session; "
         "you did not write the change, and you are not the coordinator.",
         "",
-        "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. Record findings under "
+        "Judge each acceptance item `A#` in the brief as pass, fail, or n/a. An item whose text starts with "
+        "`human:` needs a person, not a reviewer: mark it `n/a`, write `human` as its reason in your notes, "
+        "and never fail or block on it; finish-this-task holds the leaf until that decision is recorded on the "
+        "planning sheet. Record findings under "
         "correctness, regression, boundary (paths outside the touch zones), and test integrity "
         "(weakened or deleted tests). Re-run at least one verify command yourself and list it. "
         "Sections the packet marks as executor-asserted are claims; weigh them against the diff and "
