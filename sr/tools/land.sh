@@ -10,6 +10,16 @@ git fetch -q origin WIP/improvements-0-3-1 2>/dev/null
 B=$(git -C "sr/work/.worktrees/$WT" branch --show-current)
 C=$(real_conflicts "sr/work/.worktrees/$WT")
 [ -z "$C" ] || { echo "$ID: MERGE CONFLICT, not landing:" $C; exit 3; }
+# The branch may carry the scaffold sheet while WIP has the written one (sheets are
+# authored on WIP by the coordinator); the merge keeps WIP's, so allow it only then.
+if [ -z "${FINISH_ARGS:-}" ] && "$ROOT/.venv/bin/python" -c "
+import json,glob,sys; from pathlib import Path
+from specy_road.planning_scaffold_check import scaffold_sheet
+for f in glob.glob('sr/roadmap/phases/*.json'):
+    d=json.load(open(f)); ns=d['nodes'] if isinstance(d,dict) and 'nodes' in d else d
+    for n in ns:
+        if n.get('id')=='$ID': sys.exit(0 if scaffold_sheet(Path('sr'),n) is None else 1)
+sys.exit(1)"; then FINISH_ARGS=--allow-scaffold-planning; fi
 (cd "sr/work/.worktrees/$WT/sr" && $S mark-implementation-reviewed --yes >/dev/null 2>&1 && $S finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error|policy|re-review')
 git merge-base --is-ancestor "$B" WIP/improvements-0-3-1 || { echo "$ID: NOT MERGED"; exit 4; }
 git worktree remove --force "sr/work/.worktrees/$WT" && git worktree prune
