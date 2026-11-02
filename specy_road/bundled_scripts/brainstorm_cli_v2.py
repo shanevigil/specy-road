@@ -8,8 +8,8 @@ import sys
 from datetime import date, datetime, timezone
 
 from specy_road.bundled_scripts.brainstorm_cli_args import file_namespaces
-from specy_road.bundled_scripts.brainstorm_cli_args_v2 import frame_answers
-from specy_road.bundled_scripts.brainstorm_fields import parse_origin, source_record
+from specy_road.bundled_scripts.brainstorm_cli_args_v2 import evidence_record, frame_answers, quoted_sources
+from specy_road.bundled_scripts.brainstorm_fields import parse_origin
 from specy_road.bundled_scripts.brainstorm_prompt import (
     render_brainstorm_prompt,
     render_evidence_prompt,
@@ -29,7 +29,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     write_session,
 )
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.brainstorm_verify import confirm, pending, verify_session
+from specy_road.bundled_scripts.brainstorm_verify import confirm, is_local, pending, verify_session
 from specy_road.git_subprocess import current_branch_name
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.runtime_paths import resolve_repo_root
@@ -185,14 +185,9 @@ def cmd_evidence(ns: argparse.Namespace) -> int:
 def cmd_add_evidence(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
     idea = session.by_id(ns.idea_id)
-    if not (ns.quote or "").strip():
-        raise BrainstormError("--quote is required: a URL with no quote is not evidence (verify checks the quote)")
-    if len(ns.quote or "") > 300:
-        raise BrainstormError("--quote must be 300 characters or fewer: quote, do not paraphrase")
-    rec = source_record(ns.url, quote=ns.quote, supports=ns.supports, stance=ns.stance, tool=ns.tool,
-                        source_type=ns.source_type, retrieved_at=ns.retrieved_at or date.today().isoformat())
+    rec = evidence_record(ns, root)
     idea.sources.append(rec)
-    if rec["url"] not in idea.evidence:
+    if ns.url is not None and rec["url"] not in idea.evidence:   # evidence lists pages only
         idea.evidence.append(rec["url"])
     write_session(root, session)
     print(f"[ok] {idea.id} source {len(idea.sources)}: {rec['url']} ({rec['stance']})")
@@ -209,9 +204,11 @@ def cmd_verify(ns: argparse.Namespace) -> int:
         print("verify: nothing unverified")
         print(next_step(session, "verify"))
         return 0
-    if not confirm(sorted({str(s.get("url")) for _i, s in todo}), yes=ns.yes):
+    urls = sorted({str(s.get("url")) for _i, s in todo if not is_local(s)})   # repo sources are read, not fetched
+    fetched = not urls or confirm(urls, yes=ns.yes)
+    if not fetched and len(urls) == len(todo):
         return 1
-    for line in verify_session(session, ideas):
+    for line in verify_session(session, ideas, root=root, web=fetched):
         print(line)
     results = {(i.id, s.get("url"), s.get("quote")): s["verification"] for i, s in todo}
     with session_lock(root):   # ideas and sources added meanwhile are kept
@@ -220,7 +217,7 @@ def cmd_verify(ns: argparse.Namespace) -> int:
             src["verification"] = results.get((idea.id, src.get("url"), src.get("quote")), "unverified")
         write_session(root, fresh)
     print(next_step(fresh, "verify"))
-    return 0
+    return 0 if fetched else 1
 
 
 def cmd_park(ns: argparse.Namespace) -> int:
@@ -273,7 +270,8 @@ def idea_fields(ns: argparse.Namespace) -> dict:
     """``add_idea`` keyword arguments from an ``add-idea`` namespace (a flag line or a file record)."""
     return dict(title=ns.title or "", rationale=ns.rationale or "", kind=ns.kind or "feature", effort=ns.effort or "",
                 evidence=list(ns.evidence or []), origin=parse_origin(ns.origin), hypothesis=ns.hypothesis or "",
-                assumptions=list(ns.assumption or []), raised_in="converge" if ns.from_gap else None)
+                assumptions=list(ns.assumption or []), raised_in="converge" if ns.from_gap else None,
+                sources=quoted_sources(ns))
 
 
 def _refuse_flags_with_file(ns: argparse.Namespace, positional: str | None, *flags: str) -> None:
@@ -283,8 +281,8 @@ def _refuse_flags_with_file(ns: argparse.Namespace, positional: str | None, *fla
 
 
 def cmd_add_ideas_from_file(ns: argparse.Namespace) -> int:
-    _refuse_flags_with_file(ns, None, "title", "rationale", "kind", "effort", "evidence", "origin", "hypothesis",
-                            "assumption", "from_gap")
+    _refuse_flags_with_file(ns, None, "title", "rationale", "kind", "effort", "evidence", "quote", "origin",
+                            "hypothesis", "assumption", "from_gap")
     root, session = _load(ns)
     ideas = []
     for n, rec in enumerate(file_namespaces(ns, "add-idea"), 1):
