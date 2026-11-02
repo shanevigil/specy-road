@@ -76,6 +76,10 @@ entries:
       - docs/orchestration-models.md
       - tests/test_models_and_prompt.py
       - tests/test_worker_adapters.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/worker_adapter_parsers.py
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
@@ -94,6 +98,8 @@ entries:
       - docs/orchestration.md
       - tests/test_worker_faults.py
       - tests/test_worker_state.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_reconcile.py
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
