@@ -67,7 +67,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M7.1` | A research register tracks deep-research topics with a refresh cadence | task | Agentic-led | Complete |
 | `M7.2` | Run the harness-capabilities research and fold its findings | task | Human-led | Not Started |
 | `M8` | Harness compatibility | phase | — | Not Started |
-| `M8.1` | Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps | task | Agentic-led | Not Started |
+| `M8.1` | Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps | task | Agentic-led | Complete |
 | `M8.2` | Worker adapters harden the launch and run a deterministic post-run check | task | Agentic-led | Not Started |
 | `M8.3` | Reviewer runs are read-only and specy-road writes the review record from structured output | task | Agentic-led | Not Started |
 | `M8.4` | Ship skills once and meter every file each harness injects | task | Agentic-led | Complete |
