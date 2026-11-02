@@ -15,7 +15,7 @@ Findings:
 
 ## Acceptance
 
-- **A1 (3 apps × 3 harnesses × 3 runs): not met as written.** The study is 1 app × 3 harnesses × 2 runs × on/off, by the maintainer decision recorded in this leaf's planning sheet. The note says so under "Limits", and the leaf's acceptance text was not edited.
+- **A1:** met. One `init project` app × Claude Code, Codex and Cursor agent × two runs, with and without the managed section, same task list: 12 executor runs, the matrix A1 asks for since the maintainer reduced the study on 2026-11-02. Two runs per cell limit the statistics, so the note reads every difference as a direction ("Limits").
 - **A2:** met. Turns (Claude only; the others report none), tool calls, tokens, cost (Claude only; the others report none), wall time and the first-round review are recorded per run, with means per cell.
 - **A3:** met. "Decision" states the verdict, test further, and what the numbers do and do not justify.
 
@@ -30,6 +30,7 @@ Findings:
 - `specy-road file-limits` → `OK: file limits satisfied.`
 - `python -m pytest -q tests/test_doc_links.py tests/test_doctor.py tests/test_agents_md_block.py tests/test_shared_checkout_guidance.py tests/test_context_regressions.py tests/test_review_round6_docs.py tests/test_post_release_readme_cleanup.py` → 71 passed.
 - Full `python -m pytest -q` → 2984 passed, 2 skipped (16:24), run after the note was final and before it was committed.
+- Review round 2 (gpt-5.6-sol-high blocked on wording only): the note's "Limits" and this summary's A1 line now match the current A1, the 12-run reduced matrix, which is met; the two-runs-per-cell limit stays. Re-run for the touched docs: `.conda/bin/pytest -q tests/test_doc_links.py` → 4 passed; `specy-road file-limits` → OK.
 - **Study artifacts are local only, never committed:** the app copies, harness JSON logs, review packets and verdicts, and the collection and review scripts. They live in this session's scratchpad, outside the repo. The note gives enough of the protocol (app shape, prompt, exact harness commands, metric definitions, packet contents) to rebuild them.
 
 ## Follow-ups for the coordinator (outside this leaf's touch zones)

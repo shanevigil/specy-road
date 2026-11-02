@@ -70,7 +70,7 @@ The packet never said which arm a run came from; `AGENTS.md` and `CLAUDE.md` are
 | cursor / on / r1 | — | 23 | 282,916 (258,336) | 5,832 | — | 33 | approve | — |
 | cursor / on / r2 | — | 30 | 369,689 (344,384) | 6,625 | — | 43 | request-changes | claim only on local `main` (`--local` pickup) |
 | cursor / off / r1 | — | 33 | 536,280 (515,104) | 9,518 | — | 73 | approve | — |
-| cursor / off / r2 | — | 37 | 532,698 (506,784) | 8,021 | — | 45 | request-changes | malformed-date test does not assert the message (A1) |
+| cursor / off / r2 | — | 37 | 532,698 (506,784) | 8,021 | — | 45 | request-changes | malformed-date test does not assert the message (`M2.1`'s A1) |
 
 **Means per cell.** Codex "on" counts both runs; its finished run alone is 18 tool calls and 353k input tokens.
 
@@ -115,7 +115,7 @@ The cost numbers on their own justify neither trimming nor keeping. Claude Code 
 
 ## Limits
 
-- **Smaller than A1.** A1 asks for three apps × three harnesses × three runs; this is one app × three harnesses × two runs, by the maintainer's 2026-11-02 decision in the `M5.7` planning sheet. Two runs per cell cannot separate a real effect from run-to-run noise (Claude "off" alone ranged from 11 to 16 tool calls), so every difference above is a direction.
+- **Small sample.** One app × three harnesses × two runs per arm is the matrix `M5.7` asks for since the maintainer reduced the study on 2026-11-02; it was run in full. Two runs per cell cannot separate a real effect from run-to-run noise (Claude "off" alone ranged from 11 to 16 tool calls), so every difference above is a direction.
 - **One task.** The single leaf is small, and the prompt, which names no rule, sends every agent to the pickup skill, whose generated prompt restates the task loop. A task with no pickup prompt (an ad-hoc fix, cleanup in a shared tree) is where the section is the only guidance, and this study has none.
 - **Skills in both arms.** Removing the managed blocks does not remove the toolkit's guidance: the skills, the generated prompt and the templates remain. The study measures the section's marginal effect for an adopter who has run `specyrd init`, not the effect of having no guidance at all.
 - **One reviewer.** One fixed reviewer model, one round, reading a packet rather than the repository. A second reviewer family might weigh the "off" arm's weak test or the local-only claim differently.
