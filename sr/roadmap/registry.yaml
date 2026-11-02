@@ -1,19 +1,5 @@
 version: 1
 entries:
-  - codename: harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps
-    node_id: M8.1
-    branch: feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps
-    touch_zones:
-      - specy_road/templates/project/model-profiles/
-      - specy_road/bundled_scripts/refresh_profiles.py
-      - specy_road/harness_facts.py
-      - specy_road/templates/project/schemas/
-      - schemas/
-      - docs/orchestration-models.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: measure-whether-lower-reviewer
     node_id: M10.6
     branch: feature/rm-measure-whether-lower-reviewer
@@ -57,28 +43,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: managed-section-ablation
-    node_id: M5.7
-    branch: feature/rm-managed-section-ablation
-    touch_zones:
-      - docs/design-notes/
-      - docs/agentic-sandbox-runbook.md
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: review-delegate
-    node_id: M11.7
-    branch: feature/rm-review-delegate
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_delegate.py
-      - specy_road/worker_adapters.py
-      - specy_road/review_files.py
-      - docs/orchestration-review.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: milestone-full-review
     node_id: M11.13
     branch: feature/rm-milestone-full-review
@@ -94,20 +58,6 @@ entries:
       - specy_road/bundled_scripts/review_cli.py
       - specy_road/bundled_scripts/mark_implementation_reviewed.py
       - specy_road/orchestration_config.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: runtime-dirs-not-dirty
-    node_id: M11.3
-    branch: feature/rm-runtime-dirs-not-dirty
-    touch_zones:
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_ops.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/
-      - docs/git-workflow.md
-      - tests/
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
@@ -130,6 +80,7 @@ entries:
       - specy_road/bundled_scripts/roadmap_crud_ops.py
       - specy_road/bundled_scripts/roadmap_crud_argparse.py
       - tests/
+      - specy_road/bundled_scripts/roadmap_crud_chunk_report.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending

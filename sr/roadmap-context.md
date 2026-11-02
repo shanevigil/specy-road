@@ -51,14 +51,14 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M4.16` Review rounds and elapsed time per leaf, and doctor lists detached worktrees `review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees` — task — **Complete**
   - `M4.17` Review-loop escalation: a root-cause analysis runs when reviews keep blocking `review-loop-escalation-a-root-cause-analysis-runs-when-reviews-keep-blocking` — task — **Complete**
   - `M4.18` Further TS/JS syntax forms for the function cap found in M4.12 review `further-ts-js-syntax-forms-for-the-function-cap-found-in-m4-12-review` — task — **Complete**
-- `M5` Agent context and outcomes `context-and-outcomes` — phase — **Not Started**
+- `M5` Agent context and outcomes `context-and-outcomes` — phase — **Complete**
   - `M5.1` Every managed AGENTS.md rule carries its provenance in the template `rule-provenance` — task — **Complete**
   - `M5.2` validate flags specy-road commands that do not exist in the consumer's agent files `stale-command-check` — task — **Complete**
   - `M5.3` validate reports always-injected context per harness against documented limits `context-budget-meter` — task — **Complete**
   - `M5.4` Rules the CLI or hooks enforce shrink to one-line pointers in the managed block `enforced-rules-pointers` — task — **Complete**
   - `M5.5` A replayable context regression set for the sandbox runbook `context-regression-set` — task — **Complete**
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Complete**
-  - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
+  - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Complete**
   - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
 - `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Complete**
   - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Complete**
@@ -67,7 +67,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
 - `M8` Harness compatibility `harness-compatibility` — phase — **Not Started**
-  - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Not Started**
+  - `M8.1` Harness facts fixture drives model-profiles and executor templates, with a classified diff on version bumps `harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` — task — **Complete**
   - `M8.2` Worker adapters harden the launch and run a deterministic post-run check `worker-adapters-harden-the-launch-and-run-a-deterministic-post-run-check` — task — **Not Started**
   - `M8.3` Reviewer runs are read-only and specy-road writes the review record from structured output `reviewer-runs-are-read-only-and-specy-road-writes-the-review-record-from-structured-output` — task — **Not Started**
   - `M8.4` Ship skills once and meter every file each harness injects `ship-skills-once-and-meter-every-file-each-harness-injects` — task — **Complete**
@@ -106,14 +106,15 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.17` The review packet caps its inlined diff by bytes too and lists generated bundles by size only `packet-byte-budget` — task — **Complete**
   - `M10.18` Review records are found and written with the canonical file name on case-insensitive filesystems `review-file-case` — task — **Complete**
   - `M10.19` The executor prompt forbids killing processes the executor did not start `no-foreign-kills` — task — **Complete**
+  - `M10.20` Pilot GPT-6.1 Terra as a lower-cost executor before rostering it `terra-executor-pilot` — task — **Not Started**
 - `M11` rc2 field feedback: worktrees, workers and the review loop `rc2-field-feedback` — phase — **Not Started**
   - `M11.1` In a git worktree, every command resolves work/ paths the same way and a sandboxed reviewer can file its record `worktree-paths-agree` — task — **Complete**
   - `M11.2` worker message resumes a failed or stalled worker whose native session id is known `resume-failed-workers` — task — **Complete**
-  - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Not Started**
+  - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Complete**
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
   - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
-  - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Not Started**
+  - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Complete**
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Complete**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
@@ -127,7 +128,6 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Not Started**
   - `M11.19` Pickup never stashes work/ around the registry commit `pickup-no-work-stash` — task — **Not Started**
   - `M11.20` orchestrate plan and validate say where the roster is read from `roster-source-explained` — task — **Not Started**
-  - `M11.21` Auto-pick can prefer Agentic-led leaves and shows each leaf's mode `prefer-agentic-pick` — task — **Not Started**
   - `M11.22` Worker worktrees can include nested sibling repositories `nested-repo-worktrees` — task — **Not Started**
   - `M11.23` A custom launch command's permissions carry through resume `resume-keeps-permissions` — task — **Not Started**
   - `M11.24` Executors and reviewers in a worktree can write and check the right places `worktree-handoff-writable` — task — **Not Started**
@@ -136,6 +136,18 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.27` Small CLI fixes from field use `small-cli-fixes` — task — **Not Started**
   - `M11.28` A light chore mode for work outside the roadmap `chore-mode` — task — **Not Started**
   - `M11.29` doctor warns when the running specy-road is older than the project's stubs `doctor-version-skew` — task — **Not Started**
+  - `M11.30` Leaf worktrees get the project's environment set up `worktree-env-setup` — task — **Not Started**
+  - `M11.31` A safe command to retire a leaf worktree `worktree-prune` — task — **Not Started**
+  - `M11.32` Unpushed nested-repo commits are reported `nested-unpushed-report` — task — **Not Started**
+  - `M11.33` A reviewer whose harness routes models dynamically does not count as an independent family by default `dynamic-routing-reviewers` — task — **Not Started**
+  - `M11.34` Open human decisions live in one tracked ledger and every question is self-contained `decision-ledger` — task — **Not Started**
+  - `M11.35` A roster entry maps to the harness's own model id, and a failed start says why `roster-harness-model-id` — task — **Not Started**
+
+## Archived (not in the live roadmap)
+
+This work was completed and moved out of the graph. It is deliberately excluded from IDE indexing; reach it with `specy-road search <QUERY> --scope archived`.
+
+- 2026-11-02 `M11.21` (1 node) — `specy-road show-archive M11.21-439c8b26-20261102`
 
 ## Claimed and in flight
 
@@ -145,12 +157,8 @@ Do not pick these up.
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.15` on `feature/rm-pickup-refuses-scaffold-sheet` since 2026-11-02
 - `M11.17` on `feature/rm-edit-node-names-chunks` since 2026-11-02
-- `M11.3` on `feature/rm-runtime-dirs-not-dirty` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
-- `M11.7` on `feature/rm-review-delegate` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
-- `M5.7` on `feature/rm-managed-section-ablation` since 2026-11-02
-- `M8.1` on `feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` since 2026-11-02
 
 ## Reaching the detail behind this
 
