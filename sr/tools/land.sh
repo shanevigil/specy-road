@@ -28,7 +28,7 @@ if ! git merge-base --is-ancestor "$B" WIP/improvements-0-3-1 && git fetch -q or
   W_ROOT="$ROOT/sr/work/.worktrees/$WT"
   git -C "$W_ROOT" checkout -- sr/roadmap 2>/dev/null
   echo "$ID: retrying finish with the branch's own specy-road"
-  (cd "$W_ROOT/sr" && PYTHONPATH="$W_ROOT" "$ROOT/.venv/bin/python" -m specy_road.cli finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error')
+  (cd "$W_ROOT/sr" && PYTHONPATH="$W_ROOT" "$ROOT/.venv/bin/python" -m specy_road.cli mark-implementation-reviewed --yes >/dev/null 2>&1; PYTHONPATH="$W_ROOT" "$ROOT/.venv/bin/python" -m specy_road.cli finish-this-task ${FINISH_ARGS:-} 2>&1 | grep -E '^\[ok\] merged|^error')
   git fetch -q origin
   git merge-base --is-ancestor "$B" origin/WIP/improvements-0-3-1 || { echo "$ID: NOT MERGED"; exit 4; }
   git pull -q --ff-only origin WIP/improvements-0-3-1
