@@ -112,7 +112,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.3` | specy-road's own runtime directories never fail the clean-tree checks | task | Agentic-led | Not Started |
 | `M11.4` | max_workers counts live workers across checkouts and applies to resumes | task | Agentic-led | Not Started |
 | `M11.5` | Pickup's stale-claim check tests the local branch and never advises deleting a live claim | task | Agentic-led | Not Started |
-| `M11.6` | worker reconcile judges a worker against the leaf's current contract | task | Agentic-led | Not Started |
+| `M11.6` | worker reconcile judges a worker against the leaf's current contract | task | Agentic-led | Complete |
 | `M11.7` | review delegate runs a rostered reviewer like worker delegate runs an executor | task | Agentic-led | Not Started |
 | `M11.8` | An opt-in delta review packet for small fix rounds | task | Mixed | Not Started |
 | `M11.9` | Acceptance items a human must satisfy are marked and handled as such | task | Agentic-led | Not Started |

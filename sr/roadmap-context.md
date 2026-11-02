@@ -112,13 +112,19 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Not Started**
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Not Started**
-  - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Not Started**
+  - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Not Started**
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Not Started**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Not Started**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Not Started**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
