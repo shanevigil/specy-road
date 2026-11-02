@@ -65,6 +65,18 @@ def _add_landing_args(p: argparse.ArgumentParser) -> None:
             "copy of the work until the PR merges."
         ),
     )
+    p.add_argument(
+        "--land-check-cmd",
+        default=None,
+        metavar="CMD",
+        help=(
+            "Shell command run at the project root of a detached worktree of "
+            "the local merge commit, before merge mode pushes it; a non-zero "
+            "exit pushes nothing and resets the integration branch. An empty "
+            "value skips the check for this run. Default: land_check_cmd in "
+            "roadmap/git-workflow.yaml. pr mode never runs it."
+        ),
+    )
 
 
 def parse_finish_args(argv: list[str] | None) -> argparse.Namespace:

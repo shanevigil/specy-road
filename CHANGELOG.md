@@ -18,6 +18,13 @@ body. Keep section bodies focused; link to PRs for detail.
   READY is current; `mark-implementation-reviewed` and `finish-this-task`
   refuse until it is cleared. The executor prompt directs agents to use
   `blocked_on` instead of weakening tests or raising baselines or caps.
+- `finish-this-task` in merge mode (and `auto`) runs `land_check_cmd` from
+  `roadmap/git-workflow.yaml` (or `--land-check-cmd`; `''` skips it) at the
+  project root of a detached temporary worktree of the local merge commit,
+  before it pushes. A failure pushes nothing, resets the local integration
+  branch and prints the command, its exit code and the last 20 lines of its
+  output. A rejected push now also resets the local integration branch, so the
+  re-run it names merges onto the new tip and checks it again.
 
 ## [v0.3.1-rc2] - 2026-10-29
 
