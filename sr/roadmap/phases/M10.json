@@ -438,7 +438,11 @@
         "specy_road/templates/project/work/README.md",
         "tests/test_worker_state.py",
         "tests/test_finish_work_cleanup.py",
-        "tests/test_agent_ignores.py"
+        "tests/test_agent_ignores.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "sr/schemas/",
+        "schemas/",
+        "specy_road/bundled_scripts/finish_task.py"
       ],
       "type": "task"
     },
