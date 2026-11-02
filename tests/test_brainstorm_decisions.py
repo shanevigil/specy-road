@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import shutil
 from pathlib import Path
 
@@ -168,6 +169,33 @@ def test_a_rerun_replaces_this_sessions_policies_and_keeps_other_sessions(repo: 
     assert "30 days (brainstorm `refunds`, B1)" in policies
     assert policies.count(f"(brainstorm `{SLUG}`") == 1 and "Never" in policies
     assert "Three retries" not in policies
+
+    _cli(repo, "reject", "B1", "--reason", "superseded")   # the session's last decision
+    code, out, err = _cli(repo, "promote")
+
+    assert code == 0 and "nothing to promote" not in out and "wrote 0 decided idea(s)" in err
+    policies = _section(_sheet(repo, "M1"), "Decided policies")
+    assert f"(brainstorm `{SLUG}`" not in policies
+    assert "30 days (brainstorm `refunds`, B1)" in policies
+    assert "nothing to promote" in _cli(repo, "promote")[1]   # reconciled: a further run has nothing to do
+
+
+def test_removing_a_policy_is_refused_under_a_locked_anchor(repo: Path) -> None:
+    _start(repo, "Store card data?")
+    _cli(repo, "decide", "B1", "--decision", "Never")
+    _cli(repo, "promote")
+    _cli(repo, "reject", "B1", "--reason", "superseded")
+    chunk = repo / "roadmap" / "phases" / "M1.json"
+    data = json.loads(chunk.read_text(encoding="utf-8"))
+    anchor = next(n for n in data["nodes"] if n["id"] == "M1")
+    anchor["milestone_execution"] = {"state": "active", "rollup_branch": "feature/rm-parent",
+                                     "integration_branch": "dev", "remote": "origin"}
+    chunk.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+    code, _out, err = _cli(repo, "promote")
+
+    assert code == 1 and "milestone execution" in err
+    assert "Never (brainstorm" in _section(_sheet(repo, "M1"), "Decided policies")
 
 
 def test_decided_ideas_without_an_anchor_sheet_are_reported_not_written(

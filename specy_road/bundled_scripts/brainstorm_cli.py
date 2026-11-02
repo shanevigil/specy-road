@@ -35,6 +35,7 @@ from specy_road.bundled_scripts.brainstorm_prompt import (
     write_prompt,
 )
 from specy_road.bundled_scripts.brainstorm_promote import (
+    decided_policies,
     pending_ideas,
     promote_session,
     unverified_strong,
@@ -53,6 +54,7 @@ from specy_road.bundled_scripts.brainstorm_session import (
     slugify,
     write_session,
 )
+from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.cli_entry import run_forwarded_cli
 from specy_road.runtime_paths import resolve_repo_root
 
@@ -283,11 +285,14 @@ def _promote_warnings(session: BrainstormSession, ns: argparse.Namespace) -> Non
 
 def cmd_promote(ns: argparse.Namespace) -> int:
     root, session = _load(ns)
-    if not ns.plan and not pending_ideas(session) and not session.with_status("decided"):
+    anchor = ns.under if ns.under is not None else session.under
+    # Short-circuit: the policy check (which may warn) runs only when no accepted idea is pending.
+    if not ns.plan and not pending_ideas(session) and decided_policies(root, load_roadmap(root)["nodes"],
+                                                                       anchor, session) is None:
         print(
-            "nothing to promote — accept ideas first with: "
-            f"specy-road brainstorm accept <IDEA_ID> --slug {session.slug}"
-            f" (or record a decision with `specy-road brainstorm decide <IDEA_ID> --decision TEXT`)"
+            "nothing to promote — no accepted idea is pending and the anchor's decided policies are current; "
+            f"accept ideas with `specy-road brainstorm accept <IDEA_ID> --slug {session.slug}` "
+            "or record a decision with `specy-road brainstorm decide <IDEA_ID> --decision TEXT`"
         )
         return 0
     if not ns.plan:

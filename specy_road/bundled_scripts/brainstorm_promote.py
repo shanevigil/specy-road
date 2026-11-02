@@ -165,12 +165,13 @@ def seed_anchor_frame(root: Path, nodes: list[dict], parent_id: str | None,
     return sheet
 
 
-def seed_decided_policies(root: Path, nodes: list[dict], anchor_id: str | None, session: BrainstormSession,
-                          *, dry_run: bool = False) -> Path | None:
-    """Write the session's decided ideas as ``## Decided policies`` bullets in the anchor's sheet.
+def decided_policies(root: Path, nodes: list[dict], anchor_id: str | None,
+                     session: BrainstormSession) -> tuple[Path, str] | None:
+    """The anchor sheet and its text with this session's ``## Decided policies`` bullets
+    reconciled to its decided ideas, or None when the sheet would not change.
 
     Each bullet ends with the session slug, so a re-run replaces this session's bullets
-    (dropping ideas no longer decided) and leaves other sessions' alone."""
+    (dropping ideas no longer decided, the last one included) and leaves other sessions' alone."""
     decided = session.with_status("decided")
     anchor = next((n for n in nodes if n.get("id") == anchor_id), None)
     sheet = _sheet_path(root, anchor) if anchor else None
@@ -183,14 +184,21 @@ def seed_decided_policies(root: Path, nodes: list[dict], anchor_id: str | None, 
     span = _section_span(lines := text.splitlines(), "Decided policies")
     old = [ln for ln in (lines[span[0] + 1:span[1]] if span else []) if ln.strip()]
     kept = [ln for ln in old if tag not in ln]
-    if not decided and len(kept) == len(old):
-        return None
     ours = [f"- **{i.title}:** {' '.join(((i.decision or {}).get('decision') or i.title).split())} {tag}, {i.id})"
             for i in decided]
+    if [*kept, *ours] == old:
+        return None
+    return sheet, _replace_section(text, "Decided policies", "\n".join([*kept, *ours]), append=True)
+
+
+def _write_policies(root: Path, policies: tuple[Path, str] | None, count: int, dry_run: bool) -> None:
+    """Write (unless ``dry_run``) and report what :func:`decided_policies` returned."""
+    if policies is None:
+        return
     if not dry_run:
-        text = _replace_section(text, "Decided policies", "\n".join([*kept, *ours]), append=True)
-        sheet.write_text(text, encoding="utf-8")
-    return sheet
+        policies[0].write_text(policies[1], encoding="utf-8")
+    print(f"{'would write' if dry_run else 'wrote'} {count} decided idea(s) into "
+          f"{policies[0].relative_to(root).as_posix()} ## Decided policies", file=sys.stderr)
 
 
 def _promote_codename(landing: Landing, existing: set[str]) -> str | None:
@@ -359,22 +367,19 @@ def promote_session(
     anchor = under if under is not None else session.under
     landings = select_landings(root, session, anchor, node_type, by_cluster=by_cluster,
                                min_recommendation=min_recommendation, plan=plan)
-    decided = session.with_status("decided")
-    if not landings and not decided:
+    decided, nodes = session.with_status("decided"), _load_nodes(root)
+    policies = decided_policies(root, nodes, anchor, session)
+    if not landings and policies is None:
         return []
-    nodes = _load_nodes(root)
     _assert_landings(root, nodes, landings)
-    if decided:
-        _assert_parent(root, nodes, anchor)
+    if decided or policies:
+        _assert_parent(root, nodes, anchor)   # a sheet write needs the anchor present and unlocked
     snap = None if dry_run or not landings else TreeSnapshot(
         (root / "roadmap", root / "planning"),
         (session_path(root, session.slug),),
     )
     out = _promote_landings(root, session, landings, execution_milestone, nodes, dry_run)
-    sheet = seed_decided_policies(root, nodes, anchor, session, dry_run=dry_run)
-    if sheet is not None:
-        print(f"{'would write' if dry_run else 'wrote'} {len(decided)} decided idea(s) into "
-              f"{sheet.relative_to(root).as_posix()} ## Decided policies", file=sys.stderr)
+    _write_policies(root, policies, len(decided), dry_run)
     if dry_run or not out:
         return out
     for parent_id in dict.fromkeys(p.parent_id for p in out):
