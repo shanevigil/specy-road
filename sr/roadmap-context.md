@@ -120,15 +120,30 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
+  - `M11.14` worker message queues a follow-up for a worker whose turn is still running `queue-worker-message` — task — **Not Started**
+  - `M11.15` Pickup and finish agree on unwritten planning sheets `pickup-refuses-scaffold-sheet` — task — **Complete**
+  - `M11.16` A commit that changes only planning or bookkeeping files keeps existing approvals `sheet-edits-keep-approvals` — task — **Not Started**
+  - `M11.17` edit-node names every chunk file it changes, and relocation is loud `edit-node-names-chunks` — task — **Not Started**
+  - `M11.18` Registry overlap warnings show only what concerns the command at hand `quieter-overlap-warnings` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
+- `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
+- `M11.3` on `feature/rm-runtime-dirs-not-dirty` since 2026-11-02
 - `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.7` on `feature/rm-review-delegate` since 2026-11-02
 - `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
+- `M11.9` on `feature/rm-human-acceptance` since 2026-11-02
+- `M5.6` on `feature/rm-context-feedback-pilot` since 2026-11-02
 - `M5.7` on `feature/rm-managed-section-ablation` since 2026-11-02
 - `M8.1` on `feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` since 2026-11-02
 

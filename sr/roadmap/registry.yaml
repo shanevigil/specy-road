@@ -136,20 +136,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-refuses-scaffold-sheet
-    node_id: M11.15
-    branch: feature/rm-pickup-refuses-scaffold-sheet
-    touch_zones:
-      - specy_road/planning_scaffold_check.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - docs/roadmap-authoring.md
-      - tests/
-      - specy_road/bundled_scripts/do_next_task_args.py
-      - specy_road/bundled_scripts/do_next_task_leaf_guards.py
-      - specy_road/bundled_scripts/session_plan_git.py
-      - specy_road/bundled_scripts/session_plan_render.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T23:49:33+00:00'
