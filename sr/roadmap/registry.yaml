@@ -1,16 +1,5 @@
 version: 1
 entries:
-  - codename: measure-whether-lower-reviewer
-    node_id: M10.6
-    branch: feature/rm-measure-whether-lower-reviewer
-    touch_zones:
-      - scripts/review_effort_study.py
-      - docs/design-notes/reviewer-effort-study.md
-      - specy_road/templates/project/model-profiles/
-      - tests/test_review_effort_study.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: max-workers-global
     node_id: M11.4
     branch: feature/rm-max-workers-global

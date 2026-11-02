@@ -92,7 +92,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Complete**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
-  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
+  - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Complete**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Complete**
   - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Complete**
   - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Complete**
@@ -153,7 +153,6 @@ This work was completed and moved out of the graph. It is deliberately excluded 
 
 Do not pick these up.
 
-- `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
 - `M11.13` on `feature/rm-milestone-full-review` since 2026-11-02
 - `M11.15` on `feature/rm-pickup-refuses-scaffold-sheet` since 2026-11-02
 - `M11.17` on `feature/rm-edit-node-names-chunks` since 2026-11-02
