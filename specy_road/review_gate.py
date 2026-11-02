@@ -265,22 +265,23 @@ def _delta_why(repo_root: Path, node: dict[str, Any], priors: list[ReviewFile], 
 
 def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
                     commit: str | None, today: date | None = None) -> list[ReviewFile]:
-    """``model``'s approvals of other commits of ``node`` that counted at their own commit, oldest filing
-    first; a delta approval only when a prior already kept is its ``delta_from`` and that delta qualifies."""
+    """``model``'s approvals of other commits that count there, oldest first. Its latest record on a commit is its
+    verdict (a later block rescinds, a later approval restores); a delta approval needs a kept ``delta_from``."""
     kept: list[ReviewFile] = []
     for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"]):
-        if (r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model
-                and r.data["verdict"] == "approve" and not same_commit(repo_root, r.data["commit"], commit)
-                and not review_semantic_errors(r.data, acceptance_ids(node))   # history is loaded without them
-                and _eligibility(config, node, r, today)[0] is not None
+        if not (r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model) or \
+                same_commit(repo_root, r.data["commit"], commit):
+            continue
+        kept = [k for k in kept if not same_commit(repo_root, k.data["commit"], r.data["commit"])]
+        if (r.data["verdict"] == "approve" and not review_semantic_errors(r.data, acceptance_ids(node))
+                and _eligibility(config, node, r, today)[0] is not None   # history is loaded without the ids
                 and not (r.data.get("delta_from")
                          and _delta_why(repo_root, node, kept, r, r.data["commit"], config["policy"]))):
             kept.append(r)
     return kept
 
 
-def delta_basis(repo_root: Path, node: dict[str, Any], model: str,
-                commit: str | None) -> tuple[ReviewFile | None, str]:
+def delta_basis(repo_root: Path, node: dict[str, Any], model: str, commit: str | None) -> tuple[ReviewFile | None, str]:
     """``(model's latest counting approval of an earlier commit, "")`` when the change since may be reviewed
     from a delta packet, else ``(None, why)``; an unreadable policy fails closed."""
     ref, err = policy_source(repo_root)

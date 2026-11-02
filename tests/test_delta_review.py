@@ -155,6 +155,21 @@ def test_the_gate_refuses_a_delta_approval_while_review_packet_full_is_current(t
     assert [a.model for a in _gate(repo).approvals] == ["opus"]
 
 
+def test_a_later_block_rescinds_an_approval_as_delta_basis_and_a_later_approval_restores_it(
+        tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)   # opus approves P ...
+    _file(repo, "opus", approved, verdict="block")   # ... then blocks P
+    head = _fix(repo, {"src/NOTES.md": "# n\n"})
+    assert delta_basis(repo, NODE, "opus", head) == (None, "no earlier approval")
+    _file(repo, "opus", head, delta_from=approved)
+    assert f"a delta review from {approved}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+    _file(repo, "opus", approved)   # approves P again: the basis is back
+    assert delta_basis(repo, NODE, "opus", head)[0].data["commit"] == approved
+    _file(repo, "opus", head, delta_from=approved)
+    assert [a.model for a in _gate(repo).approvals] == ["opus"]
+
+
 def test_policy_off_forces_full_review(tmp_path: Path) -> None:
     repo, approved = _repo(tmp_path, ", delta_review: false")
     head = _fix(repo, {"src/NOTES.md": "# n\n"})
