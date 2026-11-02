@@ -17,7 +17,7 @@ from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.finish_implementation_check import _clean, zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_text
-from specy_road.git_workflow_config import WORKER_LOGS_REL
+from specy_road.git_workflow_config import WORKER_LOGS_REL, resolve_integration_defaults
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix, rebase_to_project
 from specy_road.worker_process import branch_mismatch
@@ -46,16 +46,29 @@ def _target(repo_root: Path, node_id: str):
     return t
 
 
-def _changed_since(worktree: Path, since_sha: str | None) -> list[str]:
+def _integration_bases(repo_root: Path, worktree: Path) -> tuple[str, ...]:
+    """Where the worktree's HEAD last took in the integration branch, by its remote-tracking and its local ref."""
+    ib, remote, _warn = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    refs = (f"refs/remotes/{remote}/{ib}", f"refs/heads/{ib}")
+    return tuple(sorted({b for r in refs if (b := git_text(["merge-base", r, "HEAD"], worktree))}))
+
+
+def _changed_since(worktree: Path, since_sha: str | None, bases: tuple[str, ...] = ()) -> list[str]:
     if not since_sha:
         return []
     # Both sides of a rename or copy: a `git mv` into the zone is also a
     # deletion outside it.
-    changed = diff_paths(worktree, since_sha) or []
+    changed = set(diff_paths(worktree, since_sha) or [])
+    # A path the tree matches the integration branch on, at the point it was
+    # last merged in, came through that merge and is not the worker's change.
+    for base in bases:
+        own = diff_paths(worktree, base)
+        if own is not None:
+            changed &= set(own)
     # Named from the git root over the whole repo, as `git diff` names them: the
     # worktree may be a nested project root, where plain ls-files is directory-relative.
     untracked = git_text(["ls-files", "--others", "--exclude-standard", "--full-name", "--", ":(top)"], worktree) or ""
-    return sorted(set(changed) | {p for p in untracked.splitlines() if p.strip()})
+    return sorted(changed | {p for p in untracked.splitlines() if p.strip()})
 
 
 #: specy-road's state under work/: gitignored by the project template, listed by git where it is not.
@@ -67,13 +80,38 @@ def _delegated_brief(repo_root: Path, rec: WorkerRecord) -> Path:
     return git_root(wt) / project_prefix(repo_root) / "work" / f"brief-{rec.node_id}.md"
 
 
+#: Lines of the brief's execution target that report progress, not the contract.
+_STATUS_LINES = ("- **Status (own):**", "- **Status (rollup):**")
+
+
+def _between(text: str, start: str, end: str) -> str:
+    """From the line that starts with ``start`` up to ``end``; the brief's size line names headings too."""
+    i = text.find("\n" + start)
+    if i < 0:
+        return ""
+    j = text.find(end, i)
+    return text[i:j if j >= 0 else len(text)]
+
+
+def own_contract(brief: str) -> str:
+    """The leaf's own contract in a rendered brief: its execution target (goal, acceptance, touch zones)
+    without the status lines, and its own planning sheet, which the brief inlines last in section 3.
+
+    Everything else (ancestors, shared contracts, dependencies, history) moves when the integration
+    branch does, and is not this leaf's contract.
+    """
+    target = _between(brief, "## 1. Execution target", "\n## 2. ").splitlines()
+    sheet = _between(brief, "### This node's planning sheet:", "\n## 4. ")
+    return "\n".join(ln for ln in target if not ln.startswith(_STATUS_LINES)) + "\n" + sheet
+
+
 def _brief_unchanged(repo_root: Path, rec: WorkerRecord, nodes: list[dict]) -> bool:
-    """A fresh brief render matches the copy the worker was given in its worktree."""
+    """A fresh brief render carries the same leaf contract as the copy the worker was given in its worktree."""
     brief = _delegated_brief(repo_root, rec)
     if not brief.is_file():
         return False
     fresh = render_brief(rec.node_id, index(nodes), repo_root=repo_root, include_history=False)
-    return fresh == brief.read_text(encoding="utf-8")
+    return own_contract(fresh) == own_contract(brief.read_text(encoding="utf-8"))
 
 
 def _bookkeeping(path: str, node_id: str, prefix: str = "") -> bool:
@@ -98,13 +136,17 @@ def reconcile(repo_root: Path, worker_id: str) -> tuple[WorkerRecord, dict[str, 
 def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord, dict[str, Any]]:
     t = _target(repo_root, rec.node_id)
     since = (rec.checkpoint or {}).get("git_head") or t.base
-    changed = _changed_since(Path(rec.worktree), since)
+    wt = Path(rec.worktree)
+    bases = _integration_bases(repo_root, wt)
+    changed = _changed_since(wt, since, bases)
+    # The claim row as it is now (edit-node keeps it in step with the node),
+    # not the zones the worker was delegated with.
     zones = [z for z in (_clean(z) for z in t.touch_zones) if z]
     # A breach is judged over the worker's whole lifetime, not only since the
     # last checkpoint: a hand-off moves the checkpoint past earlier commits,
     # and what they touched is still on the branch.
     origin = rec.started_head or since
-    on_branch = _changed_since(Path(rec.worktree), origin) if origin != since else changed
+    on_branch = _changed_since(wt, origin, bases) if origin != since else changed
     # Toolkit bookkeeping is never a breach: the leaf's brief, summary and
     # review files, and the registry row the claim lives in. Paths are named
     # from the git root; zones are matched as the review packet matches them,
@@ -116,7 +158,9 @@ def _reconcile_locked(repo_root: Path, rec: WorkerRecord) -> tuple[WorkerRecord,
                if zones and not any(zone_matches(z, rebase_to_project(p, prefix) or p) for z in zones)]
     text, _p, err = build_prompt(repo_root, rec.node_id, role="executor", model=rec.model)
     # A prompt that can no longer be built (the model lost the leaf's
-    # sensitivity or class) is a contract change too, not a pass.
+    # sensitivity or class) is a contract change too, not a pass. Otherwise
+    # only the leaf's own contract counts: the prompt and the rest of the brief
+    # also move when the integration branch does.
     brief_same = _brief_unchanged(repo_root, rec, t.nodes)
     prompt_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
     contract_changed = bool(
