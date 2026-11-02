@@ -103,6 +103,10 @@
           "type": "integer",
           "minimum": 1,
           "description": "A running worker with no harness stdout for this many seconds is flagged stalled by `worker sync` and `worker list`, with one stalled event per silence. Default 600."
+        },
+        "integrity_gate": {
+          "type": "boolean",
+          "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
         }
       }
     },

@@ -181,7 +181,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.6_integrity-gate-and-waivers_bfd60247-5ca6-478b-9bbb-e1af4975b601.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "With integrity_gate on, a test-integrity finding blocks the review gate unless the leaf declared it before pickup",
       "touch_zones": [
         "specy_road/integrity_gate.py",
@@ -194,7 +194,8 @@
         "docs/orchestration-review.md",
         "suggested_prompts/",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "schemas/"
       ],
       "type": "task"
     },
@@ -225,7 +226,9 @@
         "sr/roadmap/orchestration.yaml",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "schemas/",
+        "roadmap/orchestration.yaml"
       ],
       "type": "task"
     },
@@ -325,6 +328,29 @@
         "sr/schemas/",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "In a project whose root is a subdirectory of the git root, a changed file under the project root is in zone when a touch zone names it either relative to the git root (sr/schemas/) or relative to the project root (schemas/); the review packet's file list and the finish implementation check agree on the result",
+        "A test with a nested layout changes a file under the project root's schemas/ with only the git-root-relative zone declared and shows no outside-touch-zones flag in the packet and no finish refusal; the same file with no matching zone is still flagged"
+      ],
+      "codename": "nested-zone-paths",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M9.11",
+      "node_key": "54c0461f-a7f4-4be8-8251-5288f7fabc5f",
+      "parent_id": "M9",
+      "planning_dir": "planning/M9.11_nested-zone-paths_54c0461f-a7f4-4be8-8251-5288f7fabc5f.md",
+      "sibling_order": 11,
+      "status": "Not Started",
+      "title": "Touch-zone checks match project-relative and git-root-relative paths alike in a nested project",
+      "touch_zones": [
+        "specy_road/review_target.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/finish_implementation_check.py",
         "tests/"
       ],
       "type": "task"

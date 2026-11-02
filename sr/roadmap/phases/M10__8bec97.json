@@ -1,0 +1,26 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "worker delegate, message and resume start the wrapper with the interpreter's safe-path flag (-P), so python -m specy_road.worker_runner run with cwd set to a worktree imports the package the launching CLI came from (the PYTHONPATH entry worker_runner already sets) and never the worktree's specy_road",
+        "A test spawns a worker whose worktree contains a specy_road/worker_runner.py that would fail on import, and shows the wrapper still runs, writes its log and records an exit; the test fails if -P is removed",
+        "The harness command the wrapper launches keeps its own environment unchanged (no PYTHONSAFEPATH or -P leaks into the executor's tests), shown by an assertion on the harness environment; worker_runner.py stays under the 400-line cap"
+      ],
+      "codename": "wrapper-imports-launcher",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.16",
+      "node_key": "8bec970a-ebc6-4481-ac06-fdd553b08f3e",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.16_wrapper-imports-launcher_8bec970a-ebc6-4481-ac06-fdd553b08f3e.md",
+      "sibling_order": 16,
+      "status": "Complete",
+      "title": "The worker wrapper imports the launching specy-road, not the worktree's copy",
+      "touch_zones": [
+        "specy_road/worker_runner.py",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}

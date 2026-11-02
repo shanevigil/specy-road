@@ -179,6 +179,8 @@ def _add_triage(sub) -> None:
     p.add_argument("--append-why", default=None, metavar="TEXT",
                    help="Append to verdict_why instead of replacing it.")
     p.add_argument("--cluster", default=None, metavar="CID", help="Cluster id from the converge pass.")
+    p.add_argument("--target-parent", default=None, metavar="NODE_ID",
+                   help="Display id promote lands this idea under instead of the anchor ('' clears it).")
     p.add_argument("--overlap", action="append", default=None, metavar="NODE_ID:RELATION",
                    help="Existing node this overlaps and how (repeatable).")
     p.add_argument("--critic", action="append", default=None, metavar="ROLE: TEXT",
@@ -225,6 +227,14 @@ def _add_converge(sub) -> None:
             "the anchor's execution_milestone is copied."
         ),
     )
+    p.add_argument("--by-cluster", action="store_true",
+                   help="One node per cluster lead (strongest verdict, then accept order); "
+                        "the cluster's other accepted ideas are listed on it as alternatives.")
+    p.add_argument("--min-recommendation", default=None, choices=RECOMMENDATIONS,
+                   help="Promote only ideas with at least this verdict; weaker ones stay accepted.")
+    p.add_argument("--plan", default=None, metavar="PLAN.yaml",
+                   help="Create the tree a plan file describes (parent, type, title, acceptance, "
+                        "dependencies, ideas by id) instead of one node per accepted idea.")
     _add_slug(p)
 
 

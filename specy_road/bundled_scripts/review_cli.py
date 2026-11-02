@@ -13,7 +13,8 @@ whose review loop is not converging and has no root-cause analysis for it is
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
 ``review list`` prints the filed records, any RCA records, the escalation and
-the gate evaluation, and writes nothing.
+the gate evaluation, and writes nothing. Both commands report the leaf's review
+rounds (distinct reviewed commits) and the time from its first review to the latest.
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ from specy_road.review_files import (
     node_ids_with_reviews,
     render_front_matter,
     review_path,
+    round_span,
     non_gating_verify_problems,
     executor_blocked_display_lines,
 )
@@ -98,6 +100,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
              "commands_rerun": list(c.review.data.get("commands_rerun") or [])}
             for c in gate.approvals + gate.blocks
         ],
+        "review_rounds": round_span(root, node_id),
         "policy": gate.summary(),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
@@ -119,6 +122,7 @@ def _render(st: dict[str, Any]) -> list[str]:
         extra = f"; reviewer re-ran {', '.join(rerun)!r}" if rerun else ""
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
                      f"{' [signed]' if r['signed'] else ''}{extra}")
+    lines.append(f"  {st['review_rounds']['line']}")
     lines.append(f"  policy: {st['policy']}")
     if tm := st.get("trial_merge"):
         kind = "" if tm["blocking"] else " (bookkeeping only, which does not block)"
@@ -173,6 +177,7 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
              "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature"))}
             for r in reviews if r.ok
         ],
+        "review_rounds": round_span(root, nid),
         "policy": "not evaluated: no claim names the commit under review",
         "policy_met": False,
         "trial_merge": None,
@@ -325,6 +330,7 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"{r.path.name}: {d.get('verdict')} by {d.get('model')} ({d.get('family')}) "
               f"at {str(d.get('commit') or '?')[:12]}{' [signed]' if d.get('signature') else ''}"
               + ("" if r.ok else f" — invalid: {'; '.join(r.errors)}"))
+    print(round_span(root, ns.node_id)["line"])
     loop = loop_state(root, ns.node_id)
     _print_rcas(loop)
     if t is None:

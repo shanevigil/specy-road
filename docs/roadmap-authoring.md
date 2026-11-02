@@ -206,6 +206,7 @@ CLI and docs that say `NODE_ID` mean the display **`id`**, not `node_key`, unles
 | `acceptance` | List of observable acceptance criteria; a review attests each one as `A1`, `A2`, … Set them with one `--set` per criterion: `edit-node M1.2 --set acceptance='Saves offline' --set acceptance='Syncs on reconnect'`, or at creation with one `add-node --acceptance` per criterion. `\|` is not a separator: `acceptance=a\|b` is one criterion, and `validate` warns about it. With the review gate on, `validate` also warns on open leaves without any; a planning sheet whose checklist is still the template is the same debt and the same fix. |
 | `sensitivity` | Data-sensitivity class of the node's inputs (default `public`). Only a roster model whose `may_process` lists it may execute or review the node; `specy-road prompt` refuses otherwise. See `docs/orchestration-models.md`. |
 | `executor_eligibility` | `any` (default) or a roster `class` tag such as `senior`; `specy-road orchestrate plan` assigns only a matching executor. |
+| `planned_test_changes` | Test removals or weakenings the leaf is approved to make, one string per finding line exactly as `specy-road integrity <ID>` prints it (e.g. `removed-test: tests/test_x.py::test_old`). Author and approve it with the leaf, on the integration branch, **before pickup**: with `policy.integrity_gate: true` in `roadmap/orchestration.yaml` the review gate reads it from the integration branch, so it is the only way a test removal or weakening passes the gate, and a declaration made on the leaf branch does not count. A removal found mid-implementation is a `blocked_on` stop until the coordinator amends this field on the integration branch. See `docs/orchestration-review.md`. |
 | `risks` | List of known risks or blockers to surface during planning (one `--set risks=…` per item). |
 | `decision` | Architecture decision block (see below). |
 | `notes` | Free-form prose; rendered in exported markdown Notes section. |
@@ -270,8 +271,7 @@ An agent can implement without clarifying questions; every ambiguous noun resolv
 
 ### Five questions the planning sheet must answer
 
-These belong in the node's **planning sheet**, not in the node JSON — see the
-note below on why. A sheet that leaves one of them open is a planning gap.
+These belong in the node's **planning sheet**, not in the node JSON — see the note below on why. A sheet that leaves one of them open is a planning gap.
 
 | Question | Answers |
 |----------|---------|

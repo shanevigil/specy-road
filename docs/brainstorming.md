@@ -92,8 +92,8 @@ readable.
 
 The prompt files next to it are one per pass — `work/brainstorm-<slug>-r1-prompt.md`,
 `…-r2-prompt.md` and so on per diverge round, `…-r1-sN-prompt.md` per panel
-shard, `…-recommend-prompt.md`, `…-evidence-prompt.md` — so a later pass never
-overwrites an earlier one and every prompt an agent ran stays available for
+shard, `…-recommend-prompt.md`, `…-evidence-prompt.md`, `…-authoring-prompt.md`
+(after promote) — so a later pass never overwrites an earlier one and every prompt an agent ran stays available for
 audit. They are regenerated from the session plus the current graph, so they
 are gitignored.
 
@@ -129,8 +129,10 @@ roadmap root. `--count` is the floor per round. `--rounds` (default 2) is
 how many diverge rounds you plan — recorded on the session, and `next-round`
 says when you pass it; `--profile technical` swaps the lens set
 for developer roadmaps (failure modes, operability, migration paths, debt,
-dependency risk, platform leverage, security); `--panel N` also writes N
-independent shard prompts (below).
+dependency risk, platform leverage, security), and `--profile personal` for
+a tool with one author (friction log, future self, delete before adding, one
+evening, analogous tools), with personas and directions to match; `--panel N`
+also writes N independent shard prompts (below).
 
 This writes the **round-1 prompt** and prints its path. Hand that file to your
 coding agent. It instructs the agent to:
@@ -155,6 +157,9 @@ coding agent. It instructs the agent to:
   competing team's PM), each cell with a quota and a **diversity operator**:
   ordinary personas, random constraints, analogical transfer, low-typicality
   sampling, unoccupied regions. Recorded with `brainstorm frame --allocation`.
+  Once the frame records `served`, later prompts (shards, a re-run `start`)
+  draw the personas and the user-segments direction from it; until then the
+  profile's examples stand in as placeholders.
 - **Generate without filtering.** Concept cards in prose first, a cell at a
   time; then make each idea bolder and more different; then record. Weak and
   obvious ideas are explicitly wanted; no ranking, clustering, sequencing,
@@ -227,7 +232,9 @@ specy-road brainstorm recommend
 
 Switches the session to `roadmap` mode and writes the convergent prompt
 (`…-recommend-prompt.md`) over the ideas already captured, with the roadmap
-inventory inlined for the overlap check. The agent is asked to cluster near-duplicates (singletons are
+inlined for the overlap check: the phases plus the (up to 40) nodes the search
+index ranks closest to the idea titles, so it stays readable on a large roadmap;
+without the index (no SQLite FTS5, or no writable cache) every node, up to 150. The agent is asked to cluster near-duplicates (singletons are
 clusters of one; outliers are never hidden), flag overlaps with existing
 nodes by id **and relation** (same problem/same solution, same
 problem/different solution, prerequisite, superseded, adjacent), assess
@@ -329,37 +336,32 @@ specy-road brainstorm promote --dry-run
 specy-road brainstorm promote
 ```
 
-Every accepted, not-yet-promoted idea becomes a node through the same path as
-`specy-road add-node`: display id under the anchor, stable `node_key`,
-planning sheet scaffolded, chunk and manifest written in one transaction. A
-batch defers `validate` until every node in that promote call is on disk, so
-pin/schema warnings and other validate notices print once, not per node.
+Every accepted, not-yet-promoted idea becomes a node through the same path as `specy-road add-node`: display id under the anchor, stable `node_key`, planning sheet scaffolded, chunk and manifest written in one transaction. A batch defers `validate` until every node in that promote call is on disk, so pin/schema warnings and other validate notices print once, not per node.
 
-Promoted nodes get a `goal` from the idea's `--hypothesis` when present,
-`sibling_order` in accept order (every `accept`, including without `--reason`,
-records a sequence; later promote calls append after existing siblings), and a
-`codename` from the first four title words unless `revise --codename` set one.
-After a successful promote, stderr lists any new node ids still missing
-`acceptance` or `touch_zones`.
+Promoted nodes get a `goal` from the idea's `--hypothesis` when present, `sibling_order` in accept order (every `accept`, including without `--reason`, records a sequence; later promote calls append after existing siblings), and a `codename` from the first four title words unless `revise --codename` set one. After a successful promote, stderr lists any new node ids still missing `acceptance` or `touch_zones`.
 
 Before it writes (and on `--dry-run`), `promote` warns for each idea it is
 about to promote on a `strong` verdict that no `matched` source backs — its
 sources are unverified, not found or blocked, or it has none — and names
 `verify` or `evidence` as the fix. It warns; the call is yours.
 
-The new sheet's `## Intent` is seeded from the idea's rationale; its
-`## References` gains the sources (with quote and verification state), the
-hypothesis and assumptions, and the cluster's rejected or parked siblings as
-"alternatives considered" with their reasons. Rewrite the Intent once the
-slice is properly scoped — the seed is a starting point, not a spec.
+The new sheet's `## Intent` is seeded from the idea's rationale; its `## Approach` opens with the critics' objections and the verdict reasoning (`revise --critic`, `--why`) as constraints; its `## References` gains the overlaps with existing nodes (id and relation), the sources (with quote and verification state), the hypothesis and assumptions, and the cluster's rejected or parked siblings as "alternatives considered" with their reasons. When the session has a recorded frame, the anchor's sheet gains a `## Brainstorm frame` section with it (a later promote replaces it). Rewrite the Intent once the slice is properly scoped — the seed is a starting point, not a spec, and pickup skips the node until then.
+
+A successful promote also writes `work/brainstorm-<slug>-authoring-prompt.md` (gitignored) and prints its path: hand it to your agent to draft each promoted node's Intent, Approach steps, tasks, acceptance, touch zones and references from the session and the repo, for you to approve. It covers that promote call's nodes that an idea seeded (not a plan node without ideas); `--dry-run` writes none.
+
+Placement and selection (combine with `--dry-run` to preview):
+
+- `revise B4 --target-parent M3` lands B4 under M3; ideas without a target parent use `--under`, else the session anchor (`--target-parent ''` clears it).
+- `--by-cluster` writes one node per cluster lead (strongest verdict, then earliest accept); the cluster's other accepted ideas are linked to that node and listed on its sheet as alternatives.
+- `--min-recommendation strong|consider|park` skips weaker verdicts (no verdict is weakest); skipped ideas stay accepted and stderr names them.
+- `--plan plan.yaml` creates a tree instead: a `nodes:` list whose entries take `title` and optionally `ref`, `parent` (a node id or an earlier entry's `ref`; default the anchor), `type`, `acceptance`, `dependencies` (node ids or entries' `ref`s, stored as `node_key`s) and `ideas` (accepted idea ids: the first seeds the sheet, all are linked). Unlisted ideas stay pending; it runs with none pending and does not combine with the two filters above.
 
 Options: `--under NODE_ID` overrides the anchor; `--type` is `milestone` by
 default (`vision`, `phase`, `task` also work; `gate` is refused — a gate is a
-human hold, not work); `--dry-run` writes nothing. Promoted nodes copy the
-anchor's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
+human hold, not work); `--dry-run` writes nothing. Promoted nodes copy their
+parent's `execution_milestone` (`Human-led`, `Agentic-led`, or `Mixed`); use
 `--set execution_milestone=…` only when a leaf should differ (typically
-`Human-led` under an agentic anchor). An unusable anchor is rejected before
-anything is written. Afterwards:
+`Human-led` under an agentic anchor). An unusable parent is rejected before anything is written. Afterwards:
 
 ```bash
 specy-road export && specy-road digest

@@ -1,8 +1,10 @@
-"""Tests for `specy-road handoff status` and `specy-road review record`."""
+"""Tests for `specy-road handoff status`, `specy-road review record` and `specy-road review list`."""
 
 from __future__ import annotations
 
 import json
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -235,3 +237,69 @@ def test_status_reports_a_trial_merge_conflict(tmp_path: Path, capsys, case: str
     _run("handoff", "status", "M1.1", "--repo-root", str(repo))
     text = capsys.readouterr().out.splitlines()
     assert [t for t in text if t.startswith("  trial merge")] == ([line] if line else [])
+
+
+def _record(repo: Path, verdict: str = "approve", **kw) -> None:
+    assert _run("review", "record", "M1.1", "--model", "opus", "--verdict", verdict,
+                "--file", str(_notes(repo, verdict=verdict, **kw)), "--repo-root", str(repo)) == 0
+
+
+def _rounds_lines(repo: Path, capsys) -> tuple[dict, list[str], list[str]]:
+    """``review_rounds`` from ``handoff status --json``, and the rounds line of each text command."""
+    capsys.readouterr()
+    _run("handoff", "status", "M1.1", "--json", "--repo-root", str(repo))
+    span = json.loads(capsys.readouterr().out)["nodes"][0]["review_rounds"]
+    _run("handoff", "status", "M1.1", "--repo-root", str(repo))
+    status = [t for t in capsys.readouterr().out.splitlines() if "rounds:" in t]
+    _run("review", "list", "M1.1", "--repo-root", str(repo))
+    listed = [t for t in capsys.readouterr().out.splitlines() if "rounds:" in t]
+    return span, status, listed
+
+
+def test_rounds_and_elapsed_time_count_distinct_reviewed_commits(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _record(repo, "block", a1="fail")
+    commit_file(repo, "src/b.py", "x\n", "fix")
+    _record(repo)
+    d = reviews_dir(repo, "M1.1")
+    first, latest = sorted((d / "history").glob("*.md"))
+    now = time.time()
+    os.utime(first, (now, now - (27 * 3600 + 5 * 60)))
+    os.utime(latest, (now, now - 3600))
+    os.utime(d / "REVIEW-opus.md", (now, now - 40 * 3600))   # the live copy of `latest`: not counted twice
+
+    span, status, listed = _rounds_lines(repo, capsys)
+
+    line = "rounds: 2, first to latest: 1d 2h 5m"
+    assert span == {"rounds": 2, "elapsed_seconds": 26 * 3600 + 5 * 60, "line": line}
+    assert status == [f"  {line}"]
+    assert listed == [line]
+
+
+def test_a_single_review_has_no_elapsed_time(tmp_path: Path, capsys) -> None:
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    span, status, listed = _rounds_lines(repo, capsys)
+    assert (span["rounds"], status, listed) == (0, ["  rounds: 0, first to latest: n/a"],
+                                                ["rounds: 0, first to latest: n/a"])
+    _record(repo)
+
+    span, status, listed = _rounds_lines(repo, capsys)
+
+    assert span["rounds"] == 1 and span["elapsed_seconds"] is None
+    assert status == ["  rounds: 1, first to latest: n/a"]
+    assert listed == ["rounds: 1, first to latest: n/a"]
+
+
+def test_a_review_with_no_history_copy_counts_and_a_short_sha_is_the_same_round(
+    tmp_path: Path, capsys
+) -> None:
+    """``REVIEW-human.md`` is written without a ``history/`` copy; it quotes a short SHA here."""
+    repo = make_review_repo(tmp_path, orchestration=ONE_AI)
+    _record(repo)
+    head = git(repo, "rev-parse", "HEAD")
+    (reviews_dir(repo, "M1.1") / "REVIEW-human.md").write_text(review_text(head[:7]))
+
+    span, status, _listed = _rounds_lines(repo, capsys)
+
+    assert span["rounds"] == 1 and span["elapsed_seconds"] is not None
+    assert status == ["  rounds: 1, first to latest: under 1m"]

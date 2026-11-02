@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.history_cache import CACHE_DIR, ensure_cache_dir
-from specy_road.search_corpus import Chunk, build_node_info
+from specy_road.search_corpus import KIND_NODE, KIND_PLANNING, SCOPE_LIVE, Chunk, build_node_info
 from specy_road.search_sources import chunks_for, iter_source_files
 
 INDEX_VERSION = 1
@@ -350,6 +350,37 @@ def search(
         if len(out) >= limit:
             break
     return out
+
+
+def similar_node_ids(
+    root: Path, queries: list[str], *, per_query: int = 5, limit: int = 40
+) -> list[str] | None:
+    """Live node ids closest to ``queries`` taken together, or ``None`` without the index.
+
+    Each query ranks its own nodes (graph entry or planning sheet); RRF fuses the
+    rankings, so a node near several queries outranks one near a single query.
+    ``None``, not ``[]``, so a caller can tell "no match" from "cannot rank".
+    """
+    if not fts5_available():
+        return None
+    con = refresh(root)
+    if con is None:
+        return None
+    scores: dict[str, float] = {}
+    for query in queries:
+        ranked: list[str] = []
+        fused = _fuse([_bm25_rows(con, query, _CANDIDATES), _structural_rows(con, query)])
+        for _score, row in fused:
+            nid = row["node_id"]
+            if (row["scope"] != SCOPE_LIVE or row["kind"] not in (KIND_NODE, KIND_PLANNING)
+                    or not nid or nid in ranked):
+                continue
+            ranked.append(nid)
+            if len(ranked) >= per_query:
+                break
+        for rank, nid in enumerate(ranked):
+            scores[nid] = scores.get(nid, 0.0) + 1.0 / (_RRF_K + rank + 1)
+    return sorted(scores, key=lambda nid: (-scores[nid], nid))[:limit]
 
 
 def corpus_stats(root: Path) -> dict[str, int]:

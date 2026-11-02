@@ -106,6 +106,10 @@ def cmd_show(ns: argparse.Namespace) -> int:
     access = prof.data.get("access") or {}
     print(f"- context/output: {access.get('context_tokens', '?')} / {access.get('output_tokens', '?')}")
     print(f"- cli: {prof.cli() or 'none'}  (verified from: {access.get('cli_verified_from', 'unverified')})")
+    by_role = access.get("effort_by_role")
+    if isinstance(by_role, dict):
+        print("- effort_by_role: " + ", ".join(f"{role}={key} ({prof.effort(role) or '?'})"
+                                                for role, key in by_role.items()))
     print(f"- cost (USD/MTok): {prof.data.get('cost_usd_per_mtok', 'unknown')}")
     for role in ROLES:
         fit = (prof.data.get("role_fit") or {}).get(role) or {}

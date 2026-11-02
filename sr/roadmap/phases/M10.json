@@ -162,7 +162,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.5_per-role-effort-in-model_a3d7a8a8-fd07-45f5-910d-185aac952e86.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Per-role effort in model profiles",
       "touch_zones": [
         "specy_road/model_profiles.py",

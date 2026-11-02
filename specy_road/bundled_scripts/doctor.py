@@ -3,22 +3,22 @@
 
 Four kinds, each its own section:
 
-- ``feature/rm-*`` branches, local and on the remote, whose leaf is Complete on
-  the integration branch (registry row or not), or that nothing claims: no
-  registry row (in this checkout or on the integration branch) and not an open
-  milestone rollup — the same "live" test ``branches prune`` uses. Each row says
-  why: merged, its leaf Complete, or only that its claim is gone; an unmerged
-  one also says how many commits the integration branch lacks.
-- linked worktrees whose directory is missing, whose branch is gone (detached at
-  a commit the integration branch contains or whose patch it has, the same test
-  as a branch, which is how ``finish
-  --delete-branch`` leaves a delegate worktree) or is merged, whether or not the
-  branch itself is listed (a claimed branch whose leaf is not Complete stays).
-- registry rows on the integration branch whose branch is in neither this clone
-  nor the remote (advisory, as in ``registry-prune``: another clone's claim looks
-  the same until its branch is pushed), or whose leaf is Complete.
-- stashes the toolkit pushed (``specy-road: …``; pickup and review used to stash
-  ``work/``, and a failed restore left the entry behind).
+- ``feature/rm-*`` branches, local and on the remote, whose leaf is Complete on the integration
+  branch (registry row or not), or that nothing claims: no registry row (in this checkout or on
+  the integration branch) and not an open milestone rollup — the same "live" test ``branches
+  prune`` uses. Each row says why: merged, its leaf Complete, or only that its claim is gone; an
+  unmerged one also says how many commits the integration branch lacks.
+- linked worktrees whose directory is missing, whose branch is gone (detached at a commit the
+  integration branch contains or whose patch it has, the same test as a branch: how ``finish
+  --delete-branch`` leaves a delegate worktree) or is merged, whether or not the branch itself is
+  listed (a claimed branch whose leaf is not Complete stays), and every other detached worktree
+  (a review recipe's). ``--fix`` leaves a detached one with uncommitted changes, or with commits
+  no branch holds.
+- registry rows on the integration branch whose branch is in neither this clone nor the remote
+  (advisory, as in ``registry-prune``: another clone's claim looks the same until its branch is
+  pushed), or whose leaf is Complete.
+- stashes the toolkit pushed (``specy-road: …``; pickup and review used to stash ``work/``, and
+  a failed restore left the entry behind).
 
 Merged is ancestry first. When ancestry fails, patch content decides: every
 commit has an equivalent upstream (``git cherry``: a rebase), or the branch's
@@ -38,11 +38,7 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
-from specy_road.bundled_scripts.branches_cli import (
-    feature_branches,
-    fetch_integration,
-    live_branches,
-)
+from specy_road.bundled_scripts.branches_cli import feature_branches, fetch_integration, live_branches
 from specy_road.bundled_scripts.do_next_task_self_heal import detect_stale_claims
 from specy_road.bundled_scripts.grind_session_cleanup import merged_into
 from specy_road.bundled_scripts.roadmap_load_at_ref import load_roadmap_nodes_at_ref
@@ -61,7 +57,7 @@ class Finding:
     kind: str
     name: str
     reason: str
-    remove: Callable[[], str | None]   # the failure message, or None
+    remove: Callable[[], str | None] | None   # the failure message, or None; None: --fix leaves it
     done: str
 
 
@@ -182,7 +178,7 @@ def _worktree_reason(ctx: _Ctx, wt: dict[str, str], merged_local: set[str]) -> s
             return f"branch gone: detached at {head[:12]}, which {ctx.target} contains"
         if how:
             return f"branch gone: detached at {head[:12]}, {how}"
-        return None
+        return f"detached at {head[:12]}"
     if branch in merged_local:
         return f"branch {branch} is merged"
     return None
@@ -195,6 +191,16 @@ def _ignored_note(path: Path) -> str:
     out = git_text(["status", "--porcelain", "--ignored"], path) or ""
     ignored = [line[3:] for line in out.splitlines() if line.startswith("!! ")]
     return f"; removing it deletes ignored {', '.join(ignored)}" if ignored else ""
+
+
+def _keep_detached(ctx: _Ctx, wt: dict[str, str]) -> str | None:
+    """Why ``--fix`` leaves a detached worktree: uncommitted changes, or a HEAD no ref holds (even a landed patch)."""
+    if git_text(["status", "--porcelain"], Path(wt["worktree"])):
+        return "uncommitted changes"
+    refs = ["for-each-ref", "--count=1", "--contains", wt.get("HEAD", ""), "refs/heads", "refs/remotes"]
+    if not git_text(refs, ctx.root):
+        return "commits no branch holds"
+    return None
 
 
 def _remove_worktree(root: Path, path: str) -> str | None:
@@ -211,9 +217,11 @@ def _worktree_findings(ctx: _Ctx, merged_local: set[str]) -> list[Finding]:
             continue
         reason = _worktree_reason(ctx, wt, merged_local)
         if reason:
+            keep = None if "branch" in wt else _keep_detached(ctx, wt)
             found.append(Finding(
-                "worktree", path, reason + _ignored_note(Path(path)),
-                partial(_remove_worktree, ctx.root, path), f"removed worktree {path}",
+                "worktree", path,
+                reason + _ignored_note(Path(path)) + (f"; {keep}, so --fix leaves it" if keep else ""),
+                None if keep else partial(_remove_worktree, ctx.root, path), f"removed worktree {path}",
             ))
     return found
 
@@ -276,10 +284,10 @@ def _sections(ctx: _Ctx) -> list[tuple[str, str, list[Finding]]]:
     return [
         ("branch", (f"feature/rm-* branches whose leaf is Complete or that nothing claims "
                     f"(against {ctx.target}):"), branches),
-        ("worktree", "Worktrees whose branch is gone or merged:", _worktree_findings(ctx, merged_local)),
-        ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another "
-                      "clone's claim looks the same until it pushes its branch) or whose "
-                      "leaf is Complete:"),
+        ("worktree", "Worktrees whose branch is gone or merged, and detached worktrees:",
+         _worktree_findings(ctx, merged_local)),
+        ("registry", (f"Registry rows on {ctx.target} with no branch (advisory: another clone's "
+                      "claim looks the same until it pushes its branch) or whose leaf is Complete:"),
          _registry_findings(ctx)),
         ("stash", "Stashes specy-road left behind (git stash show -p --include-untracked <sha>):",
          _stash_findings(ctx.root)),
@@ -304,13 +312,15 @@ def _fix(sections: list[tuple[str, str, list[Finding]]], yes: bool) -> int:
     by_kind = {kind: found for kind, _h, found in sections if found}
     failures = 0
     for kind in FIX_ORDER:
-        found = by_kind.get(kind)
+        for f in by_kind.get(kind) or []:
+            if f.remove is None:
+                print(f"[kept] {' '.join(f.name.split())}: {f.reason}")
+        found = [f for f in by_kind.get(kind) or [] if f.remove]
         if not found:
             continue
         ok = True if yes else _confirm(kind, len(found))
         if ok is None:
-            print("\nNo answer on stdin; pass --yes to remove without asking. "
-                  "Stopped.", file=sys.stderr)
+            print("\nNo answer on stdin; pass --yes to remove without asking. Stopped.", file=sys.stderr)
             return 1
         if not ok:
             print(f"Skipped the {kind} item(s).")
@@ -364,11 +374,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="specy-road doctor",
         description=(
-            "After git fetch --prune, list feature/rm-* branches (local and "
-            "remote) whose leaf is Complete or that nothing claims — merged by "
-            "ancestry or patch content, leaf Complete, or claim gone — worktrees "
-            "whose branch is gone or merged, registry rows with no branch or a "
-            "Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
+            "After git fetch --prune, list feature/rm-* branches (local and remote) whose leaf is "
+            "Complete or that nothing claims — merged by ancestry or patch content, leaf Complete, "
+            "or claim gone — worktrees whose branch is gone or merged, other detached worktrees, "
+            "registry rows with no branch or a Complete leaf, and stashes specy-road pushed. Dry-run unless --fix."
         ),
     )
     p.add_argument("--fix", action="store_true",
