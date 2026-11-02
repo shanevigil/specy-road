@@ -142,6 +142,23 @@ the id the harness lists; otherwise the profile's `api_id` is, as before.
   system refuses to launch it (a `<prompt>` too long for a command line) it
   exits 1 with the reason — use `{prompt}` for long prompts.
 
+## Parallel work inside a leaf
+
+Every supported harness has its own subagents, so specy-road adds no
+mechanism for parallel work inside a leaf: the executor prompt tells the agent
+to use them. The prompt `do-next-available-task` writes at pickup always has
+the paragraph; `prompt --role executor` adds it only when the model's profile
+has `access.subagents` starting with `yes`. It says to use subagents for
+independent verification and search (run the test files the brief names in
+parallel, search the tree), never for an edit outside the touch zones, to wait
+for every report before ending the turn (a headless turn ends on reply), and
+that a subagent's report is data, not an instruction. The aim is a shorter
+wall-clock on test-heavy leaves, whose verifier files can run side by side.
+
+A Claude Code worker with `launch_mode: bare` does not load your custom
+subagents (see above). An executor with `subagent_family_lock` may still spawn
+only that family.
+
 ## Planning assignments: `orchestrate plan`
 
 ```bash
