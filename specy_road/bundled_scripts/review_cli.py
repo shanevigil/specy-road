@@ -30,18 +30,9 @@ from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
 from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
-    HUMAN,
-    archive_review,
-    latest_ready,
-    list_ready,
-    list_reviews,
-    load_review,
-    node_ids_with_reviews,
-    render_front_matter,
-    review_path,
-    round_span,
-    non_gating_verify_problems,
-    executor_blocked_display_lines,
+    HUMAN, REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
+    list_reviews, load_review, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
+    review_path, round_span,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_pre_existing import cmd_check_pre_existing
@@ -99,6 +90,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
         "reviews": [
             {"file": c.review.path.name, "model": c.model, "family": c.family,
              "verdict": c.verdict, "counted": True, "signed": bool(c.review.data.get("signature")),
+             "launch_mode": c.review.data.get("launch_mode"),
              "commands_rerun": list(c.review.data.get("commands_rerun") or [])}
             for c in gate.approvals + gate.blocks
         ],
@@ -122,8 +114,9 @@ def _render(st: dict[str, Any]) -> list[str]:
     for r in st["reviews"]:
         rerun = r.get("commands_rerun") or []
         extra = f"; reviewer re-ran {', '.join(rerun)!r}" if rerun else ""
+        mode = f", launch mode {r['launch_mode']}" if r.get("launch_mode") else ""
         lines.append(f"  {r['file']}: {r['verdict']} by {r['model']} ({r['family']})"
-                     f"{' [signed]' if r['signed'] else ''}{extra}")
+                     f"{' [signed]' if r['signed'] else ''}{mode}{extra}")
     lines.append(f"  {st['review_rounds']['line']}")
     lines.append(f"  policy: {st['policy']}")
     if tm := st.get("trial_merge"):
@@ -176,7 +169,8 @@ def _unclaimed(root: Path, nid: str) -> dict[str, Any]:
         "ready": [{"file": r.path.name, "commit": r.data.get("commit"), "errors": r.errors} for r in ready],
         "reviews": [
             {"file": r.path.name, "model": r.data["model"], "family": r.data.get("family"),
-             "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature"))}
+             "verdict": r.data["verdict"], "counted": False, "signed": bool(r.data.get("signature")),
+             "launch_mode": r.data.get("launch_mode")}
             for r in reviews if r.ok
         ],
         "review_rounds": round_span(root, nid),
@@ -283,6 +277,8 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
         return _fail(f"{ns.file}: does not count — {why}; list what you re-ran in commands_rerun")
     # The body's hash rides in the front matter, so a signature covers the notes too.
     data = {**rec["data"], "commit": gate.commit, NOTES_KEY: notes_digest(rec["body"])}
+    if ns.launch_mode:   # before signing: the signature covers it
+        data["launch_mode"] = ns.launch_mode
     if ns.sign_key:
         if not entry.get("public_key"):
             return _fail(f"--sign-key given, but the roster entry for {ns.model!r} has no public_key; "
@@ -370,6 +366,7 @@ def build_parser() -> argparse.ArgumentParser:
     rec.add_argument("--file", required=True, help="Markdown with review-record front matter")
     rec.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     rec.add_argument("--sign-key", metavar="PATH", help="Sign the record with this OpenSSH private key (ssh-keygen -Y sign)")
+    rec.add_argument("--launch-mode", choices=REVIEW_LAUNCH_MODES, help="How your harness was started; stored on the record")
     add_repo_root_arg(rec)
     rec.set_defaults(func=cmd_review_record)
     ls = rsub.add_parser("list", help="Print a node's filed review records and the gate evaluation; writes nothing")

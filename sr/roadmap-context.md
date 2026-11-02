@@ -94,7 +94,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
   - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Complete**
-  - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Not Started**
+  - `M10.8` Reviewers launch without repo hooks or MCP `reviewers-launch-without-repo` — task — **Complete**
   - `M10.9` Emit a stalled event when a worker goes silent past a threshold `emit-a-stalled-event` — task — **Complete**
   - `M10.10` Position the docs on governance, not on CLI workers `position-the-docs-on` — task — **Complete**
   - `M10.11` Document the harness-subagent recipe for parallel work inside a leaf `document-the-harness-subagent-recipe` — task — **Complete**
@@ -112,7 +112,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M10.8` on `feature/rm-reviewers-launch-without-repo` since 2026-11-02
+- `M10.19` on `feature/rm-no-foreign-kills` since 2026-11-02
 - `M4.5` on `feature/rm-brainstorm-repo-evidence` since 2026-11-02
 
 ## Reaching the detail behind this

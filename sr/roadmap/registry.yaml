@@ -26,22 +26,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: reviewers-launch-without-repo
-    node_id: M10.8
-    branch: feature/rm-reviewers-launch-without-repo
-    touch_zones:
-      - specy_road/review_files.py
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/schemas/review-record.schema.json
-      - specy_road/bundled_scripts/role_prompt.py
-      - specy_road/worker_adapters.py
-      - docs/orchestration-review.md
-      - sr/tools/claude-review.sh
-      - tests/test_review_files.py
-      - tests/test_models_and_prompt.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: no-foreign-kills
     node_id: M10.19
     branch: feature/rm-no-foreign-kills

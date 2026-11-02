@@ -264,7 +264,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.8_reviewers-launch-without-repo_d49d09d3-7368-42a6-9c72-7839e29b3447.md",
       "sibling_order": 8,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Reviewers launch without repo hooks or MCP",
       "touch_zones": [
         "specy_road/review_files.py",

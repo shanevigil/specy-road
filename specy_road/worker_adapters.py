@@ -224,6 +224,15 @@ class ClaudeCode(Adapter):
                        *self._add_dir(worktree, repo_root, node_id), STDIN_INSTRUCTION],
                       stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
+    def reviewer_launch(self, prompt_path: Path, model: str | None, reviews: Path, effort: str | None = None) -> Launch:
+        """A fresh-session reviewer's turn: ``--bare``, so the branch under review runs none of its hooks and
+        connects none of its MCP servers, and ``--add-dir`` for the hand-off directory. The instruction goes
+        right after ``-p``: ``--add-dir`` takes several values and would swallow it."""
+        return Launch(["claude", "-p", STDIN_INSTRUCTION, "--bare", *_model_flag("--model", model),
+                       *self.effort_flag(effort), "--permission-mode", "acceptEdits",
+                       "--allowedTools", "Read,Edit,Bash", "--add-dir", str(reviews)],
+                      stdin=_text(prompt_path), launch_mode="bare")
+
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
         if not d:

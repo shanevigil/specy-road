@@ -82,6 +82,47 @@ process does not hold. Still self-attested: the session flags inside a signed re
 
 Below each node it lists every problem to fix. Given one `<NODE_ID>`, the exit status is for a polling script: `0` the policy is met (`approved`) or the node is `complete_no_claim`; `1` it is not met (`waiting`, `in-review`, `blocked`, `executor_blocked`, `stale`, `escalated`); `2` it cannot be determined (`unclaimed`, `error`, or `--ref` without a node). The sweep with no `<NODE_ID>` only reports and exits 0. **Review-loop escalation:** a round is one reviewed commit in `history/`; when the last `escalate_same_acceptance_blocks` rounds all block on one acceptance id, or after `escalate_review_rounds` rounds, an unapproved leaf is `escalated` with its trigger named (`review list` prints it too, and reviewer prompts say so). `specy-road prompt <NODE_ID> --role rca --model <id>` (a rostered reviewer that neither implemented nor reviewed the leaf) then builds a root-cause prompt from the brief, every round's records side by side and the diffs between them; the analyst writes `RCA-<round>.md` beside the reviews with a classification (specification, implementation, test, reviewer, environment, hard problem), cited evidence, the cheapest corrective action and, for a specification cause, a proposed acceptance rewrite for a human to approve. A valid record resolves the trigger and counting restarts; an invalid one is listed as a problem. Design: [design-notes/review-loop-rca.md](design-notes/review-loop-rca.md).
 
+## Reviewer launch mode
+
+A reviewer is a fresh session reading a branch it did not write, so that branch
+must not run code in the reviewer's session before the reviewer has read it.
+Claude Code's headless docs say that without `--bare`, a `-p` session runs the
+hooks in a project's `.claude/settings.json` and connects the servers in its
+`.mcp.json`, even in a folder you have never trusted, with no trust dialog or
+per-server prompt ([code.claude.com/docs/en/headless](https://code.claude.com/docs/en/headless)).
+A leaf that edits those files would run its own code in its reviewer's session.
+Bare mode loads none of them (nor skills, plugins or CLAUDE.md), and it starts
+faster.
+
+`specy-road prompt <NODE_ID> --role reviewer --model <id> --channel cli`, for a
+roster entry with `harness: claude-code` and no `channels.cli`, therefore runs
+
+```text
+claude -p "<instruction>" --bare --model <api_id> [--effort <level>] --permission-mode acceptEdits \
+  --allowedTools Read,Edit,Bash --add-dir <work/reviews/NODE_ID> < <prompt file>
+```
+
+`--add-dir` lets the reviewer write its notes into the hand-off directory, which
+is in the main checkout even when the reviewer runs in a worktree. Bare mode
+never reads OAuth credentials or the keychain, so it needs `ANTHROPIC_API_KEY`
+(or an `apiKeyHelper`) instead of a subscription login; the command prints a
+note saying so. A `channels.cli` is run as written, and other harnesses use
+their profile's `access.cli` as before.
+
+The reviewer prompt asks the reviewer to say how it was started:
+`specy-road review record … --launch-mode full|bare|explicit` stores
+`launch_mode` on the record (before signing, so a signature covers it):
+
+| Value | The reviewer's harness |
+|---|---|
+| `full` | loaded the repository's hooks, MCP servers and instructions, as an interactive session does |
+| `bare` | loaded none of them (Claude Code `--bare`) |
+| `explicit` | loaded only the settings and MCP servers its command named (for example `--setting-sources` with `--strict-mcp-config`) |
+
+The field is optional and self-attested, like `fresh_session`; the gate does
+not read it. `handoff status` prints it on each review line (`launch mode
+bare`) and in `--json` as each review's `launch_mode`.
+
 ## Test integrity in the review packet
 
 `specy-road review-packet` inserts a **Test integrity** section immediately after **Changed paths**. It lists the same one-line findings as `specy-road integrity <NODE_ID>` (removed tests, removed test files, new skips, lost asserts, pytest-related config edits, new lint suppressions, widened baselines), or `_none_` when there are none. The section is computed from git objects only and is byte-identical for the same base and head commits. Reviewers use it to spot test weakening without running the CLI separately.

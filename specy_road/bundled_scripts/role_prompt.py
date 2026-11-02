@@ -25,11 +25,15 @@ shipped profiles' form) by the prompt text as one argument, ``{prompt}`` by the
 prompt file's path, ``{effort}`` by the roster harness's flag for the profile's
 ``effort_by_role`` level for the role. The profile is read from the integration branch,
 like the roster; a working-tree copy that differs is refused. ``paste`` and ``subagent`` only write the file.
+A reviewer on a ``claude-code`` roster entry without ``channels.cli`` runs bare instead
+(:meth:`ClaudeCode.reviewer_launch`): a fresh session reading a branch it did not write runs none
+of that branch's hooks or MCP servers, and the reviewer prompt asks it to record ``--launch-mode``.
 """
 
 from __future__ import annotations
 
 import argparse
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +70,14 @@ from specy_road.runtime_paths import add_repo_root_arg, project_prefix, resolve_
 CHANNELS = ("cli", "paste", "subagent")
 # `rca` is not a roster role or a profile score: any rostered reviewer that is not a party may analyse.
 PROMPT_ROLES = (*ROLES, "rca")
+LAUNCH_MODE_LINES = [
+    "Add `--launch-mode full|bare|explicit` to that `review record` command, naming how this session was "
+    "started: `bare` for Claude Code's `--bare` (no repository hooks, skills, MCP servers or CLAUDE.md; "
+    "`specy-road prompt --channel cli` starts a Claude Code reviewer that way), `explicit` when the command "
+    "named exactly which settings and MCP servers to load, `full` when it loaded the repository's own as an "
+    "interactive session does.",
+    "",
+]
 
 
 def has_subagents(prof: Profile | None) -> bool:
@@ -134,7 +146,7 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
         if has_subagents(prof):
             lines += [SUBAGENT_LINE, ""]
     elif role == "reviewer":
-        lines += reviewer_preamble(node_id, model, ref) + escalated_note(loop, node_id)
+        lines += reviewer_preamble(node_id, model, ref) + LAUNCH_MODE_LINES + escalated_note(loop, node_id)
     elif role == "rca":
         lines += rca_preamble(root, node_id, model, loop.escalation) + [DATA_LINE, ""]
     else:
@@ -152,8 +164,25 @@ def build_prompt(root: Path, node_id: str, *, role: str, model: str,  # noqa: C9
     return "\n".join(lines) + "\n", prof, None
 
 
+def run_bare_reviewer(prof: Profile | None, prompt_path: Path, root: Path, model: str | None, reviews: Path,
+                      level: str | None) -> int:
+    """The default Claude Code reviewer command: bare, with ``--add-dir`` for the hand-off directory."""
+    api_id = prof.api_id if prof is not None else model
+    api_id = None if (api_id or "").strip().lower() in ("", "unknown") else api_id   # unknown: the harness default
+    launch = ADAPTERS["claude-code"].reviewer_launch(prompt_path, api_id, reviews, level)
+    print("note: the reviewer runs with --bare (no repository hooks, MCP servers or CLAUDE.md), and bare mode "
+          "never reads your subscription login: it needs ANTHROPIC_API_KEY (or an apiKeyHelper)", file=sys.stderr)
+    print(f"running: {shlex.join(launch.argv)} < {prompt_path}", file=sys.stderr)
+    try:
+        return subprocess.run(launch.argv, input=launch.stdin, text=True, cwd=root, check=False).returncode
+    except OSError as e:   # e.g. no `claude` on PATH
+        print(f"error: could not launch claude: {e.strerror}", file=sys.stderr)
+        return 1
+
+
 def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflight: str | None = None,
-                    entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None) -> int:
+                    entry_cli: str | None = None, *, harness: str | None = None, role: str | None = None,
+                    model: str | None = None, reviews: Path | None = None) -> int:
     if preflight:
         # Proposal §3.6: e.g. confirm which process owns a local model's port.
         # It runs before anything else is even inspected: a failed check stops
@@ -163,6 +192,10 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
         if rc != 0:
             print(f"error: preflight failed (exit {rc}); nothing was sent", file=sys.stderr)
             return rc
+    # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
+    level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
+    if role == "reviewer" and harness == "claude-code" and not entry_cli and reviews is not None:
+        return run_bare_reviewer(prof, prompt_path, root, model, reviews, level)
     cli = entry_cli or (prof.cli() if prof else None)   # the roster's channels.cli wins, as `worker delegate` has it
     if not cli:
         print("error: --channel cli needs a roster `channels.cli` or an `access.cli` in the model's profile", file=sys.stderr)
@@ -171,8 +204,6 @@ def run_cli_channel(prof: Profile | None, prompt_path: Path, root: Path, preflig
     if why:
         print(f"error: the cli has {why}: {cli}", file=sys.stderr)
         return 1
-    # `rca` is a reviewer's turn; a harness the roster does not name has no effort flag.
-    level = prof.effort("reviewer" if role == "rca" else role) if prof and role else None
     note = effort_note(cli, level)
     if note:
         print(note, file=sys.stderr)
@@ -216,7 +247,8 @@ def main(argv: list[str] | None = None) -> None:
     if prof is None:
         print(f"note: no profile for {ns.model!r}; the prompt has no model notes (see `specy-road models list`)", file=sys.stderr)
     raise SystemExit(run_cli_channel(prof, out, root, entry.get("preflight"), (entry.get("channels") or {}).get("cli"),
-                                     harness=entry.get("harness"), role=ns.role)
+                                     harness=entry.get("harness"), role=ns.role, model=ns.model,
+                                     reviews=reviews_dir(root, ns.node_id))
                      if ns.channel == "cli" else 0)
 
 
