@@ -109,10 +109,26 @@ Follow-ups outside the zones (not done):
     `capture_commands` names it. No assertion was loosened.
 - **Docs.** `docs/orchestration-models.md` states both rules.
 
+## Review round 2 (gpt-6.1-sol block, R3)
+
+- **R3 — multi-line `access.cli`.** `render_profile` now replaces the whole `access.cli`
+  value, not only its first line.
+  - **Scope.** The search runs inside the block-style `access:` mapping (`_ACCESS_BLOCK`), so
+    it cannot touch a `cli:` key under another mapping.
+  - **What counts as the value.** The key line plus every continuation line indented deeper
+    than the key, with blank lines between them (`_CLI_VALUE`). That covers folded and literal
+    block scalars and quoted scalars broken across lines.
+  - **Untouched.** Everything outside that span stays byte-identical. The `access:` line must
+    end at its line end or a comment, so a flow mapping (`access: { … }`) is still refused, as
+    in round 1.
+- **Regression through `main`:** `test_render_replaces_a_folded_multi_line_cli_whole`. It uses
+  a `>-` folded scalar with a blank line inside. `--check` exits 1, `--render` exits 0,
+  `--check` then exits 0, and the file is byte-identical to the shipped profile.
+
 ## Verification
 
-- `python -m pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 42 passed (after
-  round 1).
+- `python -m pytest tests/test_harness_facts.py -q -p no:cacheprovider`: 43 passed (after
+  round 2).
 - `python -m pytest -q -x -p no:cacheprovider`: 3018 passed, 2 skipped (18 min, before
   round 1; round 1 reran only the touched test file, as instructed).
 - `python -m specy_road.bundled_scripts.refresh_profiles --check`: exit 0 (this repository
@@ -131,6 +147,8 @@ Follow-ups outside the zones (not done):
   `write_capture`, `CaptureDiff`). Needed for A1–A3.
 - `harness_facts._ACCESS_LINE` and the insert branch in `render_profile` — restore a removed
   `access.cli` (review R1).
+- `harness_facts._ACCESS_BLOCK` / `_CLI_VALUE` (replacing `_CLI_LINE` / `_ACCESS_LINE`) — the
+  whole `access.cli` value, scoped to the `access:` mapping (review R3).
 - Completeness guard in `classify_capture` — a capture missing a commanded or accepted file is
   refused (review R2).
 - `refresh_profiles._report_render` — `--render` reports only applied updates and exits 1 on
@@ -151,8 +169,8 @@ Follow-ups outside the zones (not done):
   — the accepted captures (A3).
 - `specy_road/templates/project/schemas/harness-facts.schema.json` — the schema (A1).
 - `specy_road/templates/project/model-profiles/README.md` — the rendered harness block (A2).
-- `tests/test_harness_facts.py` — 42 tests (the 3 added in round 1 are listed under Review
-  round 1):
+- `tests/test_harness_facts.py` — 43 tests (the 3 added in round 1 and the 1 added in round 2
+  are listed under their review rounds):
   - the fixture validates and covers the roster; each schema rule rejects a broken record;
   - an unverified fact needs no source, and a duplicate id is refused;
   - the shipped files are render-identical;
