@@ -32,6 +32,7 @@ _SCRIPTS = {
     "registry-prune": "registry_prune.py",
     "mark-implementation-reviewed": "mark_implementation_reviewed.py",
     "review-packet": "review_packet.py",
+    "integrity": "integrity_cli.py",
     "prompt": "role_prompt.py",
     "finish-this-task": "finish_task.py",
     "grind-session": "grind_session.py",

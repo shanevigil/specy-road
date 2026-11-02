@@ -147,7 +147,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.5_integrity-report_1ce37cd5-2f56-4774-845b-fccc6664458e.md",
       "sibling_order": 5,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road integrity reports removed tests, new skips, lost asserts and test-config changes on a leaf, and the packet shows them",
       "touch_zones": [
         "specy_road/integrity.py",

@@ -13,6 +13,10 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road integrity <NODE_ID>` compares a leaf to its merge base using git
+  objects only and reports removed tests, new skips, lost asserts and pytest
+  config edits; `review-packet` includes the same findings under **Test
+  integrity** after **Changed paths** (`--json` on the CLI).
 - READY hand-offs may declare optional `blocked_on` (`{acceptance, reason}` per
   brief acceptance id). `handoff status` reports `executor_blocked` while that
   READY is current; `mark-implementation-reviewed` and `finish-this-task`
