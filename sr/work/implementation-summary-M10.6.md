@@ -1,7 +1,7 @@
 # Implementation summary: `M10.6` — Measure whether lower reviewer effort changes verdicts
 
 Branch `feature/rm-measure-whether-lower-reviewer`, base `d9fc67a57eccdbd9a05bb3d40595b8f7dfba65b9`,
-implementation commit `6792da65`.
+implementation commits `6792da65` and `b689f2d7` (round 2).
 
 ## Acceptance
 
@@ -29,6 +29,16 @@ implementation commit `6792da65`.
   It still names M10.6, which `test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below`
   checks.
 
+## Round 2 (REVIEW-gpt-6.1-sol, block, R1)
+
+- **R1 fixed in `b689f2d7`:** `main` resolves the study directory to an absolute path. Each
+  reviewer runs with its own directory as cwd, so a relative `-o` used to pass a prompt path
+  the reviewer could not open. The study was not re-run (the budget is spent); the recorded
+  runs used an absolute `-o`, so their results stand.
+- The tests' fake reviewer now reads the prompt file it is given (a missing file fails the
+  run). A new test runs with a relative `-o` and checks that every row has a parsed verdict
+  and exit 0. With the round-1 script, that test fails.
+
 ## Deviations and notes for the coordinator
 
 - **Sol ran on Cursor, not Codex.** The roster's `gpt-6.1-sol` command
@@ -52,8 +62,9 @@ changed), `tests/test_review_effort_study.py`. Nothing else changed.
 
 ## Verification
 
-- `pytest tests/test_review_effort_study.py tests/test_models_and_prompt.py -q`: 35 passed
-- `pytest -q` (full suite): 2989 passed, 2 skipped
+- Round 2: `pytest tests/test_review_effort_study.py -q`: 11 passed
+- Round 1: `pytest tests/test_review_effort_study.py tests/test_models_and_prompt.py -q`: 35 passed
+- Round 1: `pytest -q` (full suite): 2989 passed, 2 skipped
 - `ruff check scripts/review_effort_study.py tests/test_review_effort_study.py`: clean
 - `specy-road file-limits`: OK
 - `python scripts/check_test_private_imports.py`: 0 new
@@ -75,13 +86,15 @@ changed), `tests/test_review_effort_study.py`. Nothing else changed.
 - Cursor id without a `-<level>` suffix, or not present in the command → refused.
 - Study over `--max-runs` → refused whole (maintainer's 12-run budget).
 - Non-reviewer roster id or missing packet → refused before any run.
+- Study directory resolved to an absolute path (round 2, R1) → a relative `-o` still gives each reviewer a prompt path it can open from its own cwd.
 - Reviewer timeout → row with `exit_code: timeout`, output kept.
 
 ### Mocks
-- `fake.py` in the tests: a stand-in reviewer command that records its argv in its run directory and prints a verdict block (or exits 3 with none).
+- `fake.py` in the tests: a stand-in reviewer command that records its argv in its run directory, reads the prompt file it is given, and prints a verdict block (or exits 3 with none).
 
 ### Tests (tests/test_review_effort_study.py)
 - `test_flag_harness_passes_each_level_through_effort_and_writes_one_row_per_run`: A1 rows, columns and `{effort}` expansion.
+- `test_relative_output_dir_still_hands_each_reviewer_a_readable_prompt`: R1, a relative `-o` with a reviewer that reads its prompt.
 - `test_cursor_level_swaps_the_effort_suffix_of_the_model_id`: Cursor's level is carried by the model id.
 - `test_flag_harness_without_effort_placeholder_is_refused_before_any_run`: no silent same-command study.
 - `test_cursor_id_without_effort_suffix_is_refused`: the Cursor guard.
