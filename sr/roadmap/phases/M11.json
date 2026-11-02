@@ -116,7 +116,8 @@
         "specy_road/worker_lease.py",
         "specy_road/worker_runner.py",
         "specy_road/worker_process.py",
-        "specy_road/worker_reconcile.py"
+        "specy_road/worker_reconcile.py",
+        "specy_road/bundled_scripts/worker_cli.py"
       ],
       "type": "task"
     },
@@ -215,7 +216,10 @@
         "specy_road/review_gate.py",
         "specy_road/templates/project/schemas/orchestration.schema.json",
         "docs/orchestration-review.md",
-        "tests/"
+        "tests/",
+        "specy_road/schemas/review-record.schema.json",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/orchestration_config.py"
       ],
       "type": "task"
     },
