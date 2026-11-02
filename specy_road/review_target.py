@@ -10,6 +10,11 @@ bookkeeping commits. Reading the branch tip instead of checking it out matters:
 a coordinator in a checkout shared with executors must not switch branches
 (proposal §3.4). A registered branch that exists nowhere is an error, never a
 silent fall back to ``HEAD``.
+
+A **milestone** (a node with leaf children) has no claim: its full review
+targets the integration tip, and its base is the first parent of the oldest
+``register as in-progress`` commit of any leaf under it that the tip reaches,
+so the diff is the milestone's combined change (:func:`milestone_review_base`).
 """
 
 from __future__ import annotations
@@ -42,6 +47,7 @@ class ReviewTarget:
     commit: str | None
     base_ref: str | None
     base: str | None
+    milestone: bool = False   # reviewed as a whole at the integration tip, not as a claimed leaf
 
     @property
     def node_id(self) -> str:
@@ -51,6 +57,10 @@ class ReviewTarget:
     def touch_zones(self) -> list[str]:
         entry = self.entry or {}
         return list(entry.get("touch_zones") or self.node.get("touch_zones") or [])
+
+    @property
+    def leaf_ids(self) -> list[str]:
+        return [n["id"] for n in leaf_descendants(self.nodes, self.node_id)]
 
 
 def full_sha(repo_root: Path, rev: str | None) -> str | None:
@@ -130,6 +140,62 @@ def reviewed_commit(repo_root: Path, ref: str, base: str | None) -> str | None:
     return tip
 
 
+def leaf_descendants(nodes: list[dict[str, Any]], node_id: str) -> list[dict[str, Any]]:
+    """The leaves under ``node_id`` (nodes with no children), in graph order."""
+    children: dict[str, list[dict[str, Any]]] = {}
+    for n in nodes:
+        if isinstance(n.get("parent_id"), str):
+            children.setdefault(n["parent_id"], []).append(n)
+    out: list[dict[str, Any]] = []
+    stack = list(reversed(children.get(node_id, [])))
+    while stack:
+        n = stack.pop()
+        kids = children.get(n.get("id"), [])
+        if kids:
+            stack.extend(reversed(kids))
+        else:
+            out.append(n)
+    return out
+
+
+def is_milestone(nodes: list[dict[str, Any]], node_id: str) -> bool:
+    """A node reviewed as a whole: it has at least one leaf child of its own."""
+    children: dict[str, int] = {}
+    for n in nodes:
+        if isinstance(n.get("parent_id"), str):
+            children[n["parent_id"]] = children.get(n["parent_id"], 0) + 1
+    return any(n.get("parent_id") == node_id and n.get("id") not in children for n in nodes)
+
+
+REGISTER_SUBJECT = "register as in-progress"   # pickup's bookkeeping commit: chore(rm-<codename>): ...
+
+
+def milestone_review_base(repo_root: Path, nodes: list[dict[str, Any]], node_id: str, tip: str) -> str | None:
+    """Where the milestone's combined change starts: the first parent of the oldest leaf registration.
+
+    Each leaf's pickup commits ``chore(rm-<codename>): register as in-progress``
+    on its branch from the integration point it started at, so that commit's
+    first parent is the leaf's branch point. With several leaves the common
+    ancestor of their branch points is the earliest one. ``None`` when no leaf
+    under ``node_id`` has such a commit reachable from ``tip``.
+    """
+    codenames = {n.get("codename") for n in leaf_descendants(nodes, node_id) if n.get("codename")}
+    wanted = {f"chore(rm-{c}): {REGISTER_SUBJECT}" for c in codenames}
+    log = git_text(["log", "--format=%H %s", f"--grep={REGISTER_SUBJECT}", "--fixed-strings", tip], repo_root) or ""
+    parents = []
+    for line in log.splitlines():
+        sha, _, subject = line.partition(" ")
+        if any(subject.startswith(w) for w in wanted):
+            parent = full_sha(repo_root, f"{sha}^1")
+            if parent and parent not in parents:
+                parents.append(parent)
+    if not parents:
+        return None
+    if len(parents) == 1:
+        return parents[0]
+    return git_text(["merge-base", "--octopus", *parents], repo_root) or None
+
+
 def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> ReviewTarget:
     """Build the target for ``node_id``; raises :class:`ReviewTargetError`."""
     nodes = load_roadmap(repo_root)["nodes"]
@@ -140,10 +206,22 @@ def resolve_target(repo_root: Path, node_id: str, ref: str | None = None) -> Rev
     ib, remote, _warn = resolve_integration_defaults(
         repo_root, explicit_base=None, explicit_remote=None
     )
+    bref = base_ref(repo_root, remote, ib)
+    if is_milestone(nodes, node_id) and not (entry or {}).get("branch"):
+        use_ref = ref or bref
+        if use_ref is None:
+            raise ReviewTargetError(
+                f"{node_id} is a milestone: its full review targets the integration branch {ib!r}, "
+                "which is neither local nor remote-tracking; run git fetch, or pass --ref"
+            )
+        tip = full_sha(repo_root, use_ref)
+        if tip is None:
+            raise ReviewTargetError(f"cannot resolve {use_ref!r} to a commit")
+        return ReviewTarget(node, nodes, entry, use_ref, tip, bref,
+                            milestone_review_base(repo_root, nodes, node_id, tip), milestone=True)
     use_ref = ref or default_ref(repo_root, entry or {"node_id": node_id}, remote)
     if not full_sha(repo_root, use_ref):
         raise ReviewTargetError(f"cannot resolve {use_ref!r} to a commit")
-    bref = base_ref(repo_root, remote, ib)
     base = git_text(["merge-base", bref, use_ref], repo_root) if bref else None
     commit = reviewed_commit(repo_root, use_ref, base)
     return ReviewTarget(node, nodes, entry, use_ref, commit, bref, base)
@@ -155,3 +233,45 @@ def resolve_target_or_exit(repo_root: Path, node_id: str, ref: str | None = None
     except ReviewTargetError as e:
         print(f"error: {e}", file=sys.stderr)
         raise SystemExit(1) from e
+
+
+# --- Milestone full review: what every command says about it (policy.milestone_full_review) ---
+
+MILESTONE_SUMMARY = "_A milestone has no implementation summary: each leaf's was reviewed with that leaf._"
+
+
+def milestone_status(t: ReviewTarget, state: str) -> tuple[str, list[str]]:
+    """``(state, next-step lines)`` for ``handoff status`` and ``review list``; unchanged for a leaf.
+
+    A finished milestone whose gate is not met is ``awaiting_full_review``; a
+    Complete one is ``complete_no_claim``, like a leaf whose claim is released.
+    """
+    if not t.milestone:
+        return state, []
+    if t.node.get("status") == "Complete":
+        return "complete_no_claim", []
+    if state not in ("approved", "blocked", "escalated"):
+        state = "awaiting_full_review"
+    if state == "approved":
+        return state, [f"milestone full review met: specy-road mark-implementation-reviewed {t.node_id} sets it Complete"]
+    return state, [f"milestone full review pending (policy.milestone_full_review): specy-road review-packet {t.node_id}; "
+                   f"approval releases the rollup with specy-road mark-implementation-reviewed {t.node_id}"]
+
+
+def milestone_packet_lines(t: ReviewTarget) -> list[str]:
+    """The packet header line naming the leaves a milestone's combined change covers."""
+    if not t.milestone:
+        return []
+    ids = ", ".join(f"`{i}`" for i in t.leaf_ids) or "none"
+    return [f"- **Milestone full review:** the combined change of its leaves ({ids}) from the first leaf's branch "
+            f"point to the integration tip (`policy.milestone_full_review`); approval closes it with "
+            f"`specy-road mark-implementation-reviewed {t.node_id}`"]
+
+
+def milestone_base_or_exit(t: ReviewTarget) -> None:
+    """``review-packet`` needs the milestone's start; without a leaf registration only ``--base`` gives one."""
+    if t.milestone and not t.base:
+        print(f"error: no 'register as in-progress' commit of a leaf under {t.node_id} is reachable from {t.ref}, "
+              "so the milestone's combined change has no start; pass --base <the commit before its first leaf>",
+              file=sys.stderr)
+        raise SystemExit(1)

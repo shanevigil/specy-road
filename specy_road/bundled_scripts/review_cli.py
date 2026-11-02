@@ -39,7 +39,7 @@ from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
-from specy_road.review_target import ReviewTarget, ReviewTargetError, resolve_target, same_commit
+from specy_road.review_target import ReviewTarget, ReviewTargetError, milestone_status, resolve_target, same_commit
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.session_presence import list_sessions
 from specy_road.worker_state import list_records
@@ -69,14 +69,12 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     blocked_lines = (
         executor_blocked_display_lines(ready) if same_commit(root, ready_commit, t.commit) else []
     )
-    tm = trial_merge(root, t.ref, t.base_ref)
-    merge_problem = [tm.problem()] if tm and tm.problem() else []
     loop = loop_state(root, node_id)
     escalated = loop.escalation is not None and not gate.passed
-    if blocked_lines:
-        state = "executor_blocked"
-    else:
-        state = "escalated" if escalated else _state(root, t, gate, ready_commit)
+    state = "executor_blocked" if blocked_lines else "escalated" if escalated else _state(root, t, gate, ready_commit)
+    state, hints = milestone_status(t, state)
+    tm = trial_merge(root, t.ref, t.base_ref)
+    merge_problem = ([tm.problem()] if tm and tm.problem() else []) + hints
     return {
         "node_id": node_id,
         "state": state,
@@ -339,6 +337,8 @@ def cmd_review_list(ns: argparse.Namespace) -> int:
         print(f"gate at {t.ref} @ {(gate.commit or '?')[:12]}: {gate.summary()}")
         for p in gate.problems():
             print(f"  - {p}")
+        for line in milestone_status(t, "approved" if gate.passed else "waiting")[1]:
+            print(line)
     if loop.escalation and (t is None or not gate.passed):
         print(_escalation_line(ns.node_id, loop.escalation.describe()).strip())
     return 0

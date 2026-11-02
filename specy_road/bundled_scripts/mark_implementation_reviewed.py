@@ -9,6 +9,10 @@ step. ``--yes`` never creates a review: it only commits an approval the
 recorded reviews already earned, so an unattended coordinator cannot approve
 its own work. The approving reviews are written as ``Reviewed-by`` trailers on
 the registry commit.
+
+With a milestone id it closes that milestone's full review instead: the same gate
+at the integration tip, then the milestone and the stale ancestors above it are
+set Complete in one roadmap commit (``policy.milestone_full_review``).
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -29,8 +34,10 @@ from specy_road.review_gate import (
     trial_merge_or_exit,
     write_human_approval,
 )
-from specy_road.review_target import resolve_target_or_exit
+from specy_road.review_target import is_milestone, resolve_target_or_exit
 from specy_road.feature_rm_registry import resolve_feature_rm_registry_context
+from specy_road.finish_ancestor_rollup import complete_reviewed_milestone
+from specy_road.generated_files import GENERATED_COMMITTED, unstageable_generated_files
 from specy_road.registry_yaml import registry_path, write_registry
 from specy_road.runtime_paths import add_repo_root_arg, resolve_repo_root
 from specy_road.bundled_scripts.repo_ops import current_branch, git_run, working_tree_clean
@@ -196,16 +203,18 @@ def _gate_or_human_approval(
     branch: str | None,
     summary_text: str,
     walkthrough: str | None,
+    commit: str | None = None,
 ) -> GateResult:
     """The passing gate, after an interactive human approval if one completes it.
 
     Exits 0 when the human declines, and 1 when the recorded reviews fall short
     and a human approval here could not (or may not) make up the difference.
+    ``commit`` is the commit under review when it is not ``HEAD`` (a milestone's integration tip).
     """
     gate = evaluate_gate(
         ROOT,
         node,
-        resolve_target_or_exit(ROOT, node["id"], "HEAD").commit,
+        commit or resolve_target_or_exit(ROOT, node["id"], "HEAD").commit,
         branch=branch,
     )
     _print_gate(gate)
@@ -275,8 +284,52 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         action="store_true",
         help="Allow approving when the implementation summary file is missing (loud warning).",
     )
+    p.add_argument("node_id", nargs="?", help="A milestone id: close its full review at the integration tip and set "
+                   "it Complete (policy.milestone_full_review). Without it, the current feature branch's leaf.")
     add_repo_root_arg(p)
     return p.parse_args(argv)
+
+
+def _close_milestone(args: argparse.Namespace, node_id: str) -> None:
+    """Pass the milestone's gate at the integration tip, then commit its Complete status."""
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+
+    nodes = load_roadmap(ROOT)["nodes"]
+    node = next((n for n in nodes if n.get("id") == node_id), None)
+    if node is None:
+        print(f"error: unknown node id: {node_id}", file=sys.stderr)
+        raise SystemExit(1)
+    if not is_milestone(nodes, node_id):
+        print(f"error: {node_id} is not a milestone (no leaf children); a leaf is marked reviewed from its "
+              "feature branch, without a node id.", file=sys.stderr)
+        raise SystemExit(1)
+    if node.get("rollup_status") != "Complete":
+        print(f"error: {node_id} still has unfinished leaves ({node.get('rollup_status')}); its full review "
+              "closes it only after the last one lands.", file=sys.stderr)
+        raise SystemExit(1)
+    target = resolve_target_or_exit(ROOT, node_id)
+    print(f"Milestone full review — [{node_id}] at {target.ref}\n")
+    gate = _gate_or_human_approval(args, node, branch=None, summary_text="", walkthrough=None,
+                                   commit=target.commit)
+    if not working_tree_clean(ROOT, except_work=True):
+        print("error: working tree is not clean (commit, stash, or discard changes outside work/ first).",
+              file=sys.stderr)
+        raise SystemExit(1)
+    changed = complete_reviewed_milestone(ROOT, node_id)   # the checks above make its ValueError unreachable
+    if not changed:
+        print(f"{node_id} is already Complete; nothing to commit.")
+        return
+    for command in ("validate", "export", "digest"):   # the generated files follow the status, as in finish
+        subprocess.check_call([sys.executable, "-m", "specy_road.cli", command, "--repo-root", str(ROOT)], cwd=ROOT)
+    refused = set(unstageable_generated_files(ROOT))
+    paths = changed + [n for n in GENERATED_COMMITTED if n not in refused and (ROOT / n).exists()]
+    message = f"roadmap: {node_id} full review approved; status -> Complete"
+    trailers = commit_trailers(gate)
+    if trailers:
+        message += "\n\n" + "\n".join(trailers)
+    git_run(ROOT, "add", *paths)
+    git_run(ROOT, "commit", "-m", message, "--", *paths)
+    print(f"[ok] committed {node_id} -> Complete")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -294,6 +347,10 @@ def main(argv: list[str] | None = None) -> None:
             "When disabled, use specy-road finish-this-task directly after implementation.",
         )
         raise SystemExit(0)
+
+    if args.node_id:
+        _close_milestone(args, args.node_id)
+        return
 
     branch = current_branch(ROOT)
     if not branch.startswith("feature/rm-"):

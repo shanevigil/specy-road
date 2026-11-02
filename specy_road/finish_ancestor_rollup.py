@@ -12,19 +12,31 @@ Nodes carrying a ``milestone_execution`` block are skipped on purpose: their
 status is owned by the milestone-rollup state machine, which closes them only
 once the rollup branch is proven merged (see
 ``bundled_scripts/reconcile_milestone_status.py``).
+
+With ``policy.milestone_full_review`` on (the default, read like the rest of
+the review policy) a milestone — a node with leaf children — is **held** when
+its last leaf finishes: it keeps its authored status until a full review of
+its combined change passes the review gate at the integration tip, and the
+ancestors above it wait with it. ``specy-road mark-implementation-reviewed
+<MILESTONE_ID>`` then closes it through :func:`complete_reviewed_milestone`.
 """
 
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 
-def rolled_up_stale_ancestor_ids(nodes: list[dict], node_id: str) -> list[str]:
+def rolled_up_stale_ancestor_ids(
+    nodes: list[dict], node_id: str, held: Callable[[str], str | None] | None = None
+) -> list[str]:
     """Ancestors of ``node_id`` that rolled up to Complete but say otherwise.
 
     Nearest ancestor first, so a phase is only reached after the milestone
-    beneath it has been closed.
+    beneath it has been closed. ``held(ancestor_id)`` returns why that ancestor
+    must keep its status (its full review is pending), which ends the walk:
+    nothing above a held milestone closes before it does.
     """
     by_id = {n["id"]: n for n in nodes if isinstance(n.get("id"), str)}
     out: list[str] = []
@@ -45,8 +57,82 @@ def rolled_up_stale_ancestor_ids(nodes: list[dict], node_id: str) -> list[str]:
             continue
         if parent.get("status") == "Complete":
             continue
+        if held is not None and held(parent_id):
+            break
         out.append(parent_id)
     return out
+
+
+def milestone_review_hold(repo_root: Path, nodes: list[dict], node_id: str) -> str | None:
+    """Why ``node_id`` keeps its status while its full review is pending, else ``None``.
+
+    Only a milestone under the review gate is held, and only while the policy
+    is on. The gate is evaluated at the milestone's review target (the
+    integration tip); a target that cannot be resolved holds too, since the
+    review cannot have happened.
+    """
+    from specy_road.orchestration_config import effective_config
+    from specy_road.review_gate import evaluate_gate, review_required
+    from specy_road.review_policy_ref import policy_source
+    from specy_road.review_target import ReviewTargetError, is_milestone, resolve_target
+
+    if not is_milestone(nodes, node_id) or not review_required(repo_root):
+        return None
+    ref, _err = policy_source(repo_root)
+    config, _err = effective_config(repo_root, ref)
+    if not config["policy"].get("milestone_full_review", True):
+        return None
+    node = next(n for n in nodes if n.get("id") == node_id)
+    try:
+        target = resolve_target(repo_root, node_id)
+    except ReviewTargetError as e:
+        return f"its full review cannot be evaluated ({e})"
+    gate = evaluate_gate(repo_root, node, target.commit)
+    if gate.passed:
+        return None
+    return f"its full review is not approved at {target.ref} ({gate.summary()})"
+
+
+def milestone_review_next_steps(node_id: str) -> str:
+    return (f"  Next, once this branch has landed: specy-road review-packet {node_id}; each reviewer: "
+            f"specy-road review record {node_id} --model <id> --verdict approve|block --file <notes.md>; "
+            f"then specy-road mark-implementation-reviewed {node_id} (policy.milestone_full_review)")
+
+
+def _print_hold(repo_root: Path, nodes: list[dict]) -> Callable[[str], str | None]:
+    """A ``held`` callback that reports each hold once and opens the hand-off directory for it."""
+    from specy_road.review_files import reviews_dir
+
+    def held(ancestor: str) -> str | None:
+        why = milestone_review_hold(repo_root, nodes, ancestor)
+        if why:
+            reviews_dir(repo_root, ancestor).mkdir(parents=True, exist_ok=True)   # handoff status lists it
+            print(f"[hold] {ancestor} rolled up to Complete but {why}; its status is unchanged.")
+            print(milestone_review_next_steps(ancestor))
+        return why
+
+    return held
+
+
+def _set_complete(root: Path, node_id: str) -> list[str]:
+    """Set ``node_id`` to Complete; the repo-relative chunk paths that changed (empty on failure)."""
+    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
+    from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
+
+    touched = [find_chunk_path(root, node_id)]
+    try:
+        edit_node_set_pairs(root, node_id, [("status", "Complete")])
+    except (OSError, ValueError) as e:
+        print(
+            f"[warn] {node_id} rolled up to Complete but could not be "
+            f"updated: {e}\n"
+            f"  Run: specy-road edit-node {node_id} --set status=Complete",
+            file=sys.stderr,
+        )
+        return []
+    print(f"[ok] {node_id} status -> Complete (all leaf descendants complete)")
+    touched.append(find_chunk_path(root, node_id))
+    return [str(c.relative_to(root)) for c in touched if c is not None]
 
 
 def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
@@ -57,8 +143,6 @@ def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
     validated; an ancestor that cannot be flipped is reported with the manual
     command rather than aborting a finish that has already succeeded.
     """
-    from specy_road.bundled_scripts.roadmap_chunk_utils import find_chunk_path
-    from specy_road.bundled_scripts.roadmap_crud_ops import edit_node_set_pairs
     from specy_road.bundled_scripts.roadmap_load import load_roadmap
 
     changed: list[str] = []
@@ -73,24 +157,32 @@ def complete_rolled_up_ancestors(repo_root: Path, node_id: str) -> list[str]:
         return changed
     # One pass is enough: a rollup is computed from leaf descendants only, so
     # closing a milestone never changes the phase above it.
-    for ancestor in rolled_up_stale_ancestor_ids(nodes, node_id):
-        touched = [find_chunk_path(root, ancestor)]
-        try:
-            edit_node_set_pairs(root, ancestor, [("status", "Complete")])
-        except (OSError, ValueError) as e:
-            print(
-                f"[warn] {ancestor} rolled up to Complete but could not be "
-                f"updated: {e}\n"
-                f"  Run: specy-road edit-node {ancestor} --set status=Complete",
-                file=sys.stderr,
-            )
-            continue
-        print(f"[ok] {ancestor} status -> Complete (all leaf descendants complete)")
-        touched.append(find_chunk_path(root, ancestor))
-        for chunk in touched:
-            if chunk is None:
-                continue
-            rel = str(chunk.relative_to(root))
+    for ancestor in rolled_up_stale_ancestor_ids(nodes, node_id, held=_print_hold(root, nodes)):
+        for rel in _set_complete(root, ancestor):
             if rel not in changed:
                 changed.append(rel)
+    return changed
+
+
+def complete_reviewed_milestone(repo_root: Path, node_id: str) -> list[str]:
+    """Close a milestone whose full review passed, then the stale ancestors above it.
+
+    The caller has checked the gate. Raises ``ValueError`` while a leaf under
+    it is still open: the review covered a change that is not finished.
+    Returns the repo-relative chunk paths that changed.
+    """
+    from specy_road.bundled_scripts.roadmap_load import load_roadmap
+
+    root = repo_root.resolve()
+    nodes = load_roadmap(root)["nodes"]
+    node = next((n for n in nodes if n.get("id") == node_id), None)
+    if node is None:
+        raise ValueError(f"unknown node id: {node_id}")
+    if node.get("rollup_status") != "Complete":
+        raise ValueError(f"{node_id} still has unfinished leaves ({node.get('rollup_status')}); "
+                         "its full review closes it only after the last one lands")
+    changed = _set_complete(root, node_id) if node.get("status") != "Complete" else []
+    for rel in complete_rolled_up_ancestors(root, node_id):
+        if rel not in changed:
+            changed.append(rel)
     return changed

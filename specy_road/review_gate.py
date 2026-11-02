@@ -303,6 +303,32 @@ def human_approval_completes(repo_root: Path, gate: GateResult, node: dict[str, 
     return len(others) + 1 >= gate.required
 
 
+def policy_source_line(root: Path) -> str:
+    """The packet's ``Policy source`` line: where the gate reads its policy from."""
+    ref, err = policy_source(root)
+    if err:
+        return f"- **Policy source:** _{err}_ (the gate fails closed)"
+    if ref is None:
+        return "- **Policy source:** _the working tree (not a git checkout)_"
+    return f"- **Policy source:** `{ref}` @ `{full_sha(root, ref) or '?'}`"
+
+
+def trial_merge_lines(root: Path, ref: str | None, integration_ref: str | None) -> list[str]:
+    """Whether the branch tip still merges into the integration branch; a code conflict stops review."""
+    tm = trial_merge(root, ref, integration_ref)
+    if tm is None:
+        return ["- **Trial merge:** _git could not answer_"]
+    ahead = f"`{tm.base_ref}` is {tm.behind} commit(s) ahead"
+    if not tm.conflicts:
+        return [f"- **Trial merge:** {ahead}; merges cleanly" if tm.behind else
+                f"- **Trial merge:** up to date with `{tm.base_ref}`"]
+    names = ", ".join(f"`{p}`" for p in tm.conflicts)
+    if tm.problem() is None:
+        return [f"- **Trial merge:** {ahead}; conflicts on bookkeeping only ({names}), which does not block"]
+    return [f"- **Trial merge:** {ahead}; **conflicts on {names}**", "",
+            f"**Stop: {tm.problem()}.** Reviewing this commit is wasted work: the merge makes it stale.", ""]
+
+
 def commit_trailers(gate: GateResult) -> list[str]:
     """``Reviewed-by`` lines for the gate commit: the durable record of who approved."""
     return [
