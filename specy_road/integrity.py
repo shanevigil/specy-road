@@ -1,21 +1,34 @@
 """Test-integrity findings between two commits, using git objects only.
 
 Compares a merge base to a leaf head: removed tests, new skips, lost asserts,
-and pytest-related config edits. Python per-function checks use AST over
-``git show <commit>:<path>``; no checkout and no writes.
+pytest-related config edits, added lint suppressions, and lines added to the
+baseline files the integration branch lists in ``policy.ratchet_paths``.
+Python per-function checks use AST over ``git show <commit>:<path>``; no
+checkout and no writes.
 """
 
 from __future__ import annotations
 
 import ast
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout
+from specy_road.orchestration_config import effective_config
+from specy_road.review_policy_ref import policy_source
 
 _CONFIG_NAMES = frozenset({"pytest.ini", "tox.ini", "setup.cfg"})
+# Lint and coverage suppression markers of Python, TypeScript/JavaScript and Go linters,
+# in any case and with any spacing after a colon
+_SUPPRESSION = re.compile(
+    r"noqa|type:\s*ignore|pragma:\s*no\s+cover|pylint:\s*disable|eslint-disable|@ts-ignore"
+    r"|@ts-expect-error|nolint",
+    re.IGNORECASE,
+)
+_HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)")
 
 
 @dataclass(frozen=True, order=True)
@@ -36,6 +49,10 @@ class Finding:
             return f"assert-loss: {self.path}::{self.test} {self.detail}"
         if self.kind == "config-change":
             return f"config-change: {self.path}"
+        if self.kind == "new-suppression":
+            return f"new-suppression: {self.path}:{self.detail}"
+        if self.kind == "baseline-widened":
+            return f"baseline-widened: {self.path} +{self.detail}"
         raise ValueError(self.kind)
 
     def as_json(self) -> dict[str, str]:
@@ -65,6 +82,9 @@ def compare_integrity(repo_root: Path, base: str, ref: str) -> list[Finding]:
             if r_count < b_count:
                 findings.append(Finding("assert-loss", path, qual, f"{b_count}->{r_count}"))
     findings.extend(_config_findings(root, base, ref))
+    added = _added_lines(root, base, ref)
+    findings.extend(_suppression_findings(added))
+    findings.extend(_ratchet_findings(added, integration_ratchet_paths(root)))
     return sorted(findings, key=lambda f: f.line())
 
 
@@ -123,6 +143,63 @@ def _config_findings(root: Path, base: str, ref: str) -> list[Finding]:
         ):
             out.append(Finding("config-change", path))
     return out
+
+
+def integration_ratchet_paths(root: Path) -> list[str]:
+    """``policy.ratchet_paths`` as committed on the integration branch; empty when unreadable."""
+    ref, err = policy_source(root)
+    if err or ref is None:
+        return []
+    config, err = effective_config(root, ref)
+    if err:
+        return []
+    return [p for p in config["policy"].get("ratchet_paths") or [] if isinstance(p, str)]
+
+
+def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, str]]]:
+    """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds."""
+    out = git_stdout([
+        "-c", "core.quotePath=off", "diff", "--no-relative", "--no-color", "--no-ext-diff",
+        "--no-textconv", "--find-renames", "--unified=0", "--src-prefix=a/", "--dst-prefix=b/",
+        base, ref,
+    ], root)
+    added: dict[str, list[tuple[int, str]]] = {}
+    path: str | None = None
+    in_header = False
+    number = 0
+    for raw in (out or "").split("\n"):
+        if raw.startswith("diff --git "):
+            path, in_header = None, True
+        elif in_header and raw.startswith("+++ "):
+            target = raw[4:]
+            # a C-quoted name: quotePath=off leaves only quotes, backslashes and control characters escaped
+            target = ast.literal_eval(target) if target.startswith('"') else target
+            path = None if target == "/dev/null" else target[2:]
+        elif raw.startswith("@@ "):
+            in_header = False
+            match = _HUNK.match(raw)
+            number = int(match.group(1)) if match else 0
+        elif not in_header and path is not None and raw.startswith("+"):
+            added.setdefault(path, []).append((number, raw[1:]))
+            number += 1
+    return added
+
+
+def _suppression_findings(added: dict[str, list[tuple[int, str]]]) -> list[Finding]:
+    return [
+        Finding("new-suppression", path, detail=str(number))
+        for path, lines in added.items()
+        for number, text in lines
+        if _SUPPRESSION.search(text)
+    ]
+
+
+def _ratchet_findings(added: dict[str, list[tuple[int, str]]], ratchet_paths: list[str]) -> list[Finding]:
+    return [
+        Finding("baseline-widened", path, detail=str(len(added[path])))
+        for path in sorted(set(ratchet_paths))
+        if added.get(path)
+    ]
 
 
 def _pytest_table_changed(base_text: str | None, ref_text: str | None) -> bool:

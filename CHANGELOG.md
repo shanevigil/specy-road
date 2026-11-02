@@ -25,6 +25,13 @@ body. Keep section bodies focused; link to PRs for detail.
   does not count. The pickup prompt lists the leaf's `planned_test_changes` and
   makes any other test removal or weakening a `blocked_on` stop. Run
   `specy-road refresh-schemas` to pick up both schema fields.
+- `specy-road integrity` (and so the review packet and the integrity gate) also
+  prints `new-suppression: <path>:<line>` for each added line, in any file, that
+  contains `noqa`, `type: ignore`, `pragma: no cover`, `pylint: disable`,
+  `eslint-disable`, `@ts-ignore`, `@ts-expect-error` or `nolint`, and
+  `baseline-widened: <path> +<added lines>` when a leaf adds lines to a file
+  listed in the new `policy.ratchet_paths` (git-root-relative, read from the
+  integration branch). Run `specy-road refresh-schemas` to pick up the key.
 - READY hand-offs may declare optional `blocked_on` (`{acceptance, reason}` per
   brief acceptance id). `handoff status` reports `executor_blocked` while that
   READY is current; `mark-implementation-reviewed` and `finish-this-task`

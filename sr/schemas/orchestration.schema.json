@@ -102,6 +102,12 @@
         "integrity_gate": {
           "type": "boolean",
           "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
+        },
+        "ratchet_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Git-root-relative paths of baseline files (clone, lint, mutation or size baselines) that a leaf may only shrink. `specy-road integrity` prints `baseline-widened: <path> +<added lines>` for each one the leaf adds lines to; read from the integration branch. Default empty."
         }
       }
     },
