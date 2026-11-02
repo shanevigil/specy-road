@@ -111,6 +111,7 @@ entries:
       - suggested_prompts/
       - CHANGELOG.md
       - tests/
+      - schemas/
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
