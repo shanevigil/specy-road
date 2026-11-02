@@ -122,6 +122,36 @@ def test_add_evidence_refuses_a_path_the_commit_does_not_hold(repo: Path) -> Non
     assert _sources(repo) == []
 
 
+def test_a_directory_is_not_a_file_to_cite(repo: Path, monkeypatch) -> None:
+    _commit(repo, "src/pay.py", PAY)
+    _started(repo)
+    code, _, err = _cli(repo, "add-evidence", "B1", "--path", "src:3", "--quote", "pay.py")
+    assert code == 1 and "a tree in the HEAD commit, not a file" in err
+    assert _sources(repo) == []
+    # A directory citation already in the session (hand-edited) never matches git's tree listing.
+    _cli(repo, "add-evidence", "B1", "--path", "src/pay.py:2", "--quote", "pay.py")
+    path = session_path(repo, SLUG)
+    path.write_text(path.read_text(encoding="utf-8").replace("path: src/pay.py:2", "path: src:3"), encoding="utf-8")
+    assert _sources(repo)[0]["path"] == "src:3"
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    code, out, _ = _cli(repo, "verify")
+    assert code == 0 and [s["verification"] for s in _sources(repo)] == ["not-found"]
+
+
+def test_a_committed_file_that_does_not_read_is_blocked_not_not_found(repo: Path, monkeypatch) -> None:
+    (repo / "src").mkdir()
+    (repo / "src" / "latin1.py").write_bytes(b"# caf\xe9\nvalue = 1\n")
+    _git(repo, "add", "src/latin1.py")
+    _git(repo, "commit", "-qm", "latin-1 file")
+    _started(repo)
+    code, _, err = _cli(repo, "add-evidence", "B1", "--path", "src/latin1.py:2", "--quote", "value = 1")
+    assert code == 0, err
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    code, out, _ = _cli(repo, "verify")
+    assert code == 0 and "B1 blocked" in out
+    assert [s["verification"] for s in _sources(repo)] == ["blocked"]
+
+
 def test_repo_source_states_and_quote_spans() -> None:
     assert bv.split_path("src/a.py:12") == ("src/a.py", 12)
     assert bv.split_path("src/a.py") == ("src/a.py", None)

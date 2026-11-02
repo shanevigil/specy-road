@@ -35,7 +35,7 @@ from urllib.parse import urljoin, urlsplit
 from specy_road.bundled_scripts.brainstorm_research import _is_off_host  # noqa: PLC2701 — same guard as the GUI
 from specy_road.bundled_scripts.brainstorm_fields import REPO, is_no_result
 from specy_road.bundled_scripts.brainstorm_session import BrainstormError, BrainstormSession, Idea
-from specy_road.git_subprocess import git_ok, git_stdout, head_sha
+from specy_road.git_subprocess import git_ok, git_stdout, git_text, head_sha
 
 TIMEOUT_SECONDS = 20
 MAX_BYTES = 2_000_000
@@ -157,14 +157,17 @@ def split_path(cited: str) -> tuple[str, int | None]:
 
 
 def repo_commit(root: Path, cited: str) -> str:
-    """The ``HEAD`` commit a repo source records; refuses a path that commit does not hold."""
+    """The ``HEAD`` commit a repo source records; refuses a path that commit does not hold as a file."""
     path, _line = split_path(cited)
     commit = head_sha(root)
     if not path or commit is None:
         raise BrainstormError("--path FILE[:LINE] needs a git checkout with a commit to cite")
-    if not git_ok(["cat-file", "-e", f"{commit}:./{path}"], root)[0]:
+    kind = git_text(["cat-file", "-t", f"{commit}:./{path}"], root)
+    if kind is None:
         raise BrainstormError(f"--path {path}: not in the HEAD commit {commit[:12]}; "
                               "commit it first so verify can check the quote against it")
+    if kind != "blob":
+        raise BrainstormError(f"--path {path}: a {kind} in the HEAD commit, not a file; cite a file")
     return commit
 
 
@@ -189,14 +192,20 @@ def quote_in_file(text: str, quote: str, line: int | None) -> bool:
 
 
 def check_repo_source(source: dict[str, Any], root: Path | None) -> str:
-    """A repo source's state, read from its commit with no network: ``blocked`` when the commit is gone."""
+    """A repo source's state, read from its commit with no network.
+
+    ``not-found`` when the commit holds no file at the path (a directory is not
+    one); ``blocked`` when the commit is gone or the file cannot be read as text.
+    """
     path, line = split_path(str(source.get("path", "")))
     commit = str(source.get("commit", ""))
     if root is None or not commit or not git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], root)[0]:
         return "blocked"
-    text = git_stdout(["show", f"{commit}:./{path}"], root)
-    if text is None:
+    if git_text(["cat-file", "-t", f"{commit}:./{path}"], root) != "blob":
         return "not-found"
+    text = git_stdout(["cat-file", "blob", f"{commit}:./{path}"], root)
+    if text is None:   # the file is there but did not read, e.g. not UTF-8: not evidence against the quote
+        return "blocked"
     return "matched" if quote_in_file(text, str(source.get("quote", "")), line) else "not-found"
 
 
