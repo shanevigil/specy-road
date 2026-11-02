@@ -105,6 +105,23 @@ loop and a new function below `run`.
   to whole seconds, like the stamps) and one taken after it. The flag-clearing
   assertion is unchanged.
 
+## Merge of origin/WIP/improvements-0-3-1 (`1c6f7a8`)
+
+- One conflict, in `specy_road/templates/project/schemas/orchestration.schema.json`.
+  M9.6 added `policy.integrity_gate` where this leaf added
+  `policy.stall_after_seconds`. Both are kept: `stall_after_seconds`, then
+  `integrity_gate`, each unchanged.
+- Everything else merged automatically, including M10.5's changes to
+  `worker_ops.py` and `worker_runner.py` and the `docs/brainstorming.md` cap
+  fix (`9b82c16`). This leaf's code came through intact: `run(clock=...)`,
+  the stall clear inside the window, and `sweep_stalled` reading every record.
+- After the merge `worker_ops.py` is exactly 400 lines. `specy-road
+  file-limits` still passes, but nothing more fits without a split.
+- After the merge: `pytest tests/test_worker_faults.py tests/test_worker_state.py
+  tests/test_orchestration_config.py tests/test_package_data_schemas.py
+  tests/test_refresh_schemas.py` 48 passed; `specy-road file-limits` OK;
+  `ruff check` on `worker_ops.py`, `worker_runner.py` and the test file clean.
+
 ## Verification
 
 - `pytest tests/test_worker_faults.py tests/test_worker_state.py`: 16 passed
@@ -117,8 +134,8 @@ loop and a new function below `run`.
   (checked, then reverted).
 - `ruff check` on every touched Python file: clean. An `if` inside `seen` had
   pushed `run` to C901 11, so both flag removals use a comprehension.
-- `specy-road file-limits`: OK. `worker_ops.py` is 393 lines (cap 400);
-  M10.5 also adds to that file, so the merge should watch the cap.
+- `specy-road file-limits`: OK. `worker_ops.py` was 393 lines before the WIP
+  merge and is 400 after it (see the merge note).
 
 ## Added
 
