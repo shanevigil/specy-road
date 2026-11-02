@@ -395,14 +395,18 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.15_pickup-refuses-scaffold-sheet_f12c077c-a36d-4aa1-937d-28152012cf2e.md",
       "sibling_order": 15,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pickup and finish agree on unwritten planning sheets",
       "touch_zones": [
         "specy_road/planning_scaffold_check.py",
         "specy_road/bundled_scripts/do_next_task.py",
         "specy_road/bundled_scripts/do_next_available.py",
         "docs/roadmap-authoring.md",
-        "tests/"
+        "tests/",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "specy_road/bundled_scripts/do_next_task_leaf_guards.py",
+        "specy_road/bundled_scripts/session_plan_git.py",
+        "specy_road/bundled_scripts/session_plan_render.py"
       ],
       "type": "task"
     },

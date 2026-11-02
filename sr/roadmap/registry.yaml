@@ -50,15 +50,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: pickup-refuses-scaffold-sheet
-    node_id: M11.15
-    branch: feature/rm-pickup-refuses-scaffold-sheet
-    touch_zones:
-      - specy_road/planning_scaffold_check.py
-      - specy_road/bundled_scripts/do_next_task.py
-      - specy_road/bundled_scripts/do_next_available.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending

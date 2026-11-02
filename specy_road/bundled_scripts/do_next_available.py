@@ -7,10 +7,7 @@ matches the PM GUI’s forge enrichment rules.
 Eligible-task order within each tier follows ``ordered_tree_rows`` (outline /
 ``sibling_order``), not merged JSON chunk list order. With ``prefer_agentic``,
 each tier is ordered by execution milestone first (:data:`EXECUTION_PICK_RANK`)
-and outline second.
-
-:func:`run_baseline_gate` is the one pre-pickup check that is not about which
-leaf: whether the synced integration branch is healthy enough to branch from.
+and outline second. :data:`unauthored_leaves` is the pickup / ``--plan`` skip set (M11.15).
 """
 
 from __future__ import annotations
@@ -30,6 +27,7 @@ from specy_road.git_subprocess import git_ok
 from specy_road.git_workflow_config import resolve_baseline_cmd
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
+from specy_road.planning_scaffold_check import pickup_unauthored_leaves as unauthored_leaves
 
 
 #: ``prefer_agentic`` order: Agentic-led, Mixed, unset, then Human-led last,
