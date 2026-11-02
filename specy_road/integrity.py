@@ -33,7 +33,9 @@ _HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)")
 # A blob-pair diff has no path, so no attribute applies; content with a NUL byte still reads
 # as binary without --text, and repo config can still set a textconv or external diff.
 _BLOB_DIFF = ("diff", "--no-color", "--no-ext-diff", "--no-textconv", "--text", "--unified=0")
-_REGULAR = frozenset({b"100644", b"100755"})
+# Entries whose lines count: regular files and symlinks (git diffs a symlink's target as a
+# line). Gitlinks (submodules) and deletions have no such side.
+_KIND = {b"100644": "file", b"100755": "file", b"120000": "symlink"}
 
 
 @dataclass(frozen=True, order=True)
@@ -202,12 +204,13 @@ def _git_bytes(root: Path, args: list[str]) -> bytes:
 
 
 def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[str, str | None, str]]:
-    """``(path at ref, old blob, new blob)`` for each ``git diff --raw -z`` entry whose new side is a regular file.
+    """``(path at ref, old blob, new blob)`` for each ``git diff --raw -z`` entry whose new side is a file or symlink.
 
     No pathspec selects anything, so each entry's lines belong to exactly its own path.
-    Deletions, submodules and symlinks have no new regular file and are skipped. The old
-    blob is ``None`` when the old side is not a regular file (an addition, or a type
-    change from a symlink), so every line counts. A name that is not UTF-8 is skipped.
+    Deletions and submodules are skipped. The old blob is ``None`` when the old side is not
+    the same kind (an addition, or a file/symlink type change, which git's own diff shows
+    as a deletion and an addition), so every new line counts. A name that is not UTF-8 is
+    skipped.
     """
     args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", renames, base, ref]
     fields = _git_bytes(root, args).split(b"\0")
@@ -218,8 +221,9 @@ def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[
         width = 2 if status[:1] in (b"R", b"C") else 1
         path = _utf8(fields[i + width]) if i + width < len(fields) else None
         i += 1 + width
-        if new_mode in _REGULAR and path is not None:
-            out.append((path, old_blob.decode() if old_mode in _REGULAR else None, new_blob.decode()))
+        if new_mode in _KIND and path is not None:
+            same_kind = _KIND.get(old_mode) == _KIND[new_mode]
+            out.append((path, old_blob.decode() if same_kind else None, new_blob.decode()))
     return out
 
 

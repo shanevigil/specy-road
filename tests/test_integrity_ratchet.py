@@ -215,3 +215,14 @@ def test_moved_file_keeps_its_existing_suppressions(tmp_path: Path, capsys) -> N
     git(repo, "mv", "src/a.py", "src/b.py")
     git(repo, "commit", "-qm", "move")
     assert _run(repo, capsys) == (0, "")
+
+
+def test_added_symlink_counts_its_target_as_a_line(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, ["baseline-link"])
+    merge_dev(repo)
+    (repo / "baseline-link").symlink_to("target-noqa")
+    git(repo, "add", "baseline-link")
+    git(repo, "commit", "-qm", "add a symlink at the ratchet path")
+    assert _run(repo, capsys) == (1, "baseline-widened: baseline-link +1\nnew-suppression: baseline-link:1\n")
