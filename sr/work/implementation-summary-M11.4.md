@@ -2,11 +2,19 @@
 
 Branch `feature/rm-max-workers-global`, base `be6a6a63`. WIP was merged in at `2e0f5d12` and `9a6dc334` to widen the touch zones; the second merge added `specy_road/bundled_scripts/worker_cli.py`.
 
+## Round 5 (after gpt-5.6-sol-high's block on A1)
+
+- **R1, an adopted worker was invisible to other clones:** `worker adopt` created an active record but pushed no lease, so another clone at `max_workers: 1` could still launch. `adopt` now calls `lease_adopted` right after `create_record`, under the workers lock. That pushes the lease with `acquire_lease(…, count=False)`: no recount, because the adopted session already runs and refusing it would not stop it. If the lease cannot be pushed (rejected, unreachable, or no usable checkout id), the adopt is refused: an `error` event is appended, the record goes `terminated` (nothing is signalled; the lease is observe-only), and the error is raised. So an adopted worker is never active here without being visible elsewhere. `adopt` has no `--offline`.
+- **Every other active source:** I checked the remaining ways a record becomes active. `delegate` and `message`/`resume` push in `acquire_lease`. `handoff` refuses closed records, and `reclaim` returns a handed-off one to `idle`, so both keep the lease they already had. That leaves records with no lease: those registered before leases existed, launched `--offline`, or whose push failed after an offline turn. `worker sync` now pushes those too. `release_stale_leases` became `sync_leases`: under the same workers lock as its deletes, it pushes a lease (best effort, no recount) for each active record with no ref in the remote read, and returns `(released, pushed)`. `worker_reconcile.sync` calls it in place of `release_stale_leases`.
+- **R2, a retry failed while the remote was down:** `delegate` read the remote before looking for an existing local worker, so an idempotent retry failed during an outage. It now takes the lock and returns the leaf's existing worker first, with no network call: `_slot_or_existing(…, foreign=None)` looks for the leaf's worker and counts nothing. Only then does it read the foreign leases and run the counted check. The re-check after the prompt build and `acquire_lease`'s post-push recount are unchanged, so a real launch still needs the global count. `_send` now passes `foreign=[]` explicitly to keep its local cap; its foreign count is still `acquire_lease`'s recount.
+- **Refactor:** `_push_lease` (the empty-tree commit plus the push) is split out of `acquire_lease`, so `sync_leases` can reuse it. `delegate`'s docstring was reflowed and its two existing-worker returns folded into `if existing := …`, to keep `worker_ops.py` at 398 lines.
+- **Docs:** the "What `max_workers` counts" paragraph now covers adopt's lease and refusal, the offline retry, `sync` pushing missing leases, and `--offline` workers becoming visible at the next `sync` that reaches the remote (398 lines).
+
 ## Round 4 (after gpt-6.1-sol's third block on A1)
 
 - **P1, a missing or empty checkout id bypassed the leases:** `checkout_id` returned `None` for an empty id file, and every lease call treated `None` like "no remote", so it counted no foreign leases and pushed none. It now returns a valid id or raises a `WorkerError`. Once the integration remote is configured, `foreign_leases` and `acquire_lease` call it unconditionally, so `delegate` (before any record), `message` and `resume` (before the `message` event and the spawn) are refused. `--offline` returns before the id is read, as it reads and pushes no lease.
 - **Atomic creation:** the uuid is written to a uniquely named temporary file beside the id file, then `os.link`ed into place, and the temporary file is removed in `finally`. The id file therefore never exists half-written: concurrent first callers get `FileExistsError` and read the winner's id, and an interrupted call leaves no id file, so the next call creates one. A file that exists but does not hold 32 hex digits (an older toolkit's interrupted `O_EXCL`-then-write, or a hand edit) is refused, not replaced, because which id other checkouts saw is unknown. The error names the file and says to remove it; the next `delegate`, `message` or `resume` then writes a new one. A filesystem that cannot hard-link refuses with that error rather than falling back to a non-atomic write.
-- **Best-effort paths:** `release_lease` and `release_stale_leases` (`sync`) return quietly without a usable id, because this checkout pushed no lease under one, and they must not fail a wrapper, a terminate or a sync.
+- **Best-effort paths:** `release_lease` and `release_stale_leases` (`sync`; `sync_leases` from round 5) return quietly without a usable id, because this checkout pushed no lease under one, and they must not fail a wrapper, a terminate or a sync.
 - **Docs:** one sentence in the "What `max_workers` counts" paragraph covers the write-then-link creation and the refusal (still 398 lines).
 
 ## Round 3 (after gpt-6.1-sol's second block on A1)
@@ -48,7 +56,7 @@ Two costs remain:
 
 ## Not new: `specy_road/worker_lease.py`
 
-The touch zone named `worker_lease.py` as new, but that module already exists: it holds the human `handoff`/`reclaim` lease. The slot lease is a separate section in the same file (now 346 lines), and the module docstring says so. Round 3 needed `worker_cli.py`, which was added to the touch zones before I edited it. The registry schema and `validate` are unchanged.
+The touch zone named `worker_lease.py` as new, but that module already exists: it holds the human `handoff`/`reclaim` lease. The slot lease is a separate section in the same file (now 369 lines), and the module docstring says so. Round 3 needed `worker_cli.py`, which was added to the touch zones before I edited it. The registry schema and `validate` are unchanged.
 
 ## Acceptance
 
@@ -62,15 +70,16 @@ The touch zone named `worker_lease.py` as new, but that module already exists: i
   - the unreachable-remote refusal and `--offline`;
   - rejected lease pushes through `message`, `resume` and `delegate`;
   - the sweep keeping a lease created after its first read;
-  - a missing checkout id created on use, an empty or unusable one refusing every turn, and concurrent first calls agreeing on one id.
+  - a missing checkout id created on use, an empty or unusable one refusing every turn, and concurrent first calls agreeing on one id;
+  - an adopted worker in a second clone refusing a launch at `max_workers: 1`, an adopt whose lease cannot be pushed, `sync` pushing a missing lease, and a `delegate` retry answered while the remote is down.
 
-## Verification (round 4)
+## Verification (round 5)
 
-As instructed, I ran only the touched test file. The other worker suites, including `tests/test_worker_cli.py` for the round-3 parser change, were last run in round 1. The round-4 review's rerun noted `tests/test_worker_cli.py::test_terminate_a_live_worker` failing on wrapper pid verification. I did not run or investigate it this round; whether it comes from the reviewer's environment or from this branch is still open.
+As instructed, I ran only the touched test file, with the repository's `.conda` tools. The round-5 reviewer's rerun of `tests/test_worker_cli.py` passed (15), so the earlier report of `test_terminate_a_live_worker` failing did not reproduce there. I did not run that file myself.
 
-- `python -m pytest tests/test_worker_max_workers_global.py -q -p no:cacheprovider`: 20 passed in 35.85s.
-- `specy-road file-limits`: OK.
-- `ruff` is not installed in this round's environment (not on PATH, nor as a module of either Python), and I did not install it, so lint was not run on the round-4 change. `python -m py_compile` on `worker_lease.py` and the test file succeeds. Round 3's `ruff check` passed on the round-3 versions.
+- `/Users/savigil/WORKSPACE/specy-road/.conda/bin/pytest tests/test_worker_max_workers_global.py -q -p no:cacheprovider`: 24 passed in 37.14s.
+- `/Users/savigil/WORKSPACE/specy-road/.conda/bin/specy-road file-limits`: OK.
+- `/Users/savigil/WORKSPACE/specy-road/.conda/bin/ruff check` on `worker_lease.py`, `worker_ops.py`, `worker_reconcile.py` and the test file: all checks passed. Round 4's change, unlinted then, is covered by this run.
 
 ## Added
 
@@ -87,7 +96,7 @@ As instructed, I ran only the touched test file. The other worker suites, includ
 - `worker_lease.slot_error`: the one refusal message, shared by the local and lease checks.
 - `worker_lease.acquire_lease(…, new=, offline=)`: push, then recount, so simultaneous launches never exceed the limit. `new` decides whether a refusal withdraws the lease. Round 3: a failed push refuses (one `ls-remote` tells rejected from unreachable); an unreachable recount withdraws a new lease and refuses; `offline` skips it with a warning.
 - `worker_lease.release_lease`: delete lease refs, best effort.
-- `worker_lease.release_stale_leases`: sync's sweep of this checkout's leases with no active local worker. Round 3: the recheck and delete run under the workers lock, through the new `_closed(repo_root, worker_id)` reload.
+- `worker_lease.release_stale_leases` (renamed `sync_leases` in round 5, which also pushes a lease, under the lock and best effort, for each active record without one, and returns `(released, pushed)`): sync's sweep of this checkout's leases with no active local worker. Round 3: the recheck and delete run under the workers lock, through the new `_closed(repo_root, worker_id)` reload.
 - `worker_ops.delegate/message/resume(…, offline=)`, `_launch_locked(…, offline)`, `_send(…, offline)` (round 3): carry `--offline` to the lease calls.
 - `worker_cli._offline_arg` and `--offline` on `delegate`, `message` and `resume` (round 3), with `offline` bound into the `--op-id` inputs.
 - `worker_ops._slot_or_existing(…, own=, foreign=)`: a resumed worker leaves itself out; `foreign` is the lease list read outside the lock.
@@ -96,7 +105,12 @@ As instructed, I ran only the touched test file. The other worker suites, includ
 - `worker_ops.terminate`: release after the lock.
 - `worker_runner`: release on `_refuse`, on harness-start failure, and in `_exit_state` for `failed`.
 - `worker_process.wrapper_gone`: release when a dead wrapper is marked `failed`.
-- `worker_reconcile.sync`: `release_stale_leases` after the lock.
+- `worker_reconcile.sync`: `release_stale_leases` after the lock (`sync_leases` from round 5).
+- `worker_lease._push_lease` (round 5): the lease commit and push, shared by `acquire_lease` and `sync_leases`.
+- `worker_lease.acquire_lease(…, count=)` (round 5): `count=False` pushes without the recount, for `adopt`.
+- `worker_lease.lease_adopted` (round 5): adopt's lease; one that cannot be pushed appends an `error` event, closes the record (`terminated`) and refuses the adopt.
+- `worker_ops.adopt` (round 5): calls `lease_adopted` after `create_record`, under the lock.
+- `worker_ops._slot_or_existing(…, foreign=None)` (round 5): without a foreign read, only the leaf's own worker is looked for and nothing is counted. `delegate`'s first lock section uses it, so a retry needs no network; `_send` passes `foreign=[]` for its local cap.
 - File-limit housekeeping in `worker_ops.py` (round 1, no behaviour change): removed the unused `_now`, extra blank lines and a docstring line; `adopt`'s inner `fn` became an equivalent `mutate` lambda.
 - Test `test_a_linked_worktree_shares_the_checkout_id_and_a_clone_does_not`: the checkout id's scope.
 - Test `test_two_checkouts_share_one_limit`: A3, `delegate` refused by a clone's lease, no record left.
@@ -115,6 +129,10 @@ As instructed, I ran only the touched test file. The other worker suites, includ
 - Test `test_a_missing_checkout_id_is_created_and_the_count_still_holds` (round 4): `delegate` with no id file creates a valid id and is still refused by the other clone's lease.
 - Test `test_an_empty_or_unusable_checkout_id_refuses_launch_and_resume` (round 4; parametrized over an empty file, a newline and a half-written id): `delegate` and `message` (CLI) and `resume` refused with "holds no checkout id"; no record is created, the idle worker keeps its state, and no message event is recorded. After the file is removed, a new valid id is written.
 - Test `test_concurrent_first_calls_agree_on_one_checkout_id` (round 4): 32 calls on 8 threads return one id, matching the file, with no temporary file left.
+- Test `test_an_adopted_worker_in_another_clone_counts` (round 5, R1): `ops.adopt` in the clone pushes a lease, and `delegate` of the same leaf in the first clone at `max_workers: 1` is refused with no record.
+- Test `test_an_adopt_whose_lease_cannot_be_pushed_is_refused` (round 5): a rejecting remote refuses `ops.adopt`, and the record is `terminated`.
+- Test `test_sync_pushes_a_lease_for_an_active_worker_without_one` (round 5): an active record with no lease gets one at `ops.sync`.
+- Test `test_a_retry_returns_the_existing_worker_while_the_remote_is_down` (round 5, R2): with the remote unreachable, `delegate --json` returns the existing worker (`created: false`, exit 0). Once that worker is terminated, a real launch is refused with "cannot reach origin" and no new record.
 - Test helper `_id_file` (round 4): the id file's path in the main checkout's git dir.
 - Test helpers `_unreachable`, `_rejecting` (round 3): a remote path that does not exist (with `origin/HEAD` as last fetched), and a bare remote whose `update` hook rejects `refs/specy-road/*`.
 - Mocks: one, round 3: `monkeypatch.setattr(lease, "run", …)` in the sweep-race test, which delegates every call to the real `run`. The remotes are real bare repositories in `tmp_path`.
