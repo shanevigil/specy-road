@@ -36,7 +36,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.17_packet-byte-budget_2005d0d7-8c50-48fe-a18d-0e62a1b5ad01.md",
       "sibling_order": 17,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "The review packet caps its inlined diff by bytes too and lists generated bundles by size only",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",
