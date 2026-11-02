@@ -32,7 +32,7 @@ from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
     HUMAN, REVIEW_LAUNCH_MODES, archive_review, executor_blocked_display_lines, latest_ready, list_ready,
     list_reviews, load_review, node_ids_with_reviews, non_gating_verify_problems, render_front_matter,
-    review_path, round_span,
+    review_path, round_span, write_review,
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_pre_existing import cmd_check_pre_existing
@@ -234,7 +234,7 @@ def _relabel_independence(root: Path, gate: GateResult) -> None:
         label = "same-family" if shared else "distinct-family"
         if c.review.data.get("independence") != label:
             c.review.data["independence"] = label
-            c.review.path.write_text(render_front_matter(c.review.data, c.review.body), encoding="utf-8")
+            write_review(c.review.path, render_front_matter(c.review.data, c.review.body))
 
 
 def _check_record(ns: argparse.Namespace, root: Path, t: ReviewTarget) -> tuple[dict | None, str | None]:
@@ -296,9 +296,8 @@ def cmd_review_record(ns: argparse.Namespace) -> int:  # noqa: C901 — baseline
                      f"for {ns.model!r} must carry the matching public_key")
     data["family"] = entry["family"]
     dest = review_path(root, ns.node_id, ns.model)
-    dest.parent.mkdir(parents=True, exist_ok=True)
     text = render_front_matter(data, rec["body"])
-    dest.write_text(text, encoding="utf-8")
+    write_review(dest, text)   # replaces a record filed as review-<model>.md, whatever the filesystem's case rules
     archive_review(root, ns.node_id, ns.model, text)
     print(f"Wrote {dest}")
     after = evaluate_gate(root, t.node, t.commit, branch=(t.entry or {}).get("branch"))

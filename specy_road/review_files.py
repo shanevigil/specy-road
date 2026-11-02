@@ -55,6 +55,7 @@ class ReviewFile:
     data: dict[str, Any]
     body: str
     errors: list[str] = field(default_factory=list)
+    on_disk: Path | None = None   # the file itself, when its name differs from ``path`` only in case
 
     @property
     def ok(self) -> bool:
@@ -94,6 +95,15 @@ def ready_path(repo_root: Path, node_id: str, agent: str) -> Path:
 
 def review_path(repo_root: Path, node_id: str, model: str) -> Path:
     return reviews_dir(repo_root, node_id) / f"{REVIEW_PREFIX}{model}.md"
+
+
+def write_review(path: Path, text: str) -> None:
+    """Write ``path`` under its exact name; on macOS APFS writing over ``review-x.md`` would keep that name."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    for p in path.parent.iterdir():
+        if p.name.lower() == path.name.lower() and p.is_file():
+            p.unlink()
+    path.write_text(text, encoding="utf-8")
 
 
 @cache
@@ -164,9 +174,7 @@ def _read(path: Path) -> tuple[dict[str, Any], str, list[str]]:
     return data, body, []
 
 
-def ready_semantic_errors(
-    data: dict[str, Any], acceptance_ids: list[str] | None = None
-) -> list[str]:
+def ready_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | None = None) -> list[str]:
     """Rules the handoff schema cannot express. ``acceptance_ids`` comes from the brief."""
     errs: list[str] = []
     blocked = data.get("blocked_on") or []
@@ -179,12 +187,8 @@ def ready_semantic_errors(
     return errs
 
 
-def load_ready(
-    path: Path,
-    node_id: str | None = None,
-    branch: str | None = None,
-    acceptance_ids: list[str] | None = None,
-) -> ReviewFile:
+def load_ready(path: Path, node_id: str | None = None, branch: str | None = None,
+               acceptance_ids: list[str] | None = None) -> ReviewFile:
     """Parse one READY file; with ``node_id`` / ``branch``, bind it to that provenance.
 
     A file under ``work/reviews/M1.1/`` whose front matter names another node
@@ -203,9 +207,7 @@ def load_ready(
     return ReviewFile(path, data, body, errs)
 
 
-def review_semantic_errors(
-    data: dict[str, Any], acceptance_ids: list[str] | None = None
-) -> list[str]:
+def review_semantic_errors(data: dict[str, Any], acceptance_ids: list[str] | None = None) -> list[str]:
     """Rules the schema cannot express. ``acceptance_ids`` comes from the brief."""
     errs = []
     if data.get("authored_fix"):
@@ -240,19 +242,16 @@ def load_review(path: Path, acceptance_ids: list[str] | None = None) -> ReviewFi
     return ReviewFile(path, data, body, errs)
 
 
-def _files(repo_root: Path, node_id: str, prefix: str) -> list[Path]:
+def _files(repo_root: Path, node_id: str, prefix: str, any_case: bool = False) -> list[Path]:
     d = reviews_dir(repo_root, node_id)
     if not d.is_dir():
         return []
-    return sorted(p for p in d.glob(f"{prefix}*.md") if p.is_file())
+    fold = str.lower if any_case else str
+    return sorted(p for p in d.glob("*.md") if fold(p.name).startswith(fold(prefix)) and p.is_file())
 
 
-def list_ready(
-    repo_root: Path,
-    node_id: str,
-    branch: str | None = None,
-    acceptance_ids: list[str] | None = None,
-) -> list[ReviewFile]:
+def list_ready(repo_root: Path, node_id: str, branch: str | None = None,
+               acceptance_ids: list[str] | None = None) -> list[ReviewFile]:
     """Every READY under the node's directory, bound to that node (and ``branch`` when known)."""
     return [
         load_ready(p, node_id, branch, acceptance_ids)
@@ -260,10 +259,19 @@ def list_ready(
     ]
 
 
-def list_reviews(
-    repo_root: Path, node_id: str, acceptance_ids: list[str] | None = None
-) -> list[ReviewFile]:
-    return [load_review(p, acceptance_ids) for p in _files(repo_root, node_id, REVIEW_PREFIX)]
+def _canonical(r: ReviewFile) -> ReviewFile:
+    """Report a record filed under another case (``review-x.md``) as ``REVIEW-<model>.md``."""
+    name = f"{REVIEW_PREFIX}{r.data.get('model')}.md"
+    if name.lower() != r.path.name.lower():   # not this model's record: fix only the prefix
+        name = REVIEW_PREFIX + r.path.name[len(REVIEW_PREFIX):]
+    if name != r.path.name:
+        r.path, r.on_disk = r.path.with_name(name), r.path
+    return r
+
+
+def list_reviews(repo_root: Path, node_id: str, acceptance_ids: list[str] | None = None) -> list[ReviewFile]:
+    """Every ``REVIEW-*.md``, its prefix matched in any case and reported under the canonical name."""
+    return [_canonical(load_review(p, acceptance_ids)) for p in _files(repo_root, node_id, REVIEW_PREFIX, True)]
 
 
 def archive_review(repo_root: Path, node_id: str, model: str, text: str) -> Path:
@@ -297,7 +305,7 @@ def round_span(repo_root: Path, node_id: str) -> dict[str, Any]:
         sha = git_text(["rev-parse", "--verify", "--quiet", f"{raw}^{{commit}}"], repo_root) or raw
         if in_history or (r.data["model"], sha) not in seen:   # not the live copy of an archived record
             seen.add((r.data["model"], sha))
-            times.append(r.path.stat().st_mtime)
+            times.append((r.on_disk or r.path).stat().st_mtime)
     rounds = len({sha for _model, sha in seen})
     s = int(max(times) - min(times)) if len(times) > 1 else None
     units = ((s // 86400, "d"), (s // 3600 % 24, "h"), (s // 60 % 60, "m")) if s is not None else ()
@@ -317,17 +325,11 @@ def list_rcas(repo_root: Path, node_id: str) -> list[ReviewFile]:
     return out
 
 
-def latest_ready(
-    repo_root: Path,
-    node_id: str,
-    branch: str | None = None,
-    acceptance_ids: list[str] | None = None,
-) -> ReviewFile | None:
+def latest_ready(repo_root: Path, node_id: str, branch: str | None = None,
+                 acceptance_ids: list[str] | None = None) -> ReviewFile | None:
     """The most recently modified valid READY file for this node (and ``branch``), if any."""
     valid = [r for r in list_ready(repo_root, node_id, branch, acceptance_ids) if r.ok]
-    if not valid:
-        return None
-    return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name))
+    return max(valid, key=lambda r: (r.path.stat().st_mtime, r.path.name), default=None)
 
 
 def failing_verifier_entries(ready: ReviewFile) -> list[dict[str, Any]]:
