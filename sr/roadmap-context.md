@@ -89,7 +89,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
-  - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Not Started**
+  - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Not Started**
   - `M10.6` Measure whether lower reviewer effort changes verdicts `measure-whether-lower-reviewer` — task — **Not Started**
   - `M10.7` Output budgets with --full on packets, briefs and plans `output-budgets-with-full` — task — **Not Started**
@@ -108,7 +108,6 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.15` on `feature/rm-foreground-long-commands` since 2026-11-01
-- `M10.4` on `feature/rm-pin-harness-discovery-mode` since 2026-10-30
 - `M10.7` on `feature/rm-output-budgets-with-full` since 2026-10-30
 - `M4.1` on `feature/rm-promote-judgement` since 2026-10-31
 - `M4.15` on `feature/rm-session-overlap-warnings-name-the-other-worktree-and-its-edit-state` since 2026-10-31

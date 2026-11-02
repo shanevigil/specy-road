@@ -129,7 +129,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.4_pin-harness-discovery-mode_04b6ef0b-1f8d-4227-b577-b4721aec8b86.md",
       "sibling_order": 4,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Pin harness discovery mode per profile",
       "touch_zones": [
         "specy_road/worker_adapters.py",

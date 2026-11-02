@@ -20,6 +20,18 @@ worker run its `access.cli` (`<prompt>` or `{prompt}` is the placeholder; a rost
 `channels.cli` overrides it). A worker on `claude-code`, `codex` or `cursor` uses
 that harness's default command unless the roster sets `channels.cli`.
 
+Front matter fields under `access` that tools read:
+
+| Field | Values | Read by |
+|---|---|---|
+| `cli` | headless command with `{prompt}` or `<prompt>`, or `none` | `prompt --channel cli`, `generic` workers |
+| `effort_map` | mapping of effort name → the model's own level | `prompt` |
+| `launch_mode` | `full` (default when absent) or `bare` | `claude-code` workers: `bare` adds `--bare`; any other value is a profile error |
+
+`launch_mode: bare` drops the harness's hooks, skills, plugins, MCP servers and
+CLAUDE.md, and needs `ANTHROPIC_API_KEY` (bare mode never reads the subscription
+login). The shipped Claude profiles set `full`; see `docs/orchestration-models.md`.
+
 ## Where this comes from
 
 Two runs of the deep-research prompt in the

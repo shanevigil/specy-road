@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +62,7 @@ class Launch:
     argv: list[str]
     stdin: str | None = None        # prompt text piped in, when the CLI reads it that way
     session_id: str | None = None   # chosen up front, when the harness lets the caller pick
+    launch_mode: str = "full"       # the profile's access.launch_mode, checked against what the harness reports
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,11 @@ class Unsupported(Exception):
 #: What a harness is told when the prompt itself travels on stdin: an argv
 #: string is capped at 128 KiB on Linux, and a brief can be longer.
 STDIN_INSTRUCTION = "The task is the text on standard input. Follow it exactly; it is the whole prompt."
+
+
+#: The tools `claude -p --bare` starts with: "Bash, file read, and file edit"
+#: (code.claude.com/docs/en/headless, read 2026-11-01).
+CLAUDE_BARE_TOOLS = frozenset({"Bash", "Read", "Edit"})
 
 
 # `codex exec` has no --ask-for-approval (codex-cli 0.165): set both as config, which exec and resume take.
@@ -104,13 +110,34 @@ def _reviews_handoff_dir(repo_root: Path, node_id: str) -> Path:
     return reviews_dir(repo_root, node_id)
 
 
+def _bare(launch_mode: str) -> list[str]:
+    return ["--bare"] if launch_mode == "bare" else []
+
+
+def _names(items: Any) -> list[str]:
+    """The ``name`` of each ``{name, ...}`` entry (``mcp_servers``, ``plugins``), or the entry itself."""
+    return [str(i.get("name") if isinstance(i, dict) else i) for i in items] if isinstance(items, list) else []
+
+
+def _init_detail(d: dict[str, Any]) -> dict[str, Any]:
+    """What a Claude ``system/init`` line says the harness loaded, and the discovery mode that implies."""
+    detail: dict[str, Any] = {"tools": _names(d.get("tools")), "mcp_servers": _names(d.get("mcp_servers")),
+                              "plugins": _names(d.get("plugins"))}
+    version = d.get("claude_code_version") or d.get("version")   # the SDK's field name, then the short one
+    if version:
+        detail["version"] = str(version)
+    if isinstance(d.get("tools"), list):   # no tool list reported: no evidence either way
+        detail["inferred_mode"] = "bare" if set(detail["tools"]) <= CLAUDE_BARE_TOOLS else "full"
+    return detail
+
+
 class Adapter:
     harness = "generic"
     caps = Capabilities(resume=False, interrupt=False, steer=False, handoff=False, events=False,
                         notes="runs the roster/profile cli; output lines become events, nothing else is known")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         why = placeholder_problem(cli)
         if why:
             raise Unsupported(f"generic harness needs a roster channels.cli or profile access.cli: {why}")
@@ -118,7 +145,7 @@ class Adapter:
         return Launch(["sh", "-c", substitute_prompt(cli, prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         raise Unsupported(f"{self.harness}: resume is not supported")
 
     def parse(self, line: str) -> Parsed | None:
@@ -126,6 +153,11 @@ class Adapter:
         if not raw:
             return None
         return Parsed("output", _snip(raw), detail={"message": raw})
+
+    def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
+        """Every event one output line records; ``launch`` is the command that printed it."""
+        parsed = self.parse(line)
+        return [parsed] if parsed else []
 
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         raise Unsupported(f"{self.harness}: no native session to hand off")
@@ -178,25 +210,25 @@ class ClaudeCode(Adapter):
         return ["--add-dir", str(_reviews_handoff_dir(repo_root, node_id))]
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         sid = str(uuid.uuid4())
         custom = self._custom(cli, prompt_path)
         if custom:
-            return custom
-        return Launch(["claude", "-p", "--output-format", "stream-json", "--verbose", "--session-id", sid,
-                       *_model_flag("--model", model), "--permission-mode", "acceptEdits",
+            return replace(custom, launch_mode=launch_mode)   # left as written; only the check uses the mode
+        return Launch(["claude", "-p", *_bare(launch_mode), "--output-format", "stream-json", "--verbose",
+                       "--session-id", sid, *_model_flag("--model", model), "--permission-mode", "acceptEdits",
                        *self._add_dir(worktree, repo_root, node_id), STDIN_INSTRUCTION],
-                      stdin=_text(prompt_path), session_id=sid)
+                      stdin=_text(prompt_path), session_id=sid, launch_mode=launch_mode)
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
-            return custom
-        return Launch(["claude", "-p", "--resume", session_id, "--output-format", "stream-json", "--verbose",
-                       "--permission-mode", "acceptEdits", *self._add_dir(worktree, repo_root, node_id),
+            return replace(custom, launch_mode=launch_mode)
+        return Launch(["claude", "-p", *_bare(launch_mode), "--resume", session_id, "--output-format", "stream-json",
+                       "--verbose", "--permission-mode", "acceptEdits", *self._add_dir(worktree, repo_root, node_id),
                        STDIN_INSTRUCTION],
-                      stdin=_text(prompt_path), session_id=session_id)
+                      stdin=_text(prompt_path), session_id=session_id, launch_mode=launch_mode)
 
     def parse(self, line: str) -> Parsed | None:
         d = _json(line)
@@ -205,7 +237,7 @@ class ClaudeCode(Adapter):
         sid = d.get("session_id")
         t = d.get("type")
         if t == "system" and d.get("subtype") == "init":
-            return Parsed("started", f"claude session {sid} ({d.get('model', '?')})", sid)
+            return Parsed("started", f"claude session {sid} ({d.get('model', '?')})", sid, _init_detail(d))
         if t == "assistant":
             parts = (d.get("message") or {}).get("content") or []
             text = " ".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text")
@@ -223,6 +255,15 @@ class ClaudeCode(Adapter):
             return Parsed("turn_completed" if ok else "error", summary, sid, detail or None)
         return None
 
+    def parse_events(self, line: str, launch: Launch) -> list[Parsed]:
+        out = super().parse_events(line, launch)
+        inferred = (out[0].detail or {}).get("inferred_mode") if out and out[0].type == "started" else None
+        if inferred and inferred != launch.launch_mode:
+            out.append(Parsed("error", f"claude started in {inferred} mode but the profile's launch_mode is "
+                                       f"{launch.launch_mode}", out[0].session_id,
+                              {"inferred_mode": inferred, "launch_mode": launch.launch_mode}))
+        return out
+
     def human_resume(self, session_id: str, worktree: Path) -> list[str]:
         return ["claude", "--resume", session_id]
 
@@ -238,7 +279,7 @@ class Codex(Adapter):
                               "resume = `codex exec resume <id> -` (prompt on stdin); hand off with `codex resume`")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
@@ -246,7 +287,7 @@ class Codex(Adapter):
                        "-C", str(worktree), "-"], stdin=_text(prompt_path))
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
@@ -290,7 +331,7 @@ class Cursor(Adapter):
                               "from the first event; resume = `agent -p --resume` (undocumented with a new prompt: verify)")
 
     def launch(self, prompt_path: Path, worktree: Path, model: str | None, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         custom = self._custom(cli, prompt_path)
         if custom:
             return custom
@@ -298,7 +339,7 @@ class Cursor(Adapter):
                        *_model_flag("--model", model), "--workspace", str(worktree), _text(prompt_path)])
 
     def resume(self, session_id: str, prompt_path: Path, worktree: Path, model: str, cli: str | None,
-               *, node_id: str | None = None, repo_root: Path | None = None) -> Launch:
+               *, node_id: str | None = None, repo_root: Path | None = None, launch_mode: str = "full") -> Launch:
         custom = self._custom(cli, prompt_path, session_id)
         if custom:
             return custom
