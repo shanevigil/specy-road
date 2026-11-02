@@ -63,7 +63,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.13_a-project-setting-decides_673b14b9-f262-48ea-a804-941fbf405bd1.md",
       "sibling_order": 13,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "A project setting decides whether agent logs are tracked in git",
       "touch_zones": [
         "specy_road/git_workflow_config.py",
