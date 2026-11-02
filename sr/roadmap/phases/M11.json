@@ -159,7 +159,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.6_reconcile-current-contract_6fdec849-e299-453b-a5e7-369c210b6e05.md",
       "sibling_order": 6,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "worker reconcile judges a worker against the leaf's current contract",
       "touch_zones": [
         "specy_road/worker_reconcile.py",
