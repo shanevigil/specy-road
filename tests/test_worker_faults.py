@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import signal
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -97,8 +97,10 @@ def test_a_new_turn_resets_last_output_at_and_the_stalled_mark(tmp_path: Path) -
     repo, _ = _repo(tmp_path)
     rec = ws.create_record(repo, "M1.1", "claude-code", "opus", repo, branch="feature/rm-thing")
     ws.mutate(repo, rec, lambda r: (setattr(r, "last_output_at", "2026-01-01T00:00:00+00:00"), r.flags.append(ws.FLAG_STALLED)))
+    before = datetime.now(timezone.utc).replace(microsecond=0)   # stamps are whole seconds
     wr.run(repo, rec.worker_id, _paced(tmp_path))   # prints nothing: only the launch sets the time
-    assert 0 <= _since_launch(repo, rec.worker_id) <= 1
+    after = datetime.now(timezone.utc)
+    assert before <= datetime.fromisoformat(ws.load_record(repo, rec.worker_id).last_output_at) <= after
     assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
 
 
@@ -119,10 +121,12 @@ def test_a_silent_running_worker_is_flagged_once_per_silence(tmp_path: Path) -> 
     assert ws.FLAG_STALLED in ws.load_record(repo, rec.worker_id).flags
     assert ops.sweep_stalled(repo, now=t0 + timedelta(seconds=900)) == []   # the same silence: no second event
     assert len(_stalled(repo, rec.worker_id)) == 1
-    # Only a running worker is stalled: the flag goes when the turn ends.
-    ws.set_state(repo, rec, "idle")
-    ops.sweep_stalled(repo, now=t0 + timedelta(seconds=900))
-    assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags
+    # Only a running worker is stalled: the flag goes when the turn ends, closed states included.
+    for state in ("idle", "failed", "terminated"):
+        ws.add_flag(repo, rec, ws.FLAG_STALLED)
+        ws.set_state(repo, rec, state)
+        ops.sweep_stalled(repo, now=t0 + timedelta(seconds=900))
+        assert ws.FLAG_STALLED not in ws.load_record(repo, rec.worker_id).flags, state
 
 
 def test_output_clears_a_stall_shorter_than_the_write_window(tmp_path: Path) -> None:

@@ -190,7 +190,7 @@ def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[Worke
     now = now or datetime.now(timezone.utc)
     out = []
     with workers_lock(repo_root):
-        for rec in list_records(repo_root, active_only=True):
+        for rec in list_records(repo_root):   # failed and terminated too: a closed worker keeps no stall
             silent = (int((now - datetime.fromisoformat(rec.last_output_at)).total_seconds())
                       if rec.state == "running" and rec.last_output_at else None)
             if silent is None or silent < limit:
