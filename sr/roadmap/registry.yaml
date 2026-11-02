@@ -42,3 +42,13 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: no-foreign-kills
+    node_id: M10.19
+    branch: feature/rm-no-foreign-kills
+    touch_zones:
+      - specy_road/bundled_scripts/role_prompt_rca.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
