@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 
@@ -82,7 +83,8 @@ def plan_edit_chunk_writes(
     if not relocated:
         written.append(read_from)
 
-    for _src, dst in renames or []:
+    for src, dst in renames or []:
+        written.append(repo_rel(root, src))
         written.append(repo_rel(root, dst))
 
     return NodeChunkWriteReport(
@@ -116,6 +118,48 @@ def plan_add_chunk_writes(
         read_from=None,
         written=_unique_commit_paths(written),
     )
+
+
+def registry_rel_if_claim_touch_zones_change(
+    root: Path, node_id: str, zones: list | None
+) -> str | None:
+    """Return the registry path when ``zones`` would rewrite a claim row."""
+    if zones is None:
+        return None
+    from specy_road.bundled_scripts.registry_claim_zones import rewrite_claim_zones
+    from specy_road.registry_yaml import read_registry, registry_path
+
+    path = registry_path(root)
+    doc = read_registry(path)
+    entries = doc.get("entries") if isinstance(doc, dict) else None
+    if not isinstance(entries, list):
+        return None
+    probe = deepcopy(entries)
+    if not rewrite_claim_zones(probe, node_id, zones):
+        return None
+    return repo_rel(root, path)
+
+
+def append_report_paths(report: NodeChunkWriteReport, extra: list[str]) -> NodeChunkWriteReport:
+    if not extra:
+        return report
+    return replace(
+        report,
+        written=_unique_commit_paths(list(report.written), extra),
+    )
+
+
+def plan_edit_node_report(
+    root: Path,
+    node_id: str,
+    source_chunk: Path,
+    nodes_after: list[dict],
+    renames: list[tuple[Path, Path]] | None,
+    zones: list | None,
+) -> NodeChunkWriteReport:
+    report = plan_edit_chunk_writes(root, node_id, source_chunk, nodes_after, renames)
+    reg_rel = registry_rel_if_claim_touch_zones_change(root, node_id, zones)
+    return append_report_paths(report, [reg_rel]) if reg_rel else report
 
 
 def print_node_chunk_write_report(report: NodeChunkWriteReport, *, verb: str) -> None:

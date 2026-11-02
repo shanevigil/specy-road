@@ -21,7 +21,7 @@ from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_
 from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
     NodeChunkWriteReport,
     plan_add_chunk_writes,
-    plan_edit_chunk_writes,
+    plan_edit_node_report,
     print_node_chunk_write_report,
     repo_rel,
 )
@@ -320,15 +320,13 @@ def edit_node_set_pairs(
             notify=notify,
         )
     rename = _planning_rename_plan(root, planning_dir_before, node.get("planning_dir"))
-    report = plan_edit_chunk_writes(
-        root, node_id, chunk, nodes, [rename] if rename else None
+    zones = node.get("touch_zones") if any(k == "touch_zones" for k, _ in pairs) else None
+    report = plan_edit_node_report(
+        root, node_id, chunk, nodes, [rename] if rename else None, zones
     )
 
     from specy_road.bundled_scripts.roadmap_chunk_router import write_node_update
 
-    # A claimed leaf's registry row carries its own copy of the zones, which the
-    # review packet and the finish check read first; keep it in step.
-    zones = node.get("touch_zones") if any(k == "touch_zones" for k, _ in pairs) else None
     with claim_zones_following(root, node_id, zones, notify=notify):
         holding = write_node_update(
             root, node_id, chunk, nodes, renames=[rename] if rename else None
