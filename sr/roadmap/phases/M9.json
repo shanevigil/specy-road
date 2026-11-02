@@ -217,7 +217,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.7_suppression-and-ratchet-findings_0bc061ae-796e-480e-8fe4-e206c7e11f0a.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road integrity also reports new lint suppressions and widened baseline files",
       "touch_zones": [
         "specy_road/integrity.py",
