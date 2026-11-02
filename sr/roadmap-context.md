@@ -88,7 +88,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Not Started**
 - `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
-  - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Not Started**
+  - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Complete**
   - `M10.3` Replace per-worker polling with a single mailbox flag file and a foreground --wait `replace-per-worker-polling-with` — task — **Not Started**
   - `M10.4` Pin harness discovery mode per profile `pin-harness-discovery-mode` — task — **Complete**
   - `M10.5` Per-role effort in model profiles `per-role-effort-in-model` — task — **Complete**
@@ -103,6 +103,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M10.14` edit-node keeps an active claim's touch zones in step with the node `claim-zones-follow-edit-node` — task — **Complete**
   - `M10.15` Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish `foreground-long-commands` — task — **Complete**
   - `M10.16` The worker wrapper imports the launching specy-road, not the worktree's copy `wrapper-imports-launcher` — task — **Complete**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 

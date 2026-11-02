@@ -66,7 +66,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.2_normalised-usage-event-in_7c0843ea-e75c-4530-be57-aea557152bc9.md",
       "sibling_order": 2,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Normalised usage event in the worker log",
       "touch_zones": [
         "specy_road/worker_adapters.py",
