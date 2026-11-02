@@ -148,10 +148,17 @@ findings.
     another leaf's drift.
   - The local `sr/work/brief-M9.7.md` is an untracked snapshot and still shows
     the old A1/A2; I worked from the rewritten text in `sr/roadmap/phases/M9.json`.
+- Round 9 (gpt-6.1-sol, against the rewritten A1): the approved text skips a
+  file whose diff is not valid UTF-8, but rounds 2-8 decoded leniently
+  (`errors="replace"`), so such a file still produced findings. This
+  supersedes round 2's lenient decoding. `_blob_additions` now decodes each
+  file's blob-pair diff, or its whole new blob for an addition, strictly with
+  `_utf8`. A file that fails gives no added lines, so it is skipped for both
+  finding kinds, and every other file is still checked. `_patch` is removed.
 
 ## Verification
 
-- Round 8: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 98 passed (the merge brought more tests into these files). Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
+- Round 9: `pytest tests/test_integrity_ratchet.py tests/test_integrity.py tests/test_integrity_python.py tests/test_integrity_gate.py tests/test_review_packet.py tests/test_validate_file_limits.py`: 98 passed. Round 1 ran the full suite in three batches; only the file-limits test failed, on the then-unfixed `docs/brainstorming.md`.
 - `ruff check specy_road tests scripts`: clean.
 - `python scripts/check_clones.py --pylint <pylint 4.1.3 via uvx>`: 0 new (pylint is not installed in the env).
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -164,10 +171,9 @@ findings.
 - `integrity.integration_ratchet_paths` — reads `policy.ratchet_paths` from the integration branch so a leaf cannot drop its own baselines from the list (A2).
 - `integrity._added_lines` — `path -> added lines` over the `--find-renames` entries (A1).
 - `integrity._changed_files` — `(path, old blob or None, new blob)` per `git diff --raw -z` entry whose new side is a regular file or symlink; exact paths with no pathspec (R2, round 7), and a non-UTF-8 name drops only itself (round 5).
-- `integrity._blob_additions` — added lines of one blob pair, or every line of the new blob when there is no regular old side (round 7).
-- `integrity._patch` — a git diff decoded leniently, so a non-UTF-8 line keeps its count and markers (round 2).
-- `integrity._git_bytes` — raw git stdout, never raises, empty on failure or timeout; `_patch`, `_changed_files` and `_blob_additions` use it (round 5).
-- `integrity._utf8` — strict decode of one file name, `None` when it is not UTF-8 (round 5).
+- `integrity._blob_additions` — added lines of one blob pair, or every line of the new blob when the old side is a different kind (round 7); nothing when that diff or blob is not valid UTF-8 (round 9).
+- `integrity._git_bytes` — raw git stdout, never raises, empty on failure or timeout; `_changed_files` and `_blob_additions` use it (round 5).
+- `integrity._utf8` — strict UTF-8 decode, `None` on failure; used for each file name (round 5) and each file's diff or new blob (round 9).
 - `integrity._hunk_additions` — the `+` lines inside the hunks of a `-U0` blob-pair patch.
 - `integrity._suppression_findings` — one `new-suppression` per added line matching a marker (A1).
 - `integrity._ratchet_findings` — one `baseline-widened` per ratchet path with added lines, over the `--no-renames` entries (A2; round 3).
@@ -180,7 +186,7 @@ findings.
 - `_hunk_additions` ignores each section's header (from `diff --git` to its first `@@`), so header lines are never content (round 6; with blob pairs each patch has one section, so this is a guard).
 - `_git_bytes` returns `b""` when git fails, times out or cannot start, so that file adds nothing.
 - `_changed_files` skips an entry whose new mode is not in `_KIND` (deletion, submodule) or whose path is not UTF-8. It treats an old side of a different kind as `None`, so a file/symlink type change counts every new line, as git's default diff does (round 8). It stops at a truncated record instead of raising (round 7).
-- `_blob_additions` drops the empty string after a final newline, so `a\n` is one line.
+- `_blob_additions` drops the empty string after a final newline, so `a\n` is one line, and returns `[]` for a diff or blob that is not valid UTF-8 (round 9).
 - `integration_ratchet_paths` returns `[]` when the policy ref or file is unreadable, and drops non-string entries.
 
 ### Mocks
@@ -193,7 +199,7 @@ findings.
 - `test_baseline_removal_only_exits_zero` — A2/A4 removal-only gives exit 0.
 - `test_ratchet_paths_listed_only_on_the_leaf_branch_are_ignored` — the list comes from the integration branch, not the leaf.
 - `test_nested_project_ratchet_path_outside_the_project` — git-root-relative path outside a nested project root (the regression-2 shape).
-- `test_non_utf8_file_in_the_diff_hides_no_other_finding` — R1 and round 2: an unrelated non-UTF-8 file, and non-UTF-8 text plus a suppression in the configured baseline itself; `baseline-widened ... +2`, the baseline's `new-suppression` and the other file's, exit 1.
+- `test_non_utf8_file_in_the_diff_hides_no_other_finding` — R1, updated in round 9: an unrelated non-UTF-8 file, and non-UTF-8 text plus a suppression in the configured baseline itself, are both skipped (A1); the valid file still prints `new-suppression: src/mod.py:1`, exit 1.
 - `test_paths_with_spaces_are_reported_and_matched_exactly` — R2: exact suppression line and baseline match for paths with spaces, exit 1.
 - `test_attributes_and_diff_drivers_do_not_hide_additions` (×4: `-diff`, `binary`, textconv driver, external diff command) — round 3: a configured baseline the leaf hides from diff still gives `baseline-widened ... +1` and its `new-suppression`, exit 1.
 - `test_file_renamed_onto_a_new_ratchet_path_widens_it` — round 3 audit: `git mv` onto a not-yet-existing ratchet path gives `+<all lines>`, exit 1.
