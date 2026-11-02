@@ -129,8 +129,10 @@ roadmap root. `--count` is the floor per round. `--rounds` (default 2) is
 how many diverge rounds you plan — recorded on the session, and `next-round`
 says when you pass it; `--profile technical` swaps the lens set
 for developer roadmaps (failure modes, operability, migration paths, debt,
-dependency risk, platform leverage, security); `--panel N` also writes N
-independent shard prompts (below).
+dependency risk, platform leverage, security), and `--profile personal` for
+a tool with one author (friction log, future self, delete before adding, one
+evening, analogous tools), with personas and directions to match; `--panel N`
+also writes N independent shard prompts (below).
 
 This writes the **round-1 prompt** and prints its path. Hand that file to your
 coding agent. It instructs the agent to:
@@ -155,6 +157,9 @@ coding agent. It instructs the agent to:
   competing team's PM), each cell with a quota and a **diversity operator**:
   ordinary personas, random constraints, analogical transfer, low-typicality
   sampling, unoccupied regions. Recorded with `brainstorm frame --allocation`.
+  Once the frame records `served`, later prompts (shards, a re-run `start`)
+  draw the personas and the user-segments direction from it; until then the
+  profile's examples stand in as placeholders.
 - **Generate without filtering.** Concept cards in prose first, a cell at a
   time; then make each idea bolder and more different; then record. Weak and
   obvious ideas are explicitly wanted; no ranking, clustering, sequencing,
@@ -227,7 +232,9 @@ specy-road brainstorm recommend
 
 Switches the session to `roadmap` mode and writes the convergent prompt
 (`…-recommend-prompt.md`) over the ideas already captured, with the roadmap
-inventory inlined for the overlap check. The agent is asked to cluster near-duplicates (singletons are
+inlined for the overlap check: the phases plus the (up to 40) nodes the search
+index ranks closest to the idea titles, so it stays readable on a large roadmap;
+without the index (no SQLite FTS5, or no writable cache) every node, up to 150. The agent is asked to cluster near-duplicates (singletons are
 clusters of one; outliers are never hidden), flag overlaps with existing
 nodes by id **and relation** (same problem/same solution, same
 problem/different solution, prerequisite, superseded, adjacent), assess

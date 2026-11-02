@@ -53,6 +53,10 @@ __all__ = [
 #: being read and starts crowding out the instructions.
 _MAX_EXISTING_NODES = 150
 
+#: Nodes the recommend prompt lists beside the phases: the ones the search
+#: index ranks closest to the ideas.
+_MAX_SIMILAR_NODES = 40
+
 _GOVERNANCE_FILES: tuple[tuple[str, str], ...] = (
     ("vision.md", "Vision"),
     ("constitution/purpose.md", "Purpose"),
@@ -92,8 +96,28 @@ def _governance_lines(root: Path, *, roadmap: bool = True) -> list[str]:
     return lines
 
 
-def _existing_roadmap_lines(root: Path) -> list[str]:
-    """A compact inventory of the graph, so ideas do not restate it."""
+def _node_line(n: dict) -> str:
+    status = n.get("rollup_status") or n.get("status") or "Not Started"
+    return f"- `{n.get('id')}` {n.get('title', '')} — {n.get('type', '?')} — {status}"
+
+
+def _similar_node_ids(root: Path, session: BrainstormSession) -> list[str] | None:
+    """Node ids the search index ranks closest to the idea titles; ``None`` when it cannot rank."""
+    try:
+        from specy_road.search_index import similar_node_ids
+
+        return similar_node_ids(root, [i.title for i in session.ideas if i.title.strip()],
+                                limit=_MAX_SIMILAR_NODES)
+    except Exception:  # noqa: BLE001 — fall back to the full list
+        return None
+
+
+def _existing_roadmap_lines(root: Path, session: BrainstormSession) -> list[str]:
+    """The phases plus the nodes closest to the ideas, so ideas do not restate the graph.
+
+    Every node only when the search index cannot rank: on a large roadmap the
+    full list stops being read and crowds out the instructions.
+    """
     lines = ["## What already exists", ""]
     try:
         from specy_road.bundled_scripts.roadmap_load import load_roadmap
@@ -111,16 +135,28 @@ def _existing_roadmap_lines(root: Path) -> list[str]:
     )
     lines.append("")
     ordered = sorted(nodes, key=lambda n: str(n.get("id", "")))
-    for n in ordered[:_MAX_EXISTING_NODES]:
-        status = n.get("rollup_status") or n.get("status") or "Not Started"
-        lines.append(
-            f"- `{n.get('id')}` {n.get('title', '')} — "
-            f"{n.get('type', '?')} — {status}"
-        )
-    if len(ordered) > _MAX_EXISTING_NODES:
-        rest = len(ordered) - _MAX_EXISTING_NODES
-        lines.append(f"- _(+{rest} more — run `specy-road list-nodes` for the rest)_")
-    lines.append("")
+    ranked = _similar_node_ids(root, session)
+    if ranked is None:
+        lines += [_node_line(n) for n in ordered[:_MAX_EXISTING_NODES]]
+        if len(ordered) > _MAX_EXISTING_NODES:
+            rest = len(ordered) - _MAX_EXISTING_NODES
+            lines.append(f"- _(+{rest} more — run `specy-road list-nodes` for the rest)_")
+        lines.append("")
+        return lines
+    by_id = {str(n.get("id", "")): n for n in nodes}
+    phases = [n for n in ordered if n.get("type") == "phase"]
+    similar = [by_id[i] for i in ranked if i in by_id and by_id[i].get("type") != "phase"]
+    lines += ["**Phases:**", ""]
+    lines += [_node_line(n) for n in phases] or ["- _(none)_"]
+    lines += ["", "**Nodes closest to the ideas** (ranked by the search index on the idea titles):", ""]
+    lines += [_node_line(n) for n in similar] or ["- _(no node matched the idea titles)_"]
+    lines += [
+        "",
+        f"This is {len(phases) + len(similar)} of {len(nodes)} nodes. Before you "
+        "flag an idea as new, check the graph for it: `specy-road search "
+        "\"<terms>\"` or `specy-road list-nodes`.",
+        "",
+    ]
     return lines
 
 
@@ -201,7 +237,7 @@ def render_recommend_prompt(root: Path, session: BrainstormSession) -> str:
         "",
     ]
     lines += _governance_lines(root)
-    lines += _existing_roadmap_lines(root)
+    lines += _existing_roadmap_lines(root, session)
     lines += _idea_inventory_lines(session)
     lines += [
         "## What to do",
