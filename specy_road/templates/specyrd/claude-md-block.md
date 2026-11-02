@@ -60,10 +60,10 @@ specy-road brief <NODE_ID> -o {{PROJECT_PREFIX}}work/brief-<NODE_ID>.md
   `planning/` or `work/`.
 <!-- prevents: grep hits repeated across briefs and pr-bodies, and new artifacts that duplicate archived ones | enforced: advisory; search ranks and deduplicates | ref: CHANGELOG v0.2.1-rc1, agent context: digest and search -->
 - **Other agents share this checkout.** Check `git status` and
-  `git worktree list` before any git write; commit by explicit path, never
-  `-A`/`-a`; no stash, reset, or branch switches here — use your own
-  worktree. Full rule in `{{PROJECT_PREFIX}}AGENTS.md`.
-<!-- prevents: one session's branch switch or git add -A landing on another session's uncommitted work | enforced: session check exits 1 when staged paths overlap another live session's | ref: docs/design-notes/agent-guidance-and-shared-checkouts.md -->
+  `git worktree list` before any git write, and use your own worktree; the
+  opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`
+  while another session is live. Full rule in `{{PROJECT_PREFIX}}AGENTS.md`.
+<!-- prevents: one session's branch switch or git add -A landing on another session's uncommitted work | enforced: session guard denies these while another session is live, once the opt-in harness hooks are installed (specy_road/tool_call_guard.py); session check exits 1 when staged paths overlap another live session's | ref: docs/design-notes/agent-guidance-and-shared-checkouts.md, docs/orchestration.md -->
 - **Roadmap-linked implementation.** `specy-road do-next-available-task`
   registers the claim on the integration branch, then creates
   `feature/rm-<codename>`; don't rename a node's title mid-flight.

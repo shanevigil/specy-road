@@ -1,4 +1,4 @@
-"""Rules the CLI already enforces are one-line pointers in the managed blocks (M5.4).
+"""Rules the CLI or the tool-call guard enforces are one-line pointers in the managed blocks (M5.4).
 
 Every sentence taken out of a block is listed here with the pointer that replaced
 it and the test that proves the CLI enforces it, so no rule is dropped silently.
@@ -62,6 +62,19 @@ REMOVED = [
      "tests/test_mark_implementation_reviewed_gate.py::test_yes_without_reviews_refuses"),
     (AGENTS, "Policy: `roadmap/orchestration.yaml`.", "the reviews `roadmap/orchestration.yaml` requires",
      "tests/test_mark_implementation_reviewed_gate.py::test_human_cannot_stand_in_for_a_missing_second_family"),
+    (AGENTS, "Commit by explicit path (`git commit --only <paths>`); never `git add -A`, `git commit -a`, or a bare "
+     "`git commit` — the index is shared.", "commit only with `git commit --only <paths>`",
+     "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
+    (AGENTS, "Never `stash`, `reset --hard`, `checkout -- .`, `clean`, `rebase`, `commit --amend`, or switch branches",
+     "never stash, hard-reset, discard changes, clean, rebase, amend or switch branches in a tree another session "
+     "may be using", "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
+    (AGENTS, "in a tree another session may be using; use your own",
+     "The opt-in tool-call guard (`specy-road session guard`) refuses these while another session is live",
+     "tests/test_tool_call_guard.py::test_deny_only_with_another_live_session"),
+    (CLAUDE, "commit by explicit path, never `-A`/`-a`;",
+     "opt-in tool-call guard refuses stash, reset, branch switches and `-A`/`-a`", "tests/test_tool_call_guard.py::test_destructive_commands_are_classified"),
+    (CLAUDE, "no stash, reset, or branch switches here", "branch switches and `-A`/`-a` while another session is live",
+     "tests/test_tool_call_guard.py::test_deny_only_with_another_live_session"),
     (CLAUDE, "Register the claim on the integration branch, then work on `feature/rm-<codename>`.",
      "`specy-road do-next-available-task` registers the claim on the integration branch, then creates "
      "`feature/rm-<codename>`", "tests/test_do_next_task_pickup.py::test_pickup_git_order_after_sync"),
