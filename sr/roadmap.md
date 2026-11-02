@@ -33,7 +33,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M3.17` | A failing verifier in the READY file blocks the gate unless a reviewer marks it as already failing on the integration branch | task | Agentic-led | Complete |
 | `M3.18` | Bring role_prompt under the file cap and clear the ruff complexity error | task | Agentic-led | Complete |
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
-| `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Not Started |
+| `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Complete |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Not Started |
 | `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Not Started |
 | `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Not Started |
@@ -59,7 +59,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
 | `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Mixed | Not Started |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Human-led | Not Started |
-| `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Not Started |
+| `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Complete |
 | `M6` | 0.3.1-rc2 release | phase | — | Not Started |
 | `M6.1` | Close out the triage note, changelog and what's-new for rc2 | task | Agentic-led | Not Started |
 | `M6.2` | Pre-release checks and the 0.3.1-rc2 cut | task | Human-led | Not Started |

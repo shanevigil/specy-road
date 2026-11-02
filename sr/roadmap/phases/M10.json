@@ -172,7 +172,11 @@
         "specy_road/templates/project/model-profiles/",
         "docs/orchestration-models.md",
         "tests/test_models_and_prompt.py",
-        "tests/test_worker_adapters.py"
+        "tests/test_worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_runner.py",
+        "specy_road/bundled_scripts/models_cli.py",
+        "specy_road/worker_adapter_parsers.py"
       ],
       "type": "task"
     },
@@ -306,7 +310,10 @@
         "docs/orchestration-workers.md",
         "docs/orchestration.md",
         "tests/test_worker_faults.py",
-        "tests/test_worker_state.py"
+        "tests/test_worker_state.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json"
       ],
       "type": "task"
     },

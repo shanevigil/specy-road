@@ -282,7 +282,12 @@ def _inside_span(index: int, spans: list[tuple[int, int, str]]) -> bool:
 
 
 def _mentions_in_fenced_line(lineno: int, line: str):
-    for tool, name in _MENTION.findall(line):
+    found = [(match.start(), match.group(1), match.group(2)) for match in _MENTION.finditer(line)]
+    for span_start, _, content in _code_spans(line):
+        parsed = _span_command_token(line, span_start, content)
+        if parsed is not None:
+            found.append(parsed)
+    for _, tool, name in sorted(found, key=lambda mention: mention[0]):
         yield lineno, tool, name
 
 

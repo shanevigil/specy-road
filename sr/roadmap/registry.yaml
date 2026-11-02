@@ -32,28 +32,6 @@ entries:
     started: '2026-10-30'
     owner: savigil
     implementation_review: pending
-  - codename: promote-judgement
-    node_id: M4.1
-    branch: feature/rm-promote-judgement
-    touch_zones:
-      - specy_road/bundled_scripts/brainstorm_promote.py
-      - specy_road/bundled_scripts/brainstorm_prompt.py
-      - specy_road/templates/specyrd/commands/specyrd-brainstorm.md
-      - docs/brainstorming.md
-      - tests/
-      - specy_road/bundled_scripts/brainstorm_close.py
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
-  - codename: further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
-    node_id: M5.8
-    branch: feature/rm-further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review
-    touch_zones:
-      - specy_road/bundled_scripts/validate_stale_commands.py
-      - tests/
-    started: '2026-10-31'
-    owner: savigil
-    implementation_review: pending
   - codename: enforced-rules-pointers
     node_id: M5.4
     branch: feature/rm-enforced-rules-pointers
@@ -61,6 +39,7 @@ entries:
       - specy_road/templates/specyrd/agents-md-block.md
       - specy_road/templates/specyrd/claude-md-block.md
       - tests/
+      - suggested_prompts/bootstrap-agents-md.md
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
@@ -76,6 +55,10 @@ entries:
       - docs/orchestration-models.md
       - tests/test_models_and_prompt.py
       - tests/test_worker_adapters.py
+      - specy_road/worker_ops.py
+      - specy_road/worker_runner.py
+      - specy_road/bundled_scripts/models_cli.py
+      - specy_road/worker_adapter_parsers.py
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
@@ -94,6 +77,9 @@ entries:
       - docs/orchestration.md
       - tests/test_worker_faults.py
       - tests/test_worker_state.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/worker_reconcile.py
+      - specy_road/templates/project/schemas/orchestration.schema.json
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
@@ -106,6 +92,58 @@ entries:
       - specy_road/bundled_scripts/doctor.py
       - docs/orchestration.md
       - docs/pm-llm-review.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: integrity-gate-and-waivers
+    node_id: M9.6
+    branch: feature/rm-integrity-gate-and-waivers
+    touch_zones:
+      - specy_road/integrity_gate.py
+      - specy_road/review_gate.py
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/templates/project/schemas/roadmap.schema.json
+      - specy_road/templates/project/schemas/orchestration.schema.json
+      - sr/schemas/
+      - docs/roadmap-authoring.md
+      - docs/orchestration-review.md
+      - suggested_prompts/
+      - CHANGELOG.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: promote-structured
+    node_id: M4.2
+    branch: feature/rm-promote-structured
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_promote.py
+      - specy_road/bundled_scripts/brainstorm_cli_args.py
+      - specy_road/bundled_scripts/brainstorm_session.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: brainstorm-lenses
+    node_id: M4.6
+    branch: feature/rm-brainstorm-lenses
+    touch_zones:
+      - specy_road/bundled_scripts/brainstorm_lenses.py
+      - specy_road/bundled_scripts/brainstorm_prompt_diverge.py
+      - specy_road/bundled_scripts/brainstorm_prompt.py
+      - specy_road/search_index.py
+      - docs/brainstorming.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
+  - codename: wrapper-imports-launcher
+    node_id: M10.16
+    branch: feature/rm-wrapper-imports-launcher
+    touch_zones:
+      - specy_road/worker_runner.py
       - tests/
     started: '2026-11-01'
     owner: savigil

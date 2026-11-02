@@ -4,7 +4,7 @@
       "acceptance": [
         "handoff status and review list report, per leaf, the number of review rounds (distinct reviewed commits) and the elapsed time from the first review to the latest",
         "docs/orchestration.md states that two or more review rounds per leaf are normal under a two-family policy",
-        "doctor also lists detached worktrees of the repository (for example ones a review recipe left behind) and, with --fix, removes those with no uncommitted changes"
+        "doctor also lists detached worktrees of the repository (for example ones a review recipe left behind) and, with --fix, removes those with no uncommitted changes whose HEAD a local or remote-tracking ref already holds; a clean detached worktree whose commits no ref holds is listed and kept with a [kept] line, since removing it would orphan those commits (the human decides)"
       ],
       "codename": "review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees",
       "dependencies": [
