@@ -44,3 +44,14 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: reconcile-current-contract
+    node_id: M11.6
+    branch: feature/rm-reconcile-current-contract
+    touch_zones:
+      - specy_road/worker_reconcile.py
+      - specy_road/git_changed_paths.py
+      - docs/orchestration-workers.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
