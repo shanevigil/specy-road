@@ -117,19 +117,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: human-acceptance
-    node_id: M11.9
-    branch: feature/rm-human-acceptance
-    touch_zones:
-      - specy_road/templates/project/schemas/roadmap.schema.json
-      - sr/schemas/
-      - schemas/
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/finish_task_gates.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/roadmap-authoring.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T22:00:21+00:00'
