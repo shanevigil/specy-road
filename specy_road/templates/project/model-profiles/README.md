@@ -28,6 +28,7 @@ Front matter fields under `access` that tools read:
 | `effort_map` | mapping of effort name → the model's own level | `prompt` |
 | `launch_mode` | `full` (default when absent) or `bare` | `claude-code` workers: `bare` adds `--bare`; any other value is a profile error |
 | `effort_by_role` | mapping of `coordinator` / `executor` / `reviewer` → an `effort_map` key with a known level | `prompt --channel cli` and workers: the harness's effort flag for the role (`{effort}` in a `cli`); an unknown role or key is a profile error |
+| `subagents` | free text whose first word is `yes`, `unknown` or `no`, then the evidence | `prompt --role executor`: a value starting with `yes` (or a bare `yes`) adds the paragraph telling the executor to use the harness's subagents for verification and search inside the leaf; any other value leaves it out |
 
 `launch_mode: bare` drops the harness's hooks, skills, plugins, MCP servers and
 CLAUDE.md, and needs `ANTHROPIC_API_KEY` (bare mode never reads the subscription

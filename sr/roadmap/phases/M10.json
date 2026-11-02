@@ -359,7 +359,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.11_document-the-harness-subagent-recipe_3d4d93d9-aefe-4ef9-8543-d47fccf14594.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Document the harness-subagent recipe for parallel work inside a leaf",
       "touch_zones": [
         "specy_road/bundled_scripts/do_next_prompt.py",
