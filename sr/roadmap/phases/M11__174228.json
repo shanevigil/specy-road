@@ -346,6 +346,59 @@
         "tests/"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road decisions add|list|close keeps open human decisions in a tracked roadmap/decisions.yaml (schema-validated): id, node, kind (decision | human-action), plain-words summary, why now and what it blocks, options with their effect, the recommendation and its reason, the default the agent applies if unanswered, asked date and optional needed-by date; list orders by needed-by and shows every open entry; close records the answer and requires it to be written to the node's planning sheet decision block",
+        "The orchestrate skill and the coordinator prompt tell the agent to read decisions list each turn (as with worker sync), to search the ledger and planning-sheet decision blocks before asking anything, to ask at most four at once in the self-contained shape with no bare ids, and to end any turn that has open entries with one 'Decisions waiting on you' block listing all of them below the status",
+        "docs/orchestration.md describes the ledger and the question shape; tests cover add, list ordering, close requiring the sheet record, and schema validation"
+      ],
+      "codename": "decision-ledger",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.34",
+      "node_key": "bc3055ab-39c6-4972-b8a7-bf83e135d26a",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.34_decision-ledger_bc3055ab-39c6-4972-b8a7-bf83e135d26a.md",
+      "sibling_order": 34,
+      "status": "Not Started",
+      "title": "Open human decisions live in one tracked ledger and every question is self-contained",
+      "touch_zones": [
+        "specy_road/decisions.py",
+        "specy_road/bundled_scripts/decisions_cli.py",
+        "specy_road/cli.py",
+        "specy_road/templates/project/schemas/",
+        "specy_road/templates/specyrd/commands/specyrd-orchestrate.md",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set harness_model (the id the harness CLI expects, for example claude-opus-5-5 for roster id claude-opus-5.5); the default adapters pass it to --model, falling back to the roster id; validate warns when a Claude Code entry's id contains a dot and no harness_model is set",
+        "When a worker exits non-zero before its first stream event, its error event summary includes the harness's last error line from the log (for example an HTTP 404 for an unknown model), not only a pointer to the log; tests cover the mapping, the fallback and the early-failure summary"
+      ],
+      "codename": "roster-harness-model-id",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.35",
+      "node_key": "f2ed72a7-5b45-4457-8649-e65c6fe42b0e",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.35_roster-harness-model-id_f2ed72a7-5b45-4457-8649-e65c6fe42b0e.md",
+      "sibling_order": 35,
+      "status": "Not Started",
+      "title": "A roster entry maps to the harness's own model id, and a failed start says why",
+      "touch_zones": [
+        "specy_road/orchestration_config.py",
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_runner.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
