@@ -10,6 +10,8 @@ from specy_road.bundled_scripts.generate_brief import index as make_index
 from specy_road.git_workflow_config import (
     require_implementation_review_before_finish,
 )
+from specy_road.git_subprocess import head_sha
+from specy_road.impact import impact_for_zones, section_lines
 from specy_road.bundled_scripts.planning_artifacts import (
     ancestor_planning_paths,
     normalize_planning_dir,
@@ -151,6 +153,17 @@ def _planned_test_changes_lines(node: dict) -> list[str]:
         "",
     ]
     return lines
+
+
+def _tests_at_risk_lines(node: dict, repo_root: Path) -> list[str]:
+    """The ``specy-road impact --zones`` list at the pickup commit (advisory)."""
+    cmd = f"specy-road impact {node['id']} --zones"
+    head = head_sha(repo_root)
+    zones = [z for z in (node.get("touch_zones") or []) if isinstance(z, str)]
+    impact = impact_for_zones(repo_root, head, zones) if head else None
+    intro = (f"_Python test files that import, at any depth, a module under this leaf's touch zones "
+             f"(`{cmd}`). Run them before READY; advisory, not a gate._")
+    return section_lines(impact, intro=intro, full_cmd=cmd)
 
 
 def _on_complete_hint_lines(on_complete: str) -> list[str]:
@@ -307,6 +320,7 @@ def write_agent_prompt(
     lines.extend(_ancestor_planning_lines(node_id, by_id, repo_root))
     lines.extend(_leaf_planning_excerpt_lines(node, repo_root))
     lines.extend(_planned_test_changes_lines(node))
+    lines.extend(_tests_at_risk_lines(node, repo_root))
     lines += ["", "## Instructions", ""]
     lines += _finish_instruction_lines(
         node_id,

@@ -11,22 +11,6 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
-  - codename: tests-at-risk
-    node_id: M9.9
-    branch: feature/rm-tests-at-risk
-    touch_zones:
-      - specy_road/impact.py
-      - specy_road/bundled_scripts/impact_cli.py
-      - specy_road/cli.py
-      - specy_road/cli_usage.py
-      - specy_road/bundled_scripts/do_next_prompt.py
-      - specy_road/bundled_scripts/review_packet.py
-      - docs/orchestration-review.md
-      - CHANGELOG.md
-      - tests/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: pending
   - codename: brainstorm-decisions
     node_id: M4.4
     branch: feature/rm-brainstorm-decisions
@@ -56,6 +40,34 @@ entries:
       - CHANGELOG.md
       - tests/
       - schemas/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: replace-per-worker-polling-with
+    node_id: M10.3
+    branch: feature/rm-replace-per-worker-polling-with
+    touch_zones:
+      - specy_road/worker_state.py
+      - specy_road/worker_ops.py
+      - specy_road/bundled_scripts/worker_cli.py
+      - docs/orchestration-workers.md
+      - docs/grind-session.md
+      - tests/test_worker_cli.py
+      - tests/test_worker_state.py
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
+  - codename: visual-explorer-for-worker
+    node_id: M10.12
+    branch: feature/rm-visual-explorer-for-worker
+    touch_zones:
+      - specy_road/gui_app.py
+      - specy_road/gui_app_routes_workspace.py
+      - specy_road/gui_app_routes_workers.py
+      - gui/pm-gantt/src/
+      - docs/pm-gui.md
+      - tests/test_gui_app.py
+      - tests/test_gui_app_workers.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
