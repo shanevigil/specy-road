@@ -118,16 +118,24 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Not Started**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Not Started**
-  - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
+  - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Complete**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
+
+## Dependencies that were removed
+
+Someone deliberately dropped these. Check why before re-adding one.
+
+- 2026-10-30 `M10.13` stopped depending on `M10.1 Record phase timestamps in the event log and print a per-leaf timeline`
 
 ## Claimed and in flight
 
 Do not pick these up.
 
-- `M1.1` on `feature/rm-project-setup` since 2026-10-28
+- `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
 - `M11.11` on `feature/rm-one-readiness-rule` since 2026-11-02
+- `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
 - `M11.6` on `feature/rm-reconcile-current-contract` since 2026-11-02
+- `M8.1` on `feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` since 2026-11-02
 
 ## Reaching the detail behind this
 

@@ -306,7 +306,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.12_ready-command_28811e9e-94e6-4934-b182-a79d5d0ceca5.md",
       "sibling_order": 12,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "specy-road ready writes a valid READY hand-off",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
