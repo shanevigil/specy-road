@@ -27,6 +27,7 @@ The gate passes when no counted record blocks and the counted approvals reach
 ``reviewers_distinct_families`` is set. With ``policy.integrity_gate`` on, each
 test-integrity finding the node did not declare in ``planned_test_changes`` on
 the integration branch is a problem too (:mod:`specy_road.integrity_gate`).
+An approval naming ``delta_from`` (a delta review) must also meet :func:`delta_problem`.
 """
 
 from __future__ import annotations
@@ -34,11 +35,15 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass, field
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
+from specy_road.finish_implementation_check import in_zones
+from specy_road.git_changed_paths import diff_paths
+from specy_road.git_subprocess import git_code
 from specy_road.git_workflow_config import require_implementation_review_before_finish
+from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
 from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
 from specy_road.orchestration_config import (
@@ -61,16 +66,17 @@ from specy_road.review_signing import (  # noqa: F401 — SigningError re-export
     notes_problem,
     verify,
 )
-from specy_road.review_files import (
-    HUMAN,
-    ReviewFile,
-    latest_ready,
-    list_reviews,
-    verifier_gate_problems,
-    executor_blocked_gate_problems,
-)
+from specy_road.review_files import (HUMAN, ReviewFile, executor_blocked_gate_problems, latest_ready,
+                                     list_review_history, list_reviews, verifier_gate_problems)
+from specy_road.registry_yaml import read_registry, registry_path
 from specy_road.review_policy_ref import committed_yaml as _committed_yaml, policy_source
 from specy_road.review_target import full_sha, resolve_target_or_exit, same_commit
+from specy_road.runtime_paths import project_prefix, rebase_to_project
+
+#: A fix round is reviewed from a delta packet only when it changes at most this many files.
+DELTA_MAX_FILES = 3
+_DOC_SUFFIXES = (".md", ".rst", ".txt", ".adoc")
+_TEST_DIRS = frozenset({"tests", "test", "__tests__"})
 
 
 def review_required(repo_root: Path) -> bool:
@@ -193,9 +199,8 @@ def rerun_problem(policy: dict[str, Any], data: dict[str, Any]) -> str | None:
     return None
 
 
-def _eligibility(
-    config: dict[str, Any], node: dict[str, Any], review: ReviewFile, today: date | None
-) -> tuple[CountedReview | None, str | None]:
+def _eligibility(config: dict[str, Any], node: dict[str, Any], review: ReviewFile,
+                 today: date | None) -> tuple[CountedReview | None, str | None]:
     model, node_id = review.data["model"], node["id"]
     sub = None
     if not is_rostered_reviewer(config, model):
@@ -221,6 +226,70 @@ def _eligibility(
     return CountedReview(review, family, sub), None
 
 
+def is_doc_or_test(path: str) -> bool:
+    """A documentation file (by suffix) or a test file (under a tests directory, or named as one)."""
+    p = PurePosixPath(path)
+    return (p.suffix.lower() in _DOC_SUFFIXES or bool(_TEST_DIRS & set(p.parts[:-1]))
+            or p.name.startswith("test_") and p.suffix == ".py" or p.stem.endswith("_test")
+            or ".test." in p.name or ".spec." in p.name)
+
+
+def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: str | None,
+                  policy: dict[str, Any]) -> str | None:
+    """Why ``approved..commit`` needs a full review, else ``None``: the delta review rule."""
+    if not policy.get("delta_review", True):
+        return "policy.delta_review is off"
+    if not commit or same_commit(repo_root, approved, commit) or \
+            git_code(["merge-base", "--is-ancestor", approved, commit], repo_root)[0] != 0:
+        return f"{approved} is not an earlier commit of {commit}"
+    paths = diff_paths(repo_root, f"{approved}..{commit}")
+    if paths is None or len(paths) > DELTA_MAX_FILES:
+        return f"the delta touches {'?' if paths is None else len(paths)} files (at most {DELTA_MAX_FILES})"
+    entry = next((e for e in read_registry(registry_path(repo_root)).get("entries") or []
+                  if e.get("node_id") == node["id"]), None) or {}
+    zones = [z.strip().strip("/") for z in entry.get("touch_zones") or node.get("touch_zones") or []
+             if isinstance(z, str) and z.strip()]
+    prefix, summary = project_prefix(repo_root), f"work/implementation-summary-{node['id']}.md"
+    for p in paths:
+        if not is_doc_or_test(p):
+            return f"{p} is not a documentation or test file"
+        if (rebase_to_project(p, prefix) or p) != summary and not in_zones(zones, p, prefix):
+            return f"{p} is outside the touch zones"
+    findings = compare_integrity(repo_root, approved, commit)
+    return f"the delta's integrity report has findings ({findings[0].line()})" if findings else None
+
+
+def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
+                    commit: str | None, today: date | None = None) -> list[ReviewFile]:
+    """``model``'s approvals of other commits of ``node`` that would count, oldest filing first."""
+    return [r for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"])
+            if r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model
+            and r.data["verdict"] == "approve" and not same_commit(repo_root, r.data["commit"], commit)
+            and _eligibility(config, node, r, today)[0] is not None]
+
+
+def delta_basis(repo_root: Path, node: dict[str, Any], model: str,
+                commit: str | None) -> tuple[ReviewFile | None, str]:
+    """``(model's latest counting approval of an earlier commit, "")`` when the change since may be reviewed
+    from a delta packet, else ``(None, why)``; an unreadable policy fails closed."""
+    ref, err = policy_source(repo_root)
+    config, err = (None, err) if err else effective_config(repo_root, ref)
+    prior = [] if err else prior_approvals(repo_root, config, node, model, commit)
+    why = err or ("no earlier approval" if not prior else
+                  delta_problem(repo_root, node, prior[-1].data["commit"], commit, config["policy"]))
+    return (None, why) if why else (prior[-1], "")
+
+
+def _delta_record_problem(repo_root: Path, config: dict[str, Any], node: dict[str, Any], review: ReviewFile,
+                          commit: str | None, today: date | None) -> str | None:
+    model, base = review.data["model"], review.data["delta_from"]
+    if not any(same_commit(repo_root, r.data["commit"], base)
+               for r in prior_approvals(repo_root, config, node, model, commit, today)):
+        return f"a delta review from {base}, which {model} did not approve; a full review is needed"
+    why = delta_problem(repo_root, node, base, commit, config["policy"])
+    return f"a delta review from {base}, but {why}; a full review is needed" if why else None
+
+
 def _count(result: GateResult, counted: CountedReview) -> None:
     """One vote per model: a block from any of its records wins, extras are listed."""
     same = [c for c in result.approvals + result.blocks if c.model == counted.model]
@@ -235,14 +304,8 @@ def _count(result: GateResult, counted: CountedReview) -> None:
     result.ineligible.append((counted.review, f"{same[0].review.path.name} already counts for {counted.model}"))
 
 
-def evaluate_gate(
-    repo_root: Path,
-    node: dict[str, Any],
-    commit: str | None,
-    *,
-    today: date | None = None,
-    branch: str | None = None,
-) -> GateResult:
+def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
+                  today: date | None = None, branch: str | None = None) -> GateResult:
     ref, ref_err = policy_source(repo_root)
     config, err = effective_config(repo_root, ref)
     err = ref_err or err
@@ -265,6 +328,9 @@ def evaluate_gate(
             result.stale.append(review)
             continue
         counted, why = _eligibility(config, node, review, today)
+        if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):
+            why = _delta_record_problem(repo_root, config, node, review, result.commit, today)
+            counted = None if why else counted
         if counted is None:
             result.ineligible.append((review, why or "not eligible"))
         else:
@@ -319,24 +385,13 @@ def gate_holds_at_head_or_exit(repo_root: Path, node: dict[str, Any]) -> None:
     commit made after approval would ship unreviewed. A fix restarts review.
     """
     target = resolve_target_or_exit(repo_root, node["id"], "HEAD")
-    gate = evaluate_gate(
-        repo_root,
-        node,
-        target.commit,
-        branch=(target.entry or {}).get("branch"),
-    )
+    gate = evaluate_gate(repo_root, node, target.commit, branch=(target.entry or {}).get("branch"))
     if gate.passed:
         return
-    print(
-        f"error: the review approval for {node['id']} no longer holds at this commit "
-        f"({gate.summary()}).",
-        file=sys.stderr,
-    )
+    print(f"error: the review approval for {node['id']} no longer holds at this commit ({gate.summary()}).",
+          file=sys.stderr)
     for problem in gate.problems():
         print(f"  - {problem}", file=sys.stderr)
-    print(
-        f"  Re-review, then run specy-road mark-implementation-reviewed again "
-        f"(specy-road handoff status {node['id']}).",
-        file=sys.stderr,
-    )
+    print(f"  Re-review, then run specy-road mark-implementation-reviewed again "
+          f"(specy-road handoff status {node['id']}).", file=sys.stderr)
     raise SystemExit(1)
