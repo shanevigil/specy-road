@@ -35,7 +35,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 - `M4` Brainstorm and roadmap editing features `brainstorm-editing-features` — phase — **Not Started**
   - `M4.1` promote carries the converge judgement into sheets and writes an authoring prompt `promote-judgement` — task — **Complete**
   - `M4.2` Structured promote: target parents, clusters, minimum recommendation, plan file `promote-structured` — task — **Complete**
-  - `M4.3` Batch ideas and verdicts from a file, merge, and gap ideas `brainstorm-batch-io` — task — **Not Started**
+  - `M4.3` Batch ideas and verdicts from a file, merge, and gap ideas `brainstorm-batch-io` — task — **Complete**
   - `M4.4` Policies and decisions as first-class brainstorm outcomes; frame amendments `brainstorm-decisions` — task — **Not Started**
   - `M4.5` Repository files as evidence; null results; quotes on research-born ideas `brainstorm-repo-evidence` — task — **Not Started**
   - `M4.6` Lenses from the frame and a ranked node list in the recommend prompt `brainstorm-lenses` — task — **Complete**
@@ -109,8 +109,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M4.3` on `feature/rm-brainstorm-batch-io` since 2026-11-01
+- `M10.2` on `feature/rm-normalised-usage-event-in` since 2026-11-01
 - `M9.7` on `feature/rm-suppression-and-ratchet-findings` since 2026-11-01
+- `M9.9` on `feature/rm-tests-at-risk` since 2026-11-01
 
 ## Reaching the detail behind this
 

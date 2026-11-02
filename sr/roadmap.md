@@ -35,7 +35,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4` | Brainstorm and roadmap editing features | phase | — | Not Started |
 | `M4.1` | promote carries the converge judgement into sheets and writes an authoring prompt | task | Agentic-led | Complete |
 | `M4.2` | Structured promote: target parents, clusters, minimum recommendation, plan file | task | Agentic-led | Complete |
-| `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Not Started |
+| `M4.3` | Batch ideas and verdicts from a file, merge, and gap ideas | task | Agentic-led | Complete |
 | `M4.4` | Policies and decisions as first-class brainstorm outcomes; frame amendments | task | Agentic-led | Not Started |
 | `M4.5` | Repository files as evidence; null results; quotes on research-born ideas | task | Agentic-led | Not Started |
 | `M4.6` | Lenses from the frame and a ranked node list in the recommend prompt | task | Agentic-led | Complete |

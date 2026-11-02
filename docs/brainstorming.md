@@ -25,13 +25,9 @@
 
 **Related:** [`pm-gui-brainstorm.md`](pm-gui-brainstorm.md), [`pm-workflow.md`](pm-workflow.md), [`roadmap-authoring.md`](roadmap-authoring.md), [`orchestration.md`](orchestration.md).
 
-For **product managers** and **developers** who want to widen the option
-space before committing to a roadmap, with an agent doing the generating and
-the research.
+For **product managers** and **developers** who want to widen the option space before committing to a roadmap, with an agent doing the generating and the research.
 
-The command is `specy-road brainstorm`. It runs in four passes, and keeping
-them apart is the whole design: an agent asked to generate *and* filter in
-one pass filters first, and hands back five safe ideas instead of forty.
+The command is `specy-road brainstorm`. It runs in four passes, and keeping them apart is the whole design: an agent asked to generate *and* filter in one pass filters first, and hands back five safe ideas instead of forty.
 
 | Pass | Command | What the agent is asked for |
 |------|---------|------------------------------|
@@ -40,27 +36,11 @@ one pass filters first, and hands back five safe ideas instead of forty.
 | Evidence | `brainstorm evidence` | Sources for the shortlist `recommend` produced: a verbatim quote, URL, date and tool per claim, with at least one disconfirming search. |
 | Triage, promote | `accept` / `reject` / `park`, `promote` | Nothing. These are the human's. |
 
-The design rests on what the research found about today's models (design
-note: [`design-notes/v0-3-1-brainstorm-v2.md`](design-notes/v0-3-1-brainstorm-v2.md)):
-model-generated idea pools are **homogeneous** — one long pass mostly buys
-duplicates after the first few dozen — and the cheap mechanics that
-measurably widen them are regeneration against the visible pool, planned
-allocation across directions, personas and constraints, and concept cards in
-prose before any form. Named methods (SCAMPER, TRIZ) add little on their own,
-so the lenses stay as coverage scaffolding. Agent citations are right 40–80%
-of the time, so a URL is not evidence until a quote on the page backs it.
+The design rests on what the research found about today's models (design note: [`design-notes/v0-3-1-brainstorm-v2.md`](design-notes/v0-3-1-brainstorm-v2.md)): model-generated idea pools are **homogeneous** — one long pass mostly buys duplicates after the first few dozen — and the cheap mechanics that measurably widen them are regeneration against the visible pool, planned allocation across directions, personas and constraints, and concept cards in prose before any form. Named methods (SCAMPER, TRIZ) add little on their own, so the lenses stay as coverage scaffolding. Agent citations are right 40–80% of the time, so a URL is not evidence until a quote on the page backs it.
 
 ### What the agent may write
 
-Until the PM runs `promote`, a brainstorm changes **only the session file**,
-and only through `brainstorm frame`, `add-idea`, `add-evidence` and
-`revise`. The agent must not edit code, tests or configuration (not even to
-try an idea), nor `planning/`, `roadmap/`, `roadmap/registry.yaml`,
-`shared/` or `constitution/`, nor anything else under `work/`. Proposals
-are not nodes, sheets or claims until promotion. Every diverge prompt
-carries this allow-list, and
-[`suggested_prompts/brainstorm-roadmap.md`](../suggested_prompts/brainstorm-roadmap.md)
-repeats it.
+Until the PM runs `promote`, a brainstorm changes **only the session file**, and only through `brainstorm frame`, `add-idea`, `add-evidence` and `revise`. The agent must not edit code, tests or configuration (not even to try an idea), nor `planning/`, `roadmap/`, `roadmap/registry.yaml`, `shared/` or `constitution/`, nor anything else under `work/`. Proposals are not nodes, sheets or claims until promotion. Every diverge prompt carries this allow-list, and [`suggested_prompts/brainstorm-roadmap.md`](../suggested_prompts/brainstorm-roadmap.md) repeats it.
 
 ### CLI and PM GUI do the thinking differently
 
@@ -181,10 +161,9 @@ specy-road brainstorm add-idea --title "Stored payment vault" \
   --assumption "SMBs still pay by card"
 ```
 
-`--kind` is one of `feature`, `capability`, `risk`, `research`, `experiment`,
-`refactor`, `platform`. `--origin` is `harness/model/lens/round[/shard]`, so
-acceptance can later be read per lens and per model. Only `--title` is
-required.
+`--kind` is one of `feature`, `capability`, `risk`, `research`, `experiment`, `refactor`, `platform`. `--origin` is `harness/model/lens/round[/shard]`, so acceptance can later be read per lens and per model. Only `--title` is required.
+
+Many ideas at once: `add-idea --from-file ideas.yaml` takes a YAML list (or a mapping with an `ideas:` list) whose keys are the flag names without dashes (`title`, `kind`, `origin`, `from-gap`, …; repeatable flags such as `evidence` and `assumption` take a list), or JSONL, one object per line, with `--from-file -` reading stdin. Every record is checked before the session is written once: one bad record (an unknown key, a bad `kind`) writes nothing and names the record. `revise --from-file verdicts.yaml` does the same for verdicts (a list or a `verdicts:` mapping; `id` names the idea).
 
 ### Rounds
 
@@ -250,6 +229,16 @@ specy-road brainstorm revise B1 --cluster C2 --overlap M3.1:adjacent \
 
 Verdicts are `strong`, `consider`, or `park`. Passing only `--recommendation`
 leaves the idea's triage status alone — the agent advises, you decide.
+
+Clusters, duplicates and gaps have their own commands:
+
+```bash
+specy-road brainstorm cluster C2 --name "Stored cards" --best B4 --critic "value: SMBs only"
+specy-road brainstorm merge B7 --into B4            # status merged; B4 records merged_from: [B7]
+specy-road brainstorm add-idea --title "…" --from-gap
+```
+
+`cluster` records the cluster as an object (`--best` must already carry that cluster id; `''` clears a name or best), which `list --by cluster` shows in each header, its critics with `--show-verdicts`. `merge` folds a duplicate into one or more ideas instead of rejecting it: the duplicate is `merged` with `merged_into`, each target lists it in `merged_from`, it cannot be re-triaged, and `promote` and `recommend --check` skip it. `--from-gap` records an idea the converge pass found missing (`raised_in: converge`, `[gap]` in `list`); `recommend` lists each one still without a verdict.
 
 When the agent hands back, check that the pass covered every idea:
 

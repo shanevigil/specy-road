@@ -1,12 +1,14 @@
-"""Handlers for the brainstorm v2 subcommands (rounds, frame, evidence, verify, park)."""
+"""Handlers for the brainstorm v2 subcommands (rounds, frame, evidence, verify, park, merge, cluster)
+and for ``add-idea`` / ``revise --from-file``."""
 
 from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 
-from specy_road.bundled_scripts.brainstorm_fields import source_record
+from specy_road.bundled_scripts.brainstorm_cli_args import file_namespaces
+from specy_road.bundled_scripts.brainstorm_fields import parse_origin, source_record
 from specy_road.bundled_scripts.brainstorm_prompt import (
     render_brainstorm_prompt,
     render_evidence_prompt,
@@ -18,6 +20,7 @@ from specy_road.bundled_scripts.brainstorm_promote import pending_ideas
 from specy_road.bundled_scripts.brainstorm_session import (
     BrainstormError,
     BrainstormSession,
+    add_idea,
     read_session,
     resolve_slug,
     session_lock,
@@ -235,6 +238,110 @@ def cmd_realize(ns: argparse.Namespace) -> int:
     return 0
 
 
+def idea_fields(ns: argparse.Namespace) -> dict:
+    """``add_idea`` keyword arguments from an ``add-idea`` namespace (a flag line or a file record)."""
+    return dict(title=ns.title or "", rationale=ns.rationale or "", kind=ns.kind or "feature", effort=ns.effort or "",
+                evidence=list(ns.evidence or []), origin=parse_origin(ns.origin), hypothesis=ns.hypothesis or "",
+                assumptions=list(ns.assumption or []), raised_in="converge" if ns.from_gap else None)
+
+
+def _refuse_flags_with_file(ns: argparse.Namespace, positional: str | None, *flags: str) -> None:
+    given = [f"--{f.replace('_', '-')}" for f in flags if getattr(ns, f) not in (None, False, [])]
+    if positional is not None or given:
+        raise BrainstormError(f"--from-file takes every value from the file; drop {', '.join(given) or positional}")
+
+
+def cmd_add_ideas_from_file(ns: argparse.Namespace) -> int:
+    _refuse_flags_with_file(ns, None, "title", "rationale", "kind", "effort", "evidence", "origin", "hypothesis",
+                            "assumption", "from_gap")
+    root, session = _load(ns)
+    ideas = []
+    for n, rec in enumerate(file_namespaces(ns, "add-idea"), 1):
+        try:
+            ideas.append(add_idea(session, **idea_fields(rec)))
+        except BrainstormError as e:
+            raise BrainstormError(f"{ns.from_file} record {n}: {e} — nothing was written") from e
+    write_session(root, session)   # once, after every record validated: all or none
+    for idea in ideas:
+        print(f"[ok] {idea.id} {idea.title}")
+    print(f"recorded {len(ideas)} idea(s)")
+    print(next_step(session, stage(session)))
+    return 0
+
+
+def cmd_revise_any(ns: argparse.Namespace) -> int:
+    """``revise IDEA_ID …`` as before, or ``revise --from-file`` with every verdict in one write."""
+    from specy_road.bundled_scripts.brainstorm_cli_revise import _apply_revise, cmd_revise  # imports this module
+
+    if ns.from_file is None:
+        if not ns.idea_id:
+            raise BrainstormError("revise needs IDEA_ID, or --from-file PATH")
+        return cmd_revise(ns)
+    _refuse_flags_with_file(ns, ns.idea_id, "title", "rationale", "kind", "effort", "codename", "recommendation",
+                            "why", "append_why", "cluster", "target_parent", "overlap", "critic")
+    root, session = _load(ns)
+    records = file_namespaces(ns, "revise")
+    ideas = [session.by_id(rec.idea_id) for rec in records]   # every id resolves before any change
+    for idea, rec in zip(ideas, records):
+        _apply_revise(idea, rec)
+    write_session(root, session)
+    for idea in {i.id: i for i in ideas}.values():
+        print(f"[ok] {idea.id} {idea.status} (recommendation: {idea.recommendation or '-'})")
+    print(f"applied {len(records)} verdict record(s)")
+    print(next_step(session, stage(session)))
+    return 0
+
+
+def cmd_merge(ns: argparse.Namespace) -> int:
+    root, session = _load(ns)
+    idea = session.by_id(ns.idea_id)
+    ids = [part.strip() for item in ns.into for part in item.split(",") if part.strip()]
+    targets = list({t.id: t for t in (session.by_id(i) for i in ids)}.values())
+    if not targets or idea in targets:
+        raise BrainstormError(f"--into must name ideas other than {idea.id}")
+    for t in targets:
+        if t.status == "merged":
+            raise BrainstormError(f"idea {t.id} is itself merged into {', '.join(t.merged_into)}; merge into that")
+    set_status(session, idea.id, "merged")   # refuses a promoted or already merged idea
+    idea.merged_into = [t.id for t in targets]
+    for t in targets:
+        t.merged_from = [*t.merged_from, idea.id] if idea.id not in t.merged_from else t.merged_from
+    now = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    idea.decision = {"status": "merged", "decided_at": now, "into": ", ".join(idea.merged_into)}
+    write_session(root, session)
+    print(f"[ok] {idea.id} merged into {', '.join(idea.merged_into)}; promote skips it")
+    print(next_step(session, stage(session)))
+    return 0
+
+
+def cmd_cluster(ns: argparse.Namespace) -> int:
+    root, session = _load(ns)
+    cid = ns.cluster_id.strip()
+    if not cid:
+        raise BrainstormError("cluster id is empty")
+    entry = dict(session.clusters.get(cid, {}))
+    if ns.name is not None:
+        entry["name"] = ns.name.strip()
+    if (ns.best or "").strip():
+        best = session.by_id(ns.best)
+        if best.cluster_id != cid:
+            raise BrainstormError(f"idea {best.id} is in cluster {best.cluster_id or '(none)'}, not {cid}; "
+                                  f"`specy-road brainstorm revise {best.id} --cluster {cid}` first")
+        entry["best"] = best.id
+    elif ns.best is not None:
+        entry["best"] = ""
+    for item in ns.critic or []:
+        role, _sep, text = item.partition(":")
+        entry["critic"] = {**entry.get("critic", {}), role.strip() or "critic": text.strip()}
+    session.clusters[cid] = {k: v for k, v in entry.items() if v}   # '' clears name or best
+    write_session(root, session)
+    members = [i.id for i in session.ideas if i.cluster_id == cid]
+    print(f"[ok] cluster {cid}: {entry.get('name') or '(no name)'}, best {entry.get('best') or '-'}, "
+          f"{len(members)} member(s)")
+    print(next_step(session, stage(session)))
+    return 0
+
+
 HANDLERS_V2 = {
     "next-round": cmd_next_round,
     "frame": cmd_frame,
@@ -243,6 +350,10 @@ HANDLERS_V2 = {
     "verify": cmd_verify,
     "park": cmd_park,
     "realize": cmd_realize,
+    "revise": cmd_revise_any,
+    "merge": cmd_merge,
+    "cluster": cmd_cluster,
 }
 
-__all__ = ["HANDLERS_V2", "integration_branch_warning", "next_step", "stage", "write_round_prompts", "sys"]
+__all__ = ["HANDLERS_V2", "cmd_add_ideas_from_file", "idea_fields", "integration_branch_warning", "next_step",
+           "stage", "write_round_prompts", "sys"]

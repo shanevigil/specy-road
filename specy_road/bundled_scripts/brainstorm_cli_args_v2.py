@@ -1,8 +1,8 @@
 """Argparse surface for the brainstorm v2 subcommands.
 
-``next-round``, ``frame``, ``evidence``, ``add-evidence``, ``verify`` and
-``park`` — kept apart from ``brainstorm_cli_args`` for the same file-cap
-reason that module exists.
+``next-round``, ``frame``, ``evidence``, ``add-evidence``, ``verify``,
+``park``, ``merge`` and ``cluster`` — kept apart from ``brainstorm_cli_args``
+for the same file-cap reason that module exists.
 """
 
 from __future__ import annotations
@@ -34,6 +34,13 @@ def add_start_v2_options(p: argparse.ArgumentParser) -> None:
                    help="Also write N independent shard prompts (work/brainstorm-<slug>-r1-sN-prompt.md) "
                         "for sub-agents or other harnesses to run without seeing each other; "
                         "`frame` rewrites them with the frame and each shard's `sN:` allocation cell.")
+
+
+def add_from_file(p: argparse.ArgumentParser, key: str) -> None:
+    p.add_argument("--from-file", default=None, metavar="PATH",
+                   help=f"Apply every record in a YAML list (or a mapping with a `{key}:` list), or JSONL "
+                        "(one object per line; `-` reads stdin), as one write: all or none. Keys are this "
+                        "command's flag names without the dashes; repeatable flags take a list.")
 
 
 def add_v2_subcommands(sub) -> None:
@@ -77,4 +84,19 @@ def add_v2_subcommands(sub) -> None:
                    help="Required; recorded as the decision reason.")
     p.add_argument("--revisit-when", default="", metavar="TEXT",
                    help="Optional: what would make the idea worth another look.")
+    _slug(p)
+
+    p = sub.add_parser("merge", help="fold a duplicate idea into others: status merged, linked both ways")
+    p.add_argument("idea_id", metavar="IDEA_ID")
+    p.add_argument("--into", nargs="+", required=True, metavar="IDEA_ID",
+                   help="The idea(s) it duplicates; each records the merged id in merged_from.")
+    _slug(p)
+
+    p = sub.add_parser("cluster", help="record a converge cluster: its name, best statement and critics")
+    p.add_argument("cluster_id", metavar="CID")
+    p.add_argument("--name", default=None, metavar="TEXT", help="What the cluster's ideas share ('' clears it).")
+    p.add_argument("--best", default=None, metavar="IDEA_ID",
+                   help="The member that states the bet best; it must already carry this cluster id ('' clears it).")
+    p.add_argument("--critic", action="append", default=None, metavar="ROLE: TEXT",
+                   help="A critic's strongest objection to the cluster (repeatable; same role replaces).")
     _slug(p)
