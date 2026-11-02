@@ -112,7 +112,11 @@
         "specy_road/worker_state.py",
         "specy_road/orchestration_config.py",
         "docs/orchestration-workers.md",
-        "tests/"
+        "tests/",
+        "specy_road/worker_lease.py",
+        "specy_road/worker_runner.py",
+        "specy_road/worker_process.py",
+        "specy_road/worker_reconcile.py"
       ],
       "type": "task"
     },

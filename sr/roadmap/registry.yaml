@@ -45,6 +45,10 @@ entries:
       - specy_road/orchestration_config.py
       - docs/orchestration-workers.md
       - tests/
+      - specy_road/worker_lease.py
+      - specy_road/worker_runner.py
+      - specy_road/worker_process.py
+      - specy_road/worker_reconcile.py
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
