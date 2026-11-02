@@ -74,7 +74,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M8.5` | Guard hooks per harness and avoid lists in every model profile | task | Agentic-led | Not Started |
 | `M8.6` | Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic | task | Human-led | Not Started |
 | `M8.7` | Runtime verification of the harness facts against installed binaries | task | Human-led | Not Started |
-| `M9` | Regression prevention | phase | — | Not Started |
+| `M9` | Regression prevention | phase | — | Complete |
 | `M9.1` | finish-this-task runs a configured land check on the merge commit before it pushes | task | Agentic-led | Complete |
 | `M9.2` | pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree | task | Agentic-led | Complete |
 | `M9.3` | Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project | task | Agentic-led | Complete |
@@ -85,7 +85,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M9.8` | A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip | task | Agentic-led | Complete |
 | `M9.9` | The executor prompt and the review packet list the Python tests that import the leaf's code | task | Agentic-led | Complete |
 | `M9.10` | Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head | task | Agentic-led | Complete |
-| `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Not Started |
+| `M9.11` | Touch-zone checks match project-relative and git-root-relative paths alike in a nested project | task | Agentic-led | Complete |
 | `M10` | Agent loop performance and observability | phase | — | Not Started |
 | `M10.1` | Record phase timestamps in the event log and print a per-leaf timeline | task | Agentic-led | Complete |
 | `M10.2` | Normalised usage event in the worker log | task | Agentic-led | Complete |

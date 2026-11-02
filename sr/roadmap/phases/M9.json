@@ -346,7 +346,7 @@
       "parent_id": "M9",
       "planning_dir": "planning/M9.11_nested-zone-paths_54c0461f-a7f4-4be8-8251-5288f7fabc5f.md",
       "sibling_order": 11,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Touch-zone checks match project-relative and git-root-relative paths alike in a nested project",
       "touch_zones": [
         "specy_road/review_target.py",

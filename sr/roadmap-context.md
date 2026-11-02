@@ -74,7 +74,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M8.5` Guard hooks per harness and avoid lists in every model profile `guard-hooks-per-harness-and-avoid-lists-in-every-model-profile` — task — **Not Started**
   - `M8.7` Runtime verification of the harness facts against installed binaries `runtime-verification-of-the-harness-facts-against-installed-binaries` — task — **Not Started**
   - `M8.6` Candidate harness profiles: Copilot CLI reviewer and Antigravity agy generic `candidate-harness-profiles-copilot-cli-reviewer-and-antigravity-agy-generic` — task — **Not Started**
-- `M9` Regression prevention `regression-prevention` — phase — **Not Started**
+- `M9` Regression prevention `regression-prevention` — phase — **Complete**
   - `M9.1` finish-this-task runs a configured land check on the merge commit before it pushes `land-check-on-merge-commit` — task — **Complete**
   - `M9.2` pytest refuses to start while tests/fixtures holds ignored files, and fails when a run changes the fixture tree `fixture-pollution-guard` — task — **Complete**
   - `M9.3` Finish, the packet and a finish re-run are tested in a nested layout whose leaf also changes a file outside the project `layout-with-outside-change` — task — **Complete**
@@ -85,7 +85,7 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M9.8` A pre-existing verifier failure counts only when specy-road reproduced it twice on the integration tip `verified-pre-existing-claims` — task — **Complete**
   - `M9.9` The executor prompt and the review packet list the Python tests that import the leaf's code `tests-at-risk` — task — **Complete**
   - `M9.10` Opt-in red-green evidence: tests a leaf adds or changes fail on the base commit and pass at head `red-green-evidence` — task — **Complete**
-  - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Not Started**
+  - `M9.11` Touch-zone checks match project-relative and git-root-relative paths alike in a nested project `nested-zone-paths` — task — **Complete**
 - `M10` Agent loop performance and observability `agent-loop-performance` — phase — **Not Started**
   - `M10.1` Record phase timestamps in the event log and print a per-leaf timeline `record-phase-timestamps-in` — task — **Complete**
   - `M10.2` Normalised usage event in the worker log `normalised-usage-event-in` — task — **Complete**
@@ -112,8 +112,8 @@ Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
 - `M10.12` on `feature/rm-visual-explorer-for-worker` since 2026-11-02
+- `M10.8` on `feature/rm-reviewers-launch-without-repo` since 2026-11-02
 - `M4.5` on `feature/rm-brainstorm-repo-evidence` since 2026-11-02
-- `M9.11` on `feature/rm-nested-zone-paths` since 2026-11-02
 
 ## Reaching the detail behind this
 
