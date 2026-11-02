@@ -223,7 +223,7 @@
       "parent_id": "M10",
       "planning_dir": "planning/M10.7_output-budgets-with-full_fee43265-aa53-4b5e-bd66-2a198519e20d.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Output budgets with --full on packets, briefs and plans",
       "touch_zones": [
         "specy_road/bundled_scripts/review_packet.py",

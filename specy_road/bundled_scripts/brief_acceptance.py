@@ -16,16 +16,22 @@ Public surface:
   looks like several joined with ``|``.
 * :func:`warn_unauthored` — ``validate``'s block for leaves pickup skips because
   their sheet is a placeholder and they have no acceptance.
+* :func:`with_size_line`, :func:`size_warning`, :func:`print_size_warning` — the
+  brief's size budget: a header line with its total bytes and three largest
+  numbered sections, and the stderr warning past :data:`SIZE_WARN_BYTES`.
 """
 
 from __future__ import annotations
 
+import re
 import sys
 
 from specy_road.milestone_subtree import structural_leaf_ids
 from specy_road.node_kinds import is_pickable
 
-_WARN_CAP = 10
+_WARN_CAP = 10   # per-leaf lines in warn_unauthored; the acceptance warnings are one line per class
+SIZE_WARN_BYTES = 65536
+_SECTION = re.compile(r"^## \d+\. ", re.MULTILINE)   # the brief's own numbered sections, not inlined sheets
 
 
 def _acceptance(node: dict) -> list[str]:
@@ -66,13 +72,13 @@ def warn_acceptance_missing(nodes: list[dict], gate_on: bool) -> None:
     bare = [n["id"] for n in nodes
             if n.get("id") in leaves and is_pickable(n)
             and n.get("status") != "Complete" and not _acceptance(n)]
-    for nid in bare[:_WARN_CAP]:
-        print(f"warning: {nid} has no acceptance criteria; with require_implementation_review_before_finish "
-              "on, a review of it cannot attest per-criterion results "
-              f"(set acceptance with: specy-road edit-node {nid} --set acceptance=..., one --set per criterion)",
-              file=sys.stderr)
-    if len(bare) > _WARN_CAP:
-        print(f"warning: … and {len(bare) - _WARN_CAP} more leaves without acceptance criteria", file=sys.stderr)
+    if not bare:
+        return
+    print(f"warning: each of {len(bare)} open leaf/leaves ({', '.join(bare)}) has no acceptance criteria; with "
+          "require_implementation_review_before_finish on, a review of it cannot attest per-criterion results",
+          file=sys.stderr)
+    print("  fix each with: specy-road edit-node <NODE_ID> --set acceptance=..., one --set per criterion",
+          file=sys.stderr)
 
 
 def warn_acceptance_merged(nodes: list[dict]) -> None:
@@ -84,12 +90,13 @@ def warn_acceptance_merged(nodes: list[dict]) -> None:
     """
     merged = [n["id"] for n in nodes
               if n.get("status") != "Complete" and any("|" in a for a in _acceptance(n))]
-    for nid in merged[:_WARN_CAP]:
-        print(f"warning: {nid} has an acceptance criterion containing '|'; if that is several criteria, "
-              f"re-set them with one --set per criterion: specy-road edit-node {nid} "
-              "--set acceptance='First' --set acceptance='Second'", file=sys.stderr)
-    if len(merged) > _WARN_CAP:
-        print(f"warning: … and {len(merged) - _WARN_CAP} more nodes with '|' in a criterion", file=sys.stderr)
+    if not merged:
+        return
+    print(f"warning: {len(merged)} open node(s) have an acceptance criterion containing '|' "
+          f"({', '.join(merged)}); if that is several criteria, re-set them with one --set per criterion",
+          file=sys.stderr)
+    print("  fix each with: specy-road edit-node <NODE_ID> --set acceptance='First' --set acceptance='Second'",
+          file=sys.stderr)
 
 
 def warn_unauthored(unauthored: dict[str, str], *, show_all: bool = False) -> None:
@@ -110,3 +117,46 @@ def warn_unauthored(unauthored: dict[str, str], *, show_all: bool = False) -> No
         print(f"  {nid}: {reason}", file=sys.stderr)
     if len(items) > len(shown):
         print(f"  … and {len(items) - len(shown)} more (specy-road validate --all lists every one)", file=sys.stderr)
+
+
+def section_sizes(text: str) -> list[tuple[str, int]]:
+    """``(heading, bytes)`` per numbered ``## N.`` section of a rendered brief, largest first."""
+    starts = [m.start() for m in _SECTION.finditer(text)] + [len(text)]
+    blocks = [text[a:b] for a, b in zip(starts, starts[1:])]
+    sizes = [(b.split("\n", 1)[0].strip(), len(b.encode("utf-8"))) for b in blocks]
+    return sorted(sizes, key=lambda hs: (-hs[1], hs[0]))
+
+
+def _size_line(total: int, largest: list[tuple[str, int]]) -> str:
+    top = "; ".join(f"`{h}` {n} B" for h, n in largest[:3]) or "none"
+    return f"_Size: {total} bytes. Largest sections: {top}._"
+
+
+def with_size_line(header: list[str], body: list[str]) -> str:
+    """The brief: ``header`` lines, the size line, then ``body``; the total counts the line itself."""
+    largest = section_sizes("\n".join(body))
+    rest = "\n".join(body).rstrip() + "\n"
+    base = len(("\n".join(header) + "\n").encode("utf-8")) + len(rest.encode("utf-8")) + 2   # + "\n\n"
+    total = base
+    while True:   # the line's own length depends on the number it prints
+        line = _size_line(total, largest)
+        if total == base + len(line.encode("utf-8")):
+            return "\n".join(header) + "\n" + line + "\n\n" + rest
+        total = base + len(line.encode("utf-8"))
+
+
+def size_warning(text: str) -> str | None:
+    """Warning text for a brief over :data:`SIZE_WARN_BYTES`, naming the largest sections, else None."""
+    total = len(text.encode("utf-8"))
+    if total <= SIZE_WARN_BYTES:
+        return None
+    top = ", ".join(f"`{h}` ({n} B)" for h, n in section_sizes(text)[:3])
+    return (f"warning: brief is {total} bytes (over {SIZE_WARN_BYTES}); largest sections: {top}. "
+            "Trim the planning sheets or cite fewer contracts to keep it cacheable.")
+
+
+def print_size_warning(text: str) -> None:
+    """``specy-road brief``: the size warning on stderr, when there is one."""
+    warning = size_warning(text)
+    if warning:
+        print(warning, file=sys.stderr)

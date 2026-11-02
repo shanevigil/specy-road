@@ -51,13 +51,16 @@ Set it once in `roadmap/git-workflow.yaml` (`on_complete: merge`) or pass
 ## Planner first: `--plan`
 
 ```bash
-specy-road grind-session --plan --json            # machine-readable
+specy-road grind-session --plan --json            # machine-readable; --fields KEY,... keeps only those keys
 specy-road grind-session --plan                   # human-readable report
 specy-road grind-session --plan --under M10       # scope to a subtree
 ```
 
 `--plan` is **read-only**: it reads the local roadmap + registry and prints a
-classification plus a dependency **wave** layout. No git, no pickup.
+classification plus a dependency **wave** layout. No git, no pickup. With
+`--json`, `--fields KEY,...` prints only those top-level keys (no `event` or
+`ts`) — the keys of the shape below; an unknown key is an error (exit 2) that
+names the valid ones, and `--fields` is accepted only with `--plan --json`.
 
 ### What the planner reports
 
@@ -152,15 +155,12 @@ dispatched until `M10.5` completes.
     {"node_id": "M11.1", "codename": "…", "waiting_on": ["M10.5"], "reason": "dependency"}
   ],
   "active": [], "closed": ["M10.1", "M10.2"], "gated": [], "gates_open": [], "needs_codename": [], "unauthored": [],
-  "waves": [
-    {"index": 0, "node_ids": ["M10.3", "M10.4"]},
-    {"index": 1, "node_ids": ["M10.5"]},
-    {"index": 2, "node_ids": ["M11.1"]}
-  ],
+  "waves": [{"index": 0, "node_ids": ["M10.3", "M10.4"]}, {"index": 1, "node_ids": ["M10.5"]}, {"index": 2, "node_ids": ["M11.1"]}],
   "parallel_batches": [["M10.3", "M10.4"]], "zone_overlaps": [],
   "totals": {"ready": 2, "blocked": 2, "active": 0, "closed": 2, "gated": 0, "gates_open": 0, "needs_codename": 0, "waves": 3}
 }
 ```
+
 
 ## The loop
 

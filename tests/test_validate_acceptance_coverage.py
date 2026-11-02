@@ -30,8 +30,8 @@ def _warn(nodes: list[dict], gate_on: bool, capsys) -> str:
 
 def test_gate_on_and_a_bare_leaf_warns(capsys) -> None:
     err = _warn([_node()], True, capsys)
-    assert "warning: M1.1 has no acceptance criteria" in err
-    assert "specy-road edit-node M1.1 --set acceptance=" in err
+    assert "warning: each of 1 open leaf/leaves (M1.1) has no acceptance criteria" in err
+    assert "specy-road edit-node <NODE_ID> --set acceptance=" in err
 
 
 def test_gate_off_is_silent(capsys) -> None:
@@ -48,10 +48,12 @@ def test_complete_leaf_gate_node_and_parent_are_silent(capsys) -> None:
     assert _warn(nodes, True, capsys) == ""
 
 
-def test_the_warning_is_capped(capsys) -> None:
+def test_the_warning_is_one_line_per_class_with_one_hint(capsys) -> None:
+    """A4: thirteen bare leaves are one counted line listing every id, and the fix hint once."""
     err = _warn([_node(f"M1.{i}") for i in range(1, 14)], True, capsys)
-    assert err.count("has no acceptance criteria") == 10
-    assert "… and 3 more leaves without acceptance criteria" in err
+    assert err.count("warning:") == 1
+    assert "each of 13 open leaf/leaves (M1.1, M1.2, " in err and "M1.13) has no acceptance criteria" in err
+    assert err.count("--set acceptance=") == 1
 
 
 def test_validate_prints_one_warning_and_passes(tmp_path: Path, capsys) -> None:
@@ -63,7 +65,7 @@ def test_validate_prints_one_warning_and_passes(tmp_path: Path, capsys) -> None:
     capsys.readouterr()
     validate_at(repo, no_overlap_warn=True, require_registry=True)
     out = capsys.readouterr()
-    assert out.err.count("has no acceptance criteria") == 1
+    assert out.err.count("(M1.1) has no acceptance criteria") == 1
     assert "OK: roadmap and registry validate." in out.out
 
 
@@ -78,6 +80,6 @@ def test_a_pipe_joined_criterion_warns_on_an_open_node(capsys) -> None:
                             _node("M1.4", acceptance=["Saves|Syncs"])])
 
     err = capsys.readouterr().err
-    assert "M1.1 has an acceptance criterion containing '|'" in err and "M1.4 has" in err
-    assert "--set acceptance='First' --set acceptance='Second'" in err
+    assert "warning: 2 open node(s) have an acceptance criterion containing '|' (M1.1, M1.4)" in err
+    assert err.count("--set acceptance='First' --set acceptance='Second'") == 1
     assert "M1.2" not in err and "M1.3" not in err
