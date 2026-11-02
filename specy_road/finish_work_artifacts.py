@@ -17,6 +17,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from specy_road.git_workflow_config import WORKER_LOGS_REL, track_worker_logs
 from specy_road.review_files import reviews_dir
 
 
@@ -139,3 +140,23 @@ def cleanup_session_sidecar(repo_root: Path, sess_path: Path | None) -> list[str
         # raising here would abort a half-applied bookkeeping phase.
         return []
     return [rel] if remove_work_file(root_r, rel) else []
+
+
+def worker_logs_to_stage(repo_root: Path, node_id: str) -> list[str]:
+    """``work/worker-logs/<NODE_ID>/`` to stage with the leaf when ``track_worker_logs`` is on.
+
+    Independent of ``--no-cleanup-work``, and never deleted: the logs are the
+    audit trail the project opted into, not session documents. A consumer
+    ``.gitignore`` that covers the directory wins; ``git add`` would refuse it.
+    """
+    rel = f"{WORKER_LOGS_REL}/{node_id}"
+    d = repo_root / rel
+    if track_worker_logs(repo_root) == "off" or not d.is_dir() or not any(d.iterdir()):
+        return []
+    ignored = subprocess.run(["git", "check-ignore", "-q", "--", rel], cwd=repo_root, check=False)
+    if ignored.returncode == 0:
+        print(f"[warn] track_worker_logs is on but .gitignore covers {rel}; not committing "
+              f"the worker logs. Add '!{WORKER_LOGS_REL}/' after the rule that ignores it.",
+              file=sys.stderr)
+        return []
+    return [rel]

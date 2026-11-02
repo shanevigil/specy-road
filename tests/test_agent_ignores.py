@@ -151,3 +151,22 @@ def test_a_prefixed_block_actually_matches_in_git(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, "nested cache path should be gitignored"
+
+
+@pytest.mark.parametrize("prefix", ["", "sr/"])
+def test_worker_state_stays_ignored_and_worker_logs_never_are(tmp_path: Path, prefix: str) -> None:
+    """track_worker_logs changes no ignore rule: its mode is read at run time, never written here."""
+    subprocess.run(["git", "-C", str(tmp_path), "init", "-q"], check=True, capture_output=True)
+    apply_agent_ignores(tmp_path, prefix)
+
+    def ignored(rel: str) -> bool:
+        path = tmp_path / prefix / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x", encoding="utf-8")
+        return subprocess.run(["git", "-C", str(tmp_path), "check-ignore", "-q", prefix + rel],
+                              check=False).returncode == 0
+
+    assert ignored("work/.workers/w-0001.events.jsonl")
+    assert ignored("work/.worktrees/thing/README.md")
+    assert not ignored("work/worker-logs/M1.1/w-0001.events.jsonl")
+    assert not ignored("work/worker-logs/M1.1/w-0001.log")

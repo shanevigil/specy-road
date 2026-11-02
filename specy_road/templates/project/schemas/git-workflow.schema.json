@@ -40,6 +40,10 @@
       "enum": ["auto", "merge", "pr"],
       "description": "How finish-this-task lands work: pr = open a PR/MR (default); merge = merge feature branch into integration locally and push; auto = try merge+push first, then suggest PR/MR on failure."
     },
+    "track_worker_logs": {
+      "enum": ["off", "events", "full", false],
+      "description": "Whether worker logs are tracked in git (default off when omitted). off (or YAML false) keeps them in gitignored work/.workers/ only; events also mirrors each worker's event log to work/worker-logs/<NODE_ID>/<worker id>.events.jsonl in the worker's checkout, which finish-this-task commits with the leaf; full mirrors the raw output log (<worker id>.log) too. Logs get long: full can add megabytes per leaf."
+    },
     "baseline_cmd": {
       "type": "string",
       "description": "Shell command do-next-available-task and grind-session run on the integration branch, after syncing and before claiming a leaf (e.g. make test). A non-zero exit refuses the pickup, so a red base is fixed before a leaf inherits it. CLI --baseline-cmd wins (an empty value turns it off for that run); --baseline-warn downgrades a failure to a warning."

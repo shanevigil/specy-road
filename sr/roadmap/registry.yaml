@@ -53,29 +53,3 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: a-project-setting-decides
-    node_id: M10.13
-    branch: feature/rm-a-project-setting-decides
-    touch_zones:
-      - specy_road/git_workflow_config.py
-      - specy_road/worker_state.py
-      - specy_road/worker_runner.py
-      - specy_road/finish_work_artifacts.py
-      - specy_road/agent_ignores.py
-      - specy_road/templates/project/roadmap/git-workflow.yaml
-      - docs/git-workflow.md
-      - docs/orchestration-workers.md
-      - specy_road/templates/project/work/README.md
-      - tests/test_worker_state.py
-      - tests/test_finish_work_cleanup.py
-      - tests/test_agent_ignores.py
-      - specy_road/templates/project/schemas/git-workflow.schema.json
-      - sr/schemas/
-      - schemas/
-      - specy_road/bundled_scripts/finish_task.py
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/worker_reconcile.py
-      - specy_road/worker_ops.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending

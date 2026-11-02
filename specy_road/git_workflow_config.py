@@ -151,6 +151,21 @@ def should_cleanup_work_artifacts_on_finish(
     return cleanup_work_artifacts_on_finish(repo_root)
 
 
+#: ``track_worker_logs``: which worker logs travel with the leaf (``off``, the default, keeps them local).
+TRACK_WORKER_LOGS_MODES = ("off", "events", "full")
+WORKER_LOGS_REL = "work/worker-logs"
+
+
+def track_worker_logs(repo_root: Path) -> str:
+    """``off``, ``events`` or ``full`` from ``roadmap/git-workflow.yaml``; ``off`` when absent or unreadable.
+
+    A bare YAML ``off`` loads as ``false``, which the schema accepts as ``off``.
+    """
+    data, err = load_git_workflow_config(repo_root)
+    v = (data or {}).get("track_worker_logs") if not err else None
+    return v if v in TRACK_WORKER_LOGS_MODES else "off"
+
+
 def resolve_prefer_agentic(repo_root: Path, *, cli: bool | None) -> bool:
     """Pickup order: CLI ``--prefer-agentic`` / ``--no-prefer-agentic`` wins, then
     ``prefer_agentic_pick_order`` in ``roadmap/git-workflow.yaml``, else off."""
