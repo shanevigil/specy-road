@@ -93,7 +93,7 @@
     },
     {
       "acceptance": [
-        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout and in every linked worktree or clone that shares the integration branch's registry",
+        "worker delegate and worker message/resume refuse a launch that would exceed policy.max_workers, counting live workers in the main checkout, in every linked worktree, and (through lease refs on the configured remote) in other clones. With --offline the count uses this checkout plus the last-fetched lease refs, the command warns that the global limit was not verified, and docs name --offline as the explicit local-only escape (maintainer decision 2026-11-02)",
         "docs/orchestration-workers.md states what is counted and how a separate clone is included (for example through the claims on the integration branch)",
         "Tests show a resume refused at the limit and two checkouts sharing one limit"
       ],
