@@ -9,7 +9,7 @@ Findings:
 - **Both "on" failures trace to the section's own text.**
   - Codex stopped to ask for a base commit. The section's "if a prompt has no `base: <sha>`, ask" clause conflicts with the pickup prompt, which has none.
   - Cursor ran a `--local` pickup, an opt-out that only the section names, so its claim never reached the remote.
-- **Cost:** Claude Code +26 % with the section on, Cursor −39 % input tokens, Codex flat.
+- **Cost:** Claude Code +26 % with the section on; Cursor −39 % input tokens with the section on (it reports no cost); Codex flat.
 - **Session presence:** 5/6 "on" runs ran `specy-road session start`; 0/6 "off" runs did.
 - **Verdict: test further.** Two template edits are justified now, both outside this leaf's zones. Then replay context regressions CR1–CR3 on and off before trimming anything else.
 
@@ -31,6 +31,7 @@ Findings:
 - `python -m pytest -q tests/test_doc_links.py tests/test_doctor.py tests/test_agents_md_block.py tests/test_shared_checkout_guidance.py tests/test_context_regressions.py tests/test_review_round6_docs.py tests/test_post_release_readme_cleanup.py` → 71 passed.
 - Full `python -m pytest -q` → 2984 passed, 2 skipped (16:24), run after the note was final and before it was committed.
 - Review round 2 (gpt-5.6-sol-high blocked on wording only): the note's "Limits" and this summary's A1 line now match the current A1, the 12-run reduced matrix, which is met; the two-runs-per-cell limit stays. Re-run for the touched docs: `.conda/bin/pytest -q tests/test_doc_links.py` → 4 passed; `specy-road file-limits` → OK.
+- Review round 3 (gpt-5.6-sol-high blocked on one sentence): "Decision" now puts Cursor's lower input tokens and tool calls on the section-on arm, where the tables have them, and states no Cursor cost, since Cursor reports none. Re-run for the touched docs: `.conda/bin/pytest -q tests/test_doc_links.py` → 4 passed; `specy-road file-limits` → OK.
 - **Study artifacts are local only, never committed:** the app copies, harness JSON logs, review packets and verdicts, and the collection and review scripts. They live in this session's scratchpad, outside the repo. The note gives enough of the protocol (app shape, prompt, exact harness commands, metric definitions, packet contents) to rebuild them.
 
 ## Follow-ups for the coordinator (outside this leaf's touch zones)

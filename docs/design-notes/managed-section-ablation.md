@@ -111,7 +111,7 @@ The packet never said which arm a run came from; `AGENTS.md` and `CLAUDE.md` are
 
 What this study cannot decide is the rest of the section: shared-tree git rules, session presence, precedence, review roles, workers, grind. Its one pickup task never leaves the path the generated prompt already covers. Yet the section clearly changes behaviour off that path: `session start` was 5/6 against 0/6. Before any of it is trimmed, replay the shared-tree context regressions (`docs/context-regressions.yaml` CR2 and CR3, plus CR1 for the review gate) with the section on and off. Use this note's reduced shape: one app, three harnesses, two runs per arm, under the runbook's failure rule (`docs/agentic-sandbox-runbook.md` §9). Trim the parts whose "off" arm passes.
 
-The cost numbers on their own justify neither trimming nor keeping. Claude Code pays about $0.15 more per pickup with the section; Cursor pays less, because it explores less without it. With two runs per cell these are directions, not effects.
+The cost numbers on their own justify neither trimming nor keeping. Claude Code pays about $0.15 more per pickup with the section; Cursor, with the section on, used 39 % fewer input tokens and 8.5 fewer tool calls a run, because it explored less; Cursor reports no cost, so no dollar difference can be stated for it. With two runs per cell these are directions, not effects.
 
 ## Limits
 
