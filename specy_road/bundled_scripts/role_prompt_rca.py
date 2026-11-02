@@ -136,12 +136,14 @@ def executor_preamble(node_id: str, model: str, zones: list[str], family_lock: s
         f"4. Write `{prefix}work/implementation-summary-{node_id}.md`, ending with an `## Added` inventory: every helper, "
         "branch or guard, mock and test you added, one line each with its reason (`none` under a heading is fine), "
         "and commit it by explicit path on this branch: it is what the reviewers judge, and finish deletes it from `work/`. "
-        f"Then `READY-{model}.md` (`{model}` is your roster id; use it as `agent:` too, not an API model id; "
-        "`commit:` is the branch's last commit, the one that adds the summary) "
-        f"from `{prefix}work/handoff-ready.template.md` into "
+        f"Then write `READY-{model}.md` with `specy-road ready {node_id} --model {model} --verify '<cmd>=<exit>' ...`, "
+        f"one `--verify` per verifier or test you ran (`{model}` is your roster id, not an API model id). "
+        "It reads branch, commit (the one that adds the summary), base and changed paths from git, refuses a "
+        "non-zero `--verify`, and writes into "
         f"`{reviews or f'{prefix}work/reviews/{node_id}'}` "
-        f"(that is the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory: "
-        "use it as written even if you are in a worktree).",
+        f"(the main checkout's {f'`{prefix}work/reviews/{node_id}`, ' if prefix else ''}directory, from any "
+        "worktree). A check you made fail without the fix on purpose is not a verifier: pass it as "
+        "`--red-green '<cmd>=<exit>'`.",
         "5. Stop.",
         "",
         "You may not: update roadmap status, mark review done, merge, push, start another leaf, weaken a verifier, "
