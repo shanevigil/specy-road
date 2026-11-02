@@ -168,3 +168,45 @@ def test_preflight_runs_before_the_cli_channel(tmp_path: Path, capsys) -> None:
         role_prompt.main(["M1.1", "--model", "local", "--role", "executor", "--channel", "cli", "--repo-root", str(repo)])
     assert e.value.code == 1
     assert "preflight failed" in capsys.readouterr().err
+
+
+# --- M11.11: class and billing_route rank executors when price is unknown ----
+
+TIERED = """version: 1
+roster:
+  - {id: human, family: human, roles: [coordinator, reviewer]}
+  - id: opus
+    family: anthropic
+    profile: model-profiles/anthropic-claude/claude-opus-5-5.md
+    roles: [coordinator, executor, reviewer]
+    class: senior
+    billing_route: claude_subscription
+  - {id: plain, family: local, roles: [executor]}
+  - {id: cheap-api, family: deepseek, roles: [executor], class: cheap, billing_route: api_key}
+  - {id: cheap-sub, family: cursor, roles: [executor], class: cheap, billing_route: cursor_subscription}
+  - {id: sol, family: openai, profile: model-profiles/openai-gpt/gpt-6.1-sol.md, roles: [reviewer]}
+policy: {reviewers_required: 2, reviewers_distinct_families: true}
+"""
+
+
+def test_cheap_class_beats_a_priced_senior_and_billing_breaks_the_tie(tmp_path: Path) -> None:
+    a = only_assignment(op.build_orchestration_plan(plan_repo(tmp_path, roster=TIERED), today=date(2026, 11, 1))[0])
+    # opus has a list price and the others none; before M11.11 it took every leaf.
+    assert a.executor == "cheap-sub"
+    assert any("class cheap, billing_route cursor_subscription" in n for n in a.notes)
+
+
+def test_senior_eligibility_still_gets_the_senior_class(tmp_path: Path) -> None:
+    repo = plan_repo(tmp_path, roster=TIERED, node_extra='"executor_eligibility": "senior"')
+    assert only_assignment(op.build_orchestration_plan(repo, today=date(2026, 11, 1))[0]).executor == "opus"
+
+
+def test_executor_order_class_then_price_then_billing() -> None:
+    def cand(cid: str, **entry) -> op.Candidate:
+        return op.Candidate({"id": cid, **entry}, None)
+
+    pool = [cand("senior", **{"class": "senior"}), cand("metered", billing_route="api_key"), cand("bare"),
+            cand("sub", billing_route="claude_subscription"), cand("oauth", billing_route="chatgpt_oauth"),
+            cand("cheap", **{"class": "cheap", "billing_route": "api_key"})]
+    assert [c.id for c in sorted(pool, key=op.Candidate.executor_key)] == [
+        "cheap", "sub", "oauth", "bare", "metered", "senior"]

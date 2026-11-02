@@ -112,12 +112,12 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.3` specy-road's own runtime directories never fail the clean-tree checks `runtime-dirs-not-dirty` — task — **Not Started**
   - `M11.4` max_workers counts live workers across checkouts and applies to resumes `max-workers-global` — task — **Not Started**
   - `M11.5` Pickup's stale-claim check tests the local branch and never advises deleting a live claim `pickup-claim-heuristic` — task — **Complete**
-  - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Not Started**
+  - `M11.6` worker reconcile judges a worker against the leaf's current contract `reconcile-current-contract` — task — **Complete**
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Not Started**
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Not Started**
   - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
-  - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Not Started**
+  - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Complete**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
   - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
 
@@ -125,9 +125,13 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
 
 Do not pick these up.
 
-- `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M11.11` on `feature/rm-one-readiness-rule` since 2026-11-02
-- `M11.6` on `feature/rm-reconcile-current-contract` since 2026-11-02
+- `M10.6` on `feature/rm-measure-whether-lower-reviewer` since 2026-11-02
+- `M11.12` on `feature/rm-ready-command` since 2026-11-02
+- `M11.4` on `feature/rm-max-workers-global` since 2026-11-02
+- `M11.7` on `feature/rm-review-delegate` since 2026-11-02
+- `M11.8` on `feature/rm-delta-review-packet` since 2026-11-02
+- `M5.7` on `feature/rm-managed-section-ablation` since 2026-11-02
+- `M8.1` on `feature/rm-harness-facts-fixture-drives-model-profiles-and-executor-templates-with-a-classified-diff-on-version-bumps` since 2026-11-02
 
 ## Reaching the detail behind this
 

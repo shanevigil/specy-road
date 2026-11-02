@@ -2,7 +2,8 @@
 
 ``specy-road orchestrate plan`` (proposal §4.2): starts from the dependency
 waves and parallel batches that ``grind-session --plan`` already computes
-(:mod:`session_plan`), then picks models from the roster for every ready
+(:func:`gather_session_plan`, so a leaf pickup skips — unauthored, or finished
+on an unmerged branch — is not ready here either), then picks models from the roster for every ready
 leaf using eligibility, sensitivity, availability, cost, and role scores
 from the model profiles. It assigns; it never dispatches — the coordinator
 (or the slice-5 skill) does that with ``specy-road prompt``.
@@ -18,8 +19,12 @@ Rules, in the order they apply:
 * **Availability (§3.7).** A roster entry with ``unavailable_until`` on or
   after today is skipped; substitutions already model who stands in.
 * **Cost (§3.7).** Among capable executors (profile executor score ≥ 3, or no
-  profile), the cheapest by list price wins; reviewers rank by reviewer score,
-  then cost; the coordinator by coordinator score.
+  profile), the roster ``class`` ranks first (``cheap``, then untagged or other
+  tags, then ``senior``), then list price, then ``billing_route`` (a
+  subscription or OAuth route before none, before any other, such as an API
+  key), so a roster without prices still prefers what it declares cheap;
+  reviewers rank by reviewer score, then cost; the coordinator by coordinator
+  score.
 * **Independence (§3.2).** The executor's model is not offered as its own
   reviewer, and with ``reviewers_distinct_families`` one reviewer per family.
 
@@ -36,15 +41,17 @@ from pathlib import Path
 from typing import Any
 
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
-from specy_road.bundled_scripts.session_plan import compute_session_plan
+from specy_road.bundled_scripts.session_plan_git import gather_session_plan
 from specy_road.model_profiles import Profile
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry, roster_source
 from specy_road.orchestration_config import active_substitutions
-from specy_road.registry_yaml import read_registry, registry_path
 
 DEFAULT_SENSITIVITY = "public"
 ANY = "any"
 MIN_EXECUTOR_SCORE = 3
+#: Executor order by roster ``class`` and ``billing_route``; anything unlisted ranks in the middle.
+CLASS_RANK = {"cheap": 0, "senior": 2}
+FLAT_RATE_ROUTES = ("subscription", "oauth")
 
 
 def node_sensitivity(node: dict[str, Any]) -> str:
@@ -98,6 +105,22 @@ class Candidate:
         except (TypeError, ValueError):
             return None
 
+    @property
+    def class_rank(self) -> int:
+        return CLASS_RANK.get(str(self.entry.get("class") or ""), 1)
+
+    @property
+    def billing_rank(self) -> int:
+        """0 for a flat-rate route (subscription, OAuth), 1 when unset, 2 for any other (metered)."""
+        route = str(self.entry.get("billing_route") or "").lower()
+        if not route:
+            return 1
+        return 0 if any(t in route for t in FLAT_RATE_ROUTES) else 2
+
+    def executor_key(self) -> tuple[int, float, int, int]:
+        return (self.class_rank, self.cost if self.cost is not None else float("inf"),
+                self.billing_rank, -self.score("executor"))
+
     def describe(self, role: str) -> str:
         cost = f"${self.cost:g}/MTok" if self.cost is not None else "cost unknown"
         return f"{self.id} ({self.family}; {role} score {self.score(role) or '?'}, {cost})"
@@ -131,6 +154,7 @@ class OrchestrationPlan:
     batches: list[list[Assignment]]
     blocked: list[str]
     active: list[str]
+    unauthored: list[str] = field(default_factory=list)   # ready but for a placeholder sheet; pickup skips them
     roster_ref: str | None = None      # where the roster was read from; None outside git
     roster_drift: str | None = None    # the working-tree roster is absent there or differs
 
@@ -142,7 +166,7 @@ class OrchestrationPlan:
         return {"under": self.under, "policy": self.policy, "ok": self.ok,
                 "roster_ref": self.roster_ref, "roster_drift": self.roster_drift,
                 "batches": [[a.to_dict() for a in b] for b in self.batches],
-                "blocked": self.blocked, "active": self.active}
+                "blocked": self.blocked, "active": self.active, "unauthored": self.unauthored}
 
 
 def _usable(c: Candidate, sensitivity: str, today: date | None) -> bool:
@@ -164,7 +188,7 @@ def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None, dr
     if a.eligibility != ANY:
         pool = [c for c in pool if str(c.entry.get("class") or "") == a.eligibility]
     capable = [c for c in _valid(pool, a) if c.profile is None or c.score("executor") >= MIN_EXECUTOR_SCORE]
-    capable.sort(key=lambda c: (c.cost if c.cost is not None else float("inf"), -c.score("executor")))
+    capable.sort(key=Candidate.executor_key)
     if not capable and drift:   # the may_process hint would send the adopter to a file routing does not read
         a.problems.append(f"no eligible executor: {drift}")
         return
@@ -175,7 +199,9 @@ def _pick_executor(cands: list[Candidate], a: Assignment, today: date | None, dr
         a.problems.append(f"no eligible executor: needs a rostered executor with {need}")
         return
     a.executor = capable[0].id
-    a.notes.append("executor: cheapest capable — " + capable[0].describe("executor"))
+    tags = [f"{k} {capable[0].entry[k]}" for k in ("class", "billing_route") if capable[0].entry.get(k)]
+    a.notes.append("executor: cheapest capable — " + capable[0].describe("executor")
+                   + (f" [{', '.join(tags)}]" if tags else ""))
 
 
 def _pick_reviewers(cands: list[Candidate], a: Assignment, config: dict[str, Any], today: date | None) -> None:
@@ -227,14 +253,14 @@ def build_orchestration_plan(root: Path, *, under: str | None = None,
     config, err = pinned_config(root)
     if err:
         return None, f"orchestration config: {err}"
-    nodes = load_roadmap(root)["nodes"]
-    by_id = {n["id"]: n for n in nodes}
-    if under and under not in by_id:
+    if under and under not in {n["id"] for n in load_roadmap(root)["nodes"]}:
         return None, f"unknown node id: {under}"
-    sp = compute_session_plan(nodes, read_registry(registry_path(root)), under=under)
+    nodes, _reg, sp = gather_session_plan(root, under)
+    by_id = {n["id"]: n for n in nodes}
     cands = [Candidate(e, pinned_profile_for_entry(root, e)) for e in config.get("roster") or []]
     ref, drift = roster_source(root)
     batches = [[assign_leaf(by_id[nid], cands, config, today, drift) for nid in batch if nid in by_id]
                for batch in sp.parallel_batches]
     return OrchestrationPlan(under, dict(config["policy"]), batches,
-                             [b.node_id for b in sp.blocked], list(sp.active), ref, drift), None
+                             [b.node_id for b in sp.blocked], list(sp.active),
+                             [u.node_id for u in sp.unauthored], ref, drift), None
