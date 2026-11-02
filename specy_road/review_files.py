@@ -44,6 +44,9 @@ PACKET_NAME = "PACKET.md"
 #: The interactive approver. A solo maintainer both coordinates and reviews, so
 #: only this model may attest ``is_coordinator: true``.
 HUMAN = "human"
+#: How a reviewer's harness was started (``review record --launch-mode``): ``full`` loads the
+#: repository's hooks and MCP servers, ``bare`` none (Claude Code ``--bare``), ``explicit`` only what the command names.
+REVIEW_LAUNCH_MODES = ("full", "bare", "explicit")
 
 
 @dataclass
