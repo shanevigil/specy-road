@@ -34,6 +34,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, strip_provenance
+from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import (
@@ -69,7 +70,6 @@ _CURSOR_CANDIDATES = (AGENTS_MD, AGENT_GUIDE)
 _CURSOR_RULES = ".cursor/rules"
 _COPILOT_CANDIDATES = (AGENTS_MD, f".claude/{AGENT_GUIDE}")
 _COPILOT_REPO_FILE = ".github/copilot-instructions.md"
-_ALWAYS_APPLY = re.compile(r"^alwaysApply:\s*true\s*$", re.IGNORECASE | re.MULTILINE)
 _TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
 _H1 = "# Agents — load order\n"
 
@@ -276,16 +276,16 @@ def _machine_local_paths(start: Path, top: Path) -> list[Path]:
 
 
 def _always_applied(rule: Path) -> bool:
-    """A Cursor rule whose frontmatter sets ``alwaysApply: true``: the only kind in every session.
+    """A Cursor rule whose YAML frontmatter sets ``alwaysApply`` true: the only kind in every session.
 
-    Rules scoped by glob or description load only when they match, so they are not metered.
+    Rules scoped by glob or description load only when they match, so they are not metered;
+    nor is a rule whose frontmatter does not parse.
     """
     try:
         text = rule.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return False
-    head, sep, _rest = text[4:].partition("\n---") if text.startswith("---\n") else ("", "", "")
-    return bool(sep) and _ALWAYS_APPLY.search(head) is not None
+    return split_frontmatter(text)[0].get("alwaysApply") is True
 
 
 def _cursor_paths(start: Path, top: Path) -> list[Path]:

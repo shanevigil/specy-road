@@ -45,7 +45,12 @@ def test_cursor_reads_agents_claude_and_only_always_applied_rules(repo: Path) ->
     _write(repo, ".cursor/rules/nested/020-house.md", ALWAYS)
     _write(repo, ".cursor/rules/030-tests.mdc", SCOPED)
     _write(repo, ".cursor/rules/040-no-frontmatter.mdc", "alwaysApply: true\n")
+    _write(repo, ".cursor/rules/050-inline-comment.mdc", "---\nalwaysApply: true # all sessions\n---\nRule body\n")
+    _write(repo, ".cursor/rules/060-yaml-true.mdc", "---\nalwaysApply: True\n---\nRule body\n")
+    _write(repo, ".cursor/rules/070-quoted.mdc", "---\nalwaysApply: \"true\"\n---\nRule body\n")
+    _write(repo, ".cursor/rules/080-unparsable.mdc", "---\nalwaysApply: true\ndescription: [unclosed\n---\nRule body\n")
     assert _rels(repo, "Cursor") == [AGENTS_MD, AGENT_GUIDE, ".cursor/rules/010-house.mdc",
+                                     ".cursor/rules/050-inline-comment.mdc", ".cursor/rules/060-yaml-true.mdc",
                                      ".cursor/rules/nested/020-house.md"]
 
 
