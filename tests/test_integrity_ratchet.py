@@ -92,3 +92,27 @@ def test_nested_project_ratchet_path_outside_the_project(tmp_path: Path, capsys)
     merge_dev(repo)
     commit(repo, _BASELINE, "a\nb\n", "widen")
     assert _run(repo, capsys, project="sr") == (1, f"baseline-widened: {_BASELINE} +1\n")
+
+
+def test_non_utf8_file_in_the_diff_hides_no_other_finding(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [_BASELINE])
+    commit(repo, _BASELINE, "a\n", "baseline on dev")
+    merge_dev(repo)
+    (repo / "legacy.txt").write_bytes(b"caf\xe9\n")
+    git(repo, "add", "legacy.txt")
+    commit(repo, _BASELINE, "a\nb\n", "widen")
+    commit(repo, "src/mod.py", "x = 1  # noqa\n", "suppress")
+    assert _run(repo, capsys) == (1, f"baseline-widened: {_BASELINE} +1\nnew-suppression: src/mod.py:1\n")
+
+
+def test_paths_with_spaces_are_reported_and_matched_exactly(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, ["constraints/a b.txt"])
+    commit(repo, "constraints/a b.txt", "a\n", "baseline on dev")
+    merge_dev(repo)
+    commit(repo, "constraints/a b.txt", "a\nb\n", "widen")
+    commit(repo, "src/a b.txt", "x = 1  # noqa\n", "suppress")
+    assert _run(repo, capsys) == (1, "baseline-widened: constraints/a b.txt +1\nnew-suppression: src/a b.txt:1\n")

@@ -157,32 +157,47 @@ def integration_ratchet_paths(root: Path) -> list[str]:
 
 
 def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, str]]]:
-    """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds."""
-    out = git_stdout([
-        "-c", "core.quotePath=off", "diff", "--no-relative", "--no-color", "--no-ext-diff",
-        "--no-textconv", "--find-renames", "--unified=0", "--src-prefix=a/", "--dst-prefix=b/",
-        base, ref,
-    ], root)
+    """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds.
+
+    One diff per changed file, so a file git output cannot decode as UTF-8 loses only its
+    own lines; the path comes from ``--name-status -z``, never from a patch header.
+    """
     added: dict[str, list[tuple[int, str]]] = {}
-    path: str | None = None
-    in_header = False
-    number = 0
-    for raw in (out or "").split("\n"):
-        if raw.startswith("diff --git "):
-            path, in_header = None, True
-        elif in_header and raw.startswith("+++ "):
-            target = raw[4:]
-            # a C-quoted name: quotePath=off leaves only quotes, backslashes and control characters escaped
-            target = ast.literal_eval(target) if target.startswith('"') else target
-            path = None if target == "/dev/null" else target[2:]
-        elif raw.startswith("@@ "):
-            in_header = False
-            match = _HUNK.match(raw)
-            number = int(match.group(1)) if match else 0
-        elif not in_header and path is not None and raw.startswith("+"):
-            added.setdefault(path, []).append((number, raw[1:]))
-            number += 1
+    for paths in _changed_files(root, base, ref):
+        out = git_stdout([
+            "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--find-renames", "--unified=0",
+            base, ref, "--", *(f":(top,literal){p}" for p in paths),
+        ], root)
+        lines = _hunk_additions(out or "")
+        if lines:
+            added[paths[-1]] = lines
     return added
+
+
+def _changed_files(root: Path, base: str, ref: str) -> list[tuple[str, ...]]:
+    """``(path,)`` per changed file, ``(source, destination)`` per rename."""
+    fields = (git_stdout(["diff", "--name-status", "-z", "--find-renames", base, ref], root) or "").split("\0")
+    out: list[tuple[str, ...]] = []
+    i = 0
+    while i < len(fields) and fields[i]:
+        width = 2 if fields[i][0] == "R" else 1
+        out.append(tuple(fields[i + 1:i + 1 + width]))
+        i += 1 + width
+    return out
+
+
+def _hunk_additions(patch: str) -> list[tuple[int, str]]:
+    """Added lines of a one-file ``--unified=0`` patch; nothing before the first hunk is content."""
+    out: list[tuple[int, str]] = []
+    number: int | None = None
+    for raw in patch.split("\n"):
+        if raw.startswith("@@ "):
+            match = _HUNK.match(raw)
+            number = int(match.group(1)) if match else None
+        elif number is not None and raw.startswith("+"):
+            out.append((number, raw[1:]))
+            number += 1
+    return out
 
 
 def _suppression_findings(added: dict[str, list[tuple[int, str]]]) -> list[Finding]:
