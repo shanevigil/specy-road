@@ -1,8 +1,8 @@
 """``specy-road doctor``: leftover branches, worktrees, registry rows and stashes.
 
 One repo holds every kind, with the look-alikes doctor must leave alone next to
-each: a claimed branch, an open rollup, a worktree on the claimed branch, a stash
-specy-road did not push.
+each: a claimed branch, an open rollup, a worktree on the claimed branch, a
+detached worktree with uncommitted changes, a stash specy-road did not push.
 """
 
 from __future__ import annotations
@@ -89,6 +89,7 @@ def doctor_repo(tmp_path: Path, monkeypatch) -> tuple[Path, Path]:
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-thing"), "feature/rm-thing")
     git(repo, "worktree", "add", "-q", str(tmp_path / "wt-settled"), "feature/rm-settled")
     git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-wip"), "feature/rm-open")
+    (tmp_path / "wt-wip" / "src" / "wip.py").write_text("unsaved\n", encoding="utf-8")
     git(repo, "worktree", "add", "-q", "--detach", str(tmp_path / "wt-locked"), "dev")
     git(repo, "worktree", "lock", str(tmp_path / "wt-locked"))
 
@@ -130,8 +131,8 @@ def test_dry_run_lists_every_kind_and_changes_nothing(doctor_repo, capsys) -> No
     assert "wt-missing  — directory missing" in out
     assert "wt-settled  — branch feature/rm-settled is merged" in out
     assert "wt-thing  — branch feature/rm-thing is merged" in out
-    for name in KEPT_WORKTREES:
-        assert name not in out
+    assert "wt-locked" not in out
+    assert "wt-wip  — detached at" in out and "uncommitted changes, so --fix leaves it" in out
     assert "ghost  — node M1.3: feature/rm-ghost is in neither this clone nor origin" in out
     assert "settled  — node M1.4: leaf Complete; feature/rm-settled is listed above" in out
     assert TOOLKIT_STASH in out
@@ -167,6 +168,7 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
         assert name not in git(repo, "worktree", "list")
     for name in KEPT_WORKTREES:
         assert name in git(repo, "worktree", "list")
+    assert any(line.startswith("[kept] ") and "wt-wip: detached at" in line for line in out.splitlines())
     for codename in ("ghost", "settled"):
         assert f"[ok] removed registry row {codename} on origin/dev" in out
         assert codename not in git(bare, "show", "dev:roadmap/registry.yaml")
@@ -178,7 +180,35 @@ def test_fix_removes_what_it_listed_and_reports_each(doctor_repo, capsys) -> Non
         assert _has(bare, f"refs/heads/{branch}")
 
     assert _exit(["--repo-root", str(repo)]) == 0
-    assert "Nothing to tidy" in capsys.readouterr().out
+    listed = [line for line in capsys.readouterr().out.splitlines() if line.startswith("  ")]
+    assert len(listed) == 1 and "wt-wip  — detached at" in listed[0]   # only what --fix leaves
+
+
+def test_detached_worktrees_are_listed_and_fix_removes_only_clean_ones(doctor_repo, capsys) -> None:
+    """A review recipe's clean detached worktree goes; one with uncommitted changes, or with
+    commits no branch holds, stays and is reported."""
+    repo, _bare = doctor_repo
+    wt = repo.parent
+    git(repo, "worktree", "add", "-q", "--detach", str(wt / "wt-review"), "feature/rm-finished")
+    git(repo, "worktree", "add", "-q", "--detach", str(wt / "wt-orphan"), "dev")
+    commit_file(wt / "wt-orphan", "src/orphan.py", "x\n", "on no branch")
+
+    assert _exit(["--repo-root", str(repo)]) == 0
+    out = capsys.readouterr().out
+    head = git(repo, "rev-parse", "feature/rm-finished")[:12]
+    assert any(line.endswith(f"wt-review  — detached at {head}") for line in out.splitlines())
+    assert "wt-orphan  — detached at" in out and "commits no branch holds, so --fix leaves it" in out
+
+    assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
+    out = capsys.readouterr().out
+    assert any(line.startswith("[ok] removed worktree ") and line.endswith("wt-review")
+               for line in out.splitlines())
+    worktrees = git(repo, "worktree", "list")
+    assert "wt-review" not in worktrees
+    for name in ("wt-wip", "wt-orphan"):
+        assert name in worktrees
+        assert any(line.startswith("[kept] ") and f"{name}: detached at" in line for line in out.splitlines())
+    assert (wt / "wt-wip" / "src" / "wip.py").read_text() == "unsaved\n"
 
 
 def test_fix_asks_per_kind_and_a_no_removes_nothing(doctor_repo, capsys, monkeypatch) -> None:
@@ -280,3 +310,23 @@ def test_doctor_refuses_without_a_fresh_roadmap(
 
     assert error in capsys.readouterr().err
     assert _has(repo, "refs/heads/feature/rm-done")
+
+
+def test_fix_keeps_a_landed_patch_whose_commit_no_ref_holds(doctor_repo, capsys) -> None:
+    """The patch reached origin/dev under another SHA: the content landed, the commit did not."""
+    repo, _bare = doctor_repo
+    wt = repo.parent / "wt-landed"
+    git(repo, "worktree", "add", "-q", "--detach", str(wt), "dev")
+    head = commit_file(wt, "src/landed.py", "x\n", "fix in a review worktree")
+    git(repo, "cherry-pick", "-x", head)   # -x changes the message, so the SHA differs
+    git(repo, "push", "-q", "origin", "dev")
+    assert git(repo, "for-each-ref", "--contains", head, "refs/heads", "refs/remotes") == ""
+
+    assert _exit(["--fix", "--yes", "--repo-root", str(repo)]) == 0
+
+    out = capsys.readouterr().out
+    assert any(line.startswith("[kept] ") and line.endswith(
+        f"wt-landed: branch gone: detached at {head[:12]}, {doctor.SAME_PATCH}; "
+        "commits no branch holds, so --fix leaves it") for line in out.splitlines())
+    assert "wt-landed" in git(repo, "worktree", "list")
+    assert git(wt, "rev-parse", "HEAD") == head

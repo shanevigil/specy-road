@@ -48,7 +48,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.13` | specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes | task | Agentic-led | Complete |
 | `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Complete |
 | `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Complete |
-| `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Not Started |
+| `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Complete |
 | `M4.17` | Review-loop escalation: a root-cause analysis runs when reviews keep blocking | task | Agentic-led | Complete |
 | `M4.18` | Further TS/JS syntax forms for the function cap found in M4.12 review | task | Agentic-led | Complete |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
