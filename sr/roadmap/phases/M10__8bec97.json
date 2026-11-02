@@ -87,6 +87,28 @@
         "specy_road/worker_ops.py"
       ],
       "type": "task"
+    },
+    {
+      "acceptance": [
+        "review record writes REVIEW-<model>.md with that exact case even when a file differing only in case already exists (as on macOS APFS), replacing it rather than keeping the old name",
+        "handoff status, review list and the review gate find a reviewer record whose file name differs from REVIEW-<model>.md only in case, and report it under the canonical name; a test simulates the lowercase file"
+      ],
+      "codename": "review-file-case",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M10.18",
+      "node_key": "4d539f75-387b-4e8a-8e98-3cdbeae5a1cb",
+      "parent_id": "M10",
+      "planning_dir": "planning/M10.18_review-file-case_4d539f75-387b-4e8a-8e98-3cdbeae5a1cb.md",
+      "sibling_order": 18,
+      "status": "Not Started",
+      "title": "Review records are found and written with the canonical file name on case-insensitive filesystems",
+      "touch_zones": [
+        "specy_road/review_files.py",
+        "specy_road/bundled_scripts/review_cli.py",
+        "tests/"
+      ],
+      "type": "task"
     }
   ]
 }
