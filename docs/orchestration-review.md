@@ -91,3 +91,22 @@ Two findings work for any language. `new-suppression: <path>:<line>` marks each 
 ## The integrity gate
 
 With `policy.integrity_gate: true` in `roadmap/orchestration.yaml` (default false), read from the integration branch like the rest of the policy, each `specy-road integrity` finding for the commit under review (against its merge base with the integration branch) is a gate problem unless its exact line is in the node's `planned_test_changes` **as committed on the integration branch**. `handoff status` lists each one as `integrity (undeclared): <finding>`, and `mark-implementation-reviewed --yes` and `finish-this-task` refuse while any remains. A declaration on the leaf branch does not count: the leaf approved before pickup is the waiver, so an executor cannot write one. A removal discovered mid-implementation is a `blocked_on` stop until the coordinator amends `planned_test_changes` on the integration branch; see [roadmap-authoring.md](roadmap-authoring.md). With the policy off or absent the gate ignores findings.
+
+## Red-green evidence
+
+A passing test proves little unless it would have failed without the change. With `policy.red_green: true` in `roadmap/orchestration.yaml` (default false), read from the integration branch like the rest of the policy, the tests under check are exactly the Python test functions (`test_*` in `test_*.py` or `*_test.py`, at module or class scope) whose source differs between the merge base and the commit under review, or that exist only at that commit.
+
+`specy-road review red-green <NODE_ID> [--ref <branch or commit>]` runs each test under check by node id (`python -m pytest <path>::<name>`, one run per test, with the interpreter that runs specy-road, from the worktree's git root) twice: in a detached temporary worktree of the merge base with only the head's versions of the changed test files overlaid, and in a detached temporary worktree of the commit under review. Both worktrees are removed afterwards, so `git worktree list` ends as it began. It writes `work/reviews/<NODE_ID>/RED-GREEN.md`:
+
+```yaml
+---
+commit: <full sha of the commit under review>
+base: <full sha of the merge base>
+tests:
+  - {test: tests/test_x.py::test_new, base: fail, head: pass}
+---
+```
+
+Each outcome is `pass`, `fail` (a failure in the call phase in pytest's JUnit XML) or `error` (a collection or setup error, or nothing ran: the node id was not found or every case skipped). A test the node lists in `planned_test_changes` (on the integration branch) as `preserve: <path>::<name>` must pass at base and at head; every other test under check must fail at base and pass at head. The command prints the same problems the gate would and exits 1 when there are any.
+
+With the policy on, the gate adds `red-green: missing` when the file is absent or unreadable, `red-green: stale (<sha>)` when its `commit` is not the commit under review (re-run the command after every new commit), and otherwise one problem per test that breaks the rule: `not-green: <id>` when it does not pass at head (or, for a `preserve` test, at base), else `not-red: <id>` when it does not fail at base. The tests under check are computed again from git, so a test left out of the record is a problem too. A test that errors at base (for example, its module cannot import the function the leaf adds) is not red: only an assertion that fails in the call phase is evidence. With the policy off or absent the gate ignores red-green evidence. This checks test-first evidence; it does not tell executors to work test-first. Design: [design-notes/regression-prevention.md](design-notes/regression-prevention.md).

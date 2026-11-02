@@ -108,6 +108,10 @@
           "type": "boolean",
           "description": "When true, each `specy-road integrity` finding for the commit under review is a review-gate problem unless its exact line is in the node's planned_test_changes as committed on the integration branch. Default false."
         },
+        "red_green": {
+          "type": "boolean",
+          "description": "When true, every Python test function the leaf adds or changes must fail at the merge base (with the head's changed test files overlaid) and pass at head, or pass on both when the node's planned_test_changes on the integration branch lists it as `preserve: <path>::<name>`; `specy-road review red-green` records the outcomes in work/reviews/<NODE_ID>/RED-GREEN.md and the review gate reads them for the commit under review. Default false."
+        },
         "ratchet_paths": {
           "type": "array",
           "uniqueItems": true,

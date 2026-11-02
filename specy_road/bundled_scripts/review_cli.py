@@ -28,6 +28,7 @@ from typing import Any
 from specy_road.bundled_scripts.brief_acceptance import acceptance_ids
 from specy_road.bundled_scripts.roadmap_load import load_roadmap
 from specy_road.orchestration_config import substitute_for
+from specy_road.red_green import cmd_red_green
 from specy_road.review_files import (
     HUMAN,
     archive_review,
@@ -381,6 +382,11 @@ def build_parser() -> argparse.ArgumentParser:
     pre.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
     add_repo_root_arg(pre)
     pre.set_defaults(func=cmd_check_pre_existing)
+    rg = rsub.add_parser("red-green", help="Run the tests a leaf adds or changes at its merge base and at head")
+    rg.add_argument("node_id")
+    rg.add_argument("--ref", help="Branch or commit under review (default: the node's registered branch)")
+    add_repo_root_arg(rg)
+    rg.set_defaults(func=cmd_red_green)
     return p
 
 

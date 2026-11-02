@@ -13,6 +13,16 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `policy.red_green` in `roadmap/orchestration.yaml` (default false) and
+  `specy-road review red-green <NODE_ID>`: each Python test function the leaf
+  adds or changes runs with pytest by node id in a detached temporary worktree
+  of the merge base (with the head's changed test files overlaid) and of the
+  commit under review, and the outcomes go to
+  `work/reviews/<NODE_ID>/RED-GREEN.md`. With the policy on, the review gate
+  requires each such test to fail at base and pass at head (pass on both when
+  `planned_test_changes` lists it as `preserve: <path>::<name>`), reporting
+  `not-red: <id>`, `not-green: <id>`, `red-green: missing` or
+  `red-green: stale (<sha>)`.
 - `specy-road review check-pre-existing <NODE_ID>` runs each failing READY
   verifier that a counted approval names in `verify_pre_existing` twice, at the
   project root of a detached temporary worktree of the integration tip, and
