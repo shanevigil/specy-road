@@ -8,8 +8,10 @@ locally and whoever owns the claims.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -265,6 +267,47 @@ def test_concurrent_first_calls_agree_on_one_checkout_id(tmp_path: Path) -> None
         ids = list(pool.map(lambda _i: lease.checkout_id(repo), range(32)))
     assert len(set(ids)) == 1 and ids[0] == _id_file(repo).read_text(encoding="utf-8").strip()
     assert list(_id_file(repo).parent.glob(".specy-road-checkout-id.*")) == []   # no temporary file left behind
+
+
+def test_an_adopted_worker_in_another_clone_counts(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path, max_workers=1)
+    remote, clone = _remote_and_clone(tmp_path, repo)
+    adopted = ops.adopt(clone, "M1.1", "claude-code", str(uuid.uuid4()))
+    assert _leases(remote) == [f"{lease.checkout_id(clone)}/{adopted.worker_id}"]
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "0 workers active (and 1 leased by other checkouts" in capsys.readouterr().err
+    assert ws.list_records(repo) == []
+
+
+def test_an_adopt_whose_lease_cannot_be_pushed_is_refused(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
+    remote, clone = _remote_and_clone(tmp_path, repo)
+    _rejecting(remote)
+    with pytest.raises(ws.WorkerError, match="origin rejected the lease for w-0001"):
+        ops.adopt(clone, "M1.1", "claude-code", str(uuid.uuid4()))
+    assert [r.state for r in ws.list_records(clone)] == ["terminated"]   # closed: nothing here holds the slot unseen
+
+
+def test_sync_pushes_a_lease_for_an_active_worker_without_one(tmp_path: Path) -> None:
+    repo, _ = _repo(tmp_path)
+    remote, _clone = _remote_and_clone(tmp_path, repo)
+    rec = _idle(repo, "M1.1")   # registered before leases existed, or launched --offline
+    assert _leases(remote) == []
+    ops.sync(repo)
+    assert _leases(remote) == [f"{lease.checkout_id(repo)}/{rec.worker_id}"]
+
+
+def test_a_retry_returns_the_existing_worker_while_the_remote_is_down(tmp_path: Path, capsys) -> None:
+    repo, _ = _repo(tmp_path)
+    _unreachable(tmp_path, repo)
+    rec = _idle(repo, "M1.1")
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--json", "--repo-root", str(repo)) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["worker_id"] == rec.worker_id and out["created"] is False
+    ws.set_state(repo, rec, "terminated", pid=None)   # an actual launch still needs the global count
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--repo-root", str(repo)) == 1
+    assert "cannot reach origin to count other checkouts' workers" in capsys.readouterr().err
+    assert [r.worker_id for r in ws.list_records(repo)] == [rec.worker_id]
 
 
 def test_a_linked_worktree_counts_the_main_checkouts_workers(tmp_path: Path, capsys) -> None:

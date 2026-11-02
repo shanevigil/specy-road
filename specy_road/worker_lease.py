@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from specy_road.git_subprocess import git_text, run
+from specy_road.git_subprocess import GitResult, git_text, run
 from specy_road.git_workflow_config import resolve_integration_defaults
 from specy_road.orchestration_pinned import pinned_config
 from specy_road.worker_adapters import Unsupported, adapter_for
@@ -267,13 +267,25 @@ def slot_error(active: int, foreign: list[str], limit: int) -> WorkerError:
                        "wait for one to finish or raise the limit")
 
 
-def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: bool = False) -> None:
+def _push_lease(repo_root: Path, remote: str, cid: str, rec: WorkerRecord) -> GitResult:
+    """Push ``rec``'s lease ref: a parentless commit on the empty tree naming the worker, so nothing else uploads."""
+    tree = git_text(["hash-object", "-w", "-t", "tree", os.devnull], repo_root)
+    sha = tree and git_text(["-c", "user.name=specy-road", "-c", "user.email=specy-road@localhost", "commit-tree", tree,
+                             "-m", f"specy-road lease {rec.worker_id} {rec.node_id} {rec.harness}/{rec.model}"], repo_root)
+    if not sha:
+        return GitResult(-1, "", f"cannot build the lease commit for {rec.worker_id}", "error")
+    return run(["push", "--quiet", "--force", remote, f"{sha}:{LEASES}{cid}/{rec.worker_id}"], repo_root,
+               timeout=LEASE_TIMEOUT)
+
+
+def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: bool = False, count: bool = True) -> None:
     """Push ``rec``'s lease, then count again, so of two checkouts launching at once neither goes over the limit
     (both may be refused; never one too many). ``new``: no lease existed, so a refusal deletes the one pushed.
+    ``count=False`` pushes without the recount (``adopt``: the session already runs, refusing would not stop it).
 
     A push the remote rejects, or a remote that cannot be reached, refuses the turn; ``offline`` skips the
-    lease (one warning), so other checkouts do not count this worker. Run under the workers lock, as every
-    caller does: the stale sweep's delete takes it too, so it cannot remove a lease being acquired."""
+    lease (one warning), so other checkouts do not count this worker until ``sync`` pushes it. Run under the
+    workers lock, as every caller does: ``sync_leases`` takes it too, so it cannot remove a lease being acquired."""
     rm = _remote(repo_root)
     if not rm:
         return
@@ -282,17 +294,13 @@ def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: boo
         _warn_offline(rm[1], remote)
         return
     cid = checkout_id(repo_root)   # refuses the turn when there is no usable id
-    tree = git_text(["hash-object", "-w", "-t", "tree", os.devnull], repo_root)   # the empty tree: nothing to upload
-    sha = tree and git_text(["-c", "user.name=specy-road", "-c", "user.email=specy-road@localhost", "commit-tree", tree,
-                             "-m", f"specy-road lease {rec.worker_id} {rec.node_id} {rec.harness}/{rec.model}"], repo_root)
-    if not sha:
-        raise WorkerError(f"cannot build the lease commit for {rec.worker_id}; nothing was launched")
-    r = run(["push", "--quiet", "--force", remote, f"{sha}:{LEASES}{cid}/{rec.worker_id}"], repo_root,
-            timeout=LEASE_TIMEOUT)
+    r = _push_lease(repo_root, remote, cid, rec)
     if not r.ok:
         if run(["ls-remote", remote, LEASES + "*"], repo_root, timeout=LEASE_TIMEOUT).ok:   # reachable: a rejection
             raise WorkerError(f"{remote} rejected the lease for {rec.worker_id} ({_why(r)}); nothing was launched")
         raise WorkerError(f"cannot reach {remote} to push the lease for {rec.worker_id} ({_why(r)}); {OFFLINE_HINT}")
+    if not count:
+        return
     try:
         limit, foreign = max_workers(repo_root), foreign_leases(repo_root)
         local = [r for r in list_records(repo_root, active_only=True) if r.worker_id != rec.worker_id]
@@ -301,6 +309,17 @@ def acquire_lease(repo_root: Path, rec: WorkerRecord, *, new: bool, offline: boo
     except WorkerError:
         if new:
             release_lease(repo_root, rec.worker_id)
+        raise
+
+
+def lease_adopted(repo_root: Path, rec: WorkerRecord) -> None:
+    """``adopt``'s lease, pushed with no recount; one that cannot be pushed closes the record and refuses the adopt,
+    since a worker other checkouts cannot see would let them launch past ``max_workers``."""
+    try:
+        acquire_lease(repo_root, rec, new=True, count=False)
+    except WorkerError as e:
+        append_event(repo_root, rec, "error", source="system", summary=f"adopt refused: {e}")
+        mutate(repo_root, rec, lambda r: setattr(r, "state", "terminated"))
         raise
 
 
@@ -327,20 +346,24 @@ def _closed(repo_root: Path, worker_id: str) -> bool:
         return True   # no record: nothing here holds that lease
 
 
-def release_stale_leases(repo_root: Path) -> list[str]:
-    """Delete this checkout's lease refs whose worker is no longer active here; returns the worker ids released.
+def sync_leases(repo_root: Path) -> tuple[list[str], list[str]]:
+    """Make this checkout's lease refs match its active records; ``(released, pushed)`` worker ids.
 
-    The remote is read unlocked; each candidate's record is then checked again, and its ref deleted, under the
-    workers lock, so a launch or resume (which pushes its lease under the same lock) cannot interleave."""
+    A ref whose worker is no longer active here is deleted; an active worker with no ref (registered before leases
+    existed, launched ``--offline``, or whose push failed) gets one, best effort. The remote is read unlocked; each
+    candidate is then rechecked and every delete and push made under the workers lock, so a launch or resume (which
+    pushes its lease under the same lock) cannot interleave."""
     rm = _remote(repo_root)
     if not rm:
-        return []
+        return [], []
     try:
         cid = checkout_id(repo_root)
-        candidates = [n.split("/", 1)[1] for n in _lease_refs(repo_root, rm[0], f"{LEASES}{cid}/")]
+        held = {n.split("/", 1)[1] for n in _lease_refs(repo_root, rm[0], f"{LEASES}{cid}/")}
     except WorkerError:
-        return []   # unreachable, or no usable id: sync still reports; the next sync retries
+        return [], []   # unreachable, or no usable id: sync still reports; the next sync retries
     with workers_lock(repo_root):
-        stale = [w for w in candidates if _closed(repo_root, w)]
+        stale = sorted(w for w in held if _closed(repo_root, w))
         release_lease(repo_root, *stale)
-    return stale
+        unleased = [r for r in list_records(repo_root, active_only=True) if r.worker_id not in held]
+        pushed = [r.worker_id for r in unleased if _push_lease(repo_root, rm[0], cid, r).ok]
+    return stale, pushed
