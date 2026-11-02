@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo
-from tests.test_models_and_prompt import _commit_profile, _repo, _run
+from tests.test_models_and_prompt import commit_profile, make_profile_repo, run_main
 from tests.test_worker_cli import run_worker_cli
 
 from specy_road import worker_adapters as wa
@@ -339,22 +339,22 @@ def _harness(repo: Path, cli: str | None = None) -> None:
     roster = repo / "roadmap" / "orchestration.yaml"
     extra = "    harness: claude-code\n" + (f"    channels: {{cli: '{cli}'}}\n" if cli else "")
     roster.write_text(roster.read_text().replace("    family: anthropic\n", "    family: anthropic\n" + extra, 1))
-    _commit_profile(repo)
+    commit_profile(repo)
 
 
 def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tmp_path: Path, capfd) -> None:
-    repo = _repo(tmp_path)
+    repo = make_profile_repo(tmp_path)
     _harness(repo)
     prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
     prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo {effort} {prompt}"))
-    _commit_profile(repo)
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert out.splitlines()[-1].startswith("--effort low ") and "takes no effort" not in err
     prof_path.write_text(prof_path.read_text().replace("  cli: echo {effort} {prompt}", "  cli: echo {prompt}"))
-    _commit_profile(repo)
-    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+    commit_profile(repo)
+    assert run_main(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
                 "--repo-root", str(repo)) == 0
     out, err = capfd.readouterr()
     assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err
@@ -366,7 +366,7 @@ def test_delegate_passes_the_executor_effort_to_default_and_custom_commands(tmp_
     monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
     for name, cli in (("default", None), ("effort", "wrapper {effort} {prompt}"), ("none", "wrapper {prompt}")):
         (tmp_path / name).mkdir()
-        repo = _repo(tmp_path / name)
+        repo = make_profile_repo(tmp_path / name)
         _harness(repo, cli)
         ops.delegate(repo, "M1.1", "opus")
         notes = capsys.readouterr().err.count("takes no effort")

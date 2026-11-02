@@ -33,8 +33,7 @@ Front matter fields under `access` that tools read:
 CLAUDE.md, and needs `ANTHROPIC_API_KEY` (bare mode never reads the subscription
 login). The shipped Claude profiles set `full`; see `docs/orchestration-models.md`.
 They also set `effort_by_role`: executor and reviewer at the model's documented
-default effort, coordinator one level below (Fable leaves the coordinator unset,
-since its levels below `high` are unverified). Lower the reviewer only after
+default effort, coordinator one level below. Lower the reviewer only after
 measuring that review verdicts hold.
 
 ## Where this comes from
