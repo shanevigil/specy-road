@@ -60,9 +60,9 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Mixed | Not Started |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Human-led | Not Started |
 | `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Complete |
-| `M6` | 0.3.1-rc2 release | phase | — | Not Started |
-| `M6.1` | Close out the triage note, changelog and what's-new for rc2 | task | Agentic-led | Not Started |
-| `M6.2` | Pre-release checks and the 0.3.1-rc2 cut | task | Human-led | Not Started |
+| `M6` | 0.3.1-rc2 release | phase | — | Complete |
+| `M6.1` | Close out the triage note, changelog and what's-new for rc2 | task | Agentic-led | Complete |
+| `M6.2` | Pre-release checks and the 0.3.1-rc2 cut | task | Human-led | Complete |
 | `M7` | Keeping current: recurring research | phase | — | Not Started |
 | `M7.1` | A research register tracks deep-research topics with a refresh cadence | task | Agentic-led | Complete |
 | `M7.2` | Run the harness-capabilities research and fold its findings | task | Human-led | Not Started |
@@ -92,7 +92,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.3` | Replace per-worker polling with a single mailbox flag file and a foreground --wait | task | Agentic-led | Complete |
 | `M10.4` | Pin harness discovery mode per profile | task | Agentic-led | Complete |
 | `M10.5` | Per-role effort in model profiles | task | Agentic-led | Complete |
-| `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Mixed | Not Started |
+| `M10.6` | Measure whether lower reviewer effort changes verdicts | task | Agentic-led | Not Started |
 | `M10.7` | Output budgets with --full on packets, briefs and plans | task | Agentic-led | Complete |
 | `M10.8` | Reviewers launch without repo hooks or MCP | task | Agentic-led | Complete |
 | `M10.9` | Emit a stalled event when a worker goes silent past a threshold | task | Agentic-led | Complete |
@@ -114,10 +114,11 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.5` | Pickup's stale-claim check tests the local branch and never advises deleting a live claim | task | Agentic-led | Not Started |
 | `M11.6` | worker reconcile judges a worker against the leaf's current contract | task | Agentic-led | Not Started |
 | `M11.7` | review delegate runs a rostered reviewer like worker delegate runs an executor | task | Agentic-led | Not Started |
-| `M11.8` | An opt-in delta review packet for small fix rounds | task | Mixed | Not Started |
+| `M11.8` | An opt-in delta review packet for small fix rounds | task | Agentic-led | Not Started |
 | `M11.9` | Acceptance items a human must satisfy are marked and handled as such | task | Agentic-led | Not Started |
-| `M11.10` | edit-node can add and remove single list entries | task | Agentic-led | Not Started |
+| `M11.10` | edit-node can add and remove single list entries | task | Agentic-led | Complete |
 | `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Not Started |
 | `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Not Started |
+| `M11.13` | A milestone gets one full review of its combined change before it is marked complete | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

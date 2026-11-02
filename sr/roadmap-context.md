@@ -60,9 +60,9 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M5.6` Pilot the context-feedback question in the sandbox before shipping it `context-feedback-pilot` — task — **Not Started**
   - `M5.7` Measure the managed section on and off across the sandbox apps `managed-section-ablation` — task — **Not Started**
   - `M5.8` Further Markdown mention forms for the stale-command check found in M5.2 review `further-markdown-mention-forms-for-the-stale-command-check-found-in-m5-2-review` — task — **Complete**
-- `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Not Started**
-  - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Not Started**
-  - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Not Started**
+- `M6` 0.3.1-rc2 release `release-0-3-1-rc2` — phase — **Complete**
+  - `M6.1` Close out the triage note, changelog and what's-new for rc2 `rc2-closeout-docs` — task — **Complete**
+  - `M6.2` Pre-release checks and the 0.3.1-rc2 cut `rc2-cut` — task — **Complete**
 - `M7` Keeping current: recurring research `keeping-current-recurring-research` — phase — **Not Started**
   - `M7.1` A research register tracks deep-research topics with a refresh cadence `a-research-register-tracks-deep-research-topics-with-a-refresh-cadence` — task — **Complete**
   - `M7.2` Run the harness-capabilities research and fold its findings `run-the-harness-capabilities-research-and-fold-its-findings` — task — **Not Started**
@@ -116,18 +116,20 @@ Status is the computed rollup: a non-leaf is Complete only when every leaf desce
   - `M11.7` review delegate runs a rostered reviewer like worker delegate runs an executor `review-delegate` — task — **Not Started**
   - `M11.8` An opt-in delta review packet for small fix rounds `delta-review-packet` — task — **Not Started**
   - `M11.9` Acceptance items a human must satisfy are marked and handled as such `human-acceptance` — task — **Not Started**
-  - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Not Started**
+  - `M11.10` edit-node can add and remove single list entries `edit-node-add-remove` — task — **Complete**
   - `M11.11` orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route `one-readiness-rule` — task — **Not Started**
   - `M11.12` specy-road ready writes a valid READY hand-off `ready-command` — task — **Not Started**
+  - `M11.13` A milestone gets one full review of its combined change before it is marked complete `milestone-full-review` — task — **Not Started**
 
 ## Claimed and in flight
 
 Do not pick these up.
 
 - `M1.1` on `feature/rm-project-setup` since 2026-10-28
-- `M11.10` on `feature/rm-edit-node-add-remove` since 2026-11-02
+- `M11.11` on `feature/rm-one-readiness-rule` since 2026-11-02
 - `M11.2` on `feature/rm-resume-failed-workers` since 2026-11-02
 - `M11.5` on `feature/rm-pickup-claim-heuristic` since 2026-11-02
+- `M11.6` on `feature/rm-reconcile-current-contract` since 2026-11-02
 
 ## Reaching the detail behind this
 
