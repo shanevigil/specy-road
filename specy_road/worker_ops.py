@@ -21,13 +21,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.bundled_scripts.role_prompt import build_prompt
 from specy_road.git_subprocess import git_text, run
+from specy_road.git_workflow_config import git_config_user_name, resolve_integration_defaults
 from specy_road.orchestrate_plan import ANY, is_available, may_handle, node_eligibility, node_sensitivity
 from specy_road.orchestration_config import DEFAULT_POLICY, roster_entry
 from specy_road.orchestration_pinned import pinned_config, pinned_profile_for_entry
+from specy_road.registry_remote_overlay_merge import read_registry_at_ref
 from specy_road.review_files import reviews_root
 from specy_road.review_target import ReviewTargetError, resolve_target
 from specy_road.runtime_paths import git_root, project_prefix
@@ -59,10 +60,6 @@ from specy_road.worker_state import (
 
 CONTINUE_PROMPT = ("Continue the task from where you stopped. Re-read the brief and the precondition "
                    "first; if the hand-off is already written, say so and stop.\n")
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _target(repo_root: Path, node_id: str):
@@ -210,15 +207,30 @@ def sweep_stalled(repo_root: Path, *, now: datetime | None = None) -> list[Worke
     return out
 
 
-def _slot_or_existing(repo_root: Path, node_id: str, limit: int) -> WorkerRecord | None:
-    """Under the lock: the leaf's live worker, else ``None`` once a ``max_workers`` slot is confirmed free."""
+def claimed_elsewhere(repo_root: Path, skip: set[str]) -> list[str]:
+    """Leaves this checkout's ``user.name`` claims on the integration branch (local and remote-tracking, as last
+    fetched) on a branch this repository has no local branch for: another clone's, each counted as a worker."""
+    me = git_config_user_name(repo_root)
+    base, remote, _ = resolve_integration_defaults(repo_root, explicit_base=None, explicit_remote=None)
+    heads = set((git_text(["for-each-ref", "--format=%(refname:short)", "refs/heads/"], repo_root) or "").split())
+    found = {str(e.get("node_id")) for ref in (f"refs/heads/{base}", f"refs/remotes/{remote}/{base}")
+             for e in (read_registry_at_ref(repo_root, ref, 30.0) or {}).get("entries") or []
+             if me and isinstance(e, dict) and e.get("owner") == me and e.get("branch") not in heads}
+    return sorted(found - skip)
+
+
+def _slot_or_existing(repo_root: Path, node_id: str, *, own: str | None = None) -> WorkerRecord | None:
+    """Under the lock: the leaf's live worker other than ``own``, else ``None`` once a ``max_workers`` slot is free;
+    counted are every other active record (linked worktrees share this directory) and :func:`claimed_elsewhere`."""
+    limit = int(pinned_config(repo_root)[0]["policy"]["max_workers"])
     sweep_dead_wrappers(repo_root)   # a dead wrapper on another leaf must not hold a slot
-    existing = active_for_node(repo_root, node_id)
-    if existing:
+    active = [r for r in list_records(repo_root, active_only=True) if r.worker_id != own]
+    if existing := next((r for r in active if r.node_id == node_id), None):
         return existing
-    active = list_records(repo_root, active_only=True)
-    if len(active) >= limit:
-        raise WorkerError(f"{len(active)} workers active, policy max_workers is {limit}; "
+    elsewhere = claimed_elsewhere(repo_root, {node_id} | {r.node_id for r in active})
+    if len(active) + len(elsewhere) >= limit:
+        where = f" (and {len(elsewhere)} claimed in other clones: {', '.join(elsewhere)})" if elsewhere else ""
+        raise WorkerError(f"{len(active)} workers active{where}, policy max_workers is {limit}; "
                           "wait for one to finish or raise the limit")
     return None
 
@@ -233,10 +245,8 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     sections, not under one: a hook witness must never queue behind them.
     """
     entry, harness = _entry_and_harness(repo_root, model, harness)
-    config, _ = pinned_config(repo_root)
-    limit = int(config["policy"]["max_workers"])
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id, limit)
+        existing = _slot_or_existing(repo_root, node_id)
     if existing:
         return existing, False
     t = _target(repo_root, node_id)
@@ -246,7 +256,7 @@ def delegate(repo_root: Path, node_id: str, model: str, *, harness: str | None =
     if err:
         raise WorkerError(err)
     with workers_lock(repo_root):
-        existing = _slot_or_existing(repo_root, node_id, limit)   # re-checked: another delegate may have landed
+        existing = _slot_or_existing(repo_root, node_id)   # re-checked: another delegate may have landed
         if existing:
             return existing, False
         return _launch_locked(repo_root, node_id, model, harness, entry, t, text, worktree), True
@@ -288,10 +298,7 @@ def _launch_locked(repo_root: Path, node_id: str, model: str, harness: str, entr
 
 
 def _wrapper_gone(repo_root: Path, rec: WorkerRecord) -> bool:
-    """A record that says ``running``/``starting`` with no live wrapper: closed so the leaf is free again.
-
-    Not while the harness or its process group survives (worker_process.wrapper_gone).
-    """
+    """A ``running``/``starting`` record with no live wrapper (nor harness group) is closed: the leaf is free again."""
     return wrapper_gone(repo_root, rec)
 
 
@@ -312,10 +319,9 @@ def _send(repo_root: Path, rec: WorkerRecord, text: str, kind: str) -> WorkerRec
         raise WorkerError(f"{rec.worker_id} has no native session id yet; nothing to resume")
     sid = check_session_id(rec.harness, rec.provider_session_id)   # the harness's output chose it; never a shell word
     entry, _ = _entry_and_harness(repo_root, rec.model, rec.harness)   # raises on an unreadable config first
-    if rec.state == "failed":   # reopening takes a max_workers slot, as a launch does
-        other = _slot_or_existing(repo_root, rec.node_id, int(pinned_config(repo_root)[0]["policy"]["max_workers"]))
-        if other:
-            raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays failed")
+    other = _slot_or_existing(repo_root, rec.node_id, own=rec.worker_id)   # a resumed turn takes a slot, as a launch does
+    if other:
+        raise WorkerError(f"{rec.node_id} already has an active worker ({other.worker_id}); {rec.worker_id} stays {rec.state}")
     _check_eligible(entry, _target(repo_root, rec.node_id).node, rec.model)   # availability and sensitivity can change
     _preflight(entry, repo_root)
     cli, api_id, mode, effort = _cli_for(repo_root, entry, rec.harness)
@@ -383,11 +389,7 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
             raise WorkerError(f"session {session_id} is already a worker")
         wt = _worktree_for(repo_root, str(t.entry["branch"]), str(t.node.get("codename") or node_id), worktree)
         rec = create_record(repo_root, node_id, harness, model, wt, branch=str(t.entry["branch"]), lease="native")
-
-        def fn(r: WorkerRecord) -> None:
-            r.provider_session_id = session_id
-            r.state = "idle"
-        mutate(repo_root, rec, fn)
+        mutate(repo_root, rec, lambda r: r.__dict__.update(provider_session_id=session_id, state="idle"))
         take_checkpoint(repo_root, rec)
         append_event(repo_root, rec, "adopted", source="orchestrator", authority="orchestrator",
                      summary=f"adopted native {harness} session {session_id}; observe only")
@@ -396,5 +398,3 @@ def adopt(repo_root: Path, node_id: str, harness: str, session_id: str, *,
 
 from specy_road.worker_lease import handoff, interventions_path, reclaim, record_hook_prompt  # noqa: E402,F401 — re-exported
 from specy_road.worker_reconcile import reconcile, sync  # noqa: E402,F401 — re-exported; the CLI calls ops.reconcile/ops.sync
-
-
