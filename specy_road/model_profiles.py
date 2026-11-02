@@ -160,7 +160,7 @@ def _effort_errors(access: dict[str, Any], name: str) -> list[str]:
                        f"expected {', '.join(ROLES)}")
         elif not isinstance(key, str) or key not in levels or str(levels[key]).lower() == "unknown":
             out.append(f"profile {name}: `access.effort_by_role.{role}` is {key!r}, not an effort_map key "
-                       f"with a known level ({', '.join(k for k, v in levels.items() if str(v).lower() != 'unknown')})")
+                       f"with a known level ({', '.join(str(k) for k, v in levels.items() if str(v).lower() != 'unknown')})")
     return out
 
 

@@ -377,6 +377,9 @@ def test_effort_by_role_names_effort_map_keys_and_rejects_the_rest(tmp_path: Pat
         p.write_text(EFFORT_HEAD + f"  effort_by_role: {line}\n---\n")
         errors = mp.load_profile(p).errors
         assert len(errors) == 1 and errors[0].startswith("profile my-model: ") and why in errors[0], errors
+    p.write_text(EFFORT_HEAD.replace("{ low:", "{ true: yes, 2: two, low:") + "  effort_by_role: { executor: high }\n---\n")
+    assert mp.load_profile(p).errors == ["profile my-model: `access.effort_by_role.executor` is 'high', not an "
+                                         "effort_map key with a known level (True, 2, low, medium)"]   # non-string keys
 
 
 def test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below() -> None:
