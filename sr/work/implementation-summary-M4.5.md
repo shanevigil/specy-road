@@ -5,10 +5,10 @@ Branch `feature/rm-brainstorm-repo-evidence`, base `2280d77`.
 ## What changed
 
 - **A1 — repo sources.** `add-evidence IDEA --source-type repo --path FILE[:LINE] --quote …` (with `--path`,
-  `--source-type` can be left out) records `source_type: repo`, `path` (as given) and `commit` (the full
+  `--source-type` can be left out) records `source_type: repo`, `path` (as given, relative to the git root) and `commit` (the full
   `HEAD` SHA). It refuses a path that the `HEAD` commit does not hold, such as an untracked or uncommitted
   file, because verify could never check it. It also refuses a path that is a directory (a tree object, not a blob). `verify` checks repo sources locally with no prompt and no network:
-  `git cat-file blob <commit>:./<path>`; `matched` when the quote (whitespace collapsed, case kept) appears on
+  `git cat-file blob <commit>:<path>` run at the enclosing git root; `matched` when the quote (whitespace collapsed, case kept) appears on
   a span that covers the cited line (anywhere in the file when no line was given), `not-found` when not or
   when that commit holds no file at the path (a directory is not one), `blocked` when the commit is no longer
   in the repository or the file there cannot be read as UTF-8 text. When
@@ -44,6 +44,17 @@ Branch `feature/rm-brainstorm-repo-evidence`, base `2280d77`.
 - Both cases are covered through the public CLI (`add-evidence`, then `verify`). The docs' verify paragraph
   states both rules.
 
+## Review round 2 (gpt-6.1-sol, block on A1)
+
+- **R1:** in a nested layout (a project under `sr/`) a repo path resolved against the project root, because
+  git reads a `<commit>:./<path>` name against its working directory. Code outside the project could not be
+  cited, and a same-named file under the project could be read instead. Now `_blob` runs git at
+  `runtime_paths.git_root(root)` (falling back to `root`) with the name `<commit>:<path>`, with any leading `./`
+  dropped. Recording (`repo_commit`) and verify (`check_repo_source`) both use it. The "not in the HEAD commit"
+  message says the path is relative to the git root, and so do the docs.
+- Public CLI regression: a nested `sr/` project cites `src/pay.py` committed at the git root, with a decoy
+  `sr/src/pay.py`; `verify` matches against the recorded commit after HEAD moves on.
+
 ## Touch zones (confirmed)
 
 Changed: `specy_road/bundled_scripts/brainstorm_cli_args.py`, `brainstorm_cli_args_v2.py`, `brainstorm_cli_v2.py`,
@@ -68,6 +79,8 @@ and `specy_road/templates/specyrd/commands/specyrd-brainstorm.md`, whose `--url`
 - Review round 1 fix: `pytest tests/test_brainstorm_repo_evidence.py tests/test_brainstorm_verify.py
   tests/test_validate_file_limits.py tests/test_doc_links.py` → `33 passed`. `file-limits`, `ruff` and the
   private-imports gate pass. Per the coordinator, only the touched test files were run.
+- Review round 2 fix: the same four test files → `34 passed`. `file-limits`, `ruff` and the private-imports
+  gate pass. Only the touched test files were run.
 - `ruff check specy_road/bundled_scripts/`: clean (C901 ≤ 10).
 - `specy-road file-limits`: OK (`brainstorm_cli_v2.py` 389 lines, `docs/brainstorming.md` 391; `add_v2_subcommands` split to stay ≤ 80).
 - Dogfood `validate`/`export --check` not run: no fixture data changed, and manual runs write `.specyrd/cache` into the fixture.
@@ -83,6 +96,7 @@ and `specy_road/templates/specyrd/commands/specyrd-brainstorm.md`, whose `--url`
 - `brainstorm_fields.is_no_result`: shared by read validation and `pending`.
 - `brainstorm_fields._source`: per-source read validation moved out of `parse_extra` (which already had a C901 noqa), plus the repo/no-result checks.
 - `brainstorm_fields.source_record(**located)`: carries `path`/`commit`/`query`/`result` without a parameter each.
+- `brainstorm_verify._blob`: (review round 2) the git root to run in and the root-relative object name for a repo path; shared by recording and verify.
 - `brainstorm_verify.split_path`: `file:line` → `(file, line)`.
 - `brainstorm_verify.repo_commit`: the `HEAD` SHA at record time; refuses a path that commit does not hold.
 - `brainstorm_verify.quote_in_file`: whitespace-collapsed quote match that must cover the cited line.
@@ -112,6 +126,7 @@ and `specy_road/templates/specyrd/commands/specyrd-brainstorm.md`, whose `--url`
 - `test_repo_source_records_the_commit_and_verify_checks_it_locally`: A1 end to end; checked against the recorded commit after HEAD moves; wrong line → not-found.
 - `test_verify_checks_repo_sources_even_when_the_fetch_is_declined`: repo and web sources mixed; only the web URL is asked about.
 - `test_add_evidence_refuses_a_path_the_commit_does_not_hold`: untracked file, repo/url mismatch, wrong source type, missing quote.
+- `test_a_nested_project_cites_code_outside_it_relative_to_the_git_root`: review round 2; a nested `sr/` project with source outside it and a decoy inside; record, then verify against the recorded commit.
 - `test_a_directory_is_not_a_file_to_cite`: R1 through the CLI; refused at record time, and a hand-edited directory citation verifies not-found.
 - `test_a_committed_file_that_does_not_read_is_blocked_not_not_found`: R2 through the CLI, using a committed Latin-1 file.
 - `test_repo_source_states_and_quote_spans`: `split_path` and `quote_in_file` edge cases; no root → blocked.
