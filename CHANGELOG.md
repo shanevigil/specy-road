@@ -13,6 +13,13 @@ body. Keep section bodies focused; link to PRs for detail.
 
 ### Added
 
+- `specy-road impact <NODE_ID>` lists, sorted, the Python test files that
+  import (at any depth, through the repository's own modules) a module changed
+  between the merge base and `--ref`; `ALL` when a `conftest.py` changed, and a
+  `not analysed: <n> files` line for changed files that are not Python.
+  `--zones` starts from the modules under the touch zones instead. The executor
+  prompt written at pickup and `review-packet` each gain a **Tests at risk**
+  section (the `--zones` list and the diff list, at most 50 paths). Advisory.
 - `specy-road review check-pre-existing <NODE_ID>` runs each failing READY
   verifier that a counted approval names in `verify_pre_existing` twice, at the
   project root of a detached temporary worktree of the integration tip, and

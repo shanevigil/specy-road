@@ -7,11 +7,12 @@ Writes ``work/reviews/<NODE_ID>/PACKET.md`` (and ``-o``'s path too) with, in ord
 2. the implementation summary (``work/implementation-summary-<NODE_ID>.md``);
 3. every changed path since the merge base (with the integration branch, or
    ``--base``), with paths outside the node's touch zones called out;
-4. ``git diff <base>...<ref>``, with a warning when it is empty; past
+4. the Python test files that import a changed module (``specy-road impact``);
+5. ``git diff <base>...<ref>``, with a warning when it is empty; past
    ``--max-diff-lines`` (default 1500) the first files that fit are inlined
    whole, the rest are listed with their ``+``/``-`` counts, and the full
    diff is written to ``work/reviews/<NODE_ID>/DIFF.patch`` (``0`` = no cap);
-5. verifier output — the newest valid READY file's ``verify`` tails, plus any
+6. verifier output — the newest valid READY file's ``verify`` tails, plus any
    ``--verify-cmd`` run now.
 
 A reviewer is handed this file and nothing else (proposal §3.2). The commit it
@@ -32,6 +33,7 @@ from specy_road.bundled_scripts.generate_brief import index, render_brief
 from specy_road.finish_implementation_check import zone_matches
 from specy_road.git_changed_paths import diff_paths
 from specy_road.git_subprocess import git_stdout, git_text, head_sha
+from specy_road.impact import impact_for_diff, section_lines
 from specy_road.integrity import compare_integrity
 from specy_road.review_files import PACKET_NAME, latest_ready, reviews_dir
 from specy_road.review_gate import policy_source, trial_merge
@@ -189,6 +191,14 @@ def test_integrity_section(root: Path, t: ReviewTarget) -> list[str]:
     return lines
 
 
+def tests_at_risk_section(root: Path, t: ReviewTarget) -> list[str]:
+    """``## Tests at risk``: test files importing a changed module, from git objects (advisory)."""
+    impact = impact_for_diff(root, t.base, t.commit) if t.base and t.commit else None
+    intro = (f"{_computed(t)} Python test files that import, at any depth, a module this diff changes "
+             "(advisory; not a gate).")
+    return section_lines(impact, intro=intro, full_cmd=f"specy-road impact {t.node_id} --ref {t.commit}")
+
+
 def _empty_diff_reason(t: ReviewTarget) -> str:
     return (f"the diff is empty: `{t.commit}` adds nothing past its merge base with `{t.base_ref}`, as when the "
             "branch is already merged there; `review-packet --base <ref>` sets the diff range (e.g. the commit "
@@ -302,6 +312,7 @@ def build_packet(root: Path, node_id: str, *, ref: str | None, verify_cmds: list
         _summary(root, t),
         changed,
         test_integrity_section(root, t),
+        tests_at_risk_section(root, t),
         _diff(root, t, paths, max_diff_lines),
         ["## Verifier output", ""] + _ready_verify(root, t) + _run_verify(root, verify_cmds, t),
     ]
