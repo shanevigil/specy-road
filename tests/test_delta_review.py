@@ -113,6 +113,18 @@ def test_a_reviewer_that_did_not_approve_the_earlier_commit_gets_no_delta(tmp_pa
     assert [a.model for a in _gate(repo).approvals] == ["sol"]
 
 
+def test_an_ineligible_delta_approval_is_no_basis_for_a_later_delta(tmp_path: Path) -> None:
+    repo, approved = _repo(tmp_path)   # a full approval of P
+    c1 = _fix(repo, {"src/b.py": "x = 1\n"})   # a source file: this delta approval never counted
+    _file(repo, "opus", c1, delta_from=approved)
+    c2 = _fix(repo, {"src/NOTES.md": "# n\n"})   # docs only
+    # The basis is P, not C1: from C1 the docs-only change would qualify and hide src/b.py.
+    assert delta_basis(repo, NODE, "opus", c2) == (None, "src/b.py is not a documentation or test file")
+    _file(repo, "opus", c2, delta_from=c1)
+    assert f"a delta review from {c1}, which opus did not approve" in _why(repo, "opus")
+    assert not _gate(repo).approvals
+
+
 def test_policy_off_forces_full_review(tmp_path: Path) -> None:
     repo, approved = _repo(tmp_path, ", delta_review: false")
     head = _fix(repo, {"src/NOTES.md": "# n\n"})

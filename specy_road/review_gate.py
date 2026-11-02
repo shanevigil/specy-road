@@ -46,13 +46,8 @@ from specy_road.git_workflow_config import require_implementation_review_before_
 from specy_road.integrity import compare_integrity
 from specy_road.integrity_gate import integrity_gate_problems
 from specy_road.orchestrate_plan import entry_may_process, may_handle, node_sensitivity
-from specy_road.orchestration_config import (
-    effective_config,
-    family_of,
-    is_rostered_reviewer,
-    roster_entry,
-    substitute_for,
-)
+from specy_road.orchestration_config import (effective_config, family_of, is_rostered_reviewer, roster_entry,
+                                            substitute_for)
 from specy_road.review_gate_ready import (  # noqa: F401 — public names re-exported
     TRIAL_MERGE_BOOKKEEPING,
     TrialMerge,
@@ -259,13 +254,29 @@ def delta_problem(repo_root: Path, node: dict[str, Any], approved: str, commit: 
     return f"the delta's integrity report has findings ({findings[0].line()})" if findings else None
 
 
+def _delta_why(repo_root: Path, node: dict[str, Any], priors: list[ReviewFile], review: ReviewFile,
+               commit: str | None, policy: dict[str, Any]) -> str | None:
+    """Why ``review``'s ``delta_from`` approval of ``commit`` does not count given the model's counting ``priors``."""
+    model, base = review.data["model"], review.data["delta_from"]
+    if not any(same_commit(repo_root, k.data["commit"], base) for k in priors):
+        return f"a delta review from {base}, which {model} did not approve; a full review is needed"
+    why = delta_problem(repo_root, node, base, commit, policy)
+    return f"a delta review from {base}, but {why}; a full review is needed" if why else None
+
+
 def prior_approvals(repo_root: Path, config: dict[str, Any], node: dict[str, Any], model: str,
                     commit: str | None, today: date | None = None) -> list[ReviewFile]:
-    """``model``'s approvals of other commits of ``node`` that would count, oldest filing first."""
-    return [r for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"])
-            if r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model
-            and r.data["verdict"] == "approve" and not same_commit(repo_root, r.data["commit"], commit)
-            and _eligibility(config, node, r, today)[0] is not None]
+    """``model``'s approvals of other commits of ``node`` that counted at their own commit, oldest filing
+    first; a delta approval only when a prior already kept is its ``delta_from`` and that delta qualifies."""
+    kept: list[ReviewFile] = []
+    for r in list_review_history(repo_root, node["id"]) + list_reviews(repo_root, node["id"]):
+        if (r.ok and r.data.get("node_id") == node["id"] and r.data["model"] == model
+                and r.data["verdict"] == "approve" and not same_commit(repo_root, r.data["commit"], commit)
+                and _eligibility(config, node, r, today)[0] is not None
+                and not (r.data.get("delta_from")
+                         and _delta_why(repo_root, node, kept, r, r.data["commit"], config["policy"]))):
+            kept.append(r)
+    return kept
 
 
 def delta_basis(repo_root: Path, node: dict[str, Any], model: str,
@@ -278,16 +289,6 @@ def delta_basis(repo_root: Path, node: dict[str, Any], model: str,
     why = err or ("no earlier approval" if not prior else
                   delta_problem(repo_root, node, prior[-1].data["commit"], commit, config["policy"]))
     return (None, why) if why else (prior[-1], "")
-
-
-def _delta_record_problem(repo_root: Path, config: dict[str, Any], node: dict[str, Any], review: ReviewFile,
-                          commit: str | None, today: date | None) -> str | None:
-    model, base = review.data["model"], review.data["delta_from"]
-    if not any(same_commit(repo_root, r.data["commit"], base)
-               for r in prior_approvals(repo_root, config, node, model, commit, today)):
-        return f"a delta review from {base}, which {model} did not approve; a full review is needed"
-    why = delta_problem(repo_root, node, base, commit, config["policy"])
-    return f"a delta review from {base}, but {why}; a full review is needed" if why else None
 
 
 def _count(result: GateResult, counted: CountedReview) -> None:
@@ -329,7 +330,8 @@ def evaluate_gate(repo_root: Path, node: dict[str, Any], commit: str | None, *,
             continue
         counted, why = _eligibility(config, node, review, today)
         if counted is not None and counted.verdict == "approve" and review.data.get("delta_from"):
-            why = _delta_record_problem(repo_root, config, node, review, result.commit, today)
+            priors = prior_approvals(repo_root, config, node, review.data["model"], result.commit, today)
+            why = _delta_why(repo_root, node, priors, review, result.commit, policy)
             counted = None if why else counted
         if counted is None:
             result.ineligible.append((review, why or "not eligible"))
