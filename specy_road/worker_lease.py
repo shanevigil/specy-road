@@ -240,8 +240,8 @@ def _remote(repo_root: Path) -> tuple[str, str] | None:
 def _warn_offline(url: str, remote: str) -> None:
     if url not in _WARNED:
         _WARNED.add(url)
-        print(f"warning: --offline: other checkouts' workers were counted from the lease refs last fetched from "
-              f"{remote}, and this checkout's launches push none", file=sys.stderr)
+        print(f"warning: --offline: the global max_workers limit was not verified; counted this checkout's workers "
+              f"and the lease refs last fetched from {remote}, and pushed no lease", file=sys.stderr)
 
 
 def _why(r) -> str:
@@ -268,8 +268,9 @@ def _lease_refs(repo_root: Path, remote: str, prefix: str, *, fetch: bool = True
 def foreign_leases(repo_root: Path, *, offline: bool = False) -> list[str]:
     """Live workers of other checkouts: their lease refs on the integration remote (none without that remote).
 
-    Refused when the remote cannot be read. ``offline`` reads no remote: the lease refs as last fetched are counted
-    (one warning), so the limit still holds against every worker this checkout has heard of."""
+    Refused when the remote cannot be read. ``offline`` is the explicit local-only escape: no remote is read, the
+    lease refs as last fetched are counted, and one warning says the global limit was not verified (a worker
+    another checkout started since that fetch is not seen)."""
     rm = _remote(repo_root)
     if not rm:
         return []

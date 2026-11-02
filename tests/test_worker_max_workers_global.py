@@ -160,7 +160,7 @@ def test_an_unreachable_remote_refuses_unless_offline(tmp_path: Path, capsys) ->
     assert "cannot reach origin to count other checkouts' workers" in err and "--offline" in err
     assert ws.list_records(repo) == []
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--repo-root", str(repo)) == 0
-    assert capsys.readouterr().err.count("--offline: other checkouts' workers were counted from the lease refs last fetched") == 1
+    assert capsys.readouterr().err.count("--offline: the global max_workers limit was not verified") == 1
     rec = wait_for_worker(repo, "w-0001")
     assert rec.state == "idle"
     with pytest.raises(ws.WorkerError, match="cannot reach origin to push the lease for w-0001.*--offline"):
@@ -273,14 +273,14 @@ def test_a_checkout_id_that_cannot_be_written_refuses_the_launch(tmp_path: Path,
 
 
 def test_offline_still_counts_the_lease_refs_last_fetched(tmp_path: Path, capsys) -> None:
-    """--offline skips the push and the fetch, never the limit: a foreign worker known from the last fetch counts."""
+    """--offline skips the push and the fetch; a foreign worker known from the last fetch still counts."""
     repo, _ = _repo(tmp_path, max_workers=1)
     _, clone = _remote_and_clone(tmp_path, repo)
     _foreign_worker(clone)
     ops.sync(repo)   # an online worker command: fetches the lease refs into this checkout
     assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--repo-root", str(repo)) == 1
     err = capsys.readouterr().err
-    assert "0 workers active (and 1 leased by other checkouts" in err and "last fetched" in err
+    assert "0 workers active (and 1 leased by other checkouts" in err and "limit was not verified" in err
     assert ws.list_records(repo) == []
     rec = _idle(repo, "M1.1")   # an idle worker here: resuming it offline is refused at the limit too
     assert run_worker_cli("worker", "resume", rec.worker_id, "--offline", "--repo-root", str(repo)) == 1
@@ -288,6 +288,18 @@ def test_offline_still_counts_the_lease_refs_last_fetched(tmp_path: Path, capsys
     assert run_worker_cli("worker", "message", rec.worker_id, "--text", "x", "--offline", "--repo-root", str(repo)) == 1
     assert "leased by other checkouts" in capsys.readouterr().err
     assert ws.load_record(repo, rec.worker_id).state == "idle"
+
+
+def test_offline_warns_and_launches_on_a_stale_mirror(tmp_path: Path, capsys) -> None:
+    """The local-only escape: a foreign worker started after the last fetch is not seen, and the warning says so."""
+    repo, _ = _repo(tmp_path, max_workers=1)
+    remote, clone = _remote_and_clone(tmp_path, repo)
+    ops.sync(repo)   # the last fetch: no foreign worker yet
+    theirs = _foreign_worker(clone)   # started since, so this checkout's mirror is stale
+    assert run_worker_cli("worker", "delegate", "M1.1", "--model", "opus", "--offline", "--repo-root", str(repo)) == 0
+    assert capsys.readouterr().err.count("warning: --offline: the global max_workers limit was not verified") == 1
+    assert wait_for_worker(repo, "w-0001").state == "idle"
+    assert _leases(remote) == [f"{lease.checkout_id(clone)}/{theirs.worker_id}"]   # and it pushed no lease
 
 
 def test_concurrent_first_calls_agree_on_one_checkout_id(tmp_path: Path) -> None:
