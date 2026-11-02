@@ -57,7 +57,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M5.3` | validate reports always-injected context per harness against documented limits | task | Agentic-led | Complete |
 | `M5.4` | Rules the CLI or hooks enforce shrink to one-line pointers in the managed block | task | Agentic-led | Complete |
 | `M5.5` | A replayable context regression set for the sandbox runbook | task | Mixed | Complete |
-| `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Agentic-led | Not Started |
+| `M5.6` | Pilot the context-feedback question in the sandbox before shipping it | task | Agentic-led | Complete |
 | `M5.7` | Measure the managed section on and off across the sandbox apps | task | Agentic-led | Not Started |
 | `M5.8` | Further Markdown mention forms for the stale-command check found in M5.2 review | task | Agentic-led | Complete |
 | `M6` | 0.3.1-rc2 release | phase | — | Complete |
@@ -120,5 +120,21 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M11.11` | orchestrate plan, grind-session --plan and pickup share one readiness rule and rank executors by class and billing route | task | Agentic-led | Complete |
 | `M11.12` | specy-road ready writes a valid READY hand-off | task | Agentic-led | Complete |
 | `M11.13` | A milestone gets one full review of its combined change before it is marked complete | task | Agentic-led | Not Started |
+| `M11.14` | worker message queues a follow-up for a worker whose turn is still running | task | Agentic-led | Not Started |
+| `M11.15` | Pickup and finish agree on unwritten planning sheets | task | Agentic-led | Not Started |
+| `M11.16` | A commit that changes only planning or bookkeeping files keeps existing approvals | task | Agentic-led | Not Started |
+| `M11.17` | edit-node names every chunk file it changes, and relocation is loud | task | Agentic-led | Not Started |
+| `M11.18` | Registry overlap warnings show only what concerns the command at hand | task | Agentic-led | Not Started |
+| `M11.19` | Pickup never stashes work/ around the registry commit | task | Agentic-led | Not Started |
+| `M11.20` | orchestrate plan and validate say where the roster is read from | task | Agentic-led | Not Started |
+| `M11.21` | Auto-pick can prefer Agentic-led leaves and shows each leaf's mode | task | Agentic-led | Not Started |
+| `M11.22` | Worker worktrees can include nested sibling repositories | task | Mixed | Not Started |
+| `M11.23` | A custom launch command's permissions carry through resume | task | Agentic-led | Not Started |
+| `M11.24` | Executors and reviewers in a worktree can write and check the right places | task | Agentic-led | Not Started |
+| `M11.25` | finish-this-task says what merge mode will push before it pushes | task | Agentic-led | Not Started |
+| `M11.26` | A model profile can match harness model ids that carry an effort suffix | task | Agentic-led | Not Started |
+| `M11.27` | Small CLI fixes from field use | task | Agentic-led | Not Started |
+| `M11.28` | A light chore mode for work outside the roadmap | task | Mixed | Not Started |
+| `M11.29` | doctor warns when the running specy-road is older than the project's stubs | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).
