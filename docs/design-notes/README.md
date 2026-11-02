@@ -15,6 +15,7 @@ When one disagrees with `docs/*.md` or the code, the doc and the code win; only 
 | [`pm-gantt-registry-checkout.md`](pm-gantt-registry-checkout.md) | PM Gantt registry data flow, the green outline accent and the Dev column precedence | live design |
 | [`registry-hydration-remote-refs.md`](registry-hydration-remote-refs.md) | PM GUI remote registry overlay from `refs/remotes/*/feature/rm-*`, local-first response | live design |
 | [`v0-3-1-rc1-adopter-feedback-triage.md`](v0-3-1-rc1-adopter-feedback-triage.md) | `v0.3.1-rc1` adopter feedback: upgrade path, brainstorm and promote, roadmap editing, review hand-off; open | historical triage |
+| [`managed-section-ablation.md`](managed-section-ablation.md) | 2026-11-02 reduced study of the managed `AGENTS.md`/`CLAUDE.md` section on and off (1 app × 3 harnesses × 2 runs): turns, tokens, cost, first-round review; verdict test further | historical triage |
 | [`lean-code-census.md`](lean-code-census.md) | 2026-10-27 measurement of the suite and source against the lean-code research: coupling, overlap, unexecuted guards, scoped mutation, duplication | historical triage |
 | [`v0-2-1-consumer-report-triage.md`](v0-2-1-consumer-report-triage.md) | `v0.2.1-rc2` consumer report (mckee_ui): seven findings, all fixed in `v0.2.2` | historical triage |
 | [`v0-2-1-rc1-adopter-feedback-triage.md`](v0-2-1-rc1-adopter-feedback-triage.md) | `v0.2.1-rc1` adopter feedback: defects fixed in `v0.2.1-rc2` | historical triage |
