@@ -226,7 +226,9 @@
         "sr/roadmap/orchestration.yaml",
         "docs/orchestration-review.md",
         "CHANGELOG.md",
-        "tests/"
+        "tests/",
+        "schemas/",
+        "roadmap/orchestration.yaml"
       ],
       "type": "task"
     },
