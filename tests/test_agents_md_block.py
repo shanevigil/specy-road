@@ -145,6 +145,8 @@ def test_context_meter_reports_what_each_harness_reads(tmp_path: Path, capsys, m
         f"context: Codex reads {agents} — {len(HAND_AUTHORED) + size + 8:,} of its 32,768-byte "
         "project_doc_max_bytes budget\n"
         f"context: Claude Code reads {agents} — target under 200 lines per file\n"
+        f"context: Cursor reads {agents} — {len(HAND_AUTHORED) + size + 8:,} bytes per session; no documented limit\n"
+        f"context: Copilot reads {agents} — {len(HAND_AUTHORED) + size + 8:,} bytes per session; no documented limit\n"
     )
 
     (tmp_path / AGENT_GUIDE).write_text("# Claude\n\n", encoding="utf-8")
@@ -261,6 +263,7 @@ def test_codex_user_layer_is_a_note(tmp_path: Path, monkeypatch, capsys) -> None
     assert out.splitlines()[0].startswith("context: Codex reads AGENTS.md ")
     assert (codex / AGENTS_MD).resolve().as_posix() not in out
     assert f"{shown} 1 lines" in out and "user-level / machine-local" in out
+    assert "a global AGENTS.override.md: every Codex session on this machine reads it" in out
     assert err == ""
 
 
@@ -283,6 +286,7 @@ def test_codex_home_env_moves_the_user_layer(tmp_path: Path, monkeypatch, capsys
     out = capsys.readouterr().out
     shown = (codex_home / AGENTS_MD).resolve().as_posix()
     assert f"context: note — {shown} 2 lines" in out and "user-level / machine-local" in out
+    assert "a global AGENTS.override.md" not in out
     assert default.resolve().as_posix() not in out
 
 

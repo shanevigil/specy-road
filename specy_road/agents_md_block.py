@@ -34,6 +34,7 @@ from pathlib import Path
 
 from specy_road import __version__
 from specy_road.agent_guide_block import AGENT_GUIDE, strip_provenance
+from specy_road.bundled_scripts.planning_artifacts import split_frontmatter
 from specy_road.digest import DEFAULT_OUTPUT as DIGEST
 from specy_road.doc_links import link_toolkit_docs
 from specy_road.managed_block import (
@@ -61,6 +62,14 @@ _CLAUDE_CANDIDATES = (AGENT_GUIDE, f".claude/{AGENT_GUIDE}", "CLAUDE.local.md")
 #: Read only when no candidate above is present. ``~/.claude/CLAUDE.md`` loads too, but
 #: it does not count toward that check: https://code.claude.com/docs/en/memory
 _CLAUDE_AGENTS_FALLBACK = (AGENTS_MD, f".claude/{AGENTS_MD}")
+#: Cursor reads ``AGENTS.md`` and ``CLAUDE.md`` and its project rules under ``.cursor/rules``;
+#: Copilot reads ``AGENTS.md``, ``.claude/CLAUDE.md`` and ``.github/copilot-instructions.md``
+#: (docs/design-notes/harness-compatibility-triage.md, finding 6). Neither documents a
+#: size limit, so both are reported, never warned on.
+_CURSOR_CANDIDATES = (AGENTS_MD, AGENT_GUIDE)
+_CURSOR_RULES = ".cursor/rules"
+_COPILOT_CANDIDATES = (AGENTS_MD, f".claude/{AGENT_GUIDE}")
+_COPILOT_REPO_FILE = ".github/copilot-instructions.md"
 _TEMPLATE = Path(__file__).resolve().parent / "templates" / "specyrd" / "agents-md-block.md"
 _H1 = "# Agents — load order\n"
 
@@ -266,24 +275,61 @@ def _machine_local_paths(start: Path, top: Path) -> list[Path]:
     return outside
 
 
+def _always_applied(rule: Path) -> bool:
+    """A Cursor rule whose YAML frontmatter sets ``alwaysApply`` true: the only kind in every session.
+
+    Rules scoped by glob or description load only when they match, so they are not metered;
+    nor is a rule whose frontmatter does not parse.
+    """
+    try:
+        text = rule.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return False
+    return split_frontmatter(text)[0].get("alwaysApply") is True
+
+
+def _cursor_paths(start: Path, top: Path) -> list[Path]:
+    """``AGENTS.md`` and ``CLAUDE.md`` from the git root down, then the always-applied rules."""
+    dirs = [d for d in _dirs_from_root(start) if d.is_relative_to(top)]
+    rules = [p for d in dirs for p in sorted((d / _CURSOR_RULES).rglob("*"))
+             if p.suffix in (".mdc", ".md") and p.is_file() and _always_applied(p)]
+    return _present(dirs, _CURSOR_CANDIDATES) + rules
+
+
+def _copilot_paths(start: Path, top: Path) -> list[Path]:
+    """``AGENTS.md`` and ``.claude/CLAUDE.md`` in the git root and the working directory, then the repo file."""
+    return _present(list(dict.fromkeys((top, start))), _COPILOT_CANDIDATES) + _present([top], (_COPILOT_REPO_FILE,))
+
+
 def _measured(paths: list[Path], top: Path) -> list[InjectedFile]:
     return [_measure(p, _display(p, top)) for p in paths]
 
 
-def injected_context(project_root: Path) -> tuple[list[InjectedFile], list[InjectedFile]]:
-    """``(Codex, Claude Code)``: repository files a session started in ``project_root`` injects.
+def injected_context(project_root: Path) -> dict[str, list[InjectedFile]]:
+    """Per harness, the repository files a session started in ``project_root`` injects.
 
     Only paths inside the git root. Anything outside is :func:`_machine_local_paths`.
     """
     project_root = project_root.resolve()
     top = git_root(project_root) or project_root
-    claude = [p for p in _claude_paths(project_root) if _inside(p, top)]
-    return _measured(_codex_paths(project_root, top), top), _measured(claude, top)
+    found = {"Codex": _codex_paths(project_root, top),
+             "Claude Code": [p for p in _claude_paths(project_root) if _inside(p, top)],
+             "Cursor": _cursor_paths(project_root, top), "Copilot": _copilot_paths(project_root, top)}
+    return {harness: _measured(paths, top) for harness, paths in found.items()}
+
+
+def _note_suffix(path: Path) -> str:
+    """What a machine-local file does beyond being read: a global override hides the global file."""
+    if path.name == _CODEX_CANDIDATES[0]:
+        return (f"; a global {path.name}: every Codex session on this machine reads it "
+                f"in place of the {AGENTS_MD} beside it")
+    return ""
 
 
 def print_injected_context(project_root: Path) -> None:
     """One line per harness: what every session pays, against the documented limit."""
-    codex, claude = injected_context(project_root)
+    meter = injected_context(project_root)
+    codex, claude = meter["Codex"], meter["Claude Code"]
     if codex:
         print(f"context: Codex reads {'; '.join(f.describe() for f in codex)} — "
               f"{sum(f.size for f in codex):,} of its {CODEX_PROJECT_DOC_MAX_BYTES:,}-byte "
@@ -291,16 +337,22 @@ def print_injected_context(project_root: Path) -> None:
     if claude:
         print(f"context: Claude Code reads {'; '.join(f.describe() for f in claude)} — "
               f"target under {CLAUDE_MD_TARGET_LINES} lines per file")
+    for harness in ("Cursor", "Copilot"):
+        if meter[harness]:
+            print(f"context: {harness} reads {'; '.join(f.describe() for f in meter[harness])} — "
+                  f"{sum(f.size for f in meter[harness]):,} bytes per session; no documented limit")
     root = project_root.resolve()
     top = git_root(root) or root
-    for note in _measured(_machine_local_paths(root, top), top):
+    local = _machine_local_paths(root, top)
+    for path, note in zip(local, _measured(local, top)):
         print(f"context: note — {note.describe()}, user-level / machine-local; "
-              "not counted toward this repository's limit")
+              f"not counted toward this repository's limit{_note_suffix(path)}")
 
 
 def warn_if_context_over_limits(project_root: Path) -> None:
     """A non-fatal line for each documented limit the injected files exceed."""
-    codex, claude = injected_context(project_root)
+    meter = injected_context(project_root)
+    codex, claude = meter["Codex"], meter["Claude Code"]
     total = sum(f.size for f in codex)
     if total > CODEX_PROJECT_DOC_MAX_BYTES:
         print(

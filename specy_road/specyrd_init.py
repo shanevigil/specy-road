@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
@@ -19,10 +20,12 @@ from specy_road.specyrd_skills import (  # noqa: F401 — re-exported for refres
     _read_template,
     install_stubs as _append_command_stub_installs,
     managed_paths,
+    mirrored_copies,
     owned_paths,
 )
 from specy_road.runtime_paths import (
     discover_project_root,
+    git_root,
     prefix_within,
     recorded_project_root,
 )
@@ -346,3 +349,24 @@ def _record_manifest(
         manifest["role"] = role
     manifest["project_root"] = prefix.rstrip("/") or "."
     _save_manifest(repo_root, manifest)
+
+
+def warn_if_skills_mirrored(start: Path) -> None:
+    """One non-fatal line naming ``.cursor``/``.codex`` copies of the installed skills.
+
+    Cursor and Codex read ``.agents/skills`` already, so a copy loads each skill
+    twice. ``start`` may be the project root; the copies sit at the git root.
+    """
+    checkout = git_root(start) or start
+    managed = {p for paths in (_load_manifest(checkout).get("agents") or {}).values() for p in paths}
+    disposable, kept = mirrored_copies(checkout, COMMAND_FILES, managed)
+    if not disposable and not kept:
+        return
+    fix = "Run: specy-road upgrade --prune" if disposable else ""
+    if kept:
+        fix += ("; then delete " if fix else "Delete ") + f"{', '.join(kept)} by hand (not a verbatim specyrd copy)"
+    print(
+        f"skills: warning — {', '.join(disposable + kept)} duplicate{'s' if len(disposable + kept) == 1 else ''} "
+        f"skills in {SKILLS_REL}/, which Cursor and Codex already read, so each loads twice. {fix}",
+        file=sys.stderr,
+    )

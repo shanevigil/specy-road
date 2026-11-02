@@ -243,3 +243,55 @@ def managed_paths(rel_dest: Path, files_to_install: tuple[str, ...], *, agent: s
     if agent in GUIDE_AGENTS:
         paths.append(AGENT_GUIDE)
     return paths
+
+
+#: Skill and command directories other harnesses scan besides ``.agents/skills``.
+#: specy-road writes none of them; a ``specyrd-*`` copy there loads the skill twice
+#: (docs/design-notes/harness-compatibility-triage.md, finding 6).
+MIRROR_DIRS = (Path(".cursor/skills"), Path(".codex/skills"), Path(".cursor/commands"))
+
+
+def _mirror_rel(mirror_dir: Path, name: str) -> Path:
+    return mirror_dir / name if mirror_dir.name == "commands" else mirror_dir / stem(name)
+
+
+def _is_disposable_copy(path: Path, name: str, canonical: Path) -> bool:
+    """Deleting ``path`` loses nothing: a link to the canonical skill, or a verbatim specyrd stub or copy of it."""
+    if path.is_symlink():
+        return path.resolve() in (canonical.resolve(), (canonical / "SKILL.md").resolve())
+    if path.is_dir():
+        skill = path / "SKILL.md"
+        if {q.name for q in path.iterdir()} != {"SKILL.md"}:
+            return False
+        try:
+            same = skill.read_bytes() == (canonical / "SKILL.md").read_bytes()
+        except OSError:
+            same = False
+        return same or _is_generated(skill, name)
+    return _is_generated(path, name, skills=False)
+
+
+def mirrored_copies(repo_root: Path, names: tuple[str, ...], managed: set[str]) -> tuple[list[str], list[str]]:
+    """``(disposable, kept)``: ``specyrd-*`` copies of an installed skill in :data:`MIRROR_DIRS`.
+
+    Only names whose canonical ``.agents/skills/<name>/SKILL.md`` exists count,
+    and a path the manifest records (a ``generic`` pack pointed at
+    ``.cursor/commands``) is the pack's, not a copy. A mirror directory that
+    resolves to ``.agents/skills`` or out of the repository is skipped: deleting
+    through it would delete the canonical skill or someone else's file.
+    """
+    disposable: list[str] = []
+    kept: list[str] = []
+    skills_dir = (repo_root / SKILLS_REL).resolve()
+    for mirror_dir in MIRROR_DIRS:
+        where = repo_root / mirror_dir
+        if not where.is_dir() or where.resolve() == skills_dir or resolves_outside(repo_root, where):
+            continue
+        for name in names:
+            rel, canonical = _mirror_rel(mirror_dir, name), repo_root / SKILLS_REL / stem(name)
+            path = repo_root / rel
+            if str(rel) in managed or not (canonical / "SKILL.md").is_file():
+                continue
+            if path.is_symlink() or path.exists():
+                (disposable if _is_disposable_copy(path, name, canonical) else kept).append(str(rel))
+    return disposable, kept

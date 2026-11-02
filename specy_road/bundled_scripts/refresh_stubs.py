@@ -45,7 +45,7 @@ from specy_road.runtime_paths import (
     recorded_project_root,
 )
 from specy_road.managed_block import CREATED, REFUSED, UNCHANGED, UPDATED, resolves_outside
-from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, render_skill, skill_rel
+from specy_road.specyrd_skills import SKIPPED, ensure_link, is_link_path, mirrored_copies, render_skill, skill_rel
 from specy_road.specyrd_init import (
     AGENT_REL_DEST,
     COMMAND_FILES,
@@ -235,11 +235,11 @@ def refresh_stubs(
     if agents and not dry_run:
         manifest["agents"] = agents
         _save_manifest(repo_root, manifest)
-    orphans = sorted(set(orphans))
+    # .cursor/.codex copies of an installed skill load it twice; only verbatim ones are ours to prune.
+    orphans = sorted(set(orphans) | set(mirrored_copies(repo_root, COMMAND_FILES, all_recorded)[0]))
     if prune and not dry_run:
         _prune(repo_root, orphans)
-    # A dry run writes nothing, so every pack sharing a skill reports it again.
-    return list(dict.fromkeys(written)), orphans
+    return list(dict.fromkeys(written)), orphans   # a dry run writes nothing: each pack sharing a skill reports it
 
 
 def stubs_are_stale(start: Path) -> str | None:
@@ -294,7 +294,7 @@ def _report_orphans(orphans: list[str], *, dry_run: bool, pruned: bool) -> None:
         for rel in orphans:
             print(f"{verb} {rel} (no longer installed)")
         return
-    print("\nNo longer installed for this role, left on disk for you to remove:")
+    print("\nNo longer installed for this role (or a .cursor/.codex copy of a skill), left on disk for you to remove:")
     for rel in orphans:
         print(f"  {rel}")
     if any(_old_command_stub(rel) for rel in orphans):
@@ -369,7 +369,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--dry-run", action="store_true", help="Print what would be written; do not modify files.")
     p.add_argument("--prune", action="store_true",
                    help="Delete stubs the manifest recorded that this version no longer installs "
-                   "(e.g. the pre-0.3.0 .cursor/commands/specyrd-*.md); with --dry-run, list them.")
+                   "(e.g. the pre-0.3.0 .cursor/commands/specyrd-*.md) and verbatim .cursor/.codex copies of the skills; with --dry-run, list them.")
     p.add_argument("--diff", action="store_true", help="Print a unified diff of every stub, skill "
                    "and managed block that would change; implies --dry-run.")
     args = p.parse_args(argv if argv is not None else sys.argv[1:])
