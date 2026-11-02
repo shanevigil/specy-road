@@ -183,3 +183,35 @@ def test_symlink_to_regular_file_counts_only_hunk_lines(tmp_path: Path, capsys) 
     (repo / baseline).unlink()
     commit(repo, baseline, "a\nb\n", "replace the symlink with a regular file")
     assert _run(repo, capsys) == (1, f"baseline-widened: {baseline} +2\n")
+
+
+def test_file_renamed_and_its_path_reused_as_a_directory(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, "old", "".join(f"original {i}\n" for i in range(20)), "file on dev")
+    merge_dev(repo)
+    git(repo, "mv", "old", "new.txt")
+    commit(repo, "old/child.txt", "# noqa\n", "the old name becomes a directory")
+    assert _run(repo, capsys) == (1, "new-suppression: old/child.txt:1\n")
+
+
+def test_deleted_baseline_reused_as_a_directory_is_not_widened(tmp_path: Path, capsys) -> None:
+    baseline = "constraints/base.txt"
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    _policy(repo, [baseline])
+    commit(repo, baseline, "a\nb\n", "baseline on dev")
+    merge_dev(repo)
+    git(repo, "rm", "-q", baseline)
+    commit(repo, f"{baseline}/child.txt", "unrelated\n", "the baseline name becomes a directory")
+    assert _run(repo, capsys) == (0, "")
+
+
+def test_moved_file_keeps_its_existing_suppressions(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    on_dev(repo)
+    commit(repo, "src/a.py", "x = f()  # noqa\ny = 2\n", "on dev")
+    merge_dev(repo)
+    git(repo, "mv", "src/a.py", "src/b.py")
+    git(repo, "commit", "-qm", "move")
+    assert _run(repo, capsys) == (0, "")

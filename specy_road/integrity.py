@@ -30,9 +30,10 @@ _SUPPRESSION = re.compile(
     re.IGNORECASE,
 )
 _HUNK = re.compile(r"@@ -\d+(?:,\d+)? \+(\d+)")
-# The leaf's own .gitattributes can mark a file binary (``-diff``), and repo config can set a
-# textconv driver, an external diff or a relative diff; none of them may hide an added line.
-_DIFF = ("diff", "--no-relative", "--no-color", "--no-ext-diff", "--no-textconv", "--text", "--unified=0")
+# A blob-pair diff has no path, so no attribute applies; content with a NUL byte still reads
+# as binary without --text, and repo config can still set a textconv or external diff.
+_BLOB_DIFF = ("diff", "--no-color", "--no-ext-diff", "--no-textconv", "--text", "--unified=0")
+_REGULAR = frozenset({b"100644", b"100755"})
 
 
 @dataclass(frozen=True, order=True)
@@ -162,23 +163,24 @@ def integration_ratchet_paths(root: Path) -> list[str]:
 def _added_lines(root: Path, base: str, ref: str) -> dict[str, list[tuple[int, str]]]:
     """``git-root path -> [(line number at ref, text)]`` for every line ``base..ref`` adds.
 
-    One diff per changed file; the path comes from ``--name-status -z``, never from a
-    patch header. Renames are followed, so a moved file's existing lines are not new.
+    Renames are followed, so a moved file's existing lines are not new.
     """
     added: dict[str, list[tuple[int, str]]] = {}
-    for paths in _changed_files(root, base, ref):
-        lines = _file_additions(root, base, ref, paths, "--find-renames")
+    for path, old, new in _changed_files(root, base, ref, "--find-renames"):
+        lines = _blob_additions(root, old, new)
         if lines:
-            added[paths[-1]] = lines
+            added[path] = lines
     return added
 
 
-def _file_additions(
-    root: Path, base: str, ref: str, paths: tuple[str, ...], renames: str
-) -> list[tuple[int, str]]:
-    return _hunk_additions(_patch(root, [
-        *_DIFF, renames, base, ref, "--", *(f":(top,literal){p}" for p in paths),
-    ]))
+def _blob_additions(root: Path, old: str | None, new: str) -> list[tuple[int, str]]:
+    """Lines blob ``new`` adds to blob ``old``; every line of ``new`` when there is no ``old``."""
+    if old is not None:
+        return _hunk_additions(_patch(root, [*_BLOB_DIFF, old, new]))
+    lines = _git_bytes(root, ["cat-file", "blob", new]).decode("utf-8", "replace").split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return list(enumerate(lines, 1))
 
 
 def _patch(root: Path, args: list[str]) -> str:
@@ -199,23 +201,25 @@ def _git_bytes(root: Path, args: list[str]) -> bytes:
     return r.stdout if r.returncode == 0 else b""
 
 
-def _changed_files(root: Path, base: str, ref: str) -> list[tuple[str, ...]]:
-    """``(path,)`` per changed file, ``(source, destination)`` per rename.
+def _changed_files(root: Path, base: str, ref: str, renames: str) -> list[tuple[str, str | None, str]]:
+    """``(path at ref, old blob, new blob)`` for each ``git diff --raw -z`` entry whose new side is a regular file.
 
-    A name that is not UTF-8 is dropped; a rename keeps its destination alone, so all of
-    that file's lines count.
+    No pathspec selects anything, so each entry's lines belong to exactly its own path.
+    Deletions, submodules and symlinks have no new regular file and are skipped. The old
+    blob is ``None`` when the old side is not a regular file (an addition, or a type
+    change from a symlink), so every line counts. A name that is not UTF-8 is skipped.
     """
-    args = ["diff", "--no-relative", "--name-status", "-z", "--find-renames", base, ref]
+    args = ["diff", "--raw", "-z", "--no-abbrev", "--no-relative", renames, base, ref]
     fields = _git_bytes(root, args).split(b"\0")
-    out: list[tuple[str, ...]] = []
+    out: list[tuple[str, str | None, str]] = []
     i = 0
-    while i < len(fields) and fields[i]:
-        width = 2 if fields[i][:1] == b"R" else 1
-        names = fields[i + 1:i + 1 + width]
+    while i < len(fields) and fields[i].startswith(b":"):
+        old_mode, new_mode, old_blob, new_blob, status = fields[i][1:].split(b" ")
+        width = 2 if status[:1] in (b"R", b"C") else 1
+        path = _utf8(fields[i + width]) if i + width < len(fields) else None
         i += 1 + width
-        decoded = [_utf8(n) for n in names]
-        if names and decoded[-1] is not None:
-            out.append(tuple(n for n in decoded if n is not None))
+        if new_mode in _REGULAR and path is not None:
+            out.append((path, old_blob.decode() if old_mode in _REGULAR else None, new_blob.decode()))
     return out
 
 
@@ -227,11 +231,10 @@ def _utf8(name: bytes) -> str | None:
 
 
 def _hunk_additions(patch: str) -> list[tuple[int, str]]:
-    """Added lines of a one-file ``--unified=0`` patch, counted only inside hunk bodies.
+    """Added lines of a blob-pair ``--unified=0`` patch, counted only inside hunk bodies.
 
-    A type change (symlink to regular file) is two sections; each section's header, up to
-    its first ``@@``, is never content. A ``-U0`` hunk body holds only ``+``, ``-`` and
-    ``\\`` lines, so a ``diff --git`` line always starts a section.
+    A section's header, up to its first ``@@``, is never content. A ``-U0`` hunk body holds
+    only ``+``, ``-`` and ``\\`` lines, so a ``diff --git`` line always starts a section.
     """
     out: list[tuple[int, str]] = []
     number: int | None = None
@@ -258,9 +261,10 @@ def _suppression_findings(added: dict[str, list[tuple[int, str]]]) -> list[Findi
 
 def _ratchet_findings(root: Path, base: str, ref: str, ratchet_paths: list[str]) -> list[Finding]:
     """Renames are not followed: a file moved onto a ratchet path widens it by every line."""
+    wanted = set(ratchet_paths)
     out: list[Finding] = []
-    for path in sorted(set(ratchet_paths)):
-        count = len(_file_additions(root, base, ref, (path,), "--no-renames"))
+    for path, old, new in _changed_files(root, base, ref, "--no-renames"):
+        count = len(_blob_additions(root, old, new)) if path in wanted else 0
         if count:
             out.append(Finding("baseline-widened", path, detail=str(count)))
     return out
