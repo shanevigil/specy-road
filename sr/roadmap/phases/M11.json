@@ -183,7 +183,7 @@
       "parent_id": "M11",
       "planning_dir": "planning/M11.7_review-delegate_2d7324a8-cfd7-4eca-8662-113e963c98b4.md",
       "sibling_order": 7,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "review delegate runs a rostered reviewer like worker delegate runs an executor",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",
