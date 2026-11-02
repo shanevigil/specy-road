@@ -88,7 +88,7 @@ def _add_add_idea(sub) -> None:
     p.add_argument("--rationale", default=None, metavar="TEXT")
     p.add_argument(
         "--kind",
-        default="feature",
+        default=None,  # None, not feature, so an explicit --kind beside --from-file can be refused
         choices=IDEA_KINDS,
         help="Default: feature.",
     )
@@ -335,8 +335,13 @@ def file_namespaces(ns: argparse.Namespace, command: str) -> list[argparse.Names
             if not isinstance(record, dict) or not record:
                 raise BrainstormError("expected a mapping of flag names to values")
             rec_ns = record_parser(command).parse_args(_record_argv(record, command))
-            for key, value in record.items():
-                if isinstance(value, list) and not isinstance(getattr(rec_ns, str(key).replace("-", "_"), None), list):
+            for key, value in record.items():   # false/null values add no argv, so check every key here
+                dest = str(key).replace("-", "_")
+                if dest == "id":
+                    continue
+                if dest == "idea_id" or not hasattr(rec_ns, dest):
+                    raise BrainstormError(f"unknown key {key!r}: not a {command} flag")
+                if isinstance(value, list) and not isinstance(getattr(rec_ns, dest), list):
                     raise BrainstormError(f"key {key!r} takes one value, not a list")
             if command == "revise" and not rec_ns.idea_id:
                 raise BrainstormError("needs `id`: the idea the verdict is for")

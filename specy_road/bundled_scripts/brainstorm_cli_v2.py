@@ -240,7 +240,7 @@ def cmd_realize(ns: argparse.Namespace) -> int:
 
 def idea_fields(ns: argparse.Namespace) -> dict:
     """``add_idea`` keyword arguments from an ``add-idea`` namespace (a flag line or a file record)."""
-    return dict(title=ns.title or "", rationale=ns.rationale or "", kind=ns.kind, effort=ns.effort or "",
+    return dict(title=ns.title or "", rationale=ns.rationale or "", kind=ns.kind or "feature", effort=ns.effort or "",
                 evidence=list(ns.evidence or []), origin=parse_origin(ns.origin), hypothesis=ns.hypothesis or "",
                 assumptions=list(ns.assumption or []), raised_in="converge" if ns.from_gap else None)
 
@@ -252,7 +252,7 @@ def _refuse_flags_with_file(ns: argparse.Namespace, positional: str | None, *fla
 
 
 def cmd_add_ideas_from_file(ns: argparse.Namespace) -> int:
-    _refuse_flags_with_file(ns, None, "title", "rationale", "effort", "evidence", "origin", "hypothesis",
+    _refuse_flags_with_file(ns, None, "title", "rationale", "kind", "effort", "evidence", "origin", "hypothesis",
                             "assumption", "from_gap")
     root, session = _load(ns)
     ideas = []

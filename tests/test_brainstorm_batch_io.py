@@ -239,3 +239,47 @@ def test_session_round_trips_links_and_clusters_and_rejects_bad_links(repo: Path
     session_path(repo, SLUG).write_text(yaml.safe_dump(raw), encoding="utf-8")
     with pytest.raises(BrainstormError, match="merged_into must be a list"):
         read_session(repo, SLUG)
+
+
+@pytest.mark.parametrize("value", [False, None])
+def test_unknown_key_with_a_false_or_null_value_rejects_an_add_idea_batch(repo: Path, tmp_path: Path, value) -> None:
+    _start(repo, "Existing")
+    before = session_path(repo, SLUG).read_text(encoding="utf-8")
+    path = _file(tmp_path, "ideas.yaml", [{"title": "Good"}, {"title": "Typo", "from-gpa": value}])
+    code, out, err = _cli(repo, "add-idea", "--from-file", path)
+    assert code == 1 and not out.strip()
+    assert "record 2" in err and "unknown key 'from-gpa'" in err
+    assert session_path(repo, SLUG).read_text(encoding="utf-8") == before
+
+
+@pytest.mark.parametrize("value", [False, None])
+def test_unknown_key_with_a_false_or_null_value_rejects_a_revise_batch(repo: Path, tmp_path: Path, value) -> None:
+    _start(repo, "One")
+    before = session_path(repo, SLUG).read_text(encoding="utf-8")
+    path = _file(tmp_path, "verdicts.yaml", [{"id": "B1", "recommendation": "strong"},
+                                             {"id": "B1", "recommendaton": value}])
+    code, out, err = _cli(repo, "revise", "--from-file", path)
+    assert code == 1 and not out.strip()
+    assert "record 2" in err and "unknown key 'recommendaton'" in err
+    assert session_path(repo, SLUG).read_text(encoding="utf-8") == before
+
+
+def test_add_idea_from_file_refuses_an_explicit_kind_and_keeps_the_feature_default(
+        repo: Path, tmp_path: Path) -> None:
+    _start(repo, "Plain")
+    before = session_path(repo, SLUG).read_text(encoding="utf-8")
+    path = _file(tmp_path, "ideas.yaml", [{"title": "One"}])
+    code, out, err = _cli(repo, "add-idea", "--from-file", path, "--kind", "risk")
+    assert code == 1 and not out.strip() and "drop --kind" in err
+    assert session_path(repo, SLUG).read_text(encoding="utf-8") == before
+    assert _session(repo).by_id("B1").kind == "feature"
+    assert _cli(repo, "add-idea", "--from-file", path)[0] == 0
+    assert _session(repo).by_id("B2").kind == "feature"
+
+
+def test_list_by_cluster_shows_a_recorded_cluster_in_a_session_with_no_ideas(repo: Path) -> None:
+    _start(repo)
+    assert _cli(repo, "cluster", "C1", "--name", "Empty cluster")[0] == 0
+    code, out, _err = _cli(repo, "list", "--by", "cluster")
+    assert code == 0 and "C1  Empty cluster  (0)" in out and "no ideas match" not in out
+    assert "no ideas match" in _cli(repo, "list", "--by", "cluster", "--status", "accepted")[1]

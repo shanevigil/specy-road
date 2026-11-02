@@ -178,9 +178,9 @@ def cmd_list(ns: argparse.Namespace) -> int:
     anchor = session.under or "(roadmap root)"
     print(f"{session.slug} — {session.topic or '(no topic)'}")
     print(f"mode: {session.mode}   anchor: {anchor}   ideas: {len(session.ideas)}")
-    if not ideas:
+    if not ideas and not (ns.by == "cluster" and session.clusters and not ns.status):
         print("\n(no ideas match)")
-    elif ns.by == "cluster":
+    elif ns.by == "cluster":   # recorded cluster objects show even before any idea joins them
         print("")
         clusters: dict[str, list] = {} if ns.status else {cid: [] for cid in session.clusters}
         for i in ideas:
