@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for `specy-road handoff status` and `specy-road review record|list|delegate`.
+"""CLI for `specy-road handoff status`, `specy-road review record|list|delegate` and `specy-road ready`.
 
 ``handoff status`` is what a coordinator polls: for each node with a
 ``work/reviews/<NODE_ID>/`` directory it reports the READY hand-off, every
@@ -12,10 +12,9 @@ whose review loop is not converging and has no root-cause analysis for it is
 ``review record`` validates one reviewer's notes, fills in the family from the
 roster, labels same-family independence, and files the record as
 ``REVIEW-<model>.md`` beside the READY file, keeping a copy under ``history/``.
-``review list`` prints the filed records, any RCA records, the escalation and
-the gate evaluation, and writes nothing. Both commands report the leaf's review
-rounds (distinct reviewed commits) and the time from its first review to the latest, and each ``review delegate``
-run (:mod:`specy_road.review_delegate`) with its commit; an older commit's record never reads as the current verdict.
+``review list`` prints the filed records, any RCA records, the escalation and the gate evaluation, and writes nothing.
+Both commands report the leaf's review rounds (distinct reviewed commits), the time from its first review to the latest,
+and each ``review delegate`` run with its commit; an older commit's record never reads as the current verdict.
 """
 
 from __future__ import annotations
@@ -37,6 +36,7 @@ from specy_road.review_files import (
 )
 from specy_road.review_gate import GateResult, evaluate_gate, rerun_problem, trial_merge
 from specy_road.review_delegate import add_parser as add_delegate_parser, run_lines, run_problems, run_states
+from specy_road.review_gate_ready import add_ready_parser
 from specy_road.review_pre_existing import cmd_check_pre_existing
 from specy_road.review_rca import LoopState, loop_state
 from specy_road.review_signing import NOTES_KEY, SigningError, notes_digest, sign, verify
@@ -73,7 +73,6 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
     tm = trial_merge(root, t.ref, t.base_ref)
     merge_problem = [tm.problem()] if tm and tm.problem() else []
     loop = loop_state(root, node_id)
-    runs = run_states(root, node_id, gate.commit)
     escalated = loop.escalation is not None and not gate.passed
     if blocked_lines:
         state = "executor_blocked"
@@ -98,7 +97,7 @@ def _node_status(root: Path, node_id: str, ref: str | None = None) -> dict[str, 
             for c in gate.approvals + gate.blocks
         ],
         "review_rounds": round_span(root, node_id),
-        "review_runs": runs,
+        "review_runs": (runs := run_states(root, node_id, gate.commit)),
         "policy": gate.summary(),
         "policy_met": gate.passed,
         "trial_merge": {"ref": tm.base_ref, "behind": tm.behind, "conflicts": tm.conflicts,
@@ -387,6 +386,7 @@ def build_parser() -> argparse.ArgumentParser:
         add_repo_root_arg(sp)
         sp.set_defaults(func=fn)
     add_delegate_parser(rsub)
+    add_ready_parser(sub)
     return p
 
 

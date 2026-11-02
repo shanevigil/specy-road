@@ -5,7 +5,7 @@
 # review runs none of its hooks or MCP servers here (needs ANTHROPIC_API_KEY, not the subscription
 # login); the reviewer records it with `review record --launch-mode bare`.
 effort=$1 prompt=$2
-PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:$PATH
+PATH=/Users/savigil/WORKSPACE/specy-road/sr/tools:/Users/savigil/WORKSPACE/specy-road/.conda/bin:$PATH
 export PATH
 exec claude -p "$prompt" --bare --model claude-opus-5-5 --effort "$effort" --permission-mode acceptEdits \
   --allowedTools "Read,Grep,Glob,Write,Edit,Bash" \

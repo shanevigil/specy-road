@@ -1,0 +1,269 @@
+{
+  "nodes": [
+    {
+      "acceptance": [
+        "Pickup commits the registry change without stashing work/ (for example git commit --only roadmap/registry.yaml), so a running worker's work/.workers files and other sessions' untracked files under work/ are never moved",
+        "If any stash or restore step remains and fails, pickup exits non-zero naming the stash; worker sync reports a gap in a worker's event sequence numbers",
+        "Tests run a pickup while another worker's event log is being appended and show no events are lost and no stash entry is left"
+      ],
+      "codename": "pickup-no-work-stash",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.19",
+      "node_key": "174228c2-0ffe-4dc5-80b6-2556bd0ec707",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.19_pickup-no-work-stash_174228c2-0ffe-4dc5-80b6-2556bd0ec707.md",
+      "sibling_order": 19,
+      "status": "Not Started",
+      "title": "Pickup never stashes work/ around the registry commit",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_task_pickup_helpers.py",
+        "specy_road/bundled_scripts/do_next_task.py",
+        "specy_road/worker_reconcile.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When the roster on the integration ref differs from the working tree or local branch, orchestrate plan and validate print that the roster is read from origin/<integration> and that the local roadmap/orchestration.yaml must be pushed to take effect; with no roster file on the integration ref they say so and point at docs/orchestration.md instead of a may_process hint",
+        "Tests cover a local-only roster, a committed-unpushed roster and no roster"
+      ],
+      "codename": "roster-source-explained",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.20",
+      "node_key": "54602ab6-9a86-4d1b-81cb-30bc13a9bc61",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.20_roster-source-explained_54602ab6-9a86-4d1b-81cb-30bc13a9bc61.md",
+      "sibling_order": 20,
+      "status": "Not Started",
+      "title": "orchestrate plan and validate say where the roster is read from",
+      "touch_zones": [
+        "specy_road/orchestration_pinned.py",
+        "specy_road/orchestrate_plan.py",
+        "specy_road/bundled_scripts/validate_roadmap.py",
+        "docs/orchestration.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A --prefer-agentic flag (and a git-workflow.yaml default) orders ready leaves Agentic-led before Mixed before Human-led within the same tree position; grind-session --plan prints the execution milestone next to the next auto-pick",
+        "Tests cover the ordering with and without the flag"
+      ],
+      "codename": "prefer-agentic-pick",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.21",
+      "node_key": "439c8b26-a447-4ead-a8e0-5b1af091e935",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.21_prefer-agentic-pick_439c8b26-a447-4ead-a8e0-5b1af091e935.md",
+      "sibling_order": 21,
+      "status": "Not Started",
+      "title": "Auto-pick can prefer Agentic-led leaves and shows each leaf's mode",
+      "touch_zones": [
+        "specy_road/bundled_scripts/do_next_available.py",
+        "specy_road/bundled_scripts/session_plan.py",
+        "specy_road/bundled_scripts/do_next_task_args.py",
+        "docs/dev-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A git-workflow.yaml nested_repos list names separately versioned repositories under the project root; delegate and pickup create matching worktrees (a feature branch for repos the leaf's touch zones cover, detached otherwise) inside the leaf worktree",
+        "worker reconcile diffs the nested repos too, and finish merges the leaf's nested branches; docs describe the layout; tests use a fixture with one nested repo"
+      ],
+      "codename": "nested-repo-worktrees",
+      "dependencies": [],
+      "execution_milestone": "Mixed",
+      "id": "M11.22",
+      "node_key": "0e58af0e-895f-4a7c-b3c9-e5cb788d598f",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.22_nested-repo-worktrees_0e58af0e-895f-4a7c-b3c9-e5cb788d598f.md",
+      "sibling_order": 22,
+      "status": "Not Started",
+      "title": "Worker worktrees can include nested sibling repositories",
+      "touch_zones": [
+        "specy_road/git_workflow_config.py",
+        "specy_road/worker_ops.py",
+        "specy_road/worker_reconcile.py",
+        "specy_road/finish_land_integration.py",
+        "specy_road/templates/project/schemas/git-workflow.schema.json",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A roster entry can set channels.cli_resume (or an extra_args list appended to both default commands), so worker message and resume keep the same permissions as the launch; a custom cli without a usable resume form is reported at delegate time instead of silently falling back",
+        "docs/orchestration-workers.md documents the per-worktree settings-file route for Claude Code permissions; tests cover launch and resume argv"
+      ],
+      "codename": "resume-keeps-permissions",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.23",
+      "node_key": "6e0a98be-987f-4e0d-bc0a-f1d0fe79b216",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.23_resume-keeps-permissions_6e0a98be-987f-4e0d-bc0a-f1d0fe79b216.md",
+      "sibling_order": 23,
+      "status": "Not Started",
+      "title": "A custom launch command's permissions carry through resume",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/worker_ops.py",
+        "specy_road/templates/project/schemas/orchestration.schema.json",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "When a worker launches in a linked worktree, the Claude Code adapter adds the main checkout's work/reviews/<ID> directory as an allowed directory (and the equivalent for other harnesses that support it), so the executor can write its READY there",
+        "The executor and reviewer clean-tree preconditions name the checkout to run git status in (the leaf worktree path, filled in), so a reviewer does not check the main checkout by mistake; tests cover both prompts and the adapter argv"
+      ],
+      "codename": "worktree-handoff-writable",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.24",
+      "node_key": "5021c591-ae29-4b76-b422-66c0a4d51c13",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.24_worktree-handoff-writable_5021c591-ae29-4b76-b422-66c0a4d51c13.md",
+      "sibling_order": 24,
+      "status": "Not Started",
+      "title": "Executors and reviewers in a worktree can write and check the right places",
+      "touch_zones": [
+        "specy_road/worker_adapters.py",
+        "specy_road/bundled_scripts/role_prompt_rca.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "In merge mode, finish-this-task prints before pushing how many commits it will push to the integration branch and how many of them are not from this leaf, and --help says merge mode pushes the integration branch",
+        "Tests cover a push that carries an unrelated local commit"
+      ],
+      "codename": "merge-push-disclosure",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.25",
+      "node_key": "4e0d89c4-53ac-4c00-9c0d-92b843fd43c2",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.25_merge-push-disclosure_4e0d89c4-53ac-4c00-9c0d-92b843fd43c2.md",
+      "sibling_order": 25,
+      "status": "Not Started",
+      "title": "finish-this-task says what merge mode will push before it pushes",
+      "touch_zones": [
+        "specy_road/bundled_scripts/finish_task.py",
+        "specy_road/finish_modes.py",
+        "specy_road/bundled_scripts/finish_task_args.py",
+        "docs/git-workflow.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "A profile can list aliases (or a roster entry can name its profile), so roster ids like gpt-5.6-sol-high or -xhigh find the GPT-5.6 Sol profile and prompts carry its model notes",
+        "Tests cover an alias match and an unmatched id"
+      ],
+      "codename": "profile-aliases",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.26",
+      "node_key": "6035e56d-9837-45c8-b068-11a15da268ba",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.26_profile-aliases_6035e56d-9837-45c8-b068-11a15da268ba.md",
+      "sibling_order": 26,
+      "status": "Not Started",
+      "title": "A model profile can match harness model ids that carry an effort suffix",
+      "touch_zones": [
+        "specy_road/model_profiles.py",
+        "specy_road/templates/project/model-profiles/",
+        "specy_road/templates/project/schemas/",
+        "docs/orchestration-models.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "session start --path accepts several paths after one flag (or the error says to repeat --path); prompt --role reviewer accepts --packet or says the packet must be at the default path when review-packet -o wrote elsewhere",
+        "worker sync shows the worker's full final message on a completion without READY; session end works on the caller's own stale sessions; the Cursor adapter's default launch passes --trust, with a test"
+      ],
+      "codename": "small-cli-fixes",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.27",
+      "node_key": "1e874f38-9169-41f3-8500-d90f747d04b4",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.27_small-cli-fixes_1e874f38-9169-41f3-8500-d90f747d04b4.md",
+      "sibling_order": 27,
+      "status": "Not Started",
+      "title": "Small CLI fixes from field use",
+      "touch_zones": [
+        "specy_road/bundled_scripts/session_cli.py",
+        "specy_road/bundled_scripts/review_packet.py",
+        "specy_road/bundled_scripts/role_prompt.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/bundled_scripts/worker_cli_render.py",
+        "specy_road/worker_adapters.py",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road chore start <slug> creates an unregistered work item under work/ (no roadmap node, branch or registry row) that worker delegate, message, sync, usage and review accept in place of a node id, optionally with a roster-free --model and --harness",
+        "chore close writes a short record (summary, usage, reviewer verdict); tests cover start, delegate, sync and close"
+      ],
+      "codename": "chore-mode",
+      "dependencies": [],
+      "execution_milestone": "Mixed",
+      "id": "M11.28",
+      "node_key": "b5486e44-e4be-43e3-899d-48ebd108f562",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.28_chore-mode_b5486e44-e4be-43e3-899d-48ebd108f562.md",
+      "sibling_order": 28,
+      "status": "Not Started",
+      "title": "A light chore mode for work outside the roadmap",
+      "touch_zones": [
+        "specy_road/bundled_scripts/chore_cli.py",
+        "specy_road/worker_ops.py",
+        "specy_road/bundled_scripts/worker_cli.py",
+        "specy_road/cli.py",
+        "docs/orchestration-workers.md",
+        "tests/"
+      ],
+      "type": "task"
+    },
+    {
+      "acceptance": [
+        "specy-road doctor warns when the running version is older than the version recorded in the AGENTS.md managed block or .specyrd/manifest.json, naming both and the likely cause (an older install earlier on PATH)",
+        "Tests cover older, equal and newer"
+      ],
+      "codename": "doctor-version-skew",
+      "dependencies": [],
+      "execution_milestone": "Agentic-led",
+      "id": "M11.29",
+      "node_key": "367c4c28-1e0e-4e69-9d85-9c432e4aee08",
+      "parent_id": "M11",
+      "planning_dir": "planning/M11.29_doctor-version-skew_367c4c28-1e0e-4e69-9d85-9c432e4aee08.md",
+      "sibling_order": 29,
+      "status": "Not Started",
+      "title": "doctor warns when the running specy-road is older than the project's stubs",
+      "touch_zones": [
+        "specy_road/bundled_scripts/doctor.py",
+        "tests/"
+      ],
+      "type": "task"
+    }
+  ]
+}
