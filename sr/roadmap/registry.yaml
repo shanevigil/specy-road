@@ -107,3 +107,16 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
+  - codename: document-the-harness-subagent-recipe
+    node_id: M10.11
+    branch: feature/rm-document-the-harness-subagent-recipe
+    touch_zones:
+      - specy_road/bundled_scripts/do_next_prompt.py
+      - specy_road/bundled_scripts/role_prompt.py
+      - docs/orchestration-models.md
+      - specy_road/templates/project/model-profiles/README.md
+      - tests/test_do_next_prompt.py
+      - tests/test_models_and_prompt.py
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
