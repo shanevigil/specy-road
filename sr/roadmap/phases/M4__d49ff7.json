@@ -18,7 +18,7 @@
       "parent_id": "M4",
       "planning_dir": "planning/M4.16_review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees_d49ff77b-d845-4e5d-85f3-deedc56bbe1b.md",
       "sibling_order": 16,
-      "status": "Not Started",
+      "status": "Complete",
       "title": "Review rounds and elapsed time per leaf, and doctor lists detached worktrees",
       "touch_zones": [
         "specy_road/bundled_scripts/review_cli.py",

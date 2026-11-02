@@ -48,7 +48,7 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M4.13` | specy-road doctor lists merged or stale feature branches, worktrees, registry rows and stashes | task | Agentic-led | Complete |
 | `M4.14` | brainstorm promote inherits execution_milestone from the anchor | task | Agentic-led | Complete |
 | `M4.15` | Session overlap warnings name the other worktree and its edit state | task | Agentic-led | Complete |
-| `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Not Started |
+| `M4.16` | Review rounds and elapsed time per leaf, and doctor lists detached worktrees | task | Agentic-led | Complete |
 | `M4.17` | Review-loop escalation: a root-cause analysis runs when reviews keep blocking | task | Agentic-led | Complete |
 | `M4.18` | Further TS/JS syntax forms for the function cap found in M4.12 review | task | Agentic-led | Complete |
 | `M5` | Agent context and outcomes | phase | — | Not Started |
@@ -101,5 +101,6 @@ Status shown is the **computed rollup status**: for leaves, the node's own statu
 | `M10.13` | A project setting decides whether agent logs are tracked in git | task | Agentic-led | Not Started |
 | `M10.14` | edit-node keeps an active claim's touch zones in step with the node | task | Agentic-led | Complete |
 | `M10.15` | Executor prompt keeps long commands in the foreground so a headless turn does not end before its tests finish | task | Agentic-led | Complete |
+| `M10.16` | The worker wrapper imports the launching specy-road, not the worktree's copy | task | Agentic-led | Not Started |
 
 Chunk files (authoritative definitions): see [`roadmap/manifest.json`](roadmap/manifest.json) `includes` (e.g. [`roadmap/phases/`](roadmap/phases/)).

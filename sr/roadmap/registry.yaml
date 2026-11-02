@@ -83,20 +83,6 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
-  - codename: review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees
-    node_id: M4.16
-    branch: feature/rm-review-rounds-and-elapsed-time-per-leaf-and-doctor-lists-detached-worktrees
-    touch_zones:
-      - specy_road/bundled_scripts/review_cli.py
-      - specy_road/review_files.py
-      - specy_road/bundled_scripts/doctor.py
-      - docs/orchestration.md
-      - docs/pm-llm-review.md
-      - tests/
-    started: '2026-11-01'
-    owner: savigil
-    implementation_review: approved
-    implementation_review_at: '2026-11-02T04:03:58+00:00'
   - codename: integrity-gate-and-waivers
     node_id: M9.6
     branch: feature/rm-integrity-gate-and-waivers
