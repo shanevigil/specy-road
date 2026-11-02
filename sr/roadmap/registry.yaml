@@ -11,3 +11,14 @@ entries:
     started: '2026-10-28'
     owner: savigil
     implementation_review: pending
+  - codename: edit-node-add-remove
+    node_id: M11.10
+    branch: feature/rm-edit-node-add-remove
+    touch_zones:
+      - specy_road/bundled_scripts/roadmap_crud_ops.py
+      - specy_road/bundled_scripts/roadmap_crud_argparse.py
+      - docs/roadmap-authoring.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
