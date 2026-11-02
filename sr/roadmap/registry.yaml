@@ -97,16 +97,6 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
-  - codename: context-feedback-pilot
-    node_id: M5.6
-    branch: feature/rm-context-feedback-pilot
-    touch_zones:
-      - docs/agentic-sandbox-runbook.md
-      - docs/design-notes/
-      - specy_road/bundled_scripts/role_prompt.py
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
   - codename: runtime-dirs-not-dirty
     node_id: M11.3
     branch: feature/rm-runtime-dirs-not-dirty
@@ -117,21 +107,6 @@ entries:
       - specy_road/agent_ignores.py
       - specy_road/templates/project/
       - docs/git-workflow.md
-      - tests/
-    started: '2026-11-02'
-    owner: savigil
-    implementation_review: pending
-  - codename: human-acceptance
-    node_id: M11.9
-    branch: feature/rm-human-acceptance
-    touch_zones:
-      - specy_road/templates/project/schemas/roadmap.schema.json
-      - sr/schemas/
-      - schemas/
-      - specy_road/bundled_scripts/role_prompt_rca.py
-      - specy_road/finish_task_gates.py
-      - specy_road/bundled_scripts/finish_task.py
-      - docs/roadmap-authoring.md
       - tests/
     started: '2026-11-02'
     owner: savigil
