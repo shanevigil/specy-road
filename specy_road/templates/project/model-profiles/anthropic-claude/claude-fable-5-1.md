@@ -19,6 +19,7 @@ access:
   subagents: 'unknown Vendor and partner pages describe multi-hour autonomous work; a third party reports fewer parallel tool calls than Fable 5 [S2, S3]'
   effort_controls: 'effort parameter, default high; mid-conversation effort change in beta; full level list not verified'
   effort_map: { minimal: unknown, low: unknown, medium: unknown, high: high, max: unknown }
+  launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
 cost_usd_per_mtok: { input: 10.00, output: 50.00, cached_input: 0.25, fast_input: unknown, fast_output: unknown }
 data_handling: 'Anthropic designates Fable 5.1 a "Covered Model" with additional data retention, safety review and access policies wherever offered [S2]. Available on the Claude API, Amazon Bedrock (US geo and global inference profiles), Claude Platform on AWS (North America), Google Cloud and Microsoft Foundry [S1, S5]. Outputs carry content provenance (watermarking) [S1, S3]. Claude Mythos 5.1, the same model with fewer cyber and bio restrictions, is limited to verified organizations [S1]. Exact retention period: unknown. No local deployment.'
 role_fit:

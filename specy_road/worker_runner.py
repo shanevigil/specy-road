@@ -153,23 +153,22 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
                 first = False
                 append_event(repo_root, rec, "first_output", source="system", summary="first stdout line read")
             try:
-                _consume(repo_root, rec, adapter, line)
+                _consume(repo_root, rec, adapter, line, launch)
             except Exception as e:  # noqa: BLE001 — one bad line must not kill the wrapper
                 raw.write(f"[wrapper] could not record a line: {e}\n")
         code = proc.wait()
     return _finish(repo_root, rec, code, before)
 
 
-def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str) -> None:
-    parsed = adapter.parse(line)
-    if parsed is None:
-        return
-    if parsed.session_id:
-        # First seen wins; a later line (which the model controls) cannot move it.
-        mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
-    # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
-    append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
-                 summary=parsed.summary, detail=parsed.detail)
+def _consume(repo_root: Path, rec: WorkerRecord, adapter, line: str, launch: Launch) -> None:
+    # One line can record more than one event (Claude's init: `started`, then a launch-mode mismatch).
+    for parsed in adapter.parse_events(line, launch):
+        if parsed.session_id:
+            # First seen wins; a later line (which the model controls) cannot move it.
+            mutate(repo_root, rec, lambda r: setattr(r, "provider_session_id", r.provider_session_id or parsed.session_id))
+        # Parsed from the harness's stdout, which the model controls: a claim, not a fact the wrapper observed.
+        append_event(repo_root, rec, parsed.type, source="worker", authority="worker_suggestion",
+                     summary=parsed.summary, detail=parsed.detail)
 
 
 def _fresh_ready(repo_root: Path, rec: WorkerRecord, before: list[str]) -> bool:
