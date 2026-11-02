@@ -124,3 +124,13 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
+  - codename: enforced-rules-pointers
+    node_id: M5.4
+    branch: feature/rm-enforced-rules-pointers
+    touch_zones:
+      - specy_road/templates/specyrd/agents-md-block.md
+      - specy_road/templates/specyrd/claude-md-block.md
+      - tests/
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
