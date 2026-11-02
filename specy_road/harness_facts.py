@@ -47,8 +47,11 @@ WORKFLOW_WORDS = (
     "background", "delegate", "cloud", "schedule", "review", "resume", "fork", "autopilot",
 )
 VERSION_FILE = "version.txt"
-_CLI_LINE = re.compile(r"^(  cli:)[ \t]*(.*)$", re.MULTILINE)
-_ACCESS_LINE = re.compile(r"^access:[ \t]*(#.*)?$", re.MULTILINE)
+#: ``access:`` and its block mapping: every following line that is blank or indented.
+_ACCESS_BLOCK = re.compile(r"^access:[ \t]*(?:#[^\n]*)?$(?:\n(?:[ \t][^\n]*)?)*", re.MULTILINE)
+#: The ``cli`` key and its whole value: continuation lines are indented deeper than the key
+#: (a folded or literal block scalar, or a quoted scalar broken across lines).
+_CLI_VALUE = re.compile(r"^  cli:[^\n]*(?:\n(?:[ \t]*\n)*   [^\n]*)*", re.MULTILINE)
 _FLAG = re.compile(r"(?<![\w-])--[A-Za-z][A-Za-z0-9-]*")
 _COMMAND_ROW = re.compile(r"^ {2,4}([a-z][\w|-]*)(?=\s|$)")
 
@@ -183,15 +186,19 @@ def render_readme(text: str, facts: dict[str, Any]) -> str:
 
 
 def render_profile(text: str, cli: str) -> str:
-    """``text`` with its front matter's ``access.cli`` line set to ``cli``; a removed line goes back
-    first under ``access:``. Unchanged when the front matter has no block-style ``access:`` mapping."""
+    """``text`` with its front matter's ``access.cli`` value (every line of it) set to ``cli``; a removed
+    one goes back first under ``access:``. Unchanged when the front matter has no block-style
+    ``access:`` mapping. Everything outside that one value is kept byte for byte."""
     head, sep, body = text.partition("\n---\n")
-    if not sep:
+    access = _ACCESS_BLOCK.search(head) if sep else None
+    if not access:
         return text
-    new_head, n = _CLI_LINE.subn(lambda _m: _cli_line(cli), head, count=1)
+    block = access.group(0)
+    new_block, n = _CLI_VALUE.subn(lambda _m: _cli_line(cli), block, count=1)
     if not n:
-        new_head, n = _ACCESS_LINE.subn(lambda m: f"{m.group(0)}\n{_cli_line(cli)}", head, count=1)
-    return (new_head if n else head) + sep + body
+        first, nl, rest = block.partition("\n")
+        new_block = f"{first}\n{_cli_line(cli)}{nl}{rest}"
+    return head[:access.start()] + new_block + head[access.end():] + sep + body
 
 
 @dataclass

@@ -145,6 +145,20 @@ def test_render_restores_a_removed_cli_and_check_then_passes(tmp_path: Path, cap
     assert prof.read_text(encoding="utf-8").split("---\n")[2] == shipped.split("---\n")[2]
 
 
+def test_render_replaces_a_folded_multi_line_cli_whole(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    prof = repo / SOL
+    shipped = prof.read_text(encoding="utf-8")
+    cli_line = next(line for line in shipped.splitlines() if line.startswith("  cli: "))
+    folded = '  cli: >-\n    codex exec --model custom\n\n    "<prompt>"'
+    prof.write_text(shipped.replace(cli_line, folded), encoding="utf-8")
+    assert run_main("--check", "--repo-root", str(repo)) == 1
+    assert run_main("--render", "--repo-root", str(repo)) == 0
+    assert f"rendered {SOL.as_posix()} (drift:" in capsys.readouterr().out
+    assert run_main("--check", "--repo-root", str(repo)) == 0
+    assert prof.read_text(encoding="utf-8") == shipped   # the rest of the front matter and the body untouched
+
+
 def test_render_fails_on_a_region_it_cannot_write(tmp_path: Path, capsys) -> None:
     repo = _repo(tmp_path)
     prof = repo / SOL
