@@ -8,12 +8,12 @@ Candidates came from each rule's provenance line (`enforced: …`, added by M5.1
 
 `specy_road/templates/specyrd/agents-md-block.md`, `## Task loop`:
 
-- **Task pickup** — the step-by-step of what pickup does (sync, register, `owner`, push, branch) and "the target is always a leaf" become "claims a leaf, pushes the claim, then creates `feature/rm-*`"; the `--local` advice stays.
-- **`on_complete: pr`** — "do not re-pick: pickup refuses …" becomes "pickup will not re-pick it"; the instruction to leave the integration-branch row alone stays.
-- **Pickup order** — the two bullets (Blocked first / `execution_milestone` / gate / rollup, and outline order / `--interactive` / `--under`) merge into one line that says pickup decides readiness and order and names each fact in a parenthesis.
-- **Review roles** — the human-approval exception, "never `--yes` on your own work; it refuses …" and "Policy: …" become one clause: "`mark-implementation-reviewed` refuses without the reviews `roadmap/orchestration.yaml` requires". The executor/reviewer division of labour stays: the gate does not check who the executor was, so that part is guidance, not enforcement.
+- **Task pickup** — "registers (rows record `owner`) … The target is always a leaf; ancestors only roll up progress" becomes "syncs the integration branch, claims a leaf, never an ancestor (the row records `owner`), pushes the claim, then creates `feature/rm-*`"; the `--local` advice stays.
+- **`on_complete: pr`** — "do not re-pick: pickup refuses …" becomes "pickup will not re-pick it"; "`Complete` and its claim released only on its feature branch" and the instruction to leave the integration-branch row alone stay.
+- **Pickup order** — the two bullets merge into one line: pickup decides readiness and order (`Blocked` first, then MR-rejected, then outline order, not chunk order; a phase or milestone dependency is met when every leaf under it is `Complete`, not by its own `status`; only a `type: gate` dependency holds work back, never `execution_milestone`), with `--interactive` (by number) and `--under` (a subtree).
+- **Review roles** — "it refuses without a recorded review. Policy: `roadmap/orchestration.yaml`." becomes "it refuses without the reviews `roadmap/orchestration.yaml` requires". The executor/reviewer division of labour and the interactive human-approval exception stay: the gate does not check who the executor was, so those parts are guidance, not enforcement.
 
-`specy_road/templates/specyrd/claude-md-block.md`: **Roadmap-linked implementation** names `specy-road do-next-available-task` as the thing that registers the claim and creates `feature/rm-<codename>`, instead of restating both steps. "Don't rename a node's title mid-flight" stays (nothing enforces it).
+`specy_road/templates/specyrd/claude-md-block.md`: **Roadmap-linked implementation** names `specy-road do-next-available-task` as the thing that registers the claim on the integration branch and creates `feature/rm-<codename>`, instead of restating both steps. "Don't rename a node's title mid-flight" stays (nothing enforces it).
 
 Provenance lines were updated for the changed and merged bullets; every rule still carries one.
 
@@ -26,11 +26,11 @@ Provenance lines were updated for the changed and merged bullets; every rule sti
 ## Acceptance
 
 - **A1** — each rule above whose provenance names a CLI refusal or guarantee (review gate, pickup) is one line naming the command that enforces it. Validate enforces none of the block's rules beyond the block-staleness warning (Precedence), and the tool-call guard is opt-in (see above).
-- **A2** — `tests/test_enforced_rules_pointers.py::test_each_removed_sentence_is_a_pointer_to_an_enforcement_point` lists all 15 removed sentences; for each it asserts the sentence is gone from the rendered block, its pointer is present, and the named enforcing test (`tests/<file>::<test>`) exists.
+- **A2** — `tests/test_enforced_rules_pointers.py::test_each_removed_sentence_is_a_pointer_to_an_enforcement_point` has one row per removed fact (18 rows); for each it asserts the old text is gone from the rendered block, the pointer phrase carrying that fact is present, and the named enforcing test (`tests/<file>::<test>`) exists. A pointer that drops a qualifier fails its own row: rendering the block without "then MR-rejected, " fails the MR-rejected row.
 - **A3** — context meter (`print_injected_context` on a fresh `init project`, which is what `validate` prints):
   - before (base `4c89fdd`): `specy-road section 52 lines, 7,679 bytes`
-  - after: `specy-road section 51 lines, 7,185 bytes` (−1 line, −494 bytes)
-  - CLAUDE.md block rendered: 73 lines, 3,325 → 3,286 bytes.
+  - after: `specy-road section 51 lines, 7,561 bytes` (−1 line, −118 bytes)
+  - CLAUDE.md block rendered: 73 lines, 3,325 → 3,312 bytes.
   - `test_the_meter_reports_a_shorter_section_than_before` asserts the meter's numbers stay under the pre-M5.4 measurement.
 
 ## Touch zones (confirmed)
@@ -44,7 +44,7 @@ Provenance lines were updated for the changed and merged bullets; every rule sti
 
 ## Gates
 
-- `pytest` (full suite): 2582 passed, 2 skipped
+- `pytest` (full suite, at `2d47c6c`): 2582 passed, 2 skipped. After the review fix, the touched test files only (as the coordinator asked): `tests/test_enforced_rules_pointers.py tests/test_agents_md_block.py tests/test_lean_rules.py tests/test_shared_checkout_guidance.py tests/test_review_round6_docs.py tests/test_brainstorm_prompt_fixes.py tests/test_doc_links.py tests/test_validate_stale_commands.py tests/test_specyrd_init_guide_block.py`: 88 passed
 - `specy-road validate --repo-root tests/fixtures/specy_road_dogfood`: exit 0
 - `specy-road export --check --repo-root tests/fixtures/specy_road_dogfood`: exit 0
 - `specy-road file-limits`: OK
@@ -52,8 +52,14 @@ Provenance lines were updated for the changed and merged bullets; every rule sti
 ## Added
 
 - `tests/test_enforced_rules_pointers.py` — new file; A2 and A3 have no existing test to extend.
-- `REMOVED` table — the A2 mapping: removed sentence → pointer → enforcing test.
+- `REMOVED` table — the A2 mapping, one row per fact: removed text → pointer phrase → enforcing test.
 - `_flat` helper — the CLAUDE.md block wraps sentences across lines, so matching must ignore line breaks.
 - `test_each_removed_sentence_is_a_pointer_to_an_enforcement_point` — A2 (parametrized over `REMOVED`).
 - `_BEFORE_LINES`, `_BEFORE_BYTES` and `test_the_meter_reports_a_shorter_section_than_before` — A3, measured through the meter's public `injected_context`.
 - Helpers, branches or guards in product code: none. Mocks: none (`HOME`/`CODEX_HOME` are set so a machine-local file cannot enter the measurement).
+
+## Review round 1 (cursor-grok-4.6-high, block at `2d47c6c`)
+
+- **A2: MR-rejected tier dropped from the pickup-order pointer.** Restored: "`Blocked` first, then MR-rejected, then outline order", mapped to `tests/test_do_next_queue.py::test_available_orders_blocked_then_mr_rejected_then_not_started` in its own row.
+- **Other pointers that had dropped a qualifier, now restored:** "not chunk order"; "phase *or milestone*"; "every leaf under it is `Complete`, not by its own `status`"; `--interactive` "by number"; `--under` "to a subtree"; pickup "syncs the integration branch", "never an ancestor", "the row records `owner`"; `on_complete: pr` "and its claim released"; review roles "on your own work" and the interactive human-approval exception (guidance, not enforcement, so it should not have been cut); CLAUDE.md "on the integration branch".
+- **Mapping test granularity:** split into one row per fact so a dropped qualifier fails its own row.
