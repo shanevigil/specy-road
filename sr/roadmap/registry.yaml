@@ -62,3 +62,16 @@ entries:
     started: '2026-11-02'
     owner: savigil
     implementation_review: pending
+  - codename: doctor-version-skew
+    node_id: M11.29
+    branch: feature/rm-doctor-version-skew
+    touch_zones:
+      - specy_road/bundled_scripts/doctor.py
+      - specy_road/cli.py
+      - specy_road/templates/
+      - README.md
+      - docs/install-and-usage.md
+      - tests/
+    started: '2026-11-02'
+    owner: savigil
+    implementation_review: pending
