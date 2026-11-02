@@ -37,8 +37,9 @@ Branch `feature/rm-ship-skills-once-and-meter-every-file-each-harness-injects`, 
   caller that unpacked the old tuple, `tests/test_enforced_rules_pointers.py`, was updated to match.
 - **Cursor:** `AGENTS.md` and `CLAUDE.md` in each directory from the git root down to the project
   root, plus the rules under `.cursor/rules/` (`.mdc`/`.md`, nested folders included) whose
-  frontmatter sets `alwaysApply: true`. Rules scoped by glob or description load only when they
-  match, so they are not counted against "every session"; this choice is documented.
+  YAML frontmatter sets `alwaysApply` to a YAML true (`true # comment`, `True`, `yes`). Rules scoped
+  by glob or description load only when they match, so they are not counted against "every
+  session"; this choice is documented. A rule whose frontmatter does not parse is not counted.
 - **Copilot:** `AGENTS.md` and `.claude/CLAUDE.md` in the git root and the working directory, plus
   `.github/copilot-instructions.md` at the git root.
 - **Output:** neither Cursor nor Copilot documents a size limit, so each prints a `context:` line
@@ -73,7 +74,20 @@ All edits are inside the listed zones:
 - Dogfood fixture: `validate`, `export --check` and `digest --check` all OK. The `.specyrd/cache`
   those manual runs leave in the fixture was removed before the full suite ran.
 - `scripts/check_clones.py` was **not run**: `pylint` is not installed in this environment.
-- Full `pytest` (with `-p no:cacheprovider`): 2955 passed, 2 skipped.
+- Full `pytest` (with `-p no:cacheprovider`): 2955 passed, 2 skipped (before the review fix below).
+
+### Review fix (gpt-6.1-sol, A2 block)
+
+- Finding: a Cursor rule with `alwaysApply: true # always` was not counted, because a regex matched
+  the raw line.
+- Fix: `_always_applied` now parses the frontmatter with the existing
+  `planning_artifacts.split_frontmatter` (`yaml.safe_load`; it returns `{}` for frontmatter that is
+  unparsable or not a mapping). A rule counts only when `alwaysApply` is the YAML boolean true. The
+  `_ALWAYS_APPLY` regex is gone.
+- The existing public meter test now covers: an inline comment and `True` (counted); a quoted
+  `"true"` and unparsable frontmatter (not counted).
+- Reran, touched files only: `tests/test_context_meter_harnesses.py`, `tests/test_agents_md_block.py`,
+  `tests/test_enforced_rules_pointers.py`: 47 passed. `specy-road file-limits` and `ruff` are OK.
 
 ## Added
 
@@ -90,9 +104,10 @@ All edits are inside the listed zones:
   deletes.
 - `specyrd_init.warn_if_skills_mirrored` and its call in `validate_at`: the A1 validate warning.
 - `agents_md_block._CURSOR_CANDIDATES`, `_CURSOR_RULES`, `_COPILOT_CANDIDATES`,
-  `_COPILOT_REPO_FILE`, `_ALWAYS_APPLY`: the per-harness file lists (A2).
-- `agents_md_block._always_applied`: a Cursor rule is counted only when its frontmatter sets
-  `alwaysApply: true`.
+  `_COPILOT_REPO_FILE`: the per-harness file lists (A2).
+- `agents_md_block._always_applied`: a Cursor rule is counted only when its YAML frontmatter
+  (parsed with the existing `split_frontmatter`) sets `alwaysApply` true; unparsable frontmatter is
+  not counted.
 - `agents_md_block._cursor_paths`, `_copilot_paths`: the files each harness injects (A2).
 - `agents_md_block._note_suffix`: the global `AGENTS.override.md` note for Codex (A2).
 - `tests/test_skill_mirrors.py`: init writes nothing under `.cursor`/`.codex` (all three skill
@@ -102,7 +117,8 @@ All edits are inside the listed zones:
   `.agents/skills` is never pruned; a copy with no installed skill is ignored. The helper
   `_flat_stub` builds a verbatim flat stub via a `generic` init in a sibling directory, to avoid a
   new private import.
-- `tests/test_context_meter_harnesses.py`: Cursor files and the `alwaysApply` filter; Cursor's walk
+- `tests/test_context_meter_harnesses.py`: Cursor files and the `alwaysApply` filter (including an
+  inline comment, `True`, a quoted string and unparsable frontmatter); Cursor's walk
   into a nested project; Copilot's files in the root and the working directory; one line per
   harness and no warning past 32 KiB for Copilot.
 - Changes to existing tests:
