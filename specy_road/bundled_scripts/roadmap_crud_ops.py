@@ -20,6 +20,7 @@ from specy_road.bundled_scripts.registry_claim_zones import claim_zones_followin
 from specy_road.bundled_scripts.roadmap_crud_prepare import ensure_codename_for_new_node, heal_before_mutation, next_sibling_order
 from specy_road.bundled_scripts.roadmap_crud_chunk_report import (
     NodeChunkWriteReport,
+    heal_and_collect_paths,
     plan_add_chunk_writes,
     plan_edit_node_report,
     print_node_chunk_write_report,
@@ -203,7 +204,7 @@ def cmd_add(args: object) -> None:
     from specy_road.bundled_scripts.roadmap_crud_dependency_ops import resolve_dependency_refs
     try:
         node["dependencies"] = resolve_dependency_refs(root, node["dependencies"])
-        heal_before_mutation(root)
+        heal_paths = heal_and_collect_paths(root)
         ensure_codename_for_new_node(root, node)
         parent_id = parent_val if isinstance(parent_val, str) else None
         planned_sheet = plan_planning_sheet_for_new_node(root, node)
@@ -213,6 +214,7 @@ def cmd_add(args: object) -> None:
             getattr(args, "chunk", None),
             node,
             planned_sheet=planned_sheet,
+            extra_paths=heal_paths,
         )
         chunk_path = append_node_to_chunk(root, getattr(args, "chunk", None), node)
     except ValueError as e:
@@ -281,7 +283,7 @@ def edit_node_set_pairs(
     notify: Callable[[str], None] | None = None,
 ) -> NodeChunkWriteReport:
     """Patch whitelisted fields on a node, then save its chunk atomically."""
-    heal_before_mutation(root)
+    heal_paths = heal_and_collect_paths(root)
     chunk = find_chunk_path(root, node_id)
     if not chunk:
         raise ValueError(unknown_node_msg(node_id))
@@ -322,7 +324,8 @@ def edit_node_set_pairs(
     rename = _planning_rename_plan(root, planning_dir_before, node.get("planning_dir"))
     zones = node.get("touch_zones") if any(k == "touch_zones" for k, _ in pairs) else None
     report = plan_edit_node_report(
-        root, node_id, chunk, nodes, [rename] if rename else None, zones
+        root, node_id, chunk, nodes, [rename] if rename else None, zones,
+        heal_paths,
     )
 
     from specy_road.bundled_scripts.roadmap_chunk_router import write_node_update

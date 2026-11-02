@@ -38,6 +38,33 @@ def _manifest_rel(root: Path) -> str:
     return repo_rel(root, discover_manifest_path(root))
 
 
+def snapshot_roadmap_files(root: Path) -> dict[str, bytes]:
+    """Byte map of ``roadmap/`` and ``planning/`` files, including deletions."""
+    out: dict[str, bytes] = {}
+    for prefix in ("roadmap", "planning"):
+        base = root / prefix
+        if not base.is_dir():
+            continue
+        for path in base.rglob("*"):
+            if path.is_file():
+                out[path.relative_to(root).as_posix()] = path.read_bytes()
+    return out
+
+
+def changed_roadmap_rels(before: dict[str, bytes], after: dict[str, bytes]) -> list[str]:
+    keys = set(before) | set(after)
+    return sorted(k for k in keys if before.get(k) != after.get(k))
+
+
+def heal_and_collect_paths(root: Path) -> list[str]:
+    """Run the pre-mutation heal and return every roadmap/planning path it changed."""
+    from specy_road.bundled_scripts.roadmap_crud_prepare import heal_before_mutation
+
+    before = snapshot_roadmap_files(root)
+    heal_before_mutation(root)
+    return changed_roadmap_rels(before, snapshot_roadmap_files(root))
+
+
 def plan_edit_chunk_writes(
     root: Path,
     node_id: str,
@@ -104,6 +131,7 @@ def plan_add_chunk_writes(
     node: dict,
     *,
     planned_sheet: tuple[Path, str] | None,
+    extra_paths: list[str] | None = None,
 ) -> NodeChunkWriteReport:
     from specy_road.bundled_scripts.roadmap_chunk_router_pick import pick_target_chunk
 
@@ -113,6 +141,7 @@ def plan_add_chunk_writes(
         written.append(repo_rel(root, planned_sheet[0]))
     if decision.is_new_chunk:
         written.append(_manifest_rel(root))
+    written.extend(extra_paths or [])
     return NodeChunkWriteReport(
         node_id=str(node.get("id") or ""),
         read_from=None,
@@ -140,15 +169,6 @@ def registry_rel_if_claim_touch_zones_change(
     return repo_rel(root, path)
 
 
-def append_report_paths(report: NodeChunkWriteReport, extra: list[str]) -> NodeChunkWriteReport:
-    if not extra:
-        return report
-    return replace(
-        report,
-        written=_unique_commit_paths(list(report.written), extra),
-    )
-
-
 def plan_edit_node_report(
     root: Path,
     node_id: str,
@@ -156,10 +176,17 @@ def plan_edit_node_report(
     nodes_after: list[dict],
     renames: list[tuple[Path, Path]] | None,
     zones: list | None,
+    heal_paths: list[str] | None = None,
 ) -> NodeChunkWriteReport:
     report = plan_edit_chunk_writes(root, node_id, source_chunk, nodes_after, renames)
+    extra = list(heal_paths or [])
     reg_rel = registry_rel_if_claim_touch_zones_change(root, node_id, zones)
-    return append_report_paths(report, [reg_rel]) if reg_rel else report
+    if reg_rel:
+        extra.append(reg_rel)
+    return replace(
+        report,
+        written=_unique_commit_paths(list(report.written), extra),
+    )
 
 
 def print_node_chunk_write_report(report: NodeChunkWriteReport, *, verb: str) -> None:

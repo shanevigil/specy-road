@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from specy_road.bundled_scripts.roadmap_chunk_router_pick import simulate_chunk_lines
-from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk
+from specy_road.bundled_scripts.roadmap_chunk_utils import load_json_chunk, write_json_chunk
 from specy_road.bundled_scripts.roadmap_crud_ops import cmd_edit
 from tests.review_repo_helpers import make_review_repo
 from tests.test_roadmap_crud import _edit, crud_fixture_repo, run_crud
@@ -195,3 +195,30 @@ def test_edit_node_without_zone_change_omits_registry_from_commit_list(tmp_path:
     committed = set(_commit_files(capsys.readouterr().out))
     assert "roadmap/registry.yaml" not in committed
     assert committed == _paths_changed(before, after)
+
+
+def test_edit_node_heal_in_another_chunk_is_in_commit_list(tmp_path: Path) -> None:
+    crud_fixture_repo(tmp_path)
+    t_rel = "roadmap/phases/T.json"
+    u_rel = "roadmap/phases/U.json"
+    nodes = load_json_chunk(tmp_path / t_rel)
+    moved = next(n for n in nodes if n["id"] == "M99.2")
+    moved["execution_subtask"] = "legacy"
+    write_json_chunk(tmp_path / t_rel, [n for n in nodes if n["id"] != "M99.2"])
+    write_json_chunk(tmp_path / u_rel, [moved])
+    manifest = tmp_path / "roadmap" / "manifest.json"
+    manifest.write_text(
+        json.dumps({"version": 1, "includes": ["phases/T.json", "phases/U.json"]}) + "\n",
+        encoding="utf-8",
+    )
+    before = _roadmap_planning_bytes(tmp_path)
+    r = _edit(tmp_path, "--set", "status=Complete")
+    assert r.returncode == 0, r.stderr
+    changed = _paths_changed(before, _roadmap_planning_bytes(tmp_path))
+    committed = set(_commit_files(r.stdout))
+    assert committed == changed
+    assert t_rel in committed
+    assert u_rel in committed
+    assert "execution_subtask" not in {
+        k for n in load_json_chunk(tmp_path / u_rel) for k in n
+    }
