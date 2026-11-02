@@ -119,6 +119,7 @@ def run(repo_root: Path, worker_id: str, launch: Launch, *, resumed: bool = Fals
         append_event(repo_root, rec, "resumed", source="broker", summary="resumed with a new prompt")
     env = dict(os.environ)
     env.pop("PYTHONPATH", None)
+    env.pop("CLAUDE_CODE_EFFORT_LEVEL", None)   # a caller's setting must not override the profile's effort_by_role
     if harness_pythonpath:
         env["PYTHONPATH"] = harness_pythonpath
     with log.open("a", encoding="utf-8") as raw:

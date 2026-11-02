@@ -11,12 +11,15 @@ from pathlib import Path
 import pytest
 
 from tests.review_repo_helpers import make_review_repo
+from tests.test_models_and_prompt import _commit_profile, _repo, _run
 from tests.test_worker_cli import run_worker_cli
 
 from specy_road import worker_adapters as wa
+from specy_road import worker_ops as ops
 from specy_road import worker_reconcile as wrc
 from specy_road import worker_runner as wr
 from specy_road import worker_state as ws
+from specy_road.bundled_scripts import role_prompt
 
 FAKE = '''
 import json, sys
@@ -267,3 +270,110 @@ def test_the_wrapper_payload_carries_the_mode_and_records_the_mismatch(tmp_path:
     assert mismatch.detail == {"inferred_mode": "full", "launch_mode": "bare"}
     assert "exit" not in mismatch.detail   # not a turn end: the turn goes on
     assert ws.load_record(repo, rec.worker_id).provider_session_id == "s1"
+
+
+# --- access.effort_by_role (M10.5) ----------------------------------------------
+
+def test_default_claude_and_codex_commands_carry_the_effort_flag_and_cursor_none(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cc, cx, cu = (wa.adapter_for(h) for h in ("claude-code", "codex", "cursor"))
+    for launch in (cc.launch(p, tmp_path, "m", None, effort="medium"), cc.resume("sid", p, tmp_path, "m", None,
+                                                                                  effort="medium")):
+        i = launch.argv.index("--effort")
+        assert launch.argv[i + 1] == "medium"
+    for launch in (cx.launch(p, tmp_path, "m", None, effort="high"), cx.resume("t1", p, tmp_path, "m", None,
+                                                                               effort="high")):
+        i = launch.argv.index("model_reasoning_effort=high")
+        assert launch.argv[i - 1] == "-c"
+    assert cx.resume("t1", p, tmp_path, "m", None, effort="high").argv[-2:] == ["t1", "-"]   # still the last args
+    no_effort = (cc.launch(p, tmp_path, "m", None), cc.resume("sid", p, tmp_path, "m", None),
+                 cx.launch(p, tmp_path, "m", None), cx.resume("t1", p, tmp_path, "m", None))
+    assert not any("--effort" in x.argv or any("model_reasoning_effort" in a for a in x.argv) for x in no_effort)
+    assert cu.launch(p, tmp_path, "m", None, effort="high").argv == cu.launch(p, tmp_path, "m", None).argv
+
+
+def test_custom_cli_effort_placeholder_becomes_each_harness_flag(tmp_path: Path) -> None:
+    p = tmp_path / "p.md"
+    p.write_text("x")
+    cli = "wrapper {effort} {prompt}"
+    assert wa.adapter_for("claude-code").launch(p, tmp_path, "m", cli, effort="low").argv[2] == f"wrapper --effort low {p}"
+    assert wa.adapter_for("codex").launch(p, tmp_path, "m", cli, effort="low").argv[2] == \
+        f"wrapper -c model_reasoning_effort=low {p}"
+    assert wa.adapter_for("cursor").launch(p, tmp_path, "m", cli, effort="low").argv[2] == f"wrapper  {p}"
+    assert wa.adapter_for("generic").launch(p, tmp_path, "m", cli, effort="low").argv[2] == f"wrapper  {p}"
+    assert wa.adapter_for("claude-code").launch(p, tmp_path, "m", cli).argv[2] == f"wrapper  {p}"   # no level
+    resumed = wa.adapter_for("claude-code").resume("sid", p, tmp_path, "m", "w {session_flag} {effort} {prompt}",
+                                                   effort="max")
+    assert resumed.argv[2] == f"w --resume sid --effort max {p}"
+    for bad in ("w --effort={effort} {prompt}", "w <{effort} {prompt}"):
+        assert wa.placeholder_problem(bad)
+        with pytest.raises(wa.Unsupported):
+            wa.adapter_for("claude-code").launch(p, tmp_path, "m", bad, effort="low")
+
+
+def test_effort_note_only_when_a_level_is_set_and_the_command_names_no_effort() -> None:
+    from specy_road.worker_adapter_parsers import effort_note  # noqa: PLC0415
+    assert "takes no effort" in effort_note("w {prompt}", "high")
+    assert effort_note("w {effort} {prompt}", "high") is None
+    assert effort_note("w {prompt}", None) is None and effort_note(None, "high") is None
+
+
+ENV_PROBE = "import os, sys\nopen(sys.argv[1], 'w').write(os.environ.get('CLAUDE_CODE_EFFORT_LEVEL', 'unset'))\n"
+
+
+def test_the_worker_child_environment_has_no_claude_code_effort_level(tmp_path: Path, monkeypatch) -> None:
+    repo = make_review_repo(tmp_path)
+    script, out, prompt = tmp_path / "probe.py", tmp_path / "env.txt", tmp_path / "p.md"
+    script.write_text(ENV_PROBE)
+    prompt.write_text("x")
+    monkeypatch.setenv("CLAUDE_CODE_EFFORT_LEVEL", "max")
+    rec = ws.create_record(repo, "M1.1", "generic", "x", repo)
+    launch = wa.adapter_for("generic").launch(prompt, repo, "x", f"{sys.executable} {script} {out} {{prompt}}")
+    wr.run(repo, rec.worker_id, launch)
+    assert out.read_text() == "unset"
+
+
+def _harness(repo: Path, cli: str | None = None) -> None:
+    """Roster ``opus`` on ``claude-code`` (and its ``channels.cli``), landed on ``dev`` like the profile."""
+    roster = repo / "roadmap" / "orchestration.yaml"
+    extra = "    harness: claude-code\n" + (f"    channels: {{cli: '{cli}'}}\n" if cli else "")
+    roster.write_text(roster.read_text().replace("    family: anthropic\n", "    family: anthropic\n" + extra, 1))
+    _commit_profile(repo)
+
+
+def test_prompt_cli_channel_substitutes_the_roles_effort_or_notes_its_absence(tmp_path: Path, capfd) -> None:
+    repo = _repo(tmp_path)
+    _harness(repo)
+    prof_path = repo / "model-profiles" / "anthropic-claude" / "claude-opus-5-5.md"
+    prof_path.write_text(prof_path.read_text().replace('  cli: claude -p "<prompt>"', "  cli: echo {effort} {prompt}"))
+    _commit_profile(repo)
+    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+                "--repo-root", str(repo)) == 0
+    out, err = capfd.readouterr()
+    assert out.splitlines()[-1].startswith("--effort low ") and "takes no effort" not in err
+    prof_path.write_text(prof_path.read_text().replace("  cli: echo {effort} {prompt}", "  cli: echo {prompt}"))
+    _commit_profile(repo)
+    assert _run(role_prompt, "M1.1", "--model", "opus", "--role", "coordinator", "--channel", "cli",
+                "--repo-root", str(repo)) == 0
+    out, err = capfd.readouterr()
+    assert "--effort" not in out.splitlines()[-1] and err.count("takes no effort") == 1 and "effort low" in err
+
+
+def test_delegate_passes_the_executor_effort_to_default_and_custom_commands(tmp_path: Path, capsys,
+                                                                            monkeypatch) -> None:
+    launches = []
+    monkeypatch.setattr(ops, "spawn", lambda root, rec, launch, **kw: launches.append(launch))
+    for name, cli in (("default", None), ("effort", "wrapper {effort} {prompt}"), ("none", "wrapper {prompt}")):
+        (tmp_path / name).mkdir()
+        repo = _repo(tmp_path / name)
+        _harness(repo, cli)
+        ops.delegate(repo, "M1.1", "opus")
+        notes = capsys.readouterr().err.count("takes no effort")
+        if cli is None:
+            i = launches[-1].argv.index("--effort")
+            assert launches[-1].argv[i + 1] == "medium" and notes == 0
+        elif "{effort}" in cli:
+            assert launches[-1].argv[2].startswith("wrapper --effort medium ") and notes == 0
+        else:
+            assert "--effort" not in launches[-1].argv[2] and notes == 1

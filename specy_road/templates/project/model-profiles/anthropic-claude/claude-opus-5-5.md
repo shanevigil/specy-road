@@ -19,6 +19,7 @@ access:
   subagents: yes Vendor guide describes multihour runs "with parallel subagents" and gives time-budget signals for multiagent harnesses; both runs report Claude Code subagent support and parallel delegation [S2]
   effort_controls: 'low, medium, high, xhigh, max (default medium; thinking always on)'
   effort_map: { minimal: low, low: low, medium: medium, high: high, max: max }
+  effort_by_role: { coordinator: low, executor: medium, reviewer: medium }  # executor and reviewer at the documented default, coordinator one level below; M10.6 measures lower reviewer levels
   launch_mode: full   # bare (--bare) drops hooks, skills, MCP and CLAUDE.md, and needs ANTHROPIC_API_KEY
 cost_usd_per_mtok: { input: 4.00, output: 20.00, cached_input: 0.20, fast_input: 8.00, fast_output: 40.00 }
 data_handling: 'Served by Anthropic and on Amazon Bedrock (anthropic.claude-opus-5-5), Claude Platform on AWS, Google Cloud and Microsoft Foundry [S1], so a deployment can stay inside a customer''s existing cloud account. Commercial and API inputs and outputs are not used for model training by default; standard API retention is generally up to 30 days; contractual zero data retention is available for eligible enterprise and API arrangements; regional processing is available through supported cloud and platform configurations, including US-only inference at a premium [S13]. Opus 5.5 runs the same biology safeguards as Fable 5.1 plus cyber and reasoning-extraction classifiers [S2]. No local or open-weight deployment.'

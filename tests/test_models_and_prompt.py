@@ -356,3 +356,41 @@ def test_refresh_profiles_dry_run_writes_nothing(tmp_path: Path, capsys) -> None
     assert _run(rp, "--dry-run", "--repo-root", str(repo)) == 0
     assert "would write model-profiles/README.md" in capsys.readouterr().out
     assert not (repo / "model-profiles").exists()
+
+
+# --- access.effort_by_role (M10.5) --------------------------------------------
+
+EFFORT_HEAD = ("---\nprofile_schema: 2\nfamily: f\nmodel: m\napi_id: m\nversion_rank: latest\nresearched: 2026-10-30\n"
+               "role_fit: {}\naccess:\n  effort_map: { low: lo, medium: med, max: unknown }\n")
+
+
+def test_effort_by_role_names_effort_map_keys_and_rejects_the_rest(tmp_path: Path) -> None:
+    p = tmp_path / "my-model.md"
+    p.write_text(EFFORT_HEAD + "  effort_by_role: { coordinator: low, executor: medium }\n---\n")
+    prof = mp.load_profile(p)
+    assert prof.ok and prof.effort("coordinator") == "lo" and prof.effort("executor") == "med"
+    assert prof.effort("reviewer") is None   # unset: the harness's default
+    for line, why in (("{ tester: low }", "names unknown role 'tester'"),
+                      ("{ reviewer: high }", "`access.effort_by_role.reviewer` is 'high', not an effort_map key"),
+                      ("{ reviewer: max }", "`access.effort_by_role.reviewer` is 'max', not an effort_map key"),
+                      ("[low]", "`access.effort_by_role` must be a mapping")):
+        p.write_text(EFFORT_HEAD + f"  effort_by_role: {line}\n---\n")
+        errors = mp.load_profile(p).errors
+        assert len(errors) == 1 and errors[0].startswith("profile my-model: ") and why in errors[0], errors
+
+
+def test_shipped_claude_profiles_set_default_effort_and_coordinator_one_below() -> None:
+    expect = {"claude-opus-5-5": ("low", "medium", "medium"), "claude-opus-5": ("medium", "high", "high"),
+              "claude-fable-5-1": (None, "high", "high"), "claude-fable-5": (None, "high", "high")}
+    for name, levels in expect.items():
+        path = TEMPLATE_PROFILES / "anthropic-claude" / f"{name}.md"
+        prof = mp.load_profile(path)
+        assert prof.ok and tuple(prof.effort(r) for r in mp.ROLES) == levels, name
+        assert "M10.6" in path.read_text()
+
+
+def test_models_show_prints_effort_by_role(tmp_path: Path, capsys) -> None:
+    repo = _repo(tmp_path)
+    assert _run(models_cli, "models", "show", "opus", "--repo-root", str(repo)) == 0
+    assert "- effort_by_role: coordinator=low (low), executor=medium (medium), reviewer=medium (medium)" \
+        in capsys.readouterr().out

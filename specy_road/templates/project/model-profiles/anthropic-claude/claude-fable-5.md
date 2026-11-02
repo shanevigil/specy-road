@@ -19,6 +19,7 @@ access:
   subagents: unknown No model-specific data found
   effort_controls: 'effort parameter, default high; full level list not verified'
   effort_map: { minimal: unknown, low: unknown, medium: unknown, high: high, max: unknown }
+  effort_by_role: { executor: high, reviewer: high }  # executor and reviewer at the documented default (high); coordinator unset: medium is unverified; M10.6 measures lower levels
 cost_usd_per_mtok: { input: 10.00, output: 50.00, cached_input: 1.00, fast_input: unknown, fast_output: unknown }
 data_handling: 'Same channels as Fable 5.1 once restored. Availability incident: on 2026-06-12 Anthropic suspended all access to Fable 5 and Mythos 5 to comply with a U.S. Department of Commerce export-control directive covering any foreign national; controls were lifted 2026-06-30 and Fable 5 access returned globally on 2026-07-01 on Claude Platform, Claude.ai, Claude Code and Cowork, with AWS, Google Cloud and Microsoft Foundry restored later [S2, S3, S5]. This is outside the 90-day window but shows that regulatory action can remove access to this track with no notice. Retention terms: unknown. No local deployment.'
 role_fit:
