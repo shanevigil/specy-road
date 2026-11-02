@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -156,3 +157,14 @@ def test_file_renamed_onto_a_new_ratchet_path_widens_it(tmp_path: Path, capsys) 
     git(repo, "mv", "old.txt", "constraints/mutation-baseline.json")
     git(repo, "commit", "-qm", "rename onto the ratchet path")
     assert _run(repo, capsys) == (1, "baseline-widened: constraints/mutation-baseline.json +2\n")
+
+
+def test_non_utf8_file_name_hides_no_other_finding(tmp_path: Path, capsys) -> None:
+    repo = make_repo(tmp_path, roadmap=True)
+    merge_dev(repo)
+    blob = subprocess.run(["git", "-C", str(repo), "hash-object", "-w", "--stdin"], input=b"x\n",
+                          capture_output=True, check=True).stdout.decode().strip()
+    # through the index: a 0xff byte in a name is not a valid file name on every filesystem
+    git(repo, "update-index", "--add", "--cacheinfo", f"100644,{blob},bad\udcff.txt")
+    commit(repo, "src/mod.py", "x = 1  # noqa\n", "suppress beside a non-UTF-8 name")
+    assert _run(repo, capsys) == (1, "new-suppression: src/mod.py:1\n")

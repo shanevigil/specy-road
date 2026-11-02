@@ -182,29 +182,48 @@ def _file_additions(
 
 
 def _patch(root: Path, args: list[str]) -> str:
-    """``git <args>`` stdout decoded leniently; empty on failure.
+    """``git <args>`` stdout decoded leniently; empty on failure."""
+    return _git_bytes(root, args).decode("utf-8", "replace")
+
+
+def _git_bytes(root: Path, args: list[str]) -> bytes:
+    """``git <args>`` raw stdout; empty on failure.
 
     Spawned here, not through :mod:`specy_road.git_subprocess`, because that decodes
-    strictly: one non-UTF-8 added line would hide the file's markers and line count.
+    strictly: one non-UTF-8 added line or file name would hide every other finding.
     """
     try:
         r = subprocess.run(["git", *args], cwd=root, capture_output=True, timeout=DEFAULT_TIMEOUT, check=False)
     except (OSError, subprocess.SubprocessError):
-        return ""
-    return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else ""
+        return b""
+    return r.stdout if r.returncode == 0 else b""
 
 
 def _changed_files(root: Path, base: str, ref: str) -> list[tuple[str, ...]]:
-    """``(path,)`` per changed file, ``(source, destination)`` per rename."""
+    """``(path,)`` per changed file, ``(source, destination)`` per rename.
+
+    A name that is not UTF-8 is dropped; a rename keeps its destination alone, so all of
+    that file's lines count.
+    """
     args = ["diff", "--no-relative", "--name-status", "-z", "--find-renames", base, ref]
-    fields = (git_stdout(args, root) or "").split("\0")
+    fields = _git_bytes(root, args).split(b"\0")
     out: list[tuple[str, ...]] = []
     i = 0
     while i < len(fields) and fields[i]:
-        width = 2 if fields[i][0] == "R" else 1
-        out.append(tuple(fields[i + 1:i + 1 + width]))
+        width = 2 if fields[i][:1] == b"R" else 1
+        names = fields[i + 1:i + 1 + width]
         i += 1 + width
+        decoded = [_utf8(n) for n in names]
+        if names and decoded[-1] is not None:
+            out.append(tuple(n for n in decoded if n is not None))
     return out
+
+
+def _utf8(name: bytes) -> str | None:
+    try:
+        return name.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
 
 
 def _hunk_additions(patch: str) -> list[tuple[int, str]]:
