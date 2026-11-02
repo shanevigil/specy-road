@@ -15,17 +15,21 @@ against the leaf's contract as it stands at reconcile time.
   no longer outside. That test also passes against the base commit, so it pins
   the behaviour rather than fixing it. If the field report's stale zones came
   from a run older than M10.14, this leaf has nothing more to change for A1.
-- **A2 (merged-in paths):** `_integration_bases` takes the merge base of the
+- **A2 (merged-in paths):** `_integration_base` takes the merge base of the
   worktree's `HEAD` with each integration ref: `refs/remotes/<remote>/<branch>`
   and `refs/heads/<branch>`, whichever exist. It reads both because a
   coordinator often merges a local integration branch that is ahead of its
-  remote-tracking ref. `_changed_since` keeps a tracked path only if it also
-  differs between the working tree and every such base. A file that a merge
-  brought in matches the integration branch at that base, so it drops out of
-  both `changed` and `outside_touch_zones`. Untracked files are always kept.
-  When git cannot answer for a base, that base is skipped and the old result
-  stands. Before any merge, the merge base is the fork point and the
-  intersection changes nothing.
+  remote-tracking ref. It keeps only the **newest** of those bases (`git
+  merge-base --independent`). An older base, such as a stale remote-tracking
+  ref, lacks what a later merge brought, so a worker deleting a merged file
+  would match it and vanish (review R1). When the two bases diverged and
+  neither is newest, there is no base and nothing is filtered: the result is
+  noisier, never hidden. `_changed_since` keeps a tracked path only if it also
+  differs between the working tree and that base. A file that a merge brought
+  in matches the integration branch there, so it drops out of both `changed`
+  and `outside_touch_zones`. Untracked files are always kept. When git cannot
+  diff against the base, the old result stands. Before any merge, the base is
+  the fork point and the filter changes nothing.
 - **A3 (own contract only):** reconcile still compares hashes of the full
   prompt first. When the prompt differs, `_brief_unchanged` no longer compares
   whole briefs. It compares `own_contract(...)` of a fresh render and of the
@@ -48,6 +52,21 @@ Confirmed: `specy_road/worker_reconcile.py`, `docs/orchestration-workers.md`,
 `tests/`. `specy_road/git_changed_paths.py` was not needed (`diff_paths`
 already takes any comparison), so it is unchanged.
 
+## Review round 1 (gpt-6.1-sol: block)
+
+- R1: fixed as described under A2 (newest base only). The merge test now goes on
+  past a checkpoint taken after the merge: with the stale remote-tracking ref in
+  place, the worker deletes the merged file, and reconcile reports it in
+  `changed` and `outside_touch_zones` and sets `needs_reconcile`. That
+  continuation fails against the round-0 code (`[] == ['other/merged.txt']`).
+- R2: the tests use the public `worker_repo` helper from
+  `tests/test_worker_m310_reconcile_status.py` (the same repo `_repo` built)
+  instead of the private `tests.test_worker_cli._repo`. Assertions are unchanged.
+- Re-run in round 1: only `tests/test_worker_reconcile_contract.py` (6 passed),
+  `scripts/check_test_private_imports.py` (0 new), `ruff check` on the two
+  changed Python files (clean) and `specy-road file-limits` (OK). The full-suite
+  numbers below are from round 0.
+
 ## Verification
 
 - `pytest` (all `tests/test_*.py`, run in three foreground chunks because one
@@ -64,13 +83,16 @@ already takes any comparison), so it is unchanged.
 
 ## Added
 
-- `worker_reconcile._integration_bases`: merge bases of HEAD with the
-  remote-tracking and local integration refs; these are the points the branch
-  last took the integration branch in (A2).
-- `bases` parameter and intersection loop in `worker_reconcile._changed_since`:
+- `worker_reconcile._integration_base`: the newest merge base of HEAD with
+  the remote-tracking and local integration refs, which is the point the
+  branch last took the integration branch in (A2, R1).
+- `None` when those bases diverged (`--independent` lists more than one): no
+  older base gets to hide a change. No test covers this; it needs local and
+  remote integration refs that diverged and were both merged in.
+- `base` parameter and intersection in `worker_reconcile._changed_since`:
   drops tracked paths the tree matches the integration branch on (A2).
-- Guard `own is not None` in that loop: a base git cannot diff is skipped, so
-  it cannot empty the change list.
+- Guard `own is not None`: a base git cannot diff is skipped, so it cannot
+  empty the change list.
 - `worker_reconcile.own_contract`: the leaf's own contract sections of a
   rendered brief (A3).
 - `worker_reconcile._between` (anchored to a line start): extracts a section.
@@ -79,13 +101,16 @@ already takes any comparison), so it is unchanged.
 - `worker_reconcile._STATUS_LINES`: the status lines left out of the contract.
   Pickup and progress change them; they are not contract.
 - `tests/test_worker_reconcile_contract.py`: new.
-  - `_linked`: a coordinator on `dev` with a checkpointed worker in a linked
-    worktree, so coordinator edits do not show up as worker changes.
+  - `_linked`: a coordinator on `dev` (repo from the public `worker_repo`
+    helper) with a checkpointed worker in a linked worktree, so coordinator
+    edits do not show up as worker changes.
   - `_edit`: runs `edit-node` in-process, the same way
     `test_roadmap_crud_edit_claim_zones.py` does.
   - `test_reconcile_reads_the_zones_edit_node_widened_after_delegation` (A1).
   - `test_paths_merged_in_from_the_integration_branch_are_not_the_workers` (A2,
-    including a remote-tracking ref behind the merged local branch).
+    including a remote-tracking ref behind the merged local branch; then, past
+    a checkpoint after the merge, the worker deleting the merged file is still
+    reported, R1).
   - `test_the_integration_branch_moving_is_not_a_contract_change` (A3: a shared
     README and a status change).
   - `test_a_change_to_the_leafs_own_contract_is_reported`, parametrized over
