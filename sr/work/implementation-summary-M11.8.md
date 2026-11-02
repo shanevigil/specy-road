@@ -22,8 +22,12 @@
   If any check fails, the round gets a full review (A1).
 - **Which approval a delta starts from** (`review_gate.prior_approvals` and
   `delta_basis`): the model's latest approval of another commit of the node that
-  would itself count. These are read from `history/` plus the live `REVIEW-*.md`,
-  oldest filing first. If the policy cannot be read, the result is a full review.
+  counted at its own commit. These are read from `history/` plus the live
+  `REVIEW-*.md`, oldest filing first. A record that names `delta_from` is kept only
+  when an approval already kept is of that commit and the delta from it qualifies
+  (`_delta_why`). So a delta approval the gate rejected can never be the start of a
+  later delta that would hide the rejected change. If the policy cannot be read,
+  the result is a full review.
 - **Packet** (`review_packet.build_packet(prior=…)`): the same sections, computed
   over `P..C` (via the existing `_with_base`). The packet adds a `## Delta review`
   section that tells the reviewer to add `delta_from: "<P>"` and includes that
@@ -40,7 +44,8 @@
   `review-record.schema.json`. Validation comes from the schema, as instructed;
   `review_cli.py` is untouched.
 - **Gate** (`evaluate_gate`): an *approval* that names `delta_from` counts only
-  when the same model's counting approval of `delta_from` is on file, and the
+  when the same model's counting approval of `delta_from` is on file (as kept by
+  `prior_approvals`, the same `_delta_why` check), and the
   delta still meets `delta_problem` under the current integration-branch policy.
   When the policy is off, no delta approval counts. Blocks are unaffected.
   Distinct-family counting is unchanged, so both families are still needed (A2).
@@ -63,7 +68,8 @@ To stay under the line caps without new modules, I made a few behaviour-neutral
 compactions:
 - in `review_packet.py`: `_tail`, `_header`, `test_integrity_section`;
 - in `review_gate.py`: the `evaluate_gate`/`_eligibility` signatures, the
-  `review_files` import and the `gate_holds_at_head_or_exit` prints.
+  `review_files` and `orchestration_config` imports, and the
+  `gate_holds_at_head_or_exit` prints.
 
 The output of all of these is unchanged.
 
@@ -77,7 +83,9 @@ The output of all of these is unchanged.
 
 ## Verification
 
-- `python -m pytest tests/test_delta_review.py -q`: 9 passed.
+- `python -m pytest tests/test_delta_review.py -q`: 10 passed. The new
+  ineligible-delta test fails against the previous `review_gate.py` (`c6bb2aea`)
+  and passes now.
 - `ruff check specy_road tests scripts`: all checks passed.
 - `specy-road file-limits`: OK.
 - `python scripts/check_test_private_imports.py`: 0 new.
@@ -85,8 +93,8 @@ The output of all of these is unchanged.
 Not run:
 - The other related suites (`tests/test_review_packet.py`,
   `tests/test_review_gate.py`, `tests/test_models_and_prompt.py`), because the
-  coordinator asked for only the touched test files. The compactions are meant to
-  produce identical output, but these suites should be run before merge.
+  coordinator asked for only the touched test files. The round-1 reviewer re-ran
+  them at `c6bb2aea`; this round changed only `review_gate.py`.
 - `scripts/check_clones.py`, because pylint is not installed in this environment.
 
 ## Known limits and follow-ups (outside the touch zones)
@@ -111,13 +119,14 @@ Not run:
 - `review_gate.delta_problem`: the eligibility rule, shared by the packet and the gate (A1, A2).
 - `review_gate.prior_approvals`: a model's counting approvals of other commits, so a delta starts only from a real approval (A2).
 - `review_gate.delta_basis`: picks the reviewer's latest such approval and applies the rule; an unreadable policy means a full review.
-- `review_gate._delta_record_problem`: the gate's check of a `delta_from` approval (A2).
+- `review_gate._delta_why`: why a `delta_from` approval does not count, given the model's counting priors. The gate and `prior_approvals` share it, so a rejected delta approval is never a basis (A2, round 2).
 - `review_packet._delta_section`: the `## Delta review` header, the `delta_from` instruction and the reviewer's notes (A1).
 - `review_packet.FULL_MARK`: the `--full` stamp that the prompt reads (A2).
 - `role_prompt.reviewer_packet`: builds the reviewer's own delta packet and hands it to that reviewer only.
 
 ### Branches and guards
-- `evaluate_gate`: an approval with `delta_from` goes through `_delta_record_problem` (A2).
+- `evaluate_gate`: an approval with `delta_from` goes through `_delta_why` against `prior_approvals` (A2).
+- `prior_approvals`: walks records oldest first and skips a `delta_from` approval that `_delta_why` rejects against the approvals kept so far (A2, round 2).
 - `build_packet`: a `prior` parameter for the delta range, and a `full` parameter for the stamp.
 - `_diff` / `_capped_diff`: a `patch_name` parameter, so a delta packet never overwrites `DIFF.patch`.
 - `review-packet --full` flag (A2).
@@ -134,6 +143,7 @@ Not run:
 - `test_a_delta_over_three_files_needs_a_full_review`: a delta over three files (A3).
 - `test_a_delta_with_an_integrity_finding_needs_a_full_review`: a lost assert (A3).
 - `test_a_reviewer_that_did_not_approve_the_earlier_commit_gets_no_delta`: no delta packet and no delta approval for that reviewer; its full review still counts (A2, A3).
+- `test_an_ineligible_delta_approval_is_no_basis_for_a_later_delta`: a full approval at P, a rejected delta approval at C1 (a source file), then docs-only C2. The delta basis is not C1, and a `delta_from: C1` approval of C2 does not count (A2, round 2).
 - `test_policy_off_forces_full_review`: with `delta_review: false`, no delta packet and no delta approval (A2, A3).
 - `test_the_prompt_hands_each_reviewer_its_own_packet`: per-reviewer delivery and the delta packet's contents (A1).
 - `test_review_packet_full_stops_delta_packets`: `--full` forces the full packet and removes a stale delta packet (A2).
