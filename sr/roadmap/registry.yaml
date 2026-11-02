@@ -42,3 +42,19 @@ entries:
     started: '2026-11-01'
     owner: savigil
     implementation_review: pending
+  - codename: normalised-usage-event-in
+    node_id: M10.2
+    branch: feature/rm-normalised-usage-event-in
+    touch_zones:
+      - specy_road/worker_adapters.py
+      - specy_road/worker_adapter_parsers.py
+      - specy_road/worker_runner.py
+      - specy_road/schemas/worker-event.schema.json
+      - specy_road/bundled_scripts/worker_cli.py
+      - specy_road/bundled_scripts/worker_cli_render.py
+      - docs/orchestration-workers.md
+      - tests/test_worker_adapters.py
+      - tests/test_worker_cli.py
+    started: '2026-11-01'
+    owner: savigil
+    implementation_review: pending
