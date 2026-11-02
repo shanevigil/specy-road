@@ -57,22 +57,28 @@ def integration_tip(repo_root: Path) -> str | None:
     return git_text(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], repo_root) if ref else None
 
 
+def _rows(record: dict[str, Any] | None) -> dict[str, list[int]]:
+    """Each well-formed ``{cmd, exits}`` entry; anything else is no evidence, so its claim stays unverified."""
+    commands = (record or {}).get("commands")
+    return {r["cmd"]: r["exits"] for r in (commands if isinstance(commands, list) else [])
+            if isinstance(r, dict) and isinstance(r.get("cmd"), str) and isinstance(r.get("exits"), list)
+            and len(r["exits"]) == RUNS and all(type(e) is int for e in r["exits"])}
+
+
 def claim_problem(record: dict[str, Any] | None, cmd: str, tip: str | None) -> str | None:
     """``None`` when ``record`` verifies the claim on ``cmd`` at ``tip``, else why not.
 
-    ``unverified``: the command was never checked; ``stale: <sha>``: it was
-    checked on an earlier tip; ``rejected``: it did not fail both times.
+    ``unverified``: the command was never checked (or its entry is malformed);
+    ``stale: <sha>``: it was checked on an earlier tip; ``rejected``: it did
+    not fail both times.
     """
-    rows = {str(r.get("cmd")): r.get("exits") for r in (record or {}).get("commands") or [] if isinstance(r, dict)}
+    rows = _rows(record)
     if cmd not in rows:
         return "unverified"
     sha = str(record.get("integration_commit") or "")
     if tip is None or sha != tip:
         return f"stale: {sha[:12]}"
-    exits = rows[cmd]
-    if not isinstance(exits, list) or len(exits) != RUNS or any(type(e) is not int or e == 0 for e in exits):
-        return "rejected"
-    return None
+    return "rejected" if 0 in rows[cmd] else None
 
 
 def gate_problems(ready: ReviewFile, failing: list[dict[str, Any]], claimed: set[str]) -> list[str]:

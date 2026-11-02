@@ -20,8 +20,9 @@ and exit 1. With nothing claimed it prints so, writes nothing and exits 0.
 `review_pre_existing.gate_problems`: an unclaimed failing verifier gives the
 same problem as before; a claimed one is cleared only when the file lists it
 with two non-zero integer exits and `integration_commit` equals the current tip;
-otherwise the problem ends `(unverified)` (not in the file, or the file is
-missing or invalid), `(stale: <sha12>)` (recorded tip is not the current tip,
+otherwise the problem ends `(unverified)` (not in the file as a well-formed
+`{cmd: <str>, exits: [<int>, <int>]}` entry, `commands` not a list, or the
+file missing or invalid), `(stale: <sha12>)` (recorded tip is not the current tip,
 checked before the exits, since an outdated record is no evidence), or
 `(rejected)`. The tip is resolved from the project root that holds the READY
 (`ready.path.parents[3]`, the main worktree's project dir when asked from a
@@ -53,7 +54,9 @@ only shows the field in an example.
 
 ## Verification
 
-- `pytest -q tests/test_review_pre_existing.py tests/test_review_evidence.py` — 24 passed.
+- `pytest -q -p no:cacheprovider tests/test_review_pre_existing.py tests/test_review_evidence.py`
+  — 27 passed (after the R1 fix from gpt-6.1-sol's block; the full suite was
+  not re-run after the fix).
 - `pytest -q -p no:cacheprovider` (full suite) — 1 failed, 2736 passed, 2 skipped;
   the failure is `tests/test_validate_file_limits.py::test_file_limits_passes_on_repo`
   on `docs/brainstorming.md: 406 lines`, pre-existing (see file-limits below).
@@ -80,7 +83,8 @@ only shows the field in an example.
 - `review_pre_existing.gate_problems` — builds the gate problems with the suffix; reads `PRE-EXISTING.md` and the tip only when a failing verifier is claimed.
 - `review_pre_existing.run_twice` — two shell runs per command in a detached temporary worktree, removed in `finally` (A1, A4).
 - `review_pre_existing.cmd_check_pre_existing` — the CLI command (A1, A2).
-- Guard: `type(e) is not int` in `claim_problem` — YAML `true` is an int subclass and must not count as an exit.
+- `review_pre_existing._rows` — R1 fix: validates `commands` is a list and each entry has a string `cmd` and exactly two int `exits`; anything else is no evidence, so the claim stays `(unverified)` instead of raising in `evaluate_gate`.
+- Guard: `type(e) is int` in `_rows` — YAML `true` is an int subclass and must not count as an exit.
 - Guard: no-claim case prints and exits 0 without writing or creating a worktree — nothing to verify.
 - Guard: unresolvable tip / failed `worktree add` → error, exit 1 — cannot run on the tip.
 - Branch: lazy import in `review_files.verifier_gate_problems` — avoids the import cycle with `review_pre_existing`.
@@ -88,4 +92,5 @@ only shows the field in an example.
 - Test `test_a_claim_on_a_command_that_passes_on_the_tip_is_rejected` — A5 rejected case, A2 exit 1 and `claim-rejected:` line, A3 `(rejected)`.
 - Test `test_a_claim_that_fails_twice_on_the_tip_is_accepted` — A5 accepted case, A1 record contents, A3 `(unverified)` before the run, A4 worktree list unchanged.
 - Test `test_a_tip_that_moved_after_the_run_makes_the_claim_stale` — A5 stale case, A3 `(stale: <sha>)`.
+- Test `test_malformed_evidence_leaves_the_claim_unverified_until_rechecked` (3 cases: `commands: 1`, a non-int exit, a non-string cmd) — R1: the gate stays blocked with `(unverified)` without raising, and `check-pre-existing` replaces the malformed file.
 - Mocks: none.

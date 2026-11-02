@@ -77,6 +77,23 @@ def test_a_claim_that_fails_twice_on_the_tip_is_accepted(tmp_path: Path, capsys)
     assert gate.passed, gate.problems()
 
 
+@pytest.mark.parametrize("commands", [
+    "1",
+    f"[{{cmd: {json.dumps(FAILS_ON_TIP)}, exits: [1, '1']}}]",
+    "[{cmd: 7, exits: [1, 1]}]",
+])
+def test_malformed_evidence_leaves_the_claim_unverified_until_rechecked(tmp_path: Path, commands: str) -> None:
+    repo = _claimed_repo(tmp_path, FAILS_ON_TIP)
+    (reviews_dir(repo, "M1.1") / "PRE-EXISTING.md").write_text(
+        f"---\nintegration_commit: {git(repo, 'rev-parse', 'dev')}\ncommands: {commands}\n---\n")
+    gate = _gate(repo)
+    assert not gate.passed
+    assert gate.problems()[-1].endswith(f"verifier `{FAILS_ON_TIP}` exited 1 (unverified)")
+    assert _check(repo) == 0
+    assert _record(repo)["commands"] == [{"cmd": FAILS_ON_TIP, "exits": [1, 1]}]
+    assert _gate(repo).passed
+
+
 def test_a_tip_that_moved_after_the_run_makes_the_claim_stale(tmp_path: Path) -> None:
     repo = _claimed_repo(tmp_path, FAILS_ON_TIP)
     assert _check(repo) == 0
