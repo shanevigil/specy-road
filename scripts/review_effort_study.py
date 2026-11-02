@@ -103,6 +103,9 @@ def parse_verdict(output: str) -> tuple[str, list[str]]:
 
 def plan(root: Path, models: list[str], levels: list[str], nodes: list[str], max_runs: int) -> list[tuple]:
     """Every run as ``(node, packet text, entry, level, cli, effort_args)``; raises before anything runs."""
+    if len(set(levels)) != len(levels):
+        raise StudyError(f"--levels {' '.join(levels)}: the levels must differ, or one level runs twice and "
+                         "reads as a two-level study; nothing was run")
     total = len(nodes) * len(models) * len(levels)
     if total > max_runs:
         raise StudyError(f"{len(nodes)} packet(s) x {len(models)} model(s) x {len(levels)} level(s) = {total} "

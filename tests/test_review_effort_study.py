@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 import csv
 import importlib.util
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -100,6 +102,16 @@ def test_cursor_id_without_effort_suffix_is_refused(tmp_path: Path, capsys) -> N
     root = make_project(tmp_path, [with_root(reviewer("grok", "cursor", "grok {prompt}"), tmp_path)])
     assert run(root, "--model", "grok", "--levels", "high", "low", "M1.1") == 1
     assert "must end in" in capsys.readouterr().err
+
+
+def test_duplicate_levels_are_refused_through_the_cli_before_anything_runs(tmp_path: Path) -> None:
+    root = make_project(tmp_path, [with_root(reviewer("sol", "codex", "{effort} {prompt}"), tmp_path)])
+    done = subprocess.run([sys.executable, str(SCRIPT), "--model", "sol", "--levels", "high", "high", "M1.1",
+                           "--repo-root", str(root), "-o", str(root / "study")],
+                          capture_output=True, text=True, check=False, env={**os.environ, "PYTHONPATH": str(REPO)})
+    assert done.returncode == 1
+    assert "the levels must differ" in done.stderr
+    assert not (root / "study").exists()
 
 
 def test_study_over_budget_is_refused_whole(tmp_path: Path, capsys) -> None:
